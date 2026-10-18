@@ -145,6 +145,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
   const [download, setDownload] = useState<string | null>(null);
   const [downloadingSet, setDownloadingSet] = useState<string | null>(null);
+  const [downloadRevision, setDownloadRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => setDownloadRevision(value => value + 1);
+    window.addEventListener("foremanhq-drawing-downloads-changed", changed);
+    return () => window.removeEventListener("foremanhq-drawing-downloads-changed", changed);
+  }, []);
   const [savedSets, setSavedSets] = useState<Record<string, string>>({});
   const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(
@@ -233,7 +239,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       if (!stopped) setSavedSets(saved);
     })().catch(() => undefined);
     return () => { stopped = true; };
-  }, [account, folderVersions]);
+  }, [account, folderVersions, downloadRevision]);
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
     await utils.drawingsWorkspace.list.invalidate({ jobId });

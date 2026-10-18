@@ -3154,7 +3154,7 @@ export function DrawingWorkspace({
                   </DropdownMenuItem>
                 )}
                 <div className="px-2 py-2">
-                  <SheetOfflineButton sheet={source} prepare={async () => {
+                  <SheetOfflineButton sheet={source} workspaceSheetId={sheet.id} prepare={async () => {
                     await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
                     await onPrepareOffline?.();
                   }} />

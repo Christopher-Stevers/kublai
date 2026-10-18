@@ -467,6 +467,8 @@ export class DrawingOfflineStore {
     await complete.catch((error: unknown) => {
       throw quotaError ?? error;
     });
+    if (key.startsWith("drawing-download:") || key.startsWith("sheet-download:"))
+      window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   async readSnapshot<T>(key: string): Promise<T | null> {
     this.assertActive();
@@ -504,6 +506,7 @@ export class DrawingOfflineStore {
       };
     }
     await complete;
+    window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   dispose() {
     this.disposed = true;
