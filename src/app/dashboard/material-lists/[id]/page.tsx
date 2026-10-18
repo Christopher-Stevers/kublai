@@ -305,7 +305,7 @@ export default function MaterialListDetailPage({
               )}
             </div>
           )}
-          {mlHeader.jobId && <div className="mb-3"><PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrder?.materialListId === id ? verifyOrderId : undefined} onVerified={() => { void utils.materialList.invalidate(); }}/></div>}
+          {verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId && <div className="mb-3"><PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId} onVerified={() => { void utils.materialList.invalidate(); }}/></div>}
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">

@@ -1,5 +1,4 @@
 "use client";
-import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
 import { usePageViewState } from "~/hooks/use-page-view-state";
@@ -512,7 +511,6 @@ export function DashboardClient({
                   />
                 </div>
 
-                {selectedMaterialList.jobId && <div className="mb-3"><PackingSlips jobId={selectedMaterialList.jobId} materialListId={selectedMaterialList.id}/></div>}
                 {selectedItems.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
