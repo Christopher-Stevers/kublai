@@ -1,10 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type { DrawingWorkspace } from "../DrawingWorkspace";
 const fixture = vi.hoisted(() => ({
   props: null as ComponentProps<typeof DrawingWorkspace> | null,
   mutate: vi.fn(),
+  offline: false,
+  saveSnapshot: vi.fn(async () => undefined),
   error: null as Error | null,
   snapshot: null as (() => unknown) | null,
   sheets: [1, 2].map((page) => ({
@@ -17,6 +19,13 @@ const fixture = vi.hoisted(() => ({
     height: 800,
   })),
 }));
+vi.mock("../DrawingAccountProvider", () => {
+  const account = { accountKey: "fixture:person", store: {
+    readSnapshot: async () => fixture.offline ? fixture.sheets : null,
+    saveSnapshot: fixture.saveSnapshot,
+  } };
+  return { useDrawingAccount: () => account };
+});
 vi.mock("~/trpc/react", () => ({
   api: {
     drawingsWorkspace: {
@@ -65,9 +74,11 @@ vi.mock("../DrawingWorkspace", () => ({
 import { DocumentDrawingWorkspace } from "./DocumentDrawingWorkspace";
 beforeEach(() => {
   fixture.error = null;
+  fixture.offline = false;
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   vi.clearAllMocks();
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 it("uses the full workspace with shared navigation and restores the PDF camera", () => {
   const onReady = vi.fn();
   render(
@@ -115,4 +126,15 @@ it("keeps unavailable or unauthorized documents out of the workspace and offers 
     jobId: "job",
     versionId: "private",
   });
+});
+
+it("reopens downloaded document sheets offline without calling the server", async () => {
+  fixture.offline = true;
+  fixture.error = new Error("No network");
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  render(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
+  await screen.findByLabelText("Full drawing workspace");
+  expect(fixture.mutate).not.toHaveBeenCalled();
+  await fixture.props?.onPrepareOffline?.();
+  await waitFor(() => expect(fixture.saveSnapshot).toHaveBeenCalledWith("document-sheets:version", fixture.sheets));
 });
