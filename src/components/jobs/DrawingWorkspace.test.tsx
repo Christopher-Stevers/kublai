@@ -131,6 +131,7 @@ vi.mock("./DrawingCompare", () => ({
     </div>
   ),
 }));
+vi.mock("./SuperScaleDialog", () => ({ SuperScaleDialog: () => <div>Super scale grid matching</div> }));
 vi.mock("./DrawingSheetViewer", () => ({
   DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => {
     mocks.viewer(props);
@@ -421,6 +422,26 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("prompts to calibrate before Super scale, then continues only after a saved calibration", () => {
+    open();
+    const start = () => {
+      openMenu("More");
+      fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+      expect(screen.getByRole("heading", { name: "Super scale — set scale first" })).toBeInTheDocument();
+      expect(screen.queryByText("Super scale grid matching")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
+      const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+      expect(props.toolControls?.modeRequest?.mode).toBe("calibrate");
+      return props;
+    };
+    const canceled = start();
+    act(() => canceled.toolControls?.onCalibrationEnd?.(false));
+    expect(screen.queryByText("Super scale grid matching")).toBeNull();
+    const saved = start();
+    act(() => saved.toolControls?.onCalibrationEnd?.(true));
+    expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
+  });
+
   it("offers Super scale under More", () => {
     open();
     openMenu("More");

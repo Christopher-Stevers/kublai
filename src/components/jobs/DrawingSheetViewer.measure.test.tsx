@@ -1478,3 +1478,34 @@ describe("adaptive measurement magnifier", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("host-requested Super scale calibration", () => {
+  it("starts fresh even with an existing scale and continues only after a successful save", async () => {
+    let finish!: (saved: boolean) => void;
+    const onScaleChange = vi.fn(() => new Promise<boolean>(resolve => { finish = resolve; }));
+    const onCalibrationEnd = vi.fn();
+    const scale = { unit: "ft" as const, unitsPerSheetWidth: 100 };
+    const controls = (id: number) => ({ measureRequest: 0, pipeRequest: 0, modeRequest: { id, mode: "calibrate" as const }, onCalibrationEnd });
+    const { frame, rerender } = openSheet("super-scale-first", undefined, { sharedScale: scale, onScaleChange }, controls(0));
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="super-scale-first" sharedScale={scale} onScaleChange={onScaleChange} toolControls={controls(1)} />);
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    tap(frame, 0, 300); tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    expect(onCalibrationEnd).not.toHaveBeenCalled();
+    await act(async () => finish(false));
+    expect(onCalibrationEnd).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
+    await act(async () => finish(true));
+    expect(onCalibrationEnd).toHaveBeenCalledExactlyOnceWith(true);
+    expect(screen.queryByLabelText("How long is this line?")).toBeNull();
+  });
+  it("reports cancellation without continuing to matching", () => {
+    const onCalibrationEnd = vi.fn();
+    const controls = (id: number) => ({ measureRequest: 0, pipeRequest: 0, modeRequest: { id, mode: "calibrate" as const }, onCalibrationEnd });
+    const { rerender } = openSheet("super-scale-cancel", undefined, {}, controls(0));
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="super-scale-cancel" toolControls={controls(1)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCalibrationEnd).toHaveBeenCalledExactlyOnceWith(false);
+  });
+});

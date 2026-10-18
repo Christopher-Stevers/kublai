@@ -2,8 +2,8 @@
 
 Drawing viewer → More → Super scale. Available online to drawing managers on the current drawing revision. Save pending sheet details first.
 
-1. Calibrate the reference drawing with Measure → Set Scale.
-2. Open Super scale and choose two parallel named grids. The preview highlights their actual vectors; the known separation comes from the reference calibration.
+1. Open Super scale. Its first prompt starts a fresh Set Scale calibration: mark two points on known grid lines and enter their real distance. Canceling or a failed save does not continue.
+2. After the calibration saves, choose two parallel named grids. The preview highlights their actual vectors; the known separation comes from the reference calibration.
 3. Find matching drawings in the same job. Review matches and apply the selected results.
 
 The reference distance is transferred, not its sheet-width scale factor. Each target derives its own units per sheet width. Existing calibrations are kept. Normal metadata permissions, revision checks, and activity recording apply to every save. Partial failures are reported per drawing; a changed reference blocks applying the scan. Changing either chosen grid clears prior results.

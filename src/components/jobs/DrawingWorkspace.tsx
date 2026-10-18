@@ -426,6 +426,8 @@ export function DrawingWorkspace({
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
   const [superScaleOpen, setSuperScaleOpen] = useState(false);
+  const [superScalePrompt, setSuperScalePrompt] = useState(false);
+  const superScaleCalibration = useRef<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
@@ -434,9 +436,9 @@ export function DrawingWorkspace({
   );
   const [modeRequest, setModeRequest] = useState<{
     id: number;
-    mode: "idle" | "measure" | "pipe";
+    mode: "idle" | "measure" | "pipe" | "calibrate";
   }>({ id: 0, mode: "idle" });
-  const requestMode = useCallback((mode: "idle" | "measure" | "pipe") => {
+  const requestMode = useCallback((mode: "idle" | "measure" | "pipe" | "calibrate") => {
     setModeRequest((current) => ({ id: current.id + 1, mode }));
   }, []);
   const selectTool = useCallback(
@@ -1388,6 +1390,29 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
+      <Dialog open={superScalePrompt} onOpenChange={setSuperScalePrompt}>
+        <DialogContent layerClassName="z-[90]">
+          <DialogHeader>
+            <DialogTitle>Super scale — set scale first</DialogTitle>
+            <DialogDescription>
+              Mark two points on known grid lines and enter their real distance.
+              Once the scale is saved, Super scale will continue to grid matching.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSuperScalePrompt(false)}>Cancel</Button>
+            <Button onClick={() => {
+              setSuperScalePrompt(false);
+              setCompareIds(null);
+              setTool("pan");
+              setMarkupOpen(false);
+              setSelectedId(null);
+              superScaleCalibration.current = source.id;
+              requestMode("calibrate");
+            }}>Set scale</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {superScaleOpen && (
         <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
@@ -1607,6 +1632,11 @@ export function DrawingWorkspace({
                 pipeRequest: 0,
                 modeRequest,
                 onMode: setBottomMode,
+                onCalibrationEnd: (saved) => {
+                  const expected = superScaleCalibration.current;
+                  superScaleCalibration.current = null;
+                  if (saved && expected === source.id) setSuperScaleOpen(true);
+                },
               }}
               initialViewport={viewport.current}
               src={resolved.src}
@@ -3149,7 +3179,7 @@ export function DrawingWorkspace({
                 {!data.documentSource && (
                   <DropdownMenuItem className={MENU_ITEM}
                     disabled={!data.canManage || !online || !writable || !current || metadataDirty || pending > 0}
-                    onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>
+                    onSelect={() => { setMoreOpen(false); setCompareIds(null); setSuperScalePrompt(true); }}>
                     <MenuTile icon={RulerIcon} />
                     Super scale
                   </DropdownMenuItem>

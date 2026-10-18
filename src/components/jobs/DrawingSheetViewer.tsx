@@ -194,7 +194,8 @@ export function DrawingSheetViewer({
     measureRequest: number;
     pipeRequest: number;
     /** Atomic switch: finish a run before starting another mode. */
-    modeRequest?: { id: number; mode: "idle" | "measure" | "pipe" };
+    modeRequest?: { id: number; mode: "idle" | "measure" | "pipe" | "calibrate" };
+    onCalibrationEnd?: (saved: boolean) => void;
     onMode?: (mode: { measuring: boolean; pipe: boolean }) => void;
   };
 }) {
@@ -329,6 +330,15 @@ export function DrawingSheetViewer({
   });
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
+  const hostCalibration = useRef(false);
+  const calibrationEnded = useRef(toolControls?.onCalibrationEnd);
+  calibrationEnded.current = toolControls?.onCalibrationEnd;
+  useEffect(() => {
+    if (!calibrating && hostCalibration.current) {
+      hostCalibration.current = false;
+      calibrationEnded.current?.(false);
+    }
+  }, [calibrating]);
   const [run, dispatchRun] = useReducer(
     measureRunReducer,
     undefined,
@@ -1016,6 +1026,11 @@ export function DrawingSheetViewer({
       setDraft("");
       setScaleError(null);
       setScaleReadError(null);
+      if (hostCalibration.current) {
+        hostCalibration.current = false;
+        setMeasuring(false);
+        calibrationEnded.current?.(true);
+      }
       if (pipeCalibration.current) {
         pipeCalibration.current = false;
         setMeasuring(false);
@@ -1909,7 +1924,25 @@ export function DrawingSheetViewer({
   };
   // A host toolbar (the Drawings bottom bar) can switch Measure and Pipe
   // system through the same steps as their own buttons, and is told which is on.
-  const switchMode = (mode: "idle" | "measure" | "pipe") => {
+  const switchMode = (mode: "idle" | "measure" | "pipe" | "calibrate") => {
+    if (mode === "calibrate") {
+      if (scaleSavePending.current || (controlledScale && !editorProps.onScaleChange)) {
+        calibrationEnded.current?.(false);
+        return;
+      }
+      if (measuring) toggleMeasuring();
+      endHold();
+      cancelNodeDrag();
+      editor.cancelGesture();
+      setPipeMode(false);
+      pipeCalibration.current = false;
+      setMeasureSource(null);
+      setRunScaleOverride(null);
+      setMeasuring(true);
+      beginLengthScale();
+      hostCalibration.current = true;
+      return;
+    }
     if (measuring && mode !== "measure") toggleMeasuring();
     else if (!measuring && mode === "measure") toggleMeasuring();
     if (pipeMode && mode !== "pipe") setPipeMode(false);
