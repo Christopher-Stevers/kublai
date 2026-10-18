@@ -724,8 +724,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 aria-label={`Open ${item.name}`}
                 className={
                   listView
-                    ? "flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
-                    : "cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
+                    ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
+                    : "relative cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
                 }
                 onPointerEnter={() => {
                   if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
@@ -752,7 +752,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       : "bg-muted aspect-[4/3] w-full border-b object-contain"
                   }
                 />
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 px-3 py-2">
+                <div className={`flex min-w-0 flex-1 items-center gap-1 py-2 ${listView ? "pl-3 pr-14" : "px-3"}`}>
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
                       {nonempty(
@@ -764,7 +764,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       {bySheet.get(item.id)?.metadata.title?.trim()}
                     </span>
                   </div>
-                  <div className="order-last basis-full pt-1"><SheetOfflineButton sheet={item} prepare={async (signal) => {
+                  <SheetOfflineButton iconOnly sheet={item} prepare={async (signal) => {
                     const workspace = await utils.drawingsWorkspace.get.fetch({ sheetId: item.id });
                     signal.throwIfAborted();
                     await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
@@ -773,7 +773,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     if (summarySnapshot.data) await account?.store?.saveSnapshot(`drawing-index:${jobId}`, summarySnapshot.data);
                     const current = workspace.jobSheets.find(source => source.id === workspace.metadata.currentSourceSheetId);
                     return current ? [current.imageUrl] : [];
-                  }} /></div>
+                  }} />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -797,7 +797,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-muted-foreground -mr-2 h-8 w-8 shrink-0"
+                          className="bg-background/95 text-foreground absolute top-2 right-2 z-10 size-9 shrink-0 rounded-full border shadow-sm hover:bg-accent"
                           aria-label={`More actions for ${item.name}`}
                           onClick={(event) => event.stopPropagation()}
                         >

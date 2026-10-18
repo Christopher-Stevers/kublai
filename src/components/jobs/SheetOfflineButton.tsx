@@ -10,6 +10,7 @@ import { useDrawingAccount } from "./DrawingAccountProvider";
 type Props = {
   sheet: { id: string; name: string; imageUrl: string };
   workspaceSheetId?: string;
+  iconOnly?: boolean;
   /** Fetch and retain the metadata needed to reopen this sheet offline. */
   prepare?: (signal: AbortSignal) => Promise<void | string[]>;
 };
@@ -19,6 +20,7 @@ export function SheetOfflineButton({
   sheet,
   prepare,
   workspaceSheetId = sheet.id,
+  iconOnly = false,
 }: Props) {
   const store = useDrawingAccount()?.store;
   const { saved, setSaved } = useSheetOfflineStatus(
@@ -87,10 +89,17 @@ export function SheetOfflineButton({
     }
   };
   return (
-    <div className="min-w-0" onClick={(event) => event.stopPropagation()}>
+    <div
+      className={iconOnly ? "shrink-0" : "min-w-0"}
+      onClick={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
-        className="bg-background flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+        className={
+          iconOnly
+            ? `flex size-9 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${saved && !progress ? "bg-green-600 text-white hover:bg-green-700" : "hover:bg-accent hover:text-accent-foreground"}`
+            : "bg-background flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+        }
         disabled={!store}
         aria-label={
           progress
@@ -113,10 +122,11 @@ export function SheetOfflineButton({
         ) : (
           <DownloadIcon className="size-4 shrink-0" />
         )}
-        {progress ? "Cancel" : saved ? "Available offline" : "Save offline"}
+        {!iconOnly &&
+          (progress ? "Cancel" : saved ? "Available offline" : "Save offline")}
       </button>
       {progress && (
-        <p role="status" className="mt-1 text-xs">
+        <p role="status" className={iconOnly ? "sr-only" : "mt-1 text-xs"}>
           {progress}
         </p>
       )}
