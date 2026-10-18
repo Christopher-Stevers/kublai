@@ -67,7 +67,7 @@ type Matrix = [number, number, number, number, number, number];
 type Point = { x: number; y: number };
 
 const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
-const MAX_RAW = 100_000;
+export const MAX_PDF_LINE_SEGMENTS = 250_000;
 
 function multiply(a: Matrix, b: Matrix): Matrix {
   return [
@@ -175,9 +175,10 @@ export function segmentsFromOperators(
   };
   const paint = (term: number) => {
     if (CLOSES.has(term)) closePath();
-    if ((STROKE.has(term) || FILL.has(term)) && raw.length < MAX_RAW) {
-      const room = MAX_RAW - raw.length;
-      raw.push(...pending.slice(0, room));
+    if ((STROKE.has(term) || FILL.has(term)) && raw.length < MAX_PDF_LINE_SEGMENTS) {
+      const room = MAX_PDF_LINE_SEGMENTS - raw.length;
+      // Large paths exceed JavaScript's function argument limit with spread.
+      for (let i = 0; i < Math.min(pending.length, room); i++) raw.push(pending[i]!);
     }
     captureCurve();
     if (STROKE.has(term)) for (const curve of closedCurves) onClosedCurve?.(curve);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SNAP_OPS, segmentsFromOperators } from "./pdf-snap-lines";
+import { MAX_PDF_LINE_SEGMENTS, SNAP_OPS, segmentsFromOperators } from "./pdf-snap-lines";
 
 const toSheet = (x: number, y: number) => ({ x: x / 100, y: y / 100 });
 
@@ -82,4 +82,13 @@ it("reports closed stroked curves for grid bubbles without turning them into sna
   expect(lines).toEqual([]);
   expect(circles).toHaveLength(1);
   expect(circles[0]).toHaveLength(5);
+});
+
+ it("keeps late geometry up to 250,000 segments without overflowing argument limits", () => {
+  const path = [0, 0, 0];
+  for (let i = 1; i <= 250_001; i++) path.push(1, i, 1);
+  const lines = run([[SNAP_OPS.constructPath, [SNAP_OPS.stroke, [Float32Array.from(path)], []]]]);
+  expect(MAX_PDF_LINE_SEGMENTS).toBe(250_000);
+  expect(lines).toHaveLength(250_000);
+  expect(lines[249_999]).toEqual({ x1: 2499.99, y1: 0.01, x2: 2500, y2: 0.01 });
 });

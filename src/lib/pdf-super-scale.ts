@@ -1,6 +1,6 @@
 "use client";
 import { loadPdfJs, sourcePdfPage } from "./pdf-client";
-import { segmentsFromOperators } from "./pdf-snap-lines";
+import { MAX_PDF_LINE_SEGMENTS, segmentsFromOperators } from "./pdf-snap-lines";
 import {
   identifyGrids,
   gridBubble,
@@ -63,7 +63,7 @@ export function createGridReader() {
             if (bubble) bubbles.push(bubble);
           },
         );
-        if (lines.length >= 100000 || content.items.length > 50000)
+        if (lines.length >= MAX_PDF_LINE_SEGMENTS || content.items.length > 50000)
           throw new Error("Drawing too complex for automatic grid matching");
         const labels: GridLabel[] = [];
         for (const item of content.items) {
