@@ -104,6 +104,7 @@ export function segmentsFromOperators(
   fnArray: ArrayLike<number>,
   argsArray: ArrayLike<unknown>,
   toSheet: (x: number, y: number) => Point,
+  onClosedCurve?: (points: Point[]) => void,
 ): SnapSegment[] {
   const stack: Matrix[] = [];
   let ctm = IDENTITY;
@@ -113,6 +114,14 @@ export function segmentsFromOperators(
   let subCurved = false;
   let pending: SnapSegment[] = [];
   const raw: SnapSegment[] = [];
+  let closedCurves: Point[][] = [];
+  const captureCurve = () => {
+    if (onClosedCurve && subCurved && !subStraight && path.length >= 5 && start) {
+      const last = path[path.length - 1]!;
+      if (Math.hypot(last.x - start.x, last.y - start.y) < 0.01)
+        closedCurves.push(path.map(p => toSheet(p.x, p.y)));
+    }
+  };
 
   const addSeg = (a: Point, b: Point) => {
     if (a.x === b.x && a.y === b.y) return;
@@ -123,6 +132,7 @@ export function segmentsFromOperators(
     pending.push({ x1: p.x, y1: p.y, x2: q.x, y2: q.y });
   };
   const moveTo = (x: number, y: number) => {
+    captureCurve();
     const p = apply(ctm, x, y);
     start = p;
     path = [p];
@@ -141,6 +151,7 @@ export function segmentsFromOperators(
     subCurved = true;
   };
   const closePath = () => {
+    captureCurve();
     if (!start || path.length === 0) return;
     const prev = path[path.length - 1]!;
     if (subStraight || !subCurved) addSeg(prev, start);
@@ -168,6 +179,9 @@ export function segmentsFromOperators(
       const room = MAX_RAW - raw.length;
       raw.push(...pending.slice(0, room));
     }
+    captureCurve();
+    if (STROKE.has(term)) for (const curve of closedCurves) onClosedCurve?.(curve);
+    closedCurves = [];
     pending = [];
     path = [];
     start = null;

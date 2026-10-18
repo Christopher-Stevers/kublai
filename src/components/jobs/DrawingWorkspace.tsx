@@ -117,6 +117,7 @@ import {
   DrawingField,
   drawingFieldClass,
 } from "./DrawingEntityForm";
+import { SuperScaleDialog } from "./SuperScaleDialog";
 import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
 import { useDrawingAppearance } from "./useDrawingAppearance";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
@@ -424,6 +425,7 @@ export function DrawingWorkspace({
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [superScaleOpen, setSuperScaleOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
@@ -1386,6 +1388,9 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
+      {superScaleOpen && (
+        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
+      )}
       {appearanceOpen && (
         <DrawingAppearanceDialog
           appearance={appearance}
@@ -3140,6 +3145,14 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
+                {!data.documentSource && (
+                  <DropdownMenuItem className={MENU_ITEM}
+                    disabled={!data.canManage || !online || !writable || !current || metadataDirty || pending > 0}
+                    onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>
+                    <MenuTile icon={RulerIcon} />
+                    Super scale
+                  </DropdownMenuItem>
+                )}
                 <div className="px-2 py-2">
                   <SheetOfflineButton sheet={source} prepare={async () => {
                     await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);

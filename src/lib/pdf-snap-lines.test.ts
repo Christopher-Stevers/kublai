@@ -74,3 +74,12 @@ describe("lines from a PDF", () => {
     expect(lines).toEqual([{ x1: 0.1, y1: 0.05, x2: 0.3, y2: 0.05 }]);
   });
 });
+
+it("reports closed stroked curves for grid bubbles without turning them into snap lines", () => {
+  const circles: { x: number; y: number }[][] = [];
+  const points = [0, 10, 5, 2, 12, 5, 15, 8, 15, 10, 2, 15, 12, 12, 15, 10, 15, 2, 8, 15, 5, 12, 5, 10, 2, 5, 8, 8, 5, 10, 5, 4];
+  const lines = segmentsFromOperators([SNAP_OPS.constructPath], [[SNAP_OPS.stroke, [Float32Array.from(points)]]], toSheet, curve => circles.push(curve));
+  expect(lines).toEqual([]);
+  expect(circles).toHaveLength(1);
+  expect(circles[0]).toHaveLength(5);
+});

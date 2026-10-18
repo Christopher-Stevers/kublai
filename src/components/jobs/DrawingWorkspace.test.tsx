@@ -421,6 +421,12 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("offers Super scale under More", () => {
+    open();
+    openMenu("More");
+    expect(screen.getByRole("menuitem", { name: "Super scale" })).toBeInTheDocument();
+  });
+
   it("opens the employee's drawing tools with a simulation-scoped cache", () => {
     mocks.account = {
       userId: "tim",
