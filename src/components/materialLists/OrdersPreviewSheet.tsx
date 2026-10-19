@@ -25,6 +25,7 @@ interface OrdersPreviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materialListId: string;
+  orderedItemIds?: string[];
   /** Tool request list: one order to the tool room, sent in-app (no email). */
   isToolRequest?: boolean;
   hasToolItems?: boolean;
@@ -74,6 +75,7 @@ export function OrdersPreviewSheet({
   open,
   onOpenChange,
   materialListId,
+  orderedItemIds,
   isToolRequest = false,
   hasToolItems = false,
 }: OrdersPreviewSheetProps) {
@@ -141,7 +143,7 @@ export function OrdersPreviewSheet({
 
   const loadPreview = async () => {
     const data = await utils.materialList.previewOrders.fetch(
-      { materialListId },
+      { materialListId, orderedItemIds },
       { staleTime: 0 },
     );
     applyPreviewData(data);
@@ -236,6 +238,7 @@ export function OrdersPreviewSheet({
     try {
       await sendGeneratedOrder.mutateAsync({
         materialListId,
+        orderedItemIds,
         supplierId: order.supplierId,
         sentTo: "Tool room",
         notes: notes.trim() || undefined,
@@ -310,6 +313,7 @@ export function OrdersPreviewSheet({
       });
       await sendGeneratedOrder.mutateAsync({
         materialListId,
+        orderedItemIds,
         supplierId: order.supplierId,
         approvalFingerprint:order.approval?.fingerprint,
         sentTo: toRecipients.join(", "),

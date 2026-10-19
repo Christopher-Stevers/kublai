@@ -346,6 +346,17 @@ describe.skipIf(!socket)(
       });
       expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
     });
+    it("keeps list sequence in preview, sent rows, and reopened email", async () => {
+      await db.insert(schema.quoteItems).values({id:id(90),quoteId:quote,partDefinitionId:part,supplierPartId:sp,quantity:"1",descriptionSnapshot:"Second fitting"});
+      const orderedItemIds=[id(90),item];
+      const preview=await material.previewOrders({materialListId:list,orderedItemIds});
+      expect(preview.possible[0]!.items.map(row=>row.id)).toEqual(orderedItemIds);
+      const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test",orderedItemIds});
+      const email=await material.getOrderEmailContent({orderId:sent.id});
+      expect(email.body.indexOf("Second fitting")).toBeLessThan(email.body.indexOf('PEX pipe clip'));
+      const after=await material.previewOrders({materialListId:list});
+      expect(after.sent[0]!.items[0]!.descriptionSnapshot).toBe("Second fitting");
+    });
     it("uses 50 in the supplier email and persists both amounts on the sent order", async () => {
       const preview = await material.previewOrders({ materialListId: list });
       expect(preview.possible[0]?.items[0]).toMatchObject({

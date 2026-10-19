@@ -492,6 +492,7 @@ export default function MaterialListDetailPage({
           open={showOrdersSheet}
           onOpenChange={setShowOrdersSheet}
           materialListId={mlHeader.id}
+          orderedItemIds={items.map(item => item.id)}
           isToolRequest={isToolRequest} hasToolItems={hasToolItems}
         />
       )}

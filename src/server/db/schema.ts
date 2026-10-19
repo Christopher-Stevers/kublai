@@ -1970,6 +1970,8 @@ export const orderItems = createTable(
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
 
     quantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("1"),
+    /** Material list display order captured when sending. */
+    position: d.integer(),
     /** Exact demand when sent; quantity is the actual supplier-adjusted order. */
     requestedQuantity: d.numeric({ precision: 12, scale: 6 }),
     orderMultipleSnapshot: d.numeric({ precision: 12, scale: 6 }),

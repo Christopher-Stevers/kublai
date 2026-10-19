@@ -1,3 +1,4 @@
+import { orderItemSequence } from "~/lib/order-item-sequence";
 import { supplierEmailPreferences } from "~/server/db/supplier-email-preferences-schema";
 import { readSupplierEmailPreference } from "~/server/supplier-email-preferences";
 import { formatEmailItemLine, supplierSkuLines } from "~/lib/order-email-lines";
@@ -1027,7 +1028,7 @@ ${foremanName}`;
    * Does not persist draft orders.
    */
   previewOrders: hasDashboardAccess
-    .input(z.object({ materialListId: z.string().uuid() }))
+    .input(z.object({ materialListId: z.string().uuid(), orderedItemIds: z.array(z.string().uuid()).max(10000).optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -1094,7 +1095,7 @@ ${foremanName}`;
         });
       }
 
-      const rawItems = await loadOrderableQuoteItems(ctx.db, quote.id);
+      const rawItems = orderItemSequence(await loadOrderableQuoteItems(ctx.db, quote.id), input.orderedItemIds, item => item.id);
       const toolItems = await withoutAlreadyRequestedTools(ctx.db, materialList.id,
         rawItems.filter(item => isToolRequest || !!item.assetTracking).map(item => ({ ...item, unitCost: "0", supplierPartId: null, packSize: null })));
       const materialItems = isToolRequest || !canSendMaterials ? [] : await resolveJobOrderItems(ctx.db, ctx.user.organizationId, materialList.jobId, rawItems.filter(item => !item.assetTracking));
@@ -1132,6 +1133,7 @@ ${foremanName}`;
         ? await ctx.db
             .select({
               id: orderItems.id,
+              sourceItemId: quoteItems.id,
               roomId: orderItems.roomId,
               roomName: jobRooms.name,
               orderId: orderItems.orderId,
@@ -1145,12 +1147,14 @@ ${foremanName}`;
               partDefinitionIndividualUnit: partDefinitions.individualUnit,
             })
             .from(orderItems)
+            .leftJoin(quoteItems, eq(quoteItems.sentOrderItemId, orderItems.id))
             .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
             .leftJoin(
               partDefinitions,
               eq(orderItems.partDefinitionId, partDefinitions.id),
             )
             .where(inArray(orderItems.orderId, sentOrderIds))
+            .orderBy(asc(orderItems.position), asc(orderItems.id))
         : [];
       const sentItemsByOrderId = new Map<string, typeof sentItemRows>();
       for (const item of sentItemRows) {
@@ -1256,7 +1260,7 @@ ${foremanName}`;
       }));
 
       const sent = sentOrders.filter(order => canSendMaterials || order.orderKind === "tool_request").map((order) => {
-        const items = (sentItemsByOrderId.get(order.id) ?? []).map(
+        const items = orderItemSequence(sentItemsByOrderId.get(order.id) ?? [], input.orderedItemIds, item => item.sourceItemId).map(
           ({ orderId: _orderId, partDefinitionDisplayName, ...item }) => ({
             ...item,
             descriptionSnapshot:
@@ -1330,6 +1334,7 @@ ${foremanName}`;
         materialListId: z.string().uuid(),
         supplierId: z.string().uuid(),
         approvalFingerprint:z.string().length(64).optional(),
+        orderedItemIds: z.array(z.string().uuid()).max(10000).optional(),
         sentTo: z.string().min(1).max(1000),
         notes: z.string().optional(),
       }),
@@ -1395,7 +1400,7 @@ ${foremanName}`;
         await tx.select({ id: quoteItems.id }).from(quoteItems)
           .where(eq(quoteItems.quoteId, materialList.quoteId!)).orderBy(quoteItems.id).for("update");
         await recalculatePurchaseTotals(tx, orderingScope.quoteId);
-        const rawItems = await loadOrderableQuoteItems(tx, orderingScope.quoteId);
+        const rawItems = orderItemSequence(await loadOrderableQuoteItems(tx, orderingScope.quoteId), input.orderedItemIds, item => item.id);
         const quoteItemsList: OrderableQuoteItem[] = isToolRequest
           ? rawItems.filter(item => materialList.kind === "tools" || !!item.assetTracking).map(item => ({ ...item, unitCost: "0", supplierPartId: null, packSize: null }))
           : await resolveJobOrderItems(tx, ctx.user.organizationId, orderingScope.jobId, rawItems.filter(item => !item.assetTracking));
@@ -1455,10 +1460,11 @@ ${foremanName}`;
           });
         }
 
-        for (const item of items) {
+        for (const [position, item] of items.entries()) {
           const orderItemId = crypto.randomUUID();
           await tx.insert(orderItems).values({
             id: orderItemId,
+            position,
             orderId: createdOrder.id,
             roomId: item.roomId,
             supplierPartId: item.supplierPartId ?? undefined,
@@ -1571,7 +1577,8 @@ ${foremanName}`;
           partDefinitions,
           eq(orderItems.partDefinitionId, partDefinitions.id),
         )
-        .where(eq(orderItems.orderId, input.orderId));
+        .where(eq(orderItems.orderId, input.orderId))
+        .orderBy(asc(orderItems.position), asc(orderItems.id));
 
       const jobName = order.job?.name || "Job";
       const supplierContacts = normalizeSupplierContacts(

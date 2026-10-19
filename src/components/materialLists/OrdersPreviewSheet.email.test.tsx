@@ -128,6 +128,7 @@ async function show(tool = false) {
       open
       onOpenChange={vi.fn()}
       materialListId="list"
+      orderedItemIds={["second", "first"]}
       isToolRequest={tool}
     />,
   );
@@ -166,6 +167,7 @@ describe("supplier email handoff", () => {
       "mailto:one@example.com,two@example.com?subject=Urgent pipe&body=Edited\nbody&cc=changed@example.com",
     );
     expect(state.save).toHaveBeenCalledWith({
+      orderedItemIds: ["second", "first"],
       materialListId: "list",
       supplierId: "supplier",
       sentTo: "one@example.com, two@example.com",
@@ -233,6 +235,7 @@ describe("supplier email handoff", () => {
     fireEvent.click(send);
     await waitFor(() =>
       expect(state.save).toHaveBeenCalledWith({
+        orderedItemIds: ["second", "first"],
         materialListId: "list",
         supplierId: "supplier",
         sentTo: "Tool room",
@@ -304,4 +307,11 @@ it("sends a tool line from an ordinary material list to the tool room without op
   fireEvent.click(await screen.findByRole("button", { name: "Send" }));
   await waitFor(() => expect(state.save).toHaveBeenCalledWith({ materialListId: "list", supplierId: "supplier", sentTo: "Tool room", notes: undefined }));
   expect(launched).toEqual([]);
+});
+
+it("passes the displayed list sequence to preview and send", async () => {
+  const send = await show();
+  expect(state.fetch).toHaveBeenCalledWith({ materialListId: "list", orderedItemIds: ["second", "first"] }, { staleTime: 0 });
+  fireEvent.click(send);
+  await waitFor(() => expect(state.save).toHaveBeenCalledWith(expect.objectContaining({ orderedItemIds: ["second", "first"] })));
 });

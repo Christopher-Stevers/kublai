@@ -585,6 +585,7 @@ export function DashboardClient({
                     onOpenChange={setShowOfflineOrdersSheet}
                     isToolRequest={isToolRequest} hasToolItems={hasToolItems}
                     materialListId={selectedMaterialList.id}
+                    orderedItemIds={sortedItems.map(item => item.id)}
                   />
                 )}
                 <ExistingQuotesOrdersDialog
