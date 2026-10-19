@@ -347,7 +347,7 @@ describe("embedded pipe labels", () => {
 
 describe("pipe PDF loader", () => {
   it("loads saved upload geometry without downloading or parsing the PDF again", async () => {
-    const saved = { segments: [], labels: [], aspect: 0.5, truncated: false };
+    const saved = { segments: [], labels: [], symbols: [], texts: [], componentDataVersion: 1, aspect: 0.5, truncated: false };
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ version: 1, linework: saved })));
     vi.stubGlobal("fetch", fetcher);
     const before = pdf.load.mock.calls.length;
@@ -427,4 +427,27 @@ describe("pipe PDF loader", () => {
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
   });
+});
+
+it('retains closed curved symbol geometry separately without adding it to measured strokes',()=>{
+ const result=run([path([0,40,40,2,42,40,42,42,40,42,4]),line(50)]);
+ expect(result.symbols).toHaveLength(1);
+ expect(result.symbols?.[0]).toMatchObject({closed:true});
+ expect(result.segments).toHaveLength(1);
+ expect(result.componentDataVersion).toBe(1);
+ expect(pipeLabelsFromTextItems([text('BALL VALVE')],toSheet).texts[0]).toMatchObject({text:'BALL VALVE'});
+});
+
+it('reparses older cached geometry that has no component symbols/text',async()=>{
+ const url='/api/job-rooms/files/0391aed4-7773-47ec-9141-09df373ec008/d814fc88-da7c-4df5-aa89-fe3c1fde0462/plan.pdf';
+ const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({version:1,linework:{segments:[],labels:[],aspect:1,truncated:false}})));
+ vi.stubGlobal('fetch',fetcher);
+ pdf.library.mockResolvedValue({OPS:PIPE_OPS,AnnotationMode:{DISABLE:0}});
+ pdf.load.mockResolvedValue({getPage:async()=>({getViewport:()=>({width:100,height:100,convertToViewportPoint:(x:number,y:number)=>[x,y]}),getOperatorList:async()=>({fnArray:[],argsArray:[]}),getTextContent:async()=>({items:[text('BALL VALVE')]})}),getOptionalContentConfig:async()=>({isVisible:()=>true,getGroup:()=>null})});
+ try{
+  const result=await loadPipeLinework({url,page:1});
+  expect(pdf.load).toHaveBeenLastCalledWith(url);
+  expect(result.texts?.[0]?.text).toBe('BALL VALVE');
+  expect(result.componentDataVersion).toBe(1);
+ }finally{vi.unstubAllGlobals();}
 });

@@ -34,6 +34,7 @@ export function PipeSystemPanel({
   onScale,
   onUnit,
   onDone,
+  onComponents,
   color, onColor, lineWidth, onLineWidth,
 }: {
   color: string;
@@ -64,6 +65,7 @@ export function PipeSystemPanel({
   onScale: () => void;
   onUnit: (value: LengthUnit) => void;
   onDone?: () => void;
+  onComponents?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const optionsId = useId();
@@ -75,6 +77,7 @@ export function PipeSystemPanel({
     ] },
     { id: "color", label: "Color", children: MEASURE_COLORS.map(option => ({ id: option.value, label: option.name, selected: color === option.value, run: () => onColor(option.value) })) },
     { id: "width", label: "Line width", children: LINE_WIDTHS.map(value => ({ id: String(value), label: String(value), selected: lineWidth === value, run: () => onLineWidth(value) })) },
+    ...(onComponents ? [{ id: "components", label: "Fittings & valves", disabled: !selected, run: onComponents }] : []),
     { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
     { id: "scale", label: "Set scale", disabled: !canSetScale, run: onScale },
     { id: "units", label: "Units", children: LENGTH_UNITS.map(option => ({ id: option.value, label: option.label, selected: unit === option.value, run: () => onUnit(option.value) })) },
@@ -148,6 +151,7 @@ export function PipeSystemPanel({
       </div>
       <StyleStrip color={color} onColor={onColor} colorLabel="Pipe colors" customColorLabel="Custom pipe color" width={lineWidth} onWidth={onLineWidth} widthLabel="Pipe line width" />
       {systemControl}
+      {selected && onComponents && <Button size="sm" variant="outline" onClick={onComponents}>Fittings & valves</Button>}
       {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
       {!hasPdf ? (
         <p className="text-muted-foreground text-xs">

@@ -112,10 +112,51 @@ export const drawingMarkupSchema = z
     linkAppearance: z.enum(["box", "highlight"]).optional(),
     equipmentTag: z.string().trim().min(2).max(40).optional(),
     equipmentOriginId: id.optional(),
+    pipeComponent: z
+      .object({
+        candidateId: z.string().min(1).max(100),
+        fingerprint: z.string().min(1).max(100),
+        sourceKey: z.string().min(1).max(100),
+        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap"]),
+        name: z.string().trim().min(1).max(120),
+        size: z.string().trim().max(80).optional(),
+        material: z.string().trim().max(80).optional(),
+        system: z.string().max(24).nullable(),
+        evidence: z.string().max(500),
+        source: z.enum(["layer", "tag", "legend", "geometry", "manual"]),
+      })
+      .optional(),
+    pipeSymbolTemplate: z
+      .object({
+        sourceKey: z.string().min(1).max(100),
+        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap"]),
+        name: z.string().trim().min(1).max(120),
+      })
+      .optional(),
     unit: z.enum(["mm", "cm", "m", "in", "ft"]).optional(),
     scale: z.number().finite().positive().max(1e9).optional(),
   })
   .superRefine((markup, ctx) => {
+    if (
+      markup.pipeComponent &&
+      (markup.type !== "count" || markup.points.length !== 1)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["pipeComponent"],
+        message: "A reviewed piping component must be one count point.",
+      });
+    if (
+      markup.pipeSymbolTemplate &&
+      (markup.type !== "rect" ||
+        markup.points.length !== 2 ||
+        markup.pipeComponent)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["pipeSymbolTemplate"],
+        message: "A symbol template needs a rectangular source region.",
+      });
     if (
       markup.angleReferences &&
       (markup.type !== "dimension" ||
@@ -344,7 +385,10 @@ export type DrawingEntity = EntityBase &
     | { kind: "transmittal"; data: z.infer<typeof drawingTransmittalSchema> }
   );
 export const drawingMetadataSchema = z.object({
-  measurementLayers: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+  measurementLayers: z
+    .array(z.string().trim().min(1).max(80))
+    .max(100)
+    .optional(),
   number: shortText.default(""),
   title: shortText.default(""),
   discipline: shortText.default(""),

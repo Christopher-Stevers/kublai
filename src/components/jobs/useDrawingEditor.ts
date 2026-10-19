@@ -7,6 +7,7 @@ import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, si
 
 export type DrawingEditorProps = {
   annotations?: DrawingEntity[];
+  pipeReviewAnnotations?: DrawingEntity[];
   measurementLayers?: string[];
   onAddMeasurementLayer?: (name: string) => Promise<void>;
   sourceSheetId?: string;
@@ -17,6 +18,7 @@ export type DrawingEditorProps = {
   canEditAnnotation?: (entityId: string) => boolean;
   hideAnnotations?: boolean;
   onCreate?: (data: DrawingMarkup) => void;
+  onSavePipeComponent?: (data: DrawingMarkup) => Promise<boolean>;
   onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
   onSelect?: (id: string | null) => void;
   /** A mouse right-click while panning or selecting, with the item under it. */

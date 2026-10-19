@@ -1,5 +1,11 @@
 "use client";
 
+import { analyzePipeComponents } from "./pipe-components";
+import type {
+  PipeSymbolTemplate,
+  PipeComponentsResult,
+} from "./pipe-components-types";
+
 import {
   buildSnapIndex,
   mergeCollinear,
@@ -155,6 +161,9 @@ export async function buildDrawingSnapIndex(
 }
 
 export type PipeGeometrySession = PipeGeometryInfo & {
+  components: (
+    templates: PipeSymbolTemplate[],
+  ) => Promise<PipeComponentsResult>;
   selectLayer: (system: string) => Promise<PipeSystemSelection>;
   select: (
     point: SheetPoint,
@@ -193,7 +202,13 @@ export async function createPipeGeometrySession(
       );
       return {
         ...info,
-        selectLayer: (system) => client.request<PipeSystemSelection>({ kind: "pipe-layer", system }),
+        components: (templates) =>
+          client.request<PipeComponentsResult>({
+            kind: "pipe-components",
+            templates,
+          }),
+        selectLayer: (system) =>
+          client.request<PipeSystemSelection>({ kind: "pipe-layer", system }),
         select: (point, tolerance, system) =>
           client.request<PipeSystemSelection>({
             kind: "pipe-select",
@@ -209,21 +224,29 @@ export async function createPipeGeometrySession(
     }
   }
   let index: PipeSystemIndex | null = buildPipeSystemIndex(linework);
+  let selection: PipeSystemSelection | null = null;
   const session: PipeGeometrySession = {
+    components: async (templates) => {
+      if (!index || !selection) throw aborted();
+      return analyzePipeComponents(index.linework, selection, templates);
+    },
     layerCodes: pipeLayerCodes(linework),
     selectLayer: async (system) => {
       if (!index) throw aborted();
-      return selectPipeLayerSystem(index.linework, system);
+      selection = selectPipeLayerSystem(index.linework, system);
+      return selection;
     },
     codes: [
-      ...new Set(
-        [...pipeLayerCodes(index.linework), ...[...index.segmentSystems.values()].flatMap((codes) => [...codes])],
-      ),
+      ...new Set([
+        ...pipeLayerCodes(index.linework),
+        ...[...index.segmentSystems.values()].flatMap((codes) => [...codes]),
+      ]),
     ].sort(),
     hasLines: index.linework.segments.length > 0,
     select: async (point, tolerance, system) => {
       if (!index) throw aborted();
-      return selectPipeSystem(index, point, tolerance, system);
+      selection = selectPipeSystem(index, point, tolerance, system);
+      return selection;
     },
     dispose: () => {
       index = null;

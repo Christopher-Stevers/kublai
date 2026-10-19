@@ -1,3 +1,4 @@
+import type { PipeSymbolPath, PipeDrawingText } from "./pipe-components-types";
 import type { PipeLabel, PipeLinework, PipeSegment } from "./pipe-system";
 
 /** PDF.js 6 operator numbers; constructPath contains serialized DrawOPS. */
@@ -276,6 +277,9 @@ export function pipeLineworkFromOperators(
   const maxSegments = boundedLimit(options.maxSegments, MAX_SEGMENTS);
   const maxOperators = boundedLimit(options.maxOperators, MAX_OPERATORS);
   const segments: PipeSegment[] = [];
+  const symbols: PipeSymbolPath[] = [];
+  let symbolPoints = 0;
+  let componentDataPartial = false;
   const warnings = new Set<string>();
   const stack: GraphicsState[] = [];
   const marked: OptionalLayer[] = [];
@@ -406,6 +410,47 @@ export function pipeLineworkFromOperators(
             path.closed ||
             (path.points.length > 2 &&
               distance(path.points[0]!, path.points.at(-1)!, aspect) < 1e-9);
+          // Keep bounded, visible symbol paths separately from length-bearing pipe strokes.
+          if (
+            !path.invalid &&
+            !path.curveFailed &&
+            path.points.length >= 2 &&
+            path.points.length <= 512
+          ) {
+            const xs = path.points.map((p) => p.x),
+              ys = path.points.map((p) => p.y);
+            const w = Math.max(...xs) - Math.min(...xs),
+              h = (Math.max(...ys) - Math.min(...ys)) * aspect;
+            if (
+              Math.max(w, h) <= 0.06 &&
+              Math.max(w, h) >= 0.0002 &&
+              path.points.every(
+                (p) =>
+                  p.x >= state.clip.left &&
+                  p.x <= state.clip.right &&
+                  p.y >= state.clip.top &&
+                  p.y <= state.clip.bottom,
+              )
+            ) {
+              if (
+                symbols.length < 15000 &&
+                symbolPoints + path.points.length <= 200000
+              ) {
+                symbols.push({
+                  id: pathId,
+                  points: path.points,
+                  closed,
+                  ...(layer ? { layer } : {}),
+                });
+                symbolPoints += path.points.length;
+              } else {
+                componentDataPartial = true;
+                warnings.add(
+                  "Some component symbols exceeded the extraction limit.",
+                );
+              }
+            }
+          }
           if (closed && path.curved) continue;
           if (path.curveFailed || path.limited) {
             truncated = true;
@@ -713,6 +758,9 @@ export function pipeLineworkFromOperators(
   }
   return {
     segments,
+    symbols,
+    componentDataVersion: 1,
+    ...(componentDataPartial ? { componentDataPartial: true } : {}),
     labels: [],
     aspect,
     truncated,
@@ -736,11 +784,12 @@ export function pipeLabelsFromTextItems(
   items: ArrayLike<unknown>,
   toSheet: (x: number, y: number) => Point,
   options: { aspect?: number; maxItems?: number; maxLabels?: number } = {},
-): { labels: PipeLabel[]; truncated: boolean } {
+): { labels: PipeLabel[]; texts: PipeDrawingText[]; truncated: boolean } {
   const aspect = validAspect(options.aspect);
   const maxItems = boundedLimit(options.maxItems, MAX_TEXT_ITEMS);
   const maxLabels = boundedLimit(options.maxLabels, MAX_LABELS);
   const labels: PipeLabel[] = [];
+  const texts: PipeDrawingText[] = [];
   const letters: {
     text: string;
     start: Point;
@@ -798,7 +847,11 @@ export function pipeLabelsFromTextItems(
       bottom: Math.max(...points.map((p) => p.y)),
     });
     if (box.left > box.right || box.top > box.bottom) continue;
-    add(item.str, box, { x: points[1]!.x - points[0]!.x, y: points[1]!.y - points[0]!.y });
+    texts.push({ text: item.str.slice(0, 500), ...box });
+    add(item.str, box, {
+      x: points[1]!.x - points[0]!.x,
+      y: points[1]!.y - points[0]!.y,
+    });
     if (/^[A-Z]$/i.test(item.str.trim()))
       letters.push({
         text: item.str.trim(),
@@ -858,6 +911,5 @@ export function pipeLabelsFromTextItems(
       add(text, box, { x: end.x - first.start.x, y: end.y - first.start.y });
     }
   }
-  return { labels, truncated };
+  return { labels, texts, truncated };
 }
-

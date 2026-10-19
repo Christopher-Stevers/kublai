@@ -926,7 +926,7 @@ export function DrawingWorkspace({
       kind === "markup" ? defaultMarkupVisibility : ("private" as const),
   });
   const save = async (value: DrawingSave, selectAfterSave = true) => {
-    if (!data) return;
+    if (!data) return false;
     const queueable =
       isQueuedDrawingEdit(value) &&
       !data.entities.some(
@@ -934,14 +934,14 @@ export function DrawingWorkspace({
       );
     if (!online && (!queueable || !queued.ready)) {
       setError("Reconnect to publish or change shared drawing records.");
-      return;
+      return false;
     }
     const parsed = drawingSaveSchema.safeParse(value);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the drawing fields.");
       setForm(value);
       setPanel("selected");
-      return;
+      return false;
     }
     setPending((n) => n + 1);
     setError(null);
@@ -957,6 +957,7 @@ export function DrawingWorkspace({
         setFailedDrafts((items) =>
           items.filter((item) => item.id !== value.id),
         );
+        return true;
       } catch (reason) {
         fail(reason);
         setFailedDrafts((items) => [
@@ -968,7 +969,7 @@ export function DrawingWorkspace({
       } finally {
         setPending((n) => n - 1);
       }
-      return;
+      return false;
     }
     if (value.kind === "markup") {
       const previous = entities.find((entity) => entity.id === value.id);
@@ -1001,6 +1002,7 @@ export function DrawingWorkspace({
       setFailedDrafts((items) => items.filter((item) => item.id !== value.id));
       if (value.kind === "version") setSourceOverride(null);
       await refresh();
+      return true;
     } catch (reason) {
       fail(reason);
       setFailedDrafts((items) => [
@@ -1009,6 +1011,7 @@ export function DrawingWorkspace({
       ]);
       setForm((current) => current ?? value);
       setPanel("selected");
+      return false;
     } finally {
       setPending((n) => n - 1);
       setOptimistic((items) => items.filter((item) => item.id !== value.id));
@@ -1192,7 +1195,7 @@ export function DrawingWorkspace({
     (markup: DrawingMarkup) => {
       const links = drawingDestinationLinks(markup, sheet.id);
       if (links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
-      else if (links[0]) openDestination(links[0]);
+      else if (links[0]) void openDestination(links[0]);
       else setError("Add a destination to this hyperlink.");
     },
     [openDestination, sheet.id],
@@ -1917,6 +1920,7 @@ export function DrawingWorkspace({
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
+              pipeReviewAnnotations={entities.filter(entity => entity.visibility !== "archived" && !optimistic.some(draft => draft.id === entity.id))}
               measurementLayers={measurementLayers}
               onAddMeasurementLayer={async (name) => {
                 if (!online || !writable) throw new Error("Connect to save a new layer.");
@@ -1945,6 +1949,7 @@ export function DrawingWorkspace({
                   : undefined
               }
               onCreate={writable ? createMarkup : undefined}
+              onSavePipeComponent={writable ? async (markup) => Boolean(await save({ ...base(), kind: "markup", data: markup }, false)) : undefined}
               onMeasurementComplete={(markup, existingId) => {
                 setSelectedId(null);
                 setPanel(current => current === "selected" ? "" : current);
@@ -3601,7 +3606,7 @@ export function DrawingWorkspace({
                     }
                     linkChoiceArmed.current = false;
                     setLinkChooser(null);
-                    openDestination(link);
+                    void openDestination(link);
                   }}
                 >
                   {link.label}

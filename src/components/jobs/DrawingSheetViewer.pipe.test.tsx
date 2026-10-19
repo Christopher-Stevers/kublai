@@ -575,3 +575,30 @@ describe("pipe selection in the drawing viewer", () => {
     ).toBeInTheDocument();
   });
 });
+
+it('reviews detected components, locates them, saves structured counts only after confirmation and teaches a symbol', async () => {
+  const save = vi.fn().mockResolvedValue(true);
+  loadPipeLinework.mockResolvedValueOnce({ ...linework, componentDataVersion:1, symbols:[], texts:[{text:'2" BALL VALVE',left:.19,right:.21,top:.496,bottom:.504}] });
+  const {frame}=open({onSavePipeComponent:save});
+  await activate(); await tap(frame,160,300);
+  fireEvent.click(screen.getByRole('button',{name:'Fittings & valves'}));
+  const dialog=await screen.findByRole('dialog');
+  await waitFor(()=>expect(within(dialog).getByText('Ball valve')).toBeInTheDocument());
+  expect(save).not.toHaveBeenCalled();
+  const row=within(dialog).getByText('Ball valve').closest('li')!;
+  fireEvent.click(within(row).getByRole('button',{name:'Confirm count'}));
+  await waitFor(()=>expect(save).toHaveBeenCalledOnce());
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({type:'count',points:[{x:.2,y:.5}],pipeComponent:expect.objectContaining({kind:'valve',name:'Ball valve',size:'2"',source:'tag',system:'ST'})}));
+  await waitFor(()=>expect(within(row).getByRole('button',{name:'Confirm count'})).toBeEnabled());
+  fireEvent.click(within(row).getByRole('button',{name:'Locate Ball valve'}));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(screen.getByRole('img',{name:'Selected pipe system'}).querySelector('circle')).not.toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Fittings & valves'}));
+  fireEvent.click(screen.getByText(/Symbol references/));
+  fireEvent.click(screen.getByRole('button',{name:'Pick symbol'}));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await tap(frame,300,260);await tap(frame,310,270);
+  await waitFor(()=>expect(save).toHaveBeenCalledTimes(2));
+  expect(save.mock.calls[1]?.[0]).toMatchObject({type:'rect',layer:'Piping symbol references',pipeSymbolTemplate:{kind:'valve',name:'Valve'}});
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+});

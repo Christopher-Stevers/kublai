@@ -1,0 +1,851 @@
+import {
+  layerSystem,
+  type PipeLinework,
+  type PipeSegment,
+  type PipeSystemSelection,
+} from "./pipe-system";
+import type { SheetPoint } from "./sheet-measure";
+import {
+  type PipeComponentBox as Box,
+  type PipeComponentCandidate as Candidate,
+  type PipeComponentKind as Kind,
+  type PipeComponentsResult,
+  type PipeDrawingText,
+  type PipeSymbolPath,
+  type PipeSymbolTemplate,
+} from "./pipe-components-types";
+
+const LIMIT = 1000;
+const CELL = 0.02;
+const center = (b: Box) => ({
+  x: (b.left + b.right) / 2,
+  y: (b.top + b.bottom) / 2,
+});
+const bounds = (points: SheetPoint[]): Box => {
+  let left = Infinity,
+    top = Infinity,
+    right = -Infinity,
+    bottom = -Infinity;
+  for (const p of points) {
+    left = Math.min(left, p.x);
+    top = Math.min(top, p.y);
+    right = Math.max(right, p.x);
+    bottom = Math.max(bottom, p.y);
+  }
+  return { left, top, right, bottom };
+};
+function validPoint(p: SheetPoint) {
+  return (
+    Number.isFinite(p.x) &&
+    Number.isFinite(p.y) &&
+    p.x >= 0 &&
+    p.x <= 1 &&
+    p.y >= 0 &&
+    p.y <= 1
+  );
+}
+function validBox(b: Box) {
+  return (
+    validPoint({ x: b.left, y: b.top }) &&
+    validPoint({ x: b.right, y: b.bottom }) &&
+    b.left <= b.right &&
+    b.top <= b.bottom
+  );
+}
+function inside(a: Box, b: Box) {
+  return (
+    a.left >= b.left &&
+    a.right <= b.right &&
+    a.top >= b.top &&
+    a.bottom <= b.bottom
+  );
+}
+function overlap(a: Box, b: Box, pad = 0) {
+  return (
+    a.left <= b.right + pad &&
+    a.right >= b.left - pad &&
+    a.top <= b.bottom + pad &&
+    a.bottom >= b.top - pad
+  );
+}
+function hash(s: string) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++)
+    h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(16);
+}
+function distance(p: SheetPoint, s: PipeSegment, aspect: number) {
+  const dx = s.x2 - s.x1,
+    dy = (s.y2 - s.y1) * aspect,
+    px = p.x - s.x1,
+    py = (p.y - s.y1) * aspect;
+  const t = Math.max(
+    0,
+    Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy || 1)),
+  );
+  return Math.hypot(px - t * dx, py - t * dy);
+}
+function segmentGrid(
+  segments: PipeSegment[],
+  aspect: number,
+  limited: () => void,
+) {
+  let checks = 0;
+  const grid = new Map<string, number[]>();
+  segments.forEach((s, i) => {
+    const needed = Math.max(
+      1,
+      Math.ceil(Math.hypot(s.x2 - s.x1, (s.y2 - s.y1) * aspect) / CELL),
+    );
+    const n = Math.min(needed, 256);
+    if (needed > n) limited();
+    for (let j = 0; j <= n; j++) {
+      const key = `${Math.floor((s.x1 + ((s.x2 - s.x1) * j) / n) / CELL)},${Math.floor(((s.y1 + ((s.y2 - s.y1) * j) / n) * aspect) / CELL)}`;
+      const values = grid.get(key) ?? [];
+      if (values.length < 2048 && values.at(-1) !== i) values.push(i);
+      else if (values.length >= 2048) limited();
+      grid.set(key, values);
+    }
+  });
+  return (p: SheetPoint, reach = 0.015) => {
+    if (checks >= 2000000) {
+      limited();
+      return [];
+    }
+    const found = new Set<number>(),
+      cx = Math.floor(p.x / CELL),
+      cy = Math.floor((p.y * aspect) / CELL),
+      r = Math.ceil(reach / CELL) + 1;
+    for (let x = cx - r; x <= cx + r; x++)
+      for (let y = cy - r; y <= cy + r; y++)
+        for (const i of grid.get(`${x},${y}`) ?? []) found.add(i);
+    checks += found.size;
+    return [...found]
+      .map((i) => ({
+        segment: segments[i]!,
+        distance: distance(p, segments[i]!, aspect),
+      }))
+      .filter((v) => v.distance <= reach)
+      .sort((a, b) => a.distance - b.distance);
+  };
+}
+export function componentDescription(text: string): {
+  kind: Kind;
+  name: string;
+  size?: string;
+  material?: string;
+  tag?: string;
+} | null {
+  const t = text
+    .trim()
+    .replace(/[_|]/g, " ")
+    .replace(/(?<=[a-z])-(?=[a-z])/gi, " ")
+    .replace(/\s+/g, " ");
+  if (
+    t.length > 160 ||
+    /\b(?:PROVIDE|SHALL|GENERAL NOTES|ALL VALVES|ALL FITTINGS)\b/i.test(t)
+  )
+    return null;
+  let kind: Kind | undefined,
+    name = "";
+  const valve =
+    /\b(?:(PRESSURE[- ]REDUCING|BALL|GATE|CHECK|BALANCING|BUTTERFLY|GLOBE|ISOLATION|CONTROL|RELIEF|DRAIN|MIXING)\s+)?VALV(?:E|ES)?\b/i.exec(
+      t,
+    );
+  if (valve) {
+    kind = "valve";
+    name = valve[1] ? `${valve[1].toLowerCase()} valve` : "Valve";
+  } else if (/\bELBOW\b|\bBEND\b/i.test(t)) {
+    kind = "elbow";
+    const angle =
+      /\b(45|90)\s*(?:°|DEG(?:REE)?S?)|\b(45|90)(?=\s+(?:ELBOW|BEND)\b)|\b(?:ELBOW|BEND)\s+(45|90)\b/i.exec(
+        t,
+      );
+    name = angle ? `${angle[1] ?? angle[2] ?? angle[3]}° elbow` : "Elbow";
+  } else if (/\bTEE\b|\bWYE\b/i.test(t)) {
+    kind = "tee";
+    name = /\bWYE\b/i.test(t) ? "Wye" : "Tee";
+  } else if (/\bREDUCER\b/i.test(t)) {
+    kind = "reducer";
+    name = "Reducer";
+  } else if (/\bCOUPLING\b/i.test(t)) {
+    kind = "coupling";
+    name = "Coupling";
+  } else if (/\bCAP\b/i.test(t)) {
+    kind = "cap";
+    name = "Cap";
+  }
+  const tag = /\b(?:V|BV|GV|CV|PRV|BFP)[- ]?\d{1,5}[A-Z]?\b/i.exec(t)?.[0];
+  if (!kind && tag) {
+    kind = "valve";
+    name = "Valve";
+  } // A tag alone never establishes the valve subtype.
+  if (!kind) return null;
+  name = name.charAt(0).toUpperCase() + name.slice(1);
+  const size =
+    /\bDN\s*\d+(?:\s*[x×]\s*\d+)?\b|\b\d+(?:[ .-]\d+\/\d+|\/\d+|\.\d+)?\s*(?:["″]|(?:mm|in(?:ch(?:es)?)?)\b)/i.exec(
+      t,
+    )?.[0];
+  const material =
+    /\b(?:STAINLESS(?: STEEL)?|CAST IRON|DUCTILE IRON|COPPER|CPVC|PVC|ABS|CARBON STEEL|STEEL|BRASS)\b/i.exec(
+      t,
+    )?.[0];
+  return {
+    kind,
+    name,
+    ...(size ? { size } : {}),
+    ...(material ? { material } : {}),
+    ...(tag ? { tag } : {}),
+  };
+}
+
+type Group = {
+  id: string;
+  paths: PipeSymbolPath[];
+  box: Box;
+  point: SheetPoint;
+  layer?: string;
+};
+function symbolGroups(
+  paths: PipeSymbolPath[],
+  aspect: number,
+  limited: () => void,
+): Group[] {
+  // Union only overlapping/touching symbol paths. Long pipe strokes are never symbols.
+  const usable = paths
+    .slice(0, 15000)
+    .filter(
+      (p) =>
+        p.points.length >= 2 &&
+        p.points.length <= 512 &&
+        p.points.every(validPoint),
+    );
+  const parent = usable.map((_, i) => i),
+    boxes = usable.map((p) => bounds(p.points));
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]!]!;
+      i = parent[i]!;
+    }
+    return i;
+  };
+  const cells = new Map<string, number[]>();
+  let work = 0;
+  usable.forEach((p, i) => {
+    const b = boxes[i]!,
+      pad = 0.00012;
+    if (Math.max(b.right - b.left, (b.bottom - b.top) * aspect) > 0.06) return;
+    const seen = new Set<number>();
+    for (
+      let x = Math.floor((b.left - pad) / CELL);
+      x <= Math.floor((b.right + pad) / CELL);
+      x++
+    )
+      for (
+        let y = Math.floor((b.top * aspect - pad) / CELL);
+        y <= Math.floor((b.bottom * aspect + pad) / CELL);
+        y++
+      ) {
+        const key = `${x},${y}`,
+          ids = cells.get(key) ?? [];
+        for (const j of ids) {
+          if (seen.has(j)) continue;
+          if (++work > 500000) {
+            limited();
+            break;
+          }
+          seen.add(j);
+          if (
+            p.layer !== usable[j]!.layer ||
+            !overlap(b, boxes[j]!, pad / Math.min(1, aspect))
+          )
+            continue;
+          const a = find(i),
+            other = find(j);
+          if (a !== other) parent[a] = other;
+        }
+        if (ids.length < 256) ids.push(i);
+        cells.set(key, ids);
+      }
+  });
+  const groups = new Map<number, PipeSymbolPath[]>();
+  usable.forEach((p, i) => {
+    const id = find(i),
+      list = groups.get(id) ?? [];
+    if (list.length < 100) list.push(p);
+    else limited();
+    groups.set(id, list);
+  });
+  return [...groups.values()].flatMap((paths) => {
+    const points = paths.flatMap((p) => p.points),
+      box = bounds(points),
+      w = box.right - box.left,
+      h = (box.bottom - box.top) * aspect;
+    if (Math.max(w, h) > 0.06 || Math.min(w, h) < 0.0001) return [];
+    return [
+      {
+        id: hash(
+          paths
+            .map((p) => p.id)
+            .sort()
+            .join("|"),
+        ),
+        paths,
+        box,
+        point: center(box),
+        layer: paths[0]?.layer,
+      },
+    ];
+  });
+}
+function shape(group: Group, aspect: number, rotation = 0): [number, number][] {
+  const b = group.box,
+    w = b.right - b.left,
+    h = (b.bottom - b.top) * aspect,
+    scale = Math.max(w, h),
+    set = new Set<string>();
+  for (const path of group.paths)
+    for (let i = 1; i < path.points.length; i++) {
+      const a = path.points[i - 1]!,
+        p = path.points[i]!,
+        steps = Math.max(
+          1,
+          Math.min(
+            24,
+            Math.ceil(
+              (Math.hypot(p.x - a.x, (p.y - a.y) * aspect) / scale) * 24,
+            ),
+          ),
+        );
+      for (let n = 0; n <= steps; n++) {
+        let x = (a.x + ((p.x - a.x) * n) / steps - group.point.x) / scale,
+          y =
+            ((a.y + ((p.y - a.y) * n) / steps - group.point.y) * aspect) /
+            scale;
+        for (let k = 0; k < rotation; k++) [x, y] = [-y, x];
+        set.add(`${Math.round(x * 24)},${Math.round(y * 24)}`);
+      }
+    }
+  return [...set]
+    .slice(0, 256)
+    .map((s) => s.split(",").map(Number) as [number, number]);
+}
+function sameShape(a: [number, number][], b: [number, number][]) {
+  if (
+    !a.length ||
+    !b.length ||
+    Math.max(a.length, b.length) / Math.min(a.length, b.length) > 1.6
+  )
+    return false;
+  const close = (from: [number, number][], to: [number, number][]) => {
+    const cells = new Set(to.map(([x, y]) => x * 100 + y));
+    let matched = 0;
+    for (const [x, y] of from) {
+      let found = false;
+      for (let dx = -1; dx <= 1 && !found; dx++)
+        for (let dy = -1; dy <= 1; dy++) {
+          if (cells.has((x + dx) * 100 + y + dy)) {
+            found = true;
+            break;
+          }
+        }
+      if (found) matched++;
+    }
+    return matched / from.length;
+  };
+  return close(a, b) >= 0.9 && close(b, a) >= 0.9;
+}
+function mergedTexts(texts: PipeDrawingText[]): PipeDrawingText[] {
+  const valid = texts
+    .slice(0, 30000)
+    .filter((t) => validBox(t) && typeof t.text === "string" && t.text.trim());
+  // Keep originals as well as short, adjacent text runs: CAD often splits "BALL VALVE".
+  const rows = new Map<number, PipeDrawingText[]>();
+  for (const t of valid) {
+    const key = Math.round((t.top + t.bottom) / 2 / 0.003),
+      row = rows.get(key) ?? [];
+    row.push(t);
+    rows.set(key, row);
+  }
+  const joined: PipeDrawingText[] = [];
+  for (const row of rows.values()) {
+    row.sort((a, b) => a.left - b.left);
+    for (let i = 0; i < row.length; i++) {
+      const a = row[i]!;
+      let text = a.text,
+        b = { ...a };
+      for (let j = i + 1; j < Math.min(row.length, i + 5); j++) {
+        const next = row[j]!,
+          height = Math.max(a.bottom - a.top, 0.0005);
+        if (
+          next.left - b.right > height * 1.8 ||
+          next.left < b.right - height * 0.2 ||
+          Math.abs((next.top + next.bottom - a.top - a.bottom) / 2) >
+            height * 0.4
+        )
+          break;
+        text += ` ${next.text}`;
+        b = {
+          ...b,
+          right: next.right,
+          top: Math.min(b.top, next.top),
+          bottom: Math.max(b.bottom, next.bottom),
+        };
+        if (text.length <= 160) joined.push({ ...b, text });
+      }
+    }
+  }
+  return [...joined, ...valid];
+}
+function sourceSystem(layer?: string) {
+  return (
+    layerSystem(layer) ??
+    layerSystem(
+      layer?.replace(
+        /[-_ ](?:VALV(?:E|ES)?|FITT(?:ING|INGS)?|ELBOW|TEE|REDUCER|COUPLING|CAP)(?:[-_ ].*)?$/i,
+        "",
+      ),
+    )
+  );
+}
+function crossing(path: PipeSymbolPath, aspect: number) {
+  if (!path.closed || path.points.length < 5 || path.points.length > 12)
+    return false;
+  for (let i = 1; i < path.points.length; i++)
+    for (let j = i + 2; j < path.points.length; j++) {
+      const a = path.points[i - 1]!,
+        b = path.points[i]!,
+        c = path.points[j - 1]!,
+        d = path.points[j]!;
+      const dx = b.x - a.x,
+        dy = (b.y - a.y) * aspect,
+        ex = d.x - c.x,
+        ey = (d.y - c.y) * aspect,
+        den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-12) continue;
+      const px = c.x - a.x,
+        py = (c.y - a.y) * aspect,
+        t = (px * ey - py * ex) / den,
+        u = (px * dy - py * dx) / den;
+      if (t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95) return true;
+    }
+  return false;
+}
+
+export function analyzePipeComponents(
+  linework: PipeLinework,
+  selection: PipeSystemSelection,
+  templates: PipeSymbolTemplate[] = [],
+): PipeComponentsResult {
+  const aspect = linework.aspect,
+    warnings: string[] = [],
+    candidates: Candidate[] = [];
+  if (
+    !Number.isFinite(aspect) ||
+    !(aspect > 0) ||
+    aspect > 100 ||
+    !selection.segments.length
+  )
+    return { candidates, warnings, partial: false };
+  let partial =
+    selection.truncated ||
+    linework.truncated ||
+    !!linework.componentDataPartial ||
+    (linework.symbols?.length ?? 0) > 15000 ||
+    (linework.texts?.length ?? 0) > 30000;
+  if (!linework.componentDataVersion)
+    warnings.push(
+      "This cached drawing has no component symbols or text. Reload it while connected to analyze components.",
+    );
+  const limited = () => {
+    partial = true;
+  };
+  const selectedNear = segmentGrid(selection.segments, aspect, limited);
+  const allPipes = linework.segments.filter((s) => !!layerSystem(s.layer));
+  const allNear = segmentGrid(allPipes, aspect, limited);
+  const belongs = (p: SheetPoint, box?: Box, layer?: string) => {
+    const code = sourceSystem(layer);
+    if (code && selection.system && code !== selection.system) return false;
+    const reach = box
+      ? Math.min(
+          0.02,
+          Math.max(
+            0.003,
+            Math.hypot(box.right - box.left, (box.bottom - box.top) * aspect) /
+              2 +
+              0.0015,
+          ),
+        )
+      : 0.003;
+    const nearest = selectedNear(p, reach)[0];
+    if (!nearest) return false;
+    const foreign = allNear(p, reach)[0];
+    return (
+      !foreign ||
+      !selection.system ||
+      layerSystem(foreign.segment.layer) === selection.system ||
+      foreign.distance > nearest.distance + 0.0001
+    );
+  };
+  const groups = symbolGroups(linework.symbols ?? [], aspect, limited);
+  const texts = mergedTexts(linework.texts ?? []);
+  const descriptions = texts.flatMap((t) => {
+    const d = componentDescription(t.text);
+    return d ? [{ ...d, text: t }] : [];
+  });
+  const add = (
+    kind: Kind,
+    name: string,
+    point: SheetPoint,
+    box: Box,
+    source: Candidate["source"],
+    evidence: string,
+    extra: Partial<Candidate> = {},
+  ) => {
+    if (candidates.length >= LIMIT) {
+      partial = true;
+      return;
+    }
+    if (!validPoint(point) || !validBox(box)) return;
+    const fingerprint = hash(
+      JSON.stringify([
+        kind,
+        [box.left, box.top, box.right, box.bottom].map((n) =>
+          Math.round(n * 1e7),
+        ),
+        source,
+        evidence,
+      ]),
+    );
+    const candidate: Candidate = {
+      id: `pc-${fingerprint}`,
+      fingerprint,
+      kind,
+      name,
+      point,
+      box,
+      source,
+      evidence: evidence.slice(0, 500),
+      system: selection.system,
+      ...extra,
+    };
+    const previous = candidates.findIndex(
+      (c) =>
+        c.kind === kind &&
+        Math.hypot(c.point.x - point.x, (c.point.y - point.y) * aspect) <
+          0.0005,
+    );
+    const rank = { layer: 4, tag: 3, legend: 2, geometry: 1 };
+    if (previous < 0) candidates.push(candidate);
+    else {
+      const existing = candidates[previous]!;
+      if (rank[source] > rank[existing.source])
+        candidates[previous] = {
+          ...candidate,
+          size: candidate.size ?? existing.size,
+          material: candidate.material ?? existing.material,
+          tag: candidate.tag ?? existing.tag,
+        };
+      else if (source === "tag" && existing.source === "layer") {
+        existing.size ??= candidate.size;
+        existing.material ??= candidate.material;
+        existing.tag ??= candidate.tag;
+        existing.evidence = `${existing.evidence}; ${candidate.evidence}`.slice(
+          0,
+          500,
+        );
+        if (existing.name === "Valve") existing.name = candidate.name;
+        existing.fingerprint = hash(
+          JSON.stringify([
+            existing.id,
+            existing.evidence,
+            existing.name,
+            existing.size,
+            existing.material,
+          ]),
+        );
+      }
+    }
+  };
+  // Build named symbol references from explicit legend entries or user-taught regions.
+  const refs: {
+    group: Group;
+    kind: Kind;
+    name: string;
+    evidence: string;
+    size?: string;
+    material?: string;
+  }[] = [];
+  for (const template of templates.slice(0, 30)) {
+    if (!validBox(template.box)) continue;
+    const paths = (linework.symbols ?? [])
+      .slice(0, 15000)
+      .filter(
+        (p) =>
+          p.points.length >= 2 &&
+          p.points.length <= 512 &&
+          p.points.every(validPoint) &&
+          inside(bounds(p.points), template.box),
+      );
+    if (!paths.length || paths.length > 100) {
+      warnings.push(
+        `Symbol reference “${template.name}” contains no usable vector symbol, or is too large. Pick just one symbol.`,
+      );
+      continue;
+    }
+    const box = bounds(paths.flatMap((p) => p.points));
+    refs.push({
+      group: { id: template.id, paths, box, point: center(box) },
+      kind: template.kind,
+      name: template.name,
+      evidence: `User-taught symbol: ${template.name}`,
+    });
+  }
+  const legendHeads = texts.filter((t) =>
+    /\b(?:LEGEND|SYMBOLS)\b/i.test(t.text),
+  );
+  for (const d of descriptions.slice(0, 300)) {
+    const p = center(d.text);
+    if (
+      !legendHeads.some(
+        (h) =>
+          Math.abs(center(h).x - p.x) < 0.25 &&
+          Math.abs(center(h).y - p.y) * aspect < 0.35,
+      )
+    )
+      continue;
+    const nearby = groups
+      .filter(
+        (g) =>
+          Math.abs(g.point.x - p.x) < 0.12 &&
+          Math.abs(g.point.y - p.y) * aspect <
+            Math.max(0.006, (d.text.bottom - d.text.top) * aspect * 1.5),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.point.x - p.x, (a.point.y - p.y) * aspect) -
+          Math.hypot(b.point.x - p.x, (b.point.y - p.y) * aspect),
+      );
+    const group = nearby.find(
+      (g) =>
+        g.box.right <= d.text.left + 0.001 ||
+        g.box.left >= d.text.right - 0.001,
+    );
+    if (group)
+      refs.push({
+        group,
+        kind: d.kind,
+        name: d.name,
+        evidence: `Drawing legend: ${d.text.text}`,
+        size: d.size,
+        material: d.material,
+      });
+  }
+  const refShapes = refs.slice(0, 100).map((r) => ({
+    ...r,
+    shapes: [0, 1, 2, 3].map((rotation) => shape(r.group, aspect, rotation)),
+  }));
+  let matches = 0;
+  const referenceAreas = [
+    ...refs.map((r) => r.group.box),
+    ...templates.filter((t) => validBox(t.box)).map((t) => t.box),
+  ];
+  for (const g of groups) {
+    if (
+      referenceAreas.some((box) => inside(g.box, box)) ||
+      !belongs(g.point, g.box, g.layer)
+    )
+      continue;
+    const direct = g.layer ? componentDescription(g.layer) : null;
+    if (direct) {
+      add(
+        direct.kind,
+        direct.name,
+        g.point,
+        g.box,
+        "layer",
+        `PDF source layer: ${g.layer}`,
+        { size: direct.size, material: direct.material },
+      );
+      continue;
+    }
+    if (matches > 20000) {
+      partial = true;
+      break;
+    }
+    const own = shape(g, aspect),
+      gsize = Math.max(
+        g.box.right - g.box.left,
+        (g.box.bottom - g.box.top) * aspect,
+      );
+    const named = refShapes.find((r) => {
+      if (r.group.id === g.id) return false;
+      const refsize = Math.max(
+        r.group.box.right - r.group.box.left,
+        (r.group.box.bottom - r.group.box.top) * aspect,
+      );
+      if (gsize / refsize < 0.35 || gsize / refsize > 3) return false;
+      if (++matches > 20000) {
+        partial = true;
+        return false;
+      }
+      return r.shapes.some((s) => sameShape(own, s));
+    });
+    if (named) {
+      add(named.kind, named.name, g.point, g.box, "legend", named.evidence);
+      continue;
+    }
+    if (g.paths.some((p) => crossing(p, aspect)))
+      add(
+        "valve",
+        "Possible valve symbol",
+        g.point,
+        g.box,
+        "geometry",
+        "Closed crossing symbol lies on the selected pipe. Verify its meaning against the legend.",
+      );
+  }
+  const scheduleHeads = texts.filter((t) => /\bSCHEDULE(?:S)?\b/i.test(t.text));
+  for (const d of descriptions.slice(0, 5000)) {
+    const point = center(d.text);
+    // Legend/schedule descriptions are references, never installed-component counts.
+    if (
+      [...legendHeads, ...scheduleHeads].some(
+        (h) =>
+          Math.abs(center(h).x - point.x) < 0.25 &&
+          Math.abs(center(h).y - point.y) * aspect < 0.35,
+      )
+    )
+      continue;
+    if (!belongs(point, d.text)) continue;
+    const nearby = groups
+      .filter(
+        (g) =>
+          overlap(g.box, d.text, 0.012 / Math.max(1, aspect)) &&
+          belongs(g.point, g.box, g.layer),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.point.x - point.x, (a.point.y - point.y) * aspect) -
+          Math.hypot(b.point.x - point.x, (b.point.y - point.y) * aspect),
+      )[0];
+    add(
+      d.kind,
+      d.name,
+      nearby?.point ?? point,
+      nearby?.box ?? d.text,
+      "tag",
+      `Drawing text: ${d.text.text}`,
+      { size: d.size, material: d.material, tag: d.tag },
+    );
+  }
+  // Geometry suggests junctions; it never establishes a fitting SKU, size, or valve subtype.
+  const endpointCells = new Map<
+    string,
+    { point: SheetPoint; segments: PipeSegment[] }[]
+  >();
+  for (const segment of selection.segments) {
+    if (segment.id.startsWith("pipe-bridge:")) continue;
+    for (const point of [
+      { x: segment.x1, y: segment.y1 },
+      { x: segment.x2, y: segment.y2 },
+    ]) {
+      const key = `${Math.round(point.x / 0.00001)},${Math.round((point.y * aspect) / 0.00001)}`,
+        list = endpointCells.get(key) ?? [];
+      const group = list[0];
+      if (group) {
+        if (group.segments.length < 30) group.segments.push(segment);
+      } else list.push({ point, segments: [segment] });
+      endpointCells.set(key, list);
+    }
+  }
+  let junctions = 0;
+  for (const list of endpointCells.values())
+    for (const entry of list) {
+      if (++junctions > 20000) {
+        partial = true;
+        break;
+      }
+      const p = entry.point;
+      if (
+        candidates.some((c) =>
+          overlap(
+            c.box,
+            { left: p.x, top: p.y, right: p.x, bottom: p.y },
+            0.0005,
+          ),
+        )
+      )
+        continue;
+      const rays: { x: number; y: number }[] = [];
+      for (const { segment: s } of selectedNear(p, 0.000015)) {
+        if (s.id.startsWith("pipe-bridge:")) continue;
+        for (const q of [
+          { x: s.x1, y: s.y1 },
+          { x: s.x2, y: s.y2 },
+        ]) {
+          const x = q.x - p.x,
+            y = (q.y - p.y) * aspect,
+            len = Math.hypot(x, y);
+          if (len < 0.00002) continue;
+          const ray = { x: x / len, y: y / len };
+          if (!rays.some((r) => r.x * ray.x + r.y * ray.y > 0.995))
+            rays.push(ray);
+        }
+      }
+      const box = {
+        left: Math.max(0, p.x - 0.001),
+        right: Math.min(1, p.x + 0.001),
+        top: Math.max(0, p.y - 0.001 / aspect),
+        bottom: Math.min(1, p.y + 0.001 / aspect),
+      };
+      if (rays.length === 3)
+        add(
+          "tee",
+          "Possible tee / branch",
+          p,
+          box,
+          "geometry",
+          "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
+        );
+      if (rays.length === 2) {
+        const angle =
+          (Math.acos(
+            Math.max(
+              -1,
+              Math.min(1, rays[0]!.x * rays[1]!.x + rays[0]!.y * rays[1]!.y),
+            ),
+          ) *
+            180) /
+          Math.PI;
+        const turn = 180 - angle;
+        if (Math.abs(turn - 90) < 4 || Math.abs(turn - 45) < 4)
+          add(
+            "elbow",
+            `Possible ${Math.round(turn / 45) * 45}° elbow`,
+            p,
+            box,
+            "geometry",
+            "Pipe linework changes direction here. It may represent an elbow, a bend, or a schematic change; verify it.",
+          );
+      }
+    }
+  if (refs.length === 0)
+    warnings.push(
+      "No matching legend references are available. Teach a symbol from this sheet to identify repeated valves or fittings.",
+    );
+  warnings.push(
+    "Candidates require review. Sizes and materials are shown only when explicitly stated; blank values are unknown.",
+  );
+  if (partial)
+    warnings.push(
+      "Component analysis is partial because drawing or analysis limits were reached.",
+    );
+  return {
+    candidates: candidates.sort(
+      (a, b) => a.point.y - b.point.y || a.point.x - b.point.x,
+    ),
+    warnings,
+    partial,
+  };
+}

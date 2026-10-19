@@ -1,3 +1,4 @@
+import type { PipeSymbolPath, PipeDrawingText } from "./pipe-components-types";
 import type { SheetPoint } from "./sheet-measure";
 import type { SnapSegment } from "./sheet-snap";
 
@@ -24,6 +25,10 @@ export type PipeLabel = {
 };
 
 export type PipeLinework = {
+  symbols?: PipeSymbolPath[];
+  texts?: PipeDrawingText[];
+  componentDataVersion?: 1;
+  componentDataPartial?: boolean;
   segments: PipeSegment[];
   labels: PipeLabel[];
   /** Sheet height divided by sheet width. */
@@ -530,7 +535,7 @@ export function buildPipeSystemIndex(linework: PipeLinework): PipeSystemIndex {
     neighbors: new Map(),
     work: 0,
   };
-  index.linework = { segments: index.segments, labels: index.labels, aspect: index.aspect, truncated: index.truncated, warnings: index.warnings };
+  index.linework = { ...linework, segments: index.segments, labels: index.labels, aspect: index.aspect, truncated: index.truncated, warnings: index.warnings };
   if (!validAspect) warn(index, "The drawing has no usable page dimensions.");
   if (valid.length !== linework.segments.length) warn(index, "Invalid or out-of-page linework was skipped.");
   if (index.truncated) warn(index, PARTIAL_WARNING);

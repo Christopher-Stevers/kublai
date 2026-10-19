@@ -1,3 +1,5 @@
+import { analyzePipeComponents } from "./pipe-components";
+import type { PipeSystemSelection } from "./pipe-system";
 import { initializeGeometryKernels, mergeLinesRust } from "./geometry-kernels";
 import { buildSnapIndex, mergeCollinear, type SnapSegment } from "./sheet-snap";
 import {
@@ -19,6 +21,7 @@ const kernels = initializeGeometryKernels();
 // PDF parsing retains its existing worker. This worker owns the expensive
 // spatial graph, including its reusable connection caches, away from touch input.
 let pipes: PipeSystemIndex | null = null;
+let selectedPipes: PipeSystemSelection | null = null;
 let linework: PipeLinework | null = null;
 let snaps: SnapSegment[] = [];
 const scope = globalThis as unknown as {
@@ -49,6 +52,7 @@ const handle = async ({ data }: MessageEvent<GeometryRequest>) => {
       }
       case "pipe-start":
         pipes = null;
+        selectedPipes = null;
         linework = data.linework;
         scope.postMessage({ id: data.id, ok: true, value: null });
         break;
@@ -78,23 +82,30 @@ const handle = async ({ data }: MessageEvent<GeometryRequest>) => {
       }
       case "pipe-select":
         if (!pipes) throw new Error("The drawing lines are not ready.");
-        scope.postMessage({
-          id: data.id,
-          ok: true,
-          value: selectPipeSystem(
-            pipes,
-            data.point,
-            data.tolerance,
-            data.system,
-          ),
-        });
+        selectedPipes = selectPipeSystem(
+          pipes,
+          data.point,
+          data.tolerance,
+          data.system,
+        );
+        scope.postMessage({ id: data.id, ok: true, value: selectedPipes });
         break;
       case "pipe-layer":
         if (!pipes) throw new Error("The drawing lines are not ready.");
+        selectedPipes = selectPipeLayerSystem(pipes.linework, data.system);
+        scope.postMessage({ id: data.id, ok: true, value: selectedPipes });
+        break;
+      case "pipe-components":
+        if (!pipes || !selectedPipes)
+          throw new Error("Select a pipe system first.");
         scope.postMessage({
           id: data.id,
           ok: true,
-          value: selectPipeLayerSystem(pipes.linework, data.system),
+          value: analyzePipeComponents(
+            pipes.linework,
+            selectedPipes,
+            data.templates,
+          ),
         });
         break;
     }

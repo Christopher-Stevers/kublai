@@ -107,6 +107,9 @@ import { Button } from "~/components/ui/button";
 import { NetworkIcon } from "lucide-react";
 import { usePipeSystemSelection } from "./usePipeSystemSelection";
 import { PipeSystemPanel } from "./PipeSystemPanel";
+import { PipeComponentsDialog } from "./PipeComponentsDialog";
+import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
+import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
@@ -351,6 +354,53 @@ export function DrawingSheetViewer({
     page: pdf?.page,
     sheetKey,
   });
+  const componentSource = pipeComponentSourceKey(pdf?.url ?? "", pdf?.page ?? 0);
+  const componentIdentity = useRef(componentSource);
+  componentIdentity.current = componentSource;
+  const [componentOpen, setComponentOpen] = useState(false);
+  const [componentFocus, setComponentFocus] = useState<{source: string; candidate: PipeComponentCandidate} | null>(null);
+  const [symbolPick, setSymbolPick] = useState<{ source: string; kind: PipeComponentKind; name: string; first?: SheetPoint } | null>(null);
+  const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [symbolSaving, setSymbolSaving] = useState(false);
+  const symbolSavePending = useRef(false);
+  const componentAnnotations = editorProps.pipeReviewAnnotations ?? editorProps.annotations ?? NO_ANNOTATIONS;
+  const templates = pipeSymbolTemplates(componentAnnotations, componentSource);
+  const currentSymbolPick = symbolPick?.source === componentSource ? symbolPick : null;
+  const openComponents = () => {
+    setComponentOpen(true);
+    if (!pipe.components) void pipe.analyze(templates);
+  };
+  const saveComponent = async (candidate: PipeComponentCandidate, details: { kind: PipeComponentKind; name: string; size?: string; material?: string }) => {
+    const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
+    if (!sourceSheetId || !editorProps.onSavePipeComponent) return false;
+    if (reviewedPipeComponent(componentAnnotations, componentSource, candidate)) return true;
+    return editorProps.onSavePipeComponent({
+      sourceSheetId, type: "count", points: [candidate.point], stroke: measureColor, width: 2,
+      layer: "Piping components", text: details.name,
+      pipeComponent: { candidateId: candidate.id, fingerprint: candidate.fingerprint, sourceKey: componentSource,
+        ...details, system: candidate.system, evidence: candidate.evidence, source: candidate.source },
+    });
+  };
+  const pickSymbolCorner = async (point: SheetPoint) => {
+    if (!currentSymbolPick || symbolSavePending.current) return;
+    if (!currentSymbolPick.first) { setSymbolPick({...currentSymbolPick, first: point}); setSymbolError(null); return; }
+    const a = currentSymbolPick.first;
+    if (Math.min(Math.abs(point.x-a.x), Math.abs(point.y-a.y)) < .0002 || Math.max(Math.abs(point.x-a.x), Math.abs(point.y-a.y)) > .08) {
+      setSymbolError("Choose a small box around just one symbol. Cancel to start again."); return;
+    }
+    const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
+    if (!sourceSheetId || !editorProps.onSavePipeComponent) return;
+    symbolSavePending.current = true; setSymbolSaving(true);
+    try {
+      const ok = await editorProps.onSavePipeComponent({ sourceSheetId, type: "rect", points: [a,point], stroke: "#3b82f6", width: 1, layer: "Piping symbol references", text: currentSymbolPick.name,
+        pipeSymbolTemplate: { sourceKey: componentSource, kind: currentSymbolPick.kind, name: currentSymbolPick.name } });
+      if (componentIdentity.current !== componentSource) return;
+      if (ok) { setSymbolPick(null); setComponentOpen(true); setSymbolError(null);
+        void pipe.analyze([...templates, {id: `new-${Date.now()}`,kind:currentSymbolPick.kind,name:currentSymbolPick.name,box:{left:Math.min(a.x,point.x),right:Math.max(a.x,point.x),top:Math.min(a.y,point.y),bottom:Math.max(a.y,point.y)}}]);
+      } else setSymbolError("Could not save the symbol reference. Tap the second corner to retry.");
+    } catch { setSymbolError("Could not save the symbol reference. Tap the second corner to retry."); }
+    finally { symbolSavePending.current = false; setSymbolSaving(false); }
+  };
   const markId = `measure-${useId().replace(/:/g, "")}`;
   const [calibrating, setCalibrating] = useState(false);
   const hostCalibration = useRef(false);
@@ -544,6 +594,7 @@ export function DrawingSheetViewer({
   }, [annotationTool, toolControls?.modeRequest]);
   useEffect(() => {
     setPipeMode(false);
+    setComponentOpen(false); setSymbolPick(null); setComponentFocus(null); setSymbolError(null);
     pipeTap.current = null;
     pipeCalibration.current = false;
   }, [sheetKey, pdf?.url, pdf?.page]);
@@ -2048,6 +2099,20 @@ export function DrawingSheetViewer({
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
+      {pipeMode && currentSymbolPick && <div className="absolute top-2 left-2 right-2 z-30 rounded border bg-background p-3 text-sm shadow-md" role="status">
+        <p>{symbolSaving ? "Saving symbol…" : currentSymbolPick.first ? "Tap the opposite corner around the symbol." : "Tap the first corner around one symbol from the legend."} <strong>{currentSymbolPick.name}</strong></p>
+        {symbolError && <p className="text-destructive">{symbolError}</p>}
+        <Button size="sm" variant="outline" disabled={symbolSaving} onClick={() => { setSymbolPick(null); setSymbolError(null); setComponentOpen(true); }}>Cancel</Button>
+      </div>}
+      <PipeComponentsDialog key={componentSource + ":" + (pipe.selection?.segments[0]?.id ?? "")} open={componentOpen && pipeMode && !!pipe.selection?.segments.length} onOpenChange={setComponentOpen}
+        result={pipe.components} analyzing={pipe.analyzing} error={pipe.componentError} sourceKey={componentSource} annotations={componentAnnotations} templateCount={templates.length} writable={!!editorProps.onSavePipeComponent}
+        onAnalyze={() => { void pipe.analyze(templates); }} onConfirm={saveComponent}
+        onLocate={candidate => {
+          setComponentFocus({source:componentSource,candidate}); setComponentOpen(false);
+          if (fit) { const scale = Math.min(MAX_ZOOM, Math.max(5, live.current.scale)); animateTo({scale, x:(.5-candidate.point.x)*fit.width*scale,y:(.5-candidate.point.y)*fit.height*scale}); }
+        }}
+        onTeach={(kind,name) => {setSymbolPick({source:componentSource,kind,name});setSymbolError(null);setComponentOpen(false);}}
+      />
       <div
         ref={frame}
         data-drawing-keyboard-surface
@@ -2535,10 +2600,11 @@ export function DrawingSheetViewer({
             return;
           }
           if (pipePoint && fit) {
-            pipe.select(
-              pipePoint,
-              SNAP_PX / Math.max(1, fit.width * live.current.scale),
-            );
+            if (currentSymbolPick) void pickSymbolCorner(pipePoint);
+            else {
+              setComponentFocus(null);
+              pipe.select(pipePoint, SNAP_PX / Math.max(1, fit.width * live.current.scale));
+            }
             move(live.current, true);
             return;
           }
@@ -2760,7 +2826,7 @@ export function DrawingSheetViewer({
             canEditAnnotation={editorProps.canEditAnnotation}
           />
         )}
-        {fit && textEditing && textEditing.data.points[0] && (
+        {fit && textEditing?.data.points[0] && (
           <InlineTextEditor
             key={textEditing.id ?? "new"}
             editing={textEditing}
@@ -2801,6 +2867,8 @@ export function DrawingSheetViewer({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            {componentFocus?.source === componentSource && <circle cx={componentFocus.candidate.point.x*1000} cy={componentFocus.candidate.point.y*fit.aspect*1000} r={Math.max(1.5, 16000/(fit.width*view.scale))} fill="#fbbf24" fillOpacity={.25} stroke="#f59e0b" strokeWidth={2} vectorEffect="non-scaling-stroke" />}
+            {currentSymbolPick?.first && <circle cx={currentSymbolPick.first.x*1000} cy={currentSymbolPick.first.y*fit.aspect*1000} r={2} fill="#3b82f6" />}
           </svg>
         )}
         {fit && (marked.length > 0 || snapLine) && (
@@ -3111,8 +3179,9 @@ export function DrawingSheetViewer({
               canSetScale={
                 !controlledScale || Boolean(editorProps.onScaleChange)
               }
-              onSystem={pipe.setSystem}
-              onClear={pipe.clear}
+              onComponents={openComponents}
+              onSystem={(system) => { setComponentFocus(null); setSymbolPick(null); pipe.setSystem(system); }}
+              onClear={() => { setComponentFocus(null); setSymbolPick(null); pipe.clear(); }}
               onRetry={pipe.retry}
               onScale={() => {
                 pipeCalibration.current = true;

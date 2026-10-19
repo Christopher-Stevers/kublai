@@ -129,3 +129,17 @@ describe("drawing geometry worker lifecycle", () => {
     expect(FakeWorker.instances[0]!.terminate).toHaveBeenCalledOnce();
   });
 });
+
+it('keeps component analysis in the owning worker and rejects it on logout',async()=>{
+ vi.stubGlobal('Worker',FakeWorker);
+ const pending=createPipeGeometrySession({segments:[],labels:[],symbols:[],texts:[],componentDataVersion:1,aspect:1,truncated:false});
+ const worker=FakeWorker.instances[0]!;
+ worker.respond({id:worker.messages[0]!.id,ok:true,value:null});await turn();
+ worker.respond({id:worker.messages[1]!.id,ok:true,value:{layerCodes:['DCW'],codes:['DCW'],hasLines:true}});
+ const session=await pending;
+ const analysis=session.components([]);
+ expect(worker.messages.at(-1)).toMatchObject({kind:'pipe-components',templates:[]});
+ const rejection=expect(analysis).rejects.toMatchObject({name:'AbortError'});
+ clearDrawingGeometryWorkers();await rejection;
+ expect(worker.terminate).toHaveBeenCalledOnce();
+});
