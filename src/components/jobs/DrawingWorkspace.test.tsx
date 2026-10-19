@@ -1171,7 +1171,7 @@ describe("drawing workspace workflows", () => {
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<
       typeof DrawingSheetViewer
     >;
-    await act(() =>
+    act(() => {
       props.onMeasurementComplete?.({
         sourceSheetId: sheetId,
         type: "dimension",
@@ -1181,8 +1181,8 @@ describe("drawing workspace workflows", () => {
         ],
         stroke: "#ef4444",
         width: 2,
-      }),
-    );
+      });
+    });
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
     expect(mocks.save.mock.calls[1]![0]).toMatchObject({
       visibility: "private",
