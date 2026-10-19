@@ -123,9 +123,14 @@ async function main() {
         createdAt: new Date(),
         kind: "materials",
       });
-      const categoryId = await named("kublai_category", "Nipples", {
-        sortOrder: 1,
-      });
+      const categoryIds = new Map();
+      for (const schedule of ["40", "80"])
+        categoryIds.set(
+          schedule,
+          await named("kublai_category", `Sch ${schedule} Nipples`, {
+            sortOrder: 1,
+          }),
+        );
       const mats = new Map();
       for (const m of new Set(data.rows.map((r) => r.material)))
         mats.set(
@@ -160,7 +165,7 @@ async function main() {
       }
       for (const { id, r } of pending) {
         const a = assets.get(r.imageKey);
-        await tx`insert into kublai_part_definition ${tx({ id, organizationId: org, catalogId, categoryId, displayName: r.displayName, description: r.description, imageUrl: a.url, imageAssetId: a.id, sizeLabel: r.sizeLabel, materialId: mats.get(r.material), sizeId: sizes.get(r.sizeNominal), piecesPerPack: r.piecesPerPack, bulkUnit: r.bulkUnit, individualUnit: r.individualUnit, isActive: true, createdAt: new Date() })}`;
+        await tx`insert into kublai_part_definition ${tx({ id, organizationId: org, catalogId, categoryId: categoryIds.get(r.pipeSchedule), displayName: r.displayName, description: r.description, imageUrl: a.url, imageAssetId: a.id, sizeLabel: r.sizeLabel, materialId: mats.get(r.material), sizeId: sizes.get(r.sizeNominal), piecesPerPack: r.piecesPerPack, bulkUnit: r.bulkUnit, individualUnit: r.individualUnit, isActive: true, createdAt: new Date() })}`;
       }
       let attrsAdded = 0,
         aliasesAdded = 0;
