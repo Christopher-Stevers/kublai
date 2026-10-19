@@ -83,7 +83,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MEASURE_TILE } from "./SheetMeasureBar";
-import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
+import { StyleStrip } from "./StyleStrip";
 import { notify } from "~/components/ui/app-dialogs";
 import {
   drawingPdfLinkTarget,
@@ -242,73 +242,37 @@ function MarkupStyleRow({
   disabled?: boolean;
   onChange: (patch: Partial<DrawingMarkup>) => void;
 }) {
-  const stroke = data.stroke.slice(0, 7).toLowerCase();
   const filled = Boolean(data.fill && data.fill !== "none");
   return (
-    <div role="group" aria-label="Markup style" className="space-y-1.5">
-      {/* Every colour on one line; it scrolls sideways when they don't fit. */}
-      <div className="-mx-1 flex items-center justify-between gap-2 overflow-x-auto p-1 [scrollbar-width:none]">
-        {MEASURE_COLORS.map((item) => (
+    <div role="group" aria-label="Markup style">
+      <StyleStrip
+        color={data.stroke}
+        colorLabel="Markup colour"
+        onColor={(stroke) =>
+          onChange({
+            stroke,
+            ...(filled ? { fill: `${stroke.slice(0, 7)}33` } : {}),
+          })
+        }
+        width={data.width}
+        onWidth={(width) => onChange({ width })}
+        disabled={disabled}
+        end={
           <button
-            key={item.value}
             type="button"
-            aria-label={item.name}
-            title={item.name}
-            aria-pressed={stroke === item.value.toLowerCase()}
+            aria-pressed={filled}
+            aria-label="Fill"
+            title="Fill"
             disabled={disabled}
-            className={`size-7 shrink-0 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
-            style={{ backgroundColor: item.value }}
+            className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
             onClick={() =>
-              onChange({
-                stroke: item.value,
-                ...(filled ? { fill: `${item.value.slice(0, 7)}33` } : {}),
-              })
+              onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
             }
-          />
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <div
-          role="radiogroup"
-          aria-label="Line width"
-          className="bg-muted flex min-w-0 flex-1 rounded-full p-0.5"
-        >
-          {LINE_WIDTHS.map((width) => (
-            <button
-              key={width}
-              type="button"
-              role="radio"
-              aria-checked={data.width === width}
-              aria-label={`Width ${width}`}
-              disabled={disabled}
-              className={`flex h-7 min-w-0 flex-1 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
-              onClick={() => onChange({ width })}
-            >
-              <span
-                aria-hidden="true"
-                className="w-4 rounded-full"
-                style={{
-                  height: Math.max(1, width * 0.9),
-                  backgroundColor: data.stroke.slice(0, 7),
-                }}
-              />
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          aria-pressed={filled}
-          aria-label="Fill"
-          title="Fill"
-          disabled={disabled}
-          className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-          onClick={() =>
-            onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
-          }
-        >
-          <PaintBucketIcon className="size-4" />
-        </button>
-      </div>
+          >
+            <PaintBucketIcon className="size-4" />
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -3040,105 +3004,45 @@ export function DrawingWorkspace({
                   })}
               </div>
               {writable && (
-                <div className="mt-3 space-y-3 border-t pt-3">
-                  <div
-                    role="group"
-                    aria-label="Markup colours"
-                    className="flex flex-wrap items-center gap-2"
-                  >
-                    {MEASURE_COLORS.map((item) => {
-                      const active =
-                        style.stroke.slice(0, 7).toLowerCase() ===
-                        item.value.toLowerCase();
-                      return (
-                        <button
-                          key={item.value}
-                          type="button"
-                          aria-label={item.name}
-                          aria-pressed={active}
-                          title={item.name}
-                          className={`size-7 rounded-full border border-black/15 shadow-sm transition-transform hover:scale-110 ${active ? "ring-primary ring-offset-background ring-2 ring-offset-2" : ""}`}
-                          style={{ backgroundColor: item.value }}
-                          onClick={() =>
-                            setStyle((old) => ({
-                              ...old,
-                              stroke: item.value,
-                              fill:
-                                old.fill === "none"
-                                  ? "none"
-                                  : `${item.value.slice(0, 7)}33`,
-                            }))
-                          }
-                        />
-                      );
-                    })}
-                    <label
-                      className="relative size-7 cursor-pointer overflow-hidden rounded-full border shadow-sm"
-                      title="Custom colour"
-                      style={{
-                        background:
-                          "conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)",
-                      }}
-                    >
-                      <input
-                        aria-label="Markup color"
-                        type="color"
-                        value={style.stroke.slice(0, 7)}
-                        className="absolute inset-0 cursor-pointer opacity-0"
-                        onChange={(e) =>
+                <div className="mt-3 border-t pt-3">
+                  <StyleStrip
+                    color={style.stroke}
+                    colorLabel="Markup colours"
+                    customColorLabel="Markup color"
+                    onColor={(stroke) =>
+                      setStyle((old) => ({
+                        ...old,
+                        stroke,
+                        fill:
+                          old.fill === "none"
+                            ? "none"
+                            : `${stroke.slice(0, 7)}33`,
+                      }))
+                    }
+                    width={style.width}
+                    widthLabel="Markup width"
+                    onWidth={(width) => setStyle((old) => ({ ...old, width }))}
+                    end={
+                      <button
+                        type="button"
+                        aria-pressed={style.fill !== "none"}
+                        aria-label="Fill"
+                        title="Fill"
+                        className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
+                        onClick={() =>
                           setStyle((old) => ({
                             ...old,
-                            stroke: e.target.value,
+                            fill:
+                              old.fill === "none"
+                                ? `${old.stroke.slice(0, 7)}33`
+                                : "none",
                           }))
                         }
-                      />
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      role="radiogroup"
-                      aria-label="Markup width"
-                      className="bg-muted flex flex-1 rounded-full p-1"
-                    >
-                      {LINE_WIDTHS.map((width) => (
-                        <button
-                          key={width}
-                          type="button"
-                          role="radio"
-                          aria-checked={style.width === width}
-                          aria-label={`Width ${width}`}
-                          className={`flex h-8 flex-1 items-center justify-center rounded-full transition-colors ${style.width === width ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
-                          onClick={() => setStyle((old) => ({ ...old, width }))}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="w-6 rounded-full"
-                            style={{
-                              height: Math.max(1, width * 0.9),
-                              backgroundColor: style.stroke.slice(0, 7),
-                            }}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      aria-pressed={style.fill !== "none"}
-                      className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
-                      onClick={() =>
-                        setStyle((old) => ({
-                          ...old,
-                          fill:
-                            old.fill === "none"
-                              ? `${old.stroke.slice(0, 7)}33`
-                              : "none",
-                        }))
-                      }
-                    >
-                      <PaintBucketIcon className="size-4" />
-                      Fill
-                    </button>
-                  </div>
+                      >
+                        <PaintBucketIcon className="size-4" />
+                      </button>
+                    }
+                  />
                 </div>
               )}
             </div>

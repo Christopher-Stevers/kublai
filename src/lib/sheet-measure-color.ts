@@ -53,3 +53,25 @@ export function measureColorHalo(color: string): string {
   const luminance = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
   return luminance > 0.179 ? "#111827" : "#ffffff";
 }
+
+export const MEASURE_WIDTH_KEY = "foremanhq-measure-width-v1";
+/** Measurements are drawn at their usual thickness at this width. */
+export const DEFAULT_MEASURE_WIDTH = 2;
+
+/** Personal device preference, like the measuring colour. */
+export function readMeasureWidth(): number {
+  try {
+    const width = Number(localStorage.getItem(MEASURE_WIDTH_KEY));
+    return (LINE_WIDTHS as readonly number[]).includes(width) ? width : DEFAULT_MEASURE_WIDTH;
+  } catch { return DEFAULT_MEASURE_WIDTH; }
+}
+
+export function writeMeasureWidth(width: number) {
+  if (!(LINE_WIDTHS as readonly number[]).includes(width)) return;
+  try { localStorage.setItem(MEASURE_WIDTH_KEY, String(width)); } catch { /* Private/restricted storage. */ }
+}
+
+/** How much thicker than usual a measurement with this line width is drawn. */
+export function measureLineScale(width: number | undefined): number {
+  return width && width > 0 ? width / DEFAULT_MEASURE_WIDTH : 1;
+}

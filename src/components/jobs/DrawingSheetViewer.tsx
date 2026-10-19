@@ -42,10 +42,14 @@ import {
 } from "~/lib/sheet-measure";
 import {
   DEFAULT_MEASURE_COLOR,
+  DEFAULT_MEASURE_WIDTH,
   measureColorHalo,
+  measureLineScale,
   readMeasureColor,
+  readMeasureWidth,
   validMeasureColor,
   writeMeasureColor,
+  writeMeasureWidth,
 } from "~/lib/sheet-measure-color";
 import { DrawingAppearanceFilter } from "./DrawingAppearanceFilter";
 import {
@@ -319,6 +323,12 @@ export function DrawingSheetViewer({
     if (!validMeasureColor(color)) return;
     setMeasureColor(color.toLowerCase());
     writeMeasureColor(color);
+  };
+  const [measureWidth, setMeasureWidth] = useState(DEFAULT_MEASURE_WIDTH);
+  useEffect(() => setMeasureWidth(readMeasureWidth()), []);
+  const changeMeasureWidth = (width: number) => {
+    setMeasureWidth(width);
+    writeMeasureWidth(width);
   };
   const [pipeMode, setPipeMode] = useState(false);
   const pipeTap = useRef<{
@@ -1502,6 +1512,8 @@ export function DrawingSheetViewer({
   // screen pixel or smaller than ~10px across when zoomed out.
   const measureStyle = sheetMeasureStyle(1 / view.scale);
   const markStroke = measureStyle.stroke;
+  // The chosen line width thickens only the measured line, as when saved.
+  const measureLine = markStroke * measureLineScale(measureWidth);
   const markArm = measureStyle.arm;
   const lockedAngle = rubber || dragIndex !== null ? angleSnap : null;
   const activeAngleSegment =
@@ -1875,7 +1887,7 @@ export function DrawingSheetViewer({
           parents: trace.map((node) => node.parent),
           angleReferences: savedMeasureReferences(trace),
           stroke: measureColor,
-          width: measureSource?.data.width ?? 2,
+          width: measureWidth,
           fill: "none",
           ...(scale
             ? {
@@ -2818,7 +2830,7 @@ export function DrawingSheetViewer({
                     fill="none"
                     stroke={measureHalo}
                     strokeOpacity={0.85}
-                    strokeWidth={markStroke * 2.2}
+                    strokeWidth={measureLine * 2.2}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
@@ -2828,7 +2840,7 @@ export function DrawingSheetViewer({
                     data-measure-path="true"
                     data-angle-locked={lockedAngle ? "true" : "false"}
                     stroke={measureColor}
-                    strokeWidth={lockedAngle ? markStroke * 1.6 : markStroke}
+                    strokeWidth={lockedAngle ? measureLine * 1.6 : measureLine}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
@@ -3124,6 +3136,8 @@ export function DrawingSheetViewer({
         onApply={applyScale}
         color={measureColor}
         onColor={changeMeasureColor}
+        lineWidth={measureWidth}
+        onLineWidth={changeMeasureWidth}
       />
     </div>
   );

@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
 import { writeSheetScale } from "~/lib/sheet-measure";
-import { MEASURE_COLOR_KEY } from "~/lib/sheet-measure-color";
+import { MEASURE_COLOR_KEY, MEASURE_WIDTH_KEY } from "~/lib/sheet-measure-color";
 import { drawingMarkupSchema, type DrawingEntity } from "~/lib/drawing-workspace";
 import { drawingMeasurement } from "~/lib/drawing-annotation-geometry";
 import {
@@ -1076,6 +1076,23 @@ describe("measuring colors", () => {
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
     expect(screen.getByText("90°")).toBeInTheDocument();
     expect(frame.querySelector('[data-measure-path][data-angle-locked="true"]')).toHaveAttribute("stroke", "#ffff00");
+  });
+
+  it("offers colours and line widths on one line and thickens only the measured line", () => {
+    const { frame } = openSheet("width-trace");
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    tap(frame, 200, 300);
+    tap(frame, 400, 300);
+    const path = () => frame.querySelector("[data-measure-path]")!;
+    const usual = Number(path().getAttribute("stroke-width"));
+    fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
+    const colours = screen.getByRole("group", { name: "Measuring colors" });
+    const widths = screen.getByRole("radiogroup", { name: "Measuring line width" });
+    expect(colours.parentElement).toBe(widths.parentElement);
+    expect(screen.getByRole("radio", { name: "Width 2" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Width 8" }));
+    expect(Number(path().getAttribute("stroke-width"))).toBeCloseTo(usual * 4);
+    expect(localStorage.getItem(MEASURE_WIDTH_KEY)).toBe("8");
   });
 
   it("uses custom colors for scale and trace and remembers the choice on another sheet", () => {

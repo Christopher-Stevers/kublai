@@ -2,7 +2,6 @@
 import { MeasurementLayerPicker } from "./MeasurementLayerPicker";
 
 import {
-  CheckIcon,
   ChevronDownIcon,
   EraserIcon,
   GitBranchIcon,
@@ -23,7 +22,8 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
-import { MEASURE_COLORS, measureColorHalo } from "~/lib/sheet-measure-color";
+import { MEASURE_COLORS } from "~/lib/sheet-measure-color";
+import { StyleStrip } from "./StyleStrip";
 
 /** One tile in the measuring tool row: an icon over a short label. */
 export const MEASURE_TILE =
@@ -66,6 +66,8 @@ export function SheetMeasureBar({
   onApply,
   color,
   onColor,
+  lineWidth,
+  onLineWidth,
   pipeControl,
   pipePanel,
   hideIdle = false,
@@ -113,6 +115,9 @@ export function SheetMeasureBar({
   onApply: () => void;
   color: string;
   onColor: (color: string) => void;
+  /** Line width saved with new measurements. */
+  lineWidth?: number;
+  onLineWidth?: (width: number) => void;
   pipeControl?: React.ReactNode;
   pipePanel?: React.ReactNode;
   /** The Measure / Pipe system buttons live in a host toolbar instead. */
@@ -210,6 +215,8 @@ export function SheetMeasureBar({
               controls={measuringControls}
               color={color}
               onColor={onColor}
+              lineWidth={lineWidth}
+              onLineWidth={onLineWidth}
             />
           )
         ) : hideIdle ? null : (
@@ -227,9 +234,13 @@ export function SheetMeasureBar({
 function MeasureColorPicker({
   color,
   onColor,
+  width,
+  onWidth,
 }: {
   color: string;
   onColor: (color: string) => void;
+  width?: number;
+  onWidth?: (width: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -250,48 +261,19 @@ function MeasureColorPicker({
           className="ring-background size-[18px] rounded-full shadow ring-2"
           style={{ backgroundColor: color }}
         />
-        <span aria-hidden="true">Colour</span>
+        <span aria-hidden="true">{onWidth ? "Style" : "Colour"}</span>
       </button>
       {open && (
-        <div id={id} className="col-span-full space-y-2 pt-1">
-          <div
-            role="group"
-            aria-label="Measuring colors"
-            className="grid max-w-sm grid-cols-5 gap-2 py-1"
-          >
-            {MEASURE_COLORS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                aria-label={item.name}
-                aria-pressed={color === item.value}
-                title={item.name}
-                className="focus-visible:outline-primary mx-auto grid size-10 place-items-center rounded-full border border-current/25 shadow-sm transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2"
-                style={{
-                  backgroundColor: item.value,
-                  color: measureColorHalo(item.value),
-                }}
-                onClick={() => {
-                  onColor(item.value);
-                  setOpen(false);
-                }}
-              >
-                {color === item.value && (
-                  <CheckIcon aria-hidden="true" className="h-5 w-5" />
-                )}
-              </button>
-            ))}
-          </div>
-          <label className="flex max-w-sm items-center justify-between gap-2 text-sm">
-            Custom color
-            <input
-              type="color"
-              aria-label="Custom measuring color"
-              value={color}
-              onChange={(event) => onColor(event.target.value)}
-              className="size-10 cursor-pointer rounded-full border bg-transparent p-0.5"
-            />
-          </label>
+        <div id={id} className="col-span-full pt-1">
+          <StyleStrip
+            color={color}
+            onColor={onColor}
+            colorLabel="Measuring colors"
+            customColorLabel="Custom measuring color"
+            width={width}
+            onWidth={onWidth}
+            widthLabel="Measuring line width"
+          />
         </div>
       )}
     </div>
@@ -359,6 +341,8 @@ function Tracing({
   controls,
   color,
   onColor,
+  lineWidth,
+  onLineWidth,
   gap,
   canGap,
   gapMessage,
@@ -384,6 +368,8 @@ function Tracing({
   controls: ReactNode;
   color: string;
   onColor: (color: string) => void;
+  lineWidth?: number;
+  onLineWidth?: (width: number) => void;
   gap: boolean;
   canGap: boolean;
   gapMessage?: string | null;
@@ -486,7 +472,12 @@ function Tracing({
           Custom Scale
         </Button>
         {layerControl}
-        <MeasureColorPicker color={color} onColor={onColor} />
+        <MeasureColorPicker
+          color={color}
+          onColor={onColor}
+          width={lineWidth}
+          onWidth={onLineWidth}
+        />
       </div>
     </>
   );

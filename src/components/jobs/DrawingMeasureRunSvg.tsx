@@ -13,7 +13,7 @@ import {
   type LengthUnit,
   type SheetScale,
 } from "~/lib/sheet-measure";
-import { measureColorHalo } from "~/lib/sheet-measure-color";
+import { measureColorHalo, measureLineScale } from "~/lib/sheet-measure-color";
 import { sheetMeasureStyle } from "~/lib/sheet-measure-style";
 import { savedMeasureAngleArcs } from "~/lib/saved-measure-run";
 
@@ -39,6 +39,8 @@ export function DrawingMeasureRunSvg({
     sheetPixelSize ?? screenPixelSize,
   );
   const halo = measureColorHalo(data.stroke);
+  // The chosen line width thickens the run's line; width 2 is the usual look.
+  const line = style.stroke * measureLineScale(data.width);
   const points = data.points.map((point) => ({
     x: point.x * 1000,
     y: point.y * 1000 * aspect,
@@ -96,7 +98,7 @@ export function DrawingMeasureRunSvg({
           fill="none"
           stroke={halo}
           strokeOpacity={0.85}
-          strokeWidth={style.stroke * 2.2}
+          strokeWidth={line * 2.2}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
@@ -105,7 +107,7 @@ export function DrawingMeasureRunSvg({
           d={drawingLinePath(data, aspect)}
           fill="none"
           stroke={data.stroke}
-          strokeWidth={style.stroke}
+          strokeWidth={line}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
