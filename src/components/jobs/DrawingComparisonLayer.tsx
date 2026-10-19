@@ -63,6 +63,7 @@ export function DrawingComparisonLayer({
   appearance = DEFAULT_DRAWING_APPEARANCE,
   appearanceFilter,
   screenSpace,
+  moving = false,
   paintRef,
 }: {
   comparison: DrawingComparison;
@@ -74,6 +75,7 @@ export function DrawingComparisonLayer({
   appearance?: DrawingAppearance;
   appearanceFilter?: string;
   screenSpace?: boolean;
+  moving?: boolean;
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
 }) {
   const [image, setImage] = useState<{
@@ -90,6 +92,7 @@ export function DrawingComparisonLayer({
     return (
       <DrawingLineOverlayLayer
         screenSpace={screenSpace}
+        moving={moving}
         paintRef={paintRef}
         inverted={appearance.inverted}
         first={primary}
@@ -127,7 +130,7 @@ export function DrawingComparisonLayer({
         view={currentView}
         dpr={dpr}
         enabled
-        moving={false}
+        moving={moving}
       />
     ) : null;
   return (

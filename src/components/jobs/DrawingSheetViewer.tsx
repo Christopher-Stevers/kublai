@@ -2615,6 +2615,7 @@ export function DrawingSheetViewer({
           </div>
           {comparison && fit && !usesInkComparison && (
             <DrawingComparisonLayer
+              moving={moving}
               appearance={appearance}
               appearanceFilter={appearanceFilter}
               primary={{ src, pdf }}
@@ -2635,6 +2636,7 @@ export function DrawingSheetViewer({
         </div>
         {comparison && fit && usesInkComparison && (
           <DrawingComparisonLayer
+            moving={moving}
             screenSpace
             paintRef={overlayPaint}
             appearance={appearance}

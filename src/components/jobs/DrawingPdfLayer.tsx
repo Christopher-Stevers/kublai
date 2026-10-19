@@ -21,6 +21,7 @@ import {
 import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import {
+  keepDrawingPatchDuringPan,
   patchCoversView,
   patchScreenCoverage,
   planDrawingPatch,
@@ -44,7 +45,7 @@ type Props = {
   appearanceFilter?: string;
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
-type Snapshot = { index: number; patch: DrawingPatch };
+type Snapshot = { index: number; patch: DrawingPatch; scale: number };
 /**
  * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
@@ -69,12 +70,16 @@ export function DrawingPdfLayer(props: Props) {
       canvas.style,
       p.screenSpace
         ? {
-            left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
-            top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+            left: "0px",
+            top: "0px",
+            transform: `translate3d(${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px, ${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px, 0)`,
+            willChange: "transform",
             width: `${patch.width * width}px`,
             height: `${patch.height * height}px`,
           }
         : {
+            transform: "",
+            willChange: "auto",
             left: `${patch.left * 100}%`,
             top: `${patch.top * 100}%`,
             width: `${patch.width * 100}%`,
@@ -163,6 +168,14 @@ export function DrawingPdfLayer(props: Props) {
         )
       )
         return;
+      // A small pan should move the existing bitmap, not start another large
+      // PDF raster on the same thread as touch input. Refill during a long pan
+      // only when most of that bitmap has left the screen; settling always
+      // requests full detail immediately.
+      if (
+        current && keepDrawingPatchDuringPan(current.patch, current.scale,
+          start.fit, start.frameSize, start.view, start.moving)
+      ) return;
       const index = current?.index === 0 ? 1 : 0;
       const canvas = buffers[index];
       if (!canvas) return;
@@ -263,7 +276,7 @@ export function DrawingPdfLayer(props: Props) {
               patches.current[current.index] = null;
             }
           }
-          current = { index, patch };
+          current = { index, patch, scale: ready.view.scale };
           latest.current.onReady?.();
         }
         const sharp =

@@ -20,6 +20,7 @@ import {
   type OverlayInkStyle,
 } from "~/lib/drawing-line-overlay";
 import {
+  keepDrawingPatchDuringPan,
   type DrawingPatch,
   type DrawingSize,
   type DrawingView,
@@ -49,9 +50,10 @@ type Props = {
   dpr: number;
   inverted?: boolean;
   screenSpace?: boolean;
+  moving?: boolean;
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
-type Raster = { patch: DrawingPatch; ink: InkStack };
+type Raster = { patch: DrawingPatch; ink: InkStack; scale: number };
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -84,12 +86,16 @@ export function DrawingLineOverlayLayer(props: Props) {
       canvas.style,
       p.screenSpace
         ? {
-            left: `${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px`,
-            top: `${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px`,
+            left: "0px",
+            top: "0px",
+            transform: `translate3d(${(p.frameSize.width - width) / 2 + view.x + patch.left * width}px, ${(p.frameSize.height - height) / 2 + view.y + patch.top * height}px, 0)`,
+            willChange: "transform",
             width: `${patch.width * width}px`,
             height: `${patch.height * height}px`,
           }
         : {
+            transform: "",
+            willChange: "auto",
             left: `${patch.left * 100}%`,
             top: `${patch.top * 100}%`,
             width: `${patch.width * 100}%`,
@@ -226,6 +232,7 @@ export function DrawingLineOverlayLayer(props: Props) {
       patch: DrawingPatch,
       usePdf: boolean,
     ): Promise<Raster> => {
+      const scale = latest.current.view.scale;
       const ink = createInkStack(patch.pixelWidth * patch.pixelHeight);
       for (const [index, { source, alignment, opacity }] of sources.entries()) {
         if (opacity <= 0) continue;
@@ -362,7 +369,7 @@ export function DrawingLineOverlayLayer(props: Props) {
         canvas.height = 0;
         await nextTurn();
       }
-      return { patch, ink };
+      return { patch, ink, scale };
     };
     const schedule = () => {
       if (disposed || rendering || timer !== null || failures >= 4) return;
@@ -397,6 +404,8 @@ export function DrawingLineOverlayLayer(props: Props) {
         sharp.patch.fullHeight >= patch.fullHeight * 0.95
       )
         return;
+      if (sharp && keepDrawingPatchDuringPan(sharp.patch, sharp.scale,
+        current.fit, current.frameSize, current.view, current.moving ?? false)) return;
       rendering = true;
       // Keep the displayed canvas, but release its large ink arrays before rebuilding.
       sharp = null;
@@ -500,7 +509,7 @@ export function DrawingLineOverlayLayer(props: Props) {
   }, [sourcesKey]);
   useEffect(() => {
     request.current();
-  }, [props.fit, props.frameSize, props.view, props.dpr]);
+  }, [props.fit, props.frameSize, props.view, props.dpr, props.moving]);
   useEffect(() => {
     repaint.current();
   }, [styleKey]);

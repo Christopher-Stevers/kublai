@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  keepDrawingPatchDuringPan,
   MAX_DRAWING_PATCH_EDGE,
   MAX_DRAWING_PATCH_PIXELS,
   patchCoversView,
@@ -9,6 +10,15 @@ import {
 } from "./drawing-viewport";
 
 describe("drawing viewport geometry", () => {
+  it("keeps small pans cheap but refills long pans, zooms and settled views", () => {
+    const fit = {width:390,height:260}, frame = {width:390,height:844};
+    const view = {scale:10,x:0,y:0}, patch = planDrawingPatch(fit,frame,view,3)!;
+    expect(keepDrawingPatchDuringPan(patch,10,fit,frame,{...view,x:100},true)).toBe(true);
+    expect(keepDrawingPatchDuringPan(patch,10,fit,frame,{...view,x:300},true)).toBe(false);
+    expect(keepDrawingPatchDuringPan(patch,10,fit,frame,{...view,x:100},false)).toBe(false);
+    expect(keepDrawingPatchDuringPan(patch,10,fit,frame,{...view,scale:20},true)).toBe(false);
+  });
+
   it("prioritizes native-density visible pixels over padding at medium zoom on a high-DPI phone", () => {
     const fit = { width: 390, height: 292.5 };
     const frame = { width: 390, height: 700 };

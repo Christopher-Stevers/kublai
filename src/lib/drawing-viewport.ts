@@ -195,3 +195,13 @@ export function patchCoversView(
     patch.fullHeight >= target.fullHeight * 0.95
   );
 }
+
+/** Keep useful sharp pixels while the finger moves. Long pans refill at the
+ * edge, and a scale change or settled view always permits a fresh render. */
+export function keepDrawingPatchDuringPan(
+  patch: DrawingPatch, renderedScale: number, fit: DrawingSize,
+  frame: DrawingSize, view: DrawingView, moving: boolean,
+) {
+  return moving && Math.abs(view.scale / renderedScale - 1) < 0.001 &&
+    patchScreenCoverage(patch, fit, frame, view) >= 0.65;
+}

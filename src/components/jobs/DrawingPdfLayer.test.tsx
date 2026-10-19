@@ -84,15 +84,18 @@ describe("persistent PDF detail during gestures", () => {
     await tick();
     await finish(0);
     const canvas = visibleCanvases(view.container)[0]!;
-    const left = parseFloat(canvas.style.left);
+    const transform = canvas.style.transform;
+    const left = Number(transform.match(/translate3d\(([-.\d]+)px/)![1]);
     const width = parseFloat(canvas.style.width);
     expect(canvas.style.width.endsWith("px")).toBe(true);
     expect(canvas.width / width).toBeGreaterThan(3);
     act(() => paintRef.current!({ ...props.view, x: 50 }));
-    expect(parseFloat(canvas.style.left)).toBeCloseTo(left + 50);
+    expect(Number(canvas.style.transform.match(/translate3d\(([-.\d]+)px/)![1])).toBeCloseTo(left + 50);
+    expect(canvas.style.left).toBe("0px");
     act(() => paintRef.current!({ ...props.view, scale: 20 }));
     expect(parseFloat(canvas.style.width)).toBeCloseTo(width * 2);
-    expect(canvas.style.transform).toBe("");
+    expect(canvas.style.transform).toContain("translate3d(");
+    expect(canvas.style.transform).not.toContain("scale(");
     expect(pending).toHaveLength(1);
     view.unmount();
     expect(paintRef.current).toBeNull();
@@ -167,6 +170,24 @@ describe("persistent PDF detail during gestures", () => {
     await tick();
     expect(visibleCanvases(view.container)).toHaveLength(1);
     expect(pending).toHaveLength(1);
+  });
+
+  it("defers a small pan refill until settling and keeps the front buffer visible", async () => {
+    const phone = {...props, fit:{width:390,height:260},frameSize:{width:390,height:844}};
+    const view = render(<DrawingPdfLayer {...phone} />);
+    await tick(); await finish(0);
+    const front = visibleCanvases(view.container)[0]!;
+    view.rerender(<DrawingPdfLayer {...phone} moving view={{...phone.view,x:100}} />);
+    await tick();
+    expect(pending).toHaveLength(1);
+    expect(front.style.visibility).toBe("visible");
+    view.rerender(<DrawingPdfLayer {...phone} view={{...phone.view,x:100}} />);
+    await tick();
+    expect(pending).toHaveLength(2);
+    expect(front.style.visibility).toBe("visible");
+    await finish(1);
+    expect(visibleCanvases(view.container)).toHaveLength(1);
+    expect(visibleCanvases(view.container)[0]).not.toBe(front);
   });
 
   it("keeps the front buffer during an edge refill and swaps only when ready", async () => {

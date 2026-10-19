@@ -173,9 +173,9 @@ it("retries failed PDF detail on reconnect and follows gestures in screen pixels
   fireEvent(window, new Event("online"));
   await waitFor(() => expect(detail.style.visibility).toBe("visible"));
   expect(screen.queryByRole("alert")).toBeNull();
-  const before = parseFloat(detail.style.left);
+  const before = Number(detail.style.transform.match(/translate3d\(([-.\d]+)px/)![1]);
   act(() => paintRef.current?.({ scale: 1, x: 7, y: 0 }));
-  expect(parseFloat(detail.style.left)).toBeCloseTo(before + 7);
+  expect(Number(detail.style.transform.match(/translate3d\(([-.\d]+)px/)![1])).toBeCloseTo(before + 7);
   expect(detail.style.width).toMatch(/px$/);
   expect(held).toBe(0);
   pdf.mockReset();
