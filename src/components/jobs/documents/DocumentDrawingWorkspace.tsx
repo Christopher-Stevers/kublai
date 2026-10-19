@@ -87,7 +87,7 @@ export function DocumentDrawingWorkspace({
           variant="outline"
           aria-label="Exit full screen"
           title="Exit full screen (Esc)"
-          className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-[calc(0.75rem+env(safe-area-inset-right))] z-50 size-11 rounded-xl shadow-md"
+          className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-1/2 z-50 size-10 -translate-x-1/2 rounded-lg shadow-md"
           onClick={exit}
         >
           <MinimizeIcon className="size-5" />
