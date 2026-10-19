@@ -61,6 +61,10 @@ import {
 } from "~/components/permissions/DrawingsAccess";
 import type { DrawingViewport } from "./DrawingSheetViewer";
 import { SheetOfflineButton } from "./SheetOfflineButton";
+import {
+  recordDrawingFolderOpen,
+  useDrawingFolderOrder,
+} from "./useDrawingFolderOrder";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -126,6 +130,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const account = useDrawingAccount();
+  const folderOrder = useDrawingFolderOrder();
   const [query, setQuery] = usePageViewState(`drawings:${jobId}:query`, "");
   const [discipline, setDiscipline] = usePageViewState(
     `drawings:${jobId}:discipline`,
@@ -987,6 +992,11 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
 
   // Folders.
   const folders = setsData?.sets ?? [];
+  const orderedFolders = folderOrder.sortFolders(folders);
+  const openFolder = (id: string) => {
+    recordDrawingFolderOpen(id);
+    setSetId(id);
+  };
   const newFolderButton = (
     className: string,
     size: "default" | "lg" = "lg",
@@ -1007,20 +1017,49 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         level="section"
         title="Drawings"
         description="Drawing sets to view on site"
+        className="flex-row items-start justify-between"
         actions={
-          canUpload &&
-          folders.length > 0 && (
-            <div className="hidden gap-2 sm:flex">
-              {newFolderButton("h-11")}
-              <Button
-                className="h-11"
-                variant="outline"
-                onClick={() => setRevisionsOpen(true)}
+          <div className="flex shrink-0 items-center gap-2">
+            {canUpload && folders.length > 0 && (
+              <div className="hidden gap-2 sm:flex">
+                {newFolderButton("h-11")}
+                <Button
+                  className="h-11"
+                  variant="outline"
+                  onClick={() => setRevisionsOpen(true)}
+                >
+                  Upload revised drawings
+                </Button>
+              </div>
+            )}
+            {folders.length > 1 && (
+              <div
+                role="radiogroup"
+                aria-label="Folder order"
+                className="border-border bg-card flex h-10 shrink-0 items-center gap-1 rounded-lg border p-1"
               >
-                Upload revised drawings
-              </Button>
-            </div>
-          )
+                {(
+                  [
+                    ["used", "Most used"],
+                    ["az", "A–Z"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={folderOrder.order === value}
+                    variant={folderOrder.order === value ? "default" : "ghost"}
+                    size="sm"
+                    className={`h-8 px-2.5 text-xs ${folderOrder.order === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    onClick={() => folderOrder.setOrder(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
         }
       />
       {sets.isLoading && !setsData ? (
@@ -1043,7 +1082,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {folders.map((folder) => (
+          {orderedFolders.map((folder) => (
             <Card
               key={folder.id}
               data-tutorial="drawing-folder"
@@ -1051,12 +1090,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               tabIndex={0}
               aria-label={`Open ${folder.name}`}
               className="cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
-              onClick={() => setSetId(folder.id)}
+              onClick={() => openFolder(folder.id)}
               onKeyDown={(event) => {
                 if (event.target !== event.currentTarget) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setSetId(folder.id);
+                  openFolder(folder.id);
                 }
               }}
             >
