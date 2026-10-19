@@ -63,7 +63,7 @@ export function PipeSystemPanel({
   const quickWheel = useDrawingWheelGroup({ id: "pipe", title: "Pipe system", priority: 20, items: [
     ...(onDone ? [{ id: "done", label: "Done", run: onDone }] : []),
     { id: "systems", label: "Choose system", disabled: codes.length === 0, children: [
-      { id: "connected", label: "Connected run", selected: !system, run: () => onSystem("") },
+      { id: "connected", label: "Tap a pipe", selected: !system, run: () => onSystem("") },
       ...codes.map(code => ({ id: code, label: PIPE_SYSTEM_NAMES[code] ?? code, selected: system === code, run: () => onSystem(code) })),
     ] },
     { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
@@ -86,7 +86,7 @@ export function PipeSystemPanel({
         value={system}
         onChange={(event) => onSystem(event.target.value)}
       >
-        <option value="">Tap a connected run</option>
+        <option value="">Tap a pipe</option>
         {codes.map((code) => (
           <option key={code} value={code}>
             {PIPE_SYSTEM_NAMES[code] ? `${PIPE_SYSTEM_NAMES[code]} (${code})` : code}
@@ -235,7 +235,7 @@ export function PipeSystemPanel({
       ) : (
         <>
           <p className="text-muted-foreground text-xs">
-            {hasLayerSystems ? "Choose a system to highlight all its lines on this sheet. You can also tap a pipe to trace a connected run." : "Tap a pipe or its system label to highlight the connected run and branches."}
+            {hasLayerSystems ? "Tap a pipe or choose a system to highlight its source system on this sheet." : "Tap a pipe or its system label to highlight the connected run and branches."}
           </p>
         </>
       )}
