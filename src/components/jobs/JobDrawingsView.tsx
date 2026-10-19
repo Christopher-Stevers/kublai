@@ -922,7 +922,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <StarIcon className="h-4 w-4" />
                   Starred only
                 </DropdownMenuCheckboxItem>
-                {((canUpload && sheets.length > 0) || account?.store) && (
+                {canUpload && (
                   <DropdownMenuSeparator />
                 )}
                 {canUpload && <DropdownMenuItem onSelect={() => setRevisionsOpen(true)}><UploadIcon className="h-4 w-4" />Upload revised drawings</DropdownMenuItem>}
@@ -930,17 +930,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <DropdownMenuItem onSelect={() => setRegisterOpen(true)}>
                     <FileTextIcon className="h-4 w-4" />
                     Read title blocks
-                  </DropdownMenuItem>
-                )}
-                {account?.store && (
-                  <DropdownMenuItem
-                    disabled={
-                      !setSnapshot.online || !sheets.length || Boolean(download)
-                    }
-                    onSelect={() => void downloadFolder()}
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                    Save folder offline
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
