@@ -36,6 +36,32 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it.each(["rect", "dimension", "link"] as const)("Viewing pans over %s without selecting, editing, or opening it", async type => {
+    const entity = markup({ type });
+    const onSelect = vi.fn(), onUpdate = vi.fn(), onDelete = vi.fn(), onActivate = vi.fn(), onContextMenu = vi.fn(), onDone = vi.fn();
+    const props = { tool: "viewing" as const, annotations: [entity], selectedId: entity.id, onSelect, onUpdate, onDelete, onActivate, onContextMenu, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } };
+    const { frame, image, container, rerender } = open(props);
+    const target = container.querySelector('[data-annotation-id="markup"]')!;
+    expect(target).not.toHaveAttribute("tabindex");
+    expect(target).not.toHaveAttribute("role", "button");
+    expect(target).not.toHaveClass("annotation-shake");
+    expect(container.querySelector('[data-annotation-handle]')).toBeNull();
+    const pointer = { pointerId: 1, pointerType: "touch", button: 0 };
+    fireEvent.pointerDown(target, { ...pointer, clientX: 250, clientY: 250 });
+    await hold();
+    fireEvent.pointerMove(frame, { ...pointer, clientX: 330, clientY: 290 });
+    fireEvent.pointerUp(frame, { ...pointer, clientX: 330, clientY: 290 });
+    expect(image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.style.transform).toContain("translate3d(80px, 40px, 0)");
+    fireEvent.keyDown(target, { key: "Enter" });
+    fireEvent.keyDown(target, { key: " " });
+    fireEvent.keyDown(window, { key: "Delete" });
+    fireEvent.contextMenu(target, { button: 2, clientX: 310, clientY: 220 });
+    for (const callback of [onSelect, onUpdate, onDelete, onActivate, onContextMenu, onDone]) expect(callback).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Drag to draw/)).toBeNull();
+    rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} tool="select" />);
+    fireEvent.keyDown(target, { key: "Enter" });
+    expect(onSelect).toHaveBeenCalledWith(entity.id);
+  });
   it("finishes a path and returns the host to idle without adding the right-click position", () => {
     const onCreate = vi.fn(), onDone = vi.fn();
     const { frame } = open({ tool: "area", onCreate, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } });

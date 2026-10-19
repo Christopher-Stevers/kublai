@@ -431,6 +431,55 @@ afterEach(() => {
 });
 
 describe("drawing workspace workflows", () => {
+  it("switches from measuring to Viewing through Tools and returns to normal interaction", () => {
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    openMenu("Tools");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(props.toolControls?.modeRequest?.mode).toBe("idle");
+    expect(props.selectedId).toBeNull();
+    expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Exit Viewing" }));
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
+  });
+  it("offers Viewing in the quick wheel and clears the selected markup", () => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    mocks.data!.entities = [existingMarkup()];
+    open();
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(() => props.onSelect?.(entityId));
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Drawing tools" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
+    const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(next.tool).toBe("viewing");
+    expect(next.selectedId).toBeNull();
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("makes Viewing available to users who cannot annotate", () => {
+    mocks.data!.canAnnotate = false;
+    open(); openMenu("Tools");
+    const viewing = screen.getByRole("menuitemradio", { name: "Viewing" });
+    expect(viewing).not.toHaveAttribute("data-disabled");
+    fireEvent.click(viewing);
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+  });
+  it("finishes a text note when entering Viewing without reselecting the saved note", async () => {
+    open(); chooseTool("text");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    fireEvent.change(screen.getByLabelText("Text"), { target: { value: "Keep this note" } });
+    openMenu("Tools");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ data: { type: "text", text: "Keep this note" } });
+    expect(screen.queryByLabelText("Text")).toBeNull();
+    const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(next.tool).toBe("viewing");
+    expect(next.selectedId).toBeNull();
+  });
   it("retains wheel navigation and an exit when offline annotation data is unavailable", () => {
     const stored = new Map([["foremanhq:drawing-quick-wheel:guest", "on"]]);
     vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });

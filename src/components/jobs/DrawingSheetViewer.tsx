@@ -513,6 +513,7 @@ export function DrawingSheetViewer({
   const viewportListener = useRef(onViewportChange);
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
+  const viewing = annotationTool === "viewing";
   const pdfLinksEnabled =
     !measuring &&
     !pipeMode &&
@@ -2051,15 +2052,16 @@ export function DrawingSheetViewer({
         role="region"
         aria-label={`${alt} viewer`}
         aria-keyshortcuts="W A S D Q E"
-        className={`bg-muted relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : ""}`}
+        className={`bg-muted relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
-        style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && annotationTool === "pan" && view.scale <= 1.01 ? "pan-y" : "none" }}
+        style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && view.scale <= 1.01 ? "pan-y" : "none" }}
         onContextMenu={(event) => {
           event.preventDefault();
           // Touch long-press remains available for selecting and editing items.
           if (event.button !== 2 || (event.nativeEvent as PointerEvent).pointerType === "touch") return;
           if (event.target instanceof Element && event.target.closest('[data-drawing-chrome], input, textarea, [contenteditable="true"]')) return;
+          if (viewing) return;
           if (measuring) toggleMeasuring();
           else if (pipeMode) togglePipe();
           else if (annotationTool !== "pan" && annotationTool !== "select") {
@@ -2393,7 +2395,7 @@ export function DrawingSheetViewer({
               };
               return;
             }
-            if (scrollPages && event.pointerType === "touch" && !measuring && !pipeMode && annotationTool === "pan" && live.current.scale <= 1.01) return;
+            if (scrollPages && event.pointerType === "touch" && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && live.current.scale <= 1.01) return;
             move({
               ...base,
               x: base.x + p.x - before[0].x,
@@ -2719,15 +2721,16 @@ export function DrawingSheetViewer({
             viewportRef={annotationViewport}
             viewBox={drawingVectorViewBox(fit, frameSize, view) ?? undefined}
             annotations={visibleAnnotations}
+            interactive={!viewing}
             aspect={fit.aspect}
-            selectedId={pipeMode ? null : editorProps.selectedId}
-            heldId={pipeMode ? null : editor.heldId}
+            selectedId={pipeMode || viewing ? null : editorProps.selectedId}
+            heldId={pipeMode || viewing ? null : editor.heldId}
             draft={measuring || pipeMode ? null : editor.draft}
             editing={editor.editing}
             hidden={editorProps.hideAnnotations}
             sharedScale={sheetScale}
             displayUnit={personalUnit ? unit : undefined}
-            onSelect={pipeMode ? undefined : editorProps.onSelect}
+            onSelect={pipeMode || viewing ? undefined : editorProps.onSelect}
             onActivate={
               !measuring && !pipeMode && annotationTool === "pan"
                 ? editorProps.onActivate

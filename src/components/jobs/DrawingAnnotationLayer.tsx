@@ -19,6 +19,8 @@ type DrawingAnnotationLayerProps = {
   draft?: DrawingMarkup | null;
   editing?: { id: string; data: DrawingMarkup } | null;
   hidden?: boolean;
+  /** Keep ink visible while allowing every gesture to pass through to the viewer. */
+  interactive?: boolean;
   sharedScale?: SheetScale | null;
   displayUnit?: LengthUnit;
   onSelect?: (id: string) => void;
@@ -40,6 +42,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   data,
   selected,
   held = false,
+  interactive,
   canEdit,
   aspect,
   sharedScale,
@@ -59,6 +62,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
 } & Pick<
   DrawingAnnotationLayerProps,
   | "aspect"
+  | "interactive"
   | "sharedScale"
   | "displayUnit"
   | "onSelect"
@@ -87,14 +91,15 @@ const SavedAnnotation = memo(function SavedAnnotation({
     <g
       key={entity.id}
       data-annotation-id={entity.id}
-      tabIndex={0}
-      role="button"
+      tabIndex={interactive ? 0 : undefined}
+      role={interactive ? "button" : undefined}
       aria-label={
         entity.kind === "issue"
           ? `${entity.data.type === "rfi" ? "RFI" : "Issue"}: ${entity.data.title}`
           : `${entity.data.type} markup${entity.data.text ? `: ${entity.data.text}` : ""}`
       }
       onKeyDown={(event) => {
+        if (!interactive) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
@@ -104,11 +109,13 @@ const SavedAnnotation = memo(function SavedAnnotation({
       }}
       // A tap must not paint the browser's grey highlight or focus box around the markup.
       className={
-        selected || held ? "annotation-shake outline-none" : "outline-none"
+        !interactive
+          ? "pointer-events-none [&_*]:!pointer-events-none outline-none"
+          : selected || held ? "annotation-shake outline-none" : "outline-none"
       }
       style={{
-        pointerEvents: "visiblePainted",
-        cursor: "pointer",
+        pointerEvents: interactive ? "visiblePainted" : "none",
+        cursor: interactive ? "pointer" : undefined,
         WebkitTapHighlightColor: "transparent",
       }}
     >
@@ -122,7 +129,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
               width={(bounds.right - bounds.left) * 1000}
               height={(bounds.bottom - bounds.top) * 1000 * aspect}
               fill="transparent"
-              pointerEvents="all"
+              pointerEvents={interactive ? "all" : "none"}
               style={{ cursor: "move" }}
             />
           )}
@@ -134,7 +141,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
               width={(linkBounds.right - linkBounds.left) * 1000}
               height={(linkBounds.bottom - linkBounds.top) * 1000 * aspect}
               fill="transparent"
-              pointerEvents="all"
+              pointerEvents={interactive ? "all" : "none"}
             />
           )}
           <SavedMarkupSvg
@@ -302,6 +309,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   draft,
   editing,
   hidden,
+  interactive = true,
   sharedScale,
   displayUnit,
   onSelect,
@@ -329,7 +337,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
           .map((entity) => {
             if (entity.kind !== "markup" && entity.kind !== "issue")
               return null;
-            const selected = entity.id === selectedId;
+            const selected = interactive && entity.id === selectedId;
             const data =
               entity.kind === "markup"
                 ? editing?.id === entity.id
@@ -348,7 +356,8 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 entity={entity}
                 data={data}
                 selected={selected}
-                held={entity.id === heldId}
+                held={interactive && entity.id === heldId}
+                interactive={interactive}
                 canEdit={selected && (canEditAnnotation?.(entity.id) ?? true)}
                 aspect={aspect}
                 sharedScale={sharedScale}

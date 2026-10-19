@@ -8,7 +8,7 @@ import { CheckIcon, Undo2Icon, XIcon } from "lucide-react";
 export function DrawingDraftToolbar({ tool, count, canFinish, onUndo, onCancel, onFinish, onDone }: {
   tool: DrawingTool; count: number; canFinish: boolean; onUndo: () => void; onCancel: () => void; onFinish: () => void; onDone?: () => void;
 }) {
-  const quickWheel = useDrawingWheelGroup(tool !== "pan" && tool !== "select" ? {
+  const quickWheel = useDrawingWheelGroup(tool !== "pan" && tool !== "viewing" && tool !== "select" ? {
     id: "draft", title: tool === "freehand" ? "Pen" : tool === "link" ? "Hyperlink" : tool,
     priority: 10,
     items: [
@@ -19,7 +19,7 @@ export function DrawingDraftToolbar({ tool, count, canFinish, onUndo, onCancel, 
     ],
   } : null);
   if (quickWheel) return null;
-  if (tool === "pan" || tool === "select") return null;
+  if (tool === "pan" || tool === "viewing" || tool === "select") return null;
   const instruction = isStrokeTool(tool) ? "Draw with one finger. Use two fingers to move."
     : tool === "angle" ? ["Tap the first end.", "Tap the corner.", "Tap the other end."][Math.min(count, 2)]
     : isPathTool(tool) ? "Tap points, then Finish. Use two fingers to move."

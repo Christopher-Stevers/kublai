@@ -28,6 +28,7 @@ export const drawingMarkupTypeSchema = z.enum([
 ]);
 export type DrawingTool =
   | "pan"
+  | "viewing"
   | "select"
   | "issue"
   | "rfi"

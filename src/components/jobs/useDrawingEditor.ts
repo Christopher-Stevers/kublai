@@ -102,7 +102,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     && (canEditAnnotation?.(entity.id) ?? true), [annotations, canEditAnnotation]);
 
   const dataFor = (next: DrawingPoint[]): DrawingMarkup | null => {
-    if (tool === "pan" || tool === "select" || tool === "issue" || tool === "rfi") return null;
+    if (tool === "pan" || tool === "viewing" || tool === "select" || tool === "issue" || tool === "rfi") return null;
     return {
       sourceSheetId: props.sourceSheetId ?? "", type: tool, points: next,
       stroke: props.style?.stroke ?? "#ef4444", width: props.style?.width ?? 2,
@@ -129,7 +129,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   }, [props.onUpdate, canEdit]);
   const distance = (a: DrawingPoint, b: DrawingPoint) => Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
   const down = (point: DrawingPoint | null, target: EventTarget | null) => {
-    if (!point) return false;
+    if (!point || tool === "viewing") return false;
     const element = target instanceof Element ? target.closest<SVGElement>("[data-annotation-id]") : null;
     const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
     if (tool === "pan") {
@@ -255,6 +255,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     return true;
   };
   useEffect(() => {
+    if (tool === "viewing") return;
     if (tool === "pan" && !props.selectedId && !gesture.current) return;
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;

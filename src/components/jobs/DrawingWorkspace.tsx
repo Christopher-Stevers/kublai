@@ -139,6 +139,7 @@ import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
 /** Tools menu: everything that is not a markup type. */
 const OTHER_TOOLS = new Set<DrawingTool>([
   "pan",
+  "viewing",
   "select",
   "link",
   "issue",
@@ -147,6 +148,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
 const BAR_BUTTON =
   "h-10 w-full flex-row gap-1.5 rounded-lg px-1 text-xs font-medium whitespace-normal [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
+  ["viewing", "Viewing"],
   ["select", "Select"],
   ["freehand", "Pen"],
   ["highlight", "Highlighter"],
@@ -212,6 +214,7 @@ const PANEL_ICONS: Partial<Record<Panel, LucideIcon>> = {
 };
 const TOOL_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
   pan: HandIcon,
+  viewing: HandIcon,
   select: MousePointer2Icon,
   link: Link2Icon,
   issue: CircleAlertIcon,
@@ -425,6 +428,9 @@ export function DrawingWorkspace({
   const superScaleCalibration = useRef<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
+  const activeTool = useRef(tool);
+  activeTool.current = tool;
+  const finishInlineText = useRef<(selectAfterSave?: boolean) => void>(() => undefined);
   // Bottom bar: the Markup panel, and Measure / Pipe system in the viewer.
   const [markupOpen, setMarkupOpen] = useState(
     entryDrawing?.markupOpen ?? false,
@@ -441,6 +447,12 @@ export function DrawingWorkspace({
       requestMode("idle");
       setTool(next);
       setMarkupOpen(false);
+      if (next === "viewing") {
+        finishInlineText.current(false);
+        setSelectedId(null);
+        setMarkupMenu(null);
+        setPanel("");
+      }
     },
     [requestMode],
   );
@@ -940,7 +952,7 @@ export function DrawingWorkspace({
           data.actor.name,
         );
         setForm((current) => (current?.id === value.id ? null : current));
-        if (selectAfterSave) setSelectedId(value.id);
+        if (selectAfterSave && activeTool.current !== "viewing") setSelectedId(value.id);
         setFailedDrafts((items) =>
           items.filter((item) => item.id !== value.id),
         );
@@ -984,7 +996,7 @@ export function DrawingWorkspace({
       });
       patchEntity(entity);
       setForm((current) => (current?.id === value.id ? null : current));
-      if (selectAfterSave) setSelectedId(entity.id);
+      if (selectAfterSave && activeTool.current !== "viewing") setSelectedId(entity.id);
       setFailedDrafts((items) => items.filter((item) => item.id !== value.id));
       if (value.kind === "version") setSourceOverride(null);
       await refresh();
@@ -1029,6 +1041,18 @@ export function DrawingWorkspace({
       setPanel("selected");
       selectTool("pan");
     } else void save(value);
+  };
+  finishInlineText.current = (selectAfterSave = true) => {
+    const current = inlineText;
+    if (!current) return;
+    setInlineText(null);
+    if (!current.data.text?.trim()) return;
+    if (current.id) {
+      const entity = entities.find((item) => item.id === current.id);
+      if (entity && editable(entity))
+        void save({ ...toForm(entity), kind: "markup", data: current.data }, selectAfterSave);
+    } else
+      void save({ ...base(), kind: "markup", data: current.data }, selectAfterSave);
   };
   const newRecord = (kind: "view" | "version" | "review" | "transmittal") => {
     if (!data || !online) return;
@@ -1542,7 +1566,7 @@ export function DrawingWorkspace({
     { id: "tools", label: "Tools", icon: <WrenchIcon />, children: [
       ...tools.filter(([id]) => OTHER_TOOLS.has(id)).map(([id, label]) => {
         const Icon = TOOL_ICONS[id] ?? WrenchIcon;
-        return { id, label, icon: <Icon />, disabled: !writable, run: () => { selectTool(id); setPanel(""); setHighlight(null); } };
+        return { id, label, icon: <Icon />, selected: tool === id, disabled: !writable && id !== "viewing", run: () => { selectTool(id); setPanel(""); setHighlight(null); } };
       }),
       { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: () => { setTool("pan"); setSelectedId(null); requestMode("pipe"); } },
       { id: "pan", label: "Pan drawing", icon: <HandIcon />, run: finishTool },
@@ -1887,7 +1911,7 @@ export function DrawingWorkspace({
                 await refresh();
               }}
               editMeasurementRequest={measurementEdit}
-              tool={writable ? tool : "pan"}
+              tool={writable || tool === "viewing" ? tool : "pan"}
               style={style}
               selectedId={selectedId}
               selectionMode={selectionMode}
@@ -1927,28 +1951,7 @@ export function DrawingWorkspace({
                       current ? { ...current, data: next } : current,
                     ),
                   onCancel: () => setInlineText(null),
-                  onDone: () => {
-                    const current = inlineText;
-                    setInlineText(null);
-                    // An empty new note is simply discarded.
-                    if (!current.data.text?.trim()) return;
-                    if (current.id) {
-                      const entity = entities.find(
-                        (item) => item.id === current.id,
-                      );
-                      if (entity && editable(entity))
-                        void save({
-                          ...toForm(entity),
-                          kind: "markup",
-                          data: current.data,
-                        });
-                    } else
-                      void save({
-                        ...base(),
-                        kind: "markup",
-                        data: current.data,
-                      });
-                  },
+                  onDone: () => finishInlineText.current(),
                   onDelete: inlineText.id
                     ? () => {
                         const entity = entities.find(
@@ -3414,11 +3417,11 @@ export function DrawingWorkspace({
             <Button
               variant="default"
               className={BAR_BUTTON}
-              aria-label="Done"
+              aria-label={tool === "viewing" ? "Exit Viewing" : "Done"}
               onClick={finishTool}
             >
-              <WrenchIcon className="h-5 w-5" />
-              Done
+              {tool === "viewing" ? <HandIcon className="h-5 w-5" /> : <WrenchIcon className="h-5 w-5" />}
+              {tool === "viewing" ? "Viewing" : "Done"}
             </Button>
           ) : (
             <DropdownMenu
@@ -3451,7 +3454,7 @@ export function DrawingWorkspace({
                   value={
                     bottomMode.pipe || bottomMode.measuring || tool === "pan"
                       ? ""
-                      : writable
+                      : writable || tool === "viewing"
                         ? tool
                         : "pan"
                   }
@@ -3468,7 +3471,7 @@ export function DrawingWorkspace({
                         key={id}
                         value={id}
                         className={MENU_ITEM}
-                        disabled={!writable && id !== "pan"}
+                        disabled={!writable && id !== "pan" && id !== "viewing"}
                       >
                         <MenuTile icon={TOOL_ICONS[id]} />
                         {label}
