@@ -2,6 +2,7 @@
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingScrollPages } from "./DrawingScrollPages";
 import { DrawingPageNavigation } from "./DrawingPageNavigation";
+import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -101,6 +102,7 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 }
 
 function JobDrawingsContent({ jobId }: { jobId: string }) {
+  const { enabled: quickWheel } = useDrawingQuickWheelMode();
   const permissions = useDrawingCapabilities();
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
@@ -567,6 +569,11 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           <DrawingWorkspace
             scrollPages={scroll}
             toolbarContainer={toolbarContainer}
+            pageNavigation={{ index: sheetIndex, count: sheets.length,
+              onPrevious: () => { if (sheetIndex > 0) openSheet(sheets[sheetIndex - 1]!.id, true); },
+              onNext: () => { if (sheetIndex < sheets.length - 1) openSheet(sheets[sheetIndex + 1]!.id, true); },
+              onRename: canUpload ? () => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name }) : undefined,
+            }}
             fullscreenRef={full.enterButton}
             onFullscreen={full.enter}
             key={`${sheet.id}:${destination.request}`}
@@ -588,7 +595,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </DrawingScrollPages>
         </div>
         <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
-        <DrawingPageNavigation
+        {!quickWheel && <DrawingPageNavigation
           scrollPages={scroll}
           name={sheet.name}
           index={sheetIndex}
@@ -622,7 +629,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               </Button>
             ) : undefined
           }
-        />
+        />}
         {nameDialogView}
         {revisionDialog}
       </div>

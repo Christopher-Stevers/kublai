@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type ReactNode,
 } from "react";
 
 import { learnWheelHand, type WheelHand } from "./quick-wheel-hand";
@@ -33,7 +34,7 @@ import {
   type WheelUsage,
 } from "./quick-wheel-usage";
 
-type Choice = { label: string; select: () => void };
+type Choice = { label: string; select: () => void; icon?: ReactNode; disabled?: boolean; dismiss?: boolean };
 type Choices = { title: string; options: Choice[] };
 /** Mutable gesture registry; methods keep it separate from React render state. */
 class Registry {
@@ -87,6 +88,7 @@ type Wheel = Choices & {
   hovered: number | null;
   moved: boolean;
   skipEntrance?: boolean;
+  latched?: boolean;
 };
 type Entry = Choice & { page?: number; sourceIndex?: number };
 function entriesFor(wheel: Wheel): Entry[] {
@@ -169,6 +171,30 @@ export function wheelSector(
 const interactive =
   'button, a, input, select, textarea, [role="button"], [role="slider"], [role="spinbutton"], [contenteditable="true"], [data-quick-wheel-ignore]';
 
+/** Page actions can unmount the wheel before its initiating finger is lifted. */
+function guardRemainingLift(pointerId: number) {
+  const cleanup = () => {
+    window.removeEventListener("pointerup", release, true);
+    window.removeEventListener("pointercancel", release, true);
+    window.removeEventListener("touchend", touch, true);
+    window.removeEventListener("click", click, true);
+    window.removeEventListener("pointerdown", next, true);
+    window.removeEventListener("blur", cleanup);
+    clearTimeout(expiry);
+  };
+  const release = (event: PointerEvent) => { if (event.pointerId === pointerId) { event.preventDefault(); event.stopImmediatePropagation(); } };
+  const touch = (event: TouchEvent) => { event.preventDefault(); event.stopImmediatePropagation(); };
+  const click = (event: MouseEvent) => { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); };
+  const next = (event: PointerEvent) => { if (event.isPrimary !== false) cleanup(); };
+  const expiry = setTimeout(cleanup, 5000);
+  window.addEventListener("pointerup", release, true);
+  window.addEventListener("pointercancel", release, true);
+  window.addEventListener("touchend", touch, { capture: true, passive: false });
+  window.addEventListener("click", click, true);
+  window.addEventListener("pointerdown", next, true);
+  window.addEventListener("blur", cleanup);
+}
+
 /** Hold blank workspace and dwell to choose. Releasing only dismisses the wheel. */
 export function QuickWheelSurface({
   children,
@@ -176,16 +202,31 @@ export function QuickWheelSurface({
   usage = {},
   previewChoice,
   onBack,
+  activation = "press",
+  activationSelector,
+  onActivate,
+  onActiveChange,
+  showBackBar = true,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   enabled?: boolean;
   usage?: WheelUsage;
   onBack?: () => void;
+  /** Drawing workspaces reserve touch long-press and desktop context-menu. */
+  activation?: "press" | "context";
+  activationSelector?: string;
+  onActivate?: (event: PointerEvent | MouseEvent) => void;
+  onActiveChange?: (active: boolean) => void;
+  showBackBar?: boolean;
   previewChoice?: (
     title: string,
     label: string,
   ) => WheelPreview | undefined | Promise<WheelPreview | undefined>;
 }) {
+  const interaction = useRef({ activation, activationSelector, onActivate, onActiveChange, showBackBar });
+  useLayoutEffect(() => {
+    interaction.current = { activation, activationSelector, onActivate, onActiveChange, showBackBar };
+  });
   const backAction = useRef(onBack);
   useLayoutEffect(() => {
     backAction.current = onBack;
@@ -233,6 +274,7 @@ export function QuickWheelSurface({
     setPreview(null);
   };
   const close = () => {
+    const wasOpen = active.current !== null;
     const pointerId = active.current?.pointerId;
     if (
       pointerId !== undefined &&
@@ -244,6 +286,7 @@ export function QuickWheelSurface({
     setBackHovered(false);
     pageLatch.current = null;
     update(null);
+    if (wasOpen) interaction.current.onActiveChange?.(false);
   };
 
   useLayoutEffect(() => {
@@ -252,8 +295,8 @@ export function QuickWheelSurface({
       if (!current) return;
       const changed =
         choices.title !== current.title ||
-        JSON.stringify(choices.options.map((o) => o.label)) !==
-          JSON.stringify(current.options.map((o) => o.label));
+        JSON.stringify(choices.options.map((o) => [o.label, Boolean(o.disabled)])) !==
+          JSON.stringify(current.options.map((o) => [o.label, Boolean(o.disabled)]));
       if (changed) {
         clearTimer();
         // Leave the selected direction before arming another choice.
@@ -274,17 +317,19 @@ export function QuickWheelSurface({
   useEffect(() => {
     const element = surface.current;
     if (!element) return;
-    function start(event: PointerEvent) {
+    let pending: { event: PointerEvent; timer: ReturnType<typeof setTimeout> } | null = null;
+    const clearPending = () => { if (pending) clearTimeout(pending.timer); pending = null; };
+    const eligible = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      const control = target.closest(interactive);
+      // Annotation SVGs are accessible buttons, but remain part of the drawing.
+      if (control && !(interaction.current.activation === "context" && control.hasAttribute("data-annotation-id"))) return false;
+      return !interaction.current.activationSelector || Boolean(target.closest(interaction.current.activationSelector));
+    };
+    function open(event: PointerEvent | MouseEvent, latched = false) {
       if (!wheelEnabled.current) return;
-      if (active.current) {
-        close();
-        return;
-      }
       if (
-        event.button !== 0 ||
-        event.isPrimary === false ||
-        !(event.target instanceof Element) ||
-        event.target.closest(interactive)
+        !latched && event instanceof PointerEvent && event.isPrimary === false
       )
         return;
       const choices = registry.current;
@@ -300,30 +345,33 @@ export function QuickWheelSurface({
         );
       const top = Math.max(viewportTop + 12, bounds.top + 8),
         bottom = Math.min(
-          viewportTop + (viewport?.height ?? innerHeight) - 88,
+          viewportTop + (viewport?.height ?? innerHeight) - (interaction.current.showBackBar ? 88 : 12),
           bounds.bottom - 8,
         );
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
       if (radius < 95) return;
       event.preventDefault();
+      interaction.current.onActivate?.(event);
       // Stage cards/headings are replaced when entering Parts. Keep the
       // gesture owned by this stable surface, not the removed touch target.
-      element!.setPointerCapture?.(event.pointerId);
+      const pointerId = "pointerId" in event ? event.pointerId : -1;
+      if (!latched) element!.setPointerCapture?.(pointerId);
       suppressClick.current = true;
-      heldPointer.current = event.pointerId;
+      heldPointer.current = latched ? null : pointerId;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       pageLatch.current = null;
       update({
         ...choices,
         hand:
-          event.pointerType === "touch"
+          "pointerType" in event && event.pointerType === "touch"
             ? learnWheelHand(
                 event.clientX,
                 viewportLeft,
                 viewport?.width ?? innerWidth,
               )
             : undefined,
-        pointerId: event.pointerId,
+        pointerId,
+        latched,
         x: event.clientX,
         y: event.clientY,
         startX: event.clientX,
@@ -340,11 +388,32 @@ export function QuickWheelSurface({
         hovered: null,
         moved: false,
       });
+      interaction.current.onActiveChange?.(true);
+    }
+    function start(event: PointerEvent) {
+      if (!wheelEnabled.current) return;
+      if (active.current) {
+        if (active.current.latched) {
+          if (event.button !== 0) return;
+          heldPointer.current = event.pointerId; suppressClick.current = true;
+          event.preventDefault(); event.stopImmediatePropagation(); close();
+        }
+        else if (event.pointerId !== active.current.pointerId) close();
+        return;
+      }
+      clearPending();
+      if (event.button !== 0 || event.isPrimary === false || !eligible(event.target)) return;
+      if (interaction.current.activation === "context") {
+        if (event.pointerType !== "touch") return;
+        pending = { event, timer: setTimeout(() => { pending = null; open(event); }, 500) };
+      } else open(event);
     }
     function move(event: PointerEvent) {
+      if (pending && (event.pointerId !== pending.event.pointerId || Math.hypot(event.clientX - pending.event.clientX, event.clientY - pending.event.clientY) > 8)) clearPending();
       const current = active.current;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (!current || (!current.latched && event.pointerId !== current.pointerId)) return;
       event.preventDefault();
+      if (interaction.current.activation === "context") event.stopImmediatePropagation();
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       const backBounds =
         backAction.current || backLatched.current
@@ -383,7 +452,7 @@ export function QuickWheelSurface({
         current.bounds,
         current.hand,
       );
-      const hovered = moved
+      let hovered = moved
         ? layout.kind === "curved"
           ? curvedChoiceAt(
               layout,
@@ -399,6 +468,7 @@ export function QuickWheelSurface({
               current.radius,
             )
         : null;
+      if (hovered !== null && entriesFor(current)[hovered]?.disabled) hovered = null;
       if (hovered === current.hovered && moved === current.moved) {
         // The visual next centre matches where a confirmed choice will recenter.
         setPreview((value) =>
@@ -425,6 +495,8 @@ export function QuickWheelSurface({
                       kind: "wheel" as const,
                       options: next.options.map((option) => ({
                         label: option.label,
+                        icon: option.icon,
+                        disabled: option.disabled,
                       })),
                       page: entry.page,
                     }
@@ -487,14 +559,16 @@ export function QuickWheelSurface({
               entry.sourceIndex === undefined
                 ? undefined
                 : registry.current?.options[entry.sourceIndex];
-            if (choice) {
+            if (choice && !choice.disabled) {
               choice.select();
+              if (choice.dismiss) close();
             }
           }
         }, 500);
       }
     }
     function end(event: PointerEvent) {
+      if (pending?.event.pointerId === event.pointerId) clearPending();
       if (event.pointerId !== heldPointer.current) return;
       heldPointer.current = null;
       close();
@@ -510,6 +584,7 @@ export function QuickWheelSurface({
     }
 
     function cancel() {
+      clearPending();
       close();
     }
     function key(event: KeyboardEvent) {
@@ -538,12 +613,21 @@ export function QuickWheelSurface({
         suppressClick.current = false;
       }
     }
-    function context(event: Event) {
-      if (active.current) event.preventDefault();
+    function context(event: MouseEvent) {
+      if (interaction.current.activation === "context" && wheelEnabled.current && eligible(event.target)) {
+        const touchPress = pending?.event;
+        clearPending();
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (touchPress) { open(touchPress); return; }
+        // Android may emit a context-menu while its initiating touch is held.
+        if ((event as PointerEvent).pointerType === "touch" || heldPointer.current !== null) return;
+        if (active.current) close();
+        else open(event, true);
+      } else if (active.current) event.preventDefault();
     }
-    element.addEventListener("pointerdown", start);
+    element.addEventListener("pointerdown", start, true);
     window.addEventListener("pointerdown", resetClick, true);
-    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointermove", move, { passive: false, capture: true });
     window.addEventListener("pointerup", end, true);
     window.addEventListener("touchend", finishTouch, {
       capture: true,
@@ -559,16 +643,18 @@ export function QuickWheelSurface({
     element.addEventListener("touchstart", touch, { passive: false });
     window.addEventListener("touchmove", touch, { passive: false });
     element.addEventListener("click", click, true);
-    element.addEventListener("contextmenu", context);
+    element.addEventListener("contextmenu", context, true);
     return () => {
+      if (heldPointer.current !== null && interaction.current.activation === "context") guardRemainingLift(heldPointer.current);
+      clearPending();
       clearTimer();
       const pointerId = active.current?.pointerId;
       if (pointerId !== undefined && element.hasPointerCapture?.(pointerId))
         element.releasePointerCapture(pointerId);
       active.current = null;
-      element.removeEventListener("pointerdown", start);
+      element.removeEventListener("pointerdown", start, true);
       window.removeEventListener("pointerdown", resetClick, true);
-      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointermove", move, true);
       window.removeEventListener("pointerup", end, true);
       window.removeEventListener("touchend", finishTouch, true);
       window.removeEventListener("pointercancel", cancel);
@@ -581,7 +667,7 @@ export function QuickWheelSurface({
       element.removeEventListener("touchstart", touch);
       window.removeEventListener("touchmove", touch);
       element.removeEventListener("click", click, true);
-      element.removeEventListener("contextmenu", context);
+      element.removeEventListener("contextmenu", context, true);
     };
   }, []); // Keep release/click guards alive when the final choice disables the wheel.
 
@@ -596,7 +682,7 @@ export function QuickWheelSurface({
         {wheel && (
           <>
             <WheelDisplay wheel={wheel} preview={preview} />
-            <button
+            {showBackBar && <button
               ref={backTarget}
               type="button"
               data-quick-wheel-back=""
@@ -613,7 +699,7 @@ export function QuickWheelSurface({
               )}
             >
               <ArrowLeftIcon className="size-5" /> Back
-            </button>
+            </button>}
           </>
         )}
       </div>
@@ -668,6 +754,7 @@ function WheelDisplay({
   const tileClass = (index: number, entry: Entry) =>
     cn(
       "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold tracking-wide uppercase shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-[scale,background-color,color,box-shadow,border-color] duration-150 ease-out",
+      entry.disabled && "opacity-40",
       wheel.hovered === index
         ? "bg-primary text-primary-foreground border-primary ring-primary/25 scale-110 shadow-lg ring-4"
         : entry.page !== undefined
@@ -811,7 +898,8 @@ function WheelDisplay({
                               : undefined,
                         }}
                       >
-                        <span className="whitespace-nowrap">
+                        <span className={entries[index]!.icon ? "flex flex-col items-center gap-1 px-1 text-xs [&_svg]:size-5" : "whitespace-nowrap"}>
+                          {entries[index]!.icon}
                           {labelOf(entries[index]!)}
                         </span>
                       </div>
@@ -905,7 +993,8 @@ function WheelDisplay({
                                 : undefined,
                           }}
                         >
-                          <span className="whitespace-nowrap">
+                          <span className={entry.icon ? "flex flex-col items-center gap-1 px-1 text-xs [&_svg]:size-5" : "whitespace-nowrap"}>
+                            {entry.icon}
                             {labelOf(entry)}
                           </span>
                         </div>
@@ -948,6 +1037,8 @@ function WheelDisplay({
               title: preview.value.title,
               options: preview.value.options.map((option) => ({
                 label: option.label,
+                icon: option.icon,
+                disabled: option.disabled,
                 select: () => undefined,
               })),
               x: preview.x,

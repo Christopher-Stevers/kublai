@@ -86,6 +86,7 @@ import {
   type MeasurePrecision,
 } from "~/lib/sheet-measure-precision";
 import { SheetMeasureBar } from "./SheetMeasureBar";
+import { useDrawingWheelGesture } from "./DrawingQuickWheel";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
@@ -2019,11 +2020,33 @@ export function DrawingSheetViewer({
     reportMode?.({ measuring, pipe: pipeMode });
   }, [measuring, pipeMode, reportMode]);
 
+  useDrawingWheelGesture(appearanceId, event => {
+    if (!measuring && !pipeMode && (annotationTool === "pan" || annotationTool === "select") && event.target instanceof Element && frame.current?.contains(event.target)) {
+      const id = event.target.closest("[data-annotation-id]")?.getAttribute("data-annotation-id");
+      if (id) (editorProps.onQuickWheelSelect ?? editorProps.onSelect)?.(id);
+    }
+    stopAnimation();
+    if (nodeDrag.current) cancelNodeDrag();
+    editor.cancelGesture();
+    pdfLinkTap.current = null;
+    quickZoom.current = null;
+    panTap.current = null;
+    lastTap.current = null;
+    pipeTap.current = null;
+    pointers.current.clear();
+    gesture.current = null;
+    endHold();
+    measureTap.current = null;
+    clearAim();
+    move(live.current, true);
+  });
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <div
         ref={frame}
         data-drawing-keyboard-surface
+        data-drawing-wheel-canvas
         tabIndex={0}
         role="region"
         aria-label={`${alt} viewer`}
@@ -2991,6 +3014,7 @@ export function DrawingSheetViewer({
             onUndo={editor.undo}
             onCancel={editor.clear}
             onFinish={editor.finish}
+            onDone={toolControls?.onDone}
           />
         )}
         {loupe &&
@@ -3083,6 +3107,7 @@ export function DrawingSheetViewer({
                 beginLengthScale();
               }}
               onUnit={changeUnit}
+              onDone={() => { switchMode("idle"); toolControls?.onDone?.(); }}
             />
           ) : null
         }

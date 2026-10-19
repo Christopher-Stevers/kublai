@@ -5,6 +5,7 @@ import { XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
+import { useDrawingWheelGroup } from "./DrawingQuickWheel";
 
 export function PipeSystemPanel({
   reading,
@@ -30,6 +31,7 @@ export function PipeSystemPanel({
   onRetry,
   onScale,
   onUnit,
+  onDone,
 }: {
   reading: boolean;
   selecting?: boolean;
@@ -54,9 +56,27 @@ export function PipeSystemPanel({
   onRetry: () => void;
   onScale: () => void;
   onUnit: (value: LengthUnit) => void;
+  onDone?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const optionsId = useId();
+  const quickWheel = useDrawingWheelGroup({ id: "pipe", title: "Pipe system", priority: 20, items: [
+    ...(onDone ? [{ id: "done", label: "Done", run: onDone }] : []),
+    { id: "systems", label: "Choose system", disabled: codes.length === 0, children: [
+      { id: "connected", label: "Connected run", selected: !system, run: () => onSystem("") },
+      ...codes.map(code => ({ id: code, label: PIPE_SYSTEM_NAMES[code] ?? code, selected: system === code, run: () => onSystem(code) })),
+    ] },
+    { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
+    { id: "scale", label: "Set scale", disabled: !canSetScale, run: onScale },
+    { id: "units", label: "Units", children: LENGTH_UNITS.map(option => ({ id: option.value, label: option.label, selected: unit === option.value, run: () => onUnit(option.value) })) },
+    { id: "retry", label: "Try again", disabled: !error || !hasPdf, run: onRetry },
+  ] });
+  if (quickWheel) return <div className="pointer-events-none absolute top-14 left-3 z-20 max-w-72 rounded-xl bg-card/90 px-3 py-2 text-sm shadow-sm backdrop-blur-sm" role="status">
+    {reading ? "Reading pipe lines…" : selecting ? "Selecting pipe lines…" : selected ? total ?? "Set scale to see distance" : "Tap a pipe or choose a system"}
+    {selectedSystem && <p className="text-muted-foreground text-xs">{PIPE_SYSTEM_NAMES[selectedSystem] ?? selectedSystem}</p>}
+    {error && <p className="text-destructive text-xs">{error}</p>}
+    {warnings.length > 0 && <p className="text-muted-foreground text-xs">{warnings.join(" · ")}</p>}
+  </div>;
   const systemControl = codes.length > 0 && (
     <label className="flex items-center gap-2 text-xs">
       System

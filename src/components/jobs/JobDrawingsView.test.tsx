@@ -142,6 +142,12 @@ import { JobDrawingsView } from "./JobDrawingsView";
 import { recordDrawingSheetOpen } from "./useDrawingFolderOrder";
 
 beforeEach(() => {
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value),
+    removeItem: (key: string) => stored.delete(key),
+  });
   state.account = null;
   window.history.replaceState({}, "", "/");
   state.summaries = [];
@@ -182,6 +188,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("Drawings", () => {
@@ -191,6 +198,13 @@ describe("Drawings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
     return view;
   };
+
+  it("hides its page navigation when the account uses Quickwheel mode", () => {
+    localStorage.setItem("foremanhq:drawing-quick-wheel:guest", "on");
+    openDrawing();
+    expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  });
 
   const nativeFullscreen = () => {
     let element: Element | null = null;

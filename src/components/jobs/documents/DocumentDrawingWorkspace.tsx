@@ -1,4 +1,5 @@
 "use client";
+import { useDrawingQuickWheelMode } from "../useDrawingQuickWheelMode";
 import { useDrawingPageMode } from "../DrawingPageMode";
 import { DrawingScrollPages } from "../DrawingScrollPages";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +31,7 @@ export function DocumentDrawingWorkspace({
   onDocumentDetails,
   onClose,
 }: Props) {
+  const { enabled: quickWheel } = useDrawingQuickWheelMode();
   const account = useDrawingAccount();
   const { scroll } = useDrawingPageMode();
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
@@ -100,6 +102,10 @@ export function DocumentDrawingWorkspace({
             <DrawingWorkspace
               scrollPages={scroll}
               toolbarContainer={toolbarContainer}
+              pageNavigation={{ index: actualIndex, count: sheets.length,
+                onPrevious: () => { if (actualIndex > 0) openPage(actualIndex - 1); },
+                onNext: () => { if (actualIndex < sheets.length - 1) openPage(actualIndex + 1); },
+              }}
               fullscreenRef={enterButton}
               onFullscreen={enter}
               key={sheet.id}
@@ -125,7 +131,7 @@ export function DocumentDrawingWorkspace({
             </DrawingScrollPages>
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
-          <DrawingPageNavigation
+          {!quickWheel && <DrawingPageNavigation
             scrollPages={scroll}
             name={sheet.name}
             index={actualIndex}
@@ -134,7 +140,7 @@ export function DocumentDrawingWorkspace({
             zoomRef={zoomLabel}
             onPrevious={() => openPage(actualIndex - 1)}
             onNext={() => openPage(actualIndex + 1)}
-          />
+          />}
         </>
       ) : (
         <div className="grid min-h-64 flex-1 place-content-center gap-3 p-6 text-center">

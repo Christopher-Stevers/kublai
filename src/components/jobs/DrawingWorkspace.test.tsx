@@ -426,10 +426,62 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
 
 describe("drawing workspace workflows", () => {
+  it("retains wheel navigation and an exit when offline annotation data is unavailable", () => {
+    const stored = new Map([["foremanhq:drawing-quick-wheel:guest", "on"]]);
+    vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    mocks.data = null;
+    const next = vi.fn();
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext: next }} />);
+    fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(next).toHaveBeenCalledOnce();
+    fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quickwheel mode off" }));
+    expect(stored.get("foremanhq:drawing-quick-wheel:guest")).toBe("off");
+  });
+
+  it("lets More opt into Quickwheel mode, uses the same measurement command, and restores the bars from the wheel", () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
+    open(); openMenu("More");
+    const toggle = screen.getByRole("switch", { name: "Quickwheel mode" });
+    expect(toggle).not.toBeChecked(); fireEvent.click(toggle);
+    expect(screen.queryByRole("toolbar", { name: "Drawing tools" })).toBeNull();
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quickwheel mode off" }));
+    expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBeInTheDocument();
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
+  });
+
+  it("exposes page navigation and selected markup actions through the wheel", async () => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    mocks.data!.entities = [existingMarkup()];
+    const onNext = vi.fn();
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}
+      pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext }} />);
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Page" }));
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(onNext).toHaveBeenCalledOnce();
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(() => props.onSelect?.(entityId));
+    expect(screen.queryByRole("toolbar", { name: "Selected markup actions" })).toBeNull();
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Resize" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+  });
+
   it("prompts to calibrate before Super scale, then continues only after a saved calibration", () => {
     open();
     const start = () => {
@@ -461,6 +513,21 @@ describe("drawing workspace workflows", () => {
     }
     fireEvent.click(screen.getByRole("menuitem", {name:"Super scale"}));
     expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
+  });
+
+  it("offers text editing through the wheel without opening a competing text editor or context menu", () => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    const note = existingMarkup();
+    if (note.kind === "markup") note.data = { ...note.data, type: "text", text: "Test note", points: [{ x: 0.2, y: 0.2 }] };
+    mocks.data!.entities = [note];
+    open();
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(() => props.onQuickWheelSelect?.(entityId));
+    expect(screen.queryByRole("textbox", { name: "Text" })).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+    expect(screen.getByRole("textbox", { name: "Text" })).toHaveValue("Test note");
   });
 
   it("opens the employee's drawing tools with a simulation-scoped cache", () => {

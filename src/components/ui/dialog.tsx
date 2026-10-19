@@ -63,7 +63,7 @@ function DialogContent({
   >["container"];
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal" container={portalContainer}>
+    <DialogPortal data-slot="dialog-portal" container={portalContainer === undefined && typeof document !== "undefined" ? document.fullscreenElement : portalContainer}>
       <DialogOverlay className={layerClassName} data-snapshot-ui={excludeFromSnapshot ? "" : undefined} />
       <div
         data-snapshot-ui={excludeFromSnapshot ? "" : undefined}

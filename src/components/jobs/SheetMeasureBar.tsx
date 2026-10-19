@@ -1,5 +1,7 @@
 "use client";
 import { MeasurementLayerPicker } from "./MeasurementLayerPicker";
+import { useDrawingWheelEnabled } from "./DrawingQuickWheel";
+import { DrawingMeasureWheel } from "./DrawingMeasureWheel";
 
 import {
   ChevronDownIcon,
@@ -33,49 +35,7 @@ export const MEASURE_TILE =
  * Controls for tracing a distance on a drawing.
  * Pointer events stop here so a tap on a button is not another point on the sheet.
  */
-export function SheetMeasureBar({
-  measurementLayer = ["General"],
-  measurementLayers = [],
-  onAddMeasurementLayer,
-  onMeasurementLayer,
-  measuring,
-  calibrating,
-  pointCount,
-  calibrationCount,
-  total,
-  unit,
-  scaleSet,
-  snapping,
-  draft,
-  error,
-  reading,
-  saving = false,
-  canSetScale = true,
-  scaleLabel,
-  readError,
-  onToggle,
-  onUndo,
-  onRedo,
-  canRedo = false,
-  onClear,
-  clearDisabled = false,
-  onStartScale,
-  onCancelScale,
-  onDraft,
-  onUnit,
-  onApply,
-  color,
-  onColor,
-  lineWidth,
-  onLineWidth,
-  pipeControl,
-  pipePanel,
-  hideIdle = false,
-  gap = false,
-  canGap = false,
-  gapMessage,
-  onGap,
-}: {
+export type SheetMeasureBarProps = {
   measurementLayer?: string[];
   measurementLayers?: string[];
   onAddMeasurementLayer?: (name: string) => Promise<void>;
@@ -126,7 +86,56 @@ export function SheetMeasureBar({
   canGap?: boolean;
   gapMessage?: string | null;
   onGap?: () => void;
-}) {
+};
+
+export function SheetMeasureBar(props: SheetMeasureBarProps) {
+  const quickWheel = useDrawingWheelEnabled();
+  return quickWheel ? <DrawingMeasureWheel {...props} /> : <RegularSheetMeasureBar {...props} />;
+}
+
+function RegularSheetMeasureBar({
+  measurementLayer = ["General"],
+  measurementLayers = [],
+  onAddMeasurementLayer,
+  onMeasurementLayer,
+  measuring,
+  calibrating,
+  pointCount,
+  calibrationCount,
+  total,
+  unit,
+  scaleSet,
+  snapping,
+  draft,
+  error,
+  reading,
+  saving = false,
+  canSetScale = true,
+  scaleLabel,
+  readError,
+  onToggle,
+  onUndo,
+  onRedo,
+  canRedo = false,
+  onClear,
+  clearDisabled = false,
+  onStartScale,
+  onCancelScale,
+  onDraft,
+  onUnit,
+  onApply,
+  color,
+  onColor,
+  lineWidth,
+  onLineWidth,
+  pipeControl,
+  pipePanel,
+  hideIdle = false,
+  gap = false,
+  canGap = false,
+  gapMessage,
+  onGap,
+}: SheetMeasureBarProps) {
   const stop = (event: PointerEvent) => event.stopPropagation();
   if (hideIdle && !measuring && !pipePanel) return null;
   const toggle = (

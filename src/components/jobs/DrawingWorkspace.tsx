@@ -2,7 +2,10 @@
 import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
-import { DrawingPageModeSetting } from "./DrawingPageMode";
+import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
+import { DrawingQuickWheel, DrawingWheelRegistration, type DrawingWheelItem } from "./DrawingQuickWheel";
+import { DrawingQuickWheelSetting, useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
+import { drawingWheelStyleItems } from "./drawing-wheel-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
@@ -239,10 +242,12 @@ function MarkupStyleRow({
   data,
   disabled,
   onChange,
+  customColorLabel,
 }: {
   data: DrawingMarkup;
   disabled?: boolean;
   onChange: (patch: Partial<DrawingMarkup>) => void;
+  customColorLabel?: string;
 }) {
   const filled = Boolean(data.fill && data.fill !== "none");
   return (
@@ -250,6 +255,7 @@ function MarkupStyleRow({
       <StyleStrip
         color={data.stroke}
         colorLabel="Markup colour"
+        customColorLabel={customColorLabel}
         onColor={(stroke) =>
           onChange({
             stroke,
@@ -328,6 +334,7 @@ export function DrawingWorkspace({
   onPrepareOffline,
   onFullscreen,
   fullscreenRef,
+  pageNavigation,
 }: {
   jobId: string;
   sheet: {
@@ -351,7 +358,11 @@ export function DrawingWorkspace({
   /** Shows a full screen button in the middle of the toolbar. */
   onFullscreen?: () => void;
   fullscreenRef?: Ref<HTMLButtonElement>;
+  pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void; onRename?: () => void };
 }) {
+  const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
+  const { scroll, setScroll } = useDrawingPageMode();
+  const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
   const router = useRouter();
   const sourceRegistry = useContext(SnapshotSourceContext);
   const [equipmentBusy, setEquipmentBusy] = useState(false);
@@ -404,6 +415,7 @@ export function DrawingWorkspace({
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => { if (quickWheel) { setMoreOpen(false); setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
   const [superScaleOpen, setSuperScaleOpen] = useState(false);
   const [superScalePrompt, setSuperScalePrompt] = useState(false);
   useEffect(() => {
@@ -832,7 +844,7 @@ export function DrawingWorkspace({
     pending === 0 &&
     !queued.records.some((record) => record.input.id === entity.id) &&
     Boolean(data && (data.canManage || entity.authorId === data.actor.id));
-  const openMarkupMenu = (id: string | null, point: { x: number; y: number }) => {
+  const openMarkupMenu = (id: string | null, point: { x: number; y: number }, showMenu = true) => {
     const entity = entitiesById.get(id ?? "");
     if (
       entity?.kind !== "markup" ||
@@ -852,15 +864,15 @@ export function DrawingWorkspace({
     setForm(null);
     setPanel("");
     selectTool("select");
-    setMarkupMenu({ id: entity.id, ...point });
+    setMarkupMenu(showMenu ? { id: entity.id, ...point } : null);
   };
   const selectAnnotation = useCallback(
     (id: string | null) => {
       if (id === "search-highlight") return;
       const entity = entities.find((item) => item.id === id);
-      // Selecting a text note reopens it for typing, as when it was made.
+      // Regular controls reopen text for typing; the wheel offers Edit text.
       if (
-        entity?.kind === "markup" &&
+        !quickWheel && entity?.kind === "markup" &&
         entity.data.type === "text" &&
         editable(entity)
       ) {
@@ -879,7 +891,7 @@ export function DrawingWorkspace({
       } else if (id) setPanel("selected");
       else setPanel((current) => (current === "selected" ? "" : current));
     },
-    [entities, selectTool, selectedId, editable],
+    [entities, selectTool, selectedId, editable, quickWheel],
   );
   const base = (kind: DrawingSave["kind"] = "markup") => ({
     sheetId: sheet.id,
@@ -1349,12 +1361,23 @@ export function DrawingWorkspace({
     );
   if (!data && !online)
     return (
+      <DrawingQuickWheel enabled={quickWheel} group={{ id: "offline", title: source.name, items: [
+        { id: "measure", label: "Measure", icon: <RulerIcon />, run: () => requestMode("measure") },
+        ...(pageNavigation ? [
+          { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
+          { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
+        ] : []),
+        { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
+        { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [{ id: "regular-controls", label: "Quickwheel mode off", run: () => setQuickWheel(false) }] },
+      ] }}>
       <div className="flex h-full min-h-0 flex-col">
         <p className="bg-background p-2 text-xs">
           Offline drawing · annotation data was not downloaded.
         </p>
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
+            toolControls={quickWheel ? { measureRequest: 0, pipeRequest: 0, modeRequest, onDone: () => requestMode("idle") } : undefined}
+            navigateTo={navigate}
             scrollPages={scrollPages}
             appearance={appearance}
             src={resolved.src}
@@ -1370,6 +1393,7 @@ export function DrawingWorkspace({
           />
         </div>
       </div>
+      </DrawingQuickWheel>
     );
   if (!data)
     return (
@@ -1485,12 +1509,88 @@ export function DrawingWorkspace({
     }[];
   };
 
+  const wheelStyle = drawingWheelStyleItems({
+    color: style.stroke, width: style.width,
+    onColor: stroke => setStyle(old => ({ ...old, stroke, fill: old.fill === "none" ? "none" : `${stroke}33` })),
+    onWidth: width => setStyle(old => ({ ...old, width })),
+    onCustom: () => setWheelStyleOpen(true),
+  });
+  const wheelItems: DrawingWheelItem[] = [
+    { id: "measure", label: "Measure", icon: <RulerIcon />, run: () => { setTool("pan"); setSelectedId(null); setPanel(""); requestMode("measure"); } },
+    { id: "markup", label: "Markup", icon: <PenLineIcon />, disabled: !writable, children: [
+      ...tools.filter(([id]) => !OTHER_TOOLS.has(id)).map(([id, label]) => {
+        const Icon = MARKUP_ICONS[id] ?? PenLineIcon;
+        return { id, label, icon: <Icon />, selected: tool === id, run: () => { selectTool(id); setPanel(""); setHighlight(null); setSelectedId(null); } };
+      }),
+      { id: "style", label: "Markup style", icon: <PaletteIcon />, children: [
+        ...wheelStyle,
+        { id: "fill", label: "Fill", selected: style.fill !== "none", run: () => setStyle(old => ({ ...old, fill: old.fill === "none" ? `${old.stroke.slice(0, 7)}33` : "none" })) },
+      ] },
+    ] },
+    { id: "tools", label: "Tools", icon: <WrenchIcon />, children: [
+      ...tools.filter(([id]) => OTHER_TOOLS.has(id)).map(([id, label]) => {
+        const Icon = TOOL_ICONS[id] ?? WrenchIcon;
+        return { id, label, icon: <Icon />, disabled: !writable, run: () => { selectTool(id); setPanel(""); setHighlight(null); } };
+      }),
+      { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: () => { setTool("pan"); setSelectedId(null); requestMode("pipe"); } },
+      { id: "pan", label: "Pan drawing", icon: <HandIcon />, run: finishTool },
+    ] },
+    { id: "page", label: "Page", icon: <FileTextIcon />, children: [
+      ...(pageNavigation ? [
+        { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
+        { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
+        ...(pageNavigation.onRename ? [{ id: "rename", label: "Rename drawing", run: pageNavigation.onRename }] : []),
+      ] : []),
+      { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
+      ...(onFullscreen ? [{ id: "full", label: "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),
+      ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", run: () => setCompareIds(null) }] : []),
+    ] },
+    { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
+      { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
+      { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
+      { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
+      { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
+      ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
+      ...(personalScale.data ? [{ id: "shared-scale", label: "Use shared scale", disabled: !online || personalScaleMutation.isPending, run: () => { void savePersonalScale(null).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not reset your scale.")); } }] : []),
+      ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
+        const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
+        return { id, label, icon: <Icon />, run: () => { setPanel(id); setForm(null); } };
+      }),
+      { id: "visibility", label: "Default visibility", children: [
+        { id: "public", label: "Public · job team", selected: defaultMarkupVisibility === "published", run: () => setDefaultMarkupVisibility("published") },
+        { id: "private", label: "Private · only me", selected: defaultMarkupVisibility === "private", run: () => setDefaultMarkupVisibility("private") },
+      ] },
+      { id: "scroll", label: "Scroll between pages", selected: scroll, run: () => setScroll(!scroll) },
+      ...(onDocumentDetails ? [{ id: "document-details", label: "Document details", run: onDocumentDetails }] : []),
+      ...(onClose ? [{ id: "close-document", label: "Close document", run: onClose }] : []),
+    ] },
+  ];
+
   return (
+    <DrawingQuickWheel enabled={quickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
+    <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
+      id: "selected", title: capitalize(nameOf(selected)), priority: 50,
+      items: [
+        ...markupActions(selected).map(action => ({ id: action.key, label: action.label, icon: <action.icon />, disabled: action.disabled, run: action.run })),
+        ...(editable(selected) ? [{ id: "style", label: "Style", icon: <PaletteIcon />, run: () => setWheelStyleOpen(true) }] : []),
+        { id: "deselect", label: "Deselect", icon: <XIcon />, run: () => { setSelectedId(null); finishTool(); } },
+      ],
+    } : null} />
     <div
       className="relative flex h-full min-h-0 flex-col"
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
+      <Dialog open={wheelStyleOpen} onOpenChange={setWheelStyleOpen}>
+        <DialogContent layerClassName="z-[110]">
+          <DialogHeader><DialogTitle>Markup style</DialogTitle><DialogDescription>Choose a colour, line width, and fill.</DialogDescription></DialogHeader>
+          <MarkupStyleRow customColorLabel="Custom markup colour" data={selected?.kind === "markup" ? selected.data : { sourceSheetId: sourceId, type: "line", points: [], ...style }} disabled={pending > 0}
+            onChange={patch => {
+              if (selected?.kind === "markup") void save({ ...toForm(selected), kind: "markup", data: { ...selected.data, ...patch } });
+              else setStyle(old => ({ ...old, ...patch }));
+            }} />
+        </DialogContent>
+      </Dialog>
       <Dialog open={superScalePrompt} onOpenChange={setSuperScalePrompt}>
         <DialogContent layerClassName="z-[90]">
           <DialogHeader>
@@ -1859,6 +1959,7 @@ export function DrawingWorkspace({
               }
               onSelect={selectAnnotation}
               onContextMenu={openMarkupMenu}
+              onQuickWheelSelect={id => openMarkupMenu(id, { x: 0, y: 0 }, false)}
               onUpdate={(id, markup) => {
                 const entity = entities.find((item) => item.id === id);
                 if (entity && editable(entity))
@@ -1882,7 +1983,7 @@ export function DrawingWorkspace({
             />
           )}
         </div>
-        {selected?.kind === "markup" &&
+        {!quickWheel && selected?.kind === "markup" &&
           selected.visibility !== "archived" &&
           sourceOf(selected) === sourceId &&
           !form &&
@@ -3018,7 +3119,7 @@ export function DrawingWorkspace({
       </span>
       {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
           below it in the Drawings screen). */}
-      <DrawingToolbarDock target={toolbarContainer}>
+      {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div
         data-drawing-chrome
         className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
@@ -3160,6 +3261,7 @@ export function DrawingWorkspace({
                 align="start"
                 className={`${MENU_CLASS} max-h-[70dvh] overflow-y-auto`}
               >
+                <DrawingQuickWheelSetting />
                 <DrawingPageModeSetting />
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Default markup visibility
@@ -3417,7 +3519,7 @@ export function DrawingWorkspace({
           </Button>
         </div>
       </div>
-      </DrawingToolbarDock>
+      </DrawingToolbarDock>}
       <Dialog
         open={Boolean(linkChooser)}
         onOpenChange={(open) => {
@@ -3462,5 +3564,6 @@ export function DrawingWorkspace({
         </DialogContent>
       </Dialog>
     </div>
+    </DrawingQuickWheel>
   );
 }

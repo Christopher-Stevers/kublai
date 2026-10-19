@@ -20,6 +20,7 @@ import type { DrawingAppearance } from "~/lib/drawing-appearance";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
+import { useDrawingWheelGroup } from "./DrawingQuickWheel";
 
 export type DrawingCompareSheet = {
   id: string;
@@ -197,16 +198,27 @@ export function DrawingCompare({
     ),
   }));
   const configure = multi ? [selected] : drawings;
+  const quickWheel = useDrawingWheelGroup({ id: "comparison", title: "Compare drawings", priority: 5, items: [
+    ...(onEditDrawings ? [{ id: "choose", label: "Choose Drawings", icon: <FilesIcon />, run: onEditDrawings }] : []),
+    { id: "mode", label: "Comparison mode", icon: <LayersIcon />, children: [
+      ...([ ["overlay", "Overlay"], ["difference", "Changes"], ["side-by-side", "Side by side"], ["wipe", "Wipe"] ] as const).map(([value, label]) => ({
+        id: value, label, selected: mode === value, disabled: multi && (value === "side-by-side" || value === "wipe"),
+        run: () => { setEntryView(camera.current); setMode(value); },
+      })),
+    ] },
+    { id: "adjust", label: adjusting ? "Close adjustments" : "Adjust layers", icon: <SlidersHorizontalIcon />, disabled: mode === "side-by-side", run: () => setAdjusting(value => !value) },
+    ...(onClose ? [{ id: "close", label: "Close comparison", icon: <XIcon />, run: onClose }] : []),
+  ] });
   return (
     <section
       className="relative flex h-full min-h-0 flex-col"
       aria-label="Compare drawings"
     >
-      <div
+      {(!quickWheel || adjusting) && <div
         data-drawing-chrome
         className="absolute inset-x-0 top-0 z-20 max-h-[60dvh] overflow-y-auto overscroll-contain"
       >
-        <div className="bg-background/95 border-b shadow-sm backdrop-blur">
+        {!quickWheel && <div className="bg-background/95 border-b shadow-sm backdrop-blur">
           <div className="flex h-12 items-center gap-2 px-2">
             <span
               aria-hidden
@@ -332,9 +344,13 @@ export function DrawingCompare({
               <span className="truncate">{second.name}</span>
             </label>
           )}
-        </div>
+        </div>}
         {adjusting && mode !== "side-by-side" && (
           <div className="bg-card mx-2 mt-2 space-y-4 rounded-xl border p-3 shadow-lg">
+            {quickWheel && mode === "wipe" && <label className="flex items-center gap-3 text-sm">
+              Wipe position
+              <input aria-label="Wipe position" type="range" min="0" max="1" step="0.01" value={wipe} onChange={event => setWipe(Number(event.target.value))} className="accent-primary min-w-0 flex-1" />
+            </label>}
             {multi && (
               <label className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-muted-foreground">Adjusting</span>
@@ -465,7 +481,7 @@ export function DrawingCompare({
             )}
           </div>
         )}
-      </div>
+      </div>}
       {!ready && !previousReady ? (
         <p role="status" className="p-3">
           Opening comparison…

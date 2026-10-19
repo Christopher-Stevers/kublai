@@ -21,6 +21,8 @@ export type DrawingEditorProps = {
   onSelect?: (id: string | null) => void;
   /** A mouse right-click while panning or selecting, with the item under it. */
   onContextMenu?: (id: string | null, point: { x: number; y: number }) => void;
+  /** Select an item for the wheel without opening the regular context menu. */
+  onQuickWheelSelect?: (id: string) => void;
   onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
   onUpdate?: (id: string, data: DrawingMarkup) => void;
   onDelete?: (id: string) => void;

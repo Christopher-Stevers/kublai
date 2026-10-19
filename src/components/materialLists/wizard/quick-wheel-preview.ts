@@ -1,11 +1,12 @@
 import { formatSizeDimensions } from "~/lib/size-utils";
 import { wizardExactSizeLabel } from "~/lib/wizard-size-selection";
 import type { WizardStage } from "./types";
+import type { ReactNode } from "react";
 
 export type WheelPreview = {
   title: string;
   kind: "wheel" | "parts";
-  options: Array<{ label: string; imageUrl?: string | null }>;
+  options: Array<{ label: string; imageUrl?: string | null; icon?: ReactNode; disabled?: boolean }>;
 };
 export type PreviewSelection = {
   catalogId: string | null;
