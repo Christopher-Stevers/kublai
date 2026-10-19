@@ -33,7 +33,6 @@ export function SupplierPriceBooksDialog({
     "none",
   );
   const [error, setError] = useState<string | null>(null);
-  const [jobId, setJobId] = useState("");
   const list = api.supplierPriceBooks.list.useQuery(
     { supplierId },
     { enabled: online },
@@ -63,10 +62,6 @@ export function SupplierPriceBooksDialog({
       setEditing(null);
       await refresh();
     },
-    onError: (e) => setError(e.message),
-  });
-  const assign = api.supplierPriceBooks.assign.useMutation({
-    onSuccess: refresh,
     onError: (e) => setError(e.message),
   });
   const data = detail.data;
@@ -177,39 +172,6 @@ export function SupplierPriceBooksDialog({
                         ? "Only included parts can use this book. Other parts use standard pricing."
                         : "Standard pricing applies unless the job has a selected book containing that part."}
                     </p>
-                    {data.canAssign && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <select
-                          aria-label="Job for price book"
-                          className="bg-background min-w-0 flex-1 rounded border p-2"
-                          value={jobId}
-                          onChange={(e) => setJobId(e.target.value)}
-                        >
-                          <option value="">Choose job…</option>
-                          {data.jobs.map((j) => (
-                            <option key={j.id} value={j.id}>
-                              {j.name} ·{" "}
-                              {list.data?.books.find((b) => b.id === j.bookId)
-                                ?.name ?? "Standard"}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          disabled={!jobId || assign.isPending}
-                          onClick={() => {
-                            setError(null);
-                            assign.mutate({
-                              supplierId,
-                              bookId: selected,
-                              jobId,
-                            });
-                          }}
-                        >
-                          Use {data.book?.name ?? "Standard"} for job
-                        </Button>
-                      </div>
-                    )}
                     <div className="flex items-center gap-2">
                       <Input
                         aria-label="Search price book parts"

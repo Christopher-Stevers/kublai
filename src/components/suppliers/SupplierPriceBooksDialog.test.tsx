@@ -87,16 +87,3 @@ it("shows standard and Alma under one supplier and hides excluded parts until re
     priceStatus: "estimated",
   });
 });
-it("explicitly assigns a book to a job", () => {
-  render(<SupplierPriceBooksDialog supplierId="next" onClose={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Alma (1)" }));
-  fireEvent.change(screen.getByLabelText("Job for price book"), {
-    target: { value: "job" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Use Alma for job" }));
-  expect(state.assign).toHaveBeenCalledWith({
-    supplierId: "next",
-    bookId: "alma",
-    jobId: "job",
-  });
-});

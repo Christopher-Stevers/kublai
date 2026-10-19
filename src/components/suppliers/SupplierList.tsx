@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { SupplierEmailPreferenceItem } from "./SupplierEmailPreferenceItem";
 import { SupplierFormDialog } from "./SupplierFormDialog";
+import { SupplierJobPricingDialog } from "./SupplierJobPricingDialog";
 import { SupplierPriceBooksDialog } from "./SupplierPriceBooksDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
 import {
@@ -32,6 +33,7 @@ import { normalizeSupplierContacts } from "~/lib/supplier-contacts";
 import { confirmAction } from "~/components/ui/app-dialogs";
 
 export function SupplierList() {
+  const [jobPricingSupplierId,setJobPricingSupplierId]=useState<string>();
   const [priceBooksSupplierId,setPriceBooksSupplierId]=useState<string>();
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
   const [viewPartsSupplierId, setViewPartsSupplierId] = useState<
@@ -164,6 +166,7 @@ export function SupplierList() {
                   )}
                 </div>
                 <div className="ml-auto flex flex-wrap shrink-0 items-center gap-2">
+                  <Button variant="outline" size="sm" className="h-11" onClick={()=>setJobPricingSupplierId(supplier.id)}>Set Job Pricing</Button>
                   <Button variant="outline" size="sm" className="h-11" onClick={()=>setPriceBooksSupplierId(supplier.id)}>View Price Books</Button>
                   <Button
                     variant="outline"
@@ -253,6 +256,7 @@ export function SupplierList() {
         />
       )}
 
+      {jobPricingSupplierId && <SupplierJobPricingDialog supplierId={jobPricingSupplierId} onClose={()=>setJobPricingSupplierId(undefined)}/>}
       {priceBooksSupplierId && <SupplierPriceBooksDialog supplierId={priceBooksSupplierId} onClose={()=>setPriceBooksSupplierId(undefined)}/>}
       {viewPartsSupplierId && (
         <SupplierPartsDialog

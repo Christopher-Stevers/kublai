@@ -373,6 +373,9 @@ describe.skipIf(!socket)(
       await priceBooks.saveEntry({bookId:b.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
       await priceBooks.assign({supplierId:supplier,bookId:b.id,jobId:job});
       const pricing=jobPricingRouter.createCaller(context as never);
+      const assignments=await priceBooks.assignments({supplierId:supplier});
+      expect(assignments.jobs).toEqual([{id:job,name:"Synthetic job",bookId:b.id}]);
+      expect(assignments.books).toEqual([{id:b.id,name:"Alma"}]);
       const snapshot=await pricing.get({jobId:job});
       await pricing.savePrices({jobId:job,revision:snapshot.policy!.revision,lines:[{entryId:snapshot.entries[0]!.id,unitCost:7,priceStatus:"confirmed",priceSource:"Vendor quote"}]});
       const book=await priceBooks.get({supplierId:supplier,bookId:b.id});
@@ -384,6 +387,7 @@ describe.skipIf(!socket)(
       await expect(priceBooks.saveEntry({bookId:b.id,revision:0,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"})).rejects.toThrow("changed");
       const foreign=supplierPriceBooksRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
       await expect(foreign.get({supplierId:supplier,bookId:b.id})).rejects.toThrow("not found");
+      await expect(foreign.assignments({supplierId:supplier})).rejects.toThrow("not found");
       await expect(foreign.assign({supplierId:supplier,bookId:b.id,jobId:job})).rejects.toThrow("not found");
     });
     it("keeps list sequence in preview, sent rows, and reopened email", async () => {

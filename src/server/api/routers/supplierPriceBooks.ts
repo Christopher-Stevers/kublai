@@ -55,6 +55,35 @@ function notify(lists: { id: string }[], org: string) {
 }
 const supplierInput = z.object({ supplierId: z.string().uuid() });
 export const supplierPriceBooksRouter = createTRPCRouter({
+  assignments: hasDashboardAccess
+    .input(supplierInput)
+    .query(async ({ ctx, input }) => {
+      const org = ctx.user.organizationId;
+      const owner = await supplier(ctx.db, org, input.supplierId);
+      const books = await ctx.db
+        .select({ id: supplierPriceBooks.id, name: supplierPriceBooks.name })
+        .from(supplierPriceBooks)
+        .where(
+          and(
+            eq(supplierPriceBooks.organizationId, org!),
+            eq(supplierPriceBooks.supplierId, input.supplierId),
+          ),
+        )
+        .orderBy(supplierPriceBooks.name);
+      const assignments = await ctx.db.execute<{
+        id: string;
+        name: string;
+        bookId: string | null;
+      }>(
+        sql`select j.id,j.name,a."bookId" from kublai_job j left join kublai_job_supplier_price_book a on a."jobId"=j.id and a."supplierId"=${input.supplierId} where j."organizationId"=${org} order by j.name,j.id`,
+      );
+      return {
+        supplier: owner,
+        books,
+        jobs: [...assignments],
+        canAssign: userCan(ctx.user, "jobPricing.manage"),
+      };
+    }),
   list: hasDashboardAccess
     .input(
       supplierInput.extend({ supplierPartId: z.string().uuid().optional() }),
