@@ -166,6 +166,7 @@ describe("drawing viewport navigation", () => {
       clientX: 400,
       clientY: 300,
       pointerId: 1,
+      pointerType: "mouse",
       button: 1,
       buttons: 4,
     });
@@ -173,6 +174,7 @@ describe("drawing viewport navigation", () => {
       clientX: 480,
       clientY: 340,
       pointerId: 1,
+      pointerType: "mouse",
       button: 1,
       buttons: 4,
     });
