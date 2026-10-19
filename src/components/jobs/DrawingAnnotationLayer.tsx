@@ -114,7 +114,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
     >
       {data ? (
         <>
-          {bounds && canEdit && showMoveArea && (
+          {bounds && canEdit && showMoveArea && data.type !== "dimension" && (
             <rect
               data-annotation-move-area=""
               x={bounds.left * 1000}
@@ -159,7 +159,12 @@ const SavedAnnotation = memo(function SavedAnnotation({
                 d={drawingLinePath(data, aspect)}
                 fill="none"
                 stroke="transparent"
-                strokeWidth={Math.max(18, data.width + 12)}
+                // Measurement selection stays within three screen pixels of the line,
+                // even while the SVG camera zooms without a React render.
+                data-measurement-hit-area={data.type === "dimension" ? "" : undefined}
+                strokeWidth={data.type === "dimension" ? 6 : Math.max(18, data.width + 12)}
+                vectorEffect={data.type === "dimension" ? "non-scaling-stroke" : undefined}
+                pointerEvents={data.type === "dimension" ? "stroke" : undefined}
               />
             ) : (
               <polyline
@@ -168,7 +173,12 @@ const SavedAnnotation = memo(function SavedAnnotation({
                   .join(" ")}
                 fill="none"
                 stroke="transparent"
-                strokeWidth={Math.max(18, data.width + 12)}
+                // Measurement selection stays within three screen pixels of the line,
+                // even while the SVG camera zooms without a React render.
+                data-measurement-hit-area={data.type === "dimension" ? "" : undefined}
+                strokeWidth={data.type === "dimension" ? 6 : Math.max(18, data.width + 12)}
+                vectorEffect={data.type === "dimension" ? "non-scaling-stroke" : undefined}
+                pointerEvents={data.type === "dimension" ? "stroke" : undefined}
               />
             ))}
           {bounds && (
@@ -208,7 +218,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
                 <circle
                   cx={x * 1000}
                   cy={y * 1000 * aspect}
-                  r={18 * screenPixelSize}
+                  r={(data.type === "dimension" ? 7 : 18) * screenPixelSize}
                   fill="transparent"
                 />
                 <rect
@@ -235,7 +245,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
                 <circle
                   cx={point.x * 1000}
                   cy={point.y * 1000 * aspect}
-                  r={18 * screenPixelSize}
+                  r={(data.type === "dimension" ? 7 : 18) * screenPixelSize}
                   fill="transparent"
                 />
                 <circle
