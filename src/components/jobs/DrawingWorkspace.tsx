@@ -1,4 +1,5 @@
 "use client";
+import { legacyEquipmentDocumentLink } from "~/lib/equipment-tags";
 import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
@@ -1167,12 +1168,22 @@ export function DrawingWorkspace({
     }
   }, [router, sourceRegistry]);
   const openDestination = useCallback(
-    (link: DrawingMarkupLink) => {
-      const href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
+    async (link: DrawingMarkupLink) => {
+      let href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
+      const legacy = legacyEquipmentDocumentLink(link, jobId);
+      if (href && legacy && navigator.onLine) {
+        try {
+          const matches = await utils.drawingsWorkspace.equipmentMatches.fetch({
+            sheetId: sheet.id, tag: legacy.tag,
+            source: { kind: "document", id: legacy.documentId, name: link.label ?? "Document" },
+          });
+          href = matches.links[0]?.url ?? href;
+        } catch { /* The original document remains available if location lookup fails. */ }
+      }
       if (href) openLinkUrl(href);
       else setError("That destination is no longer available.");
     },
-    [data?.jobSheets, jobId, openLinkUrl],
+    [data?.jobSheets, jobId, openLinkUrl, sheet.id, utils],
   );
   const linkChoiceArmed = useRef(false);
   const activate = useCallback(

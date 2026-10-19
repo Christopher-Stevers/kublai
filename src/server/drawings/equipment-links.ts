@@ -13,6 +13,7 @@ import {
   containsEquipmentTag,
   equipmentScheduleTags,
   equipmentDrawingDestination,
+  equipmentDocumentDestination,
   equipmentTagLocations,
   tagPattern,
 } from "~/lib/equipment-tags";
@@ -247,6 +248,7 @@ export async function equipmentMatchesBatch(
       const version = context.docs.versions.find(
         (v) => v.id === doc.currentVersionId,
       );
+      let focusedUrl: string | undefined;
       const office = version && /\.(?:docx|xlsx|pptx)$/i.test(version.name);
       if (version && (version.mimeType === "application/pdf" || office)) {
         try {
@@ -254,9 +256,17 @@ export async function equipmentMatchesBatch(
             documentBlobPath(organizationId, version.sha256),
             office ? "office" : "pdf",
           );
-          found ||= index.pages.some(
-            (p) => equipmentTagLocations(p.words, input.tag).length > 0,
-          );
+          for (const page of index.pages) {
+            const box = equipmentTagLocations(page.words, input.tag)[0];
+            if (!box) continue;
+            found = true;
+            // Office indexes have no rendered PDF coordinates. Keep their document fallback.
+            if (!office) focusedUrl = equipmentDocumentDestination({
+              jobId, documentId: doc.id, versionId: version.id,
+              name: doc.name, tag: input.tag, page: page.page, box,
+            }).href;
+            break;
+          }
           if (!index.pages.some((p) => p.words.length))
             warnings.push(
               `${doc.name}: no searchable text; scanned recognition is needed.`,
@@ -277,7 +287,7 @@ export async function equipmentMatchesBatch(
       if (found)
         links.push({
           label: `${input.tag} — ${doc.name}`.slice(0, 255),
-          url: `/dashboard/jobs/${jobId}/documents?document=${doc.id}`,
+          url: focusedUrl ?? `/dashboard/jobs/${jobId}/documents?document=${doc.id}`,
         });
     }
     results.push({

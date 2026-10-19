@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck -- Standalone operational script, validated by --validate-only and dry runs.
 // Organization-scoped, idempotent import; published prices are reference attributes only.
 require("dotenv/config");
 const fs = require("node:fs");

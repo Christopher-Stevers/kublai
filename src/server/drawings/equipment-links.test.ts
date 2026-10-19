@@ -223,3 +223,18 @@ it("keeps standard detection available and reports unreadable schedules", async 
     expect.stringContaining("could not be read"),
   ]);
 });
+
+it("opens a submittal at its exact PDF page and tag even when metadata already matches", async () => {
+  const docId = uuid(40), versionId = uuid(41);
+  mock.overview.mockResolvedValue({documents:[{id:docId,name:"HEX-2 submittal",description:"",tags:[],currentVersionId:versionId}],versions:[{id:versionId,name:"submittal.pdf",mimeType:"application/pdf",sha256:"hash"}]});
+  mock.index.mockResolvedValue({pages:[{page:1,words:[{text:"HEX-20",left:.1,right:.2,top:.2,bottom:.22}]},{page:7,words:[{text:"HEX-2",left:.6,right:.7,top:.3,bottom:.32}]}],incomplete:false});
+  const result = await equipmentMatches(ctx,{sheetId:a.id,tag:"HEX-2",source:{kind:"document",id:docId,name:"Submittal"}});
+  expect(result.links).toHaveLength(1);
+  const url=new URL(result.links[0]!.url!,"https://example.com");
+  const state=JSON.parse(decodeURIComponent(url.hash.slice("#snapshot=".length)));
+  expect(state.document).toMatchObject({documentId:docId,versionId});
+  expect(state.pdf.page).toBe(7);
+  expect(state.pdf.viewport.center.x).toBeCloseTo(.65);
+  expect(state.pdf.viewport.center.y).toBeCloseTo(.31);
+  expect(state.pdf.viewport.zoom).toBeGreaterThan(1);
+});

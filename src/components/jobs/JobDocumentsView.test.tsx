@@ -19,12 +19,14 @@ vi.mock("./documents/DocumentPdfPreview", async () => {
     DocumentPdfPreview: ({
       url,
       title,
+      initialView,
       onReady,
       onDocumentDetails,
       onClose,
     }: {
       url: string;
       title: string;
+      initialView?: { page: number };
       onReady?: () => void;
       onDocumentDetails?: () => void;
       onClose?: () => void;
@@ -32,7 +34,7 @@ vi.mock("./documents/DocumentPdfPreview", async () => {
       useEffect(() => {
         onReady?.();
       }, [onReady]);
-      return <><iframe title={title} src={url} />{onDocumentDetails && <button onClick={onDocumentDetails}>Document details</button>}{onClose && <button onClick={onClose}>Close</button>}</>;
+      return <><iframe title={title} src={url} data-page={initialView?.page} />{onDocumentDetails && <button onClick={onDocumentDetails}>Document details</button>}{onClose && <button onClick={onClose}>Close</button>}</>;
     },
   };
 });
@@ -1064,4 +1066,21 @@ it("moves selected files to a chosen folder in one request", async () => {
   fireEvent.change(screen.getByLabelText("Destination folder"), { target: { value: "folder-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "moveDocuments", documentIds: ["doc-1", "doc-extra"], folderId: "folder-1" }));
+});
+
+
+it("refocuses a mounted document when an equipment destination changes pages", async () => {
+  const { equipmentDocumentDestination } = await import("~/lib/equipment-tags");
+  const { DRAWING_DESTINATION_EVENT } = await import("~/lib/snapshot-source");
+  const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
+  const jobId=id(1), documentId=id(2), versionId=id(3);
+  overview.documents=[doc({id:documentId,jobId,currentVersionId:versionId})];
+  overview.versions=[{...overview.versions[1]!,id:versionId,documentId}];
+  render(<JobDocumentsView jobId={jobId} />);
+  await ready();
+  for (const page of [7, 9]) {
+    const destination=equipmentDocumentDestination({jobId,documentId,versionId,name:"Specification.pdf",tag:"HEX-2",page,box:{text:"HEX-2",left:.6,right:.7,top:.3,bottom:.32}});
+    act(()=>window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT,{detail:destination.href})));
+    await waitFor(()=>expect(screen.getByTitle("Preview Specification.pdf version 2")).toHaveAttribute("data-page",String(page)));
+  }
 });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
-import { currentSnapshotState } from "~/lib/snapshot-source";
+import { currentSnapshotState, type SnapshotState } from "~/lib/snapshot-source";
 import {
   supportsDocumentEditor,
   type EditorAvailability,
@@ -57,6 +57,7 @@ export type DocumentDialogKind =
   | "review"
   | "transmittal";
 type Props = {
+  initialSnapshot?: SnapshotState | null;
   document: JobDocument;
   data: DocumentOverview;
   jobId: string;
@@ -72,6 +73,7 @@ type Props = {
 };
 
 export function DocumentDetails({
+  initialSnapshot,
   document,
   data,
   jobId,
@@ -87,7 +89,7 @@ export function DocumentDetails({
 }: Props) {
   const snapshot = useSnapshot();
   const detailFrame = useRef<HTMLDivElement>(null);
-  const [entry] = useState(currentSnapshotState);
+  const [entry] = useState(() => initialSnapshot === undefined ? currentSnapshotState() : initialSnapshot);
   const initial =
     entry?.document?.jobId === jobId &&
     entry.document.documentId === document.id

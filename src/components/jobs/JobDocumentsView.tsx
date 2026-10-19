@@ -4,7 +4,7 @@ import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { currentSnapshotState } from "~/lib/snapshot-source";
+import { currentSnapshotState, readSnapshotState, DRAWING_DESTINATION_EVENT } from "~/lib/snapshot-source";
 import {
   ChevronRightIcon,
   ClipboardCheckIcon,
@@ -236,6 +236,22 @@ export function JobDocumentsView({
   }, []);
   const loadedJobId = useRef<string | null>(null);
   const openedDocumentLink = useRef<string | null>(null);
+  const [documentLinkHref, setDocumentLinkHref] = useState<string | null>(null);
+  useEffect(() => {
+    const linked = (event: Event) => {
+      const href = event instanceof CustomEvent && typeof event.detail === "string" ? event.detail : window.location.href;
+      const url = new URL(href, window.location.origin);
+      if (url.origin === window.location.origin && url.pathname === `/dashboard/jobs/${jobId}/documents`) setDocumentLinkHref(url.href);
+    };
+    window.addEventListener(DRAWING_DESTINATION_EVENT, linked);
+    window.addEventListener("hashchange", linked);
+    window.addEventListener("popstate", linked);
+    return () => {
+      window.removeEventListener(DRAWING_DESTINATION_EVENT, linked);
+      window.removeEventListener("hashchange", linked);
+      window.removeEventListener("popstate", linked);
+    };
+  }, [jobId]);
   const openedOfficeSnapshot = useRef(false);
   const mutable = !sandbox && !offline;
   const currentFolder = data.folders.find((item) => item.id === folderId);
@@ -252,8 +268,9 @@ export function JobDocumentsView({
   const selected = data.documents.find((item) => item.id === selectedId);
   useEffect(() => {
     if (loading || error || sandbox || loadedJobId.current !== jobId) return;
-    const id = new URLSearchParams(window.location.search).get("document");
-    const request = `${jobId}:${id ?? ""}`;
+    const destination = new URL(documentLinkHref ?? window.location.href);
+    const id = destination.searchParams.get("document");
+    const request = `${jobId}:${id ?? ""}:${destination.hash}`;
     if (!id || openedDocumentLink.current === request) return;
     openedDocumentLink.current = request;
     const document = data.documents.find(
@@ -266,7 +283,7 @@ export function JobDocumentsView({
     setFolderId(document.folderId);
     setView("files");
     setSelectedId(id);
-  }, [data.documents, loading, error, jobId, sandbox]);
+  }, [data.documents, loading, error, jobId, sandbox, documentLinkHref]);
   useEffect(() => {
     if (
       openedOfficeSnapshot.current ||
@@ -1286,7 +1303,8 @@ export function JobDocumentsView({
       )}
       {selected && !modal && !editorDocument && (
         <DocumentDetails
-          key={selected.id}
+          key={`${selected.id}:${documentLinkHref ?? ""}`}
+          initialSnapshot={documentLinkHref ? readSnapshotState(new URL(documentLinkHref).hash) : undefined}
           document={selected}
           data={data}
           jobId={jobId}

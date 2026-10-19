@@ -419,3 +419,33 @@ export function equipmentDrawingDestination(input: {
     `${input.tag} — ${input.name}`,
   );
 }
+
+/** PDF document destinations retain both immutable version and exact tag position. */
+export function equipmentDocumentDestination(input: {
+  jobId: string; documentId: string; versionId: string;
+  name: string; tag: string; page: number; box: TitleBlockWord;
+}) {
+  const { box } = input;
+  const viewport = {
+    center: { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 },
+    zoom: Math.min(10, Math.max(2, 0.35 / Math.max(box.right - box.left, box.bottom - box.top))),
+  };
+  return makeSnapshotSource(`/dashboard/jobs/${input.jobId}/documents`, {
+    version: 1,
+    document: { jobId: input.jobId, documentId: input.documentId, versionId: input.versionId, tab: "details", viewer: "preview" },
+    pdf: { page: input.page, viewport, zoom: viewport.zoom, left: 0, top: 0 },
+  }, `${input.tag} — ${input.name}`);
+}
+
+/** Older automatic links stored a tag in the label but only a document URL. */
+export function legacyEquipmentDocumentLink(link: { label?: string; url?: string }, jobId: string) {
+  const tag = link.label?.split(" — ")[0]?.trim();
+  if (!tag || tag.length > 40 || !link.label?.includes(" — ") || !/^[A-Z][A-Z0-9]*-\d[A-Z0-9-]*$/i.test(tag)) return null;
+  try {
+    const url = new URL(link.url ?? "", "https://equipment.invalid");
+    if (url.origin !== "https://equipment.invalid" || url.pathname !== `/dashboard/jobs/${jobId}/documents` || url.hash) return null;
+    const id = url.searchParams.get("document");
+    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+    return { tag, documentId: id };
+  } catch { return null; }
+}
