@@ -184,6 +184,11 @@ describe("crisp drawing overlays", () => {
       .split(" ")
       .map(Number);
     const actual = annotations.getAttribute("viewBox")!.split(" ").map(Number);
+    const shift = /translate3d\(([^p]+)px, ([^p]+)px/.exec(annotations.parentElement!.style.transform)!;
+    // A device-pixel camera anchor plus compositor translation must equal
+    // the exact live camera, including fractional pointer positions.
+    actual[0]! -= Number(shift[1]) * actual[2]! / 585;
+    actual[1]! -= Number(shift[2]) * actual[3]! / 795;
     expected.forEach((value, index) =>
       expect(actual[index]).toBeCloseTo(value, 10),
     );

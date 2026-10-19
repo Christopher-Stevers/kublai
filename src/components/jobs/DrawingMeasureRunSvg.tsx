@@ -45,6 +45,17 @@ export function DrawingMeasureRunSvg({
     x: point.x * 1000,
     y: point.y * 1000 * aspect,
   }));
+  const bounds = drawingBounds(points);
+  const path = drawingLinePath(data, aspect);
+  // Only the line is masked. Keep its fade surface local to the run, including
+  // round caps/halo; a full-sheet mask per measurement wastes raster work.
+  const maskPadding = Math.max(style.arm * 1.8, line * 1.1) + screenPixelSize;
+  const maskBounds = {
+    x: bounds.left - maskPadding,
+    y: bounds.top - maskPadding,
+    width: bounds.right - bounds.left + maskPadding * 2,
+    height: bounds.bottom - bounds.top + maskPadding * 2,
+  };
   const edges = drawingMarkupEdges(data);
   const angles = savedMeasureAngleArcs(data, aspect, screenPixelSize);
   const storedUnit = data.unit ?? sharedScale?.unit;
@@ -69,16 +80,10 @@ export function DrawingMeasureRunSvg({
         <mask
           id={`${id}-ends`}
           maskUnits="userSpaceOnUse"
-          x={-1000}
-          y={-1000 * aspect}
-          width={3000}
-          height={3000 * aspect}
+          {...maskBounds}
         >
           <rect
-            x={-1000}
-            y={-1000 * aspect}
-            width={3000}
-            height={3000 * aspect}
+            {...maskBounds}
             fill="#ffffff"
           />
           {points.map((point, index) => (
@@ -94,7 +99,7 @@ export function DrawingMeasureRunSvg({
       </defs>
       <g mask={`url(#${id}-ends)`}>
         <path
-          d={drawingLinePath(data, aspect)}
+          d={path}
           fill="none"
           stroke={halo}
           strokeOpacity={0.85}
@@ -104,7 +109,7 @@ export function DrawingMeasureRunSvg({
         />
         <path
           data-saved-measure-path="true"
-          d={drawingLinePath(data, aspect)}
+          d={path}
           fill="none"
           stroke={data.stroke}
           strokeWidth={line}
@@ -200,8 +205,8 @@ export function DrawingMeasureRunSvg({
       {edges.length > 1 && (
         <text
           data-saved-measure-total="true"
-          x={(drawingBounds(points).left + drawingBounds(points).right) / 2}
-          y={drawingBounds(points).top + style.labelOffset}
+          x={(bounds.left + bounds.right) / 2}
+          y={bounds.top + style.labelOffset}
           textAnchor="middle"
           fontSize={style.font}
           fontWeight={style.fontWeight}

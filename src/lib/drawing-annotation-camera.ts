@@ -38,10 +38,21 @@ export function paintDrawingAnnotationCamera(
   ) {
     // At most 192 CSS pixels on each edge, independent of drawing size/zoom.
     const margin = Math.min(192, Math.min(frame.width, frame.height) * 0.25);
+    // Spend the existing guard band ahead of a continuing pan. This extends
+    // the next cheap translation stretch without allocating a larger surface.
+    const continuingPan = camera?.fitWidth === fit.width &&
+      camera.fitHeight === fit.height && camera.width === frame.width &&
+      camera.height === frame.height && camera.scale === view.scale;
+    // Rasterize at device-pixel anchors, avoiding an extra fractional offset
+    // that would soften text when the compositor translates the surface.
+    const density = Math.max(1, globalThis.devicePixelRatio || 1);
+    const snap = (value: number) => Math.round(value * density) / density;
+    const anchorX = snap(view.x + (continuingPan ? Math.sign(view.x - camera.x) * margin * 0.5 : 0));
+    const anchorY = snap(view.y + (continuingPan ? Math.sign(view.y - camera.y) * margin * 0.5 : 0));
     camera = {
       fitWidth: fit.width, fitHeight: fit.height,
       width: frame.width, height: frame.height,
-      scale: view.scale, x: view.x, y: view.y, margin,
+      scale: view.scale, x: anchorX, y: anchorY, margin,
     };
     cameras.set(svg, camera);
     surface.style.left = `-${margin}px`;
@@ -52,7 +63,7 @@ export function paintDrawingAnnotationCamera(
     svg.setAttribute("viewBox", drawingVectorViewBox(fit, {
       width: frame.width + margin * 2,
       height: frame.height + margin * 2,
-    }, view)!);
+    }, { scale: view.scale, x: anchorX, y: anchorY })!);
   }
   surface.style.transform = `translate3d(${view.x - camera.x}px, ${view.y - camera.y}px, 0)`;
 }

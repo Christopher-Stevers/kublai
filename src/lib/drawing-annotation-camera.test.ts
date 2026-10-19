@@ -27,7 +27,7 @@ describe("buffered annotation pan camera", () => {
     expect(screenX()).toBeCloseTo(620);
     paint(160);
     expect(set).toHaveBeenCalledTimes(2);
-    expect(surface.style.transform).toBe("translate3d(0px, 0px, 0)");
+    expect(surface.style.transform).toBe("translate3d(-96px, 0px, 0)");
     expect(screenX()).toBeCloseTo(660);
     paint(-900); // Long/flick jump cannot expose an empty edge.
     expect(screenX()).toBeCloseTo(-400);
@@ -35,6 +35,24 @@ describe("buffered annotation pan camera", () => {
     expect(surface.style.transform).not.toContain("scale");
     expect(parseFloat(surface.style.width)).toBe(1384);
     expect(screenX()).toBeCloseTo(-400);
+  });
+
+  it("looks ahead on long drags and remains aligned when direction reverses", () => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const set = vi.spyOn(svg, "setAttribute");
+    const fit = { width: 1000, height: 750 }, frame = { width: 1000, height: 800 };
+    const paint = (x: number) => paintDrawingAnnotationCamera(svg, fit, frame, { x, y: 0, scale: 1 });
+    paint(0);
+    for (let x = 8; x <= 960; x += 8) paint(x);
+    // Previously initial paint + six rebases; the same memory now needs four.
+    expect(set).toHaveBeenCalledTimes(5);
+    for (const x of [900, 700, 450, 200, -100, -600, 2000]) {
+      paint(x);
+      const [left, , width] = svg.getAttribute("viewBox")!.split(" ").map(Number);
+      const shift = Number(/translate3d\(([^p]+)/.exec(svg.style.transform)![1]);
+      expect(Math.abs(shift)).toBeLessThanOrEqual(144);
+      expect((500 - left!) / width! * parseFloat(svg.style.width) - 192 + shift).toBeCloseTo(500 + x);
+    }
   });
 
   it("rebases for resized frames and changed sheets", () => {
