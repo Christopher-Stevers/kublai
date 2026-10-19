@@ -226,6 +226,7 @@ export function DrawingQuickWheel({
         activation="context"
         activationSelector="[data-drawing-wheel-canvas]"
         showBackBar={false}
+        showBackdrop={false}
         previewChoice={(_, label) => {
           const item = choices.find(
             (value) =>

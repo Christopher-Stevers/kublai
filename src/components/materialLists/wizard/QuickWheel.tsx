@@ -207,6 +207,7 @@ export function QuickWheelSurface({
   onActivate,
   onActiveChange,
   showBackBar = true,
+  showBackdrop = true,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   enabled?: boolean;
@@ -218,6 +219,7 @@ export function QuickWheelSurface({
   onActivate?: (event: PointerEvent | MouseEvent) => void;
   onActiveChange?: (active: boolean) => void;
   showBackBar?: boolean;
+  showBackdrop?: boolean;
   previewChoice?: (
     title: string,
     label: string,
@@ -681,7 +683,7 @@ export function QuickWheelSurface({
         {children}
         {wheel && (
           <>
-            <WheelDisplay wheel={wheel} preview={preview} />
+            <WheelDisplay wheel={wheel} preview={preview} showBackdrop={showBackdrop} />
             {showBackBar && <button
               ref={backTarget}
               type="button"
@@ -721,12 +723,14 @@ function WheelDisplay({
   isPreview = false,
   pendingLabel,
   duration,
+  showBackdrop = true,
 }: {
   wheel: Wheel;
   preview?: PendingPreview | null;
   isPreview?: boolean;
   pendingLabel?: string;
   duration?: number;
+  showBackdrop?: boolean;
 }) {
   const entries = entriesFor(wheel);
   const selected = wheel.hovered === null ? undefined : entries[wheel.hovered];
@@ -784,7 +788,7 @@ function WheelDisplay({
       aria-label={`${wheel.title} quick wheel`}
       role={isPreview ? undefined : "status"}
     >
-      {!isPreview && (
+      {!isPreview && showBackdrop && (
         <div
           className="quick-wheel-backdrop bg-background/75 absolute inset-x-0 bottom-0 backdrop-blur-md"
           style={{ top: wheel.overlayTop }}
