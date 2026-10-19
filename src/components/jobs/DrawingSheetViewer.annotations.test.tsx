@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingEditorProps } from "./DrawingSheetViewer";
@@ -12,7 +13,7 @@ beforeEach(() => {
   HTMLElement.prototype.setPointerCapture = () => undefined;
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-function open(props: DrawingEditorProps & {editMeasurementRequest?: {id:number;entityId:string}} = {}) {
+function open(props: DrawingEditorProps & { toolControls?: ComponentProps<typeof DrawingSheetViewer>["toolControls"];editMeasurementRequest?: {id:number;entityId:string}} = {}) {
   const view = render(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} />);
   const image = screen.getByAltText("Sheet");
   const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
@@ -35,6 +36,35 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it("finishes a path and returns the host to idle without adding the right-click position", () => {
+    const onCreate = vi.fn(), onDone = vi.fn();
+    const { frame } = open({ tool: "area", onCreate, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } });
+    tap(frame, 200, 200); tap(frame, 600, 200); tap(frame, 600, 400);
+    const mouse = { button: 2, pointerType: "mouse", pointerId: 1, clientX: 300, clientY: 300 };
+    fireEvent.pointerDown(frame, mouse);
+    fireEvent.pointerUp(frame, mouse);
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(fireEvent.contextMenu(frame, mouse)).toBe(false);
+    expect(onCreate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ points: [{x:.25,y:.25},{x:.75,y:.25},{x:.75,y:.75}] }));
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Undo point" })).toBeNull();
+  });
+  it.each(["rect", "freehand", "text", "issue"] as const)("right-click exits %s without starting a new item", tool => {
+    const onCreate = vi.fn(), onPoint = vi.fn(), onDone = vi.fn();
+    const { frame } = open({ tool, onCreate, onPoint, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } });
+    const mouse = {button:2, pointerType:"mouse", pointerId:1, clientX:200, clientY:200};
+    fireEvent.pointerDown(frame, mouse); fireEvent.pointerUp(frame, mouse); fireEvent.contextMenu(frame, mouse);
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(onCreate).not.toHaveBeenCalled(); expect(onPoint).not.toHaveBeenCalled();
+  });
+  it("does not finish a tool when a toolbar control is right-clicked", () => {
+    const onDone = vi.fn();
+    const { frame } = open({ tool: "area", onCreate: vi.fn(), toolControls: {measureRequest:0,pipeRequest:0,onDone} });
+    tap(frame,200,200);
+    fireEvent.contextMenu(screen.getByRole("button", {name:"Undo point"}), {button:2});
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
   it("keeps equipment-tag highlights translucent and unlabeled, with a full tap area and keyboard activation", () => {
     const entity = markup({ type: "link", text: "AHU-1", linkAppearance: "highlight", links: [{ label: "Manual", url: "https://example.com" }, { label: "Chat", url: "/dashboard/jobs/abc/chat" }] });
     const onActivate = vi.fn(), onSelect = vi.fn();

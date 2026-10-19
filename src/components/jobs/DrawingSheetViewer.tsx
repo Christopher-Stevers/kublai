@@ -206,6 +206,8 @@ export function DrawingSheetViewer({
     /** Atomic switch: finish a run before starting another mode. */
     modeRequest?: { id: number; mode: "idle" | "measure" | "pipe" | "calibrate" };
     onCalibrationEnd?: (saved: boolean) => void;
+    /** Return the host toolbar to its idle state after finishing on the canvas. */
+    onDone?: () => void;
     onMode?: (mode: { measuring: boolean; pipe: boolean }) => void;
   };
 }) {
@@ -2030,13 +2032,30 @@ export function DrawingSheetViewer({
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
         style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && annotationTool === "pan" && view.scale <= 1.01 ? "pan-y" : "none" }}
-        onContextMenu={(event) => event.preventDefault()}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          // Touch long-press remains available for selecting and editing items.
+          if (event.button !== 2 || (event.nativeEvent as PointerEvent).pointerType === "touch") return;
+          if (event.target instanceof Element && event.target.closest('[data-drawing-chrome], input, textarea, [contenteditable="true"]')) return;
+          if (measuring) toggleMeasuring();
+          else if (pipeMode) togglePipe();
+          else if (annotationTool !== "pan" && annotationTool !== "select") {
+            editor.cancelGesture();
+            editor.finish();
+          } else return;
+          toolControls?.onDone?.();
+        }}
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault();
         }}
         // Capture gives the middle button priority over every drawing tool and
         // its overlays. Cancel only in-flight edits; keep committed draft points.
         onPointerDownCapture={(event) => {
+          if (event.button === 2) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
           if (event.pointerType !== "mouse" || event.button !== 1) return;
           event.preventDefault();
           event.stopPropagation();
@@ -2087,7 +2106,7 @@ export function DrawingSheetViewer({
           }
         }}
         onPointerDown={(event) => {
-          if ((measuring || pipeMode) && event.button !== 0) return;
+          if (event.button !== 0) return;
           stopAnimation();
           event.currentTarget.setPointerCapture(event.pointerId);
           pointers.current.set(event.pointerId, {
@@ -2363,6 +2382,7 @@ export function DrawingSheetViewer({
           }
         }}
         onPointerUp={(event) => {
+          if (event.button !== 0) return;
           if (!pointers.current.has(event.pointerId)) return;
           const drag = nodeDrag.current;
           if (drag?.pointerId === event.pointerId) {

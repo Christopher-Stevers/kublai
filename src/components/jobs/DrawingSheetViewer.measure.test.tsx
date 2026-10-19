@@ -142,6 +142,19 @@ function chooseUnit(unit: string) {
 }
 
 describe("drawing measure", () => {
+  it("right-click saves the measurement through Done and exits without adding another point", () => {
+    const onCreate = vi.fn();
+    const { frame } = openSheet("right-click-measure", undefined, { onCreate });
+    fireEvent.click(screen.getByRole("button", {name:"Measure"}));
+    tap(frame,200,300); tap(frame,600,300);
+    const mouse = {button:2,pointerType:"mouse",pointerId:1,clientX:400,clientY:400};
+    fireEvent.pointerDown(frame,mouse); fireEvent.pointerUp(frame,mouse); fireEvent.contextMenu(frame,mouse);
+    expect(onCreate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({type:"dimension",points:[{x:.25,y:.5},{x:.75,y:.5}]}));
+    expect(screen.getByRole("button", {name:"Measure"})).toBeInTheDocument();
+    fireEvent.contextMenu(frame,mouse);
+    expect(onCreate).toHaveBeenCalledOnce();
+  });
+
 
   it.each(["idle", "pipe"] as const)("saves the measured run when the host switches to %s alongside an annotation tool change", mode => {
     const onCreate = vi.fn();

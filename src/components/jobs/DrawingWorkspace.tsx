@@ -1610,6 +1610,7 @@ export function DrawingWorkspace({
                 pipeRequest: 0,
                 modeRequest,
                 onMode: setBottomMode,
+                onDone: finishTool,
               }}
               resolveAssetUrl={resolveAssetUrl}
               first={{
@@ -1636,6 +1637,7 @@ export function DrawingWorkspace({
                 pipeRequest: 0,
                 modeRequest,
                 onMode: setBottomMode,
+                onDone: finishTool,
                 onCalibrationEnd: (saved) => {
                   const expected = superScaleCalibration.current;
                   superScaleCalibration.current = null;
