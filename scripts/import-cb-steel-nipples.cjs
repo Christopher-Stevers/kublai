@@ -123,7 +123,7 @@ async function main() {
         createdAt: new Date(),
         kind: "materials",
       });
-      const categoryId = await named("kublai_category", "Fitting", {
+      const categoryId = await named("kublai_category", "Nipples", {
         sortOrder: 1,
       });
       const mats = new Map();

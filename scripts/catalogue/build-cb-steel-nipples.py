@@ -45,7 +45,7 @@ for key,filename,date in sources:
    else:
     lengthLabel='Close' if length=='CLOSE' else length+'"'
     label=f'{diameter}" x {lengthLabel} {finish} Sch {schedule} Nipple'+(' - '+thread if lr or toe else '')
-   rows.append(dict(sku=sku,displayName=label,description=label+'. CB Supplies '+sku+'. '+thread+'.',supplierDescription=desc,upc=upc,publishedListPrice=price.replace(',',''),priceEffectiveDate=date,material=material,category='Fitting',catalog='Plumbing',sizeLabel=diameter,sizeNominal=number(diameter),lengthInches=None if length in (None,'CLOSE') else number(length),lengthLabel=length,pipeSchedule=schedule,thread=thread,finish=finish,piecesPerPack=pieces,bulkUnit='pack' if pieces else None,individualUnit='pcs',imageKey=imageKey,aliases=[desc,sku,'CB Supplies '+sku],source=dict(publication=key,url=url,page=page)))
+   rows.append(dict(sku=sku,displayName=label,description=label+'. CB Supplies '+sku+'. '+thread+'.',supplierDescription=desc,upc=upc,publishedListPrice=price.replace(',',''),priceEffectiveDate=date,material=material,category='Nipples',catalog='Plumbing',sizeLabel=diameter,sizeNominal=number(diameter),lengthInches=None if length in (None,'CLOSE') else number(length),lengthLabel=length,pipeSchedule=schedule,thread=thread,finish=finish,piecesPerPack=pieces,bulkUnit='pack' if pieces else None,individualUnit='pcs',imageKey=imageKey,aliases=[desc,sku,'CB Supplies '+sku],source=dict(publication=key,url=url,page=page)))
 assert len({r['sku'] for r in rows})==len(rows)
 
 for name,count in Counter(r['displayName'] for r in rows).items():
