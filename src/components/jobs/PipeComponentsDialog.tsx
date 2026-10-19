@@ -187,7 +187,7 @@ function CandidateRow({
                 disabled={busy}
                 onClick={() => setEditing(!editing)}
               >
-                {editing ? "Hide fields" : "Correct details"}
+                {editing ? "Hide fields" : "Edit details"}
               </Button>
             </>
           )}
@@ -271,7 +271,7 @@ export function PipeComponentsDialog({
             disabled={analyzing}
             onClick={onAnalyze}
           >
-            {analyzing ? "Analyzing…" : "Analyze again"}
+            {analyzing ? "Analyzing…" : "Recheck"}
           </Button>
           <Button
             size="icon-sm"

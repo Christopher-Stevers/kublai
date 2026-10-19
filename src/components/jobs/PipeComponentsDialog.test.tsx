@@ -57,7 +57,7 @@ it("retains the candidate on a failed save and retries corrected details", async
     .mockResolvedValueOnce(false)
     .mockResolvedValueOnce(true);
   open(true, confirm);
-  fireEvent.click(screen.getByRole("button", { name: "Correct details" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
   fireEvent.change(screen.getByLabelText("Component name"), {
     target: { value: "Gate valve" },
   });
