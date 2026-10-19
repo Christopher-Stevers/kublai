@@ -68,7 +68,6 @@ export async function equipmentAnnotationPlan(
     const drawing = readSnapshotState(url.hash)?.drawing;
     if (
       drawing?.jobId === jobId &&
-      drawing.sheetId !== origin.id &&
       sheets.some((s) => s.id === drawing.sheetId && s.setId === origin.setId)
     )
       targets.add(drawing.sheetId);
@@ -132,6 +131,21 @@ export async function equipmentAnnotationPlan(
         { x: box.left, y: box.top },
         { x: box.right, y: box.bottom },
       ];
+      // A whole-sheet scan links repeated occurrences on the source page.
+      // Keep its original annotation, rather than generating a copy over it.
+      if (
+        sheetId === entity.sheetId &&
+        sourceSheetId === entity.data.sourceSheetId &&
+        Math.abs(box.left - Math.min(...entity.data.points.map((p) => p.x))) <
+          0.00001 &&
+        Math.abs(box.top - Math.min(...entity.data.points.map((p) => p.y))) <
+          0.00001 &&
+        Math.abs(box.right - Math.max(...entity.data.points.map((p) => p.x))) <
+          0.00001 &&
+        Math.abs(box.bottom - Math.max(...entity.data.points.map((p) => p.y))) <
+          0.00001
+      )
+        continue;
       result.push({
         id: equipmentAnnotationId(entity.id, sheetId, sourceSheetId, points),
         sheetId,

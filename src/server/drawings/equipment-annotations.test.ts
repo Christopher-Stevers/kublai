@@ -10,6 +10,7 @@ import {
   withoutTagHighlight,
 } from "./equipment-annotations";
 import { equipmentDrawingDestination } from "~/lib/equipment-tags";
+import { drawingDestinationLinks } from "~/lib/drawing-links";
 import { readSnapshotState } from "~/lib/snapshot-source";
 import type { DrawingEntity, DrawingJobSheet } from "~/lib/drawing-workspace";
 const id = (n: number) =>
@@ -134,4 +135,42 @@ it("removes old search highlights while retaining the destination viewport", () 
   expect(drawing?.highlight).toBeUndefined();
   expect(drawing?.search).toBe("");
   expect(drawing?.viewport).toEqual(state.drawing!.viewport);
+});
+it("annotates repeated tags on the origin page without duplicating the origin or linking an occurrence to itself", async () => {
+  const second = { ...box, left: 0.6, right: 0.65 };
+  const repeated = equipmentDrawingDestination({
+    jobId: id(10),
+    setId: id(30),
+    sheetId: id(1),
+    sourceSheetId: id(1),
+    name: "M-1",
+    tag: "HEX-2",
+    box: second,
+  });
+  const updated = {
+    ...entity,
+    data: {
+      ...entity.data,
+      points: [
+        { x: box.left, y: box.top },
+        { x: box.right, y: box.bottom },
+      ],
+      links: [{ label: "Other occurrence", url: repeated.href }],
+    },
+  } as DrawingEntity;
+  const plan = await equipmentAnnotationPlan(
+    updated,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(1);
+  expect(plan[0]?.sheetId).toBe(id(1));
+  expect(plan[0]?.points[0]?.x).toBe(0.6);
+  const visible = drawingDestinationLinks({ ...updated.data, ...plan[0]!, type: "link" }, id(1));
+  expect(visible).toHaveLength(1);
+  const target = readSnapshotState(
+    new URL(plan[0]!.links[0]!.url!, "https://test").hash,
+  )?.drawing;
+  expect(target?.viewport.center.x).toBe((box.left + box.right) / 2);
 });

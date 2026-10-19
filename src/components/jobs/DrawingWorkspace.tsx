@@ -11,6 +11,7 @@ import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
 import { useDrawingDestination } from "./DrawingDestinationProvider";
@@ -447,8 +448,10 @@ export function DrawingWorkspace({
     selectTool("pan");
     setSelectedId(null);
   };
+  const [autoHyperlinkOpen, setAutoHyperlinkOpen] = useState(false);
   const openAutoHyperlink = () => {
-    selectTool("link");
+    selectTool("pan");
+    setAutoHyperlinkOpen(true);
     setMoreOpen(false);
     setToolsOpen(false);
     setPanel("");
@@ -1556,7 +1559,7 @@ export function DrawingWorkspace({
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
-      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !writable, run: openAutoHyperlink },
+      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !writable || !online, run: openAutoHyperlink },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
@@ -1591,6 +1594,20 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
+      {autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
+        readWords={async () => {
+          if (words.words.length) return words.words;
+          if (!pdf) return [];
+          const index = await readDrawingText({ ...pdf, url: await resolveAssetUrl(pdf.url) });
+          setWords(index);
+          return index.words;
+        }}
+        save={async value => {
+          const entity = await saveMutation.mutateAsync({ ...value, expectedUserId: data.actor.id });
+          patchEntity(entity);
+          return entity;
+        }}
+        onSaved={() => { void refresh(); }} onClose={() => setAutoHyperlinkOpen(false)} />}
       <Dialog open={wheelStyleOpen} onOpenChange={setWheelStyleOpen}>
         <DialogContent layerClassName="z-[110]">
           <DialogHeader><DialogTitle>Markup style</DialogTitle><DialogDescription>Choose a colour, line width, and fill.</DialogDescription></DialogHeader>
@@ -3335,7 +3352,7 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
-                <DropdownMenuItem className={MENU_ITEM} disabled={!writable} onSelect={openAutoHyperlink}>
+                <DropdownMenuItem className={MENU_ITEM} disabled={!writable || !online} onSelect={openAutoHyperlink}>
                   <MenuTile icon={Link2Icon} />
                   Auto Hyperlink
                 </DropdownMenuItem>
