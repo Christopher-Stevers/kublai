@@ -724,6 +724,15 @@ export function DrawingWorkspace({
     onSaved: patchEntity,
     onError: fail,
   });
+  const hasQueuedEdits = queued.records.length > 0;
+  const queuedBannerScope = `${account?.accountKey ?? ""}:${sheet.id}`;
+  const [queuedBannerReady, setQueuedBannerReady] = useState<string | null>(null);
+  useEffect(() => {
+    setQueuedBannerReady(null);
+    if (!hasQueuedEdits) return;
+    const timer = setTimeout(() => setQueuedBannerReady(queuedBannerScope), 1000);
+    return () => clearTimeout(timer);
+  }, [hasQueuedEdits, queuedBannerScope]);
   const writable =
     current &&
     Boolean(data) &&
@@ -1476,7 +1485,7 @@ export function DrawingWorkspace({
             ))}
           </div>
         )}
-        {queued.records.length > 0 && (
+        {hasQueuedEdits && queuedBannerReady === queuedBannerScope && (
           <div
             aria-label="Offline drawing edits"
             className="max-h-40 space-y-2 overflow-y-auto border-b bg-amber-50 px-3 py-2 text-sm text-amber-950"
