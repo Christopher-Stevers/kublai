@@ -447,6 +447,15 @@ export function DrawingWorkspace({
     selectTool("pan");
     setSelectedId(null);
   };
+  const openAutoHyperlink = () => {
+    selectTool("link");
+    setMoreOpen(false);
+    setToolsOpen(false);
+    setPanel("");
+    setHighlight(null);
+    setSelectedId(null);
+    setCompareIds(null);
+  };
   const [bottomMode, setBottomMode] = useState({
     measuring: false,
     pipe: false,
@@ -1547,6 +1556,7 @@ export function DrawingWorkspace({
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
+      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !writable, run: openAutoHyperlink },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
@@ -3325,6 +3335,10 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
+                <DropdownMenuItem className={MENU_ITEM} disabled={!writable} onSelect={openAutoHyperlink}>
+                  <MenuTile icon={Link2Icon} />
+                  Auto Hyperlink
+                </DropdownMenuItem>
                 {!data.documentSource && (
                   <>
                   <DropdownMenuItem className={MENU_ITEM}
