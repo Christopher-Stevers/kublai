@@ -88,6 +88,7 @@ import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
 import { readDrawingPdfLinks } from "~/lib/drawing-pdf-links";
 import type { DrawingPdfLink } from "~/lib/drawing-text";
 import { useDrawingUnit } from "./useDrawingUnit";
+import { useDrawingKeyboardControls } from "./useDrawingKeyboardControls";
 import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
 import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
 import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
@@ -1355,6 +1356,24 @@ export function DrawingSheetViewer({
       y: clientY - rect.top - rect.height / 2,
     };
   };
+  useDrawingKeyboardControls(frame, Boolean(fit), (key) => {
+    if (pointers.current.size || middlePan.current) return;
+    stopAnimation();
+    if (key === "q" || key === "e") {
+      move(zoomAt(live.current, key === "q" ? 1.15 : 1 / 1.15, { x: 0, y: 0 }));
+    } else {
+      move({
+        ...live.current,
+        x: live.current.x + (key === "a" ? 64 : key === "d" ? -64 : 0),
+        y: live.current.y + (key === "w" ? 64 : key === "s" ? -64 : 0),
+      });
+    }
+    if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
+    wheelSettleTimer.current = setTimeout(() => {
+      wheelSettleTimer.current = null;
+      move(live.current, true);
+    }, 80);
+  });
   const startGesture = () => {
     gesture.current = {
       view: live.current,
@@ -1990,6 +2009,11 @@ export function DrawingSheetViewer({
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <div
         ref={frame}
+        data-drawing-keyboard-surface
+        tabIndex={0}
+        role="region"
+        aria-label={`${alt} viewer`}
+        aria-keyshortcuts="W A S D Q E"
         className={`bg-muted relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.

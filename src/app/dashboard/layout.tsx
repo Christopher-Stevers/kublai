@@ -17,6 +17,7 @@ import { waitForUser } from "~/server/utils/wait-for-user";
 import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBootstrap";
 import { TabAccessGate } from "./_components/TabAccessGate";
 import { DrawingAccountProvider } from "~/components/jobs/DrawingAccountProvider";
+import { AppKeyboardNavigation } from "~/components/app/AppKeyboardNavigation";
 
 export default async function DashboardLayout({
   children,
@@ -79,6 +80,7 @@ export default async function DashboardLayout({
                 <DrawingDestinationProvider>
                   <LandingPageProvider key={effectiveUserId} userId={effectiveUserId} initial={snapshotSourceSchema.safeParse(user.defaultLandingPage).data ?? null}>
                   <div data-app-shell className="bg-canvas flex min-h-screen flex-col">
+                    <AppKeyboardNavigation />
                     <ReplicacheSyncBootstrap
                       userId={effectiveUserId}
                       organizationId={organizationId}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 
@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 function open(initialViewport: DrawingViewport | null, height = 500) {
-  const onViewportChange = vi.fn();
+  const onViewportChange = vi.fn<(viewport: DrawingViewport) => void>();
   const props = {
     src: "/sheet.webp",
     alt: "Sheet",
@@ -33,7 +33,7 @@ function open(initialViewport: DrawingViewport | null, height = 500) {
     onViewportChange,
   };
   const result = render(<DrawingSheetViewer {...props} />);
-  const image = screen.getByAltText("Sheet");
+  const image = within(result.container).getByAltText("Sheet");
   const frame = image.closest<HTMLElement>('[data-drawing-sheet-layer]')!.parentElement!;
   Object.defineProperties(image, {
     naturalWidth: { value: 1000 },
@@ -58,6 +58,82 @@ function open(initialViewport: DrawingViewport | null, height = 500) {
   return { ...result, frame, image, onViewportChange, props };
 }
 const inherited = { center: { x: 0.3, y: 0.75 }, zoom: 2 };
+
+describe("drawing and document keyboard camera controls", () => {
+  it("pans the camera with WASD and zooms about its centre with Q/E", () => {
+    const { onViewportChange } = open(null);
+    fireEvent.keyDown(window, { key: "w" });
+    expect(onViewportChange).toHaveBeenLastCalledWith({
+      center: { x: 0.5, y: 0.5 - 64 / 400 },
+      zoom: 1,
+    });
+    fireEvent.keyDown(window, { key: "a" });
+    expect(onViewportChange).toHaveBeenLastCalledWith({
+      center: { x: 0.5 - 64 / 800, y: 0.5 - 64 / 400 },
+      zoom: 1,
+    });
+    const centre = onViewportChange.mock.lastCall![0].center;
+    fireEvent.keyDown(window, { key: "q" });
+    expect(onViewportChange).toHaveBeenLastCalledWith({
+      center: centre,
+      zoom: 1.15,
+    });
+    fireEvent.keyDown(window, { key: "e" });
+    fireEvent.keyDown(window, { key: "s" });
+    fireEvent.keyDown(window, { key: "d" });
+    expect(onViewportChange).toHaveBeenLastCalledWith({
+      center: { x: 0.5, y: 0.5 },
+      zoom: 1,
+    });
+  });
+  it("supports held keys and enforces existing zoom limits", () => {
+    const { onViewportChange } = open(null);
+    fireEvent.keyDown(window, { key: "q", repeat: true });
+    expect(onViewportChange.mock.lastCall![0].zoom).toBe(1.15);
+    for (let i = 0; i < 60; i++)
+      fireEvent.keyDown(window, { key: "q", repeat: true });
+    expect(onViewportChange.mock.lastCall![0].zoom).toBe(50);
+    for (let i = 0; i < 60; i++)
+      fireEvent.keyDown(window, { key: "e", repeat: true });
+    expect(onViewportChange.mock.lastCall![0].zoom).toBe(1);
+  });
+  it("does not move sheets while typing, composing or using modifier shortcuts", () => {
+    const { frame, onViewportChange } = open(null);
+    const input = document.createElement("input");
+    frame.append(input);
+    onViewportChange.mockClear();
+    fireEvent.keyDown(input, { key: "w" });
+    fireEvent.keyDown(window, { key: "q", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "a", isComposing: true });
+    expect(onViewportChange).not.toHaveBeenCalled();
+  });
+  it("moves only the focused viewer and restores the remaining viewer on unmount", () => {
+    const first = open(null),
+      second = open(null);
+    first.onViewportChange.mockClear();
+    second.onViewportChange.mockClear();
+    first.frame.focus();
+    fireEvent.keyDown(window, { key: "w" });
+    expect(first.onViewportChange).toHaveBeenCalledOnce();
+    expect(second.onViewportChange).not.toHaveBeenCalled();
+    second.frame.focus();
+    fireEvent.keyDown(window, { key: "a" });
+    expect(second.onViewportChange).toHaveBeenCalledOnce();
+    second.unmount();
+    fireEvent.keyDown(window, { key: "s" });
+    expect(first.onViewportChange).toHaveBeenCalledTimes(2);
+  });
+  it("leaves a background sheet alone while a dialog is open", () => {
+    const { onViewportChange } = open(null);
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    document.body.append(modal);
+    onViewportChange.mockClear();
+    fireEvent.keyDown(window, { key: "q" });
+    expect(onViewportChange).not.toHaveBeenCalled();
+    modal.remove();
+  });
+});
 
 describe("drawing viewport navigation", () => {
   it.each([
