@@ -314,7 +314,7 @@ export function SuperScaleDialog({
         </DialogHeader>
         {!metadata.scale ? (
           <p className="text-sm">
-            First calibrate this drawing with Measure → Set Scale, then reopen
+            First calibrate this drawing with Measure → Custom Scale, then reopen
             Super scale.
           </p>
         ) : (

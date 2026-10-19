@@ -474,13 +474,13 @@ function Tracing({
         <Button
           type="button"
           variant="ghost"
-          className={MEASURE_TILE}
-          aria-label="Set Scale"
+          className={`${MEASURE_TILE} text-center whitespace-normal`}
+          aria-label="Custom Scale"
           disabled={(reading ?? false) || !canSetScale}
           onClick={onStartScale}
         >
           <RulerIcon aria-hidden="true" />
-          Scale
+          Custom Scale
         </Button>
         {layerControl}
         <MeasureColorPicker color={color} onColor={onColor} />
