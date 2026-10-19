@@ -1,4 +1,5 @@
 "use client";
+import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { DrawingPageModeSetting } from "./DrawingPageMode";
@@ -180,7 +181,7 @@ type Panel =
 export const panels: Array<[Panel, string]> = [
   ["notifications", "Drawing notifications"],
   ["impacts", "Needs review · revision impacts"],
-  ["markups", "Markups / layers"],
+  ["markups", "Layers"],
   ["issues", "Issues / RFIs"],
   ["search", "Find text / PDF links"],
   ["views", "Saved views"],
@@ -697,6 +698,7 @@ export function DrawingWorkspace({
   const saveMutation = api.drawingsWorkspace.save.useMutation();
   const archiveMutation = api.drawingsWorkspace.archive.useMutation();
   const commentMutation = api.drawingsWorkspace.comment.useMutation();
+  const addMeasurementLayer = api.drawingsWorkspace.addMeasurementLayer.useMutation();
   const metadataMutation = api.drawingsWorkspace.metadata.useMutation();
   const versionMutation = api.drawingsWorkspace.setCurrentVersion.useMutation();
   const favoriteMutation = api.drawingsWorkspace.favorite.useMutation();
@@ -1225,12 +1227,13 @@ export function DrawingWorkspace({
   const measurementLayers = [
     ...new Set([
       "General",
+      ...(data?.metadata.measurementLayers ?? []),
       ...entities.flatMap((entity) =>
         entity.kind === "markup" &&
         entity.data.type === "dimension" &&
         sourceOf(entity) === sourceId &&
         entity.visibility !== "archived"
-          ? [entity.data.layer ?? "General"]
+          ? measurementLayerNames(entity.data)
           : [],
       ),
     ]),
@@ -1244,7 +1247,7 @@ export function DrawingWorkspace({
           !(
             entity.kind === "markup" &&
             entity.data.type === "dimension" &&
-            hiddenMeasurementLayers.includes(entity.data.layer ?? "General")
+            !measurementLayerVisible(entity.data, hiddenMeasurementLayers)
           ) &&
           (entity.kind === "markup"
             ? layers.markups
@@ -1686,6 +1689,11 @@ export function DrawingWorkspace({
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
               measurementLayers={measurementLayers}
+              onAddMeasurementLayer={async (name) => {
+                if (!online || !writable) throw new Error("Connect to save a new layer.");
+                await addMeasurementLayer.mutateAsync({sheetId: sheet.id, name});
+                await refresh();
+              }}
               editMeasurementRequest={measurementEdit}
               tool={writable ? tool : "pan"}
               style={style}
@@ -2219,7 +2227,7 @@ export function DrawingWorkspace({
                               )
                             }
                           />
-                          {name} measurements
+                          {name}
                         </label>
                       ))}
                       {Object.entries(layers).map(([key, value]) => (

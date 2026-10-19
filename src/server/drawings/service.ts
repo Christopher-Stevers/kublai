@@ -1678,3 +1678,16 @@ async function revisionImpactFlags(
   }
   return impacts.length;
 }
+
+/** Layer names survive even when the creating measurement is cancelled or removed. */
+export async function addDrawingMeasurementLayer(ctx: DrawingContext, input: {sheetId: string; name: string}) {
+  return withSheet(ctx, input.sheetId, async (tx, access) => {
+    const current = await sheetMetadata(tx, input.sheetId);
+    const names = [...new Set([...(current.measurementLayers ?? []), input.name])];
+    if (names.length > 100) throw new TRPCError({code:"BAD_REQUEST",message:"This sheet has reached its layer limit."});
+    const data = {...current, measurementLayers: names, revision: current.revision + 1};
+    await writeMetadata(tx,input.sheetId,data);
+    await record(tx,input.sheetId,access.actor,"metadata_updated",null);
+    return data;
+  });
+}

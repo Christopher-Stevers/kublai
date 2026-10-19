@@ -1,4 +1,6 @@
 "use client";
+import { useMeasurementLayers } from "./useMeasurementLayers";
+import { measurementLayerNames } from "~/lib/measurement-layers";
 import { DrawingMeasureNode } from "./DrawingMeasureNode";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
@@ -371,7 +373,7 @@ export function DrawingSheetViewer({
       : annotations;
   }, [editorProps.annotations, measuring, measureSource, editingTextId]);
   const path = trace.map(({ point }) => point);
-  const [measurementLayer, setMeasurementLayer] = useState("General");
+  const [measurementLayer, setMeasurementLayer] = useMeasurementLayers(sheetKey);
   const [calNodes, updateCalNodes] = useState<MeasureNode[]>([]);
   const [calFuture, setCalFuture] = useState<MeasureNode[][]>([]);
   const setCalNodes = (next: React.SetStateAction<MeasureNode[]>) => {
@@ -1848,7 +1850,8 @@ export function DrawingSheetViewer({
           ...(measureSource?.data ?? {}),
           sourceSheetId,
           type: "dimension",
-          layer: measurementLayer,
+          layer: measurementLayer[0] ?? "General",
+          layers: measurementLayer,
           points: trace.map((node) => ({ ...node.point })),
           parents: trace.map((node) => node.parent),
           angleReferences: savedMeasureReferences(trace),
@@ -1895,7 +1898,7 @@ export function DrawingSheetViewer({
     setCalNodes([]);
     setMeasuring(true);
     setMeasureSource({ id: entity.id, revision: entity.revision, data });
-    setMeasurementLayer(data.layer ?? "General");
+    setMeasurementLayer(measurementLayerNames(data));
     setRunScaleOverride(null);
     setMeasureColor(data.stroke);
     if (!personalUnit) setUnit(data.unit === "cm" ? "m" : (data.unit ?? sheetScale?.unit ?? "ft"));
@@ -2461,7 +2464,7 @@ export function DrawingSheetViewer({
               if (selected) {
                 if (selected.source) {
                   setMeasureSource(selected.source);
-                  setMeasurementLayer(selected.source.data.layer ?? "General");
+                  setMeasurementLayer(measurementLayerNames(selected.source.data));
                   setRunScaleOverride(null);
                   setMeasureColor(selected.source.data.stroke);
                   if (!personalUnit) setUnit(
@@ -2971,6 +2974,7 @@ export function DrawingSheetViewer({
         measurementLayer={measurementLayer}
         measurementLayers={editorProps.measurementLayers ?? []}
         onMeasurementLayer={setMeasurementLayer}
+        onAddMeasurementLayer={editorProps.onAddMeasurementLayer}
         hideIdle={Boolean(toolControls)}
         pipeControl={
           <Button

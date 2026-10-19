@@ -32,6 +32,7 @@ vi.mock("~/server/drawings/revision-evidence", () => ({
   revisionEvidence: vi.fn(async () => ({ scale: null, linework: null })),
 }));
 import {
+  addDrawingMeasurementLayer,
   applyDrawingRevisionUpload,
   reviewDrawingRevisionUpload,
 } from "./service";
@@ -161,6 +162,16 @@ describe.skipIf(!socket)(
     });
     afterAll(async () => {
       await conn.end();
+    });
+    it("persists named layers independently of measurements without losing sheet metadata", async () => {
+      await addDrawingMeasurementLayer(ctx,{sheetId:old,name:"Plumbing"});
+      await addDrawingMeasurementLayer(ctx,{sheetId:old,name:"Cold water"});
+      await addDrawingMeasurementLayer(ctx,{sheetId:old,name:"Plumbing"});
+      const [row] = await db.select().from(metadata).where(eq(metadata.sheetId,old));
+      expect(row?.data.measurementLayers).toEqual(["Plumbing","Cold water"]);
+      expect(row?.data.scale).toEqual({unit:"m",unitsPerSheetWidth:100});
+      expect(await db.select().from(entities)).toHaveLength(0);
+      await expect(addDrawingMeasurementLayer({...ctx,userId:"outsider"},{sheetId:old,name:"No"})).rejects.toThrow();
     });
     it("proposes matches without changing current drawings and confirms revisions/new sheets together", async () => {
       const review = await reviewDrawingRevisionUpload(ctx, uploadSet);

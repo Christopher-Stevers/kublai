@@ -65,6 +65,7 @@ vi.mock("~/trpc/react", () => ({
     }),
     drawingsWorkspace: {
       personalScale: { useQuery: () => ({ data: mocks.personal }) },
+      addMeasurementLayer: { useMutation: () => ({ mutateAsync: vi.fn(async () => undefined) }) },
       setPersonalScale: { useMutation: () => ({ mutateAsync: mocks.savePersonal }) },
       linkTargets: {
         useQuery: () => ({

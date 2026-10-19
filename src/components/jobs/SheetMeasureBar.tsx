@@ -34,8 +34,9 @@ export const MEASURE_TILE =
  * Pointer events stop here so a tap on a button is not another point on the sheet.
  */
 export function SheetMeasureBar({
-  measurementLayer = "General",
+  measurementLayer = ["General"],
   measurementLayers = [],
+  onAddMeasurementLayer,
   onMeasurementLayer,
   measuring,
   calibrating,
@@ -73,9 +74,10 @@ export function SheetMeasureBar({
   gapMessage,
   onGap,
 }: {
-  measurementLayer?: string;
+  measurementLayer?: string[];
   measurementLayers?: string[];
-  onMeasurementLayer?: (layer: string) => void;
+  onAddMeasurementLayer?: (name: string) => Promise<void>;
+  onMeasurementLayer?: (layer: string[]) => void;
   measuring: boolean;
   calibrating: boolean;
   pointCount: number;
@@ -181,6 +183,7 @@ export function SheetMeasureBar({
                     value={measurementLayer}
                     layers={measurementLayers}
                     onChange={onMeasurementLayer}
+                    onAdd={onAddMeasurementLayer}
                   />
                 ) : null
               }

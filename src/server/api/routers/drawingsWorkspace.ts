@@ -11,6 +11,7 @@ import {
 } from "~/lib/drawing-workspace";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import {
+  addDrawingMeasurementLayer,
   reviewDrawingRevisionUpload,
   applyDrawingRevisionUpload,
   archiveDrawingEntity,
@@ -37,6 +38,7 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  addMeasurementLayer: hasDashboardAccess.input(z.object({sheetId, name:z.string().trim().min(1).max(80)})).mutation(({ctx,input})=>addDrawingMeasurementLayer(ctx,input)),
   personalScale: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input}) => personalDrawingScale(ctx,input.sheetId)),
   setPersonalScale: hasDashboardAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => savePersonalDrawingScale(ctx,input.sheetId,input.scale)),
   superScaleLatest: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),

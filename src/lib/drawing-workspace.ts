@@ -66,6 +66,7 @@ export const drawingMarkupSchema = z
     sourceSheetId: id,
     type: drawingMarkupTypeSchema,
     layer: z.string().trim().min(1).max(80).optional(),
+    layers: z.array(z.string().trim().min(1).max(80)).min(1).max(30).optional(),
     points: z.array(drawingPointSchema).min(1).max(4000),
     /** Saved measuring runs can branch; null starts a disconnected run. */
     parents: z
@@ -342,6 +343,7 @@ export type DrawingEntity = EntityBase &
     | { kind: "transmittal"; data: z.infer<typeof drawingTransmittalSchema> }
   );
 export const drawingMetadataSchema = z.object({
+  measurementLayers: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
   number: shortText.default(""),
   title: shortText.default(""),
   discipline: shortText.default(""),

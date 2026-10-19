@@ -8,6 +8,7 @@ import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, si
 export type DrawingEditorProps = {
   annotations?: DrawingEntity[];
   measurementLayers?: string[];
+  onAddMeasurementLayer?: (name: string) => Promise<void>;
   sourceSheetId?: string;
   tool?: DrawingTool;
   style?: DrawingStyle;
