@@ -8,7 +8,6 @@ import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useSnapshot } from "~/components/chat/SnapshotProvider";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
 import { useDrawingDestination } from "./DrawingDestinationProvider";
@@ -42,7 +41,6 @@ import {
   ActivityIcon,
   BellIcon,
   BookmarkIcon,
-  CameraIcon,
   CircleAlertIcon,
   DownloadIcon,
   FileTextIcon,
@@ -126,7 +124,6 @@ import { useDrawingAppearance } from "./useDrawingAppearance";
 import { useDrawingMarkupVisibility } from "./useDrawingMarkupVisibility";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { DrawingCompare } from "./DrawingCompare";
-import { SheetOfflineButton } from "./SheetOfflineButton";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -386,7 +383,6 @@ export function DrawingWorkspace({
   const router = useRouter();
   const sourceRegistry = useContext(SnapshotSourceContext);
   const [equipmentBusy, setEquipmentBusy] = useState(false);
-  const snapshotTool = useSnapshot();
   const destinationPicker = useDrawingDestination();
   const [entrySnapshot] = useState(() => initialSnapshot === undefined ? currentSnapshotState() : initialSnapshot);
   const entryDrawing =
@@ -1452,7 +1448,7 @@ export function DrawingWorkspace({
         </DialogContent>
       </Dialog>
       {superScaleOpen && (
-        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
+        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
       {appearanceOpen && (
         <DrawingAppearanceDialog
@@ -3217,13 +3213,6 @@ export function DrawingWorkspace({
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   className={MENU_ITEM}
-                  onSelect={() => snapshotTool?.start()}
-                >
-                  <MenuTile icon={CameraIcon} />
-                  Snapshot
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={MENU_ITEM}
                   onSelect={() =>
                     setNavigate({
                       center: { x: 0.5, y: 0.5 },
@@ -3257,14 +3246,10 @@ export function DrawingWorkspace({
                 {!data.documentSource && (
                   <>
                   <DropdownMenuItem className={MENU_ITEM}
-                    disabled={!data.canManage || !online || !writable || !current || metadataDirty || pending > 0}
-                    onSelect={() => { setMoreOpen(false); setCompareIds(null); setSuperScalePrompt(true); }}>
+                    disabled={!data.canManage || !online}
+                    onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>
                     <MenuTile icon={RulerIcon} />
                     Super scale
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canManage || !online} onSelect={() => {setMoreOpen(false);setSuperScaleOpen(true);}}>
-                    <MenuTile icon={RulerIcon} />
-                    Super scale results
                   </DropdownMenuItem>
                   </>
                 )}
@@ -3275,12 +3260,6 @@ export function DrawingWorkspace({
                     Use shared scale
                   </DropdownMenuItem>
                 )}
-                <div className="px-2 py-2">
-                  <SheetOfflineButton sheet={source} workspaceSheetId={sheet.id} prepare={async () => {
-                    await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
-                    await onPrepareOffline?.();
-                  }} />
-                </div>
                 {onDocumentDetails && (
                   <DropdownMenuItem
                     className={MENU_ITEM}
@@ -3298,7 +3277,7 @@ export function DrawingWorkspace({
                 )}
                 {panels
                   .filter(
-                    ([id]) => !data.documentSource || id !== "notifications",
+                    ([id]) => id !== "files" && (!data.documentSource || id !== "notifications"),
                   )
                   .map(([id, label]) => (
                     <DropdownMenuItem

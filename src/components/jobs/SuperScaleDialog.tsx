@@ -87,6 +87,7 @@ export function SuperScaleDialog({
   metadata,
   onClose,
   onSaved,
+  onCalibrate,
 }: {
   jobId: string;
   source: DrawingJobSheet;
@@ -95,6 +96,7 @@ export function SuperScaleDialog({
   sheets: DrawingJobSheet[];
   onClose: () => void;
   onSaved: () => void;
+  onCalibrate?: () => void;
 }) {
   const [unit, , personalUnit] = useDrawingUnit();
   const utils = api.useUtils();
@@ -312,10 +314,12 @@ export function SuperScaleDialog({
             on other drawings in this job.
           </DialogDescription>
         </DialogHeader>
+        {onCalibrate && <Button variant="outline" disabled={saving || !!busy && ["queued", "running"].includes(latest.data?.status ?? "")} onClick={onCalibrate}>
+          {metadata.scale ? "Start new Super scale" : "Set reference scale"}
+        </Button>}
         {!metadata.scale ? (
           <p className="text-sm">
-            First calibrate this drawing with Measure → Custom Scale, then reopen
-            Super scale.
+            Set the reference scale to begin. Existing results and running scans appear here.
           </p>
         ) : (
           <>

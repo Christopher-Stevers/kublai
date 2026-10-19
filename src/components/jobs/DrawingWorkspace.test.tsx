@@ -137,7 +137,7 @@ vi.mock("./DrawingCompare", () => ({
     </div>
   ),
 }));
-vi.mock("./SuperScaleDialog", () => ({ SuperScaleDialog: () => <div>Super scale grid matching</div> }));
+vi.mock("./SuperScaleDialog", () => ({ SuperScaleDialog: ({onCalibrate}: {onCalibrate?:()=>void}) => <div>Super scale grid matching<button onClick={onCalibrate}>Start new Super scale</button></div> }));
 vi.mock("./DrawingSheetViewer", () => ({
   DrawingSheetViewer: (props: ComponentProps<typeof DrawingSheetViewer>) => {
     mocks.viewer(props);
@@ -435,6 +435,7 @@ describe("drawing workspace workflows", () => {
     const start = () => {
       openMenu("More");
       fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+      fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
       expect(screen.getByRole("heading", { name: "Super scale — set scale first" })).toBeInTheDocument();
       expect(screen.queryByText("Super scale grid matching")).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
@@ -454,6 +455,12 @@ describe("drawing workspace workflows", () => {
     open();
     openMenu("More");
     expect(screen.getByRole("menuitem", { name: "Super scale" })).toBeInTheDocument();
+    for (const name of ["Super scale results", "Snapshot", "Download / offline", "Available offline"]) {
+      expect(screen.queryByRole("menuitem", {name})).toBeNull();
+      expect(screen.queryByRole("button", {name})).toBeNull();
+    }
+    fireEvent.click(screen.getByRole("menuitem", {name:"Super scale"}));
+    expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
   });
 
   it("opens the employee's drawing tools with a simulation-scoped cache", () => {
@@ -1364,6 +1371,7 @@ describe("drawing workspace workflows", () => {
     );
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+      fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
     await waitFor(() => expect(mocks.metadata).toHaveBeenCalledOnce());
@@ -1388,6 +1396,7 @@ describe("drawing workspace workflows", () => {
     );
     openMenu("More");
     fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+      fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
     await waitFor(() => expect(mocks.scaleResult).toHaveBeenCalledWith(false));
