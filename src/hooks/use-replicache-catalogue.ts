@@ -41,6 +41,8 @@ export interface ReplicacheCatalogueUnit {
 }
 
 export interface ReplicacheCataloguePart {
+  /** Optional until an older local catalogue has synced. */
+  aliases?: string[];
   id: string;
   displayName: string;
   description: string | null;

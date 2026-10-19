@@ -406,18 +406,19 @@ async function syncPartAliases(
 ) {
   const normalizedAliases = normalizeAliases(aliases);
 
-  await database
-    .delete(partSynonyms)
-    .where(eq(partSynonyms.partDefinitionId, partDefinitionId));
-
-  if (normalizedAliases.length > 0) {
-    await database.insert(partSynonyms).values(
-      normalizedAliases.map((synonym) => ({
-        partDefinitionId,
-        synonym,
-      })),
-    );
-  }
+  await database.transaction(async (tx) => {
+    await tx.delete(partSynonyms)
+      .where(eq(partSynonyms.partDefinitionId, partDefinitionId));
+    if (normalizedAliases.length > 0) {
+      await tx.insert(partSynonyms).values(
+        normalizedAliases.map((synonym) => ({ partDefinitionId, synonym })),
+      );
+    }
+    // The parent's revision trigger invalidates cached catalogue snapshots.
+    // Commit it with the aliases so a pull cannot cache an incomplete update.
+    await tx.update(partDefinitions).set({ displayName: sql`${partDefinitions.displayName}` })
+      .where(eq(partDefinitions.id, partDefinitionId));
+  });
 }
 
 function publishCatalogueChange(organizationId: string | null | undefined) {

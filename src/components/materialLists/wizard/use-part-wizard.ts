@@ -22,6 +22,7 @@ import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 
 type PreloadedPart = {
+  aliases?: string[];
   piecesPerPack?: number | null;
   bulkUnit?: string | null;
   individualUnit?: string | null;
@@ -224,7 +225,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     : isOnline
       ? serverSummary?.parts
       : undefined;
-  const filterSelectionParts = useCallback((parts: PreloadedPart[]) => {
+  const filterSelectionParts = useCallback((parts: PreloadedPart[], searchLocally = true) => {
     const query = deferredWizardSearchQuery.trim().toLowerCase();
     return parts.filter((part) => {
       const searchableText = [
@@ -233,12 +234,13 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
         part.material,
         part.size,
         part.sizeLabel,
+        ...(part.aliases ?? []),
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
-      if (query && !supplierId && !searchableText.includes(query)) {
+      if (searchLocally && query && !supplierId && !searchableText.includes(query)) {
         return false;
       }
 
@@ -312,6 +314,8 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
           ? serverAllowedCatalogIds.has(part.catalogId)
           : catalogKind === "materials",
       ),
+      // The server already matched names, descriptions, aliases and supplier fields.
+      false,
     );
   }, [filterSelectionParts, serverSelectionParts, serverAllowedCatalogIds, catalogKind]);
 
@@ -489,7 +493,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     }, { catalogs: catalogs ?? [], materials: materials ?? [], categories: categoryTree ?? [], parts: summaryParts });
     if (!next || next.preview.kind === "wheel") return next?.preview;
     const selection = next.selection;
-    const parts = hasReplicacheCatalogue ? replicacheCatalogue.parts.filter(part => matchesPreviewSelection(part, selection)) : isOnline ? await utils.catalogue.searchParts.fetch({
+    const parts: PreloadedPart[] = hasReplicacheCatalogue ? replicacheCatalogue.parts.filter(part => matchesPreviewSelection(part, selection)) : isOnline ? await utils.catalogue.searchParts.fetch({
       query: undefined, supplierId,
       catalogId: selection.catalogId ?? undefined,
       materialId: selection.materialId ?? undefined,

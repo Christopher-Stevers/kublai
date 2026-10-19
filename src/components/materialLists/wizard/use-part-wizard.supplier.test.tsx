@@ -2,11 +2,11 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { usePartWizard } from "./use-part-wizard";
 const fixtures = vi.hoisted(() => {
- const part={id:"part",displayName:"Shared clip",description:null,imageUrl:null,material:"PEX",materialId:"material",size:"1/2 in",sizeLabel:null,sizeNominal:"0.5",sizeUnit:"in",catalogId:"catalog",categoryId:"category",isOrgSpecific:true};
+ const part={aliases:["pipe hanger", "Tube Strap"],id:"part",displayName:"Shared clip",description:null,imageUrl:null,material:"PEX",materialId:"material",size:"1/2 in",sizeLabel:null,sizeNominal:"0.5",sizeUnit:"in",catalogId:"catalog",categoryId:"category",isOrgSpecific:true};
  const metadata={catalogs:[{id:"catalog",name:"Plumbing",kind:"materials",sortOrder:0}],materials:[{id:"material",name:"PEX"}],categories:[{id:"category",name:"Clamps",sortOrder:0}],allUnits:[]};
- return { part, summary:{...metadata,parts:[{...part,count:1}]}, cache:{...metadata,parts:[{...part,id:"wrong-supplier",displayName:"Cached outsider"}]}, fetch:vi.fn(), summaryQuery:vi.fn(), searchQuery:vi.fn() };
+ return { online:true, part, summary:{...metadata,parts:[{...part,count:1}]}, cache:{...metadata,parts:[{...part,id:"wrong-supplier",displayName:"Cached outsider"}]}, fetch:vi.fn(), summaryQuery:vi.fn(), searchQuery:vi.fn() };
 });
-vi.mock("~/hooks/use-online-status",()=>({useOnlineStatus:()=>true}));
+vi.mock("~/hooks/use-online-status",()=>({useOnlineStatus:()=>fixtures.online}));
 vi.mock("~/components/tutorial/tutorial-sandbox-context",()=>({useTutorialSandbox:()=>false}));
 vi.mock("~/hooks/use-replicache-catalogue",()=>({useReplicacheCatalogue:()=>fixtures.cache}));
 vi.mock("~/lib/replicache-catalogue",()=>({requestCatalogueReplicachePull:vi.fn()}));
@@ -58,4 +58,26 @@ it("offers tools beside material catalogues when the shared picker enables them"
   const { result } = renderHook(() => usePartWizard(true, undefined, undefined, "materials", undefined, true));
   expect(result.current.catalogsWithCounts.map(catalog => catalog.id)).toContain("tools");
  } finally { fixtures.cache.catalogs.splice(0, fixtures.cache.catalogs.length, ...original); fixtures.cache.parts.pop(); }
+});
+
+it.each([true, false])("finds cached parts by aliases with online=%s, including partial and case-insensitive matches", async (online) => {
+ fixtures.online = online;
+ try {
+  const {result} = renderHook(() => usePartWizard());
+  for (const query of ["HANGER", "tube str", "cached", "PEX"]) {
+   act(() => result.current.setWizardSearchQuery(query));
+   await waitFor(() => expect(result.current.filteredPartsForSelection.map(p => p.id)).toEqual(["wrong-supplier"]));
+  }
+  act(() => result.current.setWizardSearchQuery("unknown alias"));
+  await waitFor(() => expect(result.current.filteredPartsForSelection).toEqual([]));
+ } finally { fixtures.online = true; }
+});
+it("keeps alias matches returned by the server when the local catalogue is empty", async () => {
+ const parts = fixtures.cache.parts.splice(0);
+ try {
+  const {result} = renderHook(() => usePartWizard());
+  act(() => result.current.setWizardSearchQuery("pipe hanger"));
+  await waitFor(() => expect(result.current.filteredPartsForSelection.map(p => p.id)).toEqual(["part"]));
+  expect(fixtures.searchQuery).toHaveBeenCalledWith(expect.objectContaining({query:"pipe hanger"}),expect.objectContaining({enabled:true}));
+ } finally { fixtures.cache.parts.push(...parts); }
 });

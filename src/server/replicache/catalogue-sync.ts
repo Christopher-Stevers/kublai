@@ -13,6 +13,7 @@ import {
   categories,
   materials,
   partDefinitions,
+  partSynonyms,
   sizes,
   units,
 } from "~/server/db/schema";
@@ -40,7 +41,7 @@ export async function handleCatalogueReplicachePull(
   }
 
   return pullSnapshot("catalogue", request, user, async (tx) => {
-      const [catalogRows, materialRows, categoryRows, unitRows, partRows] =
+      const [catalogRows, materialRows, categoryRows, unitRows, partRows, aliasRows] =
         await Promise.all([
           tx
             .select({
@@ -115,7 +116,19 @@ export async function handleCatalogueReplicachePull(
               asc(partDefinitions.displayName),
               asc(partDefinitions.id),
             ),
+          tx.select({ partDefinitionId: partSynonyms.partDefinitionId, synonym: partSynonyms.synonym })
+            .from(partSynonyms)
+            .innerJoin(partDefinitions, eq(partSynonyms.partDefinitionId, partDefinitions.id))
+            .where(and(eq(partDefinitions.organizationId, organizationId), eq(partDefinitions.isActive, true)))
+            .orderBy(asc(partSynonyms.synonym)),
         ]);
+
+      const aliasesByPart = new Map<string, string[]>();
+      for (const alias of aliasRows) {
+        const aliases = aliasesByPart.get(alias.partDefinitionId) ?? [];
+        aliases.push(alias.synonym);
+        aliasesByPart.set(alias.partDefinitionId, aliases);
+      }
 
       const patch: PatchOperation[] = [{ op: "clear" }];
 
@@ -158,6 +171,7 @@ export async function handleCatalogueReplicachePull(
           value: {
             id: part.id,
             displayName: part.displayName,
+            aliases: aliasesByPart.get(part.id) ?? [],
             piecesPerPack: part.piecesPerPack,
             bulkUnit: part.bulkUnit,
             individualUnit: part.individualUnit,
