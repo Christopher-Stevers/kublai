@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, DownloadIcon, Loader2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CloudCheckIcon,
+  CloudDownloadIcon,
+  DownloadIcon,
+  Loader2Icon,
+} from "lucide-react";
 import { collectDrawingOfflineUrls } from "~/lib/drawing-offline";
 import { warmDrawingPdfRuntime } from "~/lib/drawing-pdf-offline-runtime";
 import { useSheetOfflineStatus } from "./useSheetOfflineStatus";
@@ -97,7 +103,7 @@ export function SheetOfflineButton({
         type="button"
         className={
           iconOnly
-            ? `flex size-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${saved && !progress ? "bg-green-600 text-white hover:bg-green-700" : "hover:bg-accent hover:text-accent-foreground"}`
+            ? `hover:bg-accent flex size-8 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${saved && !progress ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground hover:text-foreground"}`
             : "bg-background flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs disabled:opacity-50"
         }
         disabled={!store}
@@ -117,6 +123,12 @@ export function SheetOfflineButton({
       >
         {progress ? (
           <Loader2Icon className="size-4 shrink-0 animate-spin" />
+        ) : iconOnly ? (
+          saved ? (
+            <CloudCheckIcon className="size-4 shrink-0" />
+          ) : (
+            <CloudDownloadIcon className="size-4 shrink-0" />
+          )
         ) : saved ? (
           <CheckIcon className="size-4 shrink-0" />
         ) : (

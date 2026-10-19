@@ -651,10 +651,17 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             if (file) void upload(file);
           }}
         />
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <h2 className="text-foreground min-w-0 truncate text-xl font-semibold">
-            {setData?.set.name ?? "Drawings"}
-          </h2>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-foreground truncate text-xl font-semibold sm:text-2xl">
+              {setData?.set.name ?? "Drawings"}
+            </h2>
+            {sheets.length > 0 && (
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}
+              </p>
+            )}
+          </div>
           {/* Same grid/list switch, in the same place, as material lists. */}
           <ViewToggle
             view={listView ? "table" : "grid"}
@@ -753,9 +760,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                       : "bg-muted aspect-[4/3] w-full border-b object-contain"
                   }
                 />
-                <div className={`flex min-w-0 flex-1 items-center gap-1 py-2 ${listView ? "pl-3 pr-14" : "px-3"}`}>
+                <div className={`flex min-w-0 flex-1 items-center gap-0 py-2 ${listView ? "pl-3 pr-14" : "pr-1.5 pl-3"}`}>
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
+                    <span className="block truncate text-sm font-semibold">
                       {nonempty(
                         bySheet.get(item.id)?.metadata.number,
                         item.name,
@@ -768,6 +775,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="text-muted-foreground hover:text-foreground size-8 shrink-0 rounded-full"
                     disabled={!setSnapshot.online || favorite.isPending}
                     aria-label={`${bySheet.get(item.id)?.favorite ? "Unfavorite" : "Favorite"} ${item.name}`}
                     onClick={(event) => {
@@ -798,7 +806,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="bg-background/95 text-foreground absolute top-2 right-2 z-10 size-9 shrink-0 rounded-full border shadow-sm hover:bg-accent"
+                          className="bg-background/75 text-foreground hover:bg-background absolute top-2 right-2 z-10 size-8 shrink-0 rounded-full shadow-sm backdrop-blur-sm"
                           aria-label={`More actions for ${item.name}`}
                           onClick={(event) => event.stopPropagation()}
                         >
