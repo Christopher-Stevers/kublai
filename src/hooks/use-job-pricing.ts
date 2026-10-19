@@ -31,6 +31,7 @@ export function jobPriceStatus(
 ) {
   if (!book?.policy?.active) return undefined;
   const entry = findJobPrice(book.entries, partId, supplierId, supplierPartId);
+  if(entry?.preferJobPricing===false)return undefined;
   return !entry
     ? "unlisted"
     : entry.priceStatus === "confirmed"

@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { SupplierEmailPreferenceItem } from "./SupplierEmailPreferenceItem";
 import { SupplierFormDialog } from "./SupplierFormDialog";
+import { SupplierJobPricingToggle } from "./SupplierJobPricingToggle";
 import { SupplierJobPricingDialog } from "./SupplierJobPricingDialog";
 import { SupplierPriceBooksDialog } from "./SupplierPriceBooksDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
@@ -48,6 +49,13 @@ export function SupplierList() {
   const canDeleteCoreRecords =
     userData?.permissions.can["suppliers.delete"] ?? true;
   const suppliers = useReplicacheSuppliers();
+  const [pricingError,setPricingError]=useState<string|null>(null);
+  const utils=api.useUtils();
+  const pricingPreferences=api.supplierPriceBooks.preferences.useQuery(undefined,{enabled:isBrowserOnline});
+  const setPricingPreference=api.supplierPriceBooks.setPreference.useMutation({
+    onSuccess:async()=>{setPricingError(null);await Promise.all([utils.supplierPriceBooks.invalidate(),utils.jobPricing.invalidate(),utils.materialList.previewOrders.invalidate()]);},
+    onError:e=>setPricingError(e.message),
+  });
 
   const handleDelete = async (id: string, name: string) => {
     if (!canDeleteCoreRecords) return;
@@ -120,6 +128,7 @@ export function SupplierList() {
         }
       />
 
+      {pricingError&&<p role="alert" className="text-destructive">{pricingError}</p>}
       <div className="rounded-lg border bg-card">
         <div className="divide-y">
           {suppliers.map((supplier) => {
@@ -166,6 +175,7 @@ export function SupplierList() {
                   )}
                 </div>
                 <div className="ml-auto flex flex-wrap shrink-0 items-center gap-2">
+                  <SupplierJobPricingToggle checked={pricingPreferences.data?.rows.find(p=>p.supplierId===supplier.id)?.preferJobPricing??true} disabled={!isBrowserOnline||!pricingPreferences.data?.canManage||pricingPreferences.isError||setPricingPreference.isPending} onChange={preferJobPricing=>{setPricingError(null);setPricingPreference.mutate({supplierId:supplier.id,preferJobPricing});}}/>
                   <Button variant="outline" size="sm" className="h-11" onClick={()=>setJobPricingSupplierId(supplier.id)}>Set Job Pricing</Button>
                   <Button variant="outline" size="sm" className="h-11" onClick={()=>setPriceBooksSupplierId(supplier.id)}>View Price Books</Button>
                   <Button

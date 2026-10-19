@@ -14,6 +14,7 @@ import {
   pricingJobs as jobs,
 } from "~/server/job-pricing-schema";
 import {
+  refreshSupplierPricingPreference,
   lockPriceBooks,
   syncPriceBook,
   syncSupplierJobBook,
@@ -55,6 +56,34 @@ function notify(lists: { id: string }[], org: string) {
 }
 const supplierInput = z.object({ supplierId: z.string().uuid() });
 export const supplierPriceBooksRouter = createTRPCRouter({
+  preferences: hasDashboardAccess.query(async ({ ctx }) => {
+    const org = ctx.user.organizationId;
+    if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+    const rows = await ctx.db
+      .select({
+        supplierId: suppliers.id,
+        preferJobPricing: sql<boolean>`coalesce(${suppliers.preferJobPricing},true)`,
+      })
+      .from(suppliers)
+      .where(eq(suppliers.organizationId, org));
+    return { rows, canManage: userCan(ctx.user, "jobPricing.manage") };
+  }),
+  setPreference: hasDashboardAccess
+    .input(supplierInput.extend({ preferJobPricing: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "jobPricing.manage");
+      const org = ctx.user.organizationId!;
+      const lists = await ctx.db.transaction(async (tx) => {
+        await lockPriceBooks(tx);
+        await supplier(tx, org, input.supplierId);
+        await tx.execute(
+          sql`update kublai_supplier set "preferJobPricing"=${input.preferJobPricing},"updatedAt"=now() where id=${input.supplierId} and "organizationId"=${org}`,
+        );
+        return refreshSupplierPricingPreference(tx, org, input.supplierId);
+      });
+      notify(lists, org);
+      return { preferJobPricing: input.preferJobPricing };
+    }),
   assignments: hasDashboardAccess
     .input(supplierInput)
     .query(async ({ ctx, input }) => {

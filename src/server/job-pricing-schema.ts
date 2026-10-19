@@ -22,6 +22,7 @@ export const pricingMaterialLists = rawLists as unknown as PgTable & {
   kind: OptionalText;
 };
 export const pricingSuppliers = rawSuppliers as unknown as PgTable & {
+  preferJobPricing: AnyPgColumn<{data:boolean;notNull:true}>;
   id: Text;
   organizationId: Text;
   name: Text;

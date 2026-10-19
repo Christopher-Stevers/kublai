@@ -53,6 +53,7 @@ export async function getJobPriceBook(
           partDefinitionId: supplierParts.partDefinitionId,
           supplierId: supplierParts.supplierId,
           supplierName: suppliers.name,
+          preferJobPricing: sql<boolean>`coalesce(${suppliers.preferJobPricing},true)`,
           supplierSku: supplierParts.supplierSku,
           unitCost: jobPriceEntries.unitCost,
           priceStatus: jobPriceEntries.priceStatus,
@@ -116,6 +117,8 @@ export async function resolveJobOrderItems<T extends Priceable>(
     );
     if (!entry)
       return { ...item, jobListed: false, priceStatus: null as string | null };
+    if (entry.preferJobPricing === false)
+      return { ...item, jobListed: true, priceStatus: null as string | null };
     listingIds.add(entry.supplierPartId);
     return {
       ...item,

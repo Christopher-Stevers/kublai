@@ -98,3 +98,11 @@ describe("job purchasing rules", () => {
       );
   });
 });
+
+it("excludes disabled supplier pricing from automatic price selection without removing membership", async () => {
+ const {findPreferredJobPrice,findJobPrice}=await import('./job-pricing');
+ const rows=[{id:'entry',partDefinitionId:'part',supplierId:'supplier',supplierPartId:'listing',supplierSku:'sku',unitCost:'3',priceStatus:'estimated',preferJobPricing:false}];
+ expect(findPreferredJobPrice(rows,'part','supplier')).toBeUndefined();
+ expect(findJobPrice(rows,'part','supplier')).toBe(rows[0]);
+ expect(findPreferredJobPrice([{...rows[0]!,preferJobPricing:true}],'part','supplier')?.unitCost).toBe('3');
+});

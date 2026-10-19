@@ -412,6 +412,13 @@
       "when": 1792446470527,
       "tag": "0082_supplier_price_books",
       "breakpoints": false
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792447457882,
+      "tag": "0083_supplier_job_pricing_preference",
+      "breakpoints": false
     }
   ]
 }

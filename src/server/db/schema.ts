@@ -418,6 +418,7 @@ export const suppliers = createTable(
     contactPhone: d.varchar({ length: 50 }),
     contacts: d.jsonb(),
     orderingNotes: d.text(),
+    preferJobPricing: d.boolean().notNull().default(true),
     locationId: d
       .uuid()
       .references(() => locations.id, { onDelete: "set null" }),

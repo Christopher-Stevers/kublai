@@ -4,6 +4,7 @@ export type JobPriceEntry = {
   partDefinitionId: string;
   supplierId: string;
   supplierPartId: string;
+  preferJobPricing?: boolean;
   supplierSku: string | null;
   unitCost: string | null;
   priceStatus: string;
@@ -42,6 +43,15 @@ export function findJobPrice<T extends JobPriceEntry>(
   return (
     candidates.find((e) => e.supplierPartId === supplierPartId) ?? candidates[0]
   );
+}
+
+/** Respect the supplier preference when applying prices; membership remains independent. */
+export function findPreferredJobPrice<T extends JobPriceEntry>(
+  entries: readonly T[] | JobPriceIndex<T>, partId?:string|null,
+  supplierId?:string|null, supplierPartId?:string|null,
+): T | undefined {
+  const eligible = ("get" in entries ? entries.get(partId ?? "") ?? [] : entries).filter(e=>e.preferJobPricing!==false);
+  return findJobPrice(eligible,partId,supplierId,supplierPartId);
 }
 
 /** Stable partition: retain the user's ordinary sort within each group. */

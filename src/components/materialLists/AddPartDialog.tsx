@@ -1,6 +1,6 @@
 "use client";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
-import { findJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
+import { findPreferredJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
 import { PackQuantityControls } from "./PackQuantityControls";
 import { packContents, packsFromPieces, individualUnitLabel } from "~/lib/pack-quantity";
 
@@ -323,7 +323,7 @@ export function AddPartDialog({
 
       const partsData = supplierPartsData.get(pendingPart.partId);
       if (partsData && partsData.length > 0) {
-        const jobEntry = findJobPrice(jobPriceBook?.entries??[],pendingPart.partId);
+        const jobEntry = findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId);
         const preferred = partsData.find(sp=>sp.id===jobEntry?.supplierPartId) ?? partsData.find((sp) => sp.isPreferred);
         const supplierPartId = preferred?.id ?? partsData[0]?.id;
         if (supplierPartId) {
@@ -768,7 +768,7 @@ export function AddPartDialog({
             (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
           ) ??
           null;
-        const jobCost=findJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
+        const jobCost=findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
         const unitCost=pendingPart.isTool ? 0 : Number(jobCost ?? selectedSupplierPart?.lastKnownUnitCost ?? 0);
         const partDefinitionSnapshot = {
           id: pendingPart.partDefinition.id,
@@ -785,7 +785,7 @@ export function AddPartDialog({
               id: selectedSupplierPart.id,
               supplierId: selectedSupplierPart.supplierId,
               supplierSku: selectedSupplierPart.supplierSku,
-              lastKnownUnitCost: findJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart.supplierId,selectedSupplierPart.id)?.unitCost ?? selectedSupplierPart.lastKnownUnitCost,
+              lastKnownUnitCost: findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart.supplierId,selectedSupplierPart.id)?.unitCost ?? selectedSupplierPart.lastKnownUnitCost,
               packSize: selectedSupplierPart.packSize ?? null,
               supplier: selectedSupplierPart.supplier,
             }

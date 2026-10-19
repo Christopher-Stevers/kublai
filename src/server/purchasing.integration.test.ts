@@ -368,6 +368,20 @@ describe.skipIf(!socket)(
       expect((await priceBooks.list({supplierId:supplier,supplierPartId:sp})).books).toEqual([]);
       expect((await db.select().from(schema.suppliers))).toHaveLength(1);
     });
+    it("defaults to job pricing and toggles prices without losing assignments or sent snapshots", async () => {
+      expect((await priceBooks.preferences()).rows.find(r=>r.supplierId===supplier)!.preferJobPricing).toBe(true);
+      const b=await priceBooks.create({supplierId:supplier,name:"Alma"});
+      await priceBooks.saveEntry({bookId:b.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
+      await priceBooks.assign({supplierId:supplier,bookId:b.id,jobId:job});
+      await priceBooks.setPreference({supplierId:supplier,preferJobPricing:false});
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("2.0000");
+      expect((await priceBooks.assignments({supplierId:supplier})).jobs[0]!.bookId).toBe(b.id);
+      await priceBooks.setPreference({supplierId:supplier,preferJobPricing:true});
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("3.0000");
+      const order=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+      await priceBooks.setPreference({supplierId:supplier,preferJobPricing:false});
+      expect((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,order.id)))[0]!.unitCostAtOrderTime).toBe("3.0000");
+    });
     it("keeps job price edits and supplier book prices in sync", async () => {
       const b=await priceBooks.create({supplierId:supplier,name:"Alma"});
       await priceBooks.saveEntry({bookId:b.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
@@ -388,6 +402,7 @@ describe.skipIf(!socket)(
       const foreign=supplierPriceBooksRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
       await expect(foreign.get({supplierId:supplier,bookId:b.id})).rejects.toThrow("not found");
       await expect(foreign.assignments({supplierId:supplier})).rejects.toThrow("not found");
+      await expect(foreign.setPreference({supplierId:supplier,preferJobPricing:false})).rejects.toThrow("not found");
       await expect(foreign.assign({supplierId:supplier,bookId:b.id,jobId:job})).rejects.toThrow("not found");
     });
     it("keeps list sequence in preview, sent rows, and reopened email", async () => {
