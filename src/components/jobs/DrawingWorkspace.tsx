@@ -1167,13 +1167,15 @@ export function DrawingWorkspace({
       window.open(url.href, "_blank", "noopener,noreferrer");
     }
   }, [router, sourceRegistry]);
+  const equipmentLinkUtils = useRef(utils);
+  useEffect(() => { equipmentLinkUtils.current = utils; }, [utils]);
   const openDestination = useCallback(
     async (link: DrawingMarkupLink) => {
       let href = drawingLinkHref(link, jobId, data?.jobSheets ?? []);
       const legacy = legacyEquipmentDocumentLink(link, jobId);
       if (href && legacy && navigator.onLine) {
         try {
-          const matches = await utils.drawingsWorkspace.equipmentMatches.fetch({
+          const matches = await equipmentLinkUtils.current.drawingsWorkspace.equipmentMatches.fetch({
             sheetId: sheet.id, tag: legacy.tag,
             source: { kind: "document", id: legacy.documentId, name: link.label ?? "Document" },
           });
@@ -1183,7 +1185,7 @@ export function DrawingWorkspace({
       if (href) openLinkUrl(href);
       else setError("That destination is no longer available.");
     },
-    [data?.jobSheets, jobId, openLinkUrl, sheet.id, utils],
+    [data?.jobSheets, jobId, openLinkUrl, sheet.id],
   );
   const linkChoiceArmed = useRef(false);
   const activate = useCallback(
