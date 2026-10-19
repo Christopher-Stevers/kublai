@@ -11,7 +11,20 @@ export const MEASURE_COLORS = [
   { name: "Neon pink", value: "#ff00cc" },
   { name: "Neon yellow", value: "#ffff00" },
   { name: "Neon purple", value: "#bf00ff" },
+  { name: "Green", value: "#16a34a" },
+  { name: "Yellow", value: "#eab308" },
+  { name: "Purple", value: "#9333ea" },
+  { name: "Pink", value: "#db2777" },
+  { name: "Teal", value: "#0d9488" },
+  { name: "Sky", value: "#0ea5e9" },
+  { name: "Navy", value: "#1e3a8a" },
+  { name: "Brown", value: "#92400e" },
+  { name: "Grey", value: "#6b7280" },
+  { name: "Light grey", value: "#d1d5db" },
 ] as const;
+
+/** Line widths offered for markups and measurements, thinnest first. */
+export const LINE_WIDTHS = [1, 2, 3, 4, 6, 8, 10, 12] as const;
 
 export function validMeasureColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);

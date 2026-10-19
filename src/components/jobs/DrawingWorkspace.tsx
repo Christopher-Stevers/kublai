@@ -83,7 +83,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MEASURE_TILE } from "./SheetMeasureBar";
-import { MEASURE_COLORS } from "~/lib/sheet-measure-color";
+import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
 import { notify } from "~/components/ui/app-dialogs";
 import {
   drawingPdfLinkTarget,
@@ -245,20 +245,18 @@ function MarkupStyleRow({
   const stroke = data.stroke.slice(0, 7).toLowerCase();
   const filled = Boolean(data.fill && data.fill !== "none");
   return (
-    <div
-      role="group"
-      aria-label="Markup style"
-      className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]"
-    >
-      <div className="flex shrink-0 items-center gap-1">
-        {MEASURE_COLORS.slice(0, 6).map((item) => (
+    <div role="group" aria-label="Markup style" className="space-y-1.5">
+      {/* Every colour on one line; it scrolls sideways when they don't fit. */}
+      <div className="-mx-1 flex items-center justify-between gap-2 overflow-x-auto p-1 [scrollbar-width:none]">
+        {MEASURE_COLORS.map((item) => (
           <button
             key={item.value}
             type="button"
             aria-label={item.name}
+            title={item.name}
             aria-pressed={stroke === item.value.toLowerCase()}
             disabled={disabled}
-            className={`size-6 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-1" : ""}`}
+            className={`size-7 shrink-0 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
             style={{ backgroundColor: item.value }}
             onClick={() =>
               onChange({
@@ -269,46 +267,48 @@ function MarkupStyleRow({
           />
         ))}
       </div>
-      <div
-        role="radiogroup"
-        aria-label="Line width"
-        className="bg-muted flex shrink-0 rounded-full p-0.5"
-      >
-        {[1, 2, 4, 8].map((width) => (
-          <button
-            key={width}
-            type="button"
-            role="radio"
-            aria-checked={data.width === width}
-            aria-label={`Width ${width}`}
-            disabled={disabled}
-            className={`flex h-7 w-8 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
-            onClick={() => onChange({ width })}
-          >
-            <span
-              aria-hidden="true"
-              className="w-4 rounded-full"
-              style={{
-                height: Math.max(1.5, width * 0.9),
-                backgroundColor: data.stroke.slice(0, 7),
-              }}
-            />
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Line width"
+          className="bg-muted flex min-w-0 flex-1 rounded-full p-0.5"
+        >
+          {LINE_WIDTHS.map((width) => (
+            <button
+              key={width}
+              type="button"
+              role="radio"
+              aria-checked={data.width === width}
+              aria-label={`Width ${width}`}
+              disabled={disabled}
+              className={`flex h-7 min-w-0 flex-1 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
+              onClick={() => onChange({ width })}
+            >
+              <span
+                aria-hidden="true"
+                className="w-4 rounded-full"
+                style={{
+                  height: Math.max(1, width * 0.9),
+                  backgroundColor: data.stroke.slice(0, 7),
+                }}
+              />
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-pressed={filled}
+          aria-label="Fill"
+          title="Fill"
+          disabled={disabled}
+          className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          onClick={() =>
+            onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
+          }
+        >
+          <PaintBucketIcon className="size-4" />
+        </button>
       </div>
-      <button
-        type="button"
-        aria-pressed={filled}
-        aria-label="Fill"
-        title="Fill"
-        disabled={disabled}
-        className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-        onClick={() =>
-          onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
-        }
-      >
-        <PaintBucketIcon className="size-4" />
-      </button>
     </div>
   );
 }
@@ -3100,7 +3100,7 @@ export function DrawingWorkspace({
                       aria-label="Markup width"
                       className="bg-muted flex flex-1 rounded-full p-1"
                     >
-                      {[1, 2, 4, 8].map((width) => (
+                      {LINE_WIDTHS.map((width) => (
                         <button
                           key={width}
                           type="button"
@@ -3114,7 +3114,7 @@ export function DrawingWorkspace({
                             aria-hidden="true"
                             className="w-6 rounded-full"
                             style={{
-                              height: Math.max(1.5, width * 0.9),
+                              height: Math.max(1, width * 0.9),
                               backgroundColor: style.stroke.slice(0, 7),
                             }}
                           />
