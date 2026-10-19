@@ -168,10 +168,37 @@ it("annotates repeated tags on the origin page without duplicating the origin or
   expect(plan[0]?.sheetId).toBe(id(1));
   expect(plan[0]?.points[0]?.x).toBe(0.6);
   if (updated.kind !== "markup") throw new Error("Expected markup");
-  const visible = drawingDestinationLinks({ ...updated.data, ...plan[0]!, type: "link" }, id(1));
+  const visible = drawingDestinationLinks(
+    { ...updated.data, ...plan[0]!, type: "link" },
+    id(1),
+  );
   expect(visible).toHaveLength(1);
   const target = readSnapshotState(
     new URL(plan[0]!.links[0]!.url!, "https://test").hash,
   )?.drawing;
   expect(target?.viewport.center.x).toBe((box.left + box.right) / 2);
+});
+it("makes common fixture tags clickable beyond fifty occurrences while keeping bounded work", async () => {
+  index.mockResolvedValue({
+    pages: [
+      {
+        page: 1,
+        words: Array.from({ length: 80 }, (_, i) => ({
+          ...box,
+          left: 0.1 + (i % 10) * 0.03,
+          right: 0.12 + (i % 10) * 0.03,
+          top: 0.1 + Math.floor(i / 10) * 0.03,
+          bottom: 0.11 + Math.floor(i / 10) * 0.03,
+        })),
+      },
+    ],
+  });
+  const plan = await equipmentAnnotationPlan(
+    entity,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(80);
+  expect(new Set(plan.map((item) => item.id)).size).toBe(80);
 });

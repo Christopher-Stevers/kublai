@@ -11,6 +11,7 @@ import { documentBlobPath } from "~/server/documents/storage";
 import { equipmentIndex, drawingPdfLocation } from "./equipment-index";
 import {
   containsEquipmentTag,
+  equipmentScheduleTags,
   equipmentDrawingDestination,
   equipmentTagLocations,
   tagPattern,
@@ -69,13 +70,42 @@ async function searchContext(ctx: DrawingContext, sheetId: string) {
 }
 
 export async function equipmentSources(ctx: DrawingContext, sheetId: string) {
-  const { sources } = await searchContext(ctx, sheetId);
-  return { sources };
+  const context = await searchContext(ctx, sheetId);
+  const [metadata] = await ctx.db
+    .select({ data: drawingWorkspaceMetadata.data })
+    .from(drawingWorkspaceMetadata)
+    .where(eq(drawingWorkspaceMetadata.sheetId, sheetId));
+  const source =
+    context.sheets.find((s) => s.id === metadata?.data.currentSourceSheetId) ??
+    context.access.sheet;
+  const location = drawingPdfLocation(
+    source.imageUrl,
+    context.access.sheet.jobId,
+  );
+  let knownTags: string[] = [];
+  const warnings: string[] = [];
+  if (location) {
+    try {
+      knownTags = equipmentScheduleTags(
+        (await equipmentIndex(location.file, "pdf")).pages,
+      );
+    } catch {
+      warnings.push(
+        "Equipment schedules could not be read; standard equipment names are still checked.",
+      );
+    }
+  }
+  return { sources: context.sources, knownTags, warnings };
 }
 
 export async function equipmentMatchesBatch(
   ctx: DrawingContext,
-  input: { sheetId: string; tag: string; sources: EquipmentSource[] },
+  input: {
+    sheetId: string;
+    tag: string;
+    sources: EquipmentSource[];
+    groupBySheet?: boolean;
+  },
 ) {
   if (!tagPattern(input.tag))
     throw new TRPCError({
@@ -171,7 +201,9 @@ export async function equipmentMatchesBatch(
           for (const [n, box] of equipmentTagLocations(
             page?.words ?? [],
             input.tag,
-          ).entries()) {
+          )
+            .slice(0, input.groupBySheet ? 1 : undefined)
+            .entries()) {
             const destination = equipmentDrawingDestination({
               jobId,
               setId: target.setId,

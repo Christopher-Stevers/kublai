@@ -18,11 +18,15 @@ vi.mock("~/trpc/react", () => ({
   },
 }));
 import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
-import type { DrawingEntity } from "~/lib/drawing-workspace";
+import type { DrawingEntity, DrawingSave } from "~/lib/drawing-workspace";
 const word = { text: "HEX-2", left: 0.2, right: 0.25, top: 0.3, bottom: 0.32 };
-const save = vi.fn(),
+const save = vi.fn<(value: DrawingSave) => Promise<unknown>>(),
   onSaved = vi.fn(),
   readWords = vi.fn();
+function markup(value: DrawingSave) {
+  if (value.kind !== "markup") throw Error("Expected a saved hyperlink");
+  return value.data;
+}
 const uuid = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const props = () => ({
@@ -67,11 +71,11 @@ it("scans every distinct tag and saves automatic links without requiring a drawn
       "Finished. 2 tags linked",
     ),
   );
-  expect(save.mock.calls.map((call) => call[0].data.equipmentTag)).toEqual([
+  expect(save.mock.calls.map(([value]) => markup(value).equipmentTag)).toEqual([
     "HEX-2",
     "FCU-1",
   ]);
-  expect(save.mock.calls[0]![0].data.points).toEqual([
+  expect(markup(save.mock.calls[0]![0]).points).toEqual([
     { x: 0.2, y: 0.3 },
     { x: 0.25, y: 0.32 },
   ]);
@@ -98,8 +102,8 @@ it("links repeated occurrences on this page through one origin, preserving exist
     ),
   );
   expect(save).toHaveBeenCalledOnce();
-  expect(save.mock.calls[0]![0].data.links).toHaveLength(2);
-  expect(save.mock.calls[0]![0].data.links[0].url).toContain("snapshot=");
+  expect(markup(save.mock.calls[0]![0]).links).toHaveLength(2);
+  expect(markup(save.mock.calls[0]![0]).links?.[0]?.url).toContain("snapshot=");
 });
 it("does not save an incomplete search when a batch fails, and reports the failure", async () => {
   mock.matches.mockRejectedValue(new Error("Access changed"));
@@ -145,4 +149,29 @@ it("continues after a failed save and reports it without counting it as linked",
     ),
   );
   expect(screen.getByText(/could not save — Read only/)).toBeInTheDocument();
+});
+it("uses project schedule tags and avoids duplicate destinations for a frequently repeated tag", async () => {
+  readWords.mockResolvedValue(
+    Array.from({ length: 65 }, (_, i) => ({
+      ...word,
+      text: "ZBC-7",
+      left: 0.1 + (i % 10) * 0.03,
+      right: 0.12 + (i % 10) * 0.03,
+      top: 0.1 + Math.floor(i / 10) * 0.03,
+      bottom: 0.11 + Math.floor(i / 10) * 0.03,
+    })),
+  );
+  mock.sources.mockResolvedValue({
+    sources: [{ kind: "drawing", id: uuid(9), name: "M-2" }],
+    knownTags: ["ZBC-7"],
+    warnings: [],
+  });
+  render(<AutoHyperlinkDialog {...props()} />);
+  await screen.findByRole("button", { name: "Done" });
+  expect(save).toHaveBeenCalledOnce();
+  expect(markup(save.mock.calls[0]![0]).links).toHaveLength(2);
+  expect(mock.matches).toHaveBeenCalledWith(
+    expect.objectContaining({ groupBySheet: true, tag: "ZBC-7" }),
+    expect.anything(),
+  );
 });

@@ -44,7 +44,7 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   superScaleLatest: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),
   superScaleStart: hasDashboardAccess.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: hasDashboardAccess.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),
-  equipmentMatchesBatch: hasDashboardAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), sources: z.array(equipmentSource).min(1).max(32) })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
+  equipmentMatchesBatch: hasDashboardAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), sources: z.array(equipmentSource).min(1).max(32), groupBySheet: z.boolean().optional() })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
   equipmentSources: hasDashboardAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
   equipmentMatches: hasDashboardAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),
   reviewRevisionUpload: hasDashboardAccess

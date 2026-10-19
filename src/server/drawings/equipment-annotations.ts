@@ -153,10 +153,11 @@ export async function equipmentAnnotationPlan(
         points,
         links: destinations,
       });
-      if (result.length > 50)
+      if (result.length > 1000)
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "More than 50 matching tags. Link fewer drawings at a time.",
+          message:
+            "More than 1,000 matching tags. Link fewer drawings at a time.",
         });
     }
   }

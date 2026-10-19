@@ -8,7 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { getTableColumns, getTableName, eq } from "drizzle-orm";
+import { getTableColumns, getTableName } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "~/server/db/schema";
@@ -243,6 +243,28 @@ describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
       "index failed",
     );
     expect(await db.select().from(entities)).toHaveLength(0);
+  });
+  it("saves common fixture occurrences beyond the old fifty-tag limit atomically", async () => {
+    equipment.index.mockResolvedValue({
+      pages: [
+        {
+          page: 1,
+          words: Array.from({ length: 80 }, (_, i) => ({
+            text: "HEX-2",
+            left: 0.1 + (i % 10) * 0.03,
+            right: 0.12 + (i % 10) * 0.03,
+            top: 0.1 + Math.floor(i / 10) * 0.03,
+            bottom: 0.11 + Math.floor(i / 10) * 0.03,
+          })),
+        },
+      ],
+    });
+    await saveDrawingEntity(ctx, request());
+    const rows = await db.select().from(entities);
+    expect(rows).toHaveLength(81);
+    expect(rows.every((row) => row.entity.visibility === "private")).toBe(true);
+    await saveDrawingEntity(ctx, request());
+    expect(await db.select().from(entities)).toHaveLength(81);
   });
   it("archives removed destinations and can add them again without duplicating active tags", async () => {
     await saveDrawingEntity(ctx, request());

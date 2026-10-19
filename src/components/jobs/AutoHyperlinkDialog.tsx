@@ -56,20 +56,35 @@ export function AutoHyperlinkDialog(props: {
       try {
         const words = await input.readWords();
         if (cancelled()) return;
-        const tags = equipmentTagCandidates(words, [
-          { x: 0, y: 0 },
-          { x: 1, y: 1 },
-        ]);
-        if (!tags.length) {
+        if (!words.length) {
           setStatus(
             "No readable equipment tags found. For scanned drawings, recognize text first, then try Auto Hyperlink again.",
           );
           return;
         }
-        const { sources } =
-          await utils.drawingsWorkspace.equipmentSources.fetch({
-            sheetId: input.sheetId,
-          });
+        setStatus("Checking equipment names against the drawing schedules…");
+        const {
+          sources,
+          knownTags = [],
+          warnings = [],
+        } = await utils.drawingsWorkspace.equipmentSources.fetch({
+          sheetId: input.sheetId,
+        });
+        issues.push(...warnings);
+        const tags = equipmentTagCandidates(
+          words,
+          [
+            { x: 0, y: 0 },
+            { x: 1, y: 1 },
+          ],
+          { automatic: true, knownTags },
+        );
+        if (!tags.length) {
+          setStatus(
+            "No equipment tags identified on this drawing. Use Tools → Hyperlink to link a custom tag manually.",
+          );
+          return;
+        }
         for (const [position, tag] of tags.entries()) {
           if (cancelled()) break;
           setStatus(`Matching ${tag} · ${position + 1} of ${tags.length} tags`);
@@ -88,9 +103,9 @@ export function AutoHyperlinkDialog(props: {
           if (!boxes.length) continue;
           const links: DrawingMarkupLink[] = [];
           let failed = false;
-          // The first occurrence is the origin. Link the other occurrences on
-          // this page too; the server creates their reciprocal clickable tags.
-          for (const box of boxes.slice(1)) {
+          // One destination per sheet keeps common fixture tags usable. The
+          // server still creates clickable annotations at every occurrence.
+          for (const box of boxes.slice(1, 2)) {
             const destination = equipmentDrawingDestination({
               jobId: input.jobId,
               setId: input.setId,
@@ -113,6 +128,7 @@ export function AutoHyperlinkDialog(props: {
                   {
                     sheetId: input.sheetId,
                     tag,
+                    groupBySheet: true,
                     sources: sources.slice(offset, offset + 32),
                   },
                   { staleTime: 0 },

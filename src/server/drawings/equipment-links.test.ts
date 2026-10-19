@@ -26,7 +26,11 @@ vi.mock("./equipment-index", () => ({
   equipmentIndex: mock.index,
   drawingPdfLocation: () => ({ file: "/private/plan.pdf", page: 1 }),
 }));
-import { equipmentMatches, equipmentMatchesBatch } from "./equipment-links";
+import {
+  equipmentMatches,
+  equipmentMatchesBatch,
+  equipmentSources,
+} from "./equipment-links";
 import { drawingWorkspaceEntities } from "~/server/db/drawing-workspace-schema";
 import type { DrawingContext } from "./service";
 const ctx = {
@@ -157,4 +161,65 @@ it("keeps metadata matches even when contents cannot be indexed and reports the 
   expect(result.links).toHaveLength(1);
   expect(result.links[0]!.label).toBe("HEX-2 — HEX-2 datasheet");
   expect(result.warnings).toHaveLength(1);
+});
+it("groups common equipment tags by sheet for automatic scans without losing the sheet to an occurrence limit", async () => {
+  mock.index.mockResolvedValue({
+    pages: [
+      {
+        page: 1,
+        words: Array.from({ length: 80 }, (_, i) => ({
+          text: "WC-1",
+          left: 0.1 + (i % 10) * 0.03,
+          right: 0.12 + (i % 10) * 0.03,
+          top: 0.1 + Math.floor(i / 10) * 0.03,
+          bottom: 0.11 + Math.floor(i / 10) * 0.03,
+        })),
+      },
+    ],
+    incomplete: false,
+  });
+  const result = await equipmentMatchesBatch(ctx, {
+    sheetId: a.id,
+    tag: "WC-1",
+    sources: [{ kind: "drawing", id: b.id, name: b.name }],
+    groupBySheet: true,
+  });
+  expect(result.results[0]?.links).toHaveLength(1);
+  expect(result.results[0]?.overflow).toBe(false);
+});
+it("uses accessible drawing schedules to recognize custom tag names", async () => {
+  mock.index.mockResolvedValue({
+    pages: [
+      {
+        page: 1,
+        words: [
+          {
+            text: "EQUIPMENT SCHEDULE",
+            left: 0.1,
+            right: 0.4,
+            top: 0.05,
+            bottom: 0.06,
+          },
+          { text: "TAG", left: 0.1, right: 0.13, top: 0.1, bottom: 0.11 },
+          { text: "ZBC-7", left: 0.09, right: 0.14, top: 0.15, bottom: 0.16 },
+        ],
+      },
+    ],
+  });
+  const result = await equipmentSources(ctx, a.id);
+  expect(result.knownTags).toEqual(["ZBC-7"]);
+  expect(result.sources).toEqual([{ kind: "drawing", id: b.id, name: b.name }]);
+  mock.index.mockClear();
+  mock.access.mockRejectedValue(Error("No access"));
+  await expect(equipmentSources(ctx, a.id)).rejects.toThrow("No access");
+  expect(mock.index).not.toHaveBeenCalled();
+});
+it("keeps standard detection available and reports unreadable schedules", async () => {
+  mock.index.mockRejectedValue(Error("timeout"));
+  const result = await equipmentSources(ctx, a.id);
+  expect(result.knownTags).toEqual([]);
+  expect(result.sources).toHaveLength(1);
+  expect(result.warnings).toEqual([
+    expect.stringContaining("could not be read"),
+  ]);
 });
