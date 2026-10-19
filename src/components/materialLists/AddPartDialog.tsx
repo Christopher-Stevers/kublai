@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabelContext } from "~/components/suppliers/SupplierLabel";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { findPreferredJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
 import { PackQuantityControls } from "./PackQuantityControls";
@@ -245,7 +246,8 @@ export function AddPartDialog({
           next.set(partId, cachedSupplierParts);
           return next;
         });
-        return;
+        // Show cached choices immediately, but refresh them while online.
+        if (!isOnline) return;
       }
 
       if (!isOnline) {
@@ -1005,7 +1007,7 @@ export function AddPartDialog({
   const pickerContents = packContents(pickerPart?.piecesPerPack);
 
   return (
-    <>
+    <SupplierLabelContext.Provider value={{entries: priceBookSnapshot?.entries ?? [], pending: !!listHeader?.jobId && !isToolRequest && !priceBookSnapshot}}>
       {open && (
         <div
           role="region"
@@ -1479,6 +1481,6 @@ export function AddPartDialog({
           partId={editingPartId}
         />
       )}
-    </>
+    </SupplierLabelContext.Provider>
   );
 }

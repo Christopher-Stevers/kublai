@@ -12,7 +12,7 @@ export interface OfflineSupplierPartOption {
 }
 
 interface OfflineSupplierPartsEnvelope {
-  version: 1;
+  version: 2;
   updatedAt: string;
   data: Record<string, OfflineSupplierPartOption[]>;
 }
@@ -37,7 +37,7 @@ function readData() {
       ? (JSON.parse(raw) as OfflineSupplierPartsEnvelope)
       : null;
     cachedData =
-      envelope?.version === 1 &&
+      envelope?.version === 2 &&
       envelope.data &&
       typeof envelope.data === "object"
         ? envelope.data
@@ -62,7 +62,7 @@ export function setOfflineSupplierPartsByPart(
   try {
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), data }),
+      JSON.stringify({ version: 2, updatedAt: new Date().toISOString(), data }),
     );
   } catch {
     /* Keep the session cache usable when persistent storage is unavailable. */

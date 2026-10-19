@@ -190,6 +190,14 @@ try {
             `Supplier SKU already belongs to a different part: ${row.supplierSku}`,
           );
         if (!listing) {
+          const candidates = await tx`select * from kublai_supplier_part where "organizationId"=${manifest.organizationId} and "supplierId"=${manifest.supplierId} and "partDefinitionId"=${row.partDefinitionId}`;
+          // Enrich an existing generic listing instead of creating a second supplier identity.
+          if (candidates.length === 1 && !candidates[0].supplierSku?.trim()) {
+            const generic = candidates[0];
+            [listing] = await tx`update kublai_supplier_part set "supplierSku"=${row.supplierSku},"supplierName"=${row.supplierDescription || generic.supplierName} where id=${generic.id} returning *`;
+          }
+        }
+        if (!listing) {
           const [previous] =
             await tx`select "packSize" from kublai_supplier_part where "organizationId"=${manifest.organizationId} and "supplierId"=${manifest.supplierId} and "partDefinitionId"=${row.partDefinitionId} order by "isPreferred" desc,"createdAt" limit 1`;
           [listing] =

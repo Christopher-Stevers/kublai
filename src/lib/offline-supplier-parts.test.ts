@@ -11,7 +11,7 @@ beforeEach(() => {
 it("parses once per storage version, then invalidates on another tab's update", async () => {
   window.localStorage.setItem(
     "foremanhq.offline.supplier-parts-by-part",
-    JSON.stringify({ version: 1, data: { a: [] } }),
+    JSON.stringify({ version: 2, data: { a: [] } }),
   );
   const get = vi.spyOn(window.localStorage, "getItem");
   const { getOfflineSupplierPartsByPart } =
@@ -39,4 +39,12 @@ it("storage denial preserves a usable session cache", async () => {
   expect(getOfflineSupplierPartsByPart("a")).toBeNull();
   expect(() => setOfflineSupplierPartsByPart("a", [])).not.toThrow();
   expect(getOfflineSupplierPartsByPart("a")).toEqual([]);
+});
+
+it("discards pre-consolidation cached listings", async () => {
+  window.localStorage.setItem("foremanhq.offline.supplier-parts-by-part", JSON.stringify({version:1,data:{part:[{id:"removed-listing"}]}}));
+  const {getOfflineSupplierPartsByPart,setOfflineSupplierPartsByPart}=await import("./offline-supplier-parts");
+  expect(getOfflineSupplierPartsByPart("part")).toBeNull();
+  setOfflineSupplierPartsByPart("part",[]);
+  expect(JSON.parse(window.localStorage.getItem("foremanhq.offline.supplier-parts-by-part")!).version).toBe(2);
 });

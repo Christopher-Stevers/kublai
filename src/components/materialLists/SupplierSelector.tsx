@@ -17,7 +17,9 @@ import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
-import { getOfflineSupplierPartsByPart } from "~/lib/offline-supplier-parts";
+import { api } from "~/trpc/react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { getOfflineSupplierPartsByPart, setOfflineSupplierPartsByPart } from "~/lib/offline-supplier-parts";
 
 interface SupplierSelectorProps {
   itemId: string;
@@ -106,7 +108,17 @@ export function SupplierSelector({
     setCachedSupplierParts(sandbox ? [] : getOfflineSupplierPartsByPart(partDefinitionId) ?? []);
   }, [partDefinitionId, isDropdownOpen, sandbox]);
 
-  const supplierParts = cachedSupplierParts;
+  const online = useOnlineStatus();
+  const freshParts = api.supplier.getSupplierPartsByPart.useQuery(
+    {partDefinitionId}, {enabled: !sandbox && online && isDropdownOpen, staleTime: 0},
+  );
+  useEffect(() => {
+    if (freshParts.data && !sandbox) {
+      setOfflineSupplierPartsByPart(partDefinitionId, freshParts.data);
+      setCachedSupplierParts(freshParts.data);
+    }
+  }, [freshParts.data, partDefinitionId, sandbox]);
+  const supplierParts = freshParts.data ?? cachedSupplierParts;
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
