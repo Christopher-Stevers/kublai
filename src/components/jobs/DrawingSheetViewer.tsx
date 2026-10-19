@@ -1249,11 +1249,11 @@ export function DrawingSheetViewer({
       // throttled React/tile state catches up.
       pipeHalo.current?.setAttribute(
         "stroke-width",
-        String(7000 / (fit.width * scale)),
+        String((4000 * measureLineScale(measureWidth) + 3000) / (fit.width * scale)),
       );
       pipeStroke.current?.setAttribute(
         "stroke-width",
-        String(4000 / (fit.width * scale)),
+        String(4000 * measureLineScale(measureWidth) / (fit.width * scale)),
       );
     }
   };
@@ -2785,9 +2785,9 @@ export function DrawingSheetViewer({
               ref={pipeHalo}
               d={pipeHighlight}
               fill="none"
-              stroke="white"
+              stroke={measureHalo}
               strokeOpacity={0.8}
-              strokeWidth={7000 / (fit.width * view.scale)}
+              strokeWidth={(4000 * measureLineScale(measureWidth) + 3000) / (fit.width * view.scale)}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -2795,8 +2795,8 @@ export function DrawingSheetViewer({
               ref={pipeStroke}
               d={pipeHighlight}
               fill="none"
-              stroke="#0891b2"
-              strokeWidth={4000 / (fit.width * view.scale)}
+              stroke={measureColor}
+              strokeWidth={4000 * measureLineScale(measureWidth) / (fit.width * view.scale)}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -3086,6 +3086,10 @@ export function DrawingSheetViewer({
         pipePanel={
           pipeMode ? (
             <PipeSystemPanel
+              color={measureColor}
+              onColor={changeMeasureColor}
+              lineWidth={measureWidth}
+              onLineWidth={changeMeasureWidth}
               reading={pipe.reading}
               selecting={pipe.selecting}
               error={pipe.error}

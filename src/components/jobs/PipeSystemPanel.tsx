@@ -5,6 +5,8 @@ import { XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
+import { StyleStrip } from "./StyleStrip";
+import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
 import { useDrawingWheelGroup } from "./DrawingQuickWheel";
 
 export function PipeSystemPanel({
@@ -32,7 +34,12 @@ export function PipeSystemPanel({
   onScale,
   onUnit,
   onDone,
+  color, onColor, lineWidth, onLineWidth,
 }: {
+  color: string;
+  onColor: (color: string) => void;
+  lineWidth: number;
+  onLineWidth: (width: number) => void;
   reading: boolean;
   selecting?: boolean;
   error: string | null;
@@ -66,6 +73,8 @@ export function PipeSystemPanel({
       { id: "connected", label: "Tap a pipe", selected: !system, run: () => onSystem("") },
       ...codes.map(code => ({ id: code, label: PIPE_SYSTEM_NAMES[code] ?? code, selected: system === code, run: () => onSystem(code) })),
     ] },
+    { id: "color", label: "Color", children: MEASURE_COLORS.map(option => ({ id: option.value, label: option.name, selected: color === option.value, run: () => onColor(option.value) })) },
+    { id: "width", label: "Line width", children: LINE_WIDTHS.map(value => ({ id: String(value), label: String(value), selected: lineWidth === value, run: () => onLineWidth(value) })) },
     { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
     { id: "scale", label: "Set scale", disabled: !canSetScale, run: onScale },
     { id: "units", label: "Units", children: LENGTH_UNITS.map(option => ({ id: option.value, label: option.label, selected: unit === option.value, run: () => onUnit(option.value) })) },
@@ -137,6 +146,7 @@ export function PipeSystemPanel({
           </>
         )}
       </div>
+      <StyleStrip color={color} onColor={onColor} colorLabel="Pipe colors" customColorLabel="Custom pipe color" width={lineWidth} onWidth={onLineWidth} widthLabel="Pipe line width" />
       {systemControl}
       {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
       {!hasPdf ? (

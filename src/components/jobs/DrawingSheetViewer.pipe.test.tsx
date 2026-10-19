@@ -268,6 +268,25 @@ describe("pipe selection in the drawing viewer", () => {
     expect(stroke() * 800 / 1000 * scale).toBeCloseTo(4);
   });
 
+  it("changes pipe color and width and preserves that style through zoom", async () => {
+    const { frame } = open();
+    await activate();
+    fireEvent.click(within(screen.getByRole("group", { name: "Pipe colors" })).getByRole("button", { name: "Red" }));
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Pipe line width" })).getByRole("radio", { name: "Width 6" }));
+    await tap(frame, 160, 300);
+    const highlight = screen.getByRole("img", { name: "Selected pipe system" });
+    const foreground = highlight.querySelectorAll("path")[1]!;
+    const stroke = () => Number(foreground.getAttribute("stroke-width"));
+    expect(foreground).toHaveAttribute("stroke", "#dc2626");
+    expect(stroke() * 800 / 1000).toBeCloseTo(12);
+    fireEvent.wheel(frame, { deltaY: -500, clientX: 400, clientY: 300 });
+    await waitFor(() => expect(stroke()).toBeLessThan(15));
+    const scale = Number(/scale\(([^)]+)\)/.exec(frame.firstElementChild!.getAttribute("style")!)![1]);
+    expect(stroke() * 800 / 1000 * scale).toBeCloseTo(12);
+    fireEvent.change(screen.getByLabelText("Custom pipe color"), { target: { value: "#123456" } });
+    expect(foreground).toHaveAttribute("stroke", "#123456");
+  });
+
   it("allows a failed PDF read to retry and then select a calibrated run", async () => {
     loadPipeLinework.mockRejectedValueOnce(new Error("offline"));
     const { frame } = open();
