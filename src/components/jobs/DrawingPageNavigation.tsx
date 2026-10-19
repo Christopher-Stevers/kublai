@@ -1,6 +1,6 @@
 "use client";
 import type { Ref } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, MaximizeIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 /** Shared navigation for Drawings and document PDFs. */
@@ -11,10 +11,8 @@ export function DrawingPageNavigation({
   zoom = 1,
   zoomRef,
   nameControl,
-  fullscreenRef,
   onPrevious,
   onNext,
-  onFullscreen,
 }: {
   scrollPages?: boolean;
   name: string;
@@ -23,10 +21,8 @@ export function DrawingPageNavigation({
   zoom?: number;
   zoomRef?: Ref<HTMLSpanElement>;
   nameControl?: React.ReactNode;
-  fullscreenRef?: Ref<HTMLButtonElement>;
   onPrevious: () => void;
   onNext: () => void;
-  onFullscreen: () => void;
 }) {
   return (
     <div
@@ -62,23 +58,9 @@ export function DrawingPageNavigation({
               {Math.round(zoom * 100)}%
             </span>
           </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="text-muted-foreground text-xs tabular-nums">
-              {index + 1} of {count}
-            </span>
-            <Button
-              ref={fullscreenRef}
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="size-6"
-              aria-label="Full screen"
-              title="Full screen"
-              onClick={onFullscreen}
-            >
-              <MaximizeIcon className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {index + 1} of {count}
+          </span>
         </div>
         <Button
           variant="outline"

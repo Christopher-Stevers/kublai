@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type Ref } from "react";
 import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 import {
   act,
@@ -114,10 +114,12 @@ vi.mock("~/components/ui/app-dialogs", () => ({
   notify: vi.fn(),
 }));
 vi.mock("./DrawingWorkspace", () => ({
-  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange }: {
+  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange, onFullscreen, fullscreenRef }: {
     sheet: { name: string };
     initialViewport?: { center: { x: number; y: number }; zoom: number } | null;
     onViewportChange?: (viewport: { center: { x: number; y: number }; zoom: number }) => void;
+    onFullscreen?: () => void;
+    fullscreenRef?: Ref<HTMLButtonElement>;
   }) => {
     const mountedView = useRef(initialViewport);
     return (
@@ -126,6 +128,7 @@ vi.mock("./DrawingWorkspace", () => ({
       <span>Viewing {sheet.name}</span>
       <span data-testid="inherited-view">{JSON.stringify(initialViewport ?? null)}</span>
       <button onClick={() => onViewportChange?.({ center: { x: 0.2, y: 0.7 }, zoom: 3 })}>Zoom and pan sample</button>
+      {onFullscreen && <button ref={fullscreenRef} aria-label="Full screen" onClick={onFullscreen} />}
     </div>
   );},
 }));

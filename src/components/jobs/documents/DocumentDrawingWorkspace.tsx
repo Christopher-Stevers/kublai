@@ -100,6 +100,8 @@ export function DocumentDrawingWorkspace({
             <DrawingWorkspace
               scrollPages={scroll}
               toolbarContainer={toolbarContainer}
+              fullscreenRef={enterButton}
+              onFullscreen={enter}
               key={sheet.id}
               jobId={jobId}
               sheet={sheet}
@@ -130,8 +132,6 @@ export function DocumentDrawingWorkspace({
             count={sheets.length}
             zoom={camera.zoom}
             zoomRef={zoomLabel}
-            fullscreenRef={enterButton}
-            onFullscreen={enter}
             onPrevious={() => openPage(actualIndex - 1)}
             onNext={() => openPage(actualIndex + 1)}
           />

@@ -5,7 +5,7 @@ import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
@@ -51,6 +51,7 @@ import {
   Link2Icon,
   ListChecksIcon,
   MessageSquareMoreIcon,
+  MaximizeIcon,
   MoreHorizontalIcon,
   MousePointer2Icon,
   PaletteIcon,
@@ -359,6 +360,8 @@ export function DrawingWorkspace({
   toolbarContainer,
   onClose,
   onPrepareOffline,
+  onFullscreen,
+  fullscreenRef,
 }: {
   jobId: string;
   sheet: {
@@ -379,6 +382,9 @@ export function DrawingWorkspace({
   toolbarContainer?: HTMLElement | null;
   onClose?: () => void;
   onPrepareOffline?: () => Promise<void>;
+  /** Shows a full screen button in the middle of the toolbar. */
+  onFullscreen?: () => void;
+  fullscreenRef?: Ref<HTMLButtonElement>;
 }) {
   const router = useRouter();
   const sourceRegistry = useContext(SnapshotSourceContext);
@@ -3141,7 +3147,7 @@ export function DrawingWorkspace({
         <div
           role="toolbar"
           aria-label="Drawing tools"
-          className={`relative mx-auto grid max-w-6xl grid-cols-4 gap-2 ${markupOpen ? "z-50" : ""}`}
+          className={`relative mx-auto grid max-w-6xl gap-2 ${onFullscreen ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-4"} ${markupOpen ? "z-50" : ""}`}
         >
           {panel && panel !== "selected" ? (
             <Button
@@ -3377,6 +3383,19 @@ export function DrawingWorkspace({
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+          {onFullscreen && (
+            <Button
+              ref={fullscreenRef}
+              type="button"
+              variant="outline"
+              className="size-10 rounded-lg p-0 [&_svg]:size-5"
+              aria-label="Full screen"
+              title="Full screen"
+              onClick={onFullscreen}
+            >
+              <MaximizeIcon aria-hidden="true" />
+            </Button>
           )}
           <Button
             variant={

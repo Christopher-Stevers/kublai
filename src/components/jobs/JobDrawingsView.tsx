@@ -557,6 +557,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           <DrawingWorkspace
             scrollPages={scroll}
             toolbarContainer={toolbarContainer}
+            fullscreenRef={full.enterButton}
+            onFullscreen={full.enter}
             key={`${sheet.id}:${destination.request}`}
             initialSnapshot={destination.snapshot}
             jobId={jobId}
@@ -583,8 +585,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           count={sheets.length}
           zoom={entryViewport?.zoom ?? 1}
           zoomRef={zoomLabel}
-          fullscreenRef={full.enterButton}
-          onFullscreen={full.enter}
           onPrevious={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
           onNext={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
           nameControl={
