@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   identity: vi.fn(),
   execute: vi.fn(),
   openFile: vi.fn(),
+  openThumbnail: vi.fn(),
   stream: vi.fn(),
   close: vi.fn(),
   records: [] as { id: string; organizationId: string }[],
@@ -24,6 +25,7 @@ vi.mock("~/server/utils/get-request-identity", () => ({
 vi.mock("~/server/db", () => ({ db: { execute: mocks.execute } }));
 vi.mock("~/server/rooms/storage", () => ({
   openJobRoomFile: mocks.openFile,
+  openJobRoomThumbnail: mocks.openThumbnail,
 }));
 
 import { GET, HEAD } from "./route";
@@ -344,4 +346,30 @@ test("HEAD does not reveal foreign file metadata", async () => {
   expect(response.headers.get("etag")).toBeNull();
   expect(response.headers.get("last-modified")).toBeNull();
   expect(mocks.openFile).not.toHaveBeenCalled();
+});
+
+test("serves a small copy of a drawing page only for ?thumb=1 on page images", async () => {
+  mocks.openThumbnail.mockImplementation(mocks.openFile.getMockImplementation()!);
+  const thumb = (name: string) =>
+    GET(
+      new Request(`http://local/api/job-rooms/files/fixture?thumb=1`),
+      context(ownJob, upload, name),
+    );
+  expect((await thumb("floor-2.webp")).status).toBe(200);
+  expect(mocks.openThumbnail).toHaveBeenCalledWith(`${ownJob}/${upload}/floor-2.webp`);
+  expect(mocks.openFile).not.toHaveBeenCalled();
+  // Other files ignore the flag, and the full page is still served without it.
+  await thumb("plan.pdf");
+  expect(mocks.openFile).toHaveBeenCalledWith(`${ownJob}/${upload}/plan.pdf`);
+  await GET(request(), context(ownJob, upload, "floor-2.webp"));
+  expect(mocks.openThumbnail).toHaveBeenCalledOnce();
+});
+
+test("checks access before making a thumbnail", async () => {
+  const response = await GET(
+    new Request(`http://local/api/job-rooms/files/fixture?thumb=1`),
+    context(foreignJob, upload, "floor-1.webp"),
+  );
+  expect(response.status).toBe(404);
+  expect(mocks.openThumbnail).not.toHaveBeenCalled();
 });

@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "~/server/db";
 import { userCan } from "~/server/auth/permissions";
-import { openJobRoomFile } from "~/server/rooms/storage";
+import {
+  openJobRoomFile,
+  openJobRoomThumbnail,
+} from "~/server/rooms/storage";
 import {
   isNotModified,
   rangeMatches,
@@ -75,7 +78,13 @@ async function serve(
   }
 
   try {
-    const file = await openJobRoomFile(storageKey);
+    // ?thumb=1 serves a small copy of a drawing page for cards and lists.
+    const thumbnail =
+      new URL(request.url).searchParams.get("thumb") === "1" &&
+      /\/floor-\d+\.webp$/i.test(storageKey);
+    const file = thumbnail
+      ? await openJobRoomThumbnail(storageKey)
+      : await openJobRoomFile(storageKey);
     const headers = new Headers({
       "Content-Type": storageKey.endsWith(".pdf")
         ? "application/pdf"
