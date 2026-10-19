@@ -47,8 +47,8 @@ export function paintDrawingAnnotationCamera(
     // that would soften text when the compositor translates the surface.
     const density = Math.max(1, globalThis.devicePixelRatio || 1);
     const snap = (value: number) => Math.round(value * density) / density;
-    const anchorX = snap(view.x + (continuingPan ? Math.sign(view.x - camera.x) * margin * 0.5 : 0));
-    const anchorY = snap(view.y + (continuingPan ? Math.sign(view.y - camera.y) * margin * 0.5 : 0));
+    const anchorX = snap(view.x + (continuingPan && camera ? Math.sign(view.x - camera.x) * margin * 0.5 : 0));
+    const anchorY = snap(view.y + (continuingPan && camera ? Math.sign(view.y - camera.y) * margin * 0.5 : 0));
     camera = {
       fitWidth: fit.width, fitHeight: fit.height,
       width: frame.width, height: frame.height,
