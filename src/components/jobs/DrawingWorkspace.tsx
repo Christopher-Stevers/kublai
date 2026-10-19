@@ -47,6 +47,7 @@ import {
   FileTextIcon,
   HandIcon,
   HistoryIcon,
+  InfoIcon,
   LayersIcon,
   Link2Icon,
   ListChecksIcon,
@@ -74,6 +75,7 @@ import {
   SlashIcon,
   SquareDashedIcon,
   SquareIcon,
+  Trash2Icon,
   TriangleRightIcon,
   TypeIcon,
   WaypointsIcon,
@@ -246,9 +248,9 @@ function MarkupStyleRow({
     <div
       role="group"
       aria-label="Markup style"
-      className="flex basis-full flex-wrap items-center gap-2"
+      className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]"
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1">
         {MEASURE_COLORS.slice(0, 6).map((item) => (
           <button
             key={item.value}
@@ -256,7 +258,7 @@ function MarkupStyleRow({
             aria-label={item.name}
             aria-pressed={stroke === item.value.toLowerCase()}
             disabled={disabled}
-            className={`size-7 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
+            className={`size-6 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${stroke === item.value.toLowerCase() ? "ring-primary ring-offset-card ring-2 ring-offset-1" : ""}`}
             style={{ backgroundColor: item.value }}
             onClick={() =>
               onChange({
@@ -270,7 +272,7 @@ function MarkupStyleRow({
       <div
         role="radiogroup"
         aria-label="Line width"
-        className="bg-muted flex rounded-full p-1"
+        className="bg-muted flex shrink-0 rounded-full p-0.5"
       >
         {[1, 2, 4, 8].map((width) => (
           <button
@@ -280,12 +282,12 @@ function MarkupStyleRow({
             aria-checked={data.width === width}
             aria-label={`Width ${width}`}
             disabled={disabled}
-            className={`flex h-7 w-9 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
+            className={`flex h-7 w-8 items-center justify-center rounded-full ${data.width === width ? "bg-background shadow-sm" : ""}`}
             onClick={() => onChange({ width })}
           >
             <span
               aria-hidden="true"
-              className="w-5 rounded-full"
+              className="w-4 rounded-full"
               style={{
                 height: Math.max(1.5, width * 0.9),
                 backgroundColor: data.stroke.slice(0, 7),
@@ -297,18 +299,23 @@ function MarkupStyleRow({
       <button
         type="button"
         aria-pressed={filled}
+        aria-label="Fill"
+        title="Fill"
         disabled={disabled}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+        className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
         onClick={() =>
           onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
         }
       >
         <PaintBucketIcon className="size-4" />
-        Fill
       </button>
     </div>
   );
 }
+const SELECTED_BUTTON = "h-8 shrink-0 rounded-full px-3 text-xs";
+const SELECTED_ICON = "size-8 shrink-0 rounded-full";
+const capitalize = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
 /** A small icon tile at the start of a bottom-bar menu item. */
 function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
   return (
@@ -1803,88 +1810,110 @@ export function DrawingWorkspace({
               role="toolbar"
               aria-label="Selected markup actions"
               data-drawing-chrome
-              className="bg-card/95 absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-wrap items-center gap-2 overflow-y-auto rounded-t-2xl border-t px-3 pt-2.5 pb-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
+              className="bg-card/95 absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto rounded-t-2xl border-t px-3 pt-2 pb-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
             >
-              <span className="max-w-32 truncate text-sm font-medium">
-                {nameOf(selected)}
-              </span>
-              {editable(selected) ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant={
-                      selectionMode === "move" && tool === "select"
-                        ? "default"
-                        : "outline"
-                    }
-                    aria-pressed={selectionMode === "move" && tool === "select"}
-                    disabled={pending > 0}
-                    onClick={() => {
-                      selectTool("select");
-                      setSelectionMode("move");
-                      setPanel("");
-                    }}
-                  >
-                    Move
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={
-                      selectionMode === "resize" && tool === "select"
-                        ? "default"
-                        : "outline"
-                    }
-                    aria-pressed={
-                      selectionMode === "resize" && tool === "select"
-                    }
-                    disabled={pending > 0}
-                    onClick={() => {
-                      selectTool("select");
-                      setSelectionMode("resize");
-                      setPanel("");
-                    }}
-                  >
-                    Resize
-                  </Button>
-                  {selected.data.type === "dimension" && selected.data.parents && (
-                    <Button size="sm" variant="outline" disabled={pending > 0} onClick={() => editMeasurement(selected.id)}>Edit</Button>
-                  )}
-                  {selected.data.type === "text" && (
+              <div className="flex items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  {capitalize(nameOf(selected))}
+                </span>
+                {editable(selected) ? (
+                  <>
                     <Button
                       size="sm"
-                      variant="outline"
+                      className={SELECTED_BUTTON}
+                      variant={
+                        selectionMode === "move" && tool === "select"
+                          ? "default"
+                          : "outline"
+                      }
+                      aria-pressed={selectionMode === "move" && tool === "select"}
                       disabled={pending > 0}
                       onClick={() => {
-                        setInlineText({ id: selected.id, data: selected.data });
-                        setSelectedId(null);
+                        selectTool("select");
+                        setSelectionMode("move");
+                        setPanel("");
                       }}
                     >
-                      Edit text
+                      Move
                     </Button>
-                  )}
+                    <Button
+                      size="sm"
+                      className={SELECTED_BUTTON}
+                      variant={
+                        selectionMode === "resize" && tool === "select"
+                          ? "default"
+                          : "outline"
+                      }
+                      aria-pressed={
+                        selectionMode === "resize" && tool === "select"
+                      }
+                      disabled={pending > 0}
+                      onClick={() => {
+                        selectTool("select");
+                        setSelectionMode("resize");
+                        setPanel("");
+                      }}
+                    >
+                      Resize
+                    </Button>
+                    {selected.data.type === "dimension" &&
+                      selected.data.parents && (
+                        <Button
+                          size="sm"
+                          className={SELECTED_BUTTON}
+                          variant="outline"
+                          disabled={pending > 0}
+                          onClick={() => editMeasurement(selected.id)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                    {selected.data.type === "text" && (
+                      <Button
+                        size="sm"
+                        className={SELECTED_BUTTON}
+                        variant="outline"
+                        disabled={pending > 0}
+                        onClick={() => {
+                          setInlineText({ id: selected.id, data: selected.data });
+                          setSelectedId(null);
+                        }}
+                      >
+                        Edit text
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground shrink-0 text-xs">
+                    Read only
+                  </span>
+                )}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className={SELECTED_ICON}
+                  aria-label="Details"
+                  title="Details"
+                  onClick={() => setPanel("selected")}
+                >
+                  <InfoIcon className="size-4" />
+                </Button>
+                {editable(selected) && (
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="outline"
+                    className={`${SELECTED_ICON} text-destructive hover:text-destructive`}
                     aria-label="Delete markup"
                     disabled={!deletable(selected)}
                     title={
-                      !online ? "Reconnect to delete this markup" : undefined
+                      online ? "Delete" : "Reconnect to delete this markup"
                     }
                     onClick={() => void archive(selected)}
                   >
-                    Delete
+                    <Trash2Icon className="size-4" />
                   </Button>
-                </>
-              ) : (
-                <span className="text-muted-foreground text-xs">Read only</span>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPanel("selected")}
-              >
-                Details
-              </Button>
+                )}
+              </div>
               {editable(selected) &&
                 selected.data.type !== "text" &&
                 selected.data.type !== "link" && (
@@ -1900,18 +1929,6 @@ export function DrawingWorkspace({
                     }
                   />
                 )}
-              {editable(selected) && tool === "select" && (
-                <span className="text-muted-foreground min-h-8 basis-full text-xs sm:min-h-0 sm:basis-auto">
-                  {selectionMode === "resize"
-                    ? "Drag a handle to resize, or drag the markup to move."
-                    : "Drag the markup to move it."}
-                </span>
-              )}
-              {editable(selected) && !online && (
-                <span className="text-muted-foreground basis-full text-xs">
-                  Reconnect to delete this markup.
-                </span>
-              )}
             </div>
           )}
 
