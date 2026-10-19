@@ -1,7 +1,7 @@
 "use client";
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingScrollPages } from "./DrawingScrollPages";
-import { DrawingPageNavigation } from "./DrawingPageNavigation";
+import { DrawingPageNavigation, showZoomReadout } from "./DrawingPageNavigation";
 import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -29,6 +29,8 @@ import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-conte
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { EmptyState } from "~/components/ui/empty-state";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Input } from "~/components/ui/input";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
@@ -583,9 +585,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             initialViewport={entryViewport}
             onViewportChange={(value) => {
               lastViewport.current = value;
-              const text = `${Math.round(value.zoom * 100)}%`;
-              if (zoomLabel.current && zoomLabel.current.textContent !== text)
-                zoomLabel.current.textContent = text;
+              showZoomReadout(zoomLabel.current, `${Math.round(value.zoom * 100)}%`);
             }}
             onOpenSheet={(target) => {
               setSetId(target.setId);
@@ -722,18 +722,19 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </p>
         )}
         {set.isLoading && !setData ? (
-          <p role="status" className="text-muted-foreground text-sm">
-            Loading drawings…
-          </p>
+          <div role="status" aria-label="Loading drawings" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => (
+              <Skeleton key={index} className="aspect-[4/3] rounded-xl" />
+            ))}
+          </div>
         ) : sheets.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileTextIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
-              <h3 className="mb-2 text-lg font-semibold">No drawings yet</h3>
-              <p className="text-muted-foreground mb-4 text-center">
-                Upload a PDF. Each page becomes its own drawing in this folder.
-              </p>
-              {canUpload && uploadButton("", "default")}
+            <CardContent className="p-0">
+              <EmptyState
+                art="blueprint"
+                title="No drawings yet. Upload a PDF and each page becomes a drawing."
+                action={canUpload && uploadButton("", "default")}
+              />
             </CardContent>
           </Card>
         ) : (
@@ -757,7 +758,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 className={
                   listView
                     ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
-                    : "relative cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
+                    : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
                 }
                 onPointerEnter={() => {
                   if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
@@ -1107,21 +1108,19 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         }
       />
       {sets.isLoading && !setsData ? (
-        <p role="status" className="text-muted-foreground text-sm">
-          Loading drawings…
-        </p>
+        <div role="status" aria-label="Loading drawings" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} className="h-40 rounded-xl" />
+          ))}
+        </div>
       ) : folders.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FolderIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
-            <h3 className="mb-2 text-lg font-semibold">
-              No drawing folders yet
-            </h3>
-            <p className="text-muted-foreground mb-4 text-center">
-              Create a folder for each drawing set, like Mechanical or
-              Electrical.
-            </p>
-            {canUpload && newFolderButton("", "default")}
+          <CardContent className="p-0">
+            <EmptyState
+              art="folder"
+              title="No drawing folders yet. Make one for each set, like Mechanical."
+              action={canUpload && newFolderButton("", "default")}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -1133,7 +1132,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               role="button"
               tabIndex={0}
               aria-label={`Open ${folder.name}`}
-              className="cursor-pointer gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md"
+              className="card-lift cursor-pointer gap-0 overflow-hidden py-0"
               onClick={() => openFolder(folder.id)}
               onKeyDown={(event) => {
                 if (event.target !== event.currentTarget) return;

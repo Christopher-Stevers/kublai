@@ -19,13 +19,13 @@ export function MarketingHeader() {
           <Button
             asChild
             variant="outline"
-            className="hidden border-blue-600 text-blue-600 hover:bg-blue-50 sm:inline-flex"
+            className="hidden border-primary text-primary hover:bg-primary/10 sm:inline-flex"
           >
             <Link href="/sign-in">Sign In</Link>
           </Button>
           <Button
             asChild
-            className="h-10 bg-blue-600 px-6 text-sm font-semibold text-white hover:bg-blue-700 focus:bg-blue-700 sm:h-11 sm:px-8"
+            className="h-10 bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90 sm:h-11 sm:px-8"
           >
             <Link href="/dashboard">Start an Order</Link>
           </Button>

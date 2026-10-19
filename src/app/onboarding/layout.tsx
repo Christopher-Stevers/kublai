@@ -42,11 +42,11 @@ export default async function OnboardingLayout({
             usually takes just a few seconds.
           </p>
           <div className="flex justify-center py-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
           <p className="text-muted-foreground text-sm">
             The page will refresh automatically. If it doesn't, please{" "}
-            <a href="/onboarding" className="text-blue-600 hover:underline">
+            <a href="/onboarding" className="text-primary hover:underline">
               click here to retry
             </a>
             .

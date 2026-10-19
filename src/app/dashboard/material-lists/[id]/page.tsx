@@ -201,33 +201,33 @@ export default function MaterialListDetailPage({
     return (
       <div className="flex h-[calc(100dvh-4rem)] flex-col">
         <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
-          <div className="mx-auto max-w-6xl animate-pulse">
+          <div className="mx-auto max-w-6xl">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
-                <div className="h-5 w-44 rounded bg-gray-200" />
-                <div className="h-4 w-28 rounded bg-muted" />
+                <div className="h-5 w-44 rounded skeleton-shimmer" />
+                <div className="h-4 w-28 rounded skeleton-shimmer" />
               </div>
               <div className="flex flex-col items-end gap-1">
-                <div className="h-6 w-24 rounded-full bg-muted" />
-                <div className="h-8 w-20 rounded-lg bg-muted" />
+                <div className="h-6 w-24 rounded-full skeleton-shimmer" />
+                <div className="h-8 w-20 rounded-lg skeleton-shimmer" />
               </div>
             </div>
           </div>
         </div>
         <div className="flex-1 px-4 py-4 sm:px-6">
-          <div className="mx-auto max-w-6xl animate-pulse space-y-2">
-            <div className="h-32 rounded-2xl bg-muted" />
-            <div className="h-32 rounded-2xl bg-muted" />
-            <div className="h-32 rounded-2xl bg-muted" />
+          <div className="mx-auto max-w-6xl space-y-2">
+            <div className="h-32 rounded-2xl skeleton-shimmer" />
+            <div className="h-32 rounded-2xl skeleton-shimmer" />
+            <div className="h-32 rounded-2xl skeleton-shimmer" />
           </div>
         </div>
         <div className="shrink-0 border-t bg-card px-4 py-3 sm:px-6">
-          <div className="mx-auto max-w-6xl animate-pulse space-y-2">
-            <div className="h-5 w-36 rounded bg-muted" />
+          <div className="mx-auto max-w-6xl space-y-2">
+            <div className="h-5 w-36 rounded skeleton-shimmer" />
             <div className="grid grid-cols-3 gap-1.5">
-              <div className="h-9 rounded bg-muted" />
-              <div className="h-9 rounded bg-muted" />
-              <div className="h-9 rounded bg-muted" />
+              <div className="h-9 rounded skeleton-shimmer" />
+              <div className="h-9 rounded skeleton-shimmer" />
+              <div className="h-9 rounded skeleton-shimmer" />
             </div>
           </div>
         </div>

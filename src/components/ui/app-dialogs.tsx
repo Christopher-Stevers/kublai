@@ -1,7 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { AlertCircleIcon, CheckCircle2Icon, InfoIcon, XIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  InfoIcon,
+  XIcon,
+} from "lucide-react";
+import { SaveCheck } from "./save-check";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -99,7 +105,10 @@ export function AppDialogHost() {
 
   return (
     <>
-      <Dialog open={!!confirm} onOpenChange={(open) => !open && closeConfirm(false)}>
+      <Dialog
+        open={!!confirm}
+        onOpenChange={(open) => !open && closeConfirm(false)}
+      >
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{confirm?.title}</DialogTitle>
@@ -135,14 +144,17 @@ export function AppDialogHost() {
               role={notice.variant === "error" ? "alert" : "status"}
               className="bg-card text-card-foreground animate-in fade-in slide-in-from-bottom-2 pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-lg border p-3 text-sm shadow-lg"
             >
-              <Icon
-                className={cn(
-                  "mt-0.5 h-4 w-4 shrink-0",
-                  notice.variant === "error" && "text-destructive",
-                  notice.variant === "success" && "text-success",
-                  notice.variant === "info" && "text-primary",
-                )}
-              />
+              {notice.variant === "success" ? (
+                <SaveCheck className="mt-0.5" />
+              ) : (
+                <Icon
+                  className={cn(
+                    "mt-0.5 h-4 w-4 shrink-0",
+                    notice.variant === "error" && "text-destructive",
+                    notice.variant === "info" && "text-primary",
+                  )}
+                />
+              )}
               <p className="flex-1">{notice.message}</p>
               <button
                 type="button"

@@ -42,7 +42,7 @@ export default function Home() {
                 <Button
                   asChild
                   size="lg"
-                  className="h-12 bg-blue-600 px-8 text-base font-semibold text-white hover:bg-blue-700 focus:bg-blue-700"
+                  className="h-12 bg-primary px-8 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90"
                 >
                   <Link href="/dashboard">Start an Order</Link>
                 </Button>
@@ -50,7 +50,7 @@ export default function Home() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="h-12 border-2 border-blue-600 px-8 text-base font-semibold text-blue-600 hover:bg-blue-50 focus:bg-blue-50"
+                  className="h-12 border-2 border-primary px-8 text-base font-semibold text-primary hover:bg-primary/5 focus:bg-primary/5"
                 >
                   <Link href="#how-it-works">See How It Works</Link>
                 </Button>
@@ -60,7 +60,7 @@ export default function Home() {
             {/* Right: Hero Image */}
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
               {/* Blue overlay */}
-              <div className="absolute inset-0 z-10 bg-blue-600/12" />
+              <div className="absolute inset-0 z-10 bg-primary/12" />
 
               {/* Image container with filters */}
               <div className="relative h-full w-full bg-muted">
@@ -107,9 +107,9 @@ export default function Home() {
             {/* Fast Ordering */}
             <div className="text-center sm:text-left">
               <div className="mb-4 flex justify-center sm:justify-start">
-                <div className="rounded-lg bg-blue-50 p-3">
+                <div className="rounded-lg bg-primary/10 p-3">
                   <svg
-                    className="h-6 w-6 text-blue-600"
+                    className="h-6 w-6 text-primary"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -134,9 +134,9 @@ export default function Home() {
             {/* Supplier-Aware */}
             <div className="text-center sm:text-left">
               <div className="mb-4 flex justify-center sm:justify-start">
-                <div className="rounded-lg bg-blue-50 p-3">
+                <div className="rounded-lg bg-primary/10 p-3">
                   <svg
-                    className="h-6 w-6 text-blue-600"
+                    className="h-6 w-6 text-primary"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -161,9 +161,9 @@ export default function Home() {
             {/* Built for the Field */}
             <div className="text-center sm:text-left">
               <div className="mb-4 flex justify-center sm:justify-start">
-                <div className="rounded-lg bg-blue-50 p-3">
+                <div className="rounded-lg bg-primary/10 p-3">
                   <svg
-                    className="h-6 w-6 text-blue-600"
+                    className="h-6 w-6 text-primary"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -197,19 +197,19 @@ export default function Home() {
           </h2>
           <div className="grid gap-6 sm:grid-cols-3">
             <div className="flex gap-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-white">
                 1
               </div>
               <p className="text-lg text-foreground">Search parts</p>
             </div>
             <div className="flex gap-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-white">
                 2
               </div>
               <p className="text-lg text-foreground">Add quantities</p>
             </div>
             <div className="flex gap-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-white">
                 3
               </div>
               <p className="text-lg text-foreground">Send order</p>
@@ -230,7 +230,7 @@ export default function Home() {
             <Button
               asChild
               size="lg"
-              className="h-12 bg-blue-600 px-8 text-base font-semibold text-white hover:bg-blue-700 focus:bg-blue-700"
+              className="h-12 bg-primary px-8 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90"
             >
               <Link href="/dashboard">Start an Order</Link>
             </Button>

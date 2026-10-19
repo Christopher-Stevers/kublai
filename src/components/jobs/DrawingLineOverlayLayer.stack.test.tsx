@@ -132,7 +132,7 @@ describe("multi-drawing raster pipeline", () => {
     );
     await waitFor(() =>
       expect(written.get(overview(view.container))).toEqual([
-        220, 38, 38, 255, 37, 99, 235, 255,
+        220, 38, 38, 255, 8, 145, 178, 255,
       ]),
     );
     expect(opened).not.toContain("/third.png");

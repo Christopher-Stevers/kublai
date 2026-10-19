@@ -25,6 +25,8 @@ import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { EmptyState } from "~/components/ui/empty-state";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -626,12 +628,12 @@ export function JobRoomsView({
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1].map((index) => (
-          <Card key={index} className="animate-pulse">
+          <Card key={index}>
             <CardHeader>
-              <div className="h-6 w-2/3 rounded bg-gray-200" />
+              <Skeleton className="h-6 w-2/3" />
             </CardHeader>
             <CardContent>
-              <div className="h-4 w-1/2 rounded bg-gray-200" />
+              <Skeleton className="h-4 w-1/2" />
             </CardContent>
           </Card>
         ))}
@@ -829,14 +831,11 @@ export function JobRoomsView({
 
           {floors.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <DoorOpenIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
-                <h3 className="mb-2 text-lg font-semibold">No rooms yet</h3>
-                <p className="text-muted-foreground text-center">
-                  {canUpload
-                    ? "Upload the job’s architectural PDF to detect floors and rooms."
-                    : "No drawings uploaded yet."}
-                </p>
+              <CardContent className="p-0">
+                <EmptyState
+                  art="blueprint"
+                  title={canUpload ? "No rooms yet. Upload the architectural PDF to find them." : "No rooms yet."}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -846,7 +845,7 @@ export function JobRoomsView({
                   key={floor.id}
                   data-tutorial="floor-card"
                   data-tutorial-floor-id={floor.id}
-                  className="cursor-pointer transition-shadow hover:shadow-md"
+                  className="card-lift cursor-pointer"
                   onClick={() => {
                     setSelectedFloorId(floor.id);
                     setSelectedRoomId(null);

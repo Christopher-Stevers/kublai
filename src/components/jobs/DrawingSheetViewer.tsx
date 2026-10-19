@@ -227,6 +227,9 @@ export function DrawingSheetViewer({
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
+  // Until the sheet arrives, a faint drafting grid stands in for it.
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const imageReady = loadedSrc === src;
   const [fit, setFit] = useState<{
     width: number;
     height: number;
@@ -2052,7 +2055,7 @@ export function DrawingSheetViewer({
         role="region"
         aria-label={`${alt} viewer`}
         aria-keyshortcuts="W A S D Q E"
-        className={`bg-muted relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? "cursor-grabbing" : measuring ? "cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
+        className={`${imageReady ? "bg-muted" : "blueprint-grid"} relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
         style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && view.scale <= 1.01 ? "pan-y" : "none" }}
@@ -2635,7 +2638,7 @@ export function DrawingSheetViewer({
           <div
             data-drawing-image-layer="true"
             className="absolute inset-0"
-            style={{ filter: appearanceFilter, backgroundColor: "#fff" }}
+            style={{ filter: appearanceFilter, backgroundColor: imageReady ? "#fff" : undefined }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -2643,6 +2646,8 @@ export function DrawingSheetViewer({
               src={src}
               alt={alt}
               draggable={false}
+              onLoad={() => setLoadedSrc(src)}
+              onError={() => setLoadedSrc(src)}
               className="absolute inset-0 h-full w-full"
               style={{ opacity: usesInkComparison ? 0 : undefined }}
             />

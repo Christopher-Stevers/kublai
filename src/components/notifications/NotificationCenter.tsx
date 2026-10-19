@@ -21,6 +21,7 @@ import { api } from "~/trpc/react";
 import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { updateAppBadge } from "~/lib/app-badge";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
   Dialog,
   DialogClose,
@@ -381,10 +382,11 @@ function NotificationInbox({
                 </p>
               )}
               {identityLoading || (accountKey && list.isLoading) ? (
-                <p className="text-muted-foreground flex items-center justify-center gap-2 p-10 text-sm">
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
-                  Loading notifications…
-                </p>
+                <div role="status" aria-label="Loading notifications" className="space-y-3 p-4">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <Skeleton key={index} className="h-14 rounded-lg w-full" />
+                  ))}
+                </div>
               ) : !accountKey ? (
                 <EmptyState
                   title="Notifications unavailable"

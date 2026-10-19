@@ -91,19 +91,19 @@ export default function JobOptionsPage({
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <div className="space-y-3">
-            <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-80 animate-pulse rounded bg-gray-200" />
+            <div className="h-8 w-64 rounded skeleton-shimmer" />
+            <div className="h-4 w-80 rounded skeleton-shimmer" />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1].map((index) => (
-              <Card key={index} className="animate-pulse">
+              <Card key={index}>
                 <CardHeader>
-                  <div className="h-6 w-2/3 rounded bg-gray-200" />
+                  <div className="h-6 w-2/3 rounded skeleton-shimmer" />
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="h-4 w-1/2 rounded bg-gray-200" />
-                    <div className="h-4 w-1/3 rounded bg-gray-200" />
+                    <div className="h-4 w-1/2 rounded skeleton-shimmer" />
+                    <div className="h-4 w-1/3 rounded skeleton-shimmer" />
                   </div>
                 </CardContent>
               </Card>

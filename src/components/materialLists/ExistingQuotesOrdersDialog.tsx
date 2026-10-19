@@ -142,7 +142,7 @@ export function ExistingQuotesOrdersDialog({
                     </div>
                   </div>
                   {onOpenExisting && (
-                    <div className="ml-4 text-sm text-blue-600">
+                    <div className="ml-4 text-sm text-primary">
                       Open →
                     </div>
                   )}

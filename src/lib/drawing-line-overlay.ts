@@ -9,7 +9,7 @@ import {
 export type OverlayInkStyle = { color: string; opacity: number };
 export const DEFAULT_OVERLAY_STYLES: [OverlayInkStyle, OverlayInkStyle] = [
   { color: "#dc2626", opacity: 1 },
-  { color: "#2563eb", opacity: 1 },
+  { color: "#0891b2", opacity: 1 },
 ];
 export const MAX_OVERLAY_PIXELS = MAX_DRAWING_PATCH_PIXELS;
 

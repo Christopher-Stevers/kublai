@@ -1,12 +1,13 @@
 import { overlayStyle, type OverlayInkStyle } from "./drawing-line-overlay";
 
 export const OVERLAY_PALETTE = [
+  // Red and cyan first: the classic two-revision overlay reads clearly.
   "#dc2626",
-  "#2563eb",
+  "#0891b2",
   "#16a34a",
   "#9333ea",
   "#ea580c",
-  "#0891b2",
+  "#2563eb",
   "#db2777",
   "#ca8a04",
 ];

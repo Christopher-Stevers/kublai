@@ -75,7 +75,7 @@ export function MaterialListOrderPickerDialog({
                   onOpenChange(false);
                   onVerifyOrder(order.id);
                 }}
-                className="flex w-full items-center rounded-lg border p-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                className="flex w-full items-center rounded-lg border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 <div className="min-w-0">
                   <div className="font-medium text-foreground">

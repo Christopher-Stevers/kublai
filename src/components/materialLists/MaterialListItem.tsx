@@ -161,7 +161,7 @@ function InitialsSyncBadge({
 
   const statusClasses =
     status === "syncing"
-      ? "bg-blue-500 text-white ring-blue-100"
+      ? "bg-primary text-primary-foreground ring-primary/20"
       : status === "pending"
         ? "bg-amber-500 text-white ring-amber-100"
         : "bg-emerald-500 text-white ring-emerald-100";

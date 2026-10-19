@@ -13,6 +13,8 @@ import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import { EmptyState } from "~/components/ui/empty-state";
+import { materialListTrade, TRADE_TAB } from "~/lib/material-list-trade";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import {
@@ -514,20 +516,17 @@ export function DashboardClient({
 
                 {selectedItems.length === 0 ? (
                   <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-                      <h3 className="mb-2 text-lg font-semibold">
-                        No items yet
-                      </h3>
-                      <p className="text-muted-foreground mb-4 text-center">
-                        {isToolRequest
-                          ? "Add tools, then send the request to Asset Management."
-                          : "Add parts now. They’ll stay on this device and sync when online."}
-                      </p>
-                      <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
-                        <PlusIcon className="mr-2 h-4 w-4" />
-                        {isToolRequest ? "Add Tool" : "Add Part"}
-                      </Button>
+                    <CardContent className="p-0">
+                      <EmptyState
+                        art="clipboard"
+                        title={isToolRequest ? "No tools yet. Add them, then send the request." : "No parts yet. They’ll sync when you’re online."}
+                        action={
+                          <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
+                            <PlusIcon className="mr-2 h-4 w-4" />
+                            {isToolRequest ? "Add Tool" : "Add Part"}
+                          </Button>
+                        }
+                      />
                     </CardContent>
                   </Card>
                 ) : (
@@ -703,22 +702,20 @@ export function DashboardClient({
               {merge.banner}
               {offlineMaterialLists.length === 0 ? (
                 <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-                    <h3 className="mb-2 text-lg font-semibold">
-                      No material lists yet
-                    </h3>
-                    <p className="text-muted-foreground mb-4 text-center">
-                      Create one now. It’ll stay on this device and sync when
-                      online.
-                    </p>
-                    <Button
-                      data-tutorial="create-list"
-                      onClick={() => handleCreateMaterialList(offlineJob.id)}
-                    >
-                      <PlusIcon className="mr-2 h-4 w-4" />
-                      New Material List
-                    </Button>
+                  <CardContent className="p-0">
+                    <EmptyState
+                      art="clipboard"
+                      title="No material lists yet. New lists sync when you’re online."
+                      action={
+                        <Button
+                          data-tutorial="create-list"
+                          onClick={() => handleCreateMaterialList(offlineJob.id)}
+                        >
+                          <PlusIcon className="mr-2 h-4 w-4" />
+                          New Material List
+                        </Button>
+                      }
+                    />
                   </CardContent>
                 </Card>
               ) : (
@@ -727,7 +724,7 @@ export function DashboardClient({
                     <Card
                       key={list.id}
                       {...merge.cardProps(list)}
-                      className={"cursor-pointer select-none transition-shadow hover:shadow-md" + merge.cardClassName(list)}
+                      className={"card-lift relative cursor-pointer overflow-hidden select-none" + merge.cardClassName(list)}
                       onPointerDown={(event) => {
                         if (merge.active || event.button !== 0) return;
                         clearMaterialListPress();
@@ -768,6 +765,7 @@ export function DashboardClient({
                         });
                       }}
                     >
+                      <span aria-hidden data-trade={materialListTrade(list)} className={`absolute inset-y-0 left-0 w-1.5 ${TRADE_TAB[materialListTrade(list)]}`} />
                       <CardHeader>
                         <div className="flex items-start justify-between gap-3">
                           <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
@@ -1018,12 +1016,11 @@ export function DashboardClient({
           </div>
         ) : jobs.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <BriefcaseIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-              <h3 className="mb-2 text-lg font-semibold">No jobs yet</h3>
-              <p className="text-muted-foreground mb-4 text-center">
-                Create your first job to get started
-              </p>
+            <CardContent className="p-0">
+              <EmptyState
+                art="hardhat"
+                title="No jobs yet. Create your first job to get started."
+              />
             </CardContent>
           </Card>
         ) : (

@@ -74,7 +74,7 @@ export function MaterialStage({
         >
           <button
             type="button"
-            className="min-h-10 rounded px-2 text-blue-700 hover:bg-blue-50"
+            className="min-h-10 rounded px-2 text-primary hover:bg-primary/5"
             onClick={() => browse([])}
           >
             All materials

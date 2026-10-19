@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2Icon, MessageSquareIcon } from "lucide-react";
+import { MessageSquareIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { SwitchTrack } from "~/components/ui/switch";
+import { Skeleton } from "~/components/ui/skeleton";
 
 export function JobNotificationSettings({
   accountKey,
@@ -64,12 +65,11 @@ export function JobNotificationSettings({
             </button>
           </p>
         ) : settings.isLoading ? (
-          <p
-            role="status"
-            className="text-muted-foreground flex items-center gap-2 p-4"
-          >
-            <Loader2Icon className="size-4 animate-spin" /> Loading job chats…
-          </p>
+          <div role="status" aria-label="Loading job chats" className="space-y-2 p-4">
+            {Array.from({ length: 3 }, (_, index) => (
+              <Skeleton key={index} className="h-10 w-full" />
+            ))}
+          </div>
         ) : jobs.length ? (
           <ul className="divide-y">
             {jobs.map((job) => (

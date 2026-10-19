@@ -9,7 +9,7 @@ export function MaterialListSyncIndicator({
   if (status === "syncing") {
     return (
       <span
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-900 ring-1 ring-blue-200"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20"
         title="Syncing"
         aria-label="Syncing"
       >

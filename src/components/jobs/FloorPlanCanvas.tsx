@@ -815,7 +815,7 @@ export function FloorPlanCanvas({
                   type="button"
                   disabled={!canEdit}
                   data-vertex-index={index}
-                  className="absolute h-7 w-7 rounded-full border-2 border-white bg-blue-600 shadow"
+                  className="absolute h-7 w-7 rounded-full border-2 border-white bg-primary shadow"
                   style={{
                     left: `${point.x * 100}%`,
                     top: `${point.y * 100}%`,

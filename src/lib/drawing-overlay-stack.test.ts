@@ -34,13 +34,13 @@ describe("streaming overlay stack", () => {
       [0, 0, 0, 0, 255],
     ]);
     expect(pixels).toEqual([
-      220, 38, 38, 255, 37, 99, 235, 255, 22, 163, 74, 255, 0, 0, 0, 255, 147,
+      220, 38, 38, 255, 8, 145, 178, 255, 22, 163, 74, 255, 0, 0, 0, 255, 147,
       51, 234, 255,
     ]);
   });
   it("ignores hidden drawings and keeps common ink at the strongest visible opacity", () => {
     expect(render([[255], [255], [255]], [0, 0.5, 0]).pixels).toEqual([
-      37, 99, 235, 128,
+      8, 145, 178, 128,
     ]);
     expect(render([[255], [255], [255]], [0.25, 0.5, 1]).pixels).toEqual([
       0, 0, 0, 255,
@@ -97,7 +97,7 @@ describe("streaming overlay stack", () => {
     compositeInkStack(output, stack, styles, 0, 2);
     compositeInkStack(output, stack, styles, 2, 4);
     expect([...output]).toEqual([
-      220, 38, 38, 255, 220, 38, 38, 255, 37, 99, 235, 255, 37, 99, 235, 255,
+      220, 38, 38, 255, 220, 38, 38, 255, 8, 145, 178, 255, 8, 145, 178, 255,
     ]);
   });
 });

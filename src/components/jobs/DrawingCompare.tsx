@@ -21,6 +21,7 @@ import type { DrawingComparison } from "./DrawingComparisonLayer";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
 import { useDrawingWheelGroup } from "./DrawingQuickWheel";
+import { SegmentedControl } from "~/components/ui/segmented-control";
 
 export type DrawingCompareSheet = {
   id: string;
@@ -222,35 +223,43 @@ export function DrawingCompare({
           <div className="flex h-12 items-center gap-2 px-2">
             <span
               aria-hidden
-              className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg"
+              className="bg-primary/10 text-primary hidden size-8 shrink-0 place-items-center rounded-lg sm:grid"
             >
               <LayersIcon className="size-4" />
             </span>
             {/* The legend underneath names each drawing. */}
             <span
-              className="min-w-0 flex-1 truncate text-sm font-semibold"
+              className="hidden min-w-0 shrink truncate text-sm font-semibold md:block"
               title={drawings.map((sheet) => sheet.name).join(" / ")}
             >
               Compare
             </span>
-            <select
-              aria-label="Comparison mode"
-              className="bg-muted hover:bg-accent focus-visible:ring-ring h-9 w-auto max-w-[9.5rem] shrink-0 cursor-pointer rounded-full border-0 pr-7 pl-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-              value={mode}
-              onChange={(event) => {
-                setEntryView(camera.current);
-                setMode(event.target.value as typeof mode);
-              }}
-            >
-              <option value="side-by-side" disabled={multi}>
-                Side by side{multi ? " (two drawings)" : ""}
-              </option>
-              <option value="overlay">Overlay</option>
-              <option value="difference">Changes</option>
-              <option value="wipe" disabled={multi}>
-                Wipe{multi ? " (two drawings)" : ""}
-              </option>
-            </select>
+            <div className="flex min-w-0 flex-1 md:justify-center">
+              <SegmentedControl
+                label="Comparison mode"
+                value={mode}
+                onChange={(value) => {
+                  setEntryView(camera.current);
+                  setMode(value);
+                }}
+                options={[
+                  { value: "overlay", label: "Overlay" },
+                  { value: "difference", label: "Changes" },
+                  {
+                    value: "side-by-side",
+                    label: "Side by side",
+                    disabled: multi,
+                    title: multi ? "Two drawings only" : undefined,
+                  },
+                  {
+                    value: "wipe",
+                    label: "Wipe",
+                    disabled: multi,
+                    title: multi ? "Two drawings only" : undefined,
+                  },
+                ]}
+              />
+            </div>
             {mode !== "side-by-side" && (
               <button
                 type="button"

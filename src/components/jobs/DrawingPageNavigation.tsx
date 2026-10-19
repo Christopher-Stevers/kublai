@@ -1,7 +1,32 @@
 "use client";
-import type { Ref } from "react";
+import { useCallback, useEffect, useRef, type Ref } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
+
+const ZOOM_IDLE_MS = 2000;
+const idleTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+
+function setRef<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") ref(value);
+  else if (ref) (ref as { current: T | null }).current = value;
+}
+
+/** Show the zoom readout, then let it fade once zooming has stopped for a moment. */
+export function showZoomReadout(element: HTMLElement | null, text?: string) {
+  if (!element) return;
+  if (text !== undefined) {
+    if (element.textContent === text) return;
+    element.textContent = text;
+  }
+  element.dataset.idle = "false";
+  clearTimeout(idleTimers.get(element));
+  idleTimers.set(
+    element,
+    setTimeout(() => {
+      element.dataset.idle = "true";
+    }, ZOOM_IDLE_MS),
+  );
+}
 
 /** Shared navigation for Drawings and document PDFs. */
 export function DrawingPageNavigation({
@@ -24,6 +49,21 @@ export function DrawingPageNavigation({
   onPrevious: () => void;
   onNext: () => void;
 }) {
+  const readout = useRef<HTMLSpanElement | null>(null);
+  const attachReadout = useCallback(
+    (element: HTMLSpanElement | null) => {
+      readout.current = element;
+      setRef(zoomRef, element);
+    },
+    [zoomRef],
+  );
+  useEffect(() => {
+    const element = readout.current;
+    showZoomReadout(element);
+    return () => {
+      if (element) clearTimeout(idleTimers.get(element));
+    };
+  }, []);
   return (
     <div
       data-drawing-chrome
@@ -50,10 +90,10 @@ export function DrawingPageNavigation({
               </span>
             )}
             <span
-              ref={zoomRef}
+              ref={attachReadout}
               aria-label="Drawing zoom"
               title="Zoom (100% = fit to screen)"
-              className="text-muted-foreground shrink-0 text-xs tabular-nums"
+              className="text-muted-foreground shrink-0 text-xs tabular-nums transition-opacity duration-500 data-[idle=true]:opacity-0"
             >
               {Math.round(zoom * 100)}%
             </span>

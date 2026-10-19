@@ -10,6 +10,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { SaveCheck } from "~/components/ui/save-check";
 
 export function PasswordSettings({ isOnline }: { isOnline: boolean }) {
   const simulation = useEmployeeSimulation();
@@ -139,7 +140,8 @@ function PasswordForm({
         </p>
       )}
       {success && (
-        <p role="status" className="text-sm text-green-700 dark:text-green-400">
+        <p role="status" className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+          <SaveCheck />
           Password saved successfully.
         </p>
       )}

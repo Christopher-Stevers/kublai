@@ -8,7 +8,6 @@ import {
   CheckCircle2Icon,
   ChevronRightIcon,
   CircleDashedIcon,
-  Loader2Icon,
   PlusIcon,
   SearchIcon,
   SlidersHorizontalIcon,
@@ -20,6 +19,7 @@ import {
   type EstimateStatus,
 } from "~/lib/estimating";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Input } from "~/components/ui/input";
 import {
   Dialog,
@@ -184,13 +184,11 @@ export function EstimatesList() {
         </p>
       )}
       {estimates.isLoading ? (
-        <p
-          role="status"
-          className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm"
-        >
-          <Loader2Icon className="h-4 w-4 animate-spin" />
-          Loading estimates…
-        </p>
+        <div role="status" aria-label="Loading estimates" className="space-y-3">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-20 rounded-xl w-full" />
+          ))}
+        </div>
       ) : !estimates.error && items.length === 0 ? (
         <div className="bg-card flex flex-col items-center rounded-xl border px-6 py-14 text-center">
           <span className="bg-primary/10 text-primary mb-4 flex h-14 w-14 items-center justify-center rounded-full">

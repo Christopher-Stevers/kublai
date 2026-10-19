@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import { CalendarDaysIcon, ChevronDownIcon, Loader2Icon } from "lucide-react";
+import { CalendarDaysIcon, ChevronDownIcon } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { SwitchTrack } from "~/components/ui/switch";
 import {
   formatDeliveryDate,
@@ -100,10 +101,11 @@ export function DeliveryCalendarSettings({
               </Button>
             </div>
           ) : !calendar ? (
-            <p role="status" className="flex items-center gap-2 text-sm">
-              <Loader2Icon className="size-4 animate-spin" />
-              Loading delivery calendar…
-            </p>
+            <div role="status" aria-label="Loading delivery calendar" className="space-y-2">
+              {Array.from({ length: 2 }, (_, index) => (
+                <Skeleton key={index} className="h-9 w-full" />
+              ))}
+            </div>
           ) : (
             <>
               <fieldset disabled={disabled}>

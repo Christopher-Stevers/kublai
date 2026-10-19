@@ -47,6 +47,23 @@ export function documentKind(document: JobDocument, data: DocumentOverview) {
   if (version?.mimeType.startsWith("image/")) return "image";
   return document.officeWebUrl ? "office" : "other";
 }
+/** File-type colour: a tab on the row's left edge and a tinted icon tile. */
+export function documentTone(kind: string) {
+  switch (kind) {
+    case "pdf":
+      return { tab: "bg-red-500", tile: "bg-red-500/10 text-red-600 dark:text-red-400" };
+    case "spreadsheet":
+      return { tab: "bg-emerald-500", tile: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" };
+    case "word":
+      return { tab: "bg-blue-500", tile: "bg-blue-500/10 text-blue-600 dark:text-blue-400" };
+    case "image":
+      return { tab: "bg-violet-500", tile: "bg-violet-500/10 text-violet-600 dark:text-violet-400" };
+    case "office":
+      return { tab: "bg-sky-500", tile: "bg-sky-500/10 text-sky-700 dark:text-sky-400" };
+    default:
+      return { tab: "bg-muted-foreground/40", tile: "bg-muted text-muted-foreground" };
+  }
+}
 export function DocumentIcon({
   kind,
   className = "size-5",

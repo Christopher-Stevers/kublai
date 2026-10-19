@@ -35,6 +35,7 @@ import { ModelDesignEditor } from "./ModelDesignEditor";
 import { TouchNavigation } from "./TouchNavigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
   Dialog,
@@ -120,12 +121,9 @@ export function JobModelsView({ jobId }: { jobId: string }) {
     );
   if (!query.data)
     return (
-      <div
-        role="status"
-        className="text-muted-foreground flex min-h-96 items-center justify-center gap-3"
-      >
-        <LoaderCircle className="size-5 animate-spin" />
-        Opening model workspace…
+      <div role="status" aria-label="Opening model workspace" className="space-y-3">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="min-h-96 w-full rounded-xl" />
       </div>
     );
   return (

@@ -147,7 +147,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-10 w-full flex-row gap-1.5 rounded-lg px-1 text-xs font-medium whitespace-normal [&_svg]:size-4";
+  "h-10 w-full flex-row gap-1.5 rounded-full px-1 text-xs font-medium whitespace-normal transition-colors [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
   ["viewing", "Viewing"],
   ["select", "Select"],
@@ -238,7 +238,7 @@ const MARKUP_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
   angle: TriangleRightIcon,
   count: HashIcon,
 };
-const MENU_CLASS = "w-64 rounded-xl p-1.5 shadow-xl";
+const MENU_CLASS = "spring-up w-64 rounded-xl p-1.5 shadow-xl";
 const MENU_ITEM = "min-h-11 gap-3 rounded-lg";
 const MENU_SECTION =
   "text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase";
@@ -3178,7 +3178,7 @@ export function DrawingWorkspace({
             <div
               role="dialog"
               aria-label="Markup tools"
-              className="bg-card/95 absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[65dvh] overflow-y-auto rounded-2xl border p-3 shadow-xl backdrop-blur"
+              className="spring-up bg-card/95 absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[65dvh] overflow-y-auto rounded-2xl border p-3 shadow-xl backdrop-blur"
             >
               <div className="mb-2 flex items-center justify-between px-1">
                 <p className="text-sm font-semibold">Markup</p>
@@ -3291,7 +3291,7 @@ export function DrawingWorkspace({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={moreOpen ? "default" : "outline"}
+                  variant={moreOpen ? "default" : "ghost"}
                   className={BAR_BUTTON}
                   aria-label={moreOpen ? "Done" : "More"}
                 >
@@ -3447,7 +3447,7 @@ export function DrawingWorkspace({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={toolsOpen ? "default" : "outline"}
+                  variant={toolsOpen ? "default" : "ghost"}
                   className={BAR_BUTTON}
                   aria-label={toolsOpen ? "Done" : "Tools"}
                 >
@@ -3524,7 +3524,7 @@ export function DrawingWorkspace({
             variant={
               markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "default"
-                : "outline"
+                : "ghost"
             }
             className={BAR_BUTTON}
             aria-label={
@@ -3550,7 +3550,7 @@ export function DrawingWorkspace({
             </span>
           </Button>
           <Button
-            variant={bottomMode.measuring ? "default" : "outline"}
+            variant={bottomMode.measuring ? "default" : "ghost"}
             className={BAR_BUTTON}
             aria-label={bottomMode.measuring ? "Done" : "Measure"}
             aria-pressed={bottomMode.measuring}

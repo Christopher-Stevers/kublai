@@ -199,7 +199,7 @@ describe("drawing measure", () => {
     const second = { id: "two", name: "Revision", imageUrl: "/second.webp" };
     const onMode = vi.fn();
     const view = render(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 0, pipeRequest: 0, onMode }} />);
-    fireEvent.change(screen.getByLabelText("Comparison mode"), { target: { value: mode } });
+    fireEvent.click(screen.getByRole("radio", { name: ({ overlay: "Overlay", difference: "Changes", wipe: "Wipe", "side-by-side": "Side by side" } as Record<string, string>)[mode] }));
     expect(screen.queryByRole("region", { name: "Drawing tool options" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pipe system" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Measure" })).toBeNull();

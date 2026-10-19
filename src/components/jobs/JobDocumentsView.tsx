@@ -58,6 +58,8 @@ import type {
   JobDocument,
 } from "~/server/documents/types";
 import { SubmittalsView } from "./documents/SubmittalsView";
+import { EmptyState } from "~/components/ui/empty-state";
+import { Skeleton } from "~/components/ui/skeleton";
 import { defaultSubmittal } from "~/lib/submittals";
 import {
   DocumentEditor,
@@ -69,6 +71,7 @@ import {
 } from "./documents/DocumentDetails";
 import {
   DocumentIcon,
+  documentTone,
   documentKind,
   formatBytes,
   formatDate,
@@ -1012,9 +1015,7 @@ export function JobDocumentsView({
             </div>
           )}
           <div
-            className={!loading && filtered.length === 0 && !query && !status && !kind && view === "files"
-              ? `min-h-24 ${dragging ? "rounded-lg border border-primary bg-primary/5 ring-4 ring-primary/20" : ""}`
-              : `overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
+            className={`overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
             aria-label="Document file list"
             onDragOver={(event) => {
               event.preventDefault();
@@ -1036,12 +1037,19 @@ export function JobDocumentsView({
             }}
           >
             {loading && data.documents.length === 0 ? (
-              <div
-                role="status"
-                className="text-muted-foreground flex items-center justify-center gap-2 p-12"
-              >
-                <Loader2Icon className="size-5 animate-spin" />
-                Loading documents…
+              <div role="status" aria-label="Loading documents">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 border-b p-4 last:border-b-0"
+                  >
+                    <Skeleton className="size-9 shrink-0 rounded-lg" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-3 w-1/4" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filtered.length === 0 ? (
               query || status || kind || view === "recycle" ? (
@@ -1055,7 +1063,24 @@ export function JobDocumentsView({
                       : "Try a different search or clear the filters."}
                   </p>
                 </div>
-              ) : null
+              ) : (
+                <EmptyState
+                  art="folder"
+                  title="No documents yet."
+                  action={
+                    canWrite && (
+                      <Button
+                        variant="outline"
+                        disabled={processing}
+                        onClick={() => pickFiles()}
+                      >
+                        <UploadIcon />
+                        Upload files
+                      </Button>
+                    )
+                  }
+                />
+              )
             ) : (
               <>
                 <div className="text-muted-foreground hidden grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem_2.5rem] gap-3 border-b px-4 py-3 text-xs font-medium md:grid">
@@ -1070,11 +1095,16 @@ export function JobDocumentsView({
                   const current = data.versions.find(
                     (item) => item.id === document.currentVersionId,
                   );
+                  const tone = documentTone(documentKind(document, data));
                   return (
                     <div
-                      className="hover:bg-muted/40 flex items-start gap-3 border-b p-4 last:border-b-0 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem_2.5rem] md:items-center"
+                      className="hover:bg-muted/40 relative flex items-start gap-3 border-b p-4 last:border-b-0 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_7rem_6rem_11rem_2.5rem] md:items-center"
                       key={document.id}
                     >
+                      <span
+                        aria-hidden
+                        className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${tone.tab}`}
+                      />
                       {view === "files" ? (
                         <input
                           type="checkbox"
@@ -1097,7 +1127,7 @@ export function JobDocumentsView({
                         onClick={() => setSelectedId(document.id)}
                         aria-label={`Open ${document.name}`}
                       >
-                        <span className="bg-primary/5 text-primary mt-0.5 rounded-lg p-2 md:mt-0">
+                        <span className={`mt-0.5 rounded-lg p-2 md:mt-0 ${tone.tile}`}>
                           <DocumentIcon kind={documentKind(document, data)} />
                         </span>
                         <span className="min-w-0">
@@ -1175,9 +1205,11 @@ export function JobDocumentsView({
             </p>
           </div>
           {data.reviews.length === 0 && (
-            <p className="text-muted-foreground rounded-lg border p-10 text-center text-sm">
-              No reviews yet. Review requests and decisions will appear here.
-            </p>
+            <EmptyState
+              art="clipboard"
+              title="No reviews yet."
+              className="rounded-lg border"
+            />
           )}
           {data.reviews
             .slice()
@@ -1241,10 +1273,11 @@ export function JobDocumentsView({
             </p>
           </div>
           {data.transmittals.length === 0 && (
-            <p className="text-muted-foreground rounded-lg border p-10 text-center text-sm">
-              Select uploaded files in Files and create a transmittal to record
-              an issue.
-            </p>
+            <EmptyState
+              art="blueprint"
+              title="No transmittals yet."
+              className="rounded-lg border"
+            />
           )}
           {data.transmittals
             .slice()

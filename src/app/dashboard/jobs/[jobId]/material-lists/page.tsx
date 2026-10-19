@@ -10,6 +10,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { api } from "~/trpc/react";
+import { EmptyState } from "~/components/ui/empty-state";
+import { Skeleton } from "~/components/ui/skeleton";
+import { materialListTrade, TRADE_TAB } from "~/lib/material-list-trade";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -278,19 +281,19 @@ export default function JobDetailPage({
       <div className="px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <div className="space-y-3">
-            <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-80 animate-pulse rounded bg-gray-200" />
+            <Skeleton className="h-8 w-64 max-w-full" />
+            <Skeleton className="h-4 w-80 max-w-full" />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1].map((index) => (
-              <Card key={index} className="animate-pulse">
+              <Card key={index}>
                 <CardHeader>
-                  <div className="h-6 w-2/3 rounded bg-gray-200" />
+                  <Skeleton className="h-6 w-2/3" />
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="h-4 w-1/2 rounded bg-gray-200" />
-                    <div className="h-4 w-1/3 rounded bg-gray-200" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-1/3" />
                   </div>
                 </CardContent>
               </Card>
@@ -358,18 +361,17 @@ export default function JobDetailPage({
         {merge.banner}
         {!materialLists || materialLists.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-              <h3 className="mb-2 text-lg font-semibold">
-                No material lists yet
-              </h3>
-              <p className="text-muted-foreground mb-4 text-center">
-                Create your first material list to get started
-              </p>
-              <Button onClick={handleCreateNew}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                New Material List
-              </Button>
+            <CardContent className="p-0">
+              <EmptyState
+                art="clipboard"
+                title="No material lists yet. Start one for this job."
+                action={
+                  <Button onClick={handleCreateNew}>
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    New Material List
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         ) : (
@@ -378,7 +380,7 @@ export default function JobDetailPage({
               <Card
                 key={list.id}
                 {...merge.cardProps(list)}
-                className={"cursor-pointer transition-shadow hover:shadow-md" + merge.cardClassName(list)}
+                className={"card-lift relative cursor-pointer overflow-hidden" + merge.cardClassName(list)}
                 onPointerDown={() => { if (!merge.active) startMaterialListLongPress(list); }}
                 onPointerUp={clearLongPressTimer}
                 onPointerLeave={clearLongPressTimer}
@@ -401,6 +403,7 @@ export default function JobDetailPage({
                   router.push(`/dashboard/material-lists/${list.id}`);
                 }}
               >
+                <span aria-hidden data-trade={materialListTrade(list)} className={`absolute inset-y-0 left-0 w-1.5 ${TRADE_TAB[materialListTrade(list)]}`} />
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">

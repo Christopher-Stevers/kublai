@@ -11,7 +11,7 @@ import type { SnapshotState } from "~/lib/snapshot-source";
 import { useDrawingAccount } from "../DrawingAccountProvider";
 import { useDrawingSnapshot } from "../useDrawingSnapshot";
 import { DrawingWorkspace } from "../DrawingWorkspace";
-import { DrawingPageNavigation } from "../DrawingPageNavigation";
+import { DrawingPageNavigation, showZoomReadout } from "../DrawingPageNavigation";
 import { useDrawingFullscreen } from "../useDrawingFullscreen";
 import type { DrawingViewport } from "../DrawingSheetViewer";
 
@@ -120,8 +120,7 @@ export function DocumentDrawingWorkspace({
               onClose={onClose}
               onViewportChange={(value) => {
                 viewport.current = value;
-                if (zoomLabel.current)
-                  zoomLabel.current.textContent = `${Math.round(value.zoom * 100)}%`;
+                showZoomReadout(zoomLabel.current, `${Math.round(value.zoom * 100)}%`);
               }}
               onOpenSheet={(target) => {
                 const next = sheets.findIndex((item) => item.id === target.id);

@@ -27,6 +27,7 @@ import {
   type EstimateStatus,
 } from "~/lib/estimating";
 import { Button } from "~/components/ui/button";
+import { SaveCheck } from "~/components/ui/save-check";
 import { Input } from "~/components/ui/input";
 import {
   Dialog,
@@ -576,7 +577,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 ) : dirty ? (
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 ) : (
-                  <CheckCircle2Icon className="h-3 w-3" />
+                  <SaveCheck className="size-3.5" />
                 )}
                 {busy
                   ? `${busy}…`

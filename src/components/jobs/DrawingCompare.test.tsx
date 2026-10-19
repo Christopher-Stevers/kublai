@@ -113,12 +113,8 @@ describe("drawing comparison", () => {
       { color: "#16a34a", opacity: 0.6 },
     ]);
     expect(screen.getByTestId("viewer")).toHaveAttribute("data-inks", inks);
-    fireEvent.change(screen.getByLabelText("Comparison mode"), {
-      target: { value: "side-by-side" },
-    });
-    fireEvent.change(screen.getByLabelText("Comparison mode"), {
-      target: { value: "overlay" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "Side by side" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Overlay" }));
     expect(screen.getByTestId("viewer")).toHaveAttribute("data-inks", inks);
   });
   it("resolves both private PDF and image sources before mounting and ignores a superseded response", async () => {
@@ -182,16 +178,12 @@ describe("drawing comparison", () => {
       "data-mode",
       "overlay",
     );
-    fireEvent.change(screen.getByLabelText("Comparison mode"), {
-      target: { value: "difference" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "Changes" }));
     expect(screen.getByTestId("viewer")).toHaveAttribute(
       "data-mode",
       "difference",
     );
-    fireEvent.change(screen.getByLabelText("Comparison mode"), {
-      target: { value: "side-by-side" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "Side by side" }));
     expect(screen.getAllByTestId("viewer")).toHaveLength(2);
   });
   it("exposes manual registration and resets it without altering source drawings", () => {
