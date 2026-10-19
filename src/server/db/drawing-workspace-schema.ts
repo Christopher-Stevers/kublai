@@ -155,3 +155,9 @@ export const drawingPushOutbox = table(
     ),
   ],
 );
+
+export const drawingPersonalScales = table("drawing_personal_scale", (d) => ({
+  sheetId: d.uuid().notNull().references(() => jobDrawingSheets.id, { onDelete: "cascade" }),
+  userId: d.varchar({ length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  scale: d.jsonb().$type<NonNullable<DrawingMetadata["scale"]>>().notNull(),
+}), (t) => [primaryKey({ columns: [t.sheetId, t.userId] })]);

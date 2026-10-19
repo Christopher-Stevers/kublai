@@ -391,6 +391,13 @@
       "when": 1792295172006,
       "tag": "0079_super_scale_jobs",
       "breakpoints": false
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792368627006,
+      "tag": "0080_drawing_personal_scale",
+      "breakpoints": false
     }
   ]
 }

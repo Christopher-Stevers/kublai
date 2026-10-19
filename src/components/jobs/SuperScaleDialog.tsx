@@ -273,7 +273,7 @@ export function SuperScaleDialog({
         }
       }
       setError(
-        `${saved} drawing${saved === 1 ? "" : "s"} calibrated. Existing scales were kept.`,
+        `${saved} drawing${saved === 1 ? "" : "s"} calibrated. Shared scales already set were kept. Personal overrides are unaffected.`,
       );
     } catch (reason) {
       setError(message(reason));
@@ -321,7 +321,7 @@ export function SuperScaleDialog({
           <>
             <p className="text-sm">
               Reference: <strong>{source.name}</strong>. Choose two parallel
-              grid lines from the same building. Existing scales will be kept.
+              grid lines from the same building. Shared scales already set will be kept. Personal overrides are unaffected.
             </p>
             {read && (
               <div className="grid grid-cols-2 gap-3">

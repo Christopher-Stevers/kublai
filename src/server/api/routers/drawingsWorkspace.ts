@@ -1,3 +1,4 @@
+import { personalDrawingScale, savePersonalDrawingScale } from "~/server/drawings/personal-scale";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
@@ -36,6 +37,8 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  personalScale: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input}) => personalDrawingScale(ctx,input.sheetId)),
+  setPersonalScale: hasDashboardAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => savePersonalDrawingScale(ctx,input.sheetId,input.scale)),
   superScaleLatest: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),
   superScaleStart: hasDashboardAccess.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: hasDashboardAccess.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),

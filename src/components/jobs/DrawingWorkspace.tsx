@@ -548,6 +548,15 @@ export function DrawingWorkspace({
   const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
+  const personalScale = api.drawingsWorkspace.personalScale.useQuery(
+    { sheetId: sourceId }, { enabled: online, retry: false },
+  );
+  const personalScaleMutation = api.drawingsWorkspace.setPersonalScale.useMutation();
+  const savePersonalScale = async (scale: DrawingMetadata["scale"]) => {
+    const saved = await personalScaleMutation.mutateAsync({ sheetId: sourceId, scale });
+    utils.drawingsWorkspace.personalScale.setData({ sheetId: sourceId }, saved);
+    return true;
+  };
   const source = data?.jobSheets.find((item) => item.id === sourceId) ?? {
     ...sheet,
     id: sheet.id,
@@ -1419,7 +1428,7 @@ export function DrawingWorkspace({
             <DialogTitle>Super scale — set scale first</DialogTitle>
             <DialogDescription>
               Mark two points on known grid lines and enter their real distance.
-              Once the scale is saved, Super scale will continue to grid matching.
+              This sets the shared reference scale for everyone. Super scale will then continue to grid matching; personal sheet overrides are kept.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
@@ -1680,23 +1689,18 @@ export function DrawingWorkspace({
               selectedId={selectedId}
               selectionMode={selectionMode}
               canEditAnnotation={canEditAnnotation}
-              sharedScale={current ? data.metadata.scale : undefined}
+              sharedScale={personalScale.data ?? (current ? data.metadata.scale : null)}
               onScaleChange={
-                data.canManage && online && writable
-                  ? (scale) => {
-                      if (metadataDirty) {
-                        setError(
-                          "Save or reload your sheet details before changing calibration.",
-                        );
-                        throw new Error(
-                          "Save or reload your sheet details before changing calibration.",
-                        );
+                online && writable
+                  ? async (scale) => {
+                      // The Super scale reference is deliberately shared; ordinary
+                      // Set scale is a personal override for this source sheet only.
+                      if (superScaleCalibration.current === source.id) {
+                        if (!data.canManage || metadataDirty || pending > 0)
+                          throw new Error("Finish saving sheet details before Super scale.");
+                        return saveMetadata({ ...data.metadata, scale });
                       }
-                      if (pending > 0)
-                        throw new Error(
-                          "Wait for the current save, then try again.",
-                        );
-                      return saveMetadata({ ...data.metadata, scale });
+                      return savePersonalScale(scale);
                     }
                   : undefined
               }
@@ -2863,7 +2867,7 @@ export function DrawingWorkspace({
                   jobId={jobId}
                   sheets={data.jobSheets}
                   entities={visible}
-                  scale={current ? data.metadata.scale : null}
+                  scale={personalScale.data ?? (current ? data.metadata.scale : null)}
                   store={account?.store}
                   resolveAssetUrl={resolveAssetUrl}
                   onOfflineSaved={async () => {
@@ -3230,6 +3234,13 @@ export function DrawingWorkspace({
                     Super scale results
                   </DropdownMenuItem>
                   </>
+                )}
+                {personalScale.data && (
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!online || personalScaleMutation.isPending}
+                    onSelect={() => { void savePersonalScale(null).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not reset your scale.")); }}>
+                    <MenuTile icon={RulerIcon} />
+                    Use shared scale
+                  </DropdownMenuItem>
                 )}
                 <div className="px-2 py-2">
                   <SheetOfflineButton sheet={source} workspaceSheetId={sheet.id} prepare={async () => {

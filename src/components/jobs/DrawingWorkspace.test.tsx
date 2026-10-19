@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   data: null as Workspace | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
   metadata: vi.fn(),
+  personal: null as Workspace["metadata"]["scale"],
+  savePersonal: vi.fn(),
   archive: vi.fn(),
   comment: vi.fn(),
   version: vi.fn(),
@@ -46,6 +48,7 @@ vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
       drawingsWorkspace: {
+        personalScale: { setData: (_: unknown, scale: Workspace["metadata"]["scale"]) => { mocks.personal = scale; } },
         get: {
           invalidate: mocks.invalidate,
           cancel: mocks.cancel,
@@ -61,6 +64,8 @@ vi.mock("~/trpc/react", () => ({
       },
     }),
     drawingsWorkspace: {
+      personalScale: { useQuery: () => ({ data: mocks.personal }) },
+      setPersonalScale: { useMutation: () => ({ mutateAsync: mocks.savePersonal }) },
       linkTargets: {
         useQuery: () => ({
           data: { jobs: [], targets: [] },
@@ -388,6 +393,8 @@ const chooseTool = (id: string) => {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.personal = null;
+  mocks.savePersonal.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => scale);
   mocks.account = null;
   mocks.data = fixture();
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
@@ -1286,6 +1293,9 @@ describe("drawing workspace workflows", () => {
     render(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
+    openMenu("More");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
     await waitFor(() => expect(mocks.metadata).toHaveBeenCalledOnce());
     expect(mocks.scaleResult).not.toHaveBeenCalled();
@@ -1307,9 +1317,27 @@ describe("drawing workspace workflows", () => {
     render(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
+    openMenu("More");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
     await waitFor(() => expect(mocks.scaleResult).toHaveBeenCalledWith(false));
     expect(screen.getByTestId("shared-scale")).toHaveTextContent("unset");
+  });
+
+  it("Set scale saves a personal override without changing the shared calibration", async () => {
+    mocks.data = fixture();
+    mocks.data.metadata.scale = {unit: "m", unitsPerSheetWidth: 80};
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
+    await waitFor(() => expect(mocks.savePersonal).toHaveBeenCalledWith({sheetId, scale: {unit:"m", unitsPerSheetWidth:120}}));
+    expect(mocks.metadata).not.toHaveBeenCalled();
+    expect(mocks.data.metadata.scale.unitsPerSheetWidth).toBe(80);
+  });
+  it("uses the personal scale ahead of the shared scale", () => {
+    mocks.personal = {unit:"m", unitsPerSheetWidth:42};
+    open();
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("42");
   });
 
   it("keeps local metadata edits during refresh and submits their original expected revision", async () => {
