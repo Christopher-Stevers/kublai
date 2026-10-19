@@ -156,13 +156,6 @@ export function DrawingMeasureWheel({
                   disabled: !pointCount || clearDisabled,
                   run: onClear,
                 },
-                {
-                  id: "scale",
-                  label: "Custom scale",
-                  icon: <RulerIcon />,
-                  disabled: reading || !canSetScale,
-                  run: onStartScale,
-                },
                 ...(onReadPrinted
                   ? [
                       {
@@ -259,10 +252,19 @@ export function DrawingMeasureWheel({
           ) : (
             "Tap points to measure"
           )}
-          {scaleLabel && (
-            <span className="text-muted-foreground ml-2 text-xs">
-              {scaleLabel}
-            </span>
+          {!calibrating && (
+            <button
+              type="button"
+              aria-label="Change scale"
+              title="Set a custom scale"
+              disabled={reading || saving || !canSetScale}
+              onClick={onStartScale}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => event.stopPropagation()}
+              className="bg-muted text-muted-foreground hover:bg-accent focus-visible:ring-ring pointer-events-auto ml-2 rounded-full px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {scaleLabel ?? "Set scale"}
+            </button>
           )}
           {statusNote && <p className="mt-1 max-w-72 text-xs">{statusNote}</p>}
         </div>

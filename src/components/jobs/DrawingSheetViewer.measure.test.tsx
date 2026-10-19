@@ -142,6 +142,22 @@ function chooseUnit(unit: string) {
 }
 
 describe("drawing measure", () => {
+  it("opens custom calibration from the Super scale label without a separate toolbar button", () => {
+    const { frame } = openSheet("scale-label", undefined, {
+      sharedScale: { unit: "ft", unitsPerSheetWidth: 100, label: "Super scale · A–B" },
+      onScaleChange: vi.fn(),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    const scale = screen.getByRole("button", { name: "Change scale" });
+    expect(scale).toHaveTextContent("Super scale · A–B");
+    expect(screen.queryByRole("button", { name: "Custom Scale" })).toBeNull();
+    fireEvent.click(scale);
+    tap(frame, 200, 300); tap(frame, 600, 300);
+    expect(screen.getByLabelText("How long is this line?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Change scale" })).toHaveTextContent("Super scale · A–B");
+  });
+
   it("right-click saves the measurement through Done and exits without adding another point", () => {
     const onCreate = vi.fn();
     const { frame } = openSheet("right-click-measure", undefined, { onCreate });
@@ -169,7 +185,7 @@ describe("drawing measure", () => {
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate.mock.calls[0]![0]).toMatchObject({ type: "dimension", parents: [null, 0], scale: 100, unit: "m" });
     expect(onMode).toHaveBeenLastCalledWith({ measuring: false, pipe: mode === "pipe" });
-    expect(screen.queryByRole("button", { name: "Custom Scale" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change scale" })).toBeNull();
     view.rerender(<DrawingSheetViewer {...props} tool="pan" toolControls={controls(3, "measure")} />);
     expect(onMode).toHaveBeenLastCalledWith({ measuring: true, pipe: false });
     expect(view.frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
@@ -191,7 +207,7 @@ describe("drawing measure", () => {
     view.rerender(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 1, pipeRequest: 0, onMode }} />);
     // The host bar's Measure button is Done: the strip has none of its own.
     expect(screen.queryAllByRole("button", { name: "Done" })).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Custom Scale" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Change scale" })).toBeEnabled();
     expect(onMode).toHaveBeenLastCalledWith({ measuring: true, pipe: false });
 
     view.rerender(<DrawingCompare first={first} second={second} toolControls={{ measureRequest: 1, pipeRequest: 1, onMode }} />);
@@ -201,7 +217,7 @@ describe("drawing measure", () => {
   it.each([false, true])("redos undone points with icon-only buttons (calibration: %s)", calibration => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     const undo = screen.getByRole("button", { name: "Undo" });
     const redo = screen.getByRole("button", { name: "Redo" });
@@ -219,7 +235,7 @@ describe("drawing measure", () => {
     const { frame } = openSheet();
     const image = screen.getByAltText("Sheet");
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    if (calibration) fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     const nodes = () => [...frame.querySelectorAll("[data-measure-node]")].map(node => node.innerHTML);
     const before = nodes();
@@ -358,7 +374,7 @@ describe("drawing measure", () => {
     tap(frame, 200, 300);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onCreate).not.toHaveBeenCalled();
@@ -383,7 +399,7 @@ describe("drawing measure", () => {
     fireEvent.click(color);
     expect(footer.contains(screen.getByRole("button", { name: "Neon cyan" }))).toBe(true);
     expect(frame.querySelector('[data-measure-path]')).toHaveAttribute("points", points!);
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     tap(frame, 400, 300);
     expect(footer.contains(screen.getByLabelText("How long is this line?"))).toBe(true);
@@ -404,7 +420,7 @@ describe("drawing measure", () => {
     tap(frame, 0, 300);
     tap(frame, 400, 300);
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 0, 300);
     tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -454,7 +470,7 @@ describe("drawing measure", () => {
     const onScaleChange = vi.fn(() => new Promise<boolean>(resolve => { finish = resolve; }));
     const { frame, rerender } = openSheet("scale-retry", undefined, { sharedScale: null, onScaleChange });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 0, 300); tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
     const apply = screen.getByRole("button", { name: "Use this length" });
@@ -478,7 +494,7 @@ describe("drawing measure", () => {
   it("keeps calibration editable when its owner blocks a save", () => {
     const { frame } = openSheet("blocked-scale", undefined, { sharedScale: null, onScaleChange: () => { throw new Error("Save your sheet details first."); } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 0, 300); tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
     fireEvent.click(screen.getByRole("button", { name: "Use this length" }));
@@ -489,7 +505,7 @@ describe("drawing measure", () => {
   it("does not offer shared calibration without permission to save it", () => {
     openSheet("read-only-scale", undefined, { sharedScale: null });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    expect(screen.getByRole("button", { name: "Custom Scale" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Change scale" })).toBeDisabled();
   });
 
   it("treats a null shared scale as uncalibrated even when this device has a stored scale", () => {
@@ -516,7 +532,7 @@ describe("drawing measure", () => {
   it("totals a traced path after the scale is taken from a known length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
 
     // Dragging still pans and does not drop a point.
     fireEvent.pointerDown(frame, {
@@ -564,7 +580,7 @@ describe("drawing measure", () => {
   it("uses the scale saved for that drawing the next time it is opened", () => {
     const first = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(first.frame, 0, 300);
     tap(first.frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -587,7 +603,7 @@ describe("drawing measure", () => {
   it("rejects a scale that is not a length", () => {
     const { frame } = openSheet();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 0, 300);
     tap(frame, 800, 300);
     fireEvent.change(screen.getByLabelText("How long is this line?"), {
@@ -610,7 +626,7 @@ describe("drawing measure", () => {
     await waitFor(() => {
       expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     expect(screen.queryByText(/Set Scale: tap one end/)).toBeNull();
     fireEvent.pointerMove(frame, { clientX: 400, clientY: 312, buttons: 0 });
     expect(frame.querySelector('line[stroke="#22d3ee"]')).toBeTruthy();
@@ -634,7 +650,7 @@ describe("drawing measure", () => {
     await waitFor(() => {
       expect(document.querySelector('[data-snapping="ready"]')).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 400, 300);
     // Nearly straight up from a point on a horizontal line: locks at 90°.
     fireEvent.pointerMove(frame, { clientX: 408, clientY: 150, buttons: 0 });
@@ -766,7 +782,7 @@ describe("drawing measure", () => {
   it("hides scale guidance and the printed-scale link while calibrating", () => {
     const { frame } = openSheet("sheet-read", { url: "/plan.pdf", page: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     expect(screen.queryByText(/Set Scale: tap one end/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Read the scale printed on this drawing instead" })).toBeNull();
     tap(frame, 0, 300);
@@ -824,7 +840,7 @@ describe("dimensions along measuring segments", () => {
     const onScaleChange = vi.fn();
     const { frame } = openSheet("known-length-label", undefined, { sharedScale: null, onScaleChange });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     expect(labels(frame)).toEqual(["Enter length"]);
@@ -940,7 +956,7 @@ describe("dragging existing measuring nodes", () => {
     const onScaleChange = vi.fn();
     const { frame } = openSheet("scale-node-drag", undefined, { sharedScale: null, onScaleChange });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     down(frame, 200, 300);
@@ -1111,7 +1127,7 @@ describe("measuring colors", () => {
   it("uses custom colors for scale and trace and remembers the choice on another sheet", () => {
     const { frame } = openSheet("color-scale");
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom Scale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300);
     tap(frame, 400, 300);
     fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));

@@ -386,9 +386,7 @@ function Tracing({
 }) {
   return (
     <>
-      <div
-        className={`flex items-center gap-2 ${reading || (total && pointCount > 0) || scaleSet || scaleLabel || controls ? "" : "hidden"}`}
-      >
+      <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           {/* Just the total (or the scale being read): no instructions. */}
           <p
@@ -405,11 +403,17 @@ function Tracing({
                 ? total
                 : null}
           </p>
-          {!reading && scaleLabel && (
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums">
-              {scaleLabel}
-            </span>
-          )}
+          <button
+            type="button"
+            aria-label="Change scale"
+            title="Set a custom scale"
+            disabled={(reading ?? false) || !canSetScale}
+            onClick={onStartScale}
+            className="bg-muted text-muted-foreground hover:bg-accent focus-visible:ring-ring shrink-0 rounded-full px-2 py-1 text-[11px] font-medium tabular-nums focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {scaleLabel ?? (scaleSet ? "Scale" : "Set scale")}
+            <ChevronDownIcon aria-hidden="true" className="ml-1 inline size-3" />
+          </button>
         </div>
         {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
         {controls}
@@ -423,7 +427,7 @@ function Tracing({
         </p>
       )}
       <div
-        className={`grid ${layerControl ? "grid-cols-7" : "grid-cols-6"} items-stretch gap-1`}
+        className={`grid ${layerControl ? "grid-cols-6" : "grid-cols-5"} items-stretch gap-1`}
       >
         <Button
           type="button"
@@ -468,17 +472,6 @@ function Tracing({
         >
           <EraserIcon aria-hidden="true" />
           Clear
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className={`${MEASURE_TILE} text-center whitespace-normal`}
-          aria-label="Custom Scale"
-          disabled={(reading ?? false) || !canSetScale}
-          onClick={onStartScale}
-        >
-          <RulerIcon aria-hidden="true" />
-          Custom Scale
         </Button>
         {layerControl}
         <MeasureColorPicker
