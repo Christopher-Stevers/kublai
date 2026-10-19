@@ -314,6 +314,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     ), [sheets, bySheet, query, discipline, status, favoritesOnly]);
   const downloadFolder = async (targetId = setId) => {
     if (!account?.store || downloader.current || !targetId) return;
+    const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
+    if (currentFolder && savedSets[targetId] === `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`) return;
     const controller = new AbortController();
     downloader.current = controller;
     setDownloadingSet(targetId);
@@ -1177,12 +1179,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || (Boolean(download) && downloadingSet !== folder.id)}
-                    aria-label={downloadingSet === folder.id ? `Cancel download of ${folder.name}` : `Download ${folder.name} for offline use`}
+                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` || (Boolean(download) && downloadingSet !== folder.id)}
+                    aria-label={downloadingSet === folder.id ? `Cancel download of ${folder.name}` : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
                     onClick={() => downloadingSet === folder.id ? downloader.current?.abort() : void downloadFolder(folder.id)}
                   >
                     {downloadingSet === folder.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-                    {downloadingSet === folder.id ? "Cancel download" : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? "Downloaded · Refresh" : "Download"}
+                    {downloadingSet === folder.id ? "Cancel download" : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? "Downloaded" : "Download"}
                   </Button>
                   {downloadingSet === folder.id && <p role="status" className="mt-2 text-xs">{download}</p>}
                 </div>
