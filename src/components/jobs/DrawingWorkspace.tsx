@@ -122,6 +122,7 @@ import {
 import { SuperScaleDialog } from "./SuperScaleDialog";
 import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
 import { useDrawingAppearance } from "./useDrawingAppearance";
+import { useDrawingMarkupVisibility } from "./useDrawingMarkupVisibility";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { DrawingCompare } from "./DrawingCompare";
 import { SheetOfflineButton } from "./SheetOfflineButton";
@@ -393,6 +394,8 @@ export function DrawingWorkspace({
       ? entrySnapshot.drawing
       : null;
   const account = useDrawingAccount();
+  const [defaultMarkupVisibility, setDefaultMarkupVisibility] =
+    useDrawingMarkupVisibility();
   const [defaultAppearance, changeDefaultAppearance] = useDrawingAppearance();
   const [linkedAppearance, setLinkedAppearance] = useState(
     entryDrawing?.appearance ?? null,
@@ -880,7 +883,7 @@ export function DrawingWorkspace({
     id: crypto.randomUUID(),
     expectedRevision: 0,
     visibility:
-      kind === "markup" ? ("published" as const) : ("private" as const),
+      kind === "markup" ? defaultMarkupVisibility : ("private" as const),
   });
   const save = async (value: DrawingSave, selectAfterSave = true) => {
     if (!data) return;
@@ -3174,6 +3177,28 @@ export function DrawingWorkspace({
                 className={`${MENU_CLASS} max-h-[70dvh] overflow-y-auto`}
               >
                 <DrawingPageModeSetting />
+                <DropdownMenuLabel className={MENU_SECTION}>
+                  Default markup visibility
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  aria-label="Default markup visibility"
+                  value={defaultMarkupVisibility}
+                  onValueChange={(value) => {
+                    if (value === "published" || value === "private")
+                      setDefaultMarkupVisibility(value);
+                  }}
+                >
+                  <DropdownMenuRadioItem
+                    value="published"
+                    className="min-h-11"
+                  >
+                    Public · job team
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="private" className="min-h-11">
+                    Private · only me
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator className="my-1.5" />
                 {statusText && (
                   <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
                     {statusText}

@@ -1122,6 +1122,74 @@ describe("drawing workspace workflows", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Saved"),
     );
   });
+  it("uses the personal Private default for new shapes, text and hyperlink drafts", async () => {
+    mocks.data!.canManage = false;
+    open();
+    openMenu("More");
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "Private · only me" }),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    chooseTool("rect");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      visibility: "private",
+      kind: "markup",
+    });
+    chooseTool("text");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    fireEvent.change(screen.getByLabelText("Text"), {
+      target: { value: "Personal note" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Done editing text" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
+    expect(mocks.save.mock.calls[1]![0]).toMatchObject({
+      visibility: "private",
+      data: { type: "text" },
+    });
+    chooseTool("link");
+    fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
+    expect(screen.getByLabelText("Visibility")).toHaveValue("private");
+  });
+  it("uses Private for a new measurement while preserving an existing public markup on edit", async () => {
+    mocks.data!.entities = [existingMarkup("published")];
+    open();
+    openMenu("More");
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "Private · only me" }),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move selected annotation" }),
+    );
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    expect(mocks.save.mock.calls[0]![0]).toMatchObject({
+      visibility: "published",
+      expectedRevision: 4,
+    });
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<
+      typeof DrawingSheetViewer
+    >;
+    await act(() =>
+      props.onMeasurementComplete?.({
+        sourceSheetId: sheetId,
+        type: "dimension",
+        points: [
+          { x: 0.1, y: 0.1 },
+          { x: 0.4, y: 0.4 },
+        ],
+        stroke: "#ef4444",
+        width: 2,
+      }),
+    );
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
+    expect(mocks.save.mock.calls[1]![0]).toMatchObject({
+      visibility: "private",
+      expectedRevision: 0,
+      data: { type: "dimension" },
+    });
+  });
   it("types a worker's text markup in place and saves it to the job team; links keep their form", async () => {
     mocks.data!.canManage = false;
     open();
