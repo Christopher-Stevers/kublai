@@ -2552,6 +2552,30 @@ export * from "./bim-schema";
 const pricingReferenceId=(table:unknown)=>(table as {id:AnyPgColumn}).id;
 
 // Job purchasing lists: supplier listings reference the catalogue's permanent part ID.
+export const supplierPriceBooks = createTable("supplier_price_book", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"cascade"}),
+  name:d.varchar({length:255}).notNull(),
+  revision:d.integer().notNull().default(1),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}),t=>[unique("supplier_price_book_name_uniq").on(t.supplierId,t.name)]);
+export const supplierPriceBookEntries = createTable("supplier_price_book_entry", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  bookId:d.uuid().notNull().references(()=>supplierPriceBooks.id,{onDelete:"cascade"}),
+  supplierPartId:d.uuid().notNull().references(()=>supplierParts.id,{onDelete:"cascade"}),
+  unitCost:d.numeric({precision:12,scale:4}),
+  priceStatus:d.varchar({length:20}).notNull().default("none"),
+  priceBasis:d.varchar({length:100}).notNull().default("each"),
+  priceSource:d.text(),sourceDescription:d.text(),
+}),t=>[unique("supplier_price_book_entry_uniq").on(t.bookId,t.supplierPartId)]);
+export const jobSupplierPriceBooks = createTable("job_supplier_price_book", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"cascade"}),
+  bookId:d.uuid().notNull().references(()=>supplierPriceBooks.id,{onDelete:"cascade"}),
+}),t=>[unique("job_supplier_price_book_uniq").on(t.jobId,t.supplierId)]);
+
 export const jobPriceLists = createTable("job_price_list", (d) => ({
   id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
   organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
@@ -2564,6 +2588,7 @@ export const jobPriceLists = createTable("job_price_list", (d) => ({
 export const jobPriceEntries = createTable("job_price_entry", (d) => ({
   id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
   priceListId:d.uuid().notNull().references(()=>jobPriceLists.id,{onDelete:"cascade"}),
+  supplierPriceBookEntryId:d.uuid().references(()=>supplierPriceBookEntries.id,{onDelete:"cascade"}),
   supplierPartId:d.uuid().notNull().references(()=>supplierParts.id,{onDelete:"restrict"}),
   sourceDescription:d.text(), unitCost:d.numeric({precision:12,scale:4}),
   priceStatus:d.varchar({length:20}).notNull().default("none"),

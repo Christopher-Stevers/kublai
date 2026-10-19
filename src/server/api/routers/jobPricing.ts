@@ -1,3 +1,4 @@
+import { lockPriceBooks, syncPriceBook } from "~/server/supplier-price-books";
 import {
   pricingJobs as jobs,
   pricingMaterialLists as materialLists,
@@ -10,6 +11,9 @@ import { z } from "zod";
 import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import {
+  supplierPriceBookEntries,
+  supplierPriceBooks,
+  jobSupplierPriceBooks,
   jobPriceLists,
   jobPriceEntries,
   jobOrderApprovals,
@@ -130,6 +134,7 @@ export const jobPricingRouter = createTRPCRouter({
           message: "Duplicate pricing rows.",
         });
       const result = await ctx.db.transaction(async (tx) => {
+        await lockPriceBooks(tx);
         await lockJobPurchasing(tx, org, input.jobId);
         const book = await getJobPriceBook(tx, org, input.jobId);
         if (book.policy?.revision !== input.revision)
@@ -143,7 +148,13 @@ export const jobPricingRouter = createTRPCRouter({
             code: "NOT_FOUND",
             message: "Pricing entry not found in this job.",
           });
-        for (const line of input.lines)
+        const changedBooks = new Set<string>();
+        for (const line of input.lines) {
+          const selected = book.entries.find(e => e.id === line.entryId)!;
+          if (selected.supplierPriceBookEntryId) {
+            const [updated] = await tx.update(supplierPriceBookEntries).set({unitCost:line.unitCost?.toFixed(4)??null,priceStatus:line.priceStatus,priceSource:line.priceSource}).where(eq(supplierPriceBookEntries.id,selected.supplierPriceBookEntryId)).returning({bookId:supplierPriceBookEntries.bookId});
+            if(updated)changedBooks.add(updated.bookId);
+          }
           await tx
             .update(jobPriceEntries)
             .set({
@@ -159,6 +170,12 @@ export const jobPricingRouter = createTRPCRouter({
                 eq(jobPriceEntries.priceListId, book.policy.id),
               ),
             );
+        }
+        const relatedLists:{id:string;quoteId:string|null}[]=[];
+        for(const bookId of changedBooks){
+          await tx.update(supplierPriceBooks).set({revision:sql`${supplierPriceBooks.revision}+1`}).where(eq(supplierPriceBooks.id,bookId));
+          relatedLists.push(...await syncPriceBook(tx,org,bookId));
+        }
         await tx
           .update(jobPriceLists)
           .set({
@@ -201,7 +218,7 @@ export const jobPricingRouter = createTRPCRouter({
           );
         for (const list of lists)
           if (list.quoteId) await recalculatePurchaseTotals(tx, list.quoteId);
-        return lists;
+        return [...lists,...relatedLists];
       });
       for (const list of result)
         publishMaterialListEvent(list.id, "updated", org);
@@ -217,6 +234,7 @@ export const jobPricingRouter = createTRPCRouter({
         input.jobId,
       );
       return ctx.db.transaction(async (tx) => {
+        await lockPriceBooks(tx);
         await lockJobPurchasing(tx, org, input.jobId);
         const [listing] = await tx
           .select()
@@ -233,6 +251,8 @@ export const jobPricingRouter = createTRPCRouter({
             code: "NOT_FOUND",
             message: "Supplier listing not found.",
           });
+        const [assigned] = await tx.select({bookId:jobSupplierPriceBooks.bookId}).from(jobSupplierPriceBooks).where(and(eq(jobSupplierPriceBooks.jobId,input.jobId),eq(jobSupplierPriceBooks.supplierId,listing.supplierId)));
+        if(assigned)throw new TRPCError({code:"PRECONDITION_FAILED",message:"Add this part through the supplier's selected price book first."});
         let { policy } = await getJobPriceBook(tx, org, input.jobId);
         if (!policy) {
           const [created] = await tx

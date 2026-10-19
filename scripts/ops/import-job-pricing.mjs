@@ -40,6 +40,9 @@ for (const r of manifest.rows) {
 }
 const connection = postgres(process.env.DATABASE_URL, { max: 1 });
 try {
+  if (apply && manifest.supplierPriceBookName) {
+    throw Error("This manifest now belongs to a supplier price book. Use Suppliers > View Price Books to maintain it; the legacy importer must not bypass book membership.");
+  }
   const [scope] =
     await connection`select j.name as job,s.name as supplier from kublai_job j join kublai_supplier s on s.id=${manifest.supplierId} where j.id=${manifest.jobId} and j."organizationId"=${manifest.organizationId} and s."organizationId"=${manifest.organizationId}`;
   if (!scope) throw Error("Job/supplier organization mismatch");

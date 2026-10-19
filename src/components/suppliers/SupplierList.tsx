@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { SupplierEmailPreferenceItem } from "./SupplierEmailPreferenceItem";
 import { SupplierFormDialog } from "./SupplierFormDialog";
+import { SupplierPriceBooksDialog } from "./SupplierPriceBooksDialog";
 import { SupplierPartsDialog } from "./SupplierPartsDialog";
 import {
   MoreVerticalIcon,
@@ -31,6 +32,7 @@ import { normalizeSupplierContacts } from "~/lib/supplier-contacts";
 import { confirmAction } from "~/components/ui/app-dialogs";
 
 export function SupplierList() {
+  const [priceBooksSupplierId,setPriceBooksSupplierId]=useState<string>();
   const [editSupplierId, setEditSupplierId] = useState<string | undefined>();
   const [viewPartsSupplierId, setViewPartsSupplierId] = useState<
     string | undefined
@@ -161,7 +163,8 @@ export function SupplierList() {
                     </p>
                   )}
                 </div>
-                <div className="ml-auto flex shrink-0 items-center gap-2">
+                <div className="ml-auto flex flex-wrap shrink-0 items-center gap-2">
+                  <Button variant="outline" size="sm" className="h-11" onClick={()=>setPriceBooksSupplierId(supplier.id)}>View Price Books</Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -250,6 +253,7 @@ export function SupplierList() {
         />
       )}
 
+      {priceBooksSupplierId && <SupplierPriceBooksDialog supplierId={priceBooksSupplierId} onClose={()=>setPriceBooksSupplierId(undefined)}/>}
       {viewPartsSupplierId && (
         <SupplierPartsDialog
           open={!!viewPartsSupplierId}

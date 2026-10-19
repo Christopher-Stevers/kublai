@@ -1,3 +1,4 @@
+import { supplierPriceBooksRouter } from "~/server/api/routers/supplierPriceBooks";
 import { readSupplierEmailPreference, saveSupplierEmailPreference } from "~/server/supplier-email-preferences";
 // @vitest-environment node
 import {
@@ -80,6 +81,7 @@ const context = {
   user: { id: "worker", organizationId: org, name: "Worker" },
 };
 const material = materialListRouter.createCaller(context as never);
+const priceBooks = supplierPriceBooksRouter.createCaller(context as never);
 const suppliers = supplierRouter.createCaller(context as never);
 const tables = [
   schema.organizations,
@@ -139,12 +141,13 @@ describe.skipIf(!socket)(
       await conn.unsafe(migration);
       await conn.unsafe(await readFile(new URL("../../drizzle/0074_job_pricing.sql",import.meta.url),"utf8"));
       await conn.unsafe(await readFile(new URL("../../drizzle/0077_supplier_email_preferences.sql",import.meta.url),"utf8"));
+      await conn.unsafe(await readFile(new URL("../../drizzle/0082_supplier_price_books.sql",import.meta.url),"utf8"));
     });
     beforeEach(async () => {
       supplierAccess.financial = true;
       supplierAccess.orders = true;
       await conn.unsafe(
-        `TRUNCATE kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+        `TRUNCATE kublai_job_supplier_price_book,kublai_supplier_price_book_entry,kublai_supplier_price_book,kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
       await db
         .insert(schema.organizations)
@@ -345,6 +348,43 @@ describe.skipIf(!socket)(
         markupPercent: 10,
       });
       expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
+    });
+    it("shares one supplier across books, restricts membership, and restores standard prices", async () => {
+      const alma=await priceBooks.create({supplierId:supplier,name:"Alma"});
+      const other=await priceBooks.create({supplierId:supplier,name:"Other job"});
+      expect((await priceBooks.list({supplierId:supplier,supplierPartId:sp})).books).toEqual([]);
+      await priceBooks.saveEntry({bookId:alma.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
+      expect((await priceBooks.list({supplierId:supplier,supplierPartId:sp})).books.map(b=>b.id)).toEqual([alma.id]);
+      await expect(priceBooks.saveEntry({bookId:other.id,revision:1,supplierPartId:id(99),included:true,unitCost:4,priceStatus:"confirmed"})).rejects.toThrow("not supplied");
+      await priceBooks.assign({supplierId:supplier,bookId:alma.id,jobId:job});
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("3.0000");
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,sp)))[0]!.lastKnownUnitCost).toBe("2.0000");
+      await priceBooks.assign({supplierId:supplier,bookId:other.id,jobId:job});
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("2.0000");
+      await priceBooks.assign({supplierId:supplier,bookId:alma.id,jobId:job});
+      const sent=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
+      await priceBooks.saveEntry({bookId:alma.id,revision:2,supplierPartId:sp,included:false,unitCost:null,priceStatus:"none"});
+      expect((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,sent.id)))[0]!.unitCostAtOrderTime).toBe("3.0000");
+      expect((await priceBooks.list({supplierId:supplier,supplierPartId:sp})).books).toEqual([]);
+      expect((await db.select().from(schema.suppliers))).toHaveLength(1);
+    });
+    it("keeps job price edits and supplier book prices in sync", async () => {
+      const b=await priceBooks.create({supplierId:supplier,name:"Alma"});
+      await priceBooks.saveEntry({bookId:b.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
+      await priceBooks.assign({supplierId:supplier,bookId:b.id,jobId:job});
+      const pricing=jobPricingRouter.createCaller(context as never);
+      const snapshot=await pricing.get({jobId:job});
+      await pricing.savePrices({jobId:job,revision:snapshot.policy!.revision,lines:[{entryId:snapshot.entries[0]!.id,unitCost:7,priceStatus:"confirmed",priceSource:"Vendor quote"}]});
+      const book=await priceBooks.get({supplierId:supplier,bookId:b.id});
+      expect(book.rows.find(r=>r.id===sp)!.unitCost).toBe("7.0000");
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("7.0000");
+    });
+    it("rejects foreign price books and stale price edits", async () => {
+      const b=await priceBooks.create({supplierId:supplier,name:"Alma"});
+      await expect(priceBooks.saveEntry({bookId:b.id,revision:0,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"})).rejects.toThrow("changed");
+      const foreign=supplierPriceBooksRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
+      await expect(foreign.get({supplierId:supplier,bookId:b.id})).rejects.toThrow("not found");
+      await expect(foreign.assign({supplierId:supplier,bookId:b.id,jobId:job})).rejects.toThrow("not found");
     });
     it("keeps list sequence in preview, sent rows, and reopened email", async () => {
       await db.insert(schema.quoteItems).values({id:id(90),quoteId:quote,partDefinitionId:part,supplierPartId:sp,quantity:"1",descriptionSnapshot:"Second fitting"});

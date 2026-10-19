@@ -405,6 +405,13 @@
       "when": 1792438855645,
       "tag": "0081_order_item_position",
       "breakpoints": false
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792446470527,
+      "tag": "0082_supplier_price_books",
+      "breakpoints": false
     }
   ]
 }

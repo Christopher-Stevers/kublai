@@ -48,6 +48,7 @@ export async function getJobPriceBook(
     ? await database
         .select({
           id: jobPriceEntries.id,
+          supplierPriceBookEntryId: jobPriceEntries.supplierPriceBookEntryId,
           supplierPartId: supplierParts.id,
           partDefinitionId: supplierParts.partDefinitionId,
           supplierId: supplierParts.supplierId,

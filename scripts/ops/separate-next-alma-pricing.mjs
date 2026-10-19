@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
+throw new Error('Superseded: use migrate-alma-supplier-price-books.mjs. Alma is a price book, not a supplier.');
 const manifestPath='scripts/data/alma-next-approved-2026-10-14.json';
 const m=JSON.parse(await fs.readFile(manifestPath,'utf8'));
 const sourceId=m.originalSupplierId ?? m.supplierId;

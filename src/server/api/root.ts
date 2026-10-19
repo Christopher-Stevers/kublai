@@ -1,3 +1,4 @@
+import { supplierPriceBooksRouter } from "~/server/api/routers/supplierPriceBooks";
 import { jobPricingRouter } from "~/server/api/routers/jobPricing";
 import { modelsRouter } from "~/server/api/routers/models";
 import { appDevicesRouter } from "~/server/api/routers/appDevices";
@@ -44,6 +45,7 @@ export const appRouter = createTRPCRouter({
   organization: organizationRouter,
   catalogue: catalogueRouter,
   supplier: supplierRouter,
+  supplierPriceBooks: supplierPriceBooksRouter,
   job: jobRouter,
   jobPricing: jobPricingRouter,
   rooms: roomsRouter,
