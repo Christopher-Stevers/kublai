@@ -167,6 +167,7 @@ it("annotates repeated tags on the origin page without duplicating the origin or
   expect(plan).toHaveLength(1);
   expect(plan[0]?.sheetId).toBe(id(1));
   expect(plan[0]?.points[0]?.x).toBe(0.6);
+  if (updated.kind !== "markup") throw new Error("Expected markup");
   const visible = drawingDestinationLinks({ ...updated.data, ...plan[0]!, type: "link" }, id(1));
   expect(visible).toHaveLength(1);
   const target = readSnapshotState(
