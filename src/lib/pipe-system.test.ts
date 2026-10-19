@@ -58,19 +58,57 @@ describe("pipe system trace", () => {
     expect(tag.bindings[0]?.segments).toEqual([]);
   });
 
-  it("bridges irregular CAD dashes with rounding error, while preserving a parallel lane", () => {
+  it("uses source membership instead of visually bridging CAD dashes", () => {
     const parts = [
       line("a", 0.1, 0.5, 0.105, 0.5015),
       line("b", 0.107, 0.50213, 0.117, 0.50513),
       line("c", 0.119, 0.50570, 0.124, 0.50720),
       line("other-lane", 0.107, 0.50263, 0.117, 0.50563),
     ].map(segment => ({ ...segment, layer: "M-PLMB-DHWR", width: 0.000313 }));
-    for (const segment of parts.slice(0, 3)) {
-      const selection = selectPipeSystem(index(parts), { x: (segment.x1 + segment.x2) / 2, y: (segment.y1 + segment.y2) / 2 }, 0.00001);
+    for (const segment of parts) {
+      const drawing = index(parts);
+      const selection = selectPipeSystem(drawing, { x: (segment.x1 + segment.x2) / 2, y: (segment.y1 + segment.y2) / 2 }, 0.00001);
       expect(selection.system).toBe("DHWR");
-      expect(ids(selection)).toEqual(["a", "b", "c"]);
-      expect(selection.segments.filter(part => part.id.startsWith("pipe-bridge:"))).toHaveLength(2);
+      expect(selection.source).toBe("layer");
+      expect(ids(selection)).toEqual(["a", "b", "c", "other-lane"]);
+      expect(selection.segments.filter(part => part.id.startsWith("pipe-bridge:"))).toHaveLength(0);
+      expect(drawing.neighbors.size).toBe(0);
     }
+  });
+  it("prioritizes the clicked source system over nearby conflicting labels and visual connections", () => {
+    const drawing = index([
+      line("sanitary", 0.1, 0.5, 0.6, 0.5, { layer: "M-PLMB-SANI" }),
+      line("detached-sanitary", 0.8, 0.8, 0.9, 0.8, { layer: "xref|M-PLMB-SANI-BELW", stroke: "#ff0000", dash: [0.01,0.01] }),
+      line("unassigned-touching", 0.6, 0.5, 0.7, 0.5),
+      line("storm", 0.1, 0.48, 0.6, 0.48, { layer: "M-PLMB-STRM" }),
+    ], [label("ST", 0.3, 0.49, 0.04, 0.03)]);
+    const selected = selectPipeSystem(drawing, { x: 0.3, y: 0.5 }, 0.02);
+    expect(selected.source).toBe("layer");
+    expect(selected.system).toBe("SAN");
+    expect(ids(selected)).toEqual(["detached-sanitary", "sanitary"]);
+    expect(selected.lengthInSheetWidths).toBeCloseTo(0.6);
+    expect(drawing.neighbors.size).toBe(0);
+  });
+  it("uses the nearest line's metadata and respects an explicit system filter", () => {
+    const drawing = index([
+      line("cold", 0.1, 0.5, 0.9, 0.5, { layer: "M-PLMB-DCW" }),
+      line("hot", 0.1, 0.501, 0.9, 0.501, { layer: "M-PLMB-DHW" }),
+    ]);
+    expect(selectPipeSystem(drawing, { x: 0.3, y: 0.501 }, 0.01).system).toBe("DHW");
+    expect(selectPipeSystem(drawing, { x: 0.3, y: 0.501 }, 0.01, "DCW").segments).toHaveLength(0);
+    expect(selectPipeSystem(drawing, { x: 0.3, y: 0.5 }, 0.01, "DCW").system).toBe("DCW");
+  });
+  it("falls back to label-and-geometry tracing when the clicked line has no source system", () => {
+    const drawing = index([
+      line("first", 0.1, 0.5, 0.4, 0.5, { layer: "M-PLMB-MISC" }),
+      line("branch", 0.4, 0.5, 0.4, 0.8, { layer: "M-PLMB-MISC" }),
+      line("detached", 0.7, 0.7, 0.9, 0.7, { layer: "M-PLMB-MISC" }),
+    ], [label("SAN", 0.2, 0.485)]);
+    const selected = selectPipeSystem(drawing, { x: 0.3, y: 0.5 }, 0.001);
+    expect(selected.system).toBe("SAN");
+    expect(selected.source).toBeUndefined();
+    expect(ids(selected)).toEqual(["branch", "first"]);
+    expect(drawing.neighbors.size).toBeGreaterThan(0);
   });
 
   it("selects the whole trunk and T branches from either the trunk or branch", () => {

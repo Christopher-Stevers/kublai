@@ -216,6 +216,26 @@ function total() {
   return screen.getByRole("status", { name: "Pipe total distance" });
 }
 
+it("clicking a source-tagged pipe immediately selects its system before nearby text", async () => {
+  loadPipeLinework.mockResolvedValueOnce({
+    aspect: 0.5, truncated: false,
+    labels: [{ text: "ST", system: "ST", left: 0.28, right: 0.32, top: 0.48, bottom: 0.51 }],
+    segments: [
+      { ...line("sanitary", 0.1, 0.5, 0.6, 0.5), layer: "M-PLMB-SANI" },
+      { ...line("detached-sanitary", 0.8, 0.8, 0.9, 0.8), layer: "M-PLMB-SANI-BELW" },
+      { ...line("storm", 0.1, 0.48, 0.6, 0.48), layer: "M-PLMB-STRM" },
+      line("unassigned-touching", 0.6, 0.5, 0.7, 0.5),
+    ],
+  });
+  const { frame } = open();
+  await activate();
+  await tap(frame, 240, 300);
+  await waitFor(() => expect(screen.getByRole("img", { name: "Selected pipe system" })).toHaveAttribute("data-pipe-segment-count", "2"));
+  expect(screen.getByText("Sanitary")).toBeInTheDocument();
+  expect(screen.getByText("Highlighted line length · this sheet")).toBeInTheDocument();
+  expect(total()).toHaveTextContent(formatLengthAs(60, "m", "m"));
+});
+
 describe("pipe selection in the drawing viewer", () => {
   it("middle-pan preserves the selected pipe run instead of selecting another run", async () => {
     const { frame, image } = open();

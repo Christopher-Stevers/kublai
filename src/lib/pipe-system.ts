@@ -782,7 +782,7 @@ function unionLength(segments: PipeSegment[], aspect: number) {
   return total;
 }
 
-/** Select a tagged or untagged connected pipe candidate near a point. */
+/** Prefer the clicked line's source system; infer a connected run only without it. */
 export function selectPipeSystem(
   index: PipeSystemIndex,
   point: SheetPoint,
@@ -798,6 +798,20 @@ export function selectPipeSystem(
   const filter = systemFilter ? normalSystem(systemFilter) : undefined;
   const target = metric(point, index.aspect);
   const reach = Math.min(0.05, tolerance);
+  const hits = query(index, target, reach)
+    .filter((id) => !index.excluded.has(id))
+    .map((id) => ({ id, distance: project(target, index.segments[id]!, index.aspect).distance }))
+    .filter((hit) => hit.distance <= reach)
+    .sort((a, b) => a.distance - b.distance);
+  // Ask the actual nearest line for its source system before borrowing text
+  // or walking a visual connection graph. Unclassified neighbours must never
+  // acquire membership simply because they touch a source-tagged pipe.
+  const clicked = hits[0];
+  const sourceSystem = clicked && layerSystem(index.segments[clicked.id]!.layer);
+  if (sourceSystem) {
+    if (filter && filter !== sourceSystem) return empty();
+    return selectPipeLayerSystem(index.linework, sourceSystem);
+  }
   const labels = index.bindings.filter(({ label, segments }) => {
     if (segments.length === 0 || filter && label.system !== filter) return false;
     return target.x >= label.left - reach && target.x <= label.right + reach &&
@@ -809,11 +823,6 @@ export function selectPipeSystem(
     seeds = labels[0].segments.filter((id) => !index.excluded.has(id));
     system = labels[0].label.system;
   } else {
-    const hits = query(index, target, reach)
-      .filter((id) => !index.excluded.has(id))
-      .map((id) => ({ id, distance: project(target, index.segments[id]!, index.aspect).distance }))
-      .filter((hit) => hit.distance <= reach)
-      .sort((a, b) => a.distance - b.distance);
     let hit = hits[0];
     if (hit && !filter) {
       // In pipe mode, a classified pipe inside the actual tap tolerance is
