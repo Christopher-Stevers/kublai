@@ -66,7 +66,7 @@ afterEach(() => {
 });
 it("shows standard and Alma under one supplier and hides excluded parts until requested", () => {
   render(<SupplierPriceBooksDialog supplierId="next" onClose={() => {}} />);
-  expect(screen.getByText("Next - Standard · Price Books")).toBeInTheDocument();
+  expect(screen.getByText("Next (Standard) · Price Books")).toBeInTheDocument();
   expect(screen.getByText("Elbow")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Alma (1)" }));
   expect(screen.queryByText("Elbow")).not.toBeInTheDocument();

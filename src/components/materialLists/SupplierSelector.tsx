@@ -282,7 +282,6 @@ export function SupplierSelector({
                         className="cursor-pointer"
                       >
                         <SupplierLabel name={sp.supplier.name} supplierId={sp.supplierId} partId={partDefinitionId} listingId={sp.id} />
-                        {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
                         {sp.isPreferred && " ⭐"}
                       </DropdownMenuItem>
                     ))}

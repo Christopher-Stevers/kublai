@@ -27,8 +27,8 @@ describe("supplier price book labels", () => {
     ).toBe("Standard");
   });
   it("keeps names intact and missing suppliers unlabelled", () => {
-    expect(supplierLabel("Next", "Alma")).toBe("Next - Alma");
-    expect(supplierLabel("Fastening House")).toBe("Fastening House - Standard");
+    expect(supplierLabel("Next", "Alma")).toBe("Next (Alma)");
+    expect(supplierLabel("Fastening House")).toBe("Fastening House (Standard)");
     expect(supplierLabel(null)).toBe("No supplier");
   });
   it("shows mixed and missing historical books without guessing", () => {

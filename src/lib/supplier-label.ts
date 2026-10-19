@@ -4,7 +4,7 @@ export function supplierLabel(
   book = "Standard",
   fallback = "No supplier",
 ) {
-  return name?.trim() ? `${name} - ${book}` : fallback;
+  return name?.trim() ? `${name} (${book})` : fallback;
 }
 export function orderPriceBookLabel(
   items: readonly { priceBookNameSnapshot?: string | null }[],

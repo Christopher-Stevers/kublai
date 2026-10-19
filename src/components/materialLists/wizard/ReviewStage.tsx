@@ -324,7 +324,7 @@ export function ReviewStage({
                   ...prev,
                   [pendingPart.partId]: {
                     supplierPartId: sp.id,
-                    label: `${supplierLabel(sp.supplier.name, sp.supplierId, pendingPart.partId, sp.id)}${sp.supplierSku ? ` (${sp.supplierSku})` : ""}`,
+                    label: supplierLabel(sp.supplier.name, sp.supplierId, pendingPart.partId, sp.id),
                     lastKnownUnitCost: sp.lastKnownUnitCost,
                   },
                 }));
@@ -339,7 +339,6 @@ export function ReviewStage({
               }}
             >
               <SupplierLabel name={sp.supplier.name} supplierId={sp.supplierId} partId={pendingPart.partId} listingId={sp.id} />
-              {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
               {sp.isPreferred && " ⭐"}
             </DropdownMenuItem>
           ))}
