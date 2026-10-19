@@ -1,4 +1,4 @@
-// Extracted, unaltered manufacturer family photos; one asset per family/assortment.
+// Manufacturer photos plus reviewed single-product edits; shared per family/assortment.
 import fs from "node:fs";
 import sharp from "sharp";
 import { createHash } from "node:crypto";
@@ -24,8 +24,25 @@ const mappings = {
   "pack-9": ["pn-032.png", "PN", 7],
   "pack-8": ["pn-033.png", "PN", 7],
 };
+const overrides = JSON.parse(
+  fs.readFileSync(
+    "data/catalogue/cb-steel-nipple-image-overrides.json",
+    "utf8",
+  ),
+);
 data.images = {};
 for (const [key, [source, publication, page]] of Object.entries(mappings)) {
+  if (overrides[key]) {
+    const replacement = overrides[key];
+    if (
+      createHash("sha256")
+        .update(fs.readFileSync(replacement.path))
+        .digest("hex") !== replacement.sha256
+    )
+      throw Error("Single-product image checksum mismatch");
+    data.images[key] = replacement;
+    continue;
+  }
   const buf = await sharp(".tmp/cb-nipples-20261019/" + source)
     .resize({
       width: 1000,

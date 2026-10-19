@@ -158,7 +158,7 @@ async function main() {
           await tx`select id,url from kublai_photo_asset where "organizationId"=${org} and checksum=${i.sha256} limit 1`;
         if (!asset) {
           [asset] =
-            await tx`insert into kublai_photo_asset ${tx({ id: stable(sourceName + org + i.sha256), organizationId: org, storageKey: path.basename(i.path), url: i.url, originalFilename: `CB-Supplies-${key}.webp`, contentType: "image/webp", byteSize: i.byteSize, checksum: i.sha256, sourceUrl: i.sourceUrl, notes: `Manufacturer catalogue family photo, ${i.publication} page ${i.page}; shared across sizes.`, createdAt: new Date(), updatedAt: new Date() })} returning id,url`;
+            await tx`insert into kublai_photo_asset ${tx({ id: stable(sourceName + org + i.sha256), organizationId: org, storageKey: path.basename(i.path), url: i.url, originalFilename: `CB-Supplies-${key}.webp`, contentType: "image/webp", byteSize: i.byteSize, checksum: i.sha256, sourceUrl: i.sourceUrl, notes: i.notes ?? `Manufacturer catalogue family photo, ${i.publication} page ${i.page}; shared across sizes.`, createdAt: new Date(), updatedAt: new Date() })} returning id,url`;
           newAssets++;
         }
         assets.set(key, asset);

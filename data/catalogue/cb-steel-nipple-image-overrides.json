@@ -1,0 +1,26 @@
+{
+  "black": {
+    "path": "public/images/catalog/uploads/part-64d45ef72883c339dd0b8c70a5ea3c2d778169115782abb0735e3f913470b3de.webp",
+    "url": "/api/catalogue/images/part-64d45ef72883c339dd0b8c70a5ea3c2d778169115782abb0735e3f913470b3de.webp",
+    "sha256": "64d45ef72883c339dd0b8c70a5ea3c2d778169115782abb0735e3f913470b3de",
+    "byteSize": 15820,
+    "publication": "PN",
+    "page": 1,
+    "sourceUrl": "https://www.cbsupplies.ca/sheets/en/PN%20-%20Steel%20Nipples%20%28Standard%29%20-%20IPL.pdf",
+    "previousUrl": "/api/catalogue/images/part-38e30f70d91e9ad19a16a23dacea0534c700fca65a4d52772d8550c15de1d7e9.webp",
+    "notes": "Representative single nipple image edited from manufacturer family photograph using built-in image_gen. Reused across size/length/schedule variants.",
+    "editPrompt": "Isolate only the second nipple from the top on white; remove the close nipple and assortment; preserve shape, finish, proportions and end threading; exactly one complete nipple centered, no text."
+  },
+  "stainless": {
+    "path": "public/images/catalog/uploads/part-f2cd135559c57d23bcb19ae1b33dd887b7a866e2be6ac2b7a7f77f6ddbc08569.webp",
+    "url": "/api/catalogue/images/part-f2cd135559c57d23bcb19ae1b33dd887b7a866e2be6ac2b7a7f77f6ddbc08569.webp",
+    "sha256": "f2cd135559c57d23bcb19ae1b33dd887b7a866e2be6ac2b7a7f77f6ddbc08569",
+    "byteSize": 37264,
+    "publication": "SSPN",
+    "page": 3,
+    "sourceUrl": "https://www.cbsupplies.ca/sheets/en/SSPN%20-%20Stainless%20Steel%20Nipples.pdf",
+    "previousUrl": "/api/catalogue/images/part-4d7fbffa89bfe244f351054a20a9982b89ba2942f7abf1d2e1f3902d391ca68b.webp",
+    "notes": "Representative single nipple image edited from manufacturer family photograph using built-in image_gen. Reused across size/length/schedule variants.",
+    "editPrompt": "Isolate only the second nipple from the top on white; remove the close nipple and assortment; preserve shape, finish, proportions and end threading; exactly one complete nipple centered, no text."
+  }
+}
