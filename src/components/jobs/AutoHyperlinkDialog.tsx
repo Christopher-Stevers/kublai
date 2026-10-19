@@ -172,11 +172,11 @@ export function AutoHyperlinkDialog(props: {
                   { x: box.right, y: box.bottom },
                 ],
                 links: unique,
-                linkAppearance: "box",
+                linkAppearance: "highlight",
                 stroke: "#facc15",
                 width: 2,
-                fill: "none",
-                opacity: 1,
+                fill: "#facc15",
+                opacity: 0.35,
               },
             });
             linked++;

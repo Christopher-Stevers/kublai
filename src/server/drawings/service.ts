@@ -917,7 +917,7 @@ async function syncEquipmentAnnotations(
       href: undefined,
       targetSheetId: undefined,
       equipmentOriginId: entity.id,
-      linkAppearance: "box" as const,
+      linkAppearance: entity.data.linkAppearance ?? "box",
     };
     if (
       old?.visibility === entity.visibility &&
