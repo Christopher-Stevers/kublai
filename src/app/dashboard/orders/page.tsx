@@ -1,4 +1,7 @@
 "use client";
+import { supplierLabel } from "~/lib/supplier-label";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
 import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "~/components/materialLists/UndoOrderButton";
@@ -406,7 +409,7 @@ export default function OrdersPage() {
                 {selectedSupplierName && (
                   <FilterBadge
                     label="Supplier"
-                    value={selectedSupplierName}
+                    value={supplierLabel(selectedSupplierName, "All price books")}
                     onRemove={() => setSupplierFilter(null)}
                   />
                 )}
@@ -455,7 +458,7 @@ export default function OrdersPage() {
                     className="h-11 w-full justify-between"
                   >
                     <span className="truncate">
-                      {selectedSupplierName ?? "All suppliers"}
+                      {selectedSupplierName ? supplierLabel(selectedSupplierName, "All price books") : "All suppliers"}
                     </span>
                     <ChevronDownIcon className="h-4 w-4 shrink-0" />
                   </Button>
@@ -469,7 +472,7 @@ export default function OrdersPage() {
                       key={supplier.id}
                       onClick={() => setSupplierFilter(supplier.id)}
                     >
-                      {supplier.name}
+                      <SupplierLabel name={supplier.name} bookName="All price books" />
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -558,7 +561,7 @@ export default function OrdersPage() {
                       )}
                       <span className="min-w-0 text-left">
                         <span className="block truncate">
-                          {order.supplier?.name || "Supplier Order"}
+                          <SupplierLabel name={order.supplier?.name} bookName={order.supplier?.priceBookName} fallback="Supplier Order" />
                         </span>
                         {contextLine && (
                           <span className="text-muted-foreground block truncate text-xs font-normal">

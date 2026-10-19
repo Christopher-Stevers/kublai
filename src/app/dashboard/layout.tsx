@@ -1,3 +1,4 @@
+import { SupplierLabelProvider } from "~/components/suppliers/SupplierLabelProvider";
 import { snapshotSourceSchema } from "~/lib/snapshot-source";
 import { LandingPageProvider } from "~/components/app/LandingPageProvider";
 import { DrawingDestinationProvider } from "~/components/jobs/DrawingDestinationProvider";
@@ -89,7 +90,7 @@ export default async function DashboardLayout({
                     <TabAccessGate />
                     <main className="flex-1">
                       <ChatViewProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`} scope={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
-                        {children}
+                        <SupplierLabelProvider>{children}</SupplierLabelProvider>
                       </ChatViewProvider>
                     </main>
                   </div>

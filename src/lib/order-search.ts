@@ -8,7 +8,7 @@ type SearchableOrder = {
   orderNumber?: string | null;
   job?: { name: string } | null;
   materialList?: { name: string } | null;
-  supplier?: { name: string } | null;
+  supplier?: { name: string; priceBookName?: string | null } | null;
   notes?: string | null;
   sentTo?: string | null;
   searchableItems?: string;
@@ -32,6 +32,7 @@ function orderSearchHaystack(order: SearchableOrder, email?: SearchableEmail) {
       order.job?.name,
       order.materialList?.name,
       order.supplier?.name,
+      order.supplier?.priceBookName,
       order.notes,
       order.sentTo,
       email?.subject,

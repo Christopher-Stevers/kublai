@@ -47,6 +47,9 @@ function firstName(name: string | null | undefined) {
   return name?.trim().split(/\s+/)[0] ?? "";
 }
 
+// Historical labels must come from sent snapshots, never current assignments.
+function orderPriceBookName() { return sql<string>`(select string_agg(distinct coalesce(oi."priceBookNameSnapshot", 'Not recorded'), ' / ' order by coalesce(oi."priceBookNameSnapshot", 'Not recorded')) from kublai_order_item oi where oi."orderId"=${orders.id})`; }
+
 type OrderableQuoteItem = {
   assetTracking?: string | null;
   id: string;
@@ -70,6 +73,7 @@ type OrderableQuoteItem = {
   roomName: string | null;
   jobListed?: boolean;
   priceStatus?: string | null;
+  priceBookNameSnapshot?: string | null;
 };
 
 function groupOrderableItemsBySupplier(items: OrderableQuoteItem[]) {
@@ -1113,6 +1117,7 @@ ${foremanName}`;
           fulfillmentStatus: orders.fulfillmentStatus,
           supplierId: orders.supplierId,
           supplierName: suppliers.name,
+          priceBookName: orderPriceBookName(),
           supplierContactName: suppliers.contactName,
           supplierContactEmail: suppliers.contactEmail,
           supplierContacts: suppliers.contacts,
@@ -1141,6 +1146,7 @@ ${foremanName}`;
               requestedQuantity: orderItems.requestedQuantity,
               descriptionSnapshot: orderItems.descriptionSnapshot,
               supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+              priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
               partDefinitionDisplayName: partDefinitions.displayName,
               partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
               partDefinitionBulkUnit: partDefinitions.bulkUnit,
@@ -1250,6 +1256,7 @@ ${foremanName}`;
               item.partDefinitionDisplayName?.trim() ||
               null,
             supplierSkuSnapshot: item.supplierSku ?? null,
+            priceBookNameSnapshot: item.priceBookNameSnapshot ?? "Standard",
           })),
           email: approval && !approval.allowed ? undefined : {
             ...email,
@@ -1309,6 +1316,7 @@ ${foremanName}`;
             ? {
                 id: order.supplierId,
                 name: order.supplierName ?? "",
+              priceBookName: order.priceBookName ?? "Not recorded",
                 contactEmail: order.supplierContactEmail,
                 contacts: order.supplierContacts,
               }
@@ -1475,6 +1483,7 @@ ${foremanName}`;
             uomId: item.uomId ?? undefined,
             unitCostAtOrderTime: item.unitCost ?? undefined,
             priceStatusSnapshot:item.priceStatus??null,
+            priceBookNameSnapshot:item.priceBookNameSnapshot??"Standard",
             descriptionSnapshot:
               item.descriptionSnapshot?.trim() ||
               item.partDefinitionDisplayName?.trim() ||
@@ -1566,6 +1575,7 @@ ${foremanName}`;
         .select({
           descriptionSnapshot: orderItems.descriptionSnapshot,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+          priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
           partDefinitionDisplayName: partDefinitions.displayName,
           partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
           partDefinitionBulkUnit: partDefinitions.bulkUnit,
@@ -1790,6 +1800,7 @@ ${foremanName}`;
           createdAt: orders.createdAt,
           supplierId: suppliers.id,
           supplierName: suppliers.name,
+          priceBookName: orderPriceBookName(),
         })
         .from(orders)
         .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
@@ -1812,6 +1823,7 @@ ${foremanName}`;
           ? {
               id: order.supplierId,
               name: order.supplierName ?? "",
+              priceBookName: order.priceBookName ?? "Not recorded",
             }
           : null,
       }));
@@ -1919,6 +1931,7 @@ ${foremanName}`;
           materialListId: orders.materialListId,
           supplierId: orders.supplierId,
           supplierName: suppliers.name,
+          priceBookName: orderPriceBookName(),
           supplierContactEmail: suppliers.contactEmail,
           supplierContacts: suppliers.contacts,
         })
@@ -1958,6 +1971,7 @@ ${foremanName}`;
           partDefinitionBulkUnit: partDefinitions.bulkUnit,
           partDefinitionIndividualUnit: partDefinitions.individualUnit,
           supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+          priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
         })
         .from(orderItems)
         .leftJoin(jobRooms, eq(orderItems.roomId, jobRooms.id))
@@ -1979,6 +1993,7 @@ ${foremanName}`;
           ? {
               id: order.supplierId,
               name: order.supplierName ?? "",
+              priceBookName: order.priceBookName ?? "Not recorded",
               contactEmail: order.supplierContactEmail,
               contacts: order.supplierContacts,
             }
@@ -1997,6 +2012,7 @@ ${foremanName}`;
             item.partDefinitionDisplayName?.trim() ||
             null,
           supplierSkuSnapshot: item.supplierSkuSnapshot,
+          priceBookNameSnapshot: item.priceBookNameSnapshot,
         })),
       };
     }),
@@ -2165,6 +2181,7 @@ ${foremanName}`;
             materialListName: materialLists.name,
             supplierId: orders.supplierId,
             supplierName: suppliers.name,
+            priceBookName: orderPriceBookName(),
             supplierContactEmail: suppliers.contactEmail,
             supplierContacts: suppliers.contacts,
           })
@@ -2182,6 +2199,7 @@ ${foremanName}`;
             quantity: orderItems.quantity,
             descriptionSnapshot: orderItems.descriptionSnapshot,
             supplierSkuSnapshot: orderItems.supplierSkuSnapshot,
+            priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
             partDefinitionDisplayName: partDefinitions.displayName,
             partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
             partDefinitionBulkUnit: partDefinitions.bulkUnit,
@@ -2220,6 +2238,7 @@ ${foremanName}`;
           ? {
               id: order.supplierId,
               name: order.supplierName ?? "",
+              priceBookName: order.priceBookName ?? "Not recorded",
               contactEmail: order.supplierContactEmail,
               contacts: order.supplierContacts,
             }

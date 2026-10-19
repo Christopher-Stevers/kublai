@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -66,7 +68,7 @@ export function SupplierJobPricingDialog({
       <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {data?.supplier.name ?? "Supplier"} · Set Job Pricing
+            <SupplierLabel name={data?.supplier.name} bookName="Standard" fallback="Supplier" /> · Set Job Pricing
           </DialogTitle>
         </DialogHeader>
         {!online ? (

@@ -1,3 +1,4 @@
+import { getJobPriceBook } from "~/server/job-pricing";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -56,6 +57,21 @@ function notify(lists: { id: string }[], org: string) {
 }
 const supplierInput = z.object({ supplierId: z.string().uuid() });
 export const supplierPriceBooksRouter = createTRPCRouter({
+  labelContext: hasDashboardAccess.input(z.object({jobId:z.string().uuid().optional(),materialListId:z.string().uuid().optional()})).query(async ({ctx,input}) => {
+    const org = ctx.user.organizationId;
+    if (!org) throw new TRPCError({code:"FORBIDDEN"});
+    let jobId = input.jobId;
+    if (input.materialListId) {
+      const [list] = await ctx.db.execute<{jobId:string}>(sql`select "jobId" from kublai_material_list where id=${input.materialListId} and "organizationId"=${org}`);
+      if (!list) throw new TRPCError({code:"NOT_FOUND"});
+      jobId = list.jobId;
+    }
+    if (!jobId) return [];
+    const [job] = await ctx.db.select({id:jobs.id}).from(jobs).where(and(eq(jobs.id,jobId),eq(jobs.organizationId,org)));
+    if (!job) throw new TRPCError({code:"NOT_FOUND"});
+    const book = await getJobPriceBook(ctx.db,org,jobId);
+    return book.entries.map(e=>({supplierId:e.supplierId,supplierPartId:e.supplierPartId,partDefinitionId:e.partDefinitionId,priceBookName:e.priceBookName,preferJobPricing:e.preferJobPricing}));
+  }),
   preferences: hasDashboardAccess.query(async ({ ctx }) => {
     const org = ctx.user.organizationId;
     if (!org) throw new TRPCError({ code: "FORBIDDEN" });

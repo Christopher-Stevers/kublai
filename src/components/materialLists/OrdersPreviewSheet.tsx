@@ -1,4 +1,7 @@
 "use client";
+import { orderPriceBookLabel } from "~/lib/supplier-label";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
 import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "./UndoOrderButton";
@@ -52,6 +55,7 @@ type PreviewOrder = {
   supplier: {
     id: string;
     name: string;
+    priceBookName?: string;
     contactEmail: string | null;
     contacts?: unknown;
   } | null;
@@ -60,6 +64,7 @@ type PreviewOrder = {
     quantity: string;
     descriptionSnapshot: string | null;
     supplierSkuSnapshot: string | null;
+    priceBookNameSnapshot?: string | null;
   }>;
   email?: EmailDraft;
 };
@@ -530,7 +535,7 @@ export function OrdersPreviewSheet({
               <ChevronRightIcon className="h-4 w-4 shrink-0" />
             )}
             <span className="truncate">
-              {order.supplier?.name || "Supplier Order"}
+              <SupplierLabel name={order.supplier?.name} bookName={order.isToolRequest ? "Standard" : order.supplier?.priceBookName ?? orderPriceBookLabel(order.items)} fallback="Supplier Order" />
             </span>
           </button>
           <div className="flex min-h-8 shrink-0 items-center justify-center">

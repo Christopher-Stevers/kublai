@@ -1985,6 +1985,7 @@ export const orderItems = createTable(
 
     unitCostAtOrderTime: d.numeric({ precision: 12, scale: 4 }),
     priceStatusSnapshot:d.varchar({length:20}),
+    priceBookNameSnapshot: d.varchar({length:255}),
     descriptionSnapshot: d.text(),
     supplierSkuSnapshot: d.varchar({ length: 255 }),
     notes: d.text(),

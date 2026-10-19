@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { format } from "date-fns";
 import { api } from "~/trpc/react";
@@ -81,7 +82,7 @@ export function MaterialListOrderPickerDialog({
                     {order.orderNumber || `Order #${order.id.slice(0, 8)}`}
                     {order.supplier?.name && (
                       <span className="text-muted-foreground ml-2">
-                        - {order.supplier.name}
+                        - <SupplierLabel name={order.supplier.name} bookName={order.supplier.priceBookName} />
                       </span>
                     )}
                   </div>

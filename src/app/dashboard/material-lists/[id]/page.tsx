@@ -1,4 +1,5 @@
 "use client";
+import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
@@ -295,7 +296,7 @@ export default function MaterialListDetailPage({
                   {" "}
                   {verifyOrder.orderNumber || `#${verifyOrder.id.slice(0, 8)}`}
                   {verifyOrder.supplier?.name
-                    ? ` - ${verifyOrder.supplier.name}`
+                    ? ` - ${supplierLabel(verifyOrder.supplier.name, verifyOrder.supplier.priceBookName)}`
                     : ""}
                 </span>
               ) : isLoadingVerifyOrder ? (

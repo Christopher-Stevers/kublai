@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -102,7 +104,7 @@ export function SupplierPriceBooksDialog({
         <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {data?.supplier.name ?? "Supplier"} · Price Books
+              <SupplierLabel name={data?.supplier.name} bookName={selected ? list.data?.books.find(b => b.id === selected)?.name ?? "Loading pricing…" : "Standard"} fallback="Supplier" /> · Price Books
             </DialogTitle>
           </DialogHeader>
           {!online ? (

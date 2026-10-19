@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { api } from "~/trpc/react";
@@ -114,10 +116,7 @@ export function ExistingQuotesOrdersDialog({
                             ?.supplier?.name && (
                             <span className="ml-2 text-muted-foreground">
                               -{" "}
-                              {
-                                (item as { supplier: { name: string } })
-                                  .supplier.name
-                              }
+                              <SupplierLabel name={(item as {supplier:{name:string}}).supplier.name} bookName={(item as {supplier:{priceBookName?:string}}).supplier.priceBookName ?? "Not recorded"} />
                             </span>
                           )}
                           {(item as { status?: string })?.status && (

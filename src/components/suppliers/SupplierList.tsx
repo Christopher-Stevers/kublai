@@ -1,4 +1,6 @@
 "use client";
+import { supplierLabel } from "~/lib/supplier-label";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -143,7 +145,7 @@ export function SupplierList() {
               >
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold sm:text-lg">
-                    {supplier.name}
+                    <SupplierLabel name={supplier.name} supplierId={supplier.id} bookName="Standard" />
                   </h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {contacts.length === 0 ? (
@@ -202,7 +204,7 @@ export function SupplierList() {
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11"
-                        aria-label={`Actions for ${supplier.name}`}
+                        aria-label={`Actions for ${supplierLabel(supplier.name)}`}
                       >
                         <MoreVerticalIcon className="h-5 w-5" />
                       </Button>
@@ -226,7 +228,7 @@ export function SupplierList() {
                         <DropdownMenuItem
                           variant="destructive"
                           onClick={() =>
-                            void handleDelete(supplier.id, supplier.name)
+                            void handleDelete(supplier.id, supplierLabel(supplier.name))
                           }
                         >
                           <TrashIcon className="mr-2 h-4 w-4" />

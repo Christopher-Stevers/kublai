@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import {
   EditPartDialog,
   CreateCustomPartDialog,
@@ -479,7 +481,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             </label>
             {supplierMode && <label className="flex min-w-0 flex-1 items-center gap-2">Supplier
               <select aria-label="Catalogue supplier" className="border-input bg-background h-9 min-w-0 flex-1 rounded-md border px-2" value={supplierId ?? ""} onChange={event => onSupplierChange(event.target.value || undefined)}>
-                <option value="">Choose supplier</option>{supplierList.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                <option value="">Choose supplier</option>{supplierList.data?.map(item => <option key={item.id} value={item.id}><SupplierLabel name={item.name} supplierId={item.id} bookName="Standard" /></option>)}
               </select>
             </label>}
           </div>

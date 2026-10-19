@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { PackQuantityControls } from "../PackQuantityControls";
 import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
 
@@ -233,7 +235,7 @@ export function PrefabsPanel({
                       <p
                         className={`truncate text-xs ${item.supplierPart ? "text-muted-foreground" : "text-amber-700"}`}
                       >
-                        {item.supplierPart?.supplier.name || "No supplier"}
+                        <SupplierLabel name={item.supplierPart?.supplier.name} supplierId={item.supplierPart?.supplier.id} partId={item.partDefinition.id} listingId={item.supplierPart?.id} />
                       </p>
                     </div>
                     {canEdit ? (

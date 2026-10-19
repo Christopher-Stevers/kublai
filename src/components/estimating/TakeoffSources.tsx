@@ -1,5 +1,6 @@
 "use client";
 
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 import { useState } from "react";
 import Link from "next/link";
 import { ExternalLinkIcon, PlusIcon, SearchIcon } from "lucide-react";
@@ -334,7 +335,7 @@ export function TakeoffSources({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{line.description}</p>
                     <p className="text-muted-foreground mt-1 text-xs">
-                      {line.supplierName || "No supplier"} · {line.unit} ·{" "}
+                      <SupplierLabel name={line.supplierName} bookName="Standard" /> · {line.unit} ·{" "}
                       {line.materialUnitCost === null
                         ? "Price missing"
                         : `${money(line.materialUnitCost, document.settings.currency)} / ${line.unit}`}{" "}

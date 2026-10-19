@@ -7,6 +7,8 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { db } from "~/server/db";
 import {
+  supplierPriceBooks,
+  supplierPriceBookEntries,
   jobPriceLists,
   jobPriceEntries,
   jobOrderApprovals,
@@ -53,6 +55,7 @@ export async function getJobPriceBook(
           partDefinitionId: supplierParts.partDefinitionId,
           supplierId: supplierParts.supplierId,
           supplierName: suppliers.name,
+          priceBookName: sql<string>`coalesce(${supplierPriceBooks.name}, ${policy.name}, 'Job pricing')`,
           preferJobPricing: sql<boolean>`coalesce(${suppliers.preferJobPricing},true)`,
           supplierSku: supplierParts.supplierSku,
           unitCost: jobPriceEntries.unitCost,
@@ -77,6 +80,8 @@ export async function getJobPriceBook(
           eq(supplierParts.partDefinitionId, partDefinitions.id),
         )
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
+        .leftJoin(supplierPriceBookEntries, eq(jobPriceEntries.supplierPriceBookEntryId, supplierPriceBookEntries.id))
+        .leftJoin(supplierPriceBooks, eq(supplierPriceBookEntries.bookId, supplierPriceBooks.id))
         .where(
           and(
             eq(jobPriceEntries.priceListId, policy.id),
@@ -116,14 +121,15 @@ export async function resolveJobOrderItems<T extends Priceable>(
       item.supplierPartId,
     );
     if (!entry)
-      return { ...item, jobListed: false, priceStatus: null as string | null };
+      return { ...item, jobListed: false, priceStatus: null as string | null, priceBookNameSnapshot: "Standard" };
     if (entry.preferJobPricing === false)
-      return { ...item, jobListed: true, priceStatus: null as string | null };
+      return { ...item, jobListed: true, priceStatus: null as string | null, priceBookNameSnapshot: "Standard" };
     listingIds.add(entry.supplierPartId);
     return {
       ...item,
       jobListed: true,
       priceStatus: entry.priceStatus,
+      priceBookNameSnapshot: entry.priceBookName,
       supplierPartId: entry.supplierPartId,
       supplierPartSupplierId: entry.supplierId,
       supplierSku: entry.supplierSku,

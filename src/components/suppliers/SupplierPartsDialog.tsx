@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { isValidOrderMultiple } from "~/lib/purchase-quantity";
 import { notify } from "~/components/ui/app-dialogs";
@@ -150,7 +151,7 @@ export function SupplierPartsDialog({
         <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>
-              Parts for {supplierData?.name || "Supplier"}
+              Parts for <SupplierLabel name={supplierData?.name} bookName="Standard" fallback="Supplier" />
             </DialogTitle>
             <DialogDescription>
               Manage parts available from this supplier

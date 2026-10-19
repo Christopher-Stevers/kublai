@@ -55,7 +55,7 @@ vi.mock("~/trpc/react", () => ({
               sentTo: "orders@example.com",
               orderNumber: "ORDER-001",
               job: { id: "job", name: "Job" },
-              supplier: { id: "supplier", name: "Pipe Supply", contacts: [] },
+              supplier: { id: "supplier", name: "Pipe Supply - Standard", contacts: [] },
               materialList: { name: "List" },
               createdAt: new Date(),
             },
@@ -88,7 +88,7 @@ const order = {
       id: "item",
       quantity: "2",
       descriptionSnapshot: "Pipe",
-      supplierSkuSnapshot: "P1",
+      priceBookNameSnapshot: "Standard", supplierSkuSnapshot: "P1",
     },
   ],
   email: {
@@ -144,7 +144,7 @@ describe("supplier email handoff", () => {
         }),
     );
     const send = await show();
-    fireEvent.click(screen.getByRole("button", { name: "Pipe Supply" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pipe Supply - Standard" }));
     fireEvent.change(screen.getByLabelText("To"), {
       target: { value: "one@example.com, two@example.com" },
     });
@@ -181,7 +181,7 @@ describe("supplier email handoff", () => {
     "does not open email or save an invalid recipient %s",
     async (value) => {
       const send = await show();
-      fireEvent.click(screen.getByRole("button", { name: "Pipe Supply" }));
+      fireEvent.click(screen.getByRole("button", { name: "Pipe Supply - Standard" }));
       fireEvent.change(screen.getByLabelText("To"), {
         target: { value },
       });

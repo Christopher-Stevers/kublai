@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { useState, useEffect, useMemo } from "react";
 import { api } from "~/trpc/react";
@@ -186,7 +187,7 @@ export function PartSuppliersDropdown({
               {preferredSupplierId && (
                 <StarIcon className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               )}
-              {displayValue}
+              {currentSupplier ? <SupplierLabel name={currentSupplier.name} supplierId={currentSupplier.id} partId={partDefinitionId} /> : displayValue}
             </span>
             <ChevronDownIcon className="h-4 w-4" />
           </Button>
@@ -248,7 +249,7 @@ export function PartSuppliersDropdown({
                           {hasPart && <CheckIcon className="h-3 w-3 text-foreground" />}
                         </button>
 
-                        <span className="flex-1 text-sm">{supplier.name}</span>
+                        <span className="flex-1 text-sm"><SupplierLabel name={supplier.name} supplierId={supplier.id} partId={partDefinitionId} /></span>
 
                         <button
                           onClick={(e) => {

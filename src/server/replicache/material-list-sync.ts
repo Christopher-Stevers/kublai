@@ -1205,6 +1205,7 @@ export async function handleMaterialListReplicachePull(
           id: quoteItems.id,
           sentOrderItemId: quoteItems.sentOrderItemId,
           sentOrderId: orderItems.orderId,
+          priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
           sentOrderNumber: orders.orderNumber,
           sentOrderStatus: orders.status,
           sentQuantity: orderItems.quantity,
@@ -1452,6 +1453,7 @@ export async function handleMaterialListReplicachePull(
           value: {
             id: item.id,
             sentOrderItemId: item.sentOrderItemId,
+            priceBookNameSnapshot: item.priceBookNameSnapshot,
             sentOrder: item.sentOrderId ? {
               id: item.sentOrderId, number: item.sentOrderNumber, status: item.sentOrderStatus,
               quantity: item.sentQuantity, receivedQuantity: item.receivedQuantity,

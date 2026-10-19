@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { useState } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -180,7 +181,7 @@ function SupplierListingEditor({
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{supplierName} part information</DialogTitle>
+          <DialogTitle><SupplierLabel name={supplierName} bookName="Standard" /> part information</DialogTitle>
           <DialogDescription>
             {listing.partDefinition?.displayName}. These fields belong to this
             supplier. The catalogue description and photo stay the same.

@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { isPartSizeInput, normalizePartSize } from "~/lib/part-size-input";
 import { confirmAction } from "~/components/ui/app-dialogs";
@@ -1631,7 +1632,7 @@ export function PartDetailsDialog({
                         key={supplier.id}
                         onClick={() => handleSupplierSelect(supplier.id)}
                       >
-                        {supplier.name}
+                        <SupplierLabel name={supplier.name} supplierId={supplier.id} />
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

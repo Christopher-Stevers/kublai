@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 
@@ -20,6 +22,7 @@ export interface MaterialListTableRowProps {
   item: {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
+    priceBookNameSnapshot?: string | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
@@ -180,7 +183,7 @@ function MaterialListTableRowComponent({
             />
           ) : (
             <div className="text-muted-foreground text-sm">
-              {item.supplierPart?.supplier?.name || "—"}
+              <SupplierLabel name={item.supplierPart?.supplier?.name} supplierId={item.supplierPart?.supplierId} partId={item.partDefinition?.id} listingId={item.supplierPart?.id} bookName={item.sentOrderItemId ? item.priceBookNameSnapshot ?? "Not recorded" : undefined} fallback="—" />
             </div>
           )}
         </div>

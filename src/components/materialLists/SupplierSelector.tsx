@@ -1,4 +1,5 @@
 "use client";
+import { SupplierLabel, useSupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -37,6 +38,7 @@ export function SupplierSelector({
   suppliers,
   compact = false,
 }: SupplierSelectorProps) {
+  const supplierLabel = useSupplierLabel();
   const sandbox = useTutorialSandbox();
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [searchQuery, setSearchQuery] = useState("");
@@ -217,10 +219,10 @@ export function SupplierSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`${compact ? "h-8 text-xs" : "h-10 sm:h-11"} w-full justify-between`}
+            className={`${compact ? "min-h-8 text-xs" : "min-h-10 sm:min-h-11"} h-auto w-full justify-between py-2`}
             style={compact ? { touchAction: "auto" } : undefined}
           >
-            <span className="truncate">{displayValue}</span>
+            <span className="min-w-0 whitespace-normal text-left">{optimisticSupplierId ? supplierLabel(displayValue, optimisticSupplierId, partDefinitionId, optimisticSupplierPartId) : displayValue}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
@@ -267,7 +269,7 @@ export function SupplierSelector({
                         onClick={() => handleSupplierPartSelect(sp.id)}
                         className="cursor-pointer"
                       >
-                        {sp.supplier.name}
+                        <SupplierLabel name={sp.supplier.name} supplierId={sp.supplierId} partId={partDefinitionId} listingId={sp.id} />
                         {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
                         {sp.isPreferred && " ⭐"}
                       </DropdownMenuItem>
@@ -290,7 +292,7 @@ export function SupplierSelector({
                       onClick={() => handleSupplierSelect(supplier.id)}
                       className="cursor-pointer"
                     >
-                      {supplier.name}
+                      <SupplierLabel name={supplier.name} supplierId={supplier.id} partId={partDefinitionId} />
                     </DropdownMenuItem>
                   ))}
                 </>

@@ -1,4 +1,6 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
 import { parseJobPrice } from "~/lib/job-pricing";
 import { use, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -425,7 +427,7 @@ export default function JobPricingPage({
                     {e.displayName}
                   </span>
                   <span className="text-muted-foreground mt-1 block text-xs break-words">
-                    {e.supplierName} ·{" "}
+                    <SupplierLabel name={e.supplierName} bookName={e.priceBookName} /> ·{" "}
                     {e.supplierSku?.trim() ? e.supplierSku : "SKU needed"}
                   </span>
                   <span className="text-muted-foreground mt-1 block text-xs sm:hidden">
@@ -467,7 +469,7 @@ export default function JobPricingPage({
                   className="font-medium underline underline-offset-4"
                   href={`/dashboard/material-lists/${r.materialListId}`}
                 >
-                  {r.listName} · {r.supplierName}
+                  {r.listName} · <SupplierLabel name={r.supplierName} supplierId={r.supplierId} />
                 </Link>
                 <span className="text-muted-foreground text-xs uppercase">
                   {r.usedAt ? "Ordered" : r.status}
@@ -535,7 +537,7 @@ export default function JobPricingPage({
           <DialogHeader>
             <DialogTitle>{editing?.displayName}</DialogTitle>
             <DialogDescription>
-              {editing?.supplierName} SKU {editing?.supplierSku} · CAD per{" "}
+              <SupplierLabel name={editing?.supplierName} bookName={editing?.priceBookName} /> SKU {editing?.supplierSku} · CAD per{" "}
               {editing?.priceBasis}
             </DialogDescription>
           </DialogHeader>
@@ -624,7 +626,7 @@ export default function JobPricingPage({
           <DialogHeader>
             <DialogTitle>Review unlisted order</DialogTitle>
             <DialogDescription>
-              {review?.listName} · {review?.supplierName}. Approval covers these
+              {review?.listName} · <SupplierLabel name={review?.supplierName} supplierId={review?.supplierId} />. Approval covers these
               exact parts, quantities, supplier and prices. Later changes need
               another review.
             </DialogDescription>
@@ -745,7 +747,7 @@ export default function JobPricingPage({
                   disabled={add.isPending}
                   onClick={() => add.mutate({ jobId, supplierPartId: sp.id })}
                 >
-                  {sp.supplier?.name} ·{" "}
+                  <SupplierLabel name={sp.supplier?.name} supplierId={sp.supplier?.id} partId={selectedPart} listingId={sp.id} /> ·{" "}
                   {sp.supplierSku?.trim() ? sp.supplierSku : "No SKU"}
                 </Button>
               ))}

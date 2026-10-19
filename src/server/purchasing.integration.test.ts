@@ -376,10 +376,16 @@ describe.skipIf(!socket)(
       await priceBooks.setPreference({supplierId:supplier,preferJobPricing:false});
       expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("2.0000");
       expect((await priceBooks.assignments({supplierId:supplier})).jobs[0]!.bookId).toBe(b.id);
+      expect((await priceBooks.labelContext({materialListId:list}))[0]).toMatchObject({priceBookName:"Alma",preferJobPricing:false});
+      expect((await material.previewOrders({materialListId:list})).possible[0]!.items[0]!.priceBookNameSnapshot).toBe("Standard");
       await priceBooks.setPreference({supplierId:supplier,preferJobPricing:true});
       expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.unitCost).toBe("3.0000");
       const order=await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier@example.test"});
       await priceBooks.setPreference({supplierId:supplier,preferJobPricing:false});
+      expect((await material.getOrderById({orderId:order.id})).supplier?.priceBookName).toBe("Alma");
+      expect((await material.getOrdersForMaterialList({materialListId:list}))[0]?.supplier?.priceBookName).toBe("Alma");
+      expect((await material.previewOrders({materialListId:list})).sent[0]?.supplier?.priceBookName).toBe("Alma");
+      expect((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,order.id)))[0]!.priceBookNameSnapshot).toBe("Alma");
       expect((await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId,order.id)))[0]!.unitCostAtOrderTime).toBe("3.0000");
     });
     it("keeps job price edits and supplier book prices in sync", async () => {
@@ -402,6 +408,8 @@ describe.skipIf(!socket)(
       const foreign=supplierPriceBooksRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
       await expect(foreign.get({supplierId:supplier,bookId:b.id})).rejects.toThrow("not found");
       await expect(foreign.assignments({supplierId:supplier})).rejects.toThrow("not found");
+      await expect(foreign.labelContext({jobId:job})).rejects.toThrow();
+      await expect(foreign.labelContext({materialListId:list})).rejects.toThrow();
       await expect(foreign.setPreference({supplierId:supplier,preferJobPricing:false})).rejects.toThrow("not found");
       await expect(foreign.assign({supplierId:supplier,bookId:b.id,jobId:job})).rejects.toThrow("not found");
     });

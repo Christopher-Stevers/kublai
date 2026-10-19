@@ -1,3 +1,4 @@
+import { SupplierLabel, useSupplierLabel } from "~/components/suppliers/SupplierLabel";
 import { PackQuantityControls } from "../PackQuantityControls";
 import { packContents } from "~/lib/pack-quantity";
 import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
@@ -193,6 +194,7 @@ export function ReviewStage({
   const [optimisticSupplierSelections, setOptimisticSupplierSelections] =
     useState<Record<string, OptimisticSupplierSelection>>({});
 
+  const supplierLabel = useSupplierLabel();
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
   const allSuppliers = useReplicacheSuppliers();
@@ -279,7 +281,7 @@ export function ReviewStage({
       selectedSupplierPart,
       label:
         optimisticSelection?.label ??
-        selectedSupplierPart?.supplier.name ??
+        (selectedSupplierPart ? supplierLabel(selectedSupplierPart.supplier.name, selectedSupplierPart.supplier.id, pendingPart.partId, selectedSupplierPart.id) : undefined) ??
         "Select supplier",
       lastKnownUnitCost:
         optimisticSelection?.lastKnownUnitCost ??
@@ -301,12 +303,12 @@ export function ReviewStage({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`h-8 w-full justify-between text-xs sm:text-sm ${
+            className={`h-auto min-h-8 w-full justify-between py-2 text-xs sm:text-sm ${
               isMissingSupplier ? "border-amber-300 text-amber-700" : ""
             }`}
             style={{ touchAction: "auto" }}
           >
-            <span className="truncate">{label}</span>
+            <span className="min-w-0 whitespace-normal text-left">{label}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
@@ -322,7 +324,7 @@ export function ReviewStage({
                   ...prev,
                   [pendingPart.partId]: {
                     supplierPartId: sp.id,
-                    label: `${sp.supplier.name}${sp.supplierSku ? ` (${sp.supplierSku})` : ""}`,
+                    label: `${supplierLabel(sp.supplier.name, sp.supplierId, pendingPart.partId, sp.id)}${sp.supplierSku ? ` (${sp.supplierSku})` : ""}`,
                     lastKnownUnitCost: sp.lastKnownUnitCost,
                   },
                 }));
@@ -336,7 +338,7 @@ export function ReviewStage({
                 });
               }}
             >
-              {sp.supplier.name}
+              <SupplierLabel name={sp.supplier.name} supplierId={sp.supplierId} partId={pendingPart.partId} listingId={sp.id} />
               {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
               {sp.isPreferred && " ⭐"}
             </DropdownMenuItem>
@@ -366,7 +368,7 @@ export function ReviewStage({
                     ...prev,
                     [pendingPart.partId]: {
                       supplierPartId: localSupplierPart.id,
-                      label: supplier.name,
+                      label: supplierLabel(supplier.name, supplier.id, pendingPart.partId),
                       lastKnownUnitCost: null,
                     },
                   }));
@@ -379,7 +381,7 @@ export function ReviewStage({
                   });
                 }}
               >
-                {supplier.name}
+                <SupplierLabel name={supplier.name} supplierId={supplier.id} partId={pendingPart.partId} />
               </DropdownMenuItem>
             ))}
           {!hasAvailableSuppliers && !isOnline && allSuppliers.length === 0 && (
