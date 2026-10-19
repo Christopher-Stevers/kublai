@@ -111,7 +111,7 @@ try {
               (mappings.find((m) => m.old === e.supplierPartId)?.id ??
                 e.supplierPartId) === p.id,
           );
-          const cost = e?.unitCost ?? p.lastKnownUnitCost;
+          const cost = e ? e.unitCost : p.lastKnownUnitCost;
           const status =
             e?.priceStatus ?? (cost === null ? "none" : "estimated");
           const [be] =
