@@ -21,6 +21,7 @@ import {
   type TileManifest,
 } from "~/lib/drawing-tiles";
 import { readPdfSheetScale } from "~/lib/pdf-sheet-scale";
+import { paintDrawingAnnotationCamera } from "~/lib/drawing-annotation-camera";
 import { drawingVectorViewBox } from "~/lib/drawing-viewport";
 import { buildDrawingSnapIndex } from "~/lib/drawing-geometry-client";
 import { loadSnapLines } from "~/lib/pdf-snap-lines";
@@ -1235,7 +1236,7 @@ export function DrawingSheetViewer({
       };
       const camera = drawingVectorViewBox(fit, size, live.current);
       if (camera) {
-        annotationViewport.current?.setAttribute("viewBox", camera);
+        paintDrawingAnnotationCamera(annotationViewport.current, fit, size, live.current);
         pipeViewport.current?.setAttribute("viewBox", camera);
       }
       const measureCamera = drawingVectorViewBox(
@@ -2719,12 +2720,12 @@ export function DrawingSheetViewer({
             appearanceFilter={appearanceFilter}
           />
         )}
-        {/* Vector overlays fill the viewport rather than the CSS-scaled sheet.
-          Their camera follows every gesture frame without rebuilding ink. */}
+        {/* Vector overlays stay outside the CSS-scaled sheet. Saved annotations
+          translate inside a bounded buffer so pans can reuse their painted ink. */}
         {fit && (
           <DrawingAnnotationLayer
             viewportRef={annotationViewport}
-            viewBox={drawingVectorViewBox(fit, frameSize, view) ?? undefined}
+            bufferedViewport
             annotations={visibleAnnotations}
             interactive={!viewing}
             aspect={fit.aspect}

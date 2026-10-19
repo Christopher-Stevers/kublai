@@ -167,7 +167,7 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerMove(frame, { clientX: 600, clientY: 400, pointerId: 1, button: 0 });
     fireEvent.pointerUp(frame, { clientX: 600, clientY: 400, pointerId: 1, button: 0 });
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ sourceSheetId, type: "rect", points: [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }], stroke: "#2563eb", fill: "#ffffff" }));
-    expect(screen.getByLabelText("Drawing annotations").parentElement).toBe(frame);
+    expect(screen.getByLabelText("Drawing annotations").parentElement!.parentElement).toBe(frame);
     expect(screen.getByLabelText("Drawing annotations").closest('[data-drawing-sheet-layer]')).toBeNull();
   });
   it("supports tap-to-tap dimensions with the calibrated scale attached", () => {

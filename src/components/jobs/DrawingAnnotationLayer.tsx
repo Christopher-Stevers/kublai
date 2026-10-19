@@ -33,6 +33,8 @@ type DrawingAnnotationLayerProps = {
   /** Live SVG camera used by the viewer; printable layers keep the full sheet. */
   viewportRef?: Ref<SVGSVGElement>;
   viewBox?: string;
+  /** Viewer owns a buffered camera imperatively; React must not reset it on pan. */
+  bufferedViewport?: boolean;
 };
 
 /** Saved geometry is independent of viewport movement; only one edited entity changes. */
@@ -321,13 +323,14 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   canEditAnnotation,
   viewportRef,
   viewBox,
+  bufferedViewport,
 }: DrawingAnnotationLayerProps) {
   // Clip the live camera so offscreen ink/masks do not paint a huge sheet
   // surface. Printable layers can still extend beyond sheet edges.
-  return (
+  const ink = (
     <svg
       ref={viewportRef}
-      className={`pointer-events-none absolute inset-0 z-[3] h-full w-full ${viewBox ? "overflow-hidden" : "overflow-visible"}`}
+      className={`pointer-events-none absolute inset-0 z-[3] h-full w-full ${viewBox || bufferedViewport ? "overflow-hidden" : "overflow-visible"}`}
       viewBox={viewBox ?? `0 0 1000 ${1000 * aspect}`}
       aria-label="Drawing annotations"
     >
@@ -401,4 +404,9 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
       )}
     </svg>
   );
+  return bufferedViewport ? (
+    <div data-annotation-pan-surface="" className="pointer-events-none absolute left-0 top-0 z-[3] h-full w-full">
+      {ink}
+    </div>
+  ) : ink;
 });

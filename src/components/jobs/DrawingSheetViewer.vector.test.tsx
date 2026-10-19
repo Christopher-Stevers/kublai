@@ -107,14 +107,14 @@ describe("crisp drawing overlays", () => {
     (scale) => {
       const { frame, sheet, annotations } = open(scale);
       expect(sheet.style.transform).toContain(`scale(${scale})`);
-      expect(annotations.parentElement).toBe(frame);
+      expect(annotations.parentElement!.parentElement).toBe(frame);
       expect(annotations.closest("[data-drawing-sheet-layer]")).toBeNull();
-      expect(annotations.style.transform).toBe("");
+      expect(annotations.parentElement!.style.transform).toBe("translate3d(0px, 0px, 0)");
       expect(annotations.classList.contains("overflow-hidden")).toBe(true);
       expect(annotations.getAttribute("viewBox")).toBe(
         drawingVectorViewBox(
           { width: 390, height: 292.5 },
-          { width: 390, height: 600 },
+          { width: 585, height: 795 },
           { scale, x: 0, y: 0 },
         ),
       );
@@ -178,7 +178,7 @@ describe("crisp drawing overlays", () => {
     };
     const expected = drawingVectorViewBox(
       { width: 390, height: 292.5 },
-      { width: 390, height: 600 },
+      { width: 585, height: 795 },
       view,
     )!
       .split(" ")
