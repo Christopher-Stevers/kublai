@@ -2,8 +2,8 @@
   "version": 1,
   "organizationId": "0ff8da19-703c-4aea-ba1d-70a6384e1f9b",
   "jobId": "0391aed4-7773-47ec-9141-09df373ec008",
-  "supplierId": "feeb0f72-7fe4-4b14-9044-81fea8e92100",
-  "name": "Alma \u00b7 Next approved supplier list",
+  "supplierId": "3ed92a3e-e82b-4493-98c1-45afc14a4284",
+  "name": "Alma \u00b7 Next (Alma) approved supplier list",
   "reviewRevision": "2026-10-14-user-corrections-1",
   "currency": "CAD",
   "rows": [
@@ -16685,5 +16685,6 @@
     "copper": "https://www.celloproducts.com/pricelists/02_Solder/01_SolderFittings/Canadian/pdf/Solder_2026_3.pdf",
     "hangers": "https://www.cbsupplies.ca/sheets/en/PH%20-%20Pipe%20Hangers%20-%20IPS.pdf",
     "xfr-pipe": "https://ipexna.com/wp-content/uploads/2026/05/CDN-System-XFR-DWV-Pipe-PDF-June-1-2026.pdf"
-  }
+  },
+  "originalSupplierId": "feeb0f72-7fe4-4b14-9044-81fea8e92100"
 }
