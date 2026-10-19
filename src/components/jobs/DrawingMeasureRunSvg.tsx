@@ -10,6 +10,7 @@ import {
 import {
   formatLengthAs,
   realLength,
+  type LengthUnit,
   type SheetScale,
 } from "~/lib/sheet-measure";
 import { measureColorHalo } from "~/lib/sheet-measure-color";
@@ -21,12 +22,14 @@ export function DrawingMeasureRunSvg({
   data,
   aspect,
   sharedScale,
+  displayUnit,
   screenPixelSize,
   sheetPixelSize,
 }: {
   data: DrawingMarkup;
   aspect: number;
   sharedScale?: SheetScale | null;
+  displayUnit?: LengthUnit;
   screenPixelSize: number;
   sheetPixelSize?: number;
 }) {
@@ -115,7 +118,7 @@ export function DrawingMeasureRunSvg({
         if (rotation < -90) rotation += 180;
         const length =
           scale && storedUnit
-            ? storedUnit === "cm"
+            ? !displayUnit && storedUnit === "cm"
               ? `${(realLength([data.points[from]!, data.points[to]!], aspect, scale) * 100).toFixed(2)} cm`
               : formatLengthAs(
                   realLength(
@@ -124,7 +127,7 @@ export function DrawingMeasureRunSvg({
                     scale,
                   ),
                   baseUnit,
-                  storedUnit,
+                  displayUnit ?? (storedUnit === "cm" ? "m" : storedUnit),
                 )
             : "Set scale";
         return (
@@ -206,7 +209,7 @@ export function DrawingMeasureRunSvg({
           strokeLinejoin="round"
           paintOrder="stroke"
         >
-          {drawingMeasurement(data, aspect, sharedScale)}
+          {drawingMeasurement(data, aspect, sharedScale, displayUnit)}
         </text>
       )}
       {points.map((point, index) => (

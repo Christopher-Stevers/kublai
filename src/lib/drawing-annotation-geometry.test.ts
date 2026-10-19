@@ -460,3 +460,18 @@ describe("drawing annotation geometry", () => {
     }
   });
 });
+
+
+it("converts saved lengths and areas into personal units without changing stored scale or geometry", () => {
+  const dimension: DrawingMarkup = { ...rectangle, type: "dimension", points: [{x:0,y:0},{x:1,y:0}], parents: [null, 0], unit: "ft", scale: 10 };
+  const before = JSON.stringify(dimension);
+  expect(drawingMeasurement(dimension, 1, null, "mm")).toBe("3048 mm");
+  expect(drawingMeasurement(dimension, 1, null, "in")).toBe('120"');
+  expect(drawingMeasurement({ ...dimension, unit: "cm", scale: 100 }, 1, null, "mm")).toBe("1000 mm");
+  const area: DrawingMarkup = { ...dimension, type: "area", parents: undefined, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}] };
+  expect(drawingMeasurement(area, 1, null, "m")).toBe("9.29 m²");
+  const svg = renderToStaticMarkup(createElement(DrawingAnnotationSvg, { data: dimension, aspect: 1, screenPixelSize: 1, displayUnit: "mm" }));
+  expect(svg).toContain("3048 mm");
+  expect(svg).not.toContain("10&#x27;");
+  expect(JSON.stringify(dimension)).toBe(before);
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDrawingUnit } from "./useDrawingUnit";
 import { useSheetOfflineStatus } from "./useSheetOfflineStatus";
 import { useEffect, useRef, useState } from "react";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
@@ -55,6 +56,7 @@ export function DrawingDocumentActions({
   allowBatchOffline = false,
   title,
 }: DrawingDocumentActionsProps) {
+  const [unit, , personalUnit] = useDrawingUnit();
   const { saved: savedOffline } = useSheetOfflineStatus(store, sheet, workspaceSheetId);
   const [annotations, setAnnotations] = useState(true);
   const [includeTiles, setIncludeTiles] = useState(false);
@@ -171,6 +173,7 @@ export function DrawingDocumentActions({
     signal,
     resolveSource: resolveAssetUrl,
     sharedScale: scale,
+    displayUnit: personalUnit ? unit : undefined,
     markupLinkUrl,
     markups: annotations
       ? entities.flatMap((item) =>

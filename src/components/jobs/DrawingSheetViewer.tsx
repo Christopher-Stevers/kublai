@@ -85,6 +85,7 @@ import { DrawingPdfLayer } from "./DrawingPdfLayer";
 import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
 import { readDrawingPdfLinks } from "~/lib/drawing-pdf-links";
 import type { DrawingPdfLink } from "~/lib/drawing-text";
+import { useDrawingUnit } from "./useDrawingUnit";
 import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
 import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
 import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
@@ -437,7 +438,7 @@ export function DrawingSheetViewer({
   );
   // The unit lengths are typed and shown in (m, mm, in, ft). The shared scale
   // itself stays in meters or feet.
-  const [unit, setUnit] = useState<LengthUnit>("ft");
+  const [unit, setUnit, personalUnit] = useDrawingUnit();
   // The next measuring or calibration point locked square (90°) or at 45°.
   const [angleSnap, setAngleSnap] = useState<45 | 90 | null>(null);
   const [draft, setDraft] = useState("");
@@ -634,7 +635,7 @@ export function DrawingSheetViewer({
     const stored =
       !controlledScale && sheetKey ? readSheetScale(sheetKey) : null;
     if (!controlledScale) setLocalSheetScale(stored);
-    if (!controlledScale) setUnit(stored?.unit ?? "ft");
+    if (!controlledScale && !personalUnit) setUnit(stored?.unit ?? "ft");
     dispatchRun({ type: "clear" });
     setMeasureSource(null);
     setRunScaleOverride(null);
@@ -649,18 +650,18 @@ export function DrawingSheetViewer({
     setScaleError(null);
     setScaleReadError(null);
     setReadingScale(false);
-  }, [sheetKey, controlledScale, pdf?.url, pdf?.page]);
+  }, [sheetKey, controlledScale, pdf?.url, pdf?.page, personalUnit, setUnit]);
 
   useEffect(() => {
     const shared = editorProps.sharedScale;
     // Keep a chosen mm/in when the scale is in the same system.
-    if (shared !== undefined)
+    if (shared !== undefined && !personalUnit)
       setUnit((current) =>
         scaleUnitFor(current) === shared?.unit
           ? current
           : (shared?.unit ?? "ft"),
       );
-  }, [editorProps.sharedScale, sheetKey, pdf?.url, pdf?.page]);
+  }, [editorProps.sharedScale, sheetKey, pdf?.url, pdf?.page, personalUnit, setUnit]);
 
   // Read the drawing's lines once, when measuring starts. Taps stay free until they arrive.
   // Depend on the url and page, not the object: the parent builds a new object on every render.
@@ -1009,7 +1010,7 @@ export function DrawingSheetViewer({
       if (measureSource) setRunScaleOverride(next);
       if (!controlledScale) {
         setLocalSheetScale(next);
-        setUnit((current) =>
+        if (!personalUnit) setUnit((current) =>
           scaleUnitFor(current) === next.unit ? current : next.unit,
         );
         if (sheetKey) writeSheetScale(sheetKey, next);
@@ -1897,7 +1898,7 @@ export function DrawingSheetViewer({
     setMeasurementLayer(data.layer ?? "General");
     setRunScaleOverride(null);
     setMeasureColor(data.stroke);
-    setUnit(data.unit === "cm" ? "m" : (data.unit ?? sheetScale?.unit ?? "ft"));
+    if (!personalUnit) setUnit(data.unit === "cm" ? "m" : (data.unit ?? sheetScale?.unit ?? "ft"));
     dispatchRun({ type: "load", nodes: savedMeasureNodes(data) });
     setGapMode(false);
     setGapMessage(null);
@@ -2463,7 +2464,7 @@ export function DrawingSheetViewer({
                   setMeasurementLayer(selected.source.data.layer ?? "General");
                   setRunScaleOverride(null);
                   setMeasureColor(selected.source.data.stroke);
-                  setUnit(
+                  if (!personalUnit) setUnit(
                     selected.source.data.unit === "cm"
                       ? "m"
                       : (selected.source.data.unit ?? sheetScale?.unit ?? "ft"),
@@ -2636,6 +2637,7 @@ export function DrawingSheetViewer({
             editing={editor.editing}
             hidden={editorProps.hideAnnotations}
             sharedScale={sheetScale}
+            displayUnit={personalUnit ? unit : undefined}
             onSelect={pipeMode ? undefined : editorProps.onSelect}
             onActivate={
               !measuring && !pipeMode && annotationTool === "pan"

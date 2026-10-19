@@ -1,5 +1,5 @@
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
-import type { SheetScale } from "~/lib/sheet-measure";
+import type { LengthUnit, SheetScale } from "~/lib/sheet-measure";
 import { DrawingMeasureRunSvg } from "./DrawingMeasureRunSvg";
 import {
   layoutDrawingText,
@@ -19,12 +19,14 @@ export function DrawingAnnotationSvg({
   data,
   aspect,
   sharedScale,
+  displayUnit,
   screenPixelSize,
   sheetPixelSize,
 }: {
   data: DrawingMarkup;
   aspect: number;
   sharedScale?: SheetScale | null;
+  displayUnit?: LengthUnit;
   screenPixelSize?: number;
   sheetPixelSize?: number;
 }) {
@@ -35,6 +37,7 @@ export function DrawingAnnotationSvg({
         data={data}
         aspect={aspect}
         sharedScale={sharedScale}
+        displayUnit={displayUnit}
         screenPixelSize={screenPixelSize}
         sheetPixelSize={sheetPixelSize}
       />
@@ -233,7 +236,7 @@ export function DrawingAnnotationSvg({
         />
       );
   }
-  const measurement = drawingMeasurement(data, aspect, sharedScale);
+  const measurement = drawingMeasurement(data, aspect, sharedScale, displayUnit);
   return (
     <g
       opacity={
@@ -272,6 +275,7 @@ export function DrawingAnnotationSvg({
             },
             aspect,
             sharedScale,
+            displayUnit,
           );
           return (
             <g

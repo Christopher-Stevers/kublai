@@ -3,7 +3,7 @@ import type {
   DrawingPoint,
   DrawingTool,
 } from "./drawing-workspace";
-import { formatLength, realLength, type SheetScale } from "./sheet-measure";
+import { formatLength, formatLengthAs, realLength, type LengthUnit, type SheetScale } from "./sheet-measure";
 
 export const DRAWING_SVG_WIDTH = 1000;
 /** Explicit edges avoid phantom connections when a measuring run branches. */
@@ -326,6 +326,7 @@ export function drawingMeasurement(
   data: DrawingMarkup,
   aspect: number,
   sharedScale?: SheetScale | null,
+  displayUnit?: LengthUnit,
 ) {
   if (data.type === "count")
     return `${data.points.length} count${data.points.length === 1 ? "" : "s"}`;
@@ -337,8 +338,13 @@ export function drawingMeasurement(
   const scale = data.scale ?? sharedScale?.unitsPerSheetWidth;
   const unit = data.unit ?? sharedScale?.unit;
   if (!scale || !unit) return "Set scale";
-  if (data.type === "area")
-    return `${drawingArea(data.points, aspect, scale).toFixed(2)} ${unit}²`;
+  const metersPerUnit = { m: 1, mm: 0.001, cm: 0.01, ft: 0.3048, in: 0.0254 };
+  if (data.type === "area") {
+    const area = drawingArea(data.points, aspect, scale);
+    return displayUnit
+      ? `${(area * (metersPerUnit[unit] / metersPerUnit[displayUnit]) ** 2).toFixed(2)} ${displayUnit}²`
+      : `${area.toFixed(2)} ${unit}²`;
+  }
   const length = data.parents
     ? drawingMarkupEdges(data).reduce(
         (total, { from, to }) =>
@@ -347,6 +353,7 @@ export function drawingMeasurement(
         0,
       )
     : realLength(data.points, aspect, scale);
+  if (displayUnit) return formatLengthAs(length * metersPerUnit[unit], "m", displayUnit);
   return unit === "ft" || unit === "m"
     ? formatLength(length, unit)
     : `${length.toFixed(2)} ${unit}`;

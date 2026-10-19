@@ -24,7 +24,7 @@ import {
   drawingLinePath,
   drawingMarkupEdges,
 } from "./drawing-annotation-geometry";
-import type { SheetScale } from "./sheet-measure";
+import type { LengthUnit, SheetScale } from "./sheet-measure";
 import { savedMeasureAngleArcs } from "./saved-measure-run";
 import { drawingMarkupLinks } from "./drawing-links";
 
@@ -35,6 +35,7 @@ export type DrawingPdfExportOptions = {
   markups?: DrawingMarkup[];
   sourceSheetId?: string;
   sharedScale?: SheetScale | null;
+  displayUnit?: LengthUnit;
   title?: string;
   signal?: AbortSignal;
   /** Returns an account-scoped cached URL or the authenticated original. */
@@ -126,6 +127,7 @@ async function drawMarkup(
   data: DrawingMarkup,
   sharedScale?: SheetScale | null,
   linkUrl?: string | null,
+  displayUnit?: LengthUnit,
 ) {
   const width = page.getWidth(),
     height = page.getHeight(),
@@ -319,7 +321,7 @@ async function drawMarkup(
       page.node.addAnnot(doc.context.register(link));
     }
   }
-  const measurement = drawingMeasurement(data, aspect, sharedScale);
+  const measurement = drawingMeasurement(data, aspect, sharedScale, displayUnit);
   if (data.type === "dimension" && data.parents) {
     for (const { from, to } of drawingMarkupEdges(data)) {
       const segmentLabel = drawingMeasurement(
@@ -330,6 +332,7 @@ async function drawMarkup(
         },
         aspect,
         sharedScale,
+        displayUnit,
       );
       if (segmentLabel)
         await text(
@@ -485,6 +488,7 @@ async function appendDrawingPage(
       markup,
       options.sharedScale,
       options.markupLinkUrl?.(raw),
+      options.displayUnit,
     );
   }
   options.signal?.throwIfAborted();

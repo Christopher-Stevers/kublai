@@ -2,7 +2,7 @@
 
 import { memo, type Ref } from "react";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
-import type { SheetScale } from "~/lib/sheet-measure";
+import type { LengthUnit, SheetScale } from "~/lib/sheet-measure";
 import {
   drawingMarkupBounds,
   drawingLinePath,
@@ -20,6 +20,7 @@ type DrawingAnnotationLayerProps = {
   editing?: { id: string; data: DrawingMarkup } | null;
   hidden?: boolean;
   sharedScale?: SheetScale | null;
+  displayUnit?: LengthUnit;
   onSelect?: (id: string) => void;
   onActivate?: (markup: DrawingMarkup) => void;
   screenPixelSize?: number;
@@ -42,6 +43,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   canEdit,
   aspect,
   sharedScale,
+  displayUnit,
   onSelect,
   onActivate,
   screenPixelSize,
@@ -58,6 +60,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   DrawingAnnotationLayerProps,
   | "aspect"
   | "sharedScale"
+  | "displayUnit"
   | "onSelect"
   | "onActivate"
   | "sheetPixelSize"
@@ -138,6 +141,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
             data={data}
             aspect={aspect}
             sharedScale={sharedScale}
+            displayUnit={displayUnit}
             screenPixelSize={
               data.type === "dimension" && data.parents
                 ? screenPixelSize
@@ -289,6 +293,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   editing,
   hidden,
   sharedScale,
+  displayUnit,
   onSelect,
   onActivate,
   screenPixelSize = 1,
@@ -337,6 +342,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 canEdit={selected && (canEditAnnotation?.(entity.id) ?? true)}
                 aspect={aspect}
                 sharedScale={sharedScale}
+                displayUnit={displayUnit}
                 onSelect={onSelect}
                 onActivate={onActivate}
                 screenPixelSize={usesScreenSize ? screenPixelSize : 1}
@@ -356,6 +362,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
             data={draft}
             aspect={aspect}
             sharedScale={sharedScale}
+            displayUnit={displayUnit}
             screenPixelSize={screenPixelSize}
             sheetPixelSize={sheetPixelSize}
           />

@@ -16,7 +16,8 @@ import {
 } from "~/lib/drawing-workspace";
 import type { SuperScaleResult as Result } from "~/lib/super-scale-job";
 import { gridSpacing, type GridRead } from "~/lib/super-scale";
-import { formatLength } from "~/lib/sheet-measure";
+import { useDrawingUnit } from "./useDrawingUnit";
+import { formatLength, formatLengthAs } from "~/lib/sheet-measure";
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Unable to read this drawing";
@@ -95,6 +96,7 @@ export function SuperScaleDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [unit, , personalUnit] = useDrawingUnit();
   const utils = api.useUtils();
   const mutation = api.drawingsWorkspace.metadata.useMutation();
   const [read, setRead] = useState<GridRead | null>(null);
@@ -369,7 +371,7 @@ export function SuperScaleDialog({
                 <p className="text-sm font-medium">
                   {first} to {second}:{" "}
                   {distance !== null
-                    ? formatLength(distance, metadata.scale.unit)
+                    ? personalUnit ? formatLengthAs(distance, metadata.scale.unit, unit) : formatLength(distance, metadata.scale.unit)
                     : ""}
                 </p>
                 <GridPreview

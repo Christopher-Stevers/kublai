@@ -21,6 +21,9 @@ import {
 import { DrawingCompare } from "./DrawingCompare";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
+const unitIdentity = vi.hoisted(() => ({ account: null as { accountKey: string } | null }));
+vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => unitIdentity.account }));
+
 vi.mock("~/lib/pdf-snap-lines", () => ({
   loadSnapLines: vi.fn(async () => []),
 }));
@@ -32,6 +35,7 @@ vi.mock("~/lib/pdf-sheet-scale", () => ({
 }));
 
 beforeEach(() => {
+  unitIdentity.account = null;
   vi.mocked(loadSnapLines).mockResolvedValue([]);
   vi.mocked(readPdfSheetScale).mockResolvedValue({ ok: false, reason: "none" });
   // Node 26 exposes an unavailable native localStorage in the test environment.
@@ -1536,4 +1540,21 @@ describe("host-requested Super scale calibration", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCalibrationEnd).toHaveBeenCalledExactlyOnceWith(false);
   });
+});
+
+it("keeps personal units across other sheets and scale changes without changing the shared scale", () => {
+  unitIdentity.account = { accountKey: crypto.randomUUID() };
+  const onScaleChange = vi.fn();
+  const first = openSheet("personal-first", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onScaleChange });
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  chooseUnit("mm");
+  first.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="personal-first" sharedScale={{ unit: "m", unitsPerSheetWidth: 30.48 }} onScaleChange={onScaleChange}/>);
+  expect(screen.getByRole("button", { name: "Units: mm" })).toBeInTheDocument();
+  first.unmount();
+  const second = openSheet("personal-second", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onScaleChange });
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  expect(screen.getByRole("button", { name: "Units: mm" })).toBeInTheDocument();
+  tap(second.frame, 200, 300); tap(second.frame, 600, 300);
+  expect(screen.getByRole("status")).toHaveTextContent("15240 mm");
+  expect(onScaleChange).not.toHaveBeenCalled();
 });
