@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
@@ -138,6 +139,7 @@ vi.mock("~/lib/drawing-pdf-offline-runtime", () => ({ warmDrawingPdfRuntime: vi.
 vi.mock("~/lib/drawing-offline", () => ({ collectDrawingOfflineUrls: vi.fn(async (urls: string[]) => [...urls, "/original.pdf"]) }));
 
 import { JobDrawingsView } from "./JobDrawingsView";
+import { recordDrawingSheetOpen } from "./useDrawingFolderOrder";
 
 beforeEach(() => {
   state.account = null;
@@ -505,6 +507,28 @@ describe("Drawings", () => {
     expect(screen.getByText("Viewing M-101")).toBeInTheDocument();
   });
 });
+
+ it("sorts drawings A–Z or most used from the Filters menu", () => {
+  // Earlier tests open drawings too; start from no opens.
+  localStorage.removeItem("foremanhq:drawing-sheet-opens");
+  recordDrawingSheetOpen("s2");
+  render(<JobDrawingsView jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+  const order = () =>
+    screen
+      .getAllByRole("button", { name: /^Open M-/, hidden: true })
+      .map((card) => card.getAttribute("aria-label"));
+  expect(order()).toEqual(["Open M-101", "Open M-102"]);
+  fireEvent.keyDown(screen.getByRole("button", { name: /^Filters/ }), { key: "Enter" });
+  const sort = screen.getByRole("radiogroup", { name: "Drawing order" });
+  expect(within(sort).getByRole("radio", { name: "Alphabetical" })).toHaveAttribute("aria-checked", "true");
+  fireEvent.click(within(sort).getByRole("radio", { name: "Most used" }));
+  expect(order()).toEqual(["Open M-102", "Open M-101"]);
+  // Sorting isn't a filter.
+  expect(screen.getByRole("button", { name: "Filters", hidden: true })).toBeInTheDocument();
+  localStorage.removeItem("foremanhq:drawing-sheet-order");
+  localStorage.removeItem("foremanhq:drawing-sheet-opens");
+ });
 
  it("warms a focused sheet without opening or changing it", () => {
   render(<JobDrawingsView jobId="job" />);

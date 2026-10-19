@@ -2,7 +2,9 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, expect, it } from "vitest";
 import {
   recordDrawingFolderOpen,
+  recordDrawingSheetOpen,
   useDrawingFolderOrder,
+  useDrawingSheetOrder,
 } from "./useDrawingFolderOrder";
 
 const folders = [
@@ -38,5 +40,31 @@ it("sorts alphabetically and remembers the choice", () => {
   ]);
   expect(renderHook(() => useDrawingFolderOrder()).result.current.order).toBe(
     "az",
+  );
+});
+
+it("keeps drawings A–Z by default and can put the most opened first", () => {
+  const sheets = [{ id: "m1" }, { id: "m2" }, { id: "m3" }];
+  const { result } = renderHook(() => useDrawingSheetOrder());
+  expect(result.current.order).toBe("az");
+  act(() => {
+    recordDrawingSheetOpen("m3");
+    recordDrawingSheetOpen("m2");
+    recordDrawingSheetOpen("m3");
+  });
+  expect(result.current.sortSheets(sheets).map((s) => s.id)).toEqual([
+    "m1",
+    "m2",
+    "m3",
+  ]);
+  act(() => result.current.setOrder("used"));
+  expect(result.current.sortSheets(sheets).map((s) => s.id)).toEqual([
+    "m3",
+    "m2",
+    "m1",
+  ]);
+  // Drawing opens don't change the folder order.
+  expect(renderHook(() => useDrawingFolderOrder()).result.current.order).toBe(
+    "used",
   );
 });

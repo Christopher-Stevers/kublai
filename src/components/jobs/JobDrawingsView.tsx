@@ -63,7 +63,9 @@ import type { DrawingViewport } from "./DrawingSheetViewer";
 import { SheetOfflineButton } from "./SheetOfflineButton";
 import {
   recordDrawingFolderOpen,
+  recordDrawingSheetOpen,
   useDrawingFolderOrder,
+  useDrawingSheetOrder,
 } from "./useDrawingFolderOrder";
 import { DrawingWorkspace } from "./DrawingWorkspace";
 import { DrawingSheetRegister } from "./DrawingSheetRegister";
@@ -284,7 +286,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   });
 
   const sheets = useMemo(() => setData?.sheets ?? [], [setData?.sheets]);
-  const visibleSheets = useMemo(() => sheets
+  const sheetOrder = useDrawingSheetOrder();
+  const sortedSheets = useMemo(() => sheets
     .filter((item) => {
       const summary = bySheet.get(item.id),
         metadata = summary?.metadata;
@@ -312,6 +315,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         { numeric: true, sensitivity: "base" },
       ),
     ), [sheets, bySheet, query, discipline, status, favoritesOnly]);
+  const visibleSheets = sheetOrder.sortSheets(sortedSheets);
+  const openSheetFromList = (id: string) => {
+    // The tutorial practises on real screens without touching device data.
+    if (!sandbox) recordDrawingSheetOpen(id);
+    openSheet(id);
+  };
   const downloadFolder = async (targetId = setId) => {
     if (!account?.store || downloader.current || !targetId) return;
     const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
@@ -748,12 +757,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 onFocus={() => {
                   if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
                 }}
-                onClick={() => openSheet(item.id)}
+                onClick={() => openSheetFromList(item.id)}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget) return;
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    openSheet(item.id);
+                    openSheetFromList(item.id);
                   }
                 }}
               >
@@ -884,6 +893,31 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 align="start"
                 className="max-h-[70dvh] min-w-56 overflow-y-auto"
               >
+                <DropdownMenuLabel>Sort</DropdownMenuLabel>
+                <div
+                  role="radiogroup"
+                  aria-label="Drawing order"
+                  className="bg-muted mx-1 mb-1 grid grid-cols-2 gap-1 rounded-lg p-1"
+                >
+                  {(
+                    [
+                      ["az", "Alphabetical"],
+                      ["used", "Most used"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={sheetOrder.order === value}
+                      className={`h-8 rounded-md px-2 text-xs font-medium transition-colors ${sheetOrder.order === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                      onClick={() => sheetOrder.setOrder(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel>Discipline</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={discipline}
