@@ -19,6 +19,8 @@ export type DrawingEditorProps = {
   onCreate?: (data: DrawingMarkup) => void;
   onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
   onSelect?: (id: string | null) => void;
+  /** A mouse right-click while panning or selecting, with the item under it. */
+  onContextMenu?: (id: string | null, point: { x: number; y: number }) => void;
   onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
   onUpdate?: (id: string, data: DrawingMarkup) => void;
   onDelete?: (id: string) => void;

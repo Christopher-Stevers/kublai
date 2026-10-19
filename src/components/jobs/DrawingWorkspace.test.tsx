@@ -1272,6 +1272,25 @@ describe("drawing workspace workflows", () => {
     expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({editMeasurementRequest:{entityId:entity.id}});
     expect(mocks.save).not.toHaveBeenCalled();
   });
+  it("right-clicking a measurement selects it and offers the bar's actions at the cursor", async () => {
+    const entity=existingMarkup("published");
+    mocks.data!.entities=[{...entity,data:{...entity.data,type:"dimension",parents:[null,0],points:[{x:.2,y:.2},{x:.5,y:.2}],unit:"m",scale:100}} as DrawingEntity];
+    open();
+    const viewer=()=>mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(()=>viewer().onContextMenu?.(entity.id,{x:120,y:80}));
+    expect(viewer()).toMatchObject({selectedId:entity.id,tool:"select"});
+    const menu=await screen.findByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").map(item=>item.textContent)).toEqual(["Move","Resize","Edit","Details","Delete"]);
+    fireEvent.click(within(menu).getByRole("menuitem",{name:"Move"}));
+    await waitFor(()=>expect(screen.queryByRole("menu")).toBeNull());
+    expect(viewer()).toMatchObject({selectedId:entity.id,selectionMode:"move"});
+    act(()=>viewer().onContextMenu?.(entity.id,{x:120,y:80}));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem",{name:"Edit"}));
+    await waitFor(()=>expect(viewer()).toMatchObject({editMeasurementRequest:{entityId:entity.id}}));
+    act(()=>viewer().onContextMenu?.(null,{x:10,y:10}));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it("offers a selected markup's drawing style and saves a change", async () => {
     mocks.data!.entities = [existingMarkup("published")];
     open();

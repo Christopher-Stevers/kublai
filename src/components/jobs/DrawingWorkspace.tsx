@@ -52,6 +52,7 @@ import {
   ListChecksIcon,
   MessageSquareMoreIcon,
   MaximizeIcon,
+  MoveIcon,
   MoreHorizontalIcon,
   MousePointer2Icon,
   PaletteIcon,
@@ -72,6 +73,7 @@ import {
   MoveHorizontalIcon,
   PaintBucketIcon,
   PencilIcon,
+  ScalingIcon,
   SlashIcon,
   SquareDashedIcon,
   SquareIcon,
@@ -452,8 +454,13 @@ export function DrawingWorkspace({
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editReadyId, setEditReadyId] = useState<string | null>(null);
+  // A mouse right-click is deliberate, so its menu doesn't wait for the shake.
+  const readyNow = useRef<string | null>(null);
   useEffect(() => {
-    setEditReadyId(null);
+    const now = readyNow.current === selectedId;
+    readyNow.current = null;
+    setEditReadyId(now ? selectedId : null);
+    if (now) return;
     const timer = setTimeout(() => setEditReadyId(selectedId), MARKUP_SHAKE_MS);
     return () => clearTimeout(timer);
   }, [selectedId]);
@@ -464,6 +471,12 @@ export function DrawingWorkspace({
   } | null>(null);
   const [measurementEdit, setMeasurementEdit] = useState<{id:number;entityId:string}|null>(null);
   const editMeasurement = (entityId:string) => {setTool("pan");setPanel("");setMeasurementEdit({id:Date.now(),entityId});};
+  /** The right-click menu for a selected markup, at the cursor. */
+  const [markupMenu, setMarkupMenu] = useState<{
+    id: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const [selectionMode, setSelectionMode] = useState<"move" | "resize">(
     "resize",
   );
@@ -819,6 +832,28 @@ export function DrawingWorkspace({
     pending === 0 &&
     !queued.records.some((record) => record.input.id === entity.id) &&
     Boolean(data && (data.canManage || entity.authorId === data.actor.id));
+  const openMarkupMenu = (id: string | null, point: { x: number; y: number }) => {
+    const entity = entitiesById.get(id ?? "");
+    if (
+      entity?.kind !== "markup" ||
+      entity.visibility === "archived" ||
+      sourceOf(entity) !== sourceId ||
+      compareIds
+    ) {
+      setMarkupMenu(null);
+      return;
+    }
+    // Select it as a click would, but keep text notes closed so the menu can offer Edit text.
+    if (entity.id !== selectedId) {
+      setSelectionMode("resize");
+      readyNow.current = entity.id;
+    }
+    setSelectedId(entity.id);
+    setForm(null);
+    setPanel("");
+    selectTool("select");
+    setMarkupMenu({ id: entity.id, ...point });
+  };
   const selectAnnotation = useCallback(
     (id: string | null) => {
       if (id === "search-highlight") return;
@@ -1388,6 +1423,68 @@ export function DrawingWorkspace({
             ? "Earlier revision · read only"
             : "Saved";
 
+  /** What can be done to a selected markup, shared by its bar and right-click menu. */
+  const markupActions = (entity: DrawingEntity) => {
+    if (entity.kind !== "markup") return [];
+    const can = editable(entity);
+    const mode = (next: "move" | "resize") => ({
+      active: selectionMode === next && tool === "select",
+      run: () => {
+        selectTool("select");
+        setSelectionMode(next);
+        setPanel("");
+      },
+    });
+    return [
+      ...(can
+        ? [
+            { key: "move", label: "Move", icon: MoveIcon, disabled: pending > 0, ...mode("move") },
+            { key: "resize", label: "Resize", icon: ScalingIcon, disabled: pending > 0, ...mode("resize") },
+            ...(entity.data.type === "dimension" && entity.data.parents
+              ? [{ key: "edit", label: "Edit", icon: PencilIcon, disabled: pending > 0, run: () => editMeasurement(entity.id) }]
+              : []),
+            ...(entity.data.type === "text"
+              ? [{
+                  key: "edit-text",
+                  label: "Edit text",
+                  icon: TypeIcon,
+                  disabled: pending > 0,
+                  run: () => {
+                    setInlineText({ id: entity.id, data: entity.data });
+                    setSelectedId(null);
+                  },
+                }]
+              : []),
+          ]
+        : []),
+      { key: "details", label: "Details", icon: InfoIcon, iconOnly: true, run: () => setPanel("selected") },
+      ...(can
+        ? [{
+            key: "delete",
+            label: "Delete",
+            ariaLabel: "Delete markup",
+            icon: Trash2Icon,
+            iconOnly: true,
+            destructive: true,
+            disabled: !deletable(entity),
+            title: online ? "Delete" : "Reconnect to delete this markup",
+            run: () => void archive(entity),
+          }]
+        : []),
+    ] as {
+      key: string;
+      label: string;
+      ariaLabel?: string;
+      icon: LucideIcon;
+      iconOnly?: boolean;
+      destructive?: boolean;
+      active?: boolean;
+      disabled?: boolean;
+      title?: string;
+      run: () => void;
+    }[];
+  };
+
   return (
     <div
       className="relative flex h-full min-h-0 flex-col"
@@ -1761,6 +1858,7 @@ export function DrawingWorkspace({
                   : undefined
               }
               onSelect={selectAnnotation}
+              onContextMenu={openMarkupMenu}
               onUpdate={(id, markup) => {
                 const entity = entities.find((item) => item.id === id);
                 if (entity && editable(entity))
@@ -1799,102 +1897,38 @@ export function DrawingWorkspace({
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                   {capitalize(nameOf(selected))}
                 </span>
-                {editable(selected) ? (
-                  <>
-                    <Button
-                      size="sm"
-                      className={SELECTED_BUTTON}
-                      variant={
-                        selectionMode === "move" && tool === "select"
-                          ? "default"
-                          : "outline"
-                      }
-                      aria-pressed={selectionMode === "move" && tool === "select"}
-                      disabled={pending > 0}
-                      onClick={() => {
-                        selectTool("select");
-                        setSelectionMode("move");
-                        setPanel("");
-                      }}
-                    >
-                      Move
-                    </Button>
-                    <Button
-                      size="sm"
-                      className={SELECTED_BUTTON}
-                      variant={
-                        selectionMode === "resize" && tool === "select"
-                          ? "default"
-                          : "outline"
-                      }
-                      aria-pressed={
-                        selectionMode === "resize" && tool === "select"
-                      }
-                      disabled={pending > 0}
-                      onClick={() => {
-                        selectTool("select");
-                        setSelectionMode("resize");
-                        setPanel("");
-                      }}
-                    >
-                      Resize
-                    </Button>
-                    {selected.data.type === "dimension" &&
-                      selected.data.parents && (
-                        <Button
-                          size="sm"
-                          className={SELECTED_BUTTON}
-                          variant="outline"
-                          disabled={pending > 0}
-                          onClick={() => editMeasurement(selected.id)}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                    {selected.data.type === "text" && (
-                      <Button
-                        size="sm"
-                        className={SELECTED_BUTTON}
-                        variant="outline"
-                        disabled={pending > 0}
-                        onClick={() => {
-                          setInlineText({ id: selected.id, data: selected.data });
-                          setSelectedId(null);
-                        }}
-                      >
-                        Edit text
-                      </Button>
-                    )}
-                  </>
-                ) : (
+                {!editable(selected) && (
                   <span className="text-muted-foreground shrink-0 text-xs">
                     Read only
                   </span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className={SELECTED_ICON}
-                  aria-label="Details"
-                  title="Details"
-                  onClick={() => setPanel("selected")}
-                >
-                  <InfoIcon className="size-4" />
-                </Button>
-                {editable(selected) && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className={`${SELECTED_ICON} text-destructive hover:text-destructive`}
-                    aria-label="Delete markup"
-                    disabled={!deletable(selected)}
-                    title={
-                      online ? "Delete" : "Reconnect to delete this markup"
-                    }
-                    onClick={() => void archive(selected)}
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
+                {markupActions(selected).map((action) =>
+                  action.iconOnly ? (
+                    <Button
+                      key={action.key}
+                      size="icon"
+                      variant="outline"
+                      className={`${SELECTED_ICON} ${action.destructive ? "text-destructive hover:text-destructive" : ""}`}
+                      aria-label={action.ariaLabel ?? action.label}
+                      title={action.title ?? action.label}
+                      disabled={action.disabled}
+                      onClick={action.run}
+                    >
+                      <action.icon className="size-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      key={action.key}
+                      size="sm"
+                      className={SELECTED_BUTTON}
+                      variant={action.active ? "default" : "outline"}
+                      aria-pressed={action.active}
+                      disabled={action.disabled}
+                      onClick={action.run}
+                    >
+                      {action.label}
+                    </Button>
+                  ),
                 )}
               </div>
               {editable(selected) &&
@@ -1915,6 +1949,40 @@ export function DrawingWorkspace({
             </div>
           )}
 
+        {markupMenu && selected?.id === markupMenu.id && !form && !compareIds && (
+          <DropdownMenu
+            open
+            onOpenChange={(open) => {
+              if (!open) setMarkupMenu(null);
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none fixed size-0"
+                style={{ left: markupMenu.x, top: markupMenu.y }}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={2}
+              className="w-44 rounded-xl p-1.5 shadow-xl"
+              data-drawing-chrome
+            >
+              {markupActions(selected).map((action) => (
+                <DropdownMenuItem
+                  key={action.key}
+                  className={`min-h-9 gap-2.5 rounded-lg ${action.destructive ? "text-destructive focus:text-destructive" : ""}`}
+                  disabled={action.disabled}
+                  onSelect={action.run}
+                >
+                  <action.icon aria-hidden="true" className="size-4" />
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {panel && (
           <aside
             data-drawing-chrome

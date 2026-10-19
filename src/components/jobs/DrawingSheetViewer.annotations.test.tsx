@@ -57,6 +57,16 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(onDone).toHaveBeenCalledOnce();
     expect(onCreate).not.toHaveBeenCalled(); expect(onPoint).not.toHaveBeenCalled();
   });
+  it("offers the markup under a right-click while selecting, without finishing anything", () => {
+    const entity = markup(), onContextMenu = vi.fn(), onDone = vi.fn(), onSelect = vi.fn();
+    const { frame } = open({ tool: "select", annotations: [entity], onContextMenu, onSelect, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } });
+    const target = frame.querySelector(`[data-annotation-id="${entity.id}"]`)!;
+    expect(fireEvent.contextMenu(target, { button: 2, clientX: 310, clientY: 220 })).toBe(false);
+    expect(onContextMenu).toHaveBeenCalledExactlyOnceWith(entity.id, { x: 310, y: 220 });
+    fireEvent.contextMenu(frame, { button: 2, clientX: 50, clientY: 60 });
+    expect(onContextMenu).toHaveBeenLastCalledWith(null, { x: 50, y: 60 });
+    expect(onDone).not.toHaveBeenCalled();
+  });
   it("does not finish a tool when a toolbar control is right-clicked", () => {
     const onDone = vi.fn();
     const { frame } = open({ tool: "area", onCreate: vi.fn(), toolControls: {measureRequest:0,pipeRequest:0,onDone} });

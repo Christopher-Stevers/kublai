@@ -2042,7 +2042,12 @@ export function DrawingSheetViewer({
           else if (annotationTool !== "pan" && annotationTool !== "select") {
             editor.cancelGesture();
             editor.finish();
-          } else return;
+          } else {
+            // Otherwise right-clicking a markup offers its actions at the cursor.
+            const item = event.target instanceof Element ? event.target.closest("[data-annotation-id]") : null;
+            editorProps.onContextMenu?.(item?.getAttribute("data-annotation-id") ?? null, { x: event.clientX, y: event.clientY });
+            return;
+          }
           toolControls?.onDone?.();
         }}
         onAuxClick={(event) => {
