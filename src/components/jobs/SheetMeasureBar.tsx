@@ -149,10 +149,10 @@ function RegularSheetMeasureBar({
       onClick={onToggle}
     >
       <RulerIcon className="h-4 w-4" />
-      {measuring ? "Done" : "Measure"}
+      Measure
     </Button>
   );
-  // With the drawing's main bar, its Measure button is the Done button.
+  // With the drawing's main bar, its Measure button finishes the active run.
   const measuringControls = hideIdle ? null : (
     <div className="flex shrink-0 items-center gap-2">{toggle}</div>
   );

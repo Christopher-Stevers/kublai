@@ -261,7 +261,7 @@ describe("drawing measure", () => {
     expect(screen.getByRole("menu", { name: "Measurement layer: Plumbing, Cold water" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", {name:"Done choosing layers"}));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]).layers).toEqual(["Plumbing", "Cold water"]);
   });
   it("saves Done as a persistent coloured dimension with converted units, and starts a fresh run", () => {
@@ -275,14 +275,14 @@ describe("drawing measure", () => {
     chooseUnit("mm");
     fireEvent.click(screen.getByRole("button", { name: /^Measuring color:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Neon cyan" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onCreate).toHaveBeenCalledOnce();
     const saved = drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]);
     expect(saved).toMatchObject({ sourceSheetId: source, type: "dimension", unit: "mm", scale: 30480, stroke: "#00ffff", parents: [null, 0] });
     expect(drawingMeasurement(saved, .5)).toBe("15240.00 mm");
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onCreate).toHaveBeenCalledOnce();
     unmount();
     const entity: DrawingEntity = { id: "saved-measure", sheetId: source, kind: "markup", data: saved, revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] };
@@ -320,7 +320,7 @@ describe("drawing measure", () => {
       anchor: activeLabel.getAttribute("text-anchor"),
       text: activeLabel.textContent,
     };
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     const entity: DrawingEntity = { id: "style-run", sheetId: source, kind: "markup", data: drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]), revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] };
     view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} sharedScale={sharedScale} annotations={[entity]} onCreate={onCreate} />);
     const check = (frame: HTMLElement, screenScale: number) => {
@@ -358,7 +358,7 @@ describe("drawing measure", () => {
     tap(frame, 200, 300); tap(frame, 600, 300);
     fireEvent.click(screen.getByRole("button", { name: "Branch" }));
     tap(frame, 400, 300); tap(frame, 400, 180);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onCreate).toHaveBeenCalledOnce();
     const saved = drawingMarkupSchema.parse(onCreate.mock.calls[0]![0]);
     expect(saved.parents).toEqual([null, 2, 0, 2]);
@@ -369,14 +369,14 @@ describe("drawing measure", () => {
     const onCreate = vi.fn();
     const { frame } = openSheet("0391aed4-7773-47ec-9141-09df373ec008", undefined, { sharedScale: null, onCreate, onScaleChange: vi.fn() });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
     tap(frame, 200, 300); tap(frame, 600, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onCreate).not.toHaveBeenCalled();
   });
 
@@ -391,7 +391,7 @@ describe("drawing measure", () => {
     const footer = screen.getByRole("region", { name: "Drawing tool options" });
     expect(frame.contains(footer)).toBe(false);
     expect(frame.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(footer.contains(screen.getByRole("button", { name: "Done" }))).toBe(true);
+    expect(footer.contains(screen.getByRole("button", { name: "Measure" }))).toBe(true);
     const points = frame.querySelector('[data-measure-path]')?.getAttribute("points");
     const color = screen.getByRole("button", { name: /^Measuring color:/ });
     fireEvent.pointerDown(color, { clientX: 200, clientY: 300, pointerId: 1, button: 0 });
@@ -443,7 +443,7 @@ describe("drawing measure", () => {
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
     expect(onScaleChange).toHaveBeenCalledTimes(1);
     expect(storage).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     expect(onCreate).toHaveBeenCalledWith(
@@ -477,7 +477,7 @@ describe("drawing measure", () => {
     fireEvent.click(apply); fireEvent.click(apply);
     expect(onScaleChange).toHaveBeenCalledOnce();
     expect(screen.getByRole("status")).toHaveTextContent("Saving scale");
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Measure" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     await act(async () => finish(false));
     expect(screen.getByRole("alert")).toHaveTextContent("Scale was not saved");
@@ -521,7 +521,7 @@ describe("drawing measure", () => {
     tap(frame, 400, 300);
     // No scale yet: no total, and no instructions either.
     expect(screen.getByRole("status")).toHaveTextContent("");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     tap(frame, 200, 300);
     tap(frame, 600, 300);
     expect(onCreate).toHaveBeenCalledWith(
@@ -1242,7 +1242,7 @@ describe("Gap branching in Measure", () => {
     expect(screen.getByRole("status")).toHaveTextContent("50'-0\"");
     tap(frame, 400, 180);
     expect(screen.getByRole("status")).toHaveTextContent("65'-0\"");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onCreate).not.toHaveBeenCalled();
     expect(onUpdate).toHaveBeenCalledOnce();
     expect(onUpdate.mock.calls[0]![0]).toBe(entity.id);
@@ -1320,7 +1320,7 @@ describe("Gap branching in Measure", () => {
     view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={source} annotations={[{ ...entity, revision: 2 }]} onUpdate={onUpdate} />);
     expect(view.frame.querySelectorAll('[data-measure-node]')).toHaveLength(0);
     expect(screen.getByRole("note")).toHaveTextContent("measurement changed");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
@@ -1370,7 +1370,7 @@ describe("Gap branching in Measure", () => {
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.getByRole("button", { name: "Branch" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Measure" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("50 m");
   });
   it("reuses a trunk endpoint, supports another branch, and clears branch state with the run", () => {
@@ -1409,7 +1409,7 @@ it("finishes a measurement through the host completion callback and clears selec
   tap(frame, 200, 300);
   tap(frame, 600, 300);
   onSelect.mockClear();
-  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
   expect(onMeasurementComplete).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: "dimension" }), undefined);
   expect(onCreate).not.toHaveBeenCalled();
   expect(onSelect).toHaveBeenCalledWith(null);

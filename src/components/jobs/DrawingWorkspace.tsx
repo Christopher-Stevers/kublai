@@ -432,6 +432,7 @@ export function DrawingWorkspace({
   const superScaleCalibration = useRef<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
+  const toolLabel = tools.find(([id]) => id === tool)?.[1] ?? "Tools";
   const activeTool = useRef(tool);
   activeTool.current = tool;
   const finishInlineText = useRef<(selectAfterSave?: boolean) => void>(() => undefined);
@@ -3288,14 +3289,15 @@ export function DrawingWorkspace({
             <Button
               variant="default"
               className={BAR_BUTTON}
-              aria-label="Done"
+              aria-label="More"
+              aria-pressed={true}
               onClick={() => {
                 setPanel("");
                 setForm(null);
               }}
             >
               <MoreHorizontalIcon className="h-5 w-5" />
-              Done
+              More
             </Button>
           ) : (
             <DropdownMenu
@@ -3310,10 +3312,10 @@ export function DrawingWorkspace({
                 <Button
                   variant={moreOpen ? "default" : "ghost"}
                   className={BAR_BUTTON}
-                  aria-label={moreOpen ? "Done" : "More"}
+                  aria-label="More"
                 >
                   <MoreHorizontalIcon className="h-5 w-5" />
-                  {moreOpen ? "Done" : "More"}
+                  More
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -3451,11 +3453,12 @@ export function DrawingWorkspace({
             <Button
               variant="default"
               className={BAR_BUTTON}
-              aria-label={tool === "viewing" ? "Exit Viewing" : "Done"}
+              aria-label={bottomMode.pipe ? "Pipe system" : toolLabel}
+              aria-pressed={true}
               onClick={finishTool}
             >
               {tool === "viewing" ? <HandIcon className="h-5 w-5" /> : <WrenchIcon className="h-5 w-5" />}
-              {tool === "viewing" ? "Viewing" : "Done"}
+              {bottomMode.pipe ? "Pipe system" : toolLabel}
             </Button>
           ) : (
             <DropdownMenu
@@ -3470,10 +3473,10 @@ export function DrawingWorkspace({
                 <Button
                   variant={toolsOpen ? "default" : "ghost"}
                   className={BAR_BUTTON}
-                  aria-label={toolsOpen ? "Done" : "Tools"}
+                  aria-label="Tools"
                 >
                   <WrenchIcon className="h-5 w-5" />
-                  {toolsOpen ? "Done" : "Tools"}
+                  Tools
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -3549,11 +3552,10 @@ export function DrawingWorkspace({
             }
             className={BAR_BUTTON}
             aria-label={
-              markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
-                ? "Done"
-                : "Markup"
+              !OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"
             }
             aria-expanded={markupOpen}
+            aria-pressed={!OTHER_TOOLS.has(tool) && !bottomMode.measuring}
             onClick={() => {
               if (!OTHER_TOOLS.has(tool) && !bottomMode.measuring) finishTool();
               else if (markupOpen) setMarkupOpen(false);
@@ -3565,15 +3567,13 @@ export function DrawingWorkspace({
           >
             <PenLineIcon className="h-5 w-5" />
             <span className="flex items-center gap-0.5">
-              {markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
-                ? "Done"
-                : "Markup"}
+              {!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"}
             </span>
           </Button>
           <Button
             variant={bottomMode.measuring ? "default" : "ghost"}
             className={BAR_BUTTON}
-            aria-label={bottomMode.measuring ? "Done" : "Measure"}
+            aria-label="Measure"
             aria-pressed={bottomMode.measuring}
             onClick={() => {
               setMarkupOpen(false);
@@ -3583,7 +3583,7 @@ export function DrawingWorkspace({
             }}
           >
             <RulerIcon className="h-5 w-5" />
-            {bottomMode.measuring ? "Done" : "Measure"}
+            Measure
           </Button>
         </div>
       </div>
