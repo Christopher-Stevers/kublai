@@ -62,6 +62,17 @@ follow the detected pipe rays. Up/down marks require a matching reviewed symbol 
 explicit pipe-up/pipe-down description. An endpoint alone never establishes a rise
 or drop. Unknown shapes use a neutral question-mark symbol, not an invented valve.
 
+Public reference research (October 19, 2026):
+[pipe up/down image collection](references/pipe-up-down/index.html) contains five
+visually verified crops from two published mechanical legends, with source URLs,
+page numbers, PDF hashes, and crop coordinates in its manifest. Turned elbows are
+shown at line ends; vertical tee outlets also occur along continuing runs. Preserve
+open/closed geometry, connection orientation, and internal details. A symbol can
+mean "drop or rise" without establishing direction, and UP/DN can describe pitch.
+Use each project's reviewed legend as the authority. These reference images are
+research material, not automatically imported detector templates or verified
+in-plan occurrences.
+
 Snapshots are limited to 100 paths and 2,000 points. Rendering shares the existing
 SVG camera and memoized annotations; panning does not redo recognition or fetch
 symbol images. Validation includes angle/orientation fixtures, schema round trips,

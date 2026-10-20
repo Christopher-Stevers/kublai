@@ -1,0 +1,92 @@
+{
+  "retrieved": "2026-10-19 America/Toronto",
+  "sources": {
+    "hacp": {
+      "title": "HACP Public Safety Center \u2014 Mechanical Data Sheet M001",
+      "publisher": "Housing Authority of the City of Pittsburgh",
+      "designer": "Allen & Shariff",
+      "url": "https://hacp.org/app/uploads/2021/04/Drawings-IFB600-19-21-Public-Safety-Center.pdf",
+      "page": 2,
+      "sheet": "M001",
+      "displayed_width_points": 2592,
+      "pdf_sha256": "38bd1631d9271955b1b6aba02b9888bc23bef42bd0db20c08b81a51464a0c2dd"
+    },
+    "grady": {
+      "title": "Grady Memorial Hospital Boiler Plant Replacement \u2014 Mechanical Symbols and Notes M001",
+      "publisher": "Grady Health",
+      "designer": "Oakwell",
+      "url": "https://www.gradyhealth.org/wp-content/uploads/25014_Grady-Boiler-Plant-MEPARCH-Design-DEvelopment-101625.pdf",
+      "page": 1,
+      "sheet": "M001",
+      "displayed_width_points": 3024,
+      "pdf_sha256": "c1f4fd634ee51c4f254ce3f95523237bac7cb71890b3cafa789a66e0b07508c9"
+    }
+  },
+  "images": [
+    {
+      "file": "hacp-elbows-up-down.png",
+      "source": "hacp",
+      "meaning": "Elbows turned up and down; line-end examples",
+      "crop_display_points": [
+        1364,
+        711,
+        1783,
+        775
+      ],
+      "pixels_per_point": 4,
+      "render": "Poppler pdftoppm, original PDF graphics and labels; no redrawing"
+    },
+    {
+      "file": "hacp-top-bottom-connections-and-cap.png",
+      "source": "hacp",
+      "meaning": "Top/bottom branch connections and cap; contextual comparisons",
+      "crop_display_points": [
+        1364,
+        775,
+        1783,
+        870
+      ],
+      "pixels_per_point": 4,
+      "render": "Poppler pdftoppm, original PDF graphics and labels; no redrawing"
+    },
+    {
+      "file": "grady-elbows-up-down-and-cap.png",
+      "source": "grady",
+      "meaning": "Up/riser and down elbows in double-line and single-line representations; cap comparison",
+      "crop_display_points": [
+        1686,
+        1143,
+        2205,
+        1260
+      ],
+      "pixels_per_point": 4,
+      "render": "Poppler pdftoppm, original PDF graphics and labels; no redrawing"
+    },
+    {
+      "file": "grady-rise-drop-and-tees.png",
+      "source": "grady",
+      "meaning": "Connect out of top, drop/rise, tee outlet up and down",
+      "crop_display_points": [
+        1170,
+        1911,
+        1685,
+        2075
+      ],
+      "pixels_per_point": 4,
+      "render": "Poppler pdftoppm, original PDF graphics and labels; no redrawing"
+    },
+    {
+      "file": "grady-pitch-versus-flow.png",
+      "source": "grady",
+      "meaning": "Pipe pitch UP/DN versus flow direction; not automatic rise/drop evidence",
+      "crop_display_points": [
+        1170,
+        1223,
+        1685,
+        1301
+      ],
+      "pixels_per_point": 4,
+      "render": "Poppler pdftoppm, original PDF graphics and labels; no redrawing"
+    }
+  ]
+}
