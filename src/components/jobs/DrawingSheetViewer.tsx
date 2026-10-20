@@ -113,6 +113,7 @@ import { usePipeLegendAnalysis } from "./usePipeLegendAnalysis";
 import { PipeComponentsDialog } from "./PipeComponentsDialog";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
+import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
@@ -351,6 +352,12 @@ export function DrawingSheetViewer({
     moved: boolean;
   } | null>(null);
   const pipeCalibration = useRef(false);
+  // Pen tool: a freehand loop limiting the highlighted system to one area.
+  const [lassoArmed, setLassoArmed] = useState(false);
+  const [lassoDrawing, setLassoDrawing] = useState(false);
+  const [lassoMessage, setLassoMessage] = useState<string | null>(null);
+  const lassoStroke = useRef<{ pointerId: number; points: SheetPoint[] } | null>(null);
+  const lassoPath = useRef<SVGPathElement>(null);
   const pipe = usePipeSystemSelection({
     active: pipeMode,
     url: pdf?.url,
@@ -370,7 +377,7 @@ export function DrawingSheetViewer({
   const componentAnnotations = editorProps.pipeReviewAnnotations ?? editorProps.annotations ?? NO_ANNOTATIONS;
   const templates = pipeSymbolTemplates(componentAnnotations, componentSource);
   const legendAnalysis = usePipeLegendAnalysis({active:pipeMode, source:componentSource,
-    sourceSheetId:editorProps.sourceSheetId??sheetKey,selection:pipe.selection,templates,
+    sourceSheetId:editorProps.sourceSheetId??sheetKey,selection:pipe.fullSelection,templates,
     load:editorProps.loadPipeLegendReferences,analyze:pipe.analyze});
   const componentPreviews = useMemo(() => (pipe.components?.candidates ?? []).filter(candidate =>
     candidate.locationVerified !== false && !dismissedComponents.has(componentSource+":"+candidate.id) && !reviewedPipeComponent(componentAnnotations,componentSource,candidate)
@@ -2233,6 +2240,27 @@ export function DrawingSheetViewer({
             panTap.current = null;
             lastTap.current = null;
             pipeTap.current = null;
+            if (lassoStroke.current) {
+              lassoStroke.current = null;
+              setLassoDrawing(false);
+            }
+          }
+          if (
+            pipeMode &&
+            lassoArmed &&
+            !calibrating &&
+            !currentSymbolPick &&
+            pointers.current.size === 1
+          ) {
+            const point = pointFromClient(event.clientX, event.clientY);
+            if (point) {
+              lassoStroke.current = { pointerId: event.pointerId, points: [point] };
+              lassoPath.current?.setAttribute("d", "");
+              setLassoDrawing(true);
+              setLassoMessage(null);
+            }
+            lastTap.current = null;
+            return;
           }
           if (pipeMode && !calibrating && pointers.current.size === 1) {
             pipeTap.current = {
@@ -2386,6 +2414,15 @@ export function DrawingSheetViewer({
             ) > MEASURE_TAP_SLOP_PX
           )
             pipeTap.current.moved = true;
+          const stroke = lassoStroke.current;
+          if (stroke?.pointerId === event.pointerId && fit) {
+            const point = pointFromClient(event.clientX, event.clientY);
+            if (point) {
+              stroke.points.push(point);
+              lassoPath.current?.setAttribute("d", lassoPathData(stroke.points, fit.aspect, false));
+            }
+            return;
+          }
           const drag = nodeDrag.current;
           if (
             drag?.pointerId === event.pointerId &&
@@ -2576,6 +2613,11 @@ export function DrawingSheetViewer({
               ? pointFromClient(event.clientX, event.clientY)
               : null;
           pipeTap.current = null;
+          const lassoDone =
+            lassoStroke.current?.pointerId === event.pointerId
+              ? lassoStroke.current
+              : null;
+          if (lassoDone) lassoStroke.current = null;
           const linkCandidate = pdfLinkTap.current;
           pdfLinkTap.current = null;
           const activatedLink =
@@ -2603,7 +2645,26 @@ export function DrawingSheetViewer({
           measureTap.current = null;
           endHold();
           startGesture();
+          if (lassoDone) setLassoDrawing(false);
           if (pointers.current.size > 0) return;
+          if (lassoDone && fit) {
+            const end = pointFromClient(event.clientX, event.clientY);
+            const polygon = simplifyLasso(
+              end ? [...lassoDone.points, end] : lassoDone.points,
+              2 / Math.max(1, fit.width * live.current.scale),
+              fit.aspect,
+            );
+            if (polygon.length < 3)
+              setLassoMessage("Draw a loop around the part of the system to count.");
+            else if (!pipe.setArea(polygon))
+              setLassoMessage("No highlighted pipe is inside that loop. Try again.");
+            else {
+              setLassoArmed(false);
+              setComponentFocus(null);
+            }
+            move(live.current, true);
+            return;
+          }
           if (activatedLink) {
             lastTap.current = null;
             move(live.current, true);
@@ -2670,6 +2731,10 @@ export function DrawingSheetViewer({
           panTap.current = null;
           lastTap.current = null;
           pipeTap.current = null;
+          if (lassoStroke.current) {
+            lassoStroke.current = null;
+            setLassoDrawing(false);
+          }
           pointers.current.delete(event.pointerId);
           endHold();
           measureTap.current = null;
@@ -2846,6 +2911,41 @@ export function DrawingSheetViewer({
             pxPerUnit={shownWidth / 1000}
             frameWidth={frameSize.width}
           />
+        )}
+        {fit && pipeMode && (lassoDrawing || pipe.area) && (
+          <svg
+            aria-label={lassoDrawing ? "Drawing pipe area" : "Pipe count area"}
+            role="img"
+            className="pointer-events-none absolute inset-0 z-[3] h-full w-full"
+            viewBox={
+              drawingVectorViewBox(fit, frameSize, view) ??
+              `0 0 1000 ${fit.aspect * 1000}`
+            }
+          >
+            {lassoDrawing ? (
+              <path
+                ref={lassoPath}
+                fill="#3b82f6"
+                fillOpacity={0.08}
+                stroke="#2563eb"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : (
+              <path
+                d={lassoPathData(pipe.area!, fit.aspect, true)}
+                fill="#3b82f6"
+                fillOpacity={0.05}
+                stroke="#2563eb"
+                strokeOpacity={0.8}
+                strokeWidth={1.5}
+                strokeDasharray="6 4"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </svg>
         )}
         {fit && pipeHighlight && (
           <svg
@@ -3192,10 +3292,23 @@ export function DrawingSheetViewer({
                 !controlledScale || Boolean(editorProps.onScaleChange)
               }
               onComponents={openComponents}
+              lassoArmed={lassoArmed}
+              area={Boolean(pipe.area)}
+              lassoMessage={lassoMessage}
+              onLasso={() => {
+                setLassoMessage(null);
+                setLassoArmed((on) => !on);
+              }}
+              onClearArea={() => {
+                setLassoMessage(null);
+                setLassoArmed(false);
+                setComponentFocus(null);
+                pipe.setArea(null);
+              }}
               componentCount={pipe.components?.candidates.length}
               analyzingComponents={pipe.analyzing || legendAnalysis.loading}
               onSystem={(system) => { setComponentFocus(null); setSymbolPick(null); pipe.setSystem(system); }}
-              onClear={() => { setComponentFocus(null); setSymbolPick(null); pipe.clear(); }}
+              onClear={() => { setComponentFocus(null); setSymbolPick(null); setLassoArmed(false); setLassoMessage(null); pipe.clear(); }}
               onRetry={pipe.retry}
               onScale={() => {
                 pipeCalibration.current = true;

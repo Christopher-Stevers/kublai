@@ -603,3 +603,41 @@ it('reviews detected components, locates them, saves structured counts only afte
   expect(save.mock.calls[1]?.[0]).toMatchObject({type:'rect',layer:'Piping symbol references',pipeSymbolTemplate:{kind:'valve',name:'Valve'}});
   expect(await screen.findByRole('dialog')).toBeInTheDocument();
 });
+
+it("counts only the pipe inside a loop drawn with the pen tool", async () => {
+  loadPipeLinework.mockResolvedValueOnce({
+    aspect: 0.5, truncated: false, labels: [],
+    segments: [
+      { ...line("cold-one", 0.1, 0.2, 0.3, 0.2), layer: "M-PLMB-DCWT" },
+      { ...line("cold-two", 0.7, 0.8, 0.9, 0.8), layer: "M-PLMB-DCWT" },
+    ],
+  });
+  const { frame } = open();
+  await activate();
+  fireEvent.change(screen.getByRole("combobox", { name: "Pipe system" }), { target: { value: "DCW" } });
+  const highlight = () => screen.getByRole("img", { name: "Selected pipe system" });
+  await waitFor(() => expect(highlight()).toHaveAttribute("data-pipe-segment-count", "2"));
+  expect(total()).toHaveTextContent(formatLengthAs(40, "m", "m"));
+  const draw = (points: [number, number][]) => {
+    const [first, ...rest] = points;
+    fireEvent.pointerDown(frame, { clientX: first![0], clientY: first![1], pointerId: 1, button: 0 });
+    for (const [x, y] of rest) fireEvent.pointerMove(frame, { clientX: x, clientY: y, pointerId: 1 });
+    fireEvent.pointerUp(frame, { clientX: first![0], clientY: first![1], pointerId: 1, button: 0 });
+  };
+  fireEvent.click(screen.getByRole("button", { name: "Draw area to count" }));
+  // Sheet x 0.05–0.2 covers half of the left run; the right run is outside.
+  draw([[40, 140], [160, 140], [160, 220], [40, 220]]);
+  await waitFor(() => expect(highlight()).toHaveAttribute("data-pipe-segment-count", "1"));
+  expect(total()).toHaveTextContent(formatLengthAs(10, "m", "m"));
+  expect(total()).toHaveTextContent("Inside drawn area");
+  expect(screen.getByRole("img", { name: "Pipe count area" })).toBeInTheDocument();
+  // The tool turns off after one loop, so a tap selects again.
+  expect(screen.getByRole("button", { name: "Draw area to count" })).toHaveAttribute("aria-pressed", "false");
+  fireEvent.click(screen.getByRole("button", { name: "Draw area to count" }));
+  draw([[600, 300], [620, 300], [620, 320], [600, 320]]);
+  expect(await screen.findByText("No highlighted pipe is inside that loop. Try again.")).toBeInTheDocument();
+  expect(highlight()).toHaveAttribute("data-pipe-segment-count", "1");
+  fireEvent.click(screen.getByRole("button", { name: "Whole system" }));
+  await waitFor(() => expect(highlight()).toHaveAttribute("data-pipe-segment-count", "2"));
+  expect(screen.queryByRole("img", { name: "Pipe count area" })).toBeNull();
+});

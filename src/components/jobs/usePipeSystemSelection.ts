@@ -4,7 +4,8 @@ import type {
   PipeComponentsResult,
 } from "~/lib/pipe-components-types";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clipPipeSelection, insideLasso } from "~/lib/pipe-lasso";
 import { loadPipeLinework } from "~/lib/pdf-pipe-lines";
 import {
   createPipeGeometrySession,
@@ -55,12 +56,49 @@ export function usePipeSystemSelection({
     message: string;
   } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // A hand-drawn loop limiting the highlighted system to one area.
+  const [lasso, setLasso] = useState<{
+    key: string;
+    selection: PipeSystemSelection;
+    polygon: SheetPoint[];
+  } | null>(null);
   const owner = useRef<PipeGeometrySession | null>(null);
   const request = useRef(0);
   const key = `${sheetKey ?? ""}:${url ?? ""}:${page ?? ""}`;
   const result = loaded?.key === key ? loaded : null;
   const session = result?.session;
-  const selection = selected?.key === key ? (selected.value ?? null) : null;
+  const fullSelection =
+    selected?.key === key ? (selected.value ?? null) : null;
+  const area =
+    lasso?.key === key && lasso.selection === fullSelection
+      ? lasso.polygon
+      : null;
+  const aspect = session?.aspect;
+  const clipped = useMemo(
+    () =>
+      fullSelection && area && aspect
+        ? clipPipeSelection(fullSelection, area, aspect)
+        : null,
+    [fullSelection, area, aspect],
+  );
+  const selection = clipped ?? fullSelection;
+  const fullComponents =
+    componentResult?.key === key &&
+    componentResult.sequence === request.current
+      ? componentResult.value
+      : null;
+  const components = useMemo(
+    () =>
+      fullComponents && area
+        ? {
+            ...fullComponents,
+            candidates: fullComponents.candidates.filter((candidate) =>
+              insideLasso(candidate.point, area),
+            ),
+          }
+        : fullComponents,
+    [fullComponents, area],
+  );
   const system = filter?.key === key ? filter.value : "";
   const error =
     result?.error ?? (selected?.key === key ? selected.error : null);
@@ -103,11 +141,7 @@ export function usePipeSystemSelection({
     return () => controller.abort();
   }, [active, url, page, key, result, attempt]);
   return {
-    components:
-      componentResult?.key === key &&
-      componentResult.sequence === request.current
-        ? componentResult.value
-        : null,
+    components,
     analyzing:
       analysisBusy?.key === key && analysisBusy.sequence === request.current,
     componentError:
@@ -115,7 +149,7 @@ export function usePipeSystemSelection({
         ? analysisError.message
         : null,
     analyze: async (templates: PipeSymbolTemplate[]) => {
-      if (!session || !selection?.segments.length) return;
+      if (!session || !fullSelection?.segments.length) return;
       const sequence = request.current;
       const token = ++analysisToken.current;
       setAnalysisBusy({ key, sequence, token });
@@ -138,7 +172,22 @@ export function usePipeSystemSelection({
         );
       }
     },
+    /** The highlighted pipe, cut to the drawn area when there is one. */
     selection,
+    /** The whole selected system, ignoring any drawn area. */
+    fullSelection,
+    area,
+    /** Limit the selection to a drawn loop; false when no pipe is inside. */
+    setArea: (polygon: SheetPoint[] | null) => {
+      if (!polygon || !fullSelection || !aspect) {
+        setLasso(null);
+        return true;
+      }
+      if (!clipPipeSelection(fullSelection, polygon, aspect).segments.length)
+        return false;
+      setLasso({ key, selection: fullSelection, polygon });
+      return true;
+    },
     reading: active && hasPdf && !result,
     selecting: busy === key,
     error,

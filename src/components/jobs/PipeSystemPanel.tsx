@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { SlidersHorizontalIcon, WrenchIcon, XIcon } from "lucide-react";
+import { LassoIcon, SlidersHorizontalIcon, WrenchIcon, XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
@@ -35,6 +35,7 @@ export function PipeSystemPanel({
   onUnit,
   onDone,
   onComponents, componentCount, analyzingComponents,
+  lassoArmed = false, area = false, lassoMessage = null, onLasso, onClearArea,
   color, onColor, lineWidth, onLineWidth,
 }: {
   color: string;
@@ -68,6 +69,11 @@ export function PipeSystemPanel({
   onComponents?: () => void;
   componentCount?: number;
   analyzingComponents?: boolean;
+  lassoArmed?: boolean;
+  area?: boolean;
+  lassoMessage?: string | null;
+  onLasso?: () => void;
+  onClearArea?: () => void;
 }) {
   const componentLabel=analyzingComponents?"Identifying items…":componentCount!=null?`Fittings & valves (${componentCount})`:"Fittings & valves";
   const [expanded, setExpanded] = useState(false);
@@ -81,13 +87,17 @@ export function PipeSystemPanel({
     { id: "color", label: "Color", children: MEASURE_COLORS.map(option => ({ id: option.value, label: option.name, selected: color === option.value, run: () => onColor(option.value) })) },
     { id: "width", label: "Line width", children: LINE_WIDTHS.map(value => ({ id: String(value), label: String(value), selected: lineWidth === value, run: () => onLineWidth(value) })) },
     ...(onComponents ? [{ id: "components", label: componentLabel, disabled: !selected, run: onComponents }] : []),
+    ...(onLasso ? [{ id: "lasso", label: lassoArmed ? "Stop drawing area" : area ? "Redraw area" : "Draw area", disabled: !selected, selected: lassoArmed, run: onLasso }] : []),
+    ...(onClearArea ? [{ id: "clear-area", label: "Whole system", disabled: !area, run: onClearArea }] : []),
     { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
     { id: "scale", label: "Set scale", disabled: !canSetScale, run: onScale },
     { id: "units", label: "Units", children: LENGTH_UNITS.map(option => ({ id: option.value, label: option.label, selected: unit === option.value, run: () => onUnit(option.value) })) },
     { id: "retry", label: "Try again", disabled: !error || !hasPdf, run: onRetry },
   ] });
   if (quickWheel) return <div className="pointer-events-none absolute top-14 left-3 z-20 max-w-72 rounded-xl bg-card/90 px-3 py-2 text-sm shadow-sm backdrop-blur-sm" role="status">
-    {reading ? "Reading pipe lines…" : selecting ? "Selecting pipe lines…" : selected ? total ?? "Set scale to see distance" : "Tap a pipe or choose a system"}
+    {reading ? "Reading pipe lines…" : selecting ? "Selecting pipe lines…" : lassoArmed ? "Draw around the part to count" : selected ? total ?? "Set scale to see distance" : "Tap a pipe or choose a system"}
+    {area && !lassoArmed && <p className="text-muted-foreground text-xs">Inside drawn area</p>}
+    {lassoMessage && <p className="text-destructive text-xs">{lassoMessage}</p>}
     {selectedSystem && <p className="text-muted-foreground text-xs">{PIPE_SYSTEM_NAMES[selectedSystem] ?? selectedSystem}</p>}
     {error && <p className="text-destructive text-xs">{error}</p>}
     {warnings.length > 0 && <p className="text-muted-foreground text-xs">{warnings.join(" · ")}</p>}
@@ -139,7 +149,7 @@ export function PipeSystemPanel({
               {total ?? "Set scale to see distance"}
             </strong>
             <span className="text-muted-foreground block truncate text-[11px]">
-              {partial ? "Partial distance" : wholeSystem ? "Highlighted line length" : "Total distance"} · this sheet
+              {area ? "Inside drawn area" : partial ? "Partial distance" : wholeSystem ? "Highlighted line length" : "Total distance"} · this sheet
             </span>
           </div>
         )}
@@ -177,6 +187,19 @@ export function PipeSystemPanel({
       {(systemControl || (selected && onComponents)) && (
         <div className="flex items-center gap-2">
           {systemControl}
+          {selected && onLasso && (
+            <Button
+              size="icon-sm"
+              variant={lassoArmed ? "secondary" : "outline"}
+              className="size-8 shrink-0 rounded-full"
+              aria-label={lassoArmed ? "Stop drawing area" : "Draw area to count"}
+              aria-pressed={lassoArmed}
+              title="Draw around part of the system to count only that part"
+              onClick={onLasso}
+            >
+              <LassoIcon className="size-4" />
+            </Button>
+          )}
           {selected && onComponents && (
             <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full text-xs" onClick={onComponents}>
               <WrenchIcon className="size-3.5" />
@@ -186,6 +209,18 @@ export function PipeSystemPanel({
         </div>
       )}
       {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
+      {selected && (lassoArmed || area || lassoMessage) && (
+        <div role="status" className="flex items-center gap-2 text-xs">
+          <p className={`min-w-0 flex-1 ${lassoMessage ? "text-destructive" : "text-muted-foreground"}`}>
+            {lassoMessage ?? (lassoArmed ? "Draw a loop around the part of the system to count. Pinch to zoom." : "Showing and counting only the pipe inside the drawn area.")}
+          </p>
+          {area && onClearArea && (
+            <Button size="sm" variant="ghost" className="h-7 shrink-0 rounded-full text-xs" onClick={onClearArea}>
+              Whole system
+            </Button>
+          )}
+        </div>
+      )}
       {!hasPdf ? (
         <p className="text-muted-foreground text-xs">
           Upload the original vector PDF to select connected pipes. For a

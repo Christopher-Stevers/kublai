@@ -161,6 +161,8 @@ export async function buildDrawingSnapIndex(
 }
 
 export type PipeGeometrySession = PipeGeometryInfo & {
+  /** Sheet height / width, for measuring lengths in sheet widths. */
+  aspect: number;
   components: (
     templates: PipeSymbolTemplate[],
   ) => Promise<PipeComponentsResult>;
@@ -202,6 +204,7 @@ export async function createPipeGeometrySession(
       );
       return {
         ...info,
+        aspect: linework.aspect,
         components: (templates) =>
           client.request<PipeComponentsResult>({
             kind: "pipe-components",
@@ -226,6 +229,7 @@ export async function createPipeGeometrySession(
   let index: PipeSystemIndex | null = buildPipeSystemIndex(linework);
   let selection: PipeSystemSelection | null = null;
   const session: PipeGeometrySession = {
+    aspect: linework.aspect,
     components: async (templates) => {
       if (!index || !selection) throw aborted();
       return analyzePipeComponents(index.linework, selection, templates);
