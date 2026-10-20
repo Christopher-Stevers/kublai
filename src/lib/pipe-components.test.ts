@@ -213,6 +213,128 @@ describe("piping component recognition", () => {
     ]);
     expect(result.candidates.every((c) => c.source === "geometry")).toBe(true);
   });
+  it("keeps a real tee beside a valve instead of masking the surrounding area", () => {
+    const data = model({
+      segments: [
+        line("run", 0.1, 0.5, 0.9, 0.5),
+        line("branch", 0.5023, 0.5, 0.5023, 0.6),
+      ],
+      symbols: [bow("valve", 0.5, 0.5)],
+    });
+    const result = analyze(data);
+    expect(result.candidates.filter((c) => c.kind === "valve")).toHaveLength(1);
+    expect(result.candidates.filter((c) => c.kind === "tee")).toEqual([
+      expect.objectContaining({ point: { x: 0.5023, y: 0.5 } }),
+    ]);
+  });
+  it("does not let a callout or another tee's display box hide a junction", () => {
+    const data = model({
+      segments: [
+        line("run", 0.1, 0.5, 0.9, 0.5),
+        line("branch-a", 0.5, 0.5, 0.5, 0.6),
+        line("branch-b", 0.5008, 0.5, 0.5008, 0.4),
+      ],
+      texts: [text("BALL VALVE", 0.505, 0.5)],
+    });
+    const result = analyze(data);
+    expect(result.candidates.filter((c) => c.kind === "tee")).toHaveLength(2);
+    expect(
+      result.candidates.find((c) => c.kind === "valve")?.locationVerified,
+    ).toBe(false);
+  });
+  it("separates valve ink from pipe topology even inside the valve bounding box", () => {
+    // A rotated valve has empty corners in its axis-aligned box. A genuine
+    // nearby branch in that corner must survive, without its closed glyph
+    // strokes creating extra tees/elbows on the pipe.
+    const symbol = bow("valve", 0.5, 0.5);
+    symbol.points = symbol.points.map((p) => ({
+      x: 0.5 + (p.x - 0.5 - (p.y - 0.5)) / Math.SQRT2,
+      y: 0.5 + (p.x - 0.5 + (p.y - 0.5)) / Math.SQRT2,
+    }));
+    const ink = symbol.points.slice(1).map((p, i) => ({
+      ...line(`ink-${i}`, symbol.points[i]!.x, symbol.points[i]!.y, p.x, p.y),
+      pathId: symbol.id,
+      closed: true,
+    }));
+    const data = model({
+      segments: [
+        line("run", 0.1, 0.502, 0.9, 0.502),
+        line("branch", 0.502, 0.502, 0.502, 0.6),
+        ...ink,
+      ],
+      symbols: [symbol],
+    });
+    for (const segments of [data.segments, [...data.segments].reverse()]) {
+      const result = analyze({ ...data, segments });
+      expect(result.candidates.filter((c) => c.kind === "tee")).toEqual([
+        expect.objectContaining({ point: { x: 0.502, y: 0.502 } }),
+      ]);
+      expect(result.candidates.filter((c) => c.kind === "elbow")).toHaveLength(
+        0,
+      );
+      expect(result.candidates.filter((c) => c.kind === "valve")).toHaveLength(
+        1,
+      );
+    }
+  });
+  it.each([0, 0.37, Math.PI / 2])(
+    "recovers a branch at a dashed gap with no extra elbow (rotation %s)",
+    (angle) => {
+      const rotate = (s: PipeSegment) => {
+        const point = (x: number, y: number) => ({
+          x: 0.5 + (x - 0.5) * Math.cos(angle) - (y - 0.5) * Math.sin(angle),
+          y: 0.5 + (x - 0.5) * Math.sin(angle) + (y - 0.5) * Math.cos(angle),
+        });
+        const a = point(s.x1, s.y1),
+          b = point(s.x2, s.y2);
+        return { ...s, x1: a.x, y1: a.y, x2: b.x, y2: b.y, width: 0.0003 };
+      };
+      const segments = [
+        line("dash-a", 0.48, 0.5, 0.489, 0.5),
+        line("dash-b", 0.49, 0.5, 0.491, 0.5),
+        line("dash-c", 0.492, 0.5, 0.493, 0.5),
+        line("dash-d", 0.494, 0.5, 0.504, 0.5),
+        line("branch", 0.48992, 0.45, 0.48992, 0.50003),
+      ].map(rotate);
+      const data = model({ segments });
+      const before = structuredClone(data);
+      const result = analyze(data);
+      expect(result.candidates.filter((c) => c.kind === "tee")).toHaveLength(1);
+      expect(result.candidates.filter((c) => c.kind === "elbow")).toHaveLength(
+        0,
+      );
+      expect(data).toEqual(before);
+    },
+  );
+  it("does not invent a tee across an isolated break or a neighboring pipe", () => {
+    const segments = [
+      line("left", 0.48, 0.5, 0.489, 0.5),
+      line("right", 0.49, 0.5, 0.504, 0.5),
+      line("branch", 0.48992, 0.45, 0.48992, 0.50003),
+    ].map((s) => ({ ...s, width: 0.0003 }));
+    expect(
+      analyze(model({ segments })).candidates.some((c) => c.kind === "tee"),
+    ).toBe(false);
+    const dashes = [0.48, 0.482, 0.484, 0.486, 0.488, 0.49, 0.492, 0.494].map(
+      (x, i) => ({
+        ...line(`dash-${i}`, x, 0.5, x + 0.001, 0.5),
+        width: 0.0003,
+      }),
+    );
+    for (const branch of [
+      { ...line("short", 0.4895, 0.45, 0.4895, 0.4995), width: 0.0003 },
+      {
+        ...line("different-ink", 0.4895, 0.45, 0.4895, 0.5),
+        width: 0.0003,
+        stroke: "#ff0000",
+      },
+    ])
+      expect(
+        analyze(model({ segments: [...dashes, branch] })).candidates.some(
+          (c) => c.kind === "tee",
+        ),
+      ).toBe(false);
+  });
   it("does not infer reducers, caps or couplings from dashes, line ends or width", () => {
     const data = model({
       segments: [
@@ -284,7 +406,9 @@ describe("reviewed drawing-set legends", () => {
       expect.objectContaining({
         name: "Custom regulator",
         source: "legend",
-        marker: expect.objectContaining({ paths: expect.any(Array) }),
+        marker: expect.objectContaining({
+          paths: expect.any(Array) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -300,7 +424,7 @@ describe("reviewed drawing-set legends", () => {
     expect(result.candidates).toContainEqual(
       expect.objectContaining({
         name: "Second device",
-        evidence: expect.stringContaining("nearby tag ZXQ"),
+        evidence: expect.stringContaining("nearby tag ZXQ") as unknown,
       }),
     );
     expect(result.candidates.some((c) => c.name === "First device")).toBe(
@@ -328,7 +452,7 @@ describe("reviewed drawing-set legends", () => {
     expect(result.candidates).toContainEqual(
       expect.objectContaining({
         name: "Custom regulator",
-        evidence: expect.stringContaining("location unresolved"),
+        evidence: expect.stringContaining("location unresolved") as unknown,
         locationVerified: false,
       }),
     );
@@ -501,20 +625,18 @@ it("does not merge two closed valve symbols through their connecting pipe stroke
 });
 it("recovers whole valve ink from measurement paths when the symbol cache dropped it", () => {
   const missing = bow("missing", 0.42, 0.5);
-  const segments = missing.points
-    .slice(1)
-    .map((p, i) => ({
-      ...line(
-        "seg" + i,
-        missing.points[i]!.x,
-        missing.points[i]!.y,
-        p.x,
-        p.y,
-        "arbitrary-symbol-layer",
-      ),
-      pathId: "missing",
-      closed: true,
-    }));
+  const segments = missing.points.slice(1).map((p, i) => ({
+    ...line(
+      "seg" + i,
+      missing.points[i]!.x,
+      missing.points[i]!.y,
+      p.x,
+      p.y,
+      "arbitrary-symbol-layer",
+    ),
+    pathId: "missing",
+    closed: true,
+  }));
   const data = model({
     componentDataPartial: true,
     segments: [...model().segments, ...segments],

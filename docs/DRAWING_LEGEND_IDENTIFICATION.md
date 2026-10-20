@@ -100,3 +100,32 @@ the previously missed lower valve. Additional synthetic tests cover arbitrary
 rotation, neighboring different labels, very small adjacent symbols, connecting
 pipe strokes, cache recovery and unresolved-label confirmation blocking. No sample
 coordinates, page numbers or tag names were added to runtime matching rules.
+
+
+## Independent junction pass (October 19, 2026)
+
+Symbol recognition and pipe topology use separate query budgets. Located symbol
+paths are excluded from topology; their bounding boxes and nearby text never mask
+real branch locations. Reviewed tee/elbow geometry remains available as pipe
+linework. This changes recognition only, not the selected pipe or its measured length.
+
+Endpoint checks allow small drafting gaps bounded by stroke width and a maximum
+0.00015 sheet-width tolerance. A further local pass checks for repeated dashed
+runs (including PDFs that store each dash as a separate solid stroke): it requires
+matching ink style, collinear strokes on both sides of the branch, and at least
+two comparable gaps. It does not bridge an isolated break or infer a connection
+to a more distant parallel line. Unsupported cases remain unresolved.
+
+Results merge by component kind and physical junction. Two topology observations
+within stroke tolerance must share at least two source paths before they collapse;
+a three-arm junction replaces a two-arm observation of that same junction. Marker
+boxes do not determine whether two neighboring fittings are duplicates. All
+proposed tees still require review; this does not establish part sizes or SKUs.
+
+Validation: regression cases cover a valve beside a tee, overlapping valve/tee
+bounds, a callout over two nearby tees, rotated dashed branches, isolated breaks,
+neighboring pipes, and unchanged measurement geometry. Actual M-102 DHWR source
+was checked at the DW-48 / DW-47C branches from Tim's screenshot: both previously
+missing junctions appear, the 58 valve candidates remain, and selected linework
+and length are unchanged. Analysis took about 0.5 seconds on the desktop fixture;
+that is not a phone performance benchmark or proof of every sheet's accuracy.

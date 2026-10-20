@@ -1,3 +1,4 @@
+import { dashedRunAt } from "./pipe-dashed-junction";
 import { recoverPipeSymbols } from "./pipe-symbol-recovery";
 import {
   customComponentMarker,
@@ -673,7 +674,9 @@ export function analyzePipeComponents(
           Math.max(
             1e-7,
             Math.min(
-              0.0005,
+              source === "geometry" && c.source === "geometry"
+                ? 0.00002
+                : 0.0005,
               Math.max(box.right - box.left, (box.bottom - box.top) * aspect) *
                 0.15,
               Math.max(
@@ -912,6 +915,7 @@ export function analyzePipeComponents(
     labels.push(t);
     labelsByGroup.set(closest.g.id, labels);
   }
+  const symbolInkPaths = new Set<string>();
   for (const { g, direct, matched } of geometryMatches) {
     const nearbyTexts = labelsByGroup.get(g.id) ?? [];
     // A bow-tie can mean several valve types. A nearby exact abbreviation
@@ -933,6 +937,21 @@ export function analyzePipeComponents(
       choices.map((r) => [`${r.kind}:${r.name.toLowerCase()}`, r]),
     );
     const named = meanings.size === 1 ? [...meanings.values()][0] : undefined;
+    if (
+      named ||
+      meanings.size > 1 ||
+      direct ||
+      g.paths.some((p) => crossing(p, aspect))
+    ) {
+      // Remove only the actual symbol strokes from the topology pass, never
+      // the surrounding area. A pipe may have a real branch inside this box.
+      const topologyKind = named?.kind ?? direct?.kind;
+      const topologyShape =
+        topologyKind && ["tee", "elbow"].includes(topologyKind);
+      if (!topologyShape)
+        for (const path of g.paths) symbolInkPaths.add(path.id);
+    }
+
     if (named && (named.kind !== "other" || tagged.length > 0)) {
       add(
         named.kind,
@@ -1121,13 +1140,25 @@ export function analyzePipeComponents(
       },
     );
   }
+  // Independent topology pass: symbols/labels cannot mask nearby junctions.
+  // Give this pass its own spatial-query budget so symbol work cannot starve it.
+  // Keep the original selection untouched (including its measured length).
+  const topologySegments = selection.segments.filter(
+    (s) => !s.id.startsWith("pipe-bridge:") && !symbolInkPaths.has(s.pathId),
+  );
+  const topologyNear = segmentGrid(topologySegments, aspect, limited);
+  type Junction = Parameters<typeof add>;
+  const junctionCandidates: Junction[] = [];
+  const junctionEvidence = new Map<
+    Junction,
+    { paths: Set<string>; tolerance: number }
+  >();
   // Geometry suggests junctions; it never establishes a fitting SKU, size, or valve subtype.
   const endpointCells = new Map<
     string,
     { point: SheetPoint; segments: PipeSegment[] }[]
   >();
-  for (const segment of selection.segments) {
-    if (segment.id.startsWith("pipe-bridge:")) continue;
+  for (const segment of topologySegments) {
     for (const point of [
       { x: segment.x1, y: segment.y1 },
       { x: segment.x2, y: segment.y2 },
@@ -1144,23 +1175,24 @@ export function analyzePipeComponents(
   let junctions = 0;
   for (const list of endpointCells.values())
     for (const entry of list) {
-      if (++junctions > 20000) {
+      if (++junctions > 20000 || junctionCandidates.length >= LIMIT) {
         partial = true;
         break;
       }
       const p = entry.point;
-      if (
-        candidates.some((c) =>
-          overlap(
-            c.box,
-            { left: p.x, top: p.y, right: p.x, bottom: p.y },
-            0.0005,
-          ),
-        )
-      )
-        continue;
+      const tolerance = Math.max(
+        0.000015,
+        Math.min(0.00015, Math.max(...entry.segments.map((s) => s.width)) / 2),
+      );
+      const firstCandidate = junctionCandidates.length;
+      const supportPaths = new Set<string>();
       const rays: { x: number; y: number }[] = [];
-      for (const { segment: s } of selectedNear(p, 0.000015)) {
+      const pushRay = (ray: { x: number; y: number }) => {
+        if (!rays.some((r) => r.x * ray.x + r.y * ray.y > 0.995))
+          rays.push(ray);
+      };
+      for (const { segment: s } of topologyNear(p, tolerance)) {
+        supportPaths.add(s.pathId);
         if (s.id.startsWith("pipe-bridge:")) continue;
         for (const q of [
           { x: s.x1, y: s.y1 },
@@ -1169,11 +1201,35 @@ export function analyzePipeComponents(
           const x = q.x - p.x,
             y = (q.y - p.y) * aspect,
             len = Math.hypot(x, y);
-          if (len < 0.00002) continue;
-          const ray = { x: x / len, y: y / len };
-          if (!rays.some((r) => r.x * ray.x + r.y * ray.y > 0.995))
-            rays.push(ray);
+          if (len <= tolerance) continue;
+          const dx = s.x2 - s.x1,
+            dy = (s.y2 - s.y1) * aspect;
+          const length = Math.hypot(dx, dy);
+          if (length <= tolerance) continue;
+          const sign = x * dx + y * dy >= 0 ? 1 : -1;
+          pushRay({ x: (sign * dx) / length, y: (sign * dy) / length });
         }
+      }
+      let dashed = false;
+      if (
+        rays.length > 0 &&
+        rays.length < 3 &&
+        !(
+          rays.length === 2 &&
+          rays[0]!.x * rays[1]!.x + rays[0]!.y * rays[1]!.y < -0.995
+        )
+      ) {
+        const nearby = topologyNear(p, 0.006).map(({ segment }) => segment);
+        if (nearby.length > 256) limited();
+        else
+          for (const branch of entry.segments) {
+            const run = dashedRunAt(p, branch, nearby, aspect, tolerance);
+            if (run) {
+              pushRay(run);
+              pushRay({ x: -run.x, y: -run.y });
+              dashed = true;
+            }
+          }
       }
       const box = {
         left: Math.max(0, p.x - 0.001),
@@ -1182,15 +1238,17 @@ export function analyzePipeComponents(
         bottom: Math.min(1, p.y + 0.001 / aspect),
       };
       if (rays.length === 3)
-        add(
+        junctionCandidates.push([
           "tee",
           "Possible tee / branch",
           p,
           box,
           "geometry",
-          "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
+          dashed
+            ? "A branch endpoint meets a repeated dashed pipe run across small drafting gaps. Confirm this tee / branch against the drawing."
+            : "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
           { marker: customComponentMarker("tee", "Tee", rays) },
-        );
+        ]);
       if (rays.length === 2) {
         const angle =
           (Math.acos(
@@ -1206,7 +1264,7 @@ export function analyzePipeComponents(
           (value) => Math.abs(turn - value) < 4,
         );
         if (nominal !== undefined)
-          add(
+          junctionCandidates.push([
             "elbow",
             `Possible ${nominal}° elbow`,
             p,
@@ -1216,9 +1274,54 @@ export function analyzePipeComponents(
             {
               marker: customComponentMarker("elbow", `${nominal}° elbow`, rays),
             },
-          );
+          ]);
+      }
+      for (const candidate of junctionCandidates.slice(firstCandidate)) {
+        junctionEvidence.set(candidate, { paths: supportPaths, tolerance });
       }
     }
+  const sameJunction = (a: Junction, b: Junction) => {
+    const ae = junctionEvidence.get(a)!,
+      be = junctionEvidence.get(b)!;
+    return (
+      Math.hypot(a[2].x - b[2].x, (a[2].y - b[2].y) * aspect) <=
+        Math.max(ae.tolerance, be.tolerance) &&
+      [...ae.paths].filter((id) => be.paths.has(id)).length >= 2
+    );
+  };
+  const mergedJunctions: Junction[] = [];
+  // Combine only after both passes finish. Deduplicate by kind and physical
+  // anchor, not by overlapping marker boxes (which can cover adjacent fittings).
+  for (const junction of junctionCandidates) {
+    const [kind, , point] = junction;
+    // At a small drafting gap, one endpoint can see only two arms of a tee.
+    // Prefer the three-arm result only when both observations share pipe ink.
+    if (
+      kind === "elbow" &&
+      junctionCandidates.some(
+        (other) => other[0] === "tee" && sameJunction(junction, other),
+      )
+    )
+      continue;
+    if (
+      mergedJunctions.some(
+        (other) => other[0] === kind && sameJunction(junction, other),
+      )
+    )
+      continue;
+    mergedJunctions.push(junction);
+    if (
+      candidates.some(
+        (c) =>
+          c.locationVerified !== false &&
+          c.kind === kind &&
+          Math.hypot(c.point.x - point.x, (c.point.y - point.y) * aspect) <=
+            0.00002,
+      )
+    )
+      continue;
+    add(...junction);
+  }
   if (refs.length === 0)
     warnings.push(
       "No usable legend references are available. Review and save Legend Items for this drawing set, or teach a symbol from this sheet.",
