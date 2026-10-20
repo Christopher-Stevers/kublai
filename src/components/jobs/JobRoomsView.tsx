@@ -211,6 +211,8 @@ export function JobRoomsView({
       setVertexMode(null);
       void utils.rooms.getJobRooms.invalidate({ jobId });
     },
+    onError: (error) =>
+      notify(`The room was not deleted: ${error.message}`, "error"),
   });
   const deleteAllRooms = api.rooms.deleteAllRooms.useMutation({
     onSuccess: () => {
@@ -221,6 +223,8 @@ export function JobRoomsView({
       setCreateMode(false);
       void utils.rooms.getJobRooms.invalidate({ jobId });
     },
+    onError: (error) =>
+      notify(`The rooms were not deleted: ${error.message}`, "error"),
   });
   const deleteFloor = api.rooms.deleteFloor.useMutation({
     onSuccess: () => {
@@ -229,6 +233,8 @@ export function JobRoomsView({
       setSelectedRoomId(null);
       void utils.rooms.getJobRooms.invalidate({ jobId });
     },
+    onError: (error) =>
+      notify(`The floor was not deleted: ${error.message}`, "error"),
   });
   // One drawing can cover several floors: copy it with its rooms, then rename.
   const copyFloor = api.rooms.copyFloor.useMutation({
