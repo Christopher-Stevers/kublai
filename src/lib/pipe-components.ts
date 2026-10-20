@@ -6,6 +6,7 @@ import {
 } from "./pipe-fitting-geometry";
 import { pipeFittingProfile, resolvePipeFitting } from "./pipe-fitting-profile";
 import { dashedRunAt } from "./pipe-dashed-junction";
+import { strokeJunctionAt } from "./pipe-stroke-junction";
 import { recoverPipeSymbols } from "./pipe-symbol-recovery";
 import {
   customComponentMarker,
@@ -1248,11 +1249,22 @@ export function analyzePipeComponents(
         partial = true;
         break;
       }
-      const p = entry.point;
+      let p = entry.point;
       const tolerance = Math.max(
         0.000015,
         Math.min(0.00015, Math.max(...entry.segments.map((s) => s.width)) / 2),
       );
+      const contact =
+        entry.segments.length === 1
+          ? strokeJunctionAt(
+              p,
+              entry.segments[0]!,
+              topologyNear(p, 0.0003).map(({ segment }) => segment),
+              aspect,
+              tolerance,
+            )
+          : null;
+      if (contact) p = contact;
       const firstCandidate = junctionCandidates.length;
       const supportPaths = new Set<string>();
       const rays: { x: number; y: number }[] = [];
@@ -1260,7 +1272,9 @@ export function analyzePipeComponents(
         if (!rays.some((r) => r.x * ray.x + r.y * ray.y > 0.995))
           rays.push(ray);
       };
-      for (const { segment: s } of topologyNear(p, tolerance)) {
+      const touching = topologyNear(p, tolerance).map(({ segment }) => segment);
+      if (contact) touching.push(entry.segments[0]!);
+      for (const s of touching) {
         supportPaths.add(s.pathId);
         if (s.id.startsWith("pipe-bridge:")) continue;
         for (const q of [
@@ -1315,7 +1329,9 @@ export function analyzePipeComponents(
           "geometry",
           dashed
             ? "A branch endpoint meets a repeated dashed pipe run across small drafting gaps. Confirm this tee / branch against the drawing."
-            : "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
+            : contact
+              ? "A branch's printed stroke touches a matching pipe run across a small centerline gap. Confirm this tee / branch against the drawing."
+              : "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
           { marker: customComponentMarker("tee", "Tee", rays) },
         ]);
       if (rays.length === 2) {

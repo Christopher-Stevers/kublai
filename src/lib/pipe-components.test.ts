@@ -335,6 +335,79 @@ describe("piping component recognition", () => {
         ),
       ).toBe(false);
   });
+  it.each([0, 0.37, Math.PI / 2])(
+    "finds stroke-touching tees at the run centerline (rotation %s)",
+    (angle) => {
+      // M-102: CBV branch above room 157. Its centerline stops 0.000174
+      // sheet-widths short of the run, but the 0.0003125-wide strokes touch.
+      const aspect = 0.75;
+      const rotate = (x: number, y: number) => ({
+        x: 0.5 + x * Math.cos(angle) - y * Math.sin(angle),
+        y: 0.5 + (x * Math.sin(angle) + y * Math.cos(angle)) / aspect,
+      });
+      const segment = (
+        id: string,
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+      ) => {
+        const a = rotate(x1, y1),
+          b = rotate(x2, y2);
+        return { ...line(id, a.x, a.y, b.x, b.y), width: 0.0003125 };
+      };
+      const segments = [
+        segment("run", -0.003, 0, 0.003, 0),
+        segment("branch", 0, -0.002, 0, -0.000173611111111),
+      ];
+      for (const reversed of [false, true]) {
+        const data = model({
+          aspect,
+          segments: reversed
+            ? segments
+                .map((s) => ({ ...s, x1: s.x2, y1: s.y2, x2: s.x1, y2: s.y1 }))
+                .reverse()
+            : segments,
+        });
+        const before = structuredClone(data);
+        const result = analyze(data);
+        expect(result.candidates.map((c) => c.kind)).toEqual(["tee"]);
+        expect(result.candidates[0]!.point.x).toBeCloseTo(0.5, 10);
+        expect(result.candidates[0]!.point.y).toBeCloseTo(0.5, 10);
+        expect(data).toEqual(before);
+      }
+    },
+  );
+  it("does not extend a branch to detached, backward, mismatched or ambiguous runs", () => {
+    const run = { ...line("run", 0.49, 0.5, 0.51, 0.5), width: 0.0003125 };
+    const branch = {
+      ...line("branch", 0.5, 0.498, 0.5, 0.4998),
+      width: run.width,
+    };
+    const cases = [
+      [run, { ...branch, y2: 0.4996 }],
+      [run, { ...branch, y1: 0.502, y2: 0.5004 }],
+      [run, { ...branch, stroke: "#ff0000" }],
+      [
+        run,
+        branch,
+        {
+          ...run,
+          id: "parallel",
+          pathId: "parallel",
+          y1: 0.50005,
+          y2: 0.50005,
+        },
+      ],
+      // This line crosses the run, with its endpoint beyond it.
+      [run, { ...branch, y1: 0.498, y2: 0.5002 }],
+    ];
+    for (const segments of cases) {
+      expect(
+        analyze(model({ segments })).candidates.filter((c) => c.kind === "tee"),
+      ).toEqual([]);
+    }
+  });
   it("does not infer reducers, caps or couplings from dashes, line ends or width", () => {
     const data = model({
       segments: [

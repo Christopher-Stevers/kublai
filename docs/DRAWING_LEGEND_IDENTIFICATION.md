@@ -116,6 +116,14 @@ matching ink style, collinear strokes on both sides of the branch, and at least
 two comparable gaps. It does not bridge an isolated break or infer a connection
 to a more distant parallel line. Unsupported cases remain unresolved.
 
+A single branch endpoint can also meet the interior of a matching solid stroke
+when the printed ink touches but its centerline stops short. This check extends
+only forward, by at most the combined stroke radii capped at 0.0003 sheet widths.
+It requires a unique intersection with both run arms present, rejects parallel
+or mismatched ink, and places the marker on the run centerline. It does not widen
+the general junction tolerance or change measurement geometry. The M-102 branch
+below the CBV above room 157 exercises this case (0.000174 centerline gap).
+
 Results merge by component kind and physical junction. Two topology observations
 within stroke tolerance must share at least two source paths before they collapse;
 a three-arm junction replaces a two-arm observation of that same junction. Marker
