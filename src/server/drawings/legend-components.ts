@@ -11,6 +11,7 @@ import { drawingPdfLocation } from "./equipment-index";
 import type { PipeLinework } from "~/lib/pipe-system";
 import type { PipeLegendReferences } from "~/lib/pipe-components-types";
 import { savedLegendTemplates } from "~/lib/pipe-components";
+import { unnamedLayer } from "~/lib/pdf-ocg-names";
 const execute = promisify(execFile);
 const pending = new Map<string, Promise<PipeLinework>>();
 let queue: Promise<unknown> = Promise.resolve();
@@ -36,6 +37,7 @@ export async function legendComponentLinework(
           value.linework.componentDataVersion !== 2) ||
           value.linework.componentDataPartial)) ||
       !Array.isArray(value.linework.symbols) ||
+      value.linework.segments.some((s) => unnamedLayer(s.layer)) ||
       !Number.isFinite(value.linework.aspect) ||
       value.linework.aspect <= 0
     )

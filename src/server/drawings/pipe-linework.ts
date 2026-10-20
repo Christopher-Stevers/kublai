@@ -9,10 +9,12 @@ import {
   type PDFPageProxy,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
+  PIPE_OPS,
   pipeLabelsFromTextItems,
   pipeLineworkFromOperators,
   safeLayer,
 } from "~/lib/pdf-pipe-extraction";
+import { fallbackLayerNames } from "~/lib/pdf-ocg-names";
 const compress = promisify(gzip);
 
 /** Persist page coordinates, styles and original layer names beside the immutable PDF. */
@@ -32,6 +34,12 @@ export async function saveDrawingPipeLinework(
     page.getTextContent(),
     document.getOptionalContentConfig({ intent: "display" }),
   ]);
+  const fallback = await fallbackLayerNames(
+    document,
+    operators,
+    PIPE_OPS.beginMarkedContentProps,
+    optional,
+  );
   const linework = pipeLineworkFromOperators(
     operators.fnArray,
     operators.argsArray,
@@ -45,7 +53,10 @@ export async function saveDrawingPipeLinework(
             ? (optional.getGroup(raw.id) as { name?: unknown } | null)
             : null;
         // Keep systems even if their PDF layer was switched off when exported.
-        return { name: safeLayer(group?.name), visible: true };
+        return {
+          name: safeLayer(group?.name ?? (raw?.id && fallback.get(raw.id))),
+          visible: true,
+        };
       },
     },
   );

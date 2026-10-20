@@ -8,6 +8,7 @@ import {
   pipeLineworkFromOperators,
   pipeLabelsFromTextItems,
 } from "./pdf-pipe-extraction";
+import { fallbackLayerNames, unnamedLayer } from "./pdf-ocg-names";
 export * from "./pdf-pipe-extraction";
 
 /** No additional parsed-page cache: pdf-client owns logout/identity eviction. */
@@ -63,7 +64,9 @@ export async function loadPipeLinework(source: {
             saved.linework.componentDataVersion === 2) &&
             !saved.linework.componentDataPartial)) &&
         Array.isArray(saved.linework.texts) &&
-        Array.isArray(saved.linework.symbols)
+        Array.isArray(saved.linework.symbols) &&
+        // Saved before unlisted PDF layers could be named; re-read the PDF.
+        !saved.linework.segments.some((s) => unnamedLayer(s.layer))
       ) {
         checkAbort();
         return saved.linework;
@@ -93,6 +96,12 @@ export async function loadPipeLinework(source: {
     page.getTextContent(),
     document.getOptionalContentConfig({ intent: "display" }),
   ]);
+  const fallback = await fallbackLayerNames(
+    document,
+    operators,
+    PIPE_OPS.beginMarkedContentProps,
+    optional,
+  );
   checkAbort();
   const aspect = height / width;
   const linework = pipeLineworkFromOperators(
@@ -108,7 +117,10 @@ export async function loadPipeLinework(source: {
             ? (optional.getGroup(raw.id) as { name?: unknown } | null)
             : null;
         return {
-          name: safeLayer(group?.name),
+          name: safeLayer(
+            group?.name ??
+              (typeof raw?.id === "string" ? fallback.get(raw.id) : undefined),
+          ),
           visible: Boolean(optional.isVisible(properties)),
         };
       },
