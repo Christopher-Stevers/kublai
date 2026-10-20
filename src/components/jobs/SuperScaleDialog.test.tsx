@@ -56,9 +56,6 @@ vi.mock("~/trpc/react", async () => {
     },
   };
 });
-vi.mock("~/lib/pdf-super-scale", () => ({
-  createGridReader: () => ({ read: mocks.read, close: mocks.close }),
-}));
 const sheet = (id: string): DrawingJobSheet => ({
   id,
   sheetId: id,

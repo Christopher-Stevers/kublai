@@ -26,7 +26,6 @@ import { api } from "~/trpc/react";
 import {
   formatSize,
   formatSizeDecimal,
-  formatSizeDimensions,
   generatePartDisplayName,
   parsePrimarySizeInput,
 } from "~/lib/size-utils";

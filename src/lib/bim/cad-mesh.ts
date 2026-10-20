@@ -53,19 +53,3 @@ export function meshBounds(mesh: CadMesh) {
     bounds.expandByPoint(point.fromArray(mesh.positions, i));
   return bounds;
 }
-export function meshMetrics(mesh: CadMesh) {
-  const a = new THREE.Vector3(),
-    b = new THREE.Vector3(),
-    c = new THREE.Vector3(),
-    cross = new THREE.Vector3();
-  let volume = 0,
-    area = 0;
-  for (let i = 0; i < mesh.indices.length; i += 3) {
-    a.fromArray(mesh.positions, mesh.indices[i]! * 3);
-    b.fromArray(mesh.positions, mesh.indices[i + 1]! * 3);
-    c.fromArray(mesh.positions, mesh.indices[i + 2]! * 3);
-    volume += a.dot(cross.crossVectors(b, c)) / 6;
-    area += cross.crossVectors(b.sub(a), c.sub(a)).length() / 2;
-  }
-  return { volume: Math.abs(volume), area, triangles: mesh.indices.length / 3 };
-}

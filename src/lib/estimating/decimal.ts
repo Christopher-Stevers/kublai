@@ -52,12 +52,6 @@ export function safeCents(value: bigint) {
     throw new Error("Estimate exceeds the supported monetary range.");
   return Number(value);
 }
-export const centsFor = (...values: number[]) =>
-  safeCents(
-    roundInteger(
-      values.reduce((a, v) => multiply(a, decimal(v)), decimal(100)),
-    ),
-  );
 export const applyPercent = (cents: number, percent: number) =>
   safeCents(
     roundInteger(

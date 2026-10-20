@@ -48,7 +48,6 @@ import {
 
 import {
   formatSize,
-  formatSizeDimensions,
   generatePartDisplayName,
   parsePrimarySizeInput,
 } from "~/lib/size-utils";

@@ -32,9 +32,3 @@ export function readThemePreference(
     return "system";
   }
 }
-
-export function isThemePreference(
-  value: string | null,
-): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
-}

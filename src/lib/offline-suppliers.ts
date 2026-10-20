@@ -17,14 +17,6 @@ export interface OfflineSupplierOption {
   } | null;
 }
 
-export type OfflineSupplier = OfflineSupplierOption;
-
-interface OfflineSuppliersEnvelope {
-  version: 1;
-  updatedAt: string;
-  data: OfflineSupplierOption[];
-}
-
 export interface OfflinePartSupplier {
   id: string;
   supplierId: string;
@@ -38,43 +30,12 @@ export interface OfflinePartSupplier {
   };
 }
 
-const STORAGE_KEY = "foremanhq.offline.suppliers";
 const PART_SUPPLIERS_KEY = "foremanhq.offline.part-suppliers";
 export const OFFLINE_SUPPLIERS_EVENT = "foremanhq:offline-suppliers-changed";
 
 function notifyOfflineSuppliersChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(OFFLINE_SUPPLIERS_EVENT));
-}
-
-function sortSuppliers(suppliers: OfflineSupplierOption[]) {
-  return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export function getOfflineSuppliers() {
-  if (typeof window === "undefined") return null;
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    return (JSON.parse(raw) as OfflineSuppliersEnvelope).data ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function setOfflineSuppliers(suppliers: OfflineSupplierOption[]) {
-  if (typeof window === "undefined") return;
-
-  const envelope: OfflineSuppliersEnvelope = {
-    version: 1,
-    updatedAt: new Date().toISOString(),
-    data: sortSuppliers(suppliers),
-  };
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
-  notifyOfflineSuppliersChanged();
 }
 
 function getOfflinePartSuppliersMap() {
