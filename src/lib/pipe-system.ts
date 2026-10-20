@@ -1,6 +1,7 @@
 import type { PipeSymbolPath, PipeDrawingText } from "./pipe-components-types";
 import type { SheetPoint } from "./sheet-measure";
 import type { SnapSegment } from "./sheet-snap";
+import { pipeTagLeaderPaths } from "./pipe-tag-leaders";
 
 /** PDF geometry in sheet coordinates; stroke dimensions are in sheet-widths. */
 export type PipeSegment = SnapSegment & {
@@ -38,6 +39,8 @@ export type PipeLinework = {
 };
 
 export type PipeSystemSelection = {
+  /** Confirmed annotation paths omitted from highlighting and fitting analysis. */
+  excludedAnnotationPathIds?: string[];
   source?: "layer";
   system: string | null;
   segments: PipeSegment[];
@@ -76,6 +79,7 @@ export type PipeSystemIndex = {
   systemBuckets: Map<string, Map<string, number[]>>;
   labelReach: Map<number, number>;
   excluded: Set<number>;
+  annotationPaths: Set<string>;
   neighbors: Map<number, Edge[]>;
   work: number;
 };
@@ -396,8 +400,10 @@ export function pipeLayerCodes(linework: PipeLinework): string[] {
 
 /** Exact source-layer membership, including disconnected runs on the sheet. */
 export function selectPipeLayerSystem(linework: PipeLinework, system: string): PipeSystemSelection {
-  const segments = linework.segments.filter(segment => layerSystem(segment.layer) === system);
+  const annotationPaths = pipeTagLeaderPaths(linework);
+  const segments = linework.segments.filter(segment => layerSystem(segment.layer) === system && !annotationPaths.has(segment.pathId));
   return {
+    ...(annotationPaths.size ? { excludedAnnotationPathIds: [...annotationPaths] } : {}),
     source: "layer", system, segments,
     lengthInSheetWidths: unionLength(segments, linework.aspect),
     truncated: linework.truncated,
@@ -532,6 +538,7 @@ export function buildPipeSystemIndex(linework: PipeLinework): PipeSystemIndex {
     systemBuckets: new Map(),
     labelReach: new Map(),
     excluded: new Set(),
+    annotationPaths: new Set(),
     neighbors: new Map(),
     work: 0,
   };
@@ -540,10 +547,12 @@ export function buildPipeSystemIndex(linework: PipeLinework): PipeSystemIndex {
   if (valid.length !== linework.segments.length) warn(index, "Invalid or out-of-page linework was skipped.");
   if (index.truncated) warn(index, PARTIAL_WARNING);
   index.segments.forEach((segment, id) => addToGrid(index, segment, id));
+  const annotationPaths = pipeTagLeaderPaths(index.linework);
+  index.annotationPaths = annotationPaths;
   index.segments.forEach((segment, id) => {
     const system = layerSystem(segment.layer);
     if (system) index.segmentSystems.set(id, new Set([system]));
-    if (annotationLayer(segment.layer)) index.excluded.add(id);
+    if (annotationLayer(segment.layer) || annotationPaths.has(segment.pathId)) index.excluded.add(id);
   });
   bindLabels(index);
   excludeRectangles(index);
@@ -871,6 +880,7 @@ export function selectPipeSystem(
   if (partial) warnings.push(PARTIAL_WARNING);
   return {
     system,
+    ...(index.annotationPaths.size ? { excludedAnnotationPathIds: [...index.annotationPaths] } : {}),
     segments: selected,
     lengthInSheetWidths: unionLength(selected, index.aspect),
     warnings: [...new Set(warnings)],

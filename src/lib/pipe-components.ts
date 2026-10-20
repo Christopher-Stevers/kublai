@@ -634,7 +634,8 @@ export function analyzePipeComponents(
       foreign.distance > nearest.distance + 0.0001
     );
   };
-  const symbolPaths = recoverPipeSymbols(linework, selectedNear, limited);
+  const annotationPaths = new Set(selection.excludedAnnotationPathIds ?? []);
+  const symbolPaths = recoverPipeSymbols(linework, selectedNear, limited).filter(path => !annotationPaths.has(path.id));
   const groups = symbolGroups(symbolPaths, aspect, limited);
   const fittingNear = segmentGrid(selection.segments, aspect, limited);
   const texts = mergedTexts(linework.texts ?? []);

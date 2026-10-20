@@ -104,6 +104,23 @@ coordinates, page numbers or tag names were added to runtime matching rules.
 
 ## Independent junction pass (October 19, 2026)
 
+### Tag leader exclusion
+
+Pipe layers can contain annotation leaders. Before selection, identify a narrow
+filled triangular arrowhead, a matching shaft beginning at its base and pointing
+away from its tip, and an endpoint touching a note/tag border beside identifier
+text. Remove only the confirmed arrowhead and shaft paths from highlight, length,
+tap selection, and symbol/topology analysis. Keep the source PDF unchanged and
+preserve pipes and rise/drop symbols touched by the arrow tip. Missing evidence
+or multiple matching shafts leaves the linework available for review.
+
+M-102 sanitary validation covers the PD-53 and PD-55 arrows in Tim's screenshot.
+Regression tests also cover rotated leaders, non-square sheets, reversed paths,
+unclassified traces, symbol-cache recovery, unrelated arrow/fitting shapes,
+ambiguous shafts, and preservation of a real elbow at an arrow tip.
+
+### Junction recognition
+
 Symbol recognition and pipe topology use separate query budgets. Located symbol
 paths are excluded from topology; their bounding boxes and nearby text never mask
 real branch locations. Reviewed tee/elbow geometry remains available as pipe
