@@ -150,7 +150,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-10 w-full flex-row gap-1.5 rounded-full px-1 text-xs font-medium whitespace-normal transition-colors [&_svg]:size-4";
+  "h-10 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs font-medium whitespace-normal transition-colors [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
   ["viewing", "Viewing"],
   ["select", "Select"],
@@ -3458,7 +3458,7 @@ export function DrawingWorkspace({
               onClick={finishTool}
             >
               {tool === "viewing" ? <HandIcon className="h-5 w-5" /> : <WrenchIcon className="h-5 w-5" />}
-              {bottomMode.pipe ? "Pipe system" : toolLabel}
+              <span className="min-w-0 break-words text-[11px] leading-3">{bottomMode.pipe ? "Pipe system" : toolLabel}</span>
             </Button>
           ) : (
             <DropdownMenu
@@ -3566,7 +3566,7 @@ export function DrawingWorkspace({
             }}
           >
             <PenLineIcon className="h-5 w-5" />
-            <span className="flex items-center gap-0.5">
+            <span className="min-w-0 break-words text-[11px] leading-3">
               {!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"}
             </span>
           </Button>
