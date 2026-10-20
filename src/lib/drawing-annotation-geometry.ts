@@ -1,3 +1,4 @@
+import { componentMarker } from "./pipe-component-marker";
 import type {
   DrawingMarkup,
   DrawingPoint,
@@ -203,6 +204,10 @@ export function drawingMarkupBounds(
       { left: 0, top: 0, right: 0, bottom: 0 },
       safeAspect,
     );
+  if (data.type === "count" && data.pipeComponent) {
+    const p=data.points[0]!, marker=componentMarker(data.pipeComponent), radius=marker.span/2;
+    return usableDrawingBounds({left:clamp(p.x-radius,0,1),right:clamp(p.x+radius*(marker.label?3:1),0,1),top:clamp(p.y-radius/safeAspect,0,1),bottom:clamp(p.y+radius/safeAspect,0,1)},safeAspect);
+  }
   if (data.type === "text") {
     const point = data.points[0]!;
     const dimensions = textDimensions(data, safeAspect);
@@ -328,6 +333,7 @@ export function drawingMeasurement(
   sharedScale?: SheetScale | null,
   displayUnit?: LengthUnit,
 ) {
+  if (data.type === "count" && data.pipeComponent) return null;
   if (data.type === "count")
     return `${data.points.length} count${data.points.length === 1 ? "" : "s"}`;
   if (data.type === "angle") {

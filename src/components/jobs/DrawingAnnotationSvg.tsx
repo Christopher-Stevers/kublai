@@ -1,3 +1,5 @@
+import { PipeComponentSymbol } from "./PipeComponentSymbol";
+import { componentMarker } from "~/lib/pipe-component-marker";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import type { LengthUnit, SheetScale } from "~/lib/sheet-measure";
 import { DrawingMeasureRunSvg } from "./DrawingMeasureRunSvg";
@@ -196,6 +198,10 @@ export function DrawingAnnotationSvg({
       break;
     }
     case "count":
+      if (data.pipeComponent) {
+        geometry = <PipeComponentSymbol marker={componentMarker(data.pipeComponent)} span={Math.max(componentMarker(data.pipeComponent).span*1000,14*(screenPixelSize??0))} x={first.x} y={first.y} color={data.stroke} name={data.pipeComponent.name} />;
+        break;
+      }
       geometry = (
         <>
           {points.map((point, index) => (

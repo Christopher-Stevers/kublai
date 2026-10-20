@@ -1,3 +1,7 @@
+import {
+  customComponentMarker,
+  vectorComponentMarker,
+} from "./pipe-component-marker";
 import type { LegendItemData } from "./drawing-legend";
 import {
   layerSystem,
@@ -159,7 +163,7 @@ export function componentDescription(text: string): {
   } else if (/\bELBOW\b|\bBEND\b/i.test(t)) {
     kind = "elbow";
     const angle =
-      /\b(45|90)\s*(?:°|DEG(?:REE)?S?)|\b(45|90)(?=\s+(?:ELBOW|BEND)\b)|\b(?:ELBOW|BEND)\s+(45|90)\b/i.exec(
+      /\b(22(?:\.5)?|45|90)\s*(?:°|DEG(?:REE)?S?)|\b(22(?:\.5)?|45|90)(?=\s+(?:ELBOW|BEND)\b)|\b(?:ELBOW|BEND)\s+(22(?:\.5)?|45|90)\b/i.exec(
         t,
       );
     name = angle ? `${angle[1] ?? angle[2] ?? angle[3]}° elbow` : "Elbow";
@@ -172,6 +176,14 @@ export function componentDescription(text: string): {
   } else if (/\bCOUPLING\b/i.test(t)) {
     kind = "coupling";
     name = "Coupling";
+  } else if (/\b(?:PIPE|PIPING)\s+(?:UP|RISE)\b|\bRISER\s+UP\b/i.test(t)) {
+    kind = "rise";
+    name = "Pipe up";
+  } else if (
+    /\b(?:PIPE|PIPING)\s+(?:DOWN|DN|DROP)\b|\bRISER\s+(?:DOWN|DN)\b/i.test(t)
+  ) {
+    kind = "drop";
+    name = "Pipe down";
   } else if (/\bCAP\b/i.test(t)) {
     kind = "cap";
     name = "Cap";
@@ -636,6 +648,7 @@ export function analyzePipeComponents(
     aspect?: number;
     abbreviation?: string;
     external?: boolean;
+    legendId?: string;
   }[] = [];
   for (const template of templates.slice(0, 600)) {
     if (!validBox(template.box)) continue;
@@ -665,6 +678,7 @@ export function analyzePipeComponents(
       aspect: template.reference?.aspect ?? aspect,
       abbreviation: template.reference?.abbreviation,
       external: !!template.reference,
+      legendId: template.reference?.legendId,
     });
   }
   const legendHeads = texts.filter((t) =>
@@ -793,6 +807,11 @@ export function analyzePipeComponents(
           (tagged.length
             ? `; nearby tag ${named.abbreviation}`
             : "; matching symbol geometry"),
+        {
+          marker: ["elbow", "tee", "rise", "drop"].includes(named.kind)
+            ? customComponentMarker(named.kind, named.name)
+            : vectorComponentMarker(g.paths, aspect, named.legendId),
+        },
       );
       continue;
     }
@@ -821,7 +840,13 @@ export function analyzePipeComponents(
         g.box,
         "layer",
         `PDF source layer: ${g.layer}`,
-        { size: direct.size, material: direct.material },
+        {
+          size: direct.size,
+          material: direct.material,
+          marker: ["elbow", "tee", "rise", "drop"].includes(direct.kind)
+            ? customComponentMarker(direct.kind, direct.name)
+            : vectorComponentMarker(g.paths, aspect),
+        },
       );
       continue;
     }
@@ -833,6 +858,7 @@ export function analyzePipeComponents(
         g.box,
         "geometry",
         "Closed crossing symbol lies on the selected pipe. Verify its meaning against the legend.",
+        { marker: vectorComponentMarker(g.paths, aspect) },
       );
   }
   // Exact legend abbreviations can identify labelled components even when a
@@ -887,7 +913,16 @@ export function analyzePipeComponents(
         nearest.box,
         "legend",
         r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
-        { tag: t.text },
+        {
+          tag: t.text,
+          marker: ["elbow", "tee", "rise", "drop"].includes(r.kind)
+            ? customComponentMarker(r.kind, r.name)
+            : vectorComponentMarker(
+                r.group.paths,
+                r.aspect ?? aspect,
+                r.legendId,
+              ),
+        },
       );
     } else if (!nearest) {
       add(
@@ -897,7 +932,16 @@ export function analyzePipeComponents(
         t,
         "legend",
         r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
-        { tag: t.text },
+        {
+          tag: t.text,
+          marker: ["elbow", "tee", "rise", "drop"].includes(r.kind)
+            ? customComponentMarker(r.kind, r.name)
+            : vectorComponentMarker(
+                r.group.paths,
+                r.aspect ?? aspect,
+                r.legendId,
+              ),
+        },
       );
     }
   }
@@ -1003,6 +1047,7 @@ export function analyzePipeComponents(
           box,
           "geometry",
           "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
+          { marker: customComponentMarker("tee", "Tee", rays) },
         );
       if (rays.length === 2) {
         const angle =
@@ -1015,14 +1060,20 @@ export function analyzePipeComponents(
             180) /
           Math.PI;
         const turn = 180 - angle;
-        if (Math.abs(turn - 90) < 4 || Math.abs(turn - 45) < 4)
+        const nominal = [90, 45, 22.5].find(
+          (value) => Math.abs(turn - value) < 4,
+        );
+        if (nominal !== undefined)
           add(
             "elbow",
-            `Possible ${Math.round(turn / 45) * 45}° elbow`,
+            `Possible ${nominal}° elbow`,
             p,
             box,
             "geometry",
             "Pipe linework changes direction here. It may represent an elbow, a bend, or a schematic change; verify it.",
+            {
+              marker: customComponentMarker("elbow", `${nominal}° elbow`, rays),
+            },
           );
       }
     }

@@ -585,10 +585,11 @@ it('reviews detected components, locates them, saves structured counts only afte
   const dialog=await screen.findByRole('dialog');
   await waitFor(()=>expect(within(dialog).getByText('Ball valve')).toBeInTheDocument());
   expect(save).not.toHaveBeenCalled();
+  expect(frame.querySelector('[data-pipe-component-symbol="Ball valve"]')).not.toBeNull();
   const row=within(dialog).getByText('Ball valve').closest('li')!;
   fireEvent.click(within(row).getByRole('button',{name:'Confirm count'}));
   await waitFor(()=>expect(save).toHaveBeenCalledOnce());
-  expect(save).toHaveBeenCalledWith(expect.objectContaining({type:'count',points:[{x:.2,y:.5}],pipeComponent:expect.objectContaining({kind:'valve',name:'Ball valve',size:'2"',source:'tag',system:'ST'})}));
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({type:'count',points:[{x:.2,y:.5}],pipeComponent:expect.objectContaining({kind:'valve',name:'Ball valve',size:'2"',source:'tag',system:'ST',marker:expect.objectContaining({paths:expect.any(Array)})})}));
   await waitFor(()=>expect(within(row).getByRole('button',{name:'Confirm count'})).toBeEnabled());
   fireEvent.click(within(row).getByRole('button',{name:'Locate Ball valve'}));
   expect(screen.queryByRole('dialog')).toBeNull();

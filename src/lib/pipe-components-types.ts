@@ -7,6 +7,8 @@ export const PIPE_COMPONENT_KINDS = [
   "coupling",
   "cap",
   "other",
+  "rise",
+  "drop",
 ] as const;
 export type PipeComponentKind = (typeof PIPE_COMPONENT_KINDS)[number];
 export type PipeComponentBox = {
@@ -55,6 +57,7 @@ export type PipeComponentCandidate = {
   tag?: string;
   system: string | null;
   fingerprint: string;
+  marker?: import("./pipe-component-marker").PipeComponentMarker;
 };
 export type PipeComponentsResult = {
   candidates: PipeComponentCandidate[];
@@ -69,4 +72,6 @@ export const PIPE_COMPONENT_NAMES: Record<PipeComponentKind, string> = {
   coupling: "Coupling",
   cap: "Cap",
   other: "Other component",
+  rise: "Pipe up / rise",
+  drop: "Pipe down / drop",
 };

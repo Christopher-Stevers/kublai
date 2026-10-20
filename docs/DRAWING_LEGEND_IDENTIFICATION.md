@@ -43,3 +43,27 @@ Regression coverage includes synthetic legends with arbitrary names/labels,
 cross-page coordinates and aspect ratios, rotation/scale, ambiguous shapes,
 nonmatching label prefixes, foreign systems, late PDF layers and asynchronous
 source changes. Real drawings are validation examples, not implementation rules.
+
+## On-drawing component symbols
+
+Identified components now show vector symbol overlays in a color chosen to contrast
+with the selected pipe. Shape matches preserve the detected symbol geometry and
+orientation, with the saved legend identity attached. Exact-label-only matches use
+the reference symbol; their evidence still explicitly says the geometry is unverified.
+The preview has a dotted review outline. Confirming a count stores its compact vector
+snapshot with the existing count metadata, so the same symbol survives reloads,
+legend edits, and drawing exports without downloading another image. Dismissed
+candidates disappear from the current preview. These previews do not create counts.
+
+Elbows, tees, and vertical transitions use custom vector marks. Endpoint topology
+recognizes 90°, 45°, and 22.5° turns within the existing four-degree tolerance; marks
+follow the detected pipe rays. Up/down marks require a matching reviewed symbol or
+explicit pipe-up/pipe-down description. An endpoint alone never establishes a rise
+or drop. Unknown shapes use a neutral question-mark symbol, not an invented valve.
+
+Snapshots are limited to 100 paths and 2,000 points. Rendering shares the existing
+SVG camera and memoized annotations; panning does not redo recognition or fetch
+symbol images. Validation includes angle/orientation fixtures, schema round trips,
+bounded geometry, review-versus-confirmed rendering, the viewer confirmation flow,
+and phone/tablet/desktop browser checks. Actual M-103 DHWR analysis was also checked
+with M-001 legend references; that is desktop evidence, not iPad performance proof.

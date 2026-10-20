@@ -152,7 +152,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
             sharedScale={sharedScale}
             displayUnit={displayUnit}
             screenPixelSize={
-              data.type === "dimension" && data.parents
+              (data.type === "dimension" && data.parents) || data.pipeComponent
                 ? screenPixelSize
                 : undefined
             }
@@ -352,7 +352,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
             const usesScreenSize =
               selected ||
               entity.kind === "issue" ||
-              Boolean(data?.type === "dimension" && data.parents);
+              Boolean(data?.type === "dimension" && data.parents) || Boolean(data?.pipeComponent);
             return (
               <SavedAnnotation
                 key={entity.id}

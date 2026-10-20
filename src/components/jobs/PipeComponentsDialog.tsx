@@ -219,6 +219,7 @@ export function PipeComponentsDialog({
   onLocate,
   onConfirm,
   onTeach,
+  onDismiss,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -236,6 +237,7 @@ export function PipeComponentsDialog({
     details: Details,
   ) => Promise<boolean>;
   onTeach: (kind: PipeComponentKind, name: string) => void;
+  onDismiss?: (candidate: PipeComponentCandidate) => void;
 }) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
@@ -334,9 +336,10 @@ export function PipeComponentsDialog({
                 writable={writable && !analyzing}
                 onLocate={() => onLocate(candidate)}
                 onConfirm={(details) => onConfirm(candidate, details)}
-                onDismiss={() =>
-                  setDismissed((old) => new Set([...old, candidate.id]))
-                }
+                onDismiss={() => {
+                  setDismissed((old) => new Set([...old, candidate.id]));
+                  onDismiss?.(candidate);
+                }}
               />
             ))}
           </ul>

@@ -281,7 +281,11 @@ describe("reviewed drawing-set legends", () => {
     expect(
       analyze(data, [reference("Custom regulator", "RZ")]).candidates,
     ).toContainEqual(
-      expect.objectContaining({ name: "Custom regulator", source: "legend" }),
+      expect.objectContaining({
+        name: "Custom regulator",
+        source: "legend",
+        marker: expect.objectContaining({ paths: expect.any(Array) }),
+      }),
     );
   });
   it("resolves identical shapes using the legend's own arbitrary abbreviation", () => {
@@ -381,4 +385,45 @@ describe("reviewed drawing-set legends", () => {
       ),
     ).toBe(false);
   });
+});
+
+it("identifies a 22.5 degree turn and stores its oriented custom symbol", () => {
+  const turn = (22.5 * Math.PI) / 180;
+  const result = analyze(
+    model({
+      segments: [
+        line("a", 0.1, 0.5, 0.4, 0.5),
+        line(
+          "b",
+          0.4,
+          0.5,
+          0.4 + 0.2 * Math.cos(turn),
+          0.5 - 0.2 * Math.sin(turn),
+        ),
+      ],
+    }),
+  );
+  const elbow = result.candidates.find((c) => c.kind === "elbow");
+  expect(elbow?.name).toBe("Possible 22.5° elbow");
+  expect(elbow?.marker?.label).toBe("22.5°");
+  expect(elbow?.marker?.paths).toHaveLength(2);
+});
+it("only names vertical directions with explicit evidence", () => {
+  expect(componentDescription("PIPE UP")).toMatchObject({
+    kind: "rise",
+    name: "Pipe up",
+  });
+  expect(componentDescription("PIPE DN")).toMatchObject({
+    kind: "drop",
+    name: "Pipe down",
+  });
+  expect(componentDescription("22.5 DEG ELBOW")).toMatchObject({
+    kind: "elbow",
+    name: "22.5° elbow",
+  });
+  expect(
+    analyze(model()).candidates.some(
+      (c) => c.kind === "rise" || c.kind === "drop",
+    ),
+  ).toBe(false);
 });

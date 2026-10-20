@@ -1,3 +1,4 @@
+import { componentMarker, componentMarkerPath } from "./pipe-component-marker";
 import { pdfBytes, MAX_DRAWING_PACKAGE_BYTES } from "./drawing-pdf-bytes";
 import {
   PDFDocument,
@@ -253,6 +254,14 @@ async function drawMarkup(
       break;
     }
     case "count":
+      if (data.pipeComponent) {
+        const marker=componentMarker(data.pipeComponent), span=marker.span*1000, d=componentMarkerPath(marker,first.x,first.y);
+        const weight=Math.max(.12,span*.065);
+        page.drawSvgPath(d,{...style,color:undefined,borderColor:color("#111827"),borderWidth:weight*2.5});
+        page.drawSvgPath(d,{...style,color:undefined,borderWidth:weight});
+        if (marker.label) await label(doc,page,font,marker.label,(first.x+span*.55)*factor,height-(first.y-span*.45)*factor,span*.45*factor,data.stroke,opacity);
+        break;
+      }
       for (const [index, point] of points.entries()) {
         page.drawCircle({
           x: point.x * factor,

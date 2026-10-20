@@ -1,4 +1,6 @@
 "use client";
+import { PipeComponentSymbol } from "./PipeComponentSymbol";
+import { componentMarker, customComponentMarker, pipeComponentColor } from "~/lib/pipe-component-marker";
 import { useMeasurementLayers } from "./useMeasurementLayers";
 import { measurementLayerNames } from "~/lib/measurement-layers";
 import { DrawingMeasureNode } from "./DrawingMeasureNode";
@@ -356,6 +358,7 @@ export function DrawingSheetViewer({
     sheetKey,
   });
   const componentSource = pipeComponentSourceKey(pdf?.url ?? "", pdf?.page ?? 0);
+  const [dismissedComponents, setDismissedComponents] = useState<Set<string>>(new Set());
   const componentIdentity = useRef(componentSource);
   componentIdentity.current = componentSource;
   const [componentOpen, setComponentOpen] = useState(false);
@@ -369,6 +372,9 @@ export function DrawingSheetViewer({
   const legendAnalysis = usePipeLegendAnalysis({active:pipeMode, source:componentSource,
     sourceSheetId:editorProps.sourceSheetId??sheetKey,selection:pipe.selection,templates,
     load:editorProps.loadPipeLegendReferences,analyze:pipe.analyze});
+  const componentPreviews = useMemo(() => (pipe.components?.candidates ?? []).filter(candidate =>
+    !dismissedComponents.has(componentSource+":"+candidate.id) && !reviewedPipeComponent(componentAnnotations,componentSource,candidate)
+  ).map(candidate=>({candidate,marker:componentMarker(candidate)})),[pipe.components,componentAnnotations,componentSource,dismissedComponents]);
   const currentSymbolPick = symbolPick?.source === componentSource ? symbolPick : null;
   const openComponents = () => {
     setComponentOpen(true);
@@ -379,10 +385,10 @@ export function DrawingSheetViewer({
     if (!sourceSheetId || !editorProps.onSavePipeComponent) return false;
     if (reviewedPipeComponent(componentAnnotations, componentSource, candidate)) return true;
     return editorProps.onSavePipeComponent({
-      sourceSheetId, type: "count", points: [candidate.point], stroke: measureColor, width: 2,
+      sourceSheetId, type: "count", points: [candidate.point], stroke: pipeComponentColor(measureColor), width: 2,
       layer: "Piping components", text: details.name,
       pipeComponent: { candidateId: candidate.id, fingerprint: candidate.fingerprint, sourceKey: componentSource,
-        ...details, system: candidate.system, evidence: candidate.evidence, source: candidate.source },
+        ...details, marker: details.kind === candidate.kind && details.name === candidate.name ? componentMarker(candidate) : customComponentMarker(details.kind,details.name), system: candidate.system, evidence: candidate.evidence, source: candidate.source },
     });
   };
   const pickSymbolCorner = async (point: SheetPoint) => {
@@ -2111,6 +2117,7 @@ export function DrawingSheetViewer({
       <PipeComponentsDialog key={componentSource + ":" + (pipe.selection?.segments[0]?.id ?? "")} open={componentOpen && pipeMode && !!pipe.selection?.segments.length} onOpenChange={setComponentOpen}
         result={legendAnalysis.error ? null : pipe.components ? {...pipe.components,warnings:[...legendAnalysis.warnings,...pipe.components.warnings]} : legendAnalysis.warnings.length ? {candidates:[],warnings:legendAnalysis.warnings,partial:true} : null} analyzing={pipe.analyzing || legendAnalysis.loading} error={pipe.componentError ?? legendAnalysis.error} sourceKey={componentSource} annotations={componentAnnotations} templateCount={templates.length+legendAnalysis.count} writable={!!editorProps.onSavePipeComponent}
         onAnalyze={legendAnalysis.recheck} onConfirm={saveComponent}
+        onDismiss={candidate => setDismissedComponents(old=>new Set([...old,componentSource+":"+candidate.id]))}
         onLocate={candidate => {
           setComponentFocus({source:componentSource,candidate}); setComponentOpen(false);
           if (fit) { const scale = Math.min(MAX_ZOOM, Math.max(5, live.current.scale)); animateTo({scale, x:(.5-candidate.point.x)*fit.width*scale,y:(.5-candidate.point.y)*fit.height*scale}); }
@@ -2871,6 +2878,7 @@ export function DrawingSheetViewer({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            {componentPreviews.map(({candidate,marker}) => <PipeComponentSymbol key={candidate.id} marker={marker} x={candidate.point.x*1000} y={candidate.point.y*fit.aspect*1000} span={Math.max(marker.span*1000, 14000/(fit.width*view.scale))} color={pipeComponentColor(measureColor)} pending name={candidate.name} />)}
             {componentFocus?.source === componentSource && <circle cx={componentFocus.candidate.point.x*1000} cy={componentFocus.candidate.point.y*fit.aspect*1000} r={Math.max(1.5, 16000/(fit.width*view.scale))} fill="#fbbf24" fillOpacity={.25} stroke="#f59e0b" strokeWidth={2} vectorEffect="non-scaling-stroke" />}
             {currentSymbolPick?.first && <circle cx={currentSymbolPick.first.x*1000} cy={currentSymbolPick.first.y*fit.aspect*1000} r={2} fill="#3b82f6" />}
           </svg>
