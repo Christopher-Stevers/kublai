@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { detectTaggedRooms } from "./tagged/detect-tagged";
+import { detectLayeredRooms } from "./doors/detect-layered";
 import { BoundedCache } from "./bounded-cache";
 import { processIdentity } from "./process-identity";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -515,7 +516,26 @@ export async function runCompleteDetectAllRooms(input: {
     );
     const drawingHash = createHash("sha256").update(pdf).digest("hex");
     const pdfPage = getSourcePageFromFloorImage(storageKey) ?? input.pageNumber;
-    // Preferred: unit-level rooms from the drawing's room tags and heavy walls.
+    // Best: a CAD export that kept its layers. Real walls and doors give one
+    // room per unit and per common space (corridors, lobbies by door count).
+    const pdfKey = getPdfKeyForFloorImage(storageKey, input.jobId);
+    const savedLinework = pdfKey.endsWith("/plan.pdf")
+      ? () => readJobRoomFile(pdfKey.replace(/plan\.pdf$/, `pipes-${pdfPage}-v1.json`))
+      : undefined;
+    const layered = await detectLayeredRooms(pdf, pdfPage, savedLinework).catch((error) => {
+      console.error("[detect-job:layered]", error);
+      return null;
+    });
+    if (layered?.rooms.length) {
+      await log(
+        `Read walls and doors from the drawing's CAD layers: ${layered.stats.doors} doors, ${layered.stats.commonSpaces} common spaces (corridors, lobbies, stairs, service rooms) and ${layered.stats.units} units. All need review.`,
+      );
+      const saved = await saveCompleteCandidates(input, layered.rooms, drawingHash);
+      console.log("[detect-job:layered] saved", JSON.stringify(saved));
+      invalidateFloorGraph(input.floorId);
+      return;
+    }
+    // Otherwise: unit-level rooms from the drawing's room tags and heavy walls.
     // Sheets without room tags fall back to the label-free space finder below.
     const tagged = await detectTaggedRooms(pdf, pdfPage).catch((error) => {
       console.error("[detect-job:tagged]", error);

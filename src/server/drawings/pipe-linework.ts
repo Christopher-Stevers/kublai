@@ -23,6 +23,21 @@ export async function saveDrawingPipeLinework(
   document: PDFDocumentProxy,
   page: PDFPageProxy,
 ) {
+  const data = { version: 1, linework: await readDrawingPipeLinework(document, page) };
+  const filename = path.join(dest, `pipes-${page.pageNumber}-v1.json`);
+  const temporary = `${filename}.${randomUUID()}.tmp`;
+  // The file route serves these with Content-Encoding: gzip. Keep the full
+  // coordinates while avoiding large repeated JSON keys on mobile downloads.
+  await writeFile(temporary, await compress(JSON.stringify(data)));
+  await rename(temporary, filename);
+  return data.linework;
+}
+
+/** Page coordinates (0–1 of the sheet), styles and original layer names of every stroke. */
+export async function readDrawingPipeLinework(
+  document: PDFDocumentProxy,
+  page: PDFPageProxy,
+) {
   const viewport = page.getViewport({ scale: 1 });
   const aspect = viewport.height / viewport.width;
   const toSheet = (x: number, y: number) => {
@@ -61,20 +76,10 @@ export async function saveDrawingPipeLinework(
     },
   );
   const labels = pipeLabelsFromTextItems(text.items, toSheet, { aspect });
-  const data = {
-    version: 1,
-    linework: {
-      ...linework,
-      labels: labels.labels,
-      texts: labels.texts,
-      truncated: linework.truncated || labels.truncated,
-    },
+  return {
+    ...linework,
+    labels: labels.labels,
+    texts: labels.texts,
+    truncated: linework.truncated || labels.truncated,
   };
-  const filename = path.join(dest, `pipes-${page.pageNumber}-v1.json`);
-  const temporary = `${filename}.${randomUUID()}.tmp`;
-  // The file route serves these with Content-Encoding: gzip. Keep the full
-  // coordinates while avoiding large repeated JSON keys on mobile downloads.
-  await writeFile(temporary, await compress(JSON.stringify(data)));
-  await rename(temporary, filename);
-  return data.linework;
 }
