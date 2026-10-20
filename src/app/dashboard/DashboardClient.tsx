@@ -683,7 +683,6 @@ export function DashboardClient({
               <PageHeader
                 level="section"
                 title="Material Lists"
-                description="Parts to price, send and track"
                 actions={
                   <div className="hidden gap-2 sm:flex">
                     <Button

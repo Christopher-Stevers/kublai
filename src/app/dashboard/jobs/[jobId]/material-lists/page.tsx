@@ -6,7 +6,6 @@ import { CopyIcon, MergeIcon } from "lucide-react";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { use, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { api } from "~/trpc/react";
@@ -334,18 +333,8 @@ export default function JobDetailPage({
         <PageHeader
           level="section"
           title="Material Lists"
-          description="Parts to price, send and track"
           actions={
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              {userData?.permissions.tabAccess.assets && (
-                <Link
-                  href={`/dashboard/assets/where/job/${job.id}`}
-                  className="text-muted-foreground hover:text-foreground inline-flex h-11 items-center gap-2 text-sm hover:underline sm:px-2"
-                >
-                  <WrenchIcon className="h-4 w-4" />
-                  <span>Tools on this job</span>
-                </Link>
-              )}
+            <div className="hidden flex-wrap items-center gap-2 sm:flex sm:justify-end">
               <Button
                 onClick={handleCreateNew}
                 size="lg"
