@@ -72,6 +72,8 @@ export function vectorComponentMarker(
   return result.success ? result.data : undefined;
 }
 
+const CUSTOM_COMPONENT_SPAN = 0.002;
+
 export function customComponentMarker(
   kind: PipeComponentKind,
   name: string,
@@ -88,7 +90,10 @@ export function customComponentMarker(
     ]),
     true,
   );
-  const marker: PipeComponentMarker = { span: 0.006, paths: [] };
+  const marker: PipeComponentMarker = {
+    span: CUSTOM_COMPONENT_SPAN,
+    paths: [],
+  };
   const angle = /(?:^|\s)(90|45|22(?:\.5)?)(?=\s*(?:°|deg|elbow|bend))/i.exec(
     name,
   )?.[1];
@@ -220,9 +225,13 @@ export function customComponentMarker(
 export function componentMarker(
   candidate: Pick<PipeComponentCandidate, "kind" | "name" | "marker">,
 ): PipeComponentMarker {
-  return (
-    candidate.marker ?? customComponentMarker(candidate.kind, candidate.name)
-  );
+  const marker =
+    candidate.marker ?? customComponentMarker(candidate.kind, candidate.name);
+  // Apply the compact size to previously saved generated symbols too. Actual
+  // legend snapshots have no generated label and retain their source size.
+  return marker.label && !marker.legendId && marker.span === 0.006
+    ? { ...marker, span: CUSTOM_COMPONENT_SPAN }
+    : marker;
 }
 export function pipeComponentColor(pipe: string): string {
   const rgb = (value: string) =>
