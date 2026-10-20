@@ -2627,3 +2627,20 @@ export const jobPricingAudit = createTable("job_pricing_audit", (d) => ({
 export { supplierEmailPreferences } from "./supplier-email-preferences-schema";
 
 export { superScaleJobs } from "./super-scale-schema";
+
+// Reviewed symbol references are scoped to one drawing set and retain the exact
+// source sheet/crop. The source PDF and existing tiles remain the image assets.
+export const drawingLegendItems = createTable("drawing_legend_item", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  setId: d.uuid().notNull().references(() => jobDrawingSets.id, { onDelete: "cascade" }),
+  sourceSheetId: d.uuid().notNull().references(() => jobDrawingSheets.id, { onDelete: "cascade" }),
+  sourceKey: d.varchar({ length: 100 }).notNull(),
+  data: d.jsonb().$type<import("~/lib/drawing-legend").LegendItemData>().notNull(),
+  revision: d.integer().notNull().default(1),
+  reviewedBy: d.varchar({ length: 255 }).notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("drawing_legend_source_idx").on(t.setId, t.sourceSheetId, t.sourceKey),
+  index("drawing_legend_set_idx").on(t.organizationId, t.setId),
+]);

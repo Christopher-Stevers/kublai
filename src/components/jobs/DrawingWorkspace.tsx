@@ -1,5 +1,7 @@
 "use client";
-import { legacyEquipmentDocumentLink } from "~/lib/equipment-tags";
+
+import { LegendItemsDialog } from "./LegendItemsDialog";
+import { equipmentDrawingDestination, legacyEquipmentDocumentLink } from "~/lib/equipment-tags";
 import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
@@ -58,6 +60,7 @@ import {
   MessageSquareMoreIcon,
   MaximizeIcon,
   MoveIcon,
+  BookOpenIcon,
   MoreHorizontalIcon,
   MousePointer2Icon,
   PaletteIcon,
@@ -461,6 +464,7 @@ export function DrawingWorkspace({
     selectTool("pan");
     setSelectedId(null);
   };
+  const [legendOpen, setLegendOpen] = useState(false);
   const [autoHyperlinkOpen, setAutoHyperlinkOpen] = useState(false);
   const openAutoHyperlink = () => {
     selectTool("pan");
@@ -1599,6 +1603,7 @@ export function DrawingWorkspace({
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
+      ...(!data.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !online, run: () => setLegendOpen(true) }] : []),
       { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !writable || !online, run: openAutoHyperlink },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
@@ -1634,6 +1639,12 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
+      {legendOpen && <LegendItemsDialog sheetId={sheet.id} sourceId={sourceId} onClose={()=>setLegendOpen(false)}
+        onSource={(id,box)=>{
+          const target=data.jobSheets.find(s=>s.id===id);
+          if(id===sourceId) setNavigate({center:{x:(box.left+box.right)/2,y:(box.top+box.bottom)/2},zoom:Math.min(50,0.8/Math.max(box.right-box.left,box.bottom-box.top)),requestId:crypto.randomUUID()});
+          else if(target) openLinkUrl(equipmentDrawingDestination({jobId,setId:target.setId,sheetId:id,sourceSheetId:id,name:target.name,tag:"Legend",box:{...box,text:"Legend"}}).href);
+        }}/>}
       {autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
         readWords={async () => {
           if (words.words.length) return words.words;
@@ -3377,6 +3388,10 @@ export function DrawingWorkspace({
                   <MenuTile icon={Link2Icon} />
                   Auto Hyperlink
                 </DropdownMenuItem>
+                {!data.documentSource && <DropdownMenuItem className={MENU_ITEM} disabled={!online} onSelect={()=>{setMoreOpen(false);setLegendOpen(true);}}>
+                  <MenuTile icon={BookOpenIcon} />
+                  Legend Items
+                </DropdownMenuItem>}
                 {!data.documentSource && (
                   <>
                   <DropdownMenuItem className={MENU_ITEM}

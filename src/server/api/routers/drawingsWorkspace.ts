@@ -1,3 +1,5 @@
+import { listLegendItems, scanLegend, saveLegendItems, updateLegendItem } from "~/server/drawings/legend";
+import { legendItemSchema } from "~/lib/drawing-legend";
 import { personalDrawingScale, savePersonalDrawingScale } from "~/server/drawings/personal-scale";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
@@ -38,6 +40,10 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  legendItems: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>listLegendItems(ctx,input.sheetId)),
+  scanLegend: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId})).mutation(({ctx,input})=>scanLegend(ctx,input)),
+  saveLegendItems: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId,items:z.array(legendItemSchema).min(1).max(300)})).mutation(({ctx,input})=>saveLegendItems(ctx,input)),
+  updateLegendItem: hasDashboardAccess.input(z.object({sheetId,id:sheetId,revision:z.number().int().min(1),data:legendItemSchema.nullable()})).mutation(({ctx,input})=>updateLegendItem(ctx,input)),
   addMeasurementLayer: hasDashboardAccess.input(z.object({sheetId, name:z.string().trim().min(1).max(80)})).mutation(({ctx,input})=>addDrawingMeasurementLayer(ctx,input)),
   personalScale: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input}) => personalDrawingScale(ctx,input.sheetId)),
   setPersonalScale: hasDashboardAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => savePersonalDrawingScale(ctx,input.sheetId,input.scale)),
