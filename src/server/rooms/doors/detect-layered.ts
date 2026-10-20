@@ -9,6 +9,7 @@ import { findRoomTagSeeds } from "../tagged/room-tags";
 import { outlineRooms } from "../tagged/outline";
 import { detectDoorRooms, hasDoorLayers, unitTagSeeds } from "./door-rooms";
 import type { LayeredSegment } from "./door-graph";
+import { inferPlanLayers } from "./infer-layers";
 
 export const DOOR_ROOMS_VERSION = "door-units-v1";
 const LONG_SIDE = 5000;
@@ -48,8 +49,16 @@ export async function detectLayeredRooms(
   cached?: () => Promise<Buffer>,
 ) {
   const linework = await loadLinework(pdf, pageNumber, cached);
-  if (!linework.segments?.length || !hasDoorLayers(linework.segments)) return null;
+  if (!linework.segments?.length) return null;
   const aspect = linework.aspect > 0 ? linework.aspect : 1;
+  // A flattened print has no layers; read walls and doors from pen weights
+  // and door swings instead.
+  let segments = linework.segments;
+  if (!hasDoorLayers(segments)) {
+    const inferred = inferPlanLayers(segments, aspect);
+    if (!inferred || !hasDoorLayers(inferred.segments)) return null;
+    segments = inferred.segments;
+  }
   const width = Math.round(aspect > 1 ? LONG_SIDE / aspect : LONG_SIDE);
   const height = Math.round(aspect > 1 ? LONG_SIDE : LONG_SIDE * aspect);
   const labels = await extractPdfLabels(pdf, pageNumber);
@@ -59,7 +68,7 @@ export async function detectLayeredRooms(
     ...physicalRoomSeeds(extractPdfRoomSeeds(labels)),
     ...findRoomTagSeeds(labels, width / height),
   ];
-  const result = detectDoorRooms(linework.segments, { width, height, seeds });
+  const result = detectDoorRooms(segments, { width, height, seeds });
   const common = result.rooms.filter((r) => r.kind === "common").length;
   if (result.links < 8 || !common) return null;
 
