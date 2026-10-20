@@ -1,3 +1,4 @@
+import type { PipeComponentMarker } from "./pipe-component-marker";
 import type { SheetPoint } from "./sheet-measure";
 export const PIPE_COMPONENT_KINDS = [
   "valve",
@@ -57,7 +58,9 @@ export type PipeComponentCandidate = {
   tag?: string;
   system: string | null;
   fingerprint: string;
-  marker?: import("./pipe-component-marker").PipeComponentMarker;
+  /** False when only text was found: not a physical location or count. */
+  locationVerified?: boolean;
+  marker?: PipeComponentMarker;
 };
 export type PipeComponentsResult = {
   candidates: PipeComponentCandidate[];

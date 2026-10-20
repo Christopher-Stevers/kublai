@@ -119,3 +119,11 @@ it('uses saved records as the authority and removes review status if a count is 
  expect(screen.queryByText('Reviewed',{exact:true})).toBeNull();
  expect(screen.getByRole('button',{name:'Export reviewed counts'})).toBeDisabled();
 });
+it('keeps tag-only discoveries review-only until the physical location is known',()=>{
+  const {props,rerender}=open();
+  rerender(<PipeComponentsDialog {...props} result={{candidates:[{...candidate,source:'tag',locationVerified:false}],warnings:[],partial:false}}/>);
+  expect(screen.getByRole('button',{name:'Confirm count'})).toBeDisabled();
+  expect(screen.getByText(/position is unresolved/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Confirm count'}));
+  expect(props.onConfirm).not.toHaveBeenCalled();
+});

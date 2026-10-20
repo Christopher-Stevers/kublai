@@ -89,6 +89,7 @@ function CandidateRow({
       <p className="text-muted-foreground text-xs leading-relaxed break-words">
         {candidate.evidence}
       </p>
+      {candidate.locationVerified === false && <p className="text-sm text-muted-foreground">Label found, but the component position is unresolved. Locate the label and place a count manually after checking the drawing.</p>}
       {editing && !confirmed && (
         <div className="grid grid-cols-2 gap-2 text-sm">
           <label className="space-y-1">
@@ -159,7 +160,7 @@ function CandidateRow({
             <>
               <Button
                 size="sm"
-                disabled={busy || !details.name.trim()}
+                disabled={busy || !details.name.trim() || candidate.locationVerified === false}
                 onClick={async () => {
                   if (saving.current) return;
                   saving.current = true;

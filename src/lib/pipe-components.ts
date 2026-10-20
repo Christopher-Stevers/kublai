@@ -1,3 +1,4 @@
+import { recoverPipeSymbols } from "./pipe-symbol-recovery";
 import {
   customComponentMarker,
   vectorComponentMarker,
@@ -273,6 +274,26 @@ function symbolGroups(
             !overlap(b, boxes[j]!, pad / Math.min(1, aspect))
           )
             continue;
+          const q = usable[j]!,
+            qb = boxes[j]!;
+          const length = (box: Box) =>
+            Math.hypot(box.right - box.left, (box.bottom - box.top) * aspect);
+          if (
+            (!p.closed &&
+              p.points.length === 2 &&
+              q.closed &&
+              length(b) > length(qb) * 2) ||
+            (!q.closed &&
+              q.points.length === 2 &&
+              p.closed &&
+              length(qb) > length(b) * 2)
+          )
+            continue;
+          const joinPad = Math.min(
+            pad,
+            Math.min(length(b), length(qb)) * 0.025,
+          );
+          if (!overlap(b, qb, joinPad / Math.max(1, aspect))) continue;
           const a = find(i),
             other = find(j);
           if (a !== other) parent[a] = other;
@@ -342,6 +363,52 @@ function shape(group: Group, aspect: number, rotation = 0): [number, number][] {
   return [...set]
     .slice(0, 256)
     .map((s) => s.split(",").map(Number) as [number, number]);
+}
+function alignedShape(
+  points: [number, number][],
+  rotation = 0,
+): [number, number][] {
+  if (!points.length) return [];
+  const mx = points.reduce((n, p) => n + p[0], 0) / points.length,
+    my = points.reduce((n, p) => n + p[1], 0) / points.length;
+  let xx = 0,
+    yy = 0,
+    xy = 0;
+  for (const [x, y] of points) {
+    xx += (x - mx) ** 2;
+    yy += (y - my) ** 2;
+    xy += (x - mx) * (y - my);
+  }
+  const anisotropy = Math.hypot(xx - yy, 2 * xy) / (xx + yy || 1);
+  const farthest = points.reduce((a, b) =>
+    (b[0] - mx) ** 2 + (b[1] - my) ** 2 > (a[0] - mx) ** 2 + (a[1] - my) ** 2
+      ? b
+      : a,
+  );
+  const axis =
+    anisotropy < 0.08
+      ? Math.atan2(farthest[1] - my, farthest[0] - mx)
+      : 0.5 * Math.atan2(2 * xy, xx - yy);
+  const angle = -axis + (rotation * Math.PI) / 2;
+  const rotated = points.map(([x, y]) => [
+    (x - mx) * Math.cos(angle) - (y - my) * Math.sin(angle),
+    (x - mx) * Math.sin(angle) + (y - my) * Math.cos(angle),
+  ]);
+  const xs = rotated.map((p) => p[0]!),
+    ys = rotated.map((p) => p[1]!);
+  const left = Math.min(...xs),
+    right = Math.max(...xs),
+    top = Math.min(...ys),
+    bottom = Math.max(...ys),
+    scale = Math.max(right - left, bottom - top) || 1;
+  return [
+    ...new Set(
+      rotated.map(
+        ([x, y]) =>
+          `${Math.round(((x! - (left + right) / 2) / scale) * 24)},${Math.round(((y! - (top + bottom) / 2) / scale) * 24)}`,
+      ),
+    ),
+  ].map((p) => p.split(",").map(Number) as [number, number]);
 }
 function sameShape(a: [number, number][], b: [number, number][]) {
   if (
@@ -553,7 +620,11 @@ export function analyzePipeComponents(
       foreign.distance > nearest.distance + 0.0001
     );
   };
-  const groups = symbolGroups(linework.symbols ?? [], aspect, limited);
+  const groups = symbolGroups(
+    recoverPipeSymbols(linework, selectedNear, limited),
+    aspect,
+    limited,
+  );
   const texts = mergedTexts(linework.texts ?? []);
   const descriptions = texts.flatMap((t) => {
     const d = componentDescription(t.text);
@@ -599,7 +670,18 @@ export function analyzePipeComponents(
       (c) =>
         c.kind === kind &&
         Math.hypot(c.point.x - point.x, (c.point.y - point.y) * aspect) <
-          0.0005,
+          Math.max(
+            1e-7,
+            Math.min(
+              0.0005,
+              Math.max(box.right - box.left, (box.bottom - box.top) * aspect) *
+                0.15,
+              Math.max(
+                c.box.right - c.box.left,
+                (c.box.bottom - c.box.top) * aspect,
+              ) * 0.15,
+            ),
+          ),
     );
     const rank = { layer: 4, tag: 3, legend: 2, geometry: 1 };
     const priority = (c: Candidate) =>
@@ -723,6 +805,9 @@ export function analyzePipeComponents(
   }
   const refShapes = refs.slice(0, 600).map((r) => ({
     ...r,
+    aligned: [0, 1, 2, 3].map((rotation) =>
+      alignedShape(shape(r.group, r.aspect ?? aspect), rotation),
+    ),
     shapes: [0, 1, 2, 3].map((rotation) =>
       shape(r.group, r.aspect ?? aspect, rotation),
     ),
@@ -734,6 +819,11 @@ export function analyzePipeComponents(
       .filter((t) => (!t.reference || t.excludeFromTarget) && validBox(t.box))
       .map((t) => t.box),
   ];
+  const geometryMatches: {
+    g: Group;
+    direct: ReturnType<typeof componentDescription>;
+    matched: typeof refShapes;
+  }[] = [];
   for (const g of groups) {
     if (
       referenceAreas.some((box) => inside(g.box, box)) ||
@@ -746,6 +836,7 @@ export function analyzePipeComponents(
       break;
     }
     const own = shape(g, aspect),
+      aligned = alignedShape(own),
       gsize = Math.max(
         g.box.right - g.box.left,
         (g.box.bottom - g.box.top) * aspect,
@@ -775,8 +866,54 @@ export function analyzePipeComponents(
         partial = true;
         return false;
       }
-      return r.shapes.some((s) => sameShape(own, s));
+      return (
+        r.shapes.some((s) => sameShape(own, s)) ||
+        r.aligned.some((s) => sameShape(aligned, s))
+      );
     });
+    geometryMatches.push({ g, direct, matched });
+  }
+  // A label belongs to the nearest compatible piece of ink, not every symbol
+  // inside a large search box. Equidistant labels remain unresolved.
+  const labelsByGroup = new Map<string, PipeDrawingText[]>();
+  const referenceLabels = new Set(
+    refShapes.flatMap((r) =>
+      r.abbreviation ? [abbreviationKey(r.abbreviation)] : [],
+    ),
+  );
+  for (const t of texts) {
+    const key = abbreviationKey(t.text),
+      point = center(t);
+    if (!referenceLabels.has(key)) continue;
+    const compatible = geometryMatches
+      .filter(
+        ({ g, matched }) =>
+          overlap(g.box, t, 0.012 / Math.max(1, aspect)) &&
+          matched.some(
+            (r) => r.abbreviation && abbreviationKey(r.abbreviation) === key,
+          ),
+      )
+      .map(({ g }) => ({
+        g,
+        distance: Math.hypot(
+          g.point.x - point.x,
+          (g.point.y - point.y) * aspect,
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance);
+    const closest = compatible[0];
+    if (
+      !closest ||
+      (compatible[1] &&
+        Math.abs(compatible[1].distance - closest.distance) < 0.00001)
+    )
+      continue;
+    const labels = labelsByGroup.get(closest.g.id) ?? [];
+    labels.push(t);
+    labelsByGroup.set(closest.g.id, labels);
+  }
+  for (const { g, direct, matched } of geometryMatches) {
+    const nearbyTexts = labelsByGroup.get(g.id) ?? [];
     // A bow-tie can mean several valve types. A nearby exact abbreviation
     // resolves that ambiguity; array order must never decide the component.
     const tagged = matched.filter(
@@ -829,6 +966,7 @@ export function analyzePipeComponents(
         g.box,
         "legend",
         `Several legend items share this shape: ${names}. No unique nearby abbreviation resolves it; review required.`,
+        { marker: vectorComponentMarker(g.paths, aspect) },
       );
       continue;
     }
@@ -881,8 +1019,10 @@ export function analyzePipeComponents(
       point = center(t);
     if (referenceAreas.some((b) => inside(t, b)) || !belongs(point, t))
       continue;
-    const existing = candidates.filter((c) =>
-      overlap(c.box, t, 0.012 / Math.max(1, aspect)),
+    const existing = candidates.filter(
+      (c) =>
+        c.locationVerified !== false &&
+        overlap(c.box, t, 0.012 / Math.max(1, aspect)),
     );
     if (existing.some((c) => c.name.toLowerCase() === r.name.toLowerCase()))
       continue;
@@ -915,13 +1055,7 @@ export function analyzePipeComponents(
         r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
         {
           tag: t.text,
-          marker: ["elbow", "tee", "rise", "drop"].includes(r.kind)
-            ? customComponentMarker(r.kind, r.name)
-            : vectorComponentMarker(
-                r.group.paths,
-                r.aspect ?? aspect,
-                r.legendId,
-              ),
+          marker: nearest.marker,
         },
       );
     } else if (!nearest) {
@@ -931,8 +1065,9 @@ export function analyzePipeComponents(
         point,
         t,
         "legend",
-        r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
+        r.evidence + `; exact tag ${t.text}; component location unresolved`,
         {
+          locationVerified: false,
           tag: t.text,
           marker: ["elbow", "tee", "rise", "drop"].includes(r.kind)
             ? customComponentMarker(r.kind, r.name)
@@ -958,11 +1093,12 @@ export function analyzePipeComponents(
     )
       continue;
     if (!belongs(point, d.text)) continue;
-    const nearby = groups
+    const nearby = candidates
       .filter(
         (g) =>
-          overlap(g.box, d.text, 0.012 / Math.max(1, aspect)) &&
-          belongs(g.point, g.box, g.layer),
+          g.locationVerified !== false &&
+          g.kind === d.kind &&
+          overlap(g.box, d.text, 0.012 / Math.max(1, aspect)),
       )
       .sort(
         (a, b) =>
@@ -976,7 +1112,13 @@ export function analyzePipeComponents(
       nearby?.box ?? d.text,
       "tag",
       `Drawing text: ${d.text.text}`,
-      { size: d.size, material: d.material, tag: d.tag },
+      {
+        size: d.size,
+        material: d.material,
+        tag: d.tag,
+        locationVerified: !!nearby,
+        marker: nearby?.marker,
+      },
     );
   }
   // Geometry suggests junctions; it never establishes a fitting SKU, size, or valve subtype.

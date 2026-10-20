@@ -328,7 +328,8 @@ describe("reviewed drawing-set legends", () => {
     expect(result.candidates).toContainEqual(
       expect.objectContaining({
         name: "Custom regulator",
-        evidence: expect.stringContaining("geometry not verified"),
+        evidence: expect.stringContaining("location unresolved"),
+        locationVerified: false,
       }),
     );
   });
@@ -426,4 +427,120 @@ it("only names vertical directions with explicit evidence", () => {
       (c) => c.kind === "rise" || c.kind === "drop",
     ),
   ).toBe(false);
+});
+
+const arbitraryReference = (
+  name: string,
+  abbreviation: string,
+): PipeSymbolTemplate => ({
+  id: name,
+  kind: "valve",
+  name,
+  box: { left: 0.1, right: 0.2, top: 0.1, bottom: 0.2 },
+  reference: {
+    paths: [bow("reference", 0.15, 0.15)],
+    aspect: 1,
+    abbreviation,
+    sourceSheetId: "legend",
+    sheetName: "Legend",
+    legendId: name,
+    revision: 1,
+  },
+});
+it("matches rotated valves on the pipe, including two near each other with different tags", () => {
+  const rotate = (p: PipeSymbolPath, x: number, y: number) => ({
+    ...p,
+    points: p.points.map((q) => ({
+      x: x + (q.x - x) * Math.cos(0.23) - (q.y - y) * Math.sin(0.23),
+      y: y + (q.x - x) * Math.sin(0.23) + (q.y - y) * Math.cos(0.23),
+    })),
+  });
+  const data = model({
+    symbols: [
+      rotate(bow("one", 0.4, 0.5), 0.4, 0.5),
+      rotate(bow("two", 0.408, 0.5), 0.408, 0.5),
+    ],
+    texts: [
+      { text: "AX", left: 0.398, right: 0.401, top: 0.505, bottom: 0.507 },
+      { text: "BY", left: 0.407, right: 0.41, top: 0.505, bottom: 0.507 },
+    ],
+  });
+  const candidates = analyze(data, [
+    arbitraryReference("First valve", "AX"),
+    arbitraryReference("Second valve", "BY"),
+  ]).candidates;
+  expect(candidates.filter((c) => c.source === "legend")).toHaveLength(2);
+  expect(candidates.find((c) => c.name === "First valve")?.point).toEqual({
+    x: 0.4,
+    y: 0.5,
+  });
+  expect(
+    candidates.find((c) => c.name === "Second valve")?.point.x,
+  ).toBeCloseTo(0.408);
+  expect(
+    candidates.every((c) => c.point.y === 0.5 && c.locationVerified !== false),
+  ).toBe(true);
+});
+it("does not merge two closed valve symbols through their connecting pipe stroke", () => {
+  const data = model({
+    symbols: [
+      bow("one", 0.4, 0.5),
+      bow("two", 0.41, 0.5),
+      {
+        id: "pipe",
+        closed: false,
+        points: [
+          { x: 0.39, y: 0.5 },
+          { x: 0.42, y: 0.5 },
+        ],
+      },
+    ],
+  });
+  const result = analyze(data, [arbitraryReference("Valve", "AX")]);
+  expect(result.candidates.filter((c) => c.name === "Valve")).toHaveLength(2);
+});
+it("recovers whole valve ink from measurement paths when the symbol cache dropped it", () => {
+  const missing = bow("missing", 0.42, 0.5);
+  const segments = missing.points
+    .slice(1)
+    .map((p, i) => ({
+      ...line(
+        "seg" + i,
+        missing.points[i]!.x,
+        missing.points[i]!.y,
+        p.x,
+        p.y,
+        "arbitrary-symbol-layer",
+      ),
+      pathId: "missing",
+      closed: true,
+    }));
+  const data = model({
+    componentDataPartial: true,
+    segments: [...model().segments, ...segments],
+    symbols: [],
+    texts: [text("AX", 0.43, 0.5)],
+  });
+  const result = analyze(data, [arbitraryReference("Valve", "AX")]);
+  expect(result.candidates.find((c) => c.name === "Valve")).toMatchObject({
+    point: { x: 0.42, y: 0.5 },
+    marker: { legendId: "Valve" },
+  });
+});
+it("keeps distinct tiny neighboring symbols rather than deduplicating by a fixed distance", () => {
+  const tiny = (id: string, x: number) => {
+    const p = bow(id, x, 0.5);
+    return {
+      ...p,
+      points: p.points.map((q) => ({
+        x: x + (q.x - x) * 0.05,
+        y: 0.5 + (q.y - 0.5) * 0.05,
+      })),
+    };
+  };
+  const result = analyze(
+    model({ symbols: [tiny("a", 0.5), tiny("b", 0.5004)] }),
+    [arbitraryReference("Valve", "AX")],
+  );
+  expect(result.candidates.filter((c) => c.name === "Valve")).toHaveLength(2);
 });

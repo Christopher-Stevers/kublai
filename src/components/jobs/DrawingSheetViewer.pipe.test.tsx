@@ -578,7 +578,7 @@ describe("pipe selection in the drawing viewer", () => {
 
 it('reviews detected components, locates them, saves structured counts only after confirmation and teaches a symbol', async () => {
   const save = vi.fn().mockResolvedValue(true);
-  loadPipeLinework.mockResolvedValueOnce({ ...linework, componentDataVersion:1, symbols:[], texts:[{text:'2" BALL VALVE',left:.19,right:.21,top:.496,bottom:.504}] });
+  loadPipeLinework.mockResolvedValueOnce({ ...linework, componentDataVersion:1, symbols:[{id:"valve-ink",closed:true,points:[{x:.198,y:.498},{x:.202,y:.502},{x:.202,y:.498},{x:.198,y:.502},{x:.198,y:.498}]}], texts:[{text:'2" BALL VALVE',left:.19,right:.21,top:.496,bottom:.504}] });
   const {frame}=open({onSavePipeComponent:save});
   await activate(); await tap(frame,160,300);
   fireEvent.click(screen.getByRole('button',{name:/Fittings & valves/}));

@@ -373,7 +373,7 @@ export function DrawingSheetViewer({
     sourceSheetId:editorProps.sourceSheetId??sheetKey,selection:pipe.selection,templates,
     load:editorProps.loadPipeLegendReferences,analyze:pipe.analyze});
   const componentPreviews = useMemo(() => (pipe.components?.candidates ?? []).filter(candidate =>
-    !dismissedComponents.has(componentSource+":"+candidate.id) && !reviewedPipeComponent(componentAnnotations,componentSource,candidate)
+    candidate.locationVerified !== false && !dismissedComponents.has(componentSource+":"+candidate.id) && !reviewedPipeComponent(componentAnnotations,componentSource,candidate)
   ).map(candidate=>({candidate,marker:componentMarker(candidate)})),[pipe.components,componentAnnotations,componentSource,dismissedComponents]);
   const currentSymbolPick = symbolPick?.source === componentSource ? symbolPick : null;
   const openComponents = () => {
@@ -382,7 +382,7 @@ export function DrawingSheetViewer({
   };
   const saveComponent = async (candidate: PipeComponentCandidate, details: { kind: PipeComponentKind; name: string; size?: string; material?: string }) => {
     const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
-    if (!sourceSheetId || !editorProps.onSavePipeComponent) return false;
+    if (!sourceSheetId || !editorProps.onSavePipeComponent || candidate.locationVerified === false) return false;
     if (reviewedPipeComponent(componentAnnotations, componentSource, candidate)) return true;
     return editorProps.onSavePipeComponent({
       sourceSheetId, type: "count", points: [candidate.point], stroke: pipeComponentColor(measureColor), width: 2,
@@ -2119,7 +2119,7 @@ export function DrawingSheetViewer({
         onAnalyze={legendAnalysis.recheck} onConfirm={saveComponent}
         onDismiss={candidate => setDismissedComponents(old=>new Set([...old,componentSource+":"+candidate.id]))}
         onLocate={candidate => {
-          setComponentFocus({source:componentSource,candidate}); setComponentOpen(false);
+          setComponentFocus(candidate.locationVerified === false ? null : {source:componentSource,candidate}); setComponentOpen(false);
           if (fit) { const scale = Math.min(MAX_ZOOM, Math.max(5, live.current.scale)); animateTo({scale, x:(.5-candidate.point.x)*fit.width*scale,y:(.5-candidate.point.y)*fit.height*scale}); }
         }}
         onTeach={(kind,name) => {setSymbolPick({source:componentSource,kind,name});setSymbolError(null);setComponentOpen(false);}}
