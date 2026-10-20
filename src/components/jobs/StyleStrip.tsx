@@ -1,8 +1,9 @@
 "use client";
 import type { ReactNode } from "react";
+import { useSideScroll } from "~/hooks/use-side-scroll";
 import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
 
-const SCROLLER = "flex min-w-0 flex-1 basis-0 items-center overflow-x-auto [scrollbar-width:none]";
+const SCROLLER = "flex min-w-0 flex-1 basis-0 items-center overflow-x-auto overflow-y-hidden [scrollbar-width:none]";
 
 /**
  * Colours and line widths side by side on one line, each taking half and
@@ -32,9 +33,12 @@ export function StyleStrip({
   end?: ReactNode;
 }) {
   const current = color.slice(0, 7).toLowerCase();
+  // The padding leaves room for the chosen swatch's ring.
+  const [colourList, colourFade] = useSideScroll<HTMLDivElement>('[aria-pressed="true"]', current);
+  const [widthList, widthFade] = useSideScroll<HTMLDivElement>('[aria-checked="true"]', width);
   return (
     <div className="flex items-center gap-2">
-      <div role="group" aria-label={colorLabel} className={`${SCROLLER} gap-1.5 p-1`}>
+      <div ref={colourList} style={colourFade} role="group" aria-label={colorLabel} className={`${SCROLLER} gap-1.5 p-1.5`}>
         {MEASURE_COLORS.map((item) => {
           const active = current === item.value.toLowerCase();
           return (
@@ -45,7 +49,7 @@ export function StyleStrip({
               title={item.name}
               aria-pressed={active}
               disabled={disabled}
-              className={`size-7 shrink-0 rounded-full border border-black/15 shadow-sm disabled:opacity-50 ${active ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
+              className={`size-7 shrink-0 rounded-full border border-black/15 shadow-sm transition-transform duration-150 hover:scale-110 active:scale-95 disabled:opacity-50 motion-reduce:transition-none ${active ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
               style={{ backgroundColor: item.value }}
               onClick={() => onColor(item.value)}
             />
@@ -73,6 +77,8 @@ export function StyleStrip({
       </div>
       {onWidth && (
         <div
+          ref={widthList}
+          style={widthFade}
           role="radiogroup"
           aria-label={widthLabel}
           className={`${SCROLLER} bg-muted rounded-full p-0.5`}
@@ -85,7 +91,7 @@ export function StyleStrip({
               aria-checked={width === option}
               aria-label={`Width ${option}`}
               disabled={disabled}
-              className={`flex h-7 min-w-9 flex-1 shrink-0 items-center justify-center rounded-full ${width === option ? "bg-background shadow-sm" : ""}`}
+              className={`flex h-7 min-w-9 flex-1 shrink-0 items-center justify-center rounded-full transition-colors ${width === option ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
               onClick={() => onWidth(option)}
             >
               <span

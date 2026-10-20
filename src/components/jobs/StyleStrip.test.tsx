@@ -29,3 +29,18 @@ it("shows only the colours when there is no width to choose", () => {
   expect(screen.queryByRole("radiogroup")).toBeNull();
   expect(screen.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "true");
 });
+
+it("turns a vertical wheel into sideways scrolling until the list ends", () => {
+  render(<StyleStrip color="#2563eb" onColor={vi.fn()} colorLabel="Colours" />);
+  const colours = screen.getByRole("group", { name: "Colours" });
+  Object.defineProperty(colours, "scrollWidth", { configurable: true, value: 400 });
+  Object.defineProperty(colours, "clientWidth", { configurable: true, value: 150 });
+  const wheel = new WheelEvent("wheel", { deltaY: 60, bubbles: true, cancelable: true });
+  colours.dispatchEvent(wheel);
+  expect(colours.scrollLeft).toBe(60);
+  expect(wheel.defaultPrevented).toBe(true);
+  colours.scrollLeft = 250;
+  const atEnd = new WheelEvent("wheel", { deltaY: 60, bubbles: true, cancelable: true });
+  colours.dispatchEvent(atEnd);
+  expect(atEnd.defaultPrevented).toBe(false);
+});

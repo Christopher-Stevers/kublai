@@ -8,6 +8,7 @@ import {
   layoutDrawingText,
 } from "~/lib/drawing-annotation-geometry";
 import { MEASURE_COLORS } from "~/lib/sheet-measure-color";
+import { useSideScroll } from "~/hooks/use-side-scroll";
 
 const MIN_FONT = 6;
 const MAX_FONT = 300;
@@ -47,6 +48,7 @@ export function InlineTextEditor({
   const { data, onChange, onDone, onCancel, onDelete } = editing;
   const field = useRef<HTMLTextAreaElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const [toolbarList, toolbarFade] = useSideScroll<HTMLDivElement>();
   const bar = useRef<HTMLDivElement>(null);
   const done = useRef(onDone);
   useEffect(() => {
@@ -127,9 +129,11 @@ export function InlineTextEditor({
         {...shield}
       >
         <div
+          ref={toolbarList}
+          style={toolbarFade}
           role="toolbar"
           aria-label="Text style"
-          className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto [scrollbar-width:none]"
+          className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto overflow-y-hidden py-1 [scrollbar-width:none]"
         >
           <div className="bg-muted flex shrink-0 items-center rounded-full p-0.5">
             <button

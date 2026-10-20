@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { XIcon } from "lucide-react";
+import { SlidersHorizontalIcon, WrenchIcon, XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
@@ -93,53 +93,74 @@ export function PipeSystemPanel({
     {warnings.length > 0 && <p className="text-muted-foreground text-xs">{warnings.join(" · ")}</p>}
   </div>;
   const systemControl = codes.length > 0 && (
-    <label className="flex items-center gap-2 text-xs">
-      System
-      <select
-        aria-label="Pipe system"
-        className="bg-background min-w-0 flex-1 rounded border px-2 py-1"
-        value={system}
-        onChange={(event) => onSystem(event.target.value)}
-      >
-        <option value="">Tap a pipe</option>
-        {codes.map((code) => (
-          <option key={code} value={code}>
-            {PIPE_SYSTEM_NAMES[code] ? `${PIPE_SYSTEM_NAMES[code]} (${code})` : code}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      aria-label="Pipe system"
+      className="bg-background focus-visible:ring-ring h-8 min-w-0 flex-1 truncate rounded-full border px-3 text-xs focus-visible:ring-2 focus-visible:outline-none"
+      value={system}
+      onChange={(event) => onSystem(event.target.value)}
+    >
+      <option value="">System: tap a pipe</option>
+      {codes.map((code) => (
+        <option key={code} value={code}>
+          {PIPE_SYSTEM_NAMES[code] ? `${PIPE_SYSTEM_NAMES[code]} (${code})` : code}
+        </option>
+      ))}
+    </select>
   );
+  const showTotal = selected && hasPdf && !reading && !(ready && !hasLines);
   return (
     <section
       aria-label="Pipe system selection"
       aria-busy={reading || selecting}
-      className="bg-card/95 max-h-[55dvh] space-y-2 overflow-y-auto overscroll-contain rounded-md p-3 shadow-md"
+      className="space-y-2"
     >
       <div className="flex items-center gap-2">
-        <p className="mr-auto text-sm font-medium">
+        <span
+          aria-hidden
+          className="ring-background size-3 shrink-0 rounded-full shadow-sm ring-2"
+          style={{ backgroundColor: color }}
+        />
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">
           {selected
             ? selectedSystem
               ? PIPE_SYSTEM_NAMES[selectedSystem] ?? `${selectedSystem} system`
               : "Unclassified linework"
             : "Select a pipe system"}
         </p>
+        {showTotal && (
+          <div
+            role="status"
+            aria-label="Pipe total distance"
+            className="min-w-0 shrink text-right leading-tight"
+          >
+            <strong
+              className={`block truncate tabular-nums ${total ? "text-base font-semibold" : "text-muted-foreground text-xs font-medium"}`}
+            >
+              {total ?? "Set scale to see distance"}
+            </strong>
+            <span className="text-muted-foreground block truncate text-[11px]">
+              {partial ? "Partial distance" : wholeSystem ? "Highlighted line length" : "Total distance"} · this sheet
+            </span>
+          </div>
+        )}
         {selected && (
-          <>
+          <div className="flex shrink-0 items-center">
             <Button
-              size="sm"
-              variant="outline"
-              className="sm:hidden"
+              size="icon-sm"
+              variant={expanded ? "secondary" : "ghost"}
+              className="rounded-full sm:hidden"
               aria-label="Pipe options"
+              title="Units and scale"
               aria-expanded={expanded}
               aria-controls={optionsId}
               onClick={() => setExpanded((value) => !value)}
             >
-              Options
+              <SlidersHorizontalIcon className="size-4" />
             </Button>
             <Button
               size="icon-sm"
               variant="ghost"
+              className="rounded-full"
               aria-label="Clear selection"
               title="Clear selection"
               onClick={() => {
@@ -147,14 +168,23 @@ export function PipeSystemPanel({
                 onClear();
               }}
             >
-              <XIcon className="h-4 w-4" />
+              <XIcon className="size-4" />
             </Button>
-          </>
+          </div>
         )}
       </div>
       <StyleStrip color={color} onColor={onColor} colorLabel="Pipe colors" customColorLabel="Custom pipe color" width={lineWidth} onWidth={onLineWidth} widthLabel="Pipe line width" />
-      {systemControl}
-      {selected && onComponents && <Button size="sm" variant="outline" onClick={onComponents}>{componentLabel}</Button>}
+      {(systemControl || (selected && onComponents)) && (
+        <div className="flex items-center gap-2">
+          {systemControl}
+          {selected && onComponents && (
+            <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full text-xs" onClick={onComponents}>
+              <WrenchIcon className="size-3.5" />
+              {componentLabel}
+            </Button>
+          )}
+        </div>
+      )}
       {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
       {!hasPdf ? (
         <p className="text-muted-foreground text-xs">
@@ -172,27 +202,16 @@ export function PipeSystemPanel({
         </p>
       ) : selected ? (
         <>
-          <div
-            role="status"
-            aria-label="Pipe total distance"
-            className="space-y-1"
-          >
-            <span className="text-muted-foreground block text-xs">
-              {partial ? "Partial distance" : wholeSystem ? "Highlighted line length" : "Total distance"} · this sheet
-            </span>
-            <strong className="block text-xl tabular-nums">
-              {total ?? "Set scale to see distance"}
-            </strong>
-          </div>
           {!selectedSystem && (
             <p className="text-muted-foreground text-xs">
-              System not identified. Tap a pipe or choose its system in Options.
+              System not identified. Tap a pipe or pick its system above.
             </p>
           )}
           {!scaleSet && (
             <Button
               size="sm"
               variant="outline"
+              className="h-8 rounded-full text-xs"
               disabled={!canSetScale}
               onClick={onScale}
             >
@@ -206,19 +225,19 @@ export function PipeSystemPanel({
           )}
           <div
             id={optionsId}
-            className={expanded ? "space-y-2" : "hidden space-y-2 sm:block"}
+            className={`${expanded ? "flex" : "hidden sm:flex"} flex-wrap items-center gap-2`}
           >
             <div
               role="group"
               aria-label="Pipe distance units"
-              className="flex rounded-md border p-0.5"
+              className="bg-muted flex min-w-40 flex-1 rounded-full p-0.5"
             >
               {LENGTH_UNITS.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   aria-pressed={unit === value}
-                  className={`h-8 flex-1 rounded-sm text-sm ${unit === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                  className={`h-7 flex-1 rounded-full text-xs font-medium transition-colors ${unit === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => onUnit(value)}
                 >
                   {label}
@@ -226,7 +245,7 @@ export function PipeSystemPanel({
               ))}
             </div>
             {warnings.length > 0 && (
-              <details className="text-muted-foreground text-xs">
+              <details className="text-muted-foreground order-last basis-full text-xs">
                 <summary className="cursor-pointer">
                   Check highlighted run
                 </summary>
@@ -241,6 +260,7 @@ export function PipeSystemPanel({
               <Button
                 size="sm"
                 variant="outline"
+                className="h-8 rounded-full text-xs"
                 disabled={!canSetScale}
                 onClick={onScale}
               >
