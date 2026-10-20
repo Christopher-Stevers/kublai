@@ -100,12 +100,13 @@ function distance(p: SheetPoint, s: PipeSegment, aspect: number) {
   );
   return Math.hypot(px - t * dx, py - t * dy);
 }
-function segmentGrid(
+export function segmentGrid(
   segments: PipeSegment[],
   aspect: number,
   limited: () => void,
 ) {
   let checks = 0;
+  let samplePadding = CELL / 2;
   const grid = new Map<string, number[]>();
   segments.forEach((s, i) => {
     const needed = Math.max(
@@ -113,7 +114,13 @@ function segmentGrid(
       Math.ceil(Math.hypot(s.x2 - s.x1, (s.y2 - s.y1) * aspect) / CELL),
     );
     const n = Math.min(needed, 256);
-    if (needed > n) limited();
+    if (needed > n) {
+      limited();
+      samplePadding = Math.max(
+        samplePadding,
+        Math.hypot(s.x2 - s.x1, (s.y2 - s.y1) * aspect) / n / 2,
+      );
+    }
     for (let j = 0; j <= n; j++) {
       const key = `${Math.floor((s.x1 + ((s.x2 - s.x1) * j) / n) / CELL)},${Math.floor(((s.y1 + ((s.y2 - s.y1) * j) / n) * aspect) / CELL)}`;
       const values = grid.get(key) ?? [];
@@ -127,12 +134,20 @@ function segmentGrid(
       limited();
       return [];
     }
-    const found = new Set<number>(),
-      cx = Math.floor(p.x / CELL),
-      cy = Math.floor((p.y * aspect) / CELL),
-      r = Math.ceil(reach / CELL) + 1;
-    for (let x = cx - r; x <= cx + r; x++)
-      for (let y = cy - r; y <= cy + r; y++)
+    // Every segment point is within samplePadding of a sample (normally
+    // CELL / 2; larger for capped long paths). Query that padded rectangle.
+    const found = new Set<number>();
+    const padding = reach + samplePadding;
+    for (
+      let x = Math.floor((p.x - padding) / CELL);
+      x <= Math.floor((p.x + padding) / CELL);
+      x++
+    )
+      for (
+        let y = Math.floor((p.y * aspect - padding) / CELL);
+        y <= Math.floor((p.y * aspect + padding) / CELL);
+        y++
+      )
         for (const i of grid.get(`${x},${y}`) ?? []) found.add(i);
     checks += found.size;
     return [...found]
@@ -635,7 +650,12 @@ export function analyzePipeComponents(
     );
   };
   const annotationPaths = new Set(selection.excludedAnnotationPathIds ?? []);
-  const symbolPaths = recoverPipeSymbols(linework, selectedNear, limited).filter(path => !annotationPaths.has(path.id));
+  // Recovery must not spend the later system-membership query budget.
+  const symbolPaths = recoverPipeSymbols(
+    linework,
+    segmentGrid(selection.segments, aspect, limited),
+    limited,
+  ).filter((path) => !annotationPaths.has(path.id));
   const groups = symbolGroups(symbolPaths, aspect, limited);
   const fittingNear = segmentGrid(selection.segments, aspect, limited);
   const texts = mergedTexts(linework.texts ?? []);

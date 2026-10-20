@@ -202,3 +202,19 @@ an immutable response. M-102 source-PDF verification locates the three previousl
 missed circular endpoints near DW-48 / DW-49 as 90° up. Existing valve fingerprints
 and selected pipe measurements remain unchanged. Additional budget-pressure tests
 cover sparse layers, late curves and the hard global bounds.
+
+## Dense-system search budgets (October 19, 2026)
+
+Component recovery now owns a separate nearby-pipe query budget from subsequent
+system membership checks. Spatial queries search the requested rectangle padded
+by half the segment-sample spacing, rather than a minimum five-by-five-cell
+neighborhood. Padding expands for sample-capped long paths, so cell boundaries
+and unusual page aspect ratios do not omit nearby segments. Existing work limits
+remain in place; unrelated dense strokes no longer consume them unnecessarily.
+
+Regression tests exercise repeated small queries next to a dense unrelated area,
+cell crossings, and tall/non-square pages. Actual M-102 sanitary analysis verifies
+the two full-circle endpoints under PD-4 and PD-5, with source-PDF visual checking.
+Cold-water and return-water checks preserve their previous valves and up elbows.
+Selected pipe geometry is unchanged by this detector change. Counts remain review
+candidates, and partial source geometry can still limit coverage.

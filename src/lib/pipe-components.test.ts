@@ -3,6 +3,7 @@ import {
   analyzePipeComponents,
   componentDescription,
   savedLegendTemplates,
+  segmentGrid,
 } from "./pipe-components";
 import {
   selectPipeLayerSystem,
@@ -749,3 +750,42 @@ it("keeps distinct tiny neighboring symbols rather than deduplicating by a fixed
   );
   expect(result.candidates.filter((c) => c.name === "Valve")).toHaveLength(2);
 });
+
+it("keeps the search budget available when dense strokes are outside the query area", () => {
+  const nearby = line("target", 0.5, 0.49, 0.5, 0.51);
+  const unrelated = Array.from({ length: 1000 }, (_, i) =>
+    line(`far-${i}`, 0.535, 0.535, 0.536, 0.536),
+  );
+  let limited = false;
+  const query = segmentGrid([...unrelated, nearby], 1, () => {
+    limited = true;
+  });
+  for (let i = 0; i < 2200; i++)
+    expect(query({ x: 0.5, y: 0.5 }, 0.0005).map((v) => v.segment.id)).toEqual([
+      "target",
+    ]);
+  expect(limited).toBe(false);
+});
+
+it.each([0.75, 1, 20])(
+  "finds segments across cell boundaries on aspect %s sheets",
+  (aspect) => {
+    const segments = [
+      line("diagonal", 0.01, 0.01, 0.97, 0.97),
+      line("horizontal", 0.01, 0.213, 0.99, 0.213),
+      line("vertical", 0.432, 0.01, 0.432, 0.99),
+    ];
+    const query = segmentGrid(segments, aspect, () => undefined);
+    for (const segment of segments)
+      for (let i = 0; i <= 75; i++) {
+        const t = i / 75;
+        const p = {
+          x: segment.x1 + (segment.x2 - segment.x1) * t,
+          y: segment.y1 + (segment.y2 - segment.y1) * t,
+        };
+        expect(query(p, 1e-7).some((v) => v.segment.id === segment.id)).toBe(
+          true,
+        );
+      }
+  },
+);
