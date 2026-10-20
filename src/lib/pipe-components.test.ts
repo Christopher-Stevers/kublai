@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { analyzePipeComponents, componentDescription } from "./pipe-components";
+import {
+  analyzePipeComponents,
+  componentDescription,
+  savedLegendTemplates,
+} from "./pipe-components";
 import {
   selectPipeLayerSystem,
   type PipeLinework,
@@ -246,5 +250,135 @@ describe("piping component recognition", () => {
       analyzePipeComponents(data, selection),
     );
     expect(selection).toEqual(before);
+  });
+});
+
+describe("reviewed drawing-set legends", () => {
+  const reference = (
+    name: string,
+    abbreviation: string,
+    aspect = 1,
+  ): PipeSymbolTemplate => ({
+    id: name,
+    kind: "valve",
+    name,
+    box: { left: 0.1, right: 0.2, top: 0.1, bottom: 0.2 },
+    reference: {
+      paths: [bow("ref", 0.15, 0.15)],
+      aspect,
+      abbreviation,
+      sourceSheetId: "another-sheet",
+      sheetName: "Generic legend",
+      legendId: name,
+      revision: 3,
+    },
+  });
+  it("uses external-page geometry without masking the same coordinates on the target", () => {
+    const data = model({
+      segments: [line("run", 0.1, 0.15, 0.9, 0.15)],
+      symbols: [bow("target", 0.15, 0.15)],
+    });
+    expect(
+      analyze(data, [reference("Custom regulator", "RZ")]).candidates,
+    ).toContainEqual(
+      expect.objectContaining({ name: "Custom regulator", source: "legend" }),
+    );
+  });
+  it("resolves identical shapes using the legend's own arbitrary abbreviation", () => {
+    const data = model({
+      symbols: [bow("target", 0.5, 0.5)],
+      texts: [text("ZXQ", 0.51, 0.5)],
+    });
+    const result = analyze(data, [
+      reference("First device", "ABC"),
+      reference("Second device", "ZXQ"),
+    ]);
+    expect(result.candidates).toContainEqual(
+      expect.objectContaining({
+        name: "Second device",
+        evidence: expect.stringContaining("nearby tag ZXQ"),
+      }),
+    );
+    expect(result.candidates.some((c) => c.name === "First device")).toBe(
+      false,
+    );
+  });
+  it("does not decide ambiguous symbols by reference order or prefix matches", () => {
+    const data = model({
+      symbols: [bow("target", 0.5, 0.5)],
+      texts: [text("ZXQ2", 0.51, 0.5)],
+    });
+    for (const refs of [
+      [reference("Alpha", "ZXQ"), reference("Beta", "ABC")],
+      [reference("Beta", "ABC"), reference("Alpha", "ZXQ")],
+    ]) {
+      expect(analyze(data, refs).candidates).toContainEqual(
+        expect.objectContaining({ name: "Ambiguous legend symbol" }),
+      );
+    }
+  });
+  it("keeps a tag-only identification distinct from a shape match", () => {
+    const result = analyze(model({ texts: [text("RZ", 0.5, 0.5)] }), [
+      reference("Custom regulator", "RZ"),
+    ]);
+    expect(result.candidates).toContainEqual(
+      expect.objectContaining({
+        name: "Custom regulator",
+        evidence: expect.stringContaining("geometry not verified"),
+      }),
+    );
+  });
+  it("normalizes source aspect and rotation rather than relying on sheet dimensions", () => {
+    const ref = reference("Scaled device", "SX", 0.5);
+    ref.reference!.paths[0]!.points = ref.reference!.paths[0]!.points.map(
+      (p) => ({ x: p.x, y: 0.15 + (p.y - 0.15) * 2 }),
+    );
+    const installed = bow("target", 0.5, 0.5);
+    installed.points = installed.points.map((p) => ({
+      x: 0.5 + (p.y - 0.5) * 2,
+      y: 0.5 - (p.x - 0.5) * 2,
+    }));
+    expect(
+      analyze(model({ symbols: [installed] }), [ref]).candidates,
+    ).toContainEqual(expect.objectContaining({ name: "Scaled device" }));
+  });
+  it("accepts unfamiliar legend names and preserves separate symbol variants", () => {
+    const box = { left: 0.1, top: 0.1, right: 0.3, bottom: 0.2 };
+    const refs = savedLegendTemplates(
+      {
+        id: "custom",
+        revision: 2,
+        data: {
+          name: "Zeta device",
+          abbreviation: "ZT",
+          category: "Unfamiliar discipline",
+          row: box,
+          symbol: box,
+        },
+      },
+      { id: "source", name: "X-9" },
+      model({ symbols: [bow("a", 0.12, 0.15), bow("b", 0.28, 0.15)] }),
+    );
+    expect(refs).toHaveLength(2);
+    expect(refs[0]).toMatchObject({
+      name: "Zeta device",
+      kind: "other",
+      reference: { abbreviation: "ZT" },
+    });
+  });
+  it("does not count a matching symbol on another system", () => {
+    const data = model({
+      segments: [
+        line("a", 0.1, 0.5, 0.9, 0.5),
+        line("b", 0.1, 0.55, 0.9, 0.55, "M-PLMB-DHWT"),
+      ],
+      symbols: [bow("target", 0.5, 0.55)],
+      texts: [text("RZ", 0.51, 0.55)],
+    });
+    expect(
+      analyze(data, [reference("Custom regulator", "RZ")]).candidates.some(
+        (c) => c.name === "Custom regulator",
+      ),
+    ).toBe(false);
   });
 });

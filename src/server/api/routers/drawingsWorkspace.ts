@@ -1,3 +1,4 @@
+import { pipeLegendReferences } from "~/server/drawings/legend-components";
 import { listLegendItems, scanLegend, saveLegendItems, updateLegendItem } from "~/server/drawings/legend";
 import { legendItemSchema } from "~/lib/drawing-legend";
 import { personalDrawingScale, savePersonalDrawingScale } from "~/server/drawings/personal-scale";
@@ -40,6 +41,7 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  pipeLegendReferences: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>pipeLegendReferences(ctx,input.sheetId)),
   legendItems: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>listLegendItems(ctx,input.sheetId)),
   scanLegend: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId})).mutation(({ctx,input})=>scanLegend(ctx,input)),
   saveLegendItems: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId,items:z.array(legendItemSchema).min(1).max(300)})).mutation(({ctx,input})=>saveLegendItems(ctx,input)),

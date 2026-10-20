@@ -1,3 +1,4 @@
+import type { LegendItemData } from "./drawing-legend";
 import {
   layerSystem,
   type PipeLinework,
@@ -432,6 +433,59 @@ function crossing(path: PipeSymbolPath, aspect: number) {
   return false;
 }
 
+/** Keep separate existing/new variants in a legend cell as separate references. */
+export function savedLegendTemplates(
+  item: {
+    id: string;
+    revision: number;
+    data: LegendItemData;
+  },
+  source: { id: string; name: string },
+  linework: PipeLinework,
+): PipeSymbolTemplate[] {
+  const paths = (linework.symbols ?? []).filter(
+    (p) =>
+      p.points.length >= 2 &&
+      p.points.every(validPoint) &&
+      inside(bounds(p.points), item.data.symbol),
+  );
+  // Preserve disconnected strokes of one symbol. Split only the widely
+  // separated existing/new variants, not every disconnected hatch or stem.
+  const pieces = symbolGroups(paths, linework.aspect, () => undefined).sort(
+    (a, b) => a.box.left - b.box.left,
+  );
+  const groups: Group[] = [];
+  const gap = Math.max(
+    0.001,
+    (item.data.symbol.bottom - item.data.symbol.top) * linework.aspect * 0.4,
+  );
+  for (const piece of pieces) {
+    const previous = groups.at(-1);
+    if (previous && piece.box.left - previous.box.right < gap) {
+      previous.paths.push(...piece.paths);
+      previous.box = bounds(previous.paths.flatMap((p) => p.points));
+      previous.point = center(previous.box);
+    } else groups.push({ ...piece, paths: [...piece.paths] });
+  }
+  return groups.slice(0, 8).map((group, i) => ({
+    id: `legend:${item.id}:${item.revision}:${i}`,
+    kind: componentDescription(item.data.name)?.kind ?? "other",
+    name: item.data.name.slice(0, 120),
+    box: group.box,
+    reference: {
+      paths: group.paths,
+      aspect: linework.aspect,
+      abbreviation: item.data.abbreviation,
+      sheetName: source.name,
+      sourceSheetId: source.id,
+      legendId: item.id,
+      revision: item.revision,
+    },
+  }));
+}
+const abbreviationKey = (text: string) =>
+  text.trim().toUpperCase().replace(/[.\s]/g, "");
+
 export function analyzePipeComponents(
   linework: PipeLinework,
   selection: PipeSystemSelection,
@@ -536,10 +590,14 @@ export function analyzePipeComponents(
           0.0005,
     );
     const rank = { layer: 4, tag: 3, legend: 2, geometry: 1 };
+    const priority = (c: Candidate) =>
+      c.source === "legend" && c.evidence.startsWith("Saved legend:")
+        ? 5
+        : rank[c.source];
     if (previous < 0) candidates.push(candidate);
     else {
       const existing = candidates[previous]!;
-      if (rank[source] > rank[existing.source])
+      if (priority(candidate) > priority(existing))
         candidates[previous] = {
           ...candidate,
           size: candidate.size ?? existing.size,
@@ -575,10 +633,13 @@ export function analyzePipeComponents(
     evidence: string;
     size?: string;
     material?: string;
+    aspect?: number;
+    abbreviation?: string;
+    external?: boolean;
   }[] = [];
-  for (const template of templates.slice(0, 30)) {
+  for (const template of templates.slice(0, 600)) {
     if (!validBox(template.box)) continue;
-    const paths = (linework.symbols ?? [])
+    const paths = (template.reference?.paths ?? linework.symbols ?? [])
       .slice(0, 15000)
       .filter(
         (p) =>
@@ -598,7 +659,12 @@ export function analyzePipeComponents(
       group: { id: template.id, paths, box, point: center(box) },
       kind: template.kind,
       name: template.name,
-      evidence: `User-taught symbol: ${template.name}`,
+      evidence: template.reference
+        ? `Saved legend: ${template.name} (${template.reference.sheetName}; reference ${template.reference.legendId}, revision ${template.reference.revision})`
+        : `User-taught symbol: ${template.name}`,
+      aspect: template.reference?.aspect ?? aspect,
+      abbreviation: template.reference?.abbreviation,
+      external: !!template.reference,
     });
   }
   const legendHeads = texts.filter((t) =>
@@ -641,14 +707,18 @@ export function analyzePipeComponents(
         material: d.material,
       });
   }
-  const refShapes = refs.slice(0, 100).map((r) => ({
+  const refShapes = refs.slice(0, 600).map((r) => ({
     ...r,
-    shapes: [0, 1, 2, 3].map((rotation) => shape(r.group, aspect, rotation)),
+    shapes: [0, 1, 2, 3].map((rotation) =>
+      shape(r.group, r.aspect ?? aspect, rotation),
+    ),
   }));
   let matches = 0;
   const referenceAreas = [
-    ...refs.map((r) => r.group.box),
-    ...templates.filter((t) => validBox(t.box)).map((t) => t.box),
+    ...refs.filter((r) => !r.external).map((r) => r.group.box),
+    ...templates
+      .filter((t) => (!t.reference || t.excludeFromTarget) && validBox(t.box))
+      .map((t) => t.box),
   ];
   for (const g of groups) {
     if (
@@ -657,6 +727,92 @@ export function analyzePipeComponents(
     )
       continue;
     const direct = g.layer ? componentDescription(g.layer) : null;
+    if (matches > 20000) {
+      partial = true;
+      break;
+    }
+    const own = shape(g, aspect),
+      gsize = Math.max(
+        g.box.right - g.box.left,
+        (g.box.bottom - g.box.top) * aspect,
+      );
+    const nearbyTexts = texts.filter((t) =>
+      overlap(g.box, t, 0.012 / Math.max(1, aspect)),
+    );
+    const matched = refShapes.filter((r) => {
+      // Cross-discipline legends often reuse primitive shapes. For an item
+      // outside the known piping types, require its own label as corroboration.
+      if (
+        r.kind === "other" &&
+        (!r.abbreviation ||
+          !nearbyTexts.some(
+            (t) => abbreviationKey(t.text) === abbreviationKey(r.abbreviation!),
+          ))
+      )
+        return false;
+      if (!r.external && r.group.id === g.id) return false;
+      const refsize = Math.max(
+        r.group.box.right - r.group.box.left,
+        (r.group.box.bottom - r.group.box.top) * (r.aspect ?? aspect),
+      );
+      if (!r.external && (gsize / refsize < 0.35 || gsize / refsize > 3))
+        return false;
+      if (++matches > 20000) {
+        partial = true;
+        return false;
+      }
+      return r.shapes.some((s) => sameShape(own, s));
+    });
+    // A bow-tie can mean several valve types. A nearby exact abbreviation
+    // resolves that ambiguity; array order must never decide the component.
+    const tagged = matched.filter(
+      (r) =>
+        r.abbreviation &&
+        nearbyTexts.some(
+          (t) => abbreviationKey(t.text) === abbreviationKey(r.abbreviation!),
+        ),
+    );
+    const savedMatches = matched.filter((r) => r.external);
+    const choices = tagged.length
+      ? tagged
+      : savedMatches.length
+        ? savedMatches
+        : matched;
+    const meanings = new Map(
+      choices.map((r) => [`${r.kind}:${r.name.toLowerCase()}`, r]),
+    );
+    const named = meanings.size === 1 ? [...meanings.values()][0] : undefined;
+    if (named && (named.kind !== "other" || tagged.length > 0)) {
+      add(
+        named.kind,
+        named.name,
+        g.point,
+        g.box,
+        "legend",
+        named.evidence +
+          (tagged.length
+            ? `; nearby tag ${named.abbreviation}`
+            : "; matching symbol geometry"),
+      );
+      continue;
+    }
+    if (
+      meanings.size > 1 &&
+      [...meanings.values()].some((r) => r.kind !== "other")
+    ) {
+      const names = [...meanings.values()].map((r) => r.name).join(" / ");
+      add(
+        [...meanings.values()].every((r) => r.kind === "valve")
+          ? "valve"
+          : "other",
+        "Ambiguous legend symbol",
+        g.point,
+        g.box,
+        "legend",
+        `Several legend items share this shape: ${names}. No unique nearby abbreviation resolves it; review required.`,
+      );
+      continue;
+    }
     if (direct) {
       add(
         direct.kind,
@@ -669,32 +825,6 @@ export function analyzePipeComponents(
       );
       continue;
     }
-    if (matches > 20000) {
-      partial = true;
-      break;
-    }
-    const own = shape(g, aspect),
-      gsize = Math.max(
-        g.box.right - g.box.left,
-        (g.box.bottom - g.box.top) * aspect,
-      );
-    const named = refShapes.find((r) => {
-      if (r.group.id === g.id) return false;
-      const refsize = Math.max(
-        r.group.box.right - r.group.box.left,
-        (r.group.box.bottom - r.group.box.top) * aspect,
-      );
-      if (gsize / refsize < 0.35 || gsize / refsize > 3) return false;
-      if (++matches > 20000) {
-        partial = true;
-        return false;
-      }
-      return r.shapes.some((s) => sameShape(own, s));
-    });
-    if (named) {
-      add(named.kind, named.name, g.point, g.box, "legend", named.evidence);
-      continue;
-    }
     if (g.paths.some((p) => crossing(p, aspect)))
       add(
         "valve",
@@ -704,6 +834,72 @@ export function analyzePipeComponents(
         "geometry",
         "Closed crossing symbol lies on the selected pipe. Verify its meaning against the legend.",
       );
+  }
+  // Exact legend abbreviations can identify labelled components even when a
+  // vector is unavailable. Require a nearby selected pipe and never guess a prefix.
+  const knownAbbreviations = new Map<string, typeof refs>();
+  for (const r of refs) {
+    if (!r.external || !r.abbreviation) continue;
+    const key = abbreviationKey(r.abbreviation);
+    if (!/^[A-Z][A-Z0-9-]{1,15}$/.test(key)) continue;
+    const list = knownAbbreviations.get(key) ?? [];
+    list.push(r);
+    knownAbbreviations.set(key, list);
+  }
+  for (const t of texts) {
+    const known = knownAbbreviations.get(abbreviationKey(t.text));
+    if (!known) continue;
+    const unique = new Map(known.map((r) => [r.name.toLowerCase(), r]));
+    if (unique.size !== 1) continue;
+    const r = [...unique.values()][0]!,
+      point = center(t);
+    if (referenceAreas.some((b) => inside(t, b)) || !belongs(point, t))
+      continue;
+    const existing = candidates.filter((c) =>
+      overlap(c.box, t, 0.012 / Math.max(1, aspect)),
+    );
+    if (existing.some((c) => c.name.toLowerCase() === r.name.toLowerCase()))
+      continue;
+    const nearest = existing.sort(
+      (a, b) =>
+        Math.hypot(a.point.x - point.x, (a.point.y - point.y) * aspect) -
+        Math.hypot(b.point.x - point.x, (b.point.y - point.y) * aspect),
+    )[0];
+    if (nearest?.source === "geometry" && nearest.kind === r.kind) {
+      const labelsHere = texts.filter(
+        (label) =>
+          overlap(nearest.box, label, 0.012 / Math.max(1, aspect)) &&
+          knownAbbreviations.has(abbreviationKey(label.text)),
+      );
+      const names = new Set(
+        labelsHere.flatMap((label) =>
+          (knownAbbreviations.get(abbreviationKey(label.text)) ?? []).map(
+            (ref) => ref.name.toLowerCase(),
+          ),
+        ),
+      );
+      if (names.size !== 1) continue;
+      candidates.splice(candidates.indexOf(nearest), 1);
+      add(
+        r.kind,
+        r.name,
+        nearest.point,
+        nearest.box,
+        "legend",
+        r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
+        { tag: t.text },
+      );
+    } else if (!nearest) {
+      add(
+        r.kind,
+        r.name,
+        point,
+        t,
+        "legend",
+        r.evidence + `; exact tag ${t.text}; symbol geometry not verified`,
+        { tag: t.text },
+      );
+    }
   }
   const scheduleHeads = texts.filter((t) => /\bSCHEDULE(?:S)?\b/i.test(t.text));
   for (const d of descriptions.slice(0, 5000)) {
@@ -832,7 +1028,7 @@ export function analyzePipeComponents(
     }
   if (refs.length === 0)
     warnings.push(
-      "No matching legend references are available. Teach a symbol from this sheet to identify repeated valves or fittings.",
+      "No usable legend references are available. Review and save Legend Items for this drawing set, or teach a symbol from this sheet.",
     );
   warnings.push(
     "Candidates require review. Sizes and materials are shown only when explicitly stated; blank values are unknown.",

@@ -581,7 +581,7 @@ it('reviews detected components, locates them, saves structured counts only afte
   loadPipeLinework.mockResolvedValueOnce({ ...linework, componentDataVersion:1, symbols:[], texts:[{text:'2" BALL VALVE',left:.19,right:.21,top:.496,bottom:.504}] });
   const {frame}=open({onSavePipeComponent:save});
   await activate(); await tap(frame,160,300);
-  fireEvent.click(screen.getByRole('button',{name:'Fittings & valves'}));
+  fireEvent.click(screen.getByRole('button',{name:/Fittings & valves/}));
   const dialog=await screen.findByRole('dialog');
   await waitFor(()=>expect(within(dialog).getByText('Ball valve')).toBeInTheDocument());
   expect(save).not.toHaveBeenCalled();
@@ -593,7 +593,7 @@ it('reviews detected components, locates them, saves structured counts only afte
   fireEvent.click(within(row).getByRole('button',{name:'Locate Ball valve'}));
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(screen.getByRole('img',{name:'Selected pipe system'}).querySelector('circle')).not.toBeNull();
-  fireEvent.click(screen.getByRole('button',{name:'Fittings & valves'}));
+  fireEvent.click(screen.getByRole('button',{name:/Fittings & valves/}));
   fireEvent.click(screen.getByText(/Symbol references/));
   fireEvent.click(screen.getByRole('button',{name:'Pick symbol'}));
   expect(screen.queryByRole('dialog')).toBeNull();

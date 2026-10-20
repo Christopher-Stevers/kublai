@@ -107,6 +107,7 @@ import { Button } from "~/components/ui/button";
 import { NetworkIcon } from "lucide-react";
 import { usePipeSystemSelection } from "./usePipeSystemSelection";
 import { PipeSystemPanel } from "./PipeSystemPanel";
+import { usePipeLegendAnalysis } from "./usePipeLegendAnalysis";
 import { PipeComponentsDialog } from "./PipeComponentsDialog";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
@@ -365,10 +366,13 @@ export function DrawingSheetViewer({
   const symbolSavePending = useRef(false);
   const componentAnnotations = editorProps.pipeReviewAnnotations ?? editorProps.annotations ?? NO_ANNOTATIONS;
   const templates = pipeSymbolTemplates(componentAnnotations, componentSource);
+  const legendAnalysis = usePipeLegendAnalysis({active:pipeMode, source:componentSource,
+    sourceSheetId:editorProps.sourceSheetId??sheetKey,selection:pipe.selection,templates,
+    load:editorProps.loadPipeLegendReferences,analyze:pipe.analyze});
   const currentSymbolPick = symbolPick?.source === componentSource ? symbolPick : null;
   const openComponents = () => {
     setComponentOpen(true);
-    if (!pipe.components) void pipe.analyze(templates);
+    if (!pipe.components && !editorProps.loadPipeLegendReferences) void pipe.analyze(templates);
   };
   const saveComponent = async (candidate: PipeComponentCandidate, details: { kind: PipeComponentKind; name: string; size?: string; material?: string }) => {
     const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
@@ -2105,8 +2109,8 @@ export function DrawingSheetViewer({
         <Button size="sm" variant="outline" disabled={symbolSaving} onClick={() => { setSymbolPick(null); setSymbolError(null); setComponentOpen(true); }}>Cancel</Button>
       </div>}
       <PipeComponentsDialog key={componentSource + ":" + (pipe.selection?.segments[0]?.id ?? "")} open={componentOpen && pipeMode && !!pipe.selection?.segments.length} onOpenChange={setComponentOpen}
-        result={pipe.components} analyzing={pipe.analyzing} error={pipe.componentError} sourceKey={componentSource} annotations={componentAnnotations} templateCount={templates.length} writable={!!editorProps.onSavePipeComponent}
-        onAnalyze={() => { void pipe.analyze(templates); }} onConfirm={saveComponent}
+        result={legendAnalysis.error ? null : pipe.components ? {...pipe.components,warnings:[...legendAnalysis.warnings,...pipe.components.warnings]} : legendAnalysis.warnings.length ? {candidates:[],warnings:legendAnalysis.warnings,partial:true} : null} analyzing={pipe.analyzing || legendAnalysis.loading} error={pipe.componentError ?? legendAnalysis.error} sourceKey={componentSource} annotations={componentAnnotations} templateCount={templates.length+legendAnalysis.count} writable={!!editorProps.onSavePipeComponent}
+        onAnalyze={legendAnalysis.recheck} onConfirm={saveComponent}
         onLocate={candidate => {
           setComponentFocus({source:componentSource,candidate}); setComponentOpen(false);
           if (fit) { const scale = Math.min(MAX_ZOOM, Math.max(5, live.current.scale)); animateTo({scale, x:(.5-candidate.point.x)*fit.width*scale,y:(.5-candidate.point.y)*fit.height*scale}); }
@@ -3180,6 +3184,8 @@ export function DrawingSheetViewer({
                 !controlledScale || Boolean(editorProps.onScaleChange)
               }
               onComponents={openComponents}
+              componentCount={pipe.components?.candidates.length}
+              analyzingComponents={pipe.analyzing || legendAnalysis.loading}
               onSystem={(system) => { setComponentFocus(null); setSymbolPick(null); pipe.setSystem(system); }}
               onClear={() => { setComponentFocus(null); setSymbolPick(null); pipe.clear(); }}
               onRetry={pipe.retry}

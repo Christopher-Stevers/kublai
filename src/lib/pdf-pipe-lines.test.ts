@@ -434,7 +434,7 @@ it('retains closed curved symbol geometry separately without adding it to measur
  expect(result.symbols).toHaveLength(1);
  expect(result.symbols?.[0]).toMatchObject({closed:true});
  expect(result.segments).toHaveLength(1);
- expect(result.componentDataVersion).toBe(1);
+ expect(result.componentDataVersion).toBe(2);
  expect(pipeLabelsFromTextItems([text('BALL VALVE')],toSheet).texts[0]).toMatchObject({text:'BALL VALVE'});
 });
 
@@ -448,6 +448,20 @@ it('reparses older cached geometry that has no component symbols/text',async()=>
   const result=await loadPipeLinework({url,page:1});
   expect(pdf.load).toHaveBeenLastCalledWith(url);
   expect(result.texts?.[0]?.text).toBe('BALL VALVE');
-  expect(result.componentDataVersion).toBe(1);
+  expect(result.componentDataVersion).toBe(2);
  }finally{vi.unstubAllGlobals();}
+});
+
+it('reserves symbol capacity fairly for later layers with arbitrary names',()=>{
+ const square=()=>path([0,40,40,1,40.2,40,1,40.2,40.2,1,40,40.2,4]);
+ const ops:Array<[number,unknown[]]>=[
+  [PIPE_OPS.beginMarkedContentProps,['OC',{id:'Dense random layer'}]],
+  ...Array.from({length:15010},square),[PIPE_OPS.endMarkedContent,[]],
+  [PIPE_OPS.beginMarkedContentProps,['OC',{id:'Later random layer'}]],square(),[PIPE_OPS.endMarkedContent,[]],
+ ];
+ const result=run(ops,{resolveOptionalContent:p=>({name:(p as {id:string}).id,visible:true})});
+ expect(result.symbols?.some(p=>p.layer==='Later random layer')).toBe(true);
+ expect(result.symbols!.length).toBeLessThanOrEqual(15000);
+ expect(result.symbols!.reduce((n,p)=>n+p.points.length,0)).toBeLessThanOrEqual(200000);
+ expect(result.componentDataPartial).toBe(true);
 });

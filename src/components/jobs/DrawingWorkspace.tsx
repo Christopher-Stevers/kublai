@@ -1931,6 +1931,7 @@ export function DrawingWorkspace({
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
+              loadPipeLegendReferences={!data.documentSource ? () => utils.drawingsWorkspace.pipeLegendReferences.fetch({sheetId:sourceId}) : undefined}
               pipeReviewAnnotations={entities.filter(entity => entity.visibility !== "archived" && !optimistic.some(draft => draft.id === entity.id))}
               measurementLayers={measurementLayers}
               onAddMeasurementLayer={async (name) => {

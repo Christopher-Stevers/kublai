@@ -117,7 +117,7 @@ export const drawingMarkupSchema = z
         candidateId: z.string().min(1).max(100),
         fingerprint: z.string().min(1).max(100),
         sourceKey: z.string().min(1).max(100),
-        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap"]),
+        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap", "other"]),
         name: z.string().trim().min(1).max(120),
         size: z.string().trim().max(80).optional(),
         material: z.string().trim().max(80).optional(),
@@ -129,7 +129,7 @@ export const drawingMarkupSchema = z
     pipeSymbolTemplate: z
       .object({
         sourceKey: z.string().min(1).max(100),
-        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap"]),
+        kind: z.enum(["valve", "elbow", "tee", "reducer", "coupling", "cap", "other"]),
         name: z.string().trim().min(1).max(120),
       })
       .optional(),

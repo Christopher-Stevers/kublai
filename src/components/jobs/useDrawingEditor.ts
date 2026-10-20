@@ -18,6 +18,7 @@ export type DrawingEditorProps = {
   canEditAnnotation?: (entityId: string) => boolean;
   hideAnnotations?: boolean;
   onCreate?: (data: DrawingMarkup) => void;
+  loadPipeLegendReferences?: () => Promise<import("~/lib/pipe-components-types").PipeLegendReferences>;
   onSavePipeComponent?: (data: DrawingMarkup) => Promise<boolean>;
   onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
   onSelect?: (id: string | null) => void;

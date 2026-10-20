@@ -304,6 +304,7 @@ export function PipeComponentsDialog({
             }).join(" · ")}
           </p>
         )}
+        {result?.partial && <p role="status" className="text-sm text-muted-foreground">Some symbols could not be analyzed. Check the analysis notes and review the drawing.</p>}
         {error && (
           <p role="alert" className="text-destructive text-sm">
             {error}
@@ -312,14 +313,12 @@ export function PipeComponentsDialog({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {analyzing && (
             <p role="status" className="text-muted-foreground py-4 text-sm">
-              Reading source layers, tags, symbols and pipe junctions…
+              Comparing saved legend symbols, nearby tags and the selected pipe…
             </p>
           )}
           {!analyzing && result && !candidates.length && (
             <p className="text-muted-foreground py-4 text-sm">
-              No supported components were identified. Teach a symbol from this
-              sheet’s legend, or add a count markup manually. Scanned drawings
-              need manual review.
+              No components were identified. Review and save Legend Items for this drawing set, or add a count markup manually. Scanned drawings need manual review.
             </p>
           )}
           <ul aria-label="Component candidates">
@@ -332,7 +331,7 @@ export function PipeComponentsDialog({
                   sourceKey,
                   candidate,
                 )}
-                writable={writable}
+                writable={writable && !analyzing}
                 onLocate={() => onLocate(candidate)}
                 onConfirm={(details) => onConfirm(candidate, details)}
                 onDismiss={() =>

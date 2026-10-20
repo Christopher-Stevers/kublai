@@ -277,8 +277,12 @@ export function pipeLineworkFromOperators(
   const maxSegments = boundedLimit(options.maxSegments, MAX_SEGMENTS);
   const maxOperators = boundedLimit(options.maxOperators, MAX_OPERATORS);
   const segments: PipeSegment[] = [];
-  const symbols: PipeSymbolPath[] = [];
-  let symbolPoints = 0;
+  const symbolBuckets = new Map<
+    string,
+    { paths: PipeSymbolPath[]; points: number }
+  >();
+  let symbolQuota = 15000,
+    pointQuota = 200000;
   let componentDataPartial = false;
   const warnings = new Set<string>();
   const stack: GraphicsState[] = [];
@@ -432,23 +436,37 @@ export function pipeLineworkFromOperators(
                   p.y <= state.clip.bottom,
               )
             ) {
+              // Allocate fairly across source layers, regardless of their names.
+              // A dense layer painted early must not consume every symbol slot.
+              const key = layer ?? "";
+              let bucket = symbolBuckets.get(key);
+              if (!bucket && symbolBuckets.size < 64) {
+                bucket = { paths: [], points: 0 };
+                symbolBuckets.set(key, bucket);
+                symbolQuota = Math.floor(15000 / symbolBuckets.size);
+                pointQuota = Math.floor(200000 / symbolBuckets.size);
+                for (const value of symbolBuckets.values())
+                  while (
+                    value.paths.length > symbolQuota ||
+                    value.points > pointQuota
+                  ) {
+                    value.points -= value.paths.pop()!.points.length;
+                    componentDataPartial = true;
+                  }
+              }
               if (
-                symbols.length < 15000 &&
-                symbolPoints + path.points.length <= 200000
+                bucket &&
+                bucket.paths.length < symbolQuota &&
+                bucket.points + path.points.length <= pointQuota
               ) {
-                symbols.push({
+                bucket.paths.push({
                   id: pathId,
                   points: path.points,
                   closed,
                   ...(layer ? { layer } : {}),
                 });
-                symbolPoints += path.points.length;
-              } else {
-                componentDataPartial = true;
-                warnings.add(
-                  "Some component symbols exceeded the extraction limit.",
-                );
-              }
+                bucket.points += path.points.length;
+              } else componentDataPartial = true;
             }
           }
           if (closed && path.curved) continue;
@@ -756,10 +774,15 @@ export function pipeLineworkFromOperators(
         break;
     }
   }
+  const orderedSymbols = [...symbolBuckets.values()].flatMap(
+    (bucket) => bucket.paths,
+  );
+  if (componentDataPartial)
+    warnings.add("Some component symbols exceeded the extraction limit.");
   return {
     segments,
-    symbols,
-    componentDataVersion: 1,
+    symbols: orderedSymbols,
+    componentDataVersion: 2,
     ...(componentDataPartial ? { componentDataPartial: true } : {}),
     labels: [],
     aspect,

@@ -6,6 +6,7 @@ export const PIPE_COMPONENT_KINDS = [
   "reducer",
   "coupling",
   "cap",
+  "other",
 ] as const;
 export type PipeComponentKind = (typeof PIPE_COMPONENT_KINDS)[number];
 export type PipeComponentBox = {
@@ -26,6 +27,20 @@ export type PipeSymbolTemplate = {
   kind: PipeComponentKind;
   name: string;
   box: PipeComponentBox;
+  reference?: {
+    paths: PipeSymbolPath[];
+    aspect: number;
+    abbreviation: string;
+    sheetName: string;
+    sourceSheetId: string;
+    legendId: string;
+    revision: number;
+  };
+  excludeFromTarget?: boolean;
+};
+export type PipeLegendReferences = {
+  templates: PipeSymbolTemplate[];
+  warnings: string[];
 };
 export type PipeComponentCandidate = {
   id: string;
@@ -53,4 +68,5 @@ export const PIPE_COMPONENT_NAMES: Record<PipeComponentKind, string> = {
   reducer: "Reducer",
   coupling: "Coupling",
   cap: "Cap",
+  other: "Other component",
 };

@@ -57,7 +57,7 @@ export async function loadPipeLinework(source: {
         Array.isArray(saved.linework.labels) &&
         Number.isFinite(saved.linework.aspect) &&
         saved.linework.aspect > 0 &&
-        saved.linework.componentDataVersion === 1 &&
+        (saved.linework.componentDataVersion === 2 || (saved.linework.componentDataVersion === 1 && !saved.linework.componentDataPartial)) &&
         Array.isArray(saved.linework.texts) &&
         Array.isArray(saved.linework.symbols)
       ) {

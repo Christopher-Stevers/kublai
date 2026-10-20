@@ -120,6 +120,7 @@ export function usePipeSystemSelection({
       const token = ++analysisToken.current;
       setAnalysisBusy({ key, sequence, token });
       setAnalysisError(null);
+      setComponentResult(null);
       try {
         const value = await session.components(templates);
         if (sequence === request.current && token === analysisToken.current)
