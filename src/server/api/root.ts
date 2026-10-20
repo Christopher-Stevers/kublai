@@ -18,6 +18,7 @@ import { orderDeliveryRouter } from "~/server/api/routers/orderDelivery";
 import { organizationRouter } from "~/server/api/routers/organization";
 import { paymentRouter } from "~/server/api/routers/payment";
 import { prefabsRouter } from "~/server/api/routers/prefabs";
+import { pipeSpecsRouter } from "~/server/api/routers/pipeSpecs";
 import { pushRouter } from "~/server/api/routers/push";
 import { roomsRouter } from "~/server/api/routers/rooms";
 import { supplierRouter } from "~/server/api/routers/supplier";
@@ -55,6 +56,7 @@ export const appRouter = createTRPCRouter({
   drawings: drawingsRouter,
   drawingsWorkspace: drawingsWorkspaceRouter,
   prefabs: prefabsRouter,
+  pipeSpecs: pipeSpecsRouter,
   assets: assetsRouter,
 });
 

@@ -750,7 +750,7 @@ function inferSystem(index: PipeSystemIndex, seeds: number[]): string | null {
 }
 
 /** Union collinear intervals so coincident/overlapping PDF strokes count once. */
-function unionLength(segments: PipeSegment[], aspect: number) {
+export function unionLength(segments: PipeSegment[], aspect: number) {
   type Run = { source: PipeSegment; a: MetricPoint; ux: number; uy: number; intervals: [number, number][] };
   const groups = new Map<string, Run[]>();
   for (const segment of segments) {

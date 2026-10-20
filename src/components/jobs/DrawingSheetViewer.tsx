@@ -111,6 +111,9 @@ import { usePipeSystemSelection } from "./usePipeSystemSelection";
 import { PipeSystemPanel } from "./PipeSystemPanel";
 import { usePipeLegendAnalysis } from "./usePipeLegendAnalysis";
 import { PipeComponentsDialog } from "./PipeComponentsDialog";
+import { PipeMaterialListDialog } from "./PipeMaterialListDialog";
+import { nearestPipeSize, parsePipeSize, pipeRunSizes } from "~/lib/pipe-run-sizes";
+import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
@@ -386,6 +389,12 @@ export function DrawingSheetViewer({
   const openComponents = () => {
     setComponentOpen(true);
     if (!pipe.components && !editorProps.loadPipeLegendReferences) void pipe.analyze(templates);
+  };
+  const [listOpen, setListOpen] = useState(false);
+  const pipeMaterialList = editorProps.pipeMaterialList;
+  const openMaterialList = () => {
+    setListOpen(true);
+    if (!pipe.components && !pipe.analyzing && !legendAnalysis.loading && !editorProps.loadPipeLegendReferences) void pipe.analyze(templates);
   };
   const saveComponent = async (candidate: PipeComponentCandidate, details: { kind: PipeComponentKind; name: string; size?: string; material?: string }) => {
     const sourceSheetId = editorProps.sourceSheetId ?? sheetKey;
@@ -1571,6 +1580,38 @@ export function DrawingSheetViewer({
           unit,
         )
       : null;
+  const pipeTakeoff = useMemo<PipeTakeoff | null>(() => {
+    const selection = pipe.selection;
+    if (!listOpen || !selection?.segments.length || !pipe.aspect) return null;
+    const aspect = pipe.aspect;
+    const sized = pipeRunSizes(selection, pipe.sizeTags, aspect);
+    const metersPerWidth =
+      sheetScale && Number.isFinite(sheetScale.unitsPerSheetWidth) && sheetScale.unitsPerSheetWidth > 0
+        ? convertScale(sheetScale, "m").unitsPerSheetWidth
+        : null;
+    const components = (pipe.components?.candidates ?? [])
+      .filter((candidate) => candidate.locationVerified !== false && !dismissedComponents.has(componentSource + ":" + candidate.id))
+      .map((candidate) => {
+        // A reviewed count carries the corrected type and size.
+        const reviewed = reviewedPipeComponent(componentAnnotations, componentSource, candidate);
+        const meta = reviewed ? (reviewed.data as DrawingMarkup).pipeComponent : undefined;
+        const size = meta?.size ?? candidate.size;
+        return {
+          kind: meta?.kind ?? candidate.kind,
+          name: meta?.name ?? candidate.name,
+          size: (size ? parsePipeSize(size) : null) ?? nearestPipeSize(candidate.point, selection, sized.segmentSizes, aspect),
+          count: 1,
+        };
+      });
+    return {
+      system: selection.system ?? pipe.system,
+      runs: sized.runs.map((run) => ({ size: run.size, meters: metersPerWidth == null ? null : run.lengthInSheetWidths * metersPerWidth })),
+      components,
+      componentsChecked: Boolean(pipe.components),
+      partial: Boolean(pipe.area) || selection.truncated,
+      tagCount: sized.tagCount,
+    };
+  }, [listOpen, pipe.selection, pipe.aspect, pipe.sizeTags, pipe.components, pipe.system, pipe.area, sheetScale, dismissedComponents, componentSource, componentAnnotations]);
   const pipeHighlight = useMemo(
     () =>
       pipeMode && pipeSelected && fit
@@ -2121,6 +2162,17 @@ export function DrawingSheetViewer({
         {symbolError && <p className="text-destructive">{symbolError}</p>}
         <Button size="sm" variant="outline" disabled={symbolSaving} onClick={() => { setSymbolPick(null); setSymbolError(null); setComponentOpen(true); }}>Cancel</Button>
       </div>}
+      {pipeMaterialList && (
+        <PipeMaterialListDialog
+          open={listOpen && pipeMode && pipeSelected}
+          onOpenChange={setListOpen}
+          jobId={pipeMaterialList.jobId}
+          sheetName={pipeMaterialList.sheetName}
+          takeoff={pipeTakeoff}
+          analyzingComponents={pipe.analyzing || legendAnalysis.loading}
+          onFindComponents={pipe.components ? undefined : () => { setListOpen(false); openComponents(); }}
+        />
+      )}
       <PipeComponentsDialog key={componentSource + ":" + (pipe.selection?.segments[0]?.id ?? "")} open={componentOpen && pipeMode && !!pipe.selection?.segments.length} onOpenChange={setComponentOpen}
         result={legendAnalysis.error ? null : pipe.components ? {...pipe.components,warnings:[...legendAnalysis.warnings,...pipe.components.warnings]} : legendAnalysis.warnings.length ? {candidates:[],warnings:legendAnalysis.warnings,partial:true} : null} analyzing={pipe.analyzing || legendAnalysis.loading} error={pipe.componentError ?? legendAnalysis.error} sourceKey={componentSource} annotations={componentAnnotations} templateCount={templates.length+legendAnalysis.count} writable={!!editorProps.onSavePipeComponent}
         onAnalyze={legendAnalysis.recheck} onConfirm={saveComponent}
@@ -3292,6 +3344,7 @@ export function DrawingSheetViewer({
                 !controlledScale || Boolean(editorProps.onScaleChange)
               }
               onComponents={openComponents}
+              onMaterialList={pipeMaterialList ? openMaterialList : undefined}
               lassoArmed={lassoArmed}
               area={Boolean(pipe.area)}
               lassoMessage={lassoMessage}

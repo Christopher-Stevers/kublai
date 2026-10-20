@@ -1933,6 +1933,7 @@ export function DrawingWorkspace({
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
               loadPipeLegendReferences={!data.documentSource ? () => utils.drawingsWorkspace.pipeLegendReferences.fetch({sheetId:sourceId}) : undefined}
+              pipeMaterialList={{ jobId, sheetName: source.name }}
               pipeReviewAnnotations={entities.filter(entity => entity.visibility !== "archived" && !optimistic.some(draft => draft.id === entity.id))}
               measurementLayers={measurementLayers}
               onAddMeasurementLayer={async (name) => {

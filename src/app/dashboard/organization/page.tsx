@@ -8,6 +8,7 @@ import {
   ShieldCheckIcon,
   UsersIcon,
   WifiOffIcon,
+  WrenchIcon,
 } from "lucide-react";
 
 import { CompanySection } from "~/components/organization/CompanySection";
@@ -15,6 +16,7 @@ import { InvitesSection } from "~/components/organization/InvitesSection";
 import { MembersSection } from "~/components/organization/MembersSection";
 import { DepartmentsSection } from "~/components/organization/DepartmentsSection";
 import { PresetsSection } from "~/components/organization/PresetsSection";
+import { PipeStandardsSection } from "~/components/organization/PipeStandardsSection";
 import { FormSkeleton } from "~/components/ui/skeleton";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { cn } from "~/lib/utils";
@@ -25,6 +27,7 @@ const SECTIONS = [
   { id: "departments", label: "Departments", icon: Building2Icon },
   { id: "presets", label: "Presets", icon: ShieldCheckIcon },
   { id: "invites", label: "Invites", icon: QrCodeIcon },
+  { id: "pipes", label: "Pipe systems", icon: WrenchIcon },
   { id: "company", label: "Company", icon: MapPinIcon },
 ] as const;
 
@@ -38,6 +41,7 @@ export default function OrganizationPage() {
     "departments",
     "presets",
     "invites",
+    "pipes",
     "company",
   ]);
   const settings = api.organization.getOrganizationSettings.useQuery(
@@ -135,6 +139,8 @@ export default function OrganizationPage() {
           <PresetsSection settings={data} onSaved={refresh} />
         ) : section === "invites" ? (
           <InvitesSection settings={data} onSaved={refresh} />
+        ) : section === "pipes" ? (
+          <PipeStandardsSection />
         ) : (
           <CompanySection settings={data} onSaved={refresh} />
         )}

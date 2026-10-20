@@ -5,6 +5,7 @@
 
 import { chatPushSubscriptions } from "./chat-push-schema";
 import type { DeliveryCalendar } from "~/lib/delivery-calendar";
+import type { PipeSpec } from "~/lib/pipe-spec";
 import { relations, sql } from "drizzle-orm";
 import type { DocumentState } from "~/server/documents/types";
 import {
@@ -2643,4 +2644,21 @@ export const drawingLegendItems = createTable("drawing_legend_item", d => ({
 }), t => [
   uniqueIndex("drawing_legend_source_idx").on(t.setId, t.sourceSheetId, t.sourceKey),
   index("drawing_legend_set_idx").on(t.organizationId, t.setId),
+]);
+
+// A pipe system's material standard. Company rows have no job; a job row
+// overrides the company standard for that system on that job only.
+export const pipeSystemSpecs = createTable("pipe_system_spec", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().references(() => jobs.id, { onDelete: "cascade" }),
+  system: d.varchar({ length: 40 }).notNull(),
+  data: d.jsonb().$type<PipeSpec>().notNull(),
+  revision: d.integer().notNull().default(1),
+  updatedBy: d.varchar({ length: 255 }).notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("pipe_system_spec_company_idx").on(t.organizationId, t.system).where(sql`"jobId" IS NULL`),
+  uniqueIndex("pipe_system_spec_job_idx").on(t.jobId, t.system).where(sql`"jobId" IS NOT NULL`),
+  index("pipe_system_spec_org_idx").on(t.organizationId),
 ]);

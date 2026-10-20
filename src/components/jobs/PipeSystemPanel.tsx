@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { LassoIcon, SlidersHorizontalIcon, WrenchIcon, XIcon } from "lucide-react";
+import { LassoIcon, ListPlusIcon, SlidersHorizontalIcon, WrenchIcon, XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
@@ -34,7 +34,7 @@ export function PipeSystemPanel({
   onScale,
   onUnit,
   onDone,
-  onComponents, componentCount, analyzingComponents,
+  onComponents, onMaterialList, componentCount, analyzingComponents,
   componentError, onRetryComponents,
   lassoArmed = false, area = false, lassoMessage = null, onLasso, onClearArea,
   color, onColor, lineWidth, onLineWidth,
@@ -68,6 +68,8 @@ export function PipeSystemPanel({
   onUnit: (value: LengthUnit) => void;
   onDone?: () => void;
   onComponents?: () => void;
+  /** Turn the selected system into a new material list. */
+  onMaterialList?: () => void;
   componentCount?: number;
   analyzingComponents?: boolean;
   componentError?: string | null;
@@ -90,6 +92,7 @@ export function PipeSystemPanel({
     { id: "color", label: "Color", children: MEASURE_COLORS.map(option => ({ id: option.value, label: option.name, selected: color === option.value, run: () => onColor(option.value) })) },
     { id: "width", label: "Line width", children: LINE_WIDTHS.map(value => ({ id: String(value), label: String(value), selected: lineWidth === value, run: () => onLineWidth(value) })) },
     ...(onComponents ? [{ id: "components", label: componentLabel, disabled: !selected, run: onComponents }] : []),
+    ...(onMaterialList ? [{ id: "material-list", label: "Make material list", disabled: !selected, run: onMaterialList }] : []),
     ...(onRetryComponents && componentError ? [{ id: "retry-components", label: "Retry fitting detection", run: onRetryComponents }] : []),
     ...(onLasso ? [{ id: "lasso", label: lassoArmed ? "Stop drawing area" : area ? "Redraw area" : "Draw area", disabled: !selected, selected: lassoArmed, run: onLasso }] : []),
     ...(onClearArea ? [{ id: "clear-area", label: "Whole system", disabled: !area, run: onClearArea }] : []),
@@ -189,7 +192,7 @@ export function PipeSystemPanel({
         )}
       </div>
       <StyleStrip color={color} onColor={onColor} colorLabel="Pipe colors" customColorLabel="Custom pipe color" width={lineWidth} onWidth={onLineWidth} widthLabel="Pipe line width" />
-      {(systemControl || (selected && onComponents)) && (
+      {(systemControl || (selected && (onComponents ?? onMaterialList))) && (
         <div className="flex items-center gap-2">
           {systemControl}
           {selected && onLasso && (
@@ -209,6 +212,18 @@ export function PipeSystemPanel({
             <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full text-xs" onClick={onComponents}>
               <WrenchIcon className="size-3.5" />
               {componentLabel}
+            </Button>
+          )}
+          {selected && onMaterialList && (
+            <Button
+              size="icon-sm"
+              variant="outline"
+              className="size-8 shrink-0 rounded-full"
+              aria-label="Make material list"
+              title="Make a material list from this system"
+              onClick={onMaterialList}
+            >
+              <ListPlusIcon className="size-4" />
             </Button>
           )}
         </div>

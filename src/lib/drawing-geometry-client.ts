@@ -22,6 +22,7 @@ import {
   type PipeSystemSelection,
 } from "./pipe-system";
 import type { SheetPoint } from "./sheet-measure";
+import { pipeSizeTags, type PipeSizeTag } from "./pipe-run-sizes";
 import type {
   GeometryRequest,
   GeometryResponse,
@@ -163,6 +164,8 @@ export async function buildDrawingSnapIndex(
 export type PipeGeometrySession = PipeGeometryInfo & {
   /** Sheet height / width, for measuring lengths in sheet widths. */
   aspect: number;
+  /** Pipe sizes printed on the sheet, for splitting a selection by size. */
+  sizeTags: PipeSizeTag[];
   components: (
     templates: PipeSymbolTemplate[],
   ) => Promise<PipeComponentsResult>;
@@ -205,6 +208,7 @@ export async function createPipeGeometrySession(
       return {
         ...info,
         aspect: linework.aspect,
+        sizeTags: pipeSizeTags(linework.texts ?? []),
         components: (templates) =>
           client.request<PipeComponentsResult>({
             kind: "pipe-components",
@@ -230,6 +234,7 @@ export async function createPipeGeometrySession(
   let selection: PipeSystemSelection | null = null;
   const session: PipeGeometrySession = {
     aspect: linework.aspect,
+    sizeTags: pipeSizeTags(linework.texts ?? []),
     components: async (templates) => {
       if (!index || !selection) throw aborted();
       return analyzePipeComponents(index.linework, selection, templates);

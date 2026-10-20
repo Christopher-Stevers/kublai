@@ -13,6 +13,9 @@ import {
 } from "~/lib/drawing-geometry-client";
 import type { PipeSystemSelection } from "~/lib/pipe-system";
 import type { SheetPoint } from "~/lib/sheet-measure";
+import type { PipeSizeTag } from "~/lib/pipe-run-sizes";
+
+const NO_TAGS: PipeSizeTag[] = [];
 
 export function usePipeSystemSelection({
   active,
@@ -188,6 +191,9 @@ export function usePipeSystemSelection({
       setLasso({ key, selection: fullSelection, polygon });
       return true;
     },
+    /** Pipe sizes printed on the sheet. */
+    sizeTags: session?.sizeTags ?? NO_TAGS,
+    aspect,
     reading: active && hasPdf && !result,
     selecting: busy === key,
     error,

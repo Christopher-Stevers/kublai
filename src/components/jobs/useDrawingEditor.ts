@@ -20,6 +20,8 @@ export type DrawingEditorProps = {
   onCreate?: (data: DrawingMarkup) => void;
   loadPipeLegendReferences?: () => Promise<import("~/lib/pipe-components-types").PipeLegendReferences>;
   onSavePipeComponent?: (data: DrawingMarkup) => Promise<boolean>;
+  /** Lets a selected pipe system become a new material list on this job. */
+  pipeMaterialList?: { jobId: string; sheetName: string };
   onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
   onSelect?: (id: string | null) => void;
   /** A mouse right-click while panning or selecting, with the item under it. */
