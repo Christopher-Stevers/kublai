@@ -1175,7 +1175,8 @@ export const roomDetectionFeedback = createTable("room_detection_feedback", (d) 
   detection: jsonb(),
   createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
 }), (t) => [index("room_feedback_floor_idx").on(t.organizationId, t.floorId, t.createdAt),
-  index("room_feedback_room_idx").on(t.roomId, t.createdAt)]);
+  index("room_feedback_room_idx").on(t.roomId, t.createdAt),
+  check("kublai_room_detection_feedback_decision_check", sql`${t.decision} in ('approved', 'rejected', 'pending', 'corrected', 'added', 'renamed', 'cleared')`)]);
 
 export const roomDetectionJobs = createTable(
   "room_detection_job",
