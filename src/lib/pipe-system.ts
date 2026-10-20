@@ -27,7 +27,7 @@ export type PipeLabel = {
 export type PipeLinework = {
   symbols?: PipeSymbolPath[];
   texts?: PipeDrawingText[];
-  componentDataVersion?: 1 | 2;
+  componentDataVersion?: 1 | 2 | 3;
   componentDataPartial?: boolean;
   segments: PipeSegment[];
   labels: PipeLabel[];

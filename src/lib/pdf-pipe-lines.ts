@@ -41,6 +41,7 @@ export async function loadPipeLinework(source: {
     const response = await fetch(savedUrl, {
       signal: source.signal,
       credentials: "same-origin",
+      cache: "no-cache",
     }).catch(() => null);
     checkAbort();
     if (response?.status === 401 || response?.status === 403)
@@ -57,7 +58,10 @@ export async function loadPipeLinework(source: {
         Array.isArray(saved.linework.labels) &&
         Number.isFinite(saved.linework.aspect) &&
         saved.linework.aspect > 0 &&
-        (saved.linework.componentDataVersion === 2 || (saved.linework.componentDataVersion === 1 && !saved.linework.componentDataPartial)) &&
+        (saved.linework.componentDataVersion === 3 ||
+          ((saved.linework.componentDataVersion === 1 ||
+            saved.linework.componentDataVersion === 2) &&
+            !saved.linework.componentDataPartial)) &&
         Array.isArray(saved.linework.texts) &&
         Array.isArray(saved.linework.symbols)
       ) {

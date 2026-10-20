@@ -314,7 +314,7 @@ describe("embedded pipe labels", () => {
       top: 0.1,
       right: 0.8,
       bottom: 0.4,
-      direction: { x: 0, y: expect.closeTo(0.3) },
+      direction: { x: 0, y: expect.closeTo(0.3) as unknown },
     });
     expect(result.labels[1]).toMatchObject({ text: "ST", system: "ST" });
     expect(result.labels[1]!.direction!.x).toBeCloseTo(0);
@@ -434,7 +434,7 @@ it('retains closed curved symbol geometry separately without adding it to measur
  expect(result.symbols).toHaveLength(1);
  expect(result.symbols?.[0]).toMatchObject({closed:true});
  expect(result.segments).toHaveLength(1);
- expect(result.componentDataVersion).toBe(2);
+ expect(result.componentDataVersion).toBe(3);
  expect(pipeLabelsFromTextItems([text('BALL VALVE')],toSheet).texts[0]).toMatchObject({text:'BALL VALVE'});
 });
 
@@ -448,7 +448,7 @@ it('reparses older cached geometry that has no component symbols/text',async()=>
   const result=await loadPipeLinework({url,page:1});
   expect(pdf.load).toHaveBeenLastCalledWith(url);
   expect(result.texts?.[0]?.text).toBe('BALL VALVE');
-  expect(result.componentDataVersion).toBe(2);
+  expect(result.componentDataVersion).toBe(3);
  }finally{vi.unstubAllGlobals();}
 });
 
@@ -464,4 +464,45 @@ it('reserves symbol capacity fairly for later layers with arbitrary names',()=>{
  expect(result.symbols!.length).toBeLessThanOrEqual(15000);
  expect(result.symbols!.reduce((n,p)=>n+p.points.length,0)).toBeLessThanOrEqual(200000);
  expect(result.componentDataPartial).toBe(true);
+});
+
+
+it("uses spare symbol capacity for late closed curves without changing measurements", () => {
+  const ops: Array<[number, unknown[]]> = [];
+  for (let i=0;i<60;i++) ops.push(
+    [PIPE_OPS.beginMarkedContentProps,["OC",{id:`Sparse layer ${i}`}]],
+    path([0,40,40,1,40.2,40,1,40.2,40.2,1,40,40.2,4]),
+    [PIPE_OPS.endMarkedContent,[]]);
+  ops.push([PIPE_OPS.beginMarkedContentProps,["OC",{id:"Symbols"}]]);
+  const before = run(ops).segments;
+  for(let i=0;i<200;i++) ops.push(path([0,40,40,2,40.2,40,40.2,40.2,40,40.2,2,39.8,40.2,39.8,40,40,40,4]));
+  ops.push([PIPE_OPS.endMarkedContent,[]]);
+  const result=run(ops,{resolveOptionalContent:p=>({name:(p as {id:string}).id,visible:true})});
+  expect(result.symbols?.filter(p=>p.layer==="Symbols")).toHaveLength(200);
+  expect(result.symbols!.reduce((n,p)=>n+p.points.length,0)).toBeLessThanOrEqual(200000);
+  // Closed curves never become measured pipe.
+  expect(result.segments).toEqual(before);
+});
+
+it("keeps a late closed curve when recoverable strokes have filled the symbol budget",()=>{
+  const square=()=>path([0,40,40,1,40.2,40,1,40.2,40.2,1,40,40.2,4]);
+  const ops=Array.from({length:15010},square);
+  ops.push(path([0,50,50,2,50.2,50,50.2,50.2,50,50.2,2,49.8,50.2,49.8,50,50,50,4]));
+  const result=run(ops);
+  expect(result.symbols?.some(p=>p.id==='path-15010-0')).toBe(true);
+  expect(result.symbols!.length).toBeLessThanOrEqual(15000);
+  expect(result.componentDataPartial).toBe(true);
+});
+
+it("refreshes a partial v2 cache whose closed curves may have been lost",async()=>{
+  const url='/api/job-rooms/files/0391aed4-7773-47ec-9141-09df373ec008/d814fc88-da7c-4df5-aa89-fe3c1fde0462/plan.pdf';
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({version:1,linework:{segments:[],labels:[],texts:[],symbols:[],componentDataVersion:2,componentDataPartial:true,aspect:1,truncated:false}})));
+  vi.stubGlobal('fetch',fetcher);
+  pdf.library.mockResolvedValue({OPS:PIPE_OPS,AnnotationMode:{DISABLE:0}});
+  pdf.load.mockResolvedValue({getPage:async()=>({getViewport:()=>({width:100,height:100,convertToViewportPoint:(x:number,y:number)=>[x,y]}),getOperatorList:async()=>({fnArray:[],argsArray:[]}),getTextContent:async()=>({items:[]})}),getOptionalContentConfig:async()=>({getGroup:()=>null})});
+  try{
+    expect((await loadPipeLinework({url,page:5})).componentDataVersion).toBe(3);
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({cache:'no-cache'});
+    expect(pdf.load).toHaveBeenLastCalledWith(url);
+  }finally{vi.unstubAllGlobals();}
 });

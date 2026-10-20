@@ -279,10 +279,10 @@ export function pipeLineworkFromOperators(
   const segments: PipeSegment[] = [];
   const symbolBuckets = new Map<
     string,
-    { paths: PipeSymbolPath[]; points: number }
+    { paths: PipeSymbolPath[]; curves: PipeSymbolPath[]; points: number }
   >();
-  let symbolQuota = 15000,
-    pointQuota = 200000;
+  let symbolCount = 0,
+    symbolPoints = 0;
   let componentDataPartial = false;
   const warnings = new Set<string>();
   const stack: GraphicsState[] = [];
@@ -436,36 +436,48 @@ export function pipeLineworkFromOperators(
                   p.y <= state.clip.bottom,
               )
             ) {
-              // Allocate fairly across source layers, regardless of their names.
-              // A dense layer painted early must not consume every symbol slot.
+              // Share unused capacity across layers. Closed curves have no
+              // measurement-cache fallback, so discard recoverable strokes first.
               const key = layer ?? "";
               let bucket = symbolBuckets.get(key);
               if (!bucket && symbolBuckets.size < 64) {
-                bucket = { paths: [], points: 0 };
+                bucket = { paths: [], curves: [], points: 0 };
                 symbolBuckets.set(key, bucket);
-                symbolQuota = Math.floor(15000 / symbolBuckets.size);
-                pointQuota = Math.floor(200000 / symbolBuckets.size);
-                for (const value of symbolBuckets.values())
-                  while (
-                    value.paths.length > symbolQuota ||
-                    value.points > pointQuota
-                  ) {
-                    value.points -= value.paths.pop()!.points.length;
-                    componentDataPartial = true;
-                  }
               }
-              if (
-                bucket &&
-                bucket.paths.length < symbolQuota &&
-                bucket.points + path.points.length <= pointQuota
-              ) {
-                bucket.paths.push({
+              if (bucket) {
+                (closed && path.curved ? bucket.curves : bucket.paths).push({
                   id: pathId,
                   points: path.points,
                   closed,
                   ...(layer ? { layer } : {}),
                 });
                 bucket.points += path.points.length;
+                symbolPoints += path.points.length;
+                symbolCount++;
+                while (symbolCount > 15000 || symbolPoints > 200000) {
+                  const buckets = [...symbolBuckets.values()];
+                  const recoverable = buckets.filter((b) => b.paths.length);
+                  const candidates = recoverable.length
+                    ? recoverable
+                    : buckets.filter((b) => b.curves.length);
+                  const largest = candidates.reduce((a, b) =>
+                    Math.max(
+                      b.points / 200000,
+                      (b.paths.length + b.curves.length) / 15000,
+                    ) >
+                    Math.max(
+                      a.points / 200000,
+                      (a.paths.length + a.curves.length) / 15000,
+                    )
+                      ? b
+                      : a,
+                  );
+                  const removed = largest.paths.pop() ?? largest.curves.pop()!;
+                  largest.points -= removed.points.length;
+                  symbolPoints -= removed.points.length;
+                  symbolCount--;
+                  componentDataPartial = true;
+                }
               } else componentDataPartial = true;
             }
           }
@@ -774,15 +786,16 @@ export function pipeLineworkFromOperators(
         break;
     }
   }
-  const orderedSymbols = [...symbolBuckets.values()].flatMap(
-    (bucket) => bucket.paths,
-  );
+  const orderedSymbols = [...symbolBuckets.values()].flatMap((bucket) => [
+    ...bucket.curves,
+    ...bucket.paths,
+  ]);
   if (componentDataPartial)
     warnings.add("Some component symbols exceeded the extraction limit.");
   return {
     segments,
     symbols: orderedSymbols,
-    componentDataVersion: 2,
+    componentDataVersion: 3,
     ...(componentDataPartial ? { componentDataPartial: true } : {}),
     labels: [],
     aspect,

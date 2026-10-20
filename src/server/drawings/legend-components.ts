@@ -31,8 +31,9 @@ export async function legendComponentLinework(
       ).toString(),
     ) as { linework: PipeLinework };
     if (
-      (value.linework.componentDataVersion !== 2 &&
-        (value.linework.componentDataVersion !== 1 ||
+      (value.linework.componentDataVersion !== 3 &&
+        ((value.linework.componentDataVersion !== 1 &&
+          value.linework.componentDataVersion !== 2) ||
           value.linework.componentDataPartial)) ||
       !Array.isArray(value.linework.symbols) ||
       !Number.isFinite(value.linework.aspect) ||

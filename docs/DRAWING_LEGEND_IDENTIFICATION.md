@@ -161,3 +161,19 @@ analysis preserves the prior valve fingerprints, selected pipe geometry and the
 two verified dashed tees. A rendered PDF crop was checked in Chromium for marker
 placement and rendering errors. This is not a claim that every fitting on M-102
 has been found, nor a phone performance measurement.
+
+## Closed-circle extraction coverage (October 19, 2026)
+
+The v3 symbol cache shares unused capacity across source layers within the same
+15,000-path / 200,000-point limits. Earlier fixed per-layer allowances discarded
+late circles even when most of the total budget was unused. Under pressure,
+recoverable linework is evicted before closed curves: closed curves deliberately
+never enter the length-bearing measurement cache. Layer names do not determine
+priority or meaning. Oversized and incomplete extraction still reports limits.
+
+Partial v1/v2 caches are reparsed; complete older caches remain usable. Browser
+geometry requests revalidate so refreshed server caches do not stay hidden behind
+an immutable response. M-102 source-PDF verification locates the three previously
+missed circular endpoints near DW-48 / DW-49 as 90° up. Existing valve fingerprints
+and selected pipe measurements remain unchanged. Additional budget-pressure tests
+cover sparse layers, late curves and the hard global bounds.
