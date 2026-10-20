@@ -408,6 +408,16 @@ describe("piping component recognition", () => {
       ).toEqual([]);
     }
   });
+  it("keeps an existing junction when another pipe is just beyond it", () => {
+    const segments = [
+      line("run", 0.49, 0.5, 0.51, 0.5),
+      line("branch", 0.5, 0.498, 0.5, 0.5),
+      line("neighbor", 0.49, 0.5002, 0.51, 0.5002),
+    ].map((s) => ({ ...s, width: 0.0003125 }));
+    expect(analyze(model({ segments })).candidates).toEqual([
+      expect.objectContaining({ kind: "tee", point: { x: 0.5, y: 0.5 } }),
+    ]);
+  });
   it("does not infer reducers, caps or couplings from dashes, line ends or width", () => {
     const data = model({
       segments: [

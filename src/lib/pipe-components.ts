@@ -1254,8 +1254,9 @@ export function analyzePipeComponents(
         0.000015,
         Math.min(0.00015, Math.max(...entry.segments.map((s) => s.width)) / 2),
       );
+      let touching = topologyNear(p, tolerance).map(({ segment }) => segment);
       const contact =
-        entry.segments.length === 1
+        entry.segments.length === 1 && touching.length === 1
           ? strokeJunctionAt(
               p,
               entry.segments[0]!,
@@ -1264,7 +1265,11 @@ export function analyzePipeComponents(
               tolerance,
             )
           : null;
-      if (contact) p = contact;
+      if (contact) {
+        p = contact;
+        touching = topologyNear(p, tolerance).map(({ segment }) => segment);
+        touching.push(entry.segments[0]!);
+      }
       const firstCandidate = junctionCandidates.length;
       const supportPaths = new Set<string>();
       const rays: { x: number; y: number }[] = [];
@@ -1272,8 +1277,6 @@ export function analyzePipeComponents(
         if (!rays.some((r) => r.x * ray.x + r.y * ray.y > 0.995))
           rays.push(ray);
       };
-      const touching = topologyNear(p, tolerance).map(({ segment }) => segment);
-      if (contact) touching.push(entry.segments[0]!);
       for (const s of touching) {
         supportPaths.add(s.pathId);
         if (s.id.startsWith("pipe-bridge:")) continue;
