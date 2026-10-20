@@ -150,7 +150,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-10 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs font-medium whitespace-normal transition-colors [&_svg]:size-4";
+  "h-10 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs has-[>svg]:px-1 font-medium whitespace-normal transition-colors [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
   ["viewing", "Viewing"],
   ["select", "Select"],
@@ -3457,7 +3457,7 @@ export function DrawingWorkspace({
               aria-pressed={true}
               onClick={finishTool}
             >
-              {tool === "viewing" ? <HandIcon className="h-5 w-5" /> : <WrenchIcon className="h-5 w-5" />}
+              {tool === "viewing" ? <HandIcon className="hidden h-5 w-5 sm:block" /> : <WrenchIcon className="hidden h-5 w-5 sm:block" />}
               <span className="min-w-0 break-words text-[11px] leading-3">{bottomMode.pipe ? "Pipe system" : toolLabel}</span>
             </Button>
           ) : (
@@ -3565,7 +3565,7 @@ export function DrawingWorkspace({
               }
             }}
           >
-            <PenLineIcon className="h-5 w-5" />
+            <PenLineIcon className={!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? "hidden h-5 w-5 sm:block" : "h-5 w-5"} />
             <span className="min-w-0 break-words text-[11px] leading-3">
               {!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"}
             </span>
