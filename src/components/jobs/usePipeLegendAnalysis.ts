@@ -6,6 +6,9 @@ import type {
 } from "~/lib/pipe-components-types";
 import type { PipeSystemSelection } from "~/lib/pipe-system";
 
+// Cover a short deployment/network interruption without requiring another tap.
+const RETRY_DELAYS = [2_000, 5_000, 15_000, 30_000, 60_000];
+
 /** Selection/revision changes cancel the entire reference-load → analysis chain. */
 export function usePipeLegendAnalysis(options: {
   active: boolean;
@@ -38,10 +41,14 @@ export function usePipeLegendAnalysis(options: {
     )
       return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let retries = 0;
+    let waiting = false;
     const { load, analyze, templates, sourceSheetId, source, selection } =
       current.current;
-    setStatus({ source, selection, loading: true, warnings: [], count: 0 });
-    void (async () => {
+    const run = async () => {
+      waiting = false;
+      setStatus({ source, selection, loading: true, warnings: [], count: 0 });
       try {
         const refs = await load();
         if (cancelled) return;
@@ -62,21 +69,42 @@ export function usePipeLegendAnalysis(options: {
               refs.templates.map((t) => t.reference?.legendId ?? t.id),
             ).size,
           });
-      } catch {
-        if (!cancelled)
+      } catch (error) {
+        if (!cancelled) {
+          const status = (error as { data?: { httpStatus?: number } } | null)
+            ?.data?.httpStatus;
+          const retryable =
+            !status || status >= 500 || status === 408 || status === 429;
+          const delay = retryable ? RETRY_DELAYS[retries++] : undefined;
+          waiting = retryable;
           setStatus({
             source,
             selection,
             loading: false,
             warnings: [],
             error:
-              "Saved Legend Items could not be loaded. Try Recheck while connected.",
+              delay !== undefined
+                ? "Fitting detection is waiting for Legend Items. Retrying automatically…"
+                : "Saved Legend Items could not be loaded. Retry fitting detection while connected.",
             count: 0,
           });
+          if (delay !== undefined) timer = setTimeout(() => void run(), delay);
+        }
       }
-    })();
+    };
+    const resume = () => {
+      if (!waiting || cancelled) return;
+      clearTimeout(timer);
+      void run();
+    };
+    window.addEventListener("online", resume);
+    window.addEventListener("focus", resume);
+    void run();
     return () => {
       cancelled = true;
+      clearTimeout(timer);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("focus", resume);
     };
   }, [options.active, options.source, options.selection, templateKey, attempt]);
   const visible =

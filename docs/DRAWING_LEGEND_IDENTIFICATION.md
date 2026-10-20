@@ -218,3 +218,20 @@ the two full-circle endpoints under PD-4 and PD-5, with source-PDF visual checki
 Cold-water and return-water checks preserve their previous valves and up elbows.
 Selected pipe geometry is unchanged by this detector change. Counts remain review
 candidates, and partial source geometry can still limit coverage.
+
+## Legend request recovery (October 19, 2026)
+
+Cached pipe highlighting can work while the server is unavailable, but saved
+legend references still require a successful request. The 23:49:53–23:51:23
+service restart coincided with a report of highlighted pipes without fitting
+markers. A failed reference request previously stopped automatic analysis and
+only exposed its error inside the fittings dialog.
+
+Reference loading now retries transient failures with bounded backoff through a
+short restart, and resumes on connectivity/focus events after failure. Leaving
+pipe mode or changing selections cancels pending retries. Authorization failures
+are not automatically retried. The pipe panel and quick wheel expose detection
+errors and a retry action. No detector thresholds or measured geometry changed.
+Hook and viewer regressions verify recovery, cancellation, retry limits and
+preserved highlighting. Live M-102 DHWR verification showed 232 candidates and
+232 rendered markers after the service recovered; counts still require review.

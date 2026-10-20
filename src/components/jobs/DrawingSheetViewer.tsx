@@ -3307,6 +3307,8 @@ export function DrawingSheetViewer({
               }}
               componentCount={pipe.components?.candidates.length}
               analyzingComponents={pipe.analyzing || legendAnalysis.loading}
+              componentError={pipe.componentError ?? legendAnalysis.error}
+              onRetryComponents={legendAnalysis.recheck}
               onSystem={(system) => { setComponentFocus(null); setSymbolPick(null); pipe.setSystem(system); }}
               onClear={() => { setComponentFocus(null); setSymbolPick(null); setLassoArmed(false); setLassoMessage(null); pipe.clear(); }}
               onRetry={pipe.retry}

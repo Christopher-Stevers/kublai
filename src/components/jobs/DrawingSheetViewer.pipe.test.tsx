@@ -641,3 +641,22 @@ it("counts only the pipe inside a loop drawn with the pen tool", async () => {
   await waitFor(() => expect(highlight()).toHaveAttribute("data-pipe-segment-count", "2"));
   expect(screen.queryByRole("img", { name: "Pipe count area" })).toBeNull();
 });
+
+
+it("shows a failed legend request in the pipe panel and retries without losing the highlighted system", async () => {
+  const load = vi.fn().mockRejectedValueOnce(new Error("HTTP 502"))
+    .mockResolvedValue({templates: [], warnings: []});
+  const {frame} = open({loadPipeLegendReferences: load});
+  await activate();
+  await tap(frame, 160, 300);
+  const warning = await screen.findByRole("alert");
+  expect(warning).toHaveTextContent("Retrying automatically");
+  const highlight = screen.getByRole("img", {name: "Selected pipe system"});
+  const count = highlight.getAttribute("data-pipe-segment-count");
+  fireEvent.click(screen.getByRole("button", {name: "Retry fitting detection"}));
+  await waitFor(() => expect(screen.getByRole("button", {name: /Fittings & valves \(\d+\)/})).toBeInTheDocument());
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(highlight).toHaveAttribute("data-pipe-segment-count", count);
+  expect(frame.querySelector("[data-pipe-component-symbol]")).not.toBeNull();
+});

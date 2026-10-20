@@ -35,6 +35,7 @@ export function PipeSystemPanel({
   onUnit,
   onDone,
   onComponents, componentCount, analyzingComponents,
+  componentError, onRetryComponents,
   lassoArmed = false, area = false, lassoMessage = null, onLasso, onClearArea,
   color, onColor, lineWidth, onLineWidth,
 }: {
@@ -69,6 +70,8 @@ export function PipeSystemPanel({
   onComponents?: () => void;
   componentCount?: number;
   analyzingComponents?: boolean;
+  componentError?: string | null;
+  onRetryComponents?: () => void;
   lassoArmed?: boolean;
   area?: boolean;
   lassoMessage?: string | null;
@@ -87,6 +90,7 @@ export function PipeSystemPanel({
     { id: "color", label: "Color", children: MEASURE_COLORS.map(option => ({ id: option.value, label: option.name, selected: color === option.value, run: () => onColor(option.value) })) },
     { id: "width", label: "Line width", children: LINE_WIDTHS.map(value => ({ id: String(value), label: String(value), selected: lineWidth === value, run: () => onLineWidth(value) })) },
     ...(onComponents ? [{ id: "components", label: componentLabel, disabled: !selected, run: onComponents }] : []),
+    ...(onRetryComponents && componentError ? [{ id: "retry-components", label: "Retry fitting detection", run: onRetryComponents }] : []),
     ...(onLasso ? [{ id: "lasso", label: lassoArmed ? "Stop drawing area" : area ? "Redraw area" : "Draw area", disabled: !selected, selected: lassoArmed, run: onLasso }] : []),
     ...(onClearArea ? [{ id: "clear-area", label: "Whole system", disabled: !area, run: onClearArea }] : []),
     { id: "clear", label: "Clear selection", disabled: !selected, run: onClear },
@@ -98,6 +102,7 @@ export function PipeSystemPanel({
     {reading ? "Reading pipe lines…" : selecting ? "Selecting pipe lines…" : lassoArmed ? "Draw around the part to count" : selected ? total ?? "Set scale to see distance" : "Tap a pipe or choose a system"}
     {area && !lassoArmed && <p className="text-muted-foreground text-xs">Inside drawn area</p>}
     {lassoMessage && <p className="text-destructive text-xs">{lassoMessage}</p>}
+    {selected && componentError && <p className="text-destructive text-xs">{componentError}</p>}
     {selectedSystem && <p className="text-muted-foreground text-xs">{PIPE_SYSTEM_NAMES[selectedSystem] ?? selectedSystem}</p>}
     {error && <p className="text-destructive text-xs">{error}</p>}
     {warnings.length > 0 && <p className="text-muted-foreground text-xs">{warnings.join(" · ")}</p>}
@@ -209,6 +214,12 @@ export function PipeSystemPanel({
         </div>
       )}
       {selecting && <p role="status" className="text-muted-foreground text-xs">Selecting pipe lines…</p>}
+      {selected && componentError && (
+        <div role="alert" className="text-destructive text-xs">
+          <p>{componentError}</p>
+          {onRetryComponents && <Button size="sm" variant="outline" onClick={onRetryComponents}>Retry fitting detection</Button>}
+        </div>
+      )}
       {selected && (lassoArmed || area || lassoMessage) && (
         <div role="status" className="flex items-center gap-2 text-xs">
           <p className={`min-w-0 flex-1 ${lassoMessage ? "text-destructive" : "text-muted-foreground"}`}>
