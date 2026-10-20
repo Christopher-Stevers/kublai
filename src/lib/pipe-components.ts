@@ -1,3 +1,10 @@
+import {
+  coreGroup,
+  fittingGroups,
+  closedFittingOutline,
+  fittingConnection,
+} from "./pipe-fitting-geometry";
+import { pipeFittingProfile, resolvePipeFitting } from "./pipe-fitting-profile";
 import { dashedRunAt } from "./pipe-dashed-junction";
 import { recoverPipeSymbols } from "./pipe-symbol-recovery";
 import {
@@ -159,7 +166,11 @@ export function componentDescription(text: string): {
     /\b(?:(PRESSURE[- ]REDUCING|BALL|GATE|CHECK|BALANCING|BUTTERFLY|GLOBE|ISOLATION|CONTROL|RELIEF|DRAIN|MIXING)\s+)?VALV(?:E|ES)?\b/i.exec(
       t,
     );
-  if (valve) {
+  const fitting = pipeFittingProfile(t);
+  if (fitting) {
+    kind = fitting.kind;
+    name = fitting.name;
+  } else if (valve) {
     kind = "valve";
     name = valve[1] ? `${valve[1].toLowerCase()} valve` : "Valve";
   } else if (/\bELBOW\b|\bBEND\b/i.test(t)) {
@@ -220,6 +231,7 @@ type Group = {
   box: Box;
   point: SheetPoint;
   layer?: string;
+  fittingOnly?: boolean;
 };
 function symbolGroups(
   paths: PipeSymbolPath[],
@@ -621,11 +633,9 @@ export function analyzePipeComponents(
       foreign.distance > nearest.distance + 0.0001
     );
   };
-  const groups = symbolGroups(
-    recoverPipeSymbols(linework, selectedNear, limited),
-    aspect,
-    limited,
-  );
+  const symbolPaths = recoverPipeSymbols(linework, selectedNear, limited);
+  const groups = symbolGroups(symbolPaths, aspect, limited);
+  const fittingNear = segmentGrid(selection.segments, aspect, limited);
   const texts = mergedTexts(linework.texts ?? []);
   const descriptions = texts.flatMap((t) => {
     const d = componentDescription(t.text);
@@ -806,16 +816,38 @@ export function analyzePipeComponents(
         material: d.material,
       });
   }
-  const refShapes = refs.slice(0, 600).map((r) => ({
-    ...r,
-    aligned: [0, 1, 2, 3].map((rotation) =>
-      alignedShape(shape(r.group, r.aspect ?? aspect), rotation),
-    ),
-    shapes: [0, 1, 2, 3].map((rotation) =>
-      shape(r.group, r.aspect ?? aspect, rotation),
-    ),
-  }));
+  if (refs.some((r) => pipeFittingProfile(r.name)))
+    groups.push(...fittingGroups(symbolPaths, aspect, fittingNear, limited));
+  const refShapes = refs.slice(0, 600).map((r) => {
+    const profile = pipeFittingProfile(r.name);
+    const core = profile ? coreGroup(r.group, r.aspect ?? aspect) : null;
+    return {
+      ...r,
+      ...(core ? { group: core } : {}),
+      profile,
+      coreShapes: core
+        ? [0, 1, 2, 3].map((rotation) =>
+            shape(core, r.aspect ?? aspect, rotation),
+          )
+        : [],
+      coreAligned: core
+        ? [0, 1, 2, 3].map((rotation) =>
+            alignedShape(shape(core, r.aspect ?? aspect), rotation),
+          )
+        : [],
+      closedCore: core
+        ? closedFittingOutline(core.paths, r.aspect ?? aspect)
+        : false,
+      aligned: [0, 1, 2, 3].map((rotation) =>
+        alignedShape(shape(r.group, r.aspect ?? aspect), rotation),
+      ),
+      shapes: [0, 1, 2, 3].map((rotation) =>
+        shape(r.group, r.aspect ?? aspect, rotation),
+      ),
+    };
+  });
   let matches = 0;
+  let fittingMatches = 0;
   const referenceAreas = [
     ...refs.filter((r) => !r.external).map((r) => r.group.box),
     ...templates
@@ -833,10 +865,11 @@ export function analyzePipeComponents(
       !belongs(g.point, g.box, g.layer)
     )
       continue;
-    const direct = g.layer ? componentDescription(g.layer) : null;
-    if (matches > 20000) {
+    const direct =
+      !g.fittingOnly && g.layer ? componentDescription(g.layer) : null;
+    if (!g.fittingOnly && matches > 20000) {
       partial = true;
-      break;
+      continue;
     }
     const own = shape(g, aspect),
       aligned = alignedShape(own),
@@ -847,17 +880,31 @@ export function analyzePipeComponents(
     const nearbyTexts = texts.filter((t) =>
       overlap(g.box, t, 0.012 / Math.max(1, aspect)),
     );
+    const closedOwn = g.fittingOnly && closedFittingOutline(g.paths, aspect);
     const matched = refShapes.filter((r) => {
       // Cross-discipline legends often reuse primitive shapes. For an item
       // outside the known piping types, require its own label as corroboration.
       if (
         r.kind === "other" &&
+        !r.profile &&
         (!r.abbreviation ||
           !nearbyTexts.some(
             (t) => abbreviationKey(t.text) === abbreviationKey(r.abbreviation!),
           ))
       )
         return false;
+      if (!!r.profile !== !!g.fittingOnly) return false;
+      if (g.fittingOnly) {
+        if (++fittingMatches > 20000) {
+          limited();
+          return false;
+        }
+        if (closedOwn !== r.closedCore) return false;
+        return (
+          r.coreShapes.some((s) => sameShape(own, s)) ||
+          r.coreAligned.some((s) => sameShape(aligned, s))
+        );
+      }
       if (!r.external && r.group.id === g.id) return false;
       const refsize = Math.max(
         r.group.box.right - r.group.box.left,
@@ -933,8 +980,27 @@ export function analyzePipeComponents(
       : savedMatches.length
         ? savedMatches
         : matched;
+    const resolvedChoices = choices.flatMap((r) => {
+      if (!r.profile) return [r];
+      const reach =
+        Math.max(
+          g.box.right - g.box.left,
+          (g.box.bottom - g.box.top) * aspect,
+        ) /
+          2 +
+        0.00015;
+      const connection = fittingConnection(
+        g,
+        fittingNear(g.point, reach).map((v) => v.segment),
+        aspect,
+      );
+      const resolved = resolvePipeFitting(r.profile, connection);
+      return resolved
+        ? [{ ...r, kind: resolved.kind, name: resolved.name }]
+        : [];
+    });
     const meanings = new Map(
-      choices.map((r) => [`${r.kind}:${r.name.toLowerCase()}`, r]),
+      resolvedChoices.map((r) => [`${r.kind}:${r.name.toLowerCase()}`, r]),
     );
     const named = meanings.size === 1 ? [...meanings.values()][0] : undefined;
     if (
@@ -948,11 +1014,14 @@ export function analyzePipeComponents(
       const topologyKind = named?.kind ?? direct?.kind;
       const topologyShape =
         topologyKind && ["tee", "elbow"].includes(topologyKind);
-      if (!topologyShape)
+      if (g.fittingOnly || !topologyShape)
         for (const path of g.paths) symbolInkPaths.add(path.id);
     }
 
-    if (named && (named.kind !== "other" || tagged.length > 0)) {
+    if (
+      named &&
+      (named.kind !== "other" || tagged.length > 0 || named.profile)
+    ) {
       add(
         named.kind,
         named.name,
@@ -1007,7 +1076,7 @@ export function analyzePipeComponents(
       );
       continue;
     }
-    if (g.paths.some((p) => crossing(p, aspect)))
+    if (!g.fittingOnly && g.paths.some((p) => crossing(p, aspect)))
       add(
         "valve",
         "Possible valve symbol",

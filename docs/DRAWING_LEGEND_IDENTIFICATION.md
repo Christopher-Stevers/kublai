@@ -129,3 +129,35 @@ was checked at the DW-48 / DW-47C branches from Tim's screenshot: both previousl
 missing junctions appear, the 58 valve candidates remain, and selected linework
 and length are unchanged. Analysis took about 0.5 seconds on the desktop fixture;
 that is not a phone performance benchmark or proof of every sheet's accuracy.
+
+## Vertical and terminal fittings (October 19, 2026)
+
+A separate bounded geometry pass matches reviewed legend symbols for turned
+elbows, vertical tee outlets, top/bottom connections, caps/plugs and ambiguous
+rise/drop symbols. It interprets the legend's description, not a job name, sheet
+number or hardcoded layer. Public reference crops remain research material;
+the project's reviewed vector legend supplies the actual matching shapes.
+
+The pass removes arbitrary-length straight pipe stems before comparing compact
+symbol shapes. It preserves open/closed outlines, supports rotated/scaled shapes
+and paired arcs or overlapping loops, and checks local pipe connections. One
+connected arm indicates a terminal elbow; opposed continuing arms indicate a
+vertical tee when the legend permits that meaning. A bare endpoint is not a cap.
+Pitch, flow, duct and tag descriptions are not vertical fitting evidence.
+Conflicting meanings and legends that explicitly say "drop or rise" remain
+unresolved review candidates. Missing or clipped geometry can still prevent
+recognition; no direction is inferred solely from an endpoint or a nearby UP/DN.
+
+Partial-cache recovery now includes compact open strokes without closing them.
+The vertical fitting glyph is excluded from the independent planar-junction
+pass, while its connecting pipes remain available. Custom markers distinguish
+90° UP/DN and T UP/DN, preserving explicit angles in legend names. Caps retain
+the matched source glyph. Confirming quantities remains a separate user action.
+
+Validation covers open versus closed outlines, paired tee symbols, caps, rotation
+on non-square pages, stem-length differences, explicit angles, conflicting
+legends, unconnected circles, and glyph/junction separation. Actual M-102 DHWR
+analysis preserves the prior valve fingerprints, selected pipe geometry and the
+two verified dashed tees. A rendered PDF crop was checked in Chromium for marker
+placement and rendering errors. This is not a claim that every fitting on M-102
+has been found, nor a phone performance measurement.

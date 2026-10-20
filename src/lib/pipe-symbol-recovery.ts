@@ -2,7 +2,7 @@ import type { PipeLinework, PipeSegment } from "./pipe-system";
 import type { PipeSymbolPath } from "./pipe-components-types";
 import type { SheetPoint } from "./sheet-measure";
 
-/** Recover compact closed strokes omitted by the symbol-only budget. The bounded
+/** Recover compact symbol strokes omitted by the symbol-only budget. The bounded
  * measurement cache already retains these paths; no new PDF download is needed. */
 export function recoverPipeSymbols(
   linework: PipeLinework,
@@ -17,13 +17,12 @@ export function recoverPipeSymbols(
   const broken = new Set<string>();
   if (linework.segments.length > 200000) limited();
   for (const segment of linework.segments.slice(0, 200000)) {
-    if (!segment.closed) continue;
     let path = paths.get(segment.pathId);
     if (!path) {
       path = {
         id: segment.pathId,
         points: [{ x: segment.x1, y: segment.y1 }],
-        closed: true,
+        closed: !!segment.closed,
         layer: segment.layer,
       };
       paths.set(segment.pathId, path);
@@ -38,13 +37,14 @@ export function recoverPipeSymbols(
   for (const path of paths.values()) {
     if (
       broken.has(path.id) ||
-      path.points.length < 4 ||
+      path.points.length < 3 ||
       path.points.length > 512
     )
       continue;
     const first = path.points[0]!,
       last = path.points.at(-1)!;
-    if (Math.hypot(first.x - last.x, first.y - last.y) > 1e-8) continue;
+    if (path.closed && Math.hypot(first.x - last.x, first.y - last.y) > 1e-8)
+      continue;
     const xs = path.points.map((p) => p.x),
       ys = path.points.map((p) => p.y);
     const left = Math.min(...xs),

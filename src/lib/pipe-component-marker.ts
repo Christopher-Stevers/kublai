@@ -1,3 +1,4 @@
+import { pipeFittingProfile } from "./pipe-fitting-profile";
 import { z } from "zod";
 import type {
   PipeComponentCandidate,
@@ -39,7 +40,8 @@ export function vectorComponentMarker(
   legendId?: string,
 ): PipeComponentMarker | undefined {
   if (
-    !Number.isFinite(aspect) || aspect <= 0 ||
+    !Number.isFinite(aspect) ||
+    aspect <= 0 ||
     !paths.length ||
     paths.length > 100 ||
     paths.some((p) => p.points.length < 2 || p.points.length > 512) ||
@@ -90,7 +92,59 @@ export function customComponentMarker(
   const angle = /(?:^|\s)(90|45|22(?:\.5)?)(?=\s*(?:°|deg|elbow|bend))/i.exec(
     name,
   )?.[1];
-  if (kind === "elbow" || kind === "tee") {
+  const profile = pipeFittingProfile(name);
+  if (profile?.direction) {
+    const up = profile.direction !== "down",
+      down = profile.direction !== "up";
+    marker.paths = [
+      circle,
+      path([
+        [0, -0.55],
+        [0, 0.55],
+      ]),
+    ];
+    if (up)
+      marker.paths.push(
+        path([
+          [-0.3, -0.2],
+          [0, -0.55],
+          [0.3, -0.2],
+        ]),
+      );
+    if (down)
+      marker.paths.push(
+        path([
+          [-0.3, 0.2],
+          [0, 0.55],
+          [0.3, 0.2],
+        ]),
+      );
+    if (kind === "tee")
+      marker.paths.push(
+        path([
+          [-1, 0],
+          [-0.8, 0],
+        ]),
+        path([
+          [0.8, 0],
+          [1, 0],
+        ]),
+      );
+    const direction =
+      profile.direction === "up"
+        ? "UP"
+        : profile.direction === "down"
+          ? "DN"
+          : "UP/DN?";
+    marker.label =
+      profile.direction === "unknown"
+        ? direction
+        : kind === "tee"
+          ? `T ${direction}`
+          : kind === "elbow"
+            ? `${angle ?? "90"}° ${direction}`
+            : direction;
+  } else if (kind === "elbow" || kind === "tee") {
     const bend =
       (Number(angle === "22" ? "22.5" : (angle ?? 90)) * Math.PI) / 180;
     const arms = rays?.length
