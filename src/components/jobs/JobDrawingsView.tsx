@@ -89,7 +89,7 @@ type NameDialog =
 const BAR_BUTTON =
   "h-9 min-h-9 w-full rounded-lg px-1.5 py-1 text-xs leading-tight whitespace-normal";
 const BOTTOM_BAR =
-  "bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden";
+  "bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden";
 
 /**
  * Drawings for a job: folders of drawing sheets. Uploading a PDF into a folder
@@ -885,7 +885,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </div>
         )}
         {/* Bottom bar like Add Parts: filters menu, search, add drawings. */}
-        <div className="bg-card fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+        <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
           <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1000,7 +1000,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") event.currentTarget.blur();
                 }}
-                className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
+                className="h-9 w-full rounded-lg pl-8 text-base pointer-fine:text-sm [&::-webkit-search-cancel-button]:appearance-none"
               />
             </div>
             <Button

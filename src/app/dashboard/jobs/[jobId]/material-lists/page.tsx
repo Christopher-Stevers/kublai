@@ -500,7 +500,7 @@ export default function JobDetailPage({
           </div>
         )}
 
-        <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+        <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
             <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
               <PlusIcon className="mr-2 h-5 w-5" />
               New Material List

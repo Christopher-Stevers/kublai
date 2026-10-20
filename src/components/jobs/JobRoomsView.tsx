@@ -714,7 +714,7 @@ export function JobRoomsView({
                     if (file) void handleUpload(file);
                   }}
                 />
-                <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+                <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
                   <div className="mx-auto max-w-6xl">
                     <Button
                       onClick={() => fileRef.current?.click()}

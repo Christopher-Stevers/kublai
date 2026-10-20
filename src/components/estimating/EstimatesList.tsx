@@ -275,7 +275,7 @@ export function EstimatesList() {
           </Button>
         </div>
       )}
-      <div className="bg-background fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom flex gap-2 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
         <Button
           variant="outline"
           size="lg"

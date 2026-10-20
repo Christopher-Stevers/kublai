@@ -555,7 +555,7 @@ export function DashboardClient({
 
                 {/* Pinned to the bottom of the window on every screen size (sticky left
                     it floating under a short list on desktop). */}
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+                <div className="fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
                   <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
                     onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} isToolRequest={isToolRequest} />
                 </div>
@@ -863,7 +863,7 @@ export function DashboardClient({
                 </div>
               )}
 
-              <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+              <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
                 <Button
                   data-tutorial="create-list"
                   onClick={() => handleCreateMaterialList(offlineJob.id)}
@@ -1126,7 +1126,7 @@ export function DashboardClient({
         )}
 
         {!isWaitingForJobs && jobs.length > 0 && (
-          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"

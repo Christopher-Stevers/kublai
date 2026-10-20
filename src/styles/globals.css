@@ -422,6 +422,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 @layer utilities {
+  /* Fixed bottom bars: see src/lib/viewport-bottom.ts. */
+  .pin-viewport-bottom {
+    translate: 0 var(--viewport-bottom, 0px);
+  }
+
   .dark .bg-white,
   .dark .bg-gray-50,
   .dark .bg-slate-50,
