@@ -574,15 +574,7 @@ export function DrawingWorkspace({
   const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
-  const personalScale = api.drawingsWorkspace.personalScale.useQuery(
-    { sheetId: sourceId }, { enabled: online, retry: false },
-  );
-  const personalScaleMutation = api.drawingsWorkspace.setPersonalScale.useMutation();
-  const savePersonalScale = async (scale: DrawingMetadata["scale"]) => {
-    const saved = await personalScaleMutation.mutateAsync({ sheetId: sourceId, scale });
-    utils.drawingsWorkspace.personalScale.setData({ sheetId: sourceId }, saved);
-    return true;
-  };
+  const scaleMutation = api.drawingsWorkspace.setScale.useMutation();
   const source = data?.jobSheets.find((item) => item.id === sourceId) ?? {
     ...sheet,
     id: sheet.id,
@@ -1165,6 +1157,30 @@ export function DrawingWorkspace({
       setPending((n) => n - 1);
     }
   };
+  /** The sheet's scale is shared: setting it changes it for everyone on the job. */
+  const saveScale = async (scale: DrawingMetadata["scale"]) => {
+    if (!online) return false;
+    setPending((n) => n + 1);
+    setError(null);
+    try {
+      const next = await scaleMutation.mutateAsync({ sheetId: sheet.id, scale });
+      await utils.drawingsWorkspace.get.cancel({ sheetId: sheet.id });
+      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id }, (old) =>
+        old ? { ...old, metadata: next } : old,
+      );
+      // Unsaved sheet details are kept and now save against the new revision.
+      setMetadata((old) =>
+        old && metadataDirty ? { ...old, scale: next.scale, revision: next.revision } : next,
+      );
+      await refresh().catch(fail);
+      return true;
+    } catch (reason) {
+      fail(reason);
+      return false;
+    } finally {
+      setPending((n) => n - 1);
+    }
+  };
   const openLinkUrl = useCallback((href: string) => {
     const url = new URL(href, window.location.origin);
     if (url.origin === window.location.origin &&
@@ -1633,7 +1649,6 @@ export function DrawingWorkspace({
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
       ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
-      ...(personalScale.data ? [{ id: "shared-scale", label: "Use shared scale", disabled: !online || personalScaleMutation.isPending, run: () => { void savePersonalScale(null).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not reset your scale.")); } }] : []),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, run: () => { setPanel(id); setForm(null); } };
@@ -1699,7 +1714,7 @@ export function DrawingWorkspace({
             <DialogTitle>Super scale — set scale first</DialogTitle>
             <DialogDescription>
               Mark two points on known grid lines and enter their real distance.
-              This sets the shared reference scale for everyone. Super scale will then continue to grid matching; personal sheet overrides are kept.
+              This sets the shared reference scale for everyone. Super scale will then continue to grid matching.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
@@ -1970,18 +1985,16 @@ export function DrawingWorkspace({
               selectedId={selectedId}
               selectionMode={selectionMode}
               canEditAnnotation={canEditAnnotation}
-              sharedScale={personalScale.data ?? (current ? data.metadata.scale : null)}
+              sharedScale={current ? data.metadata.scale : null}
               onScaleChange={
                 online && writable
                   ? async (scale) => {
-                      // The Super scale reference is deliberately shared; ordinary
-                      // Set scale is a personal override for this source sheet only.
                       if (superScaleCalibration.current === source.id) {
                         if (!data.canManage || metadataDirty || pending > 0)
                           throw new Error("Finish saving sheet details before Super scale.");
                         return saveMetadata({ ...data.metadata, scale });
                       }
-                      return savePersonalScale(scale);
+                      return saveScale(scale);
                     }
                   : undefined
               }
@@ -3100,7 +3113,7 @@ export function DrawingWorkspace({
                   jobId={jobId}
                   sheets={data.jobSheets}
                   entities={visible}
-                  scale={personalScale.data ?? (current ? data.metadata.scale : null)}
+                  scale={current ? data.metadata.scale : null}
                   store={account?.store}
                   resolveAssetUrl={resolveAssetUrl}
                   onOfflineSaved={async () => {
@@ -3428,13 +3441,6 @@ export function DrawingWorkspace({
                     Super scale
                   </DropdownMenuItem>
                   </>
-                )}
-                {personalScale.data && (
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!online || personalScaleMutation.isPending}
-                    onSelect={() => { void savePersonalScale(null).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not reset your scale.")); }}>
-                    <MenuTile icon={RulerIcon} />
-                    Use shared scale
-                  </DropdownMenuItem>
                 )}
                 {onDocumentDetails && (
                   <DropdownMenuItem

@@ -1042,6 +1042,23 @@ export async function saveDrawingMetadata(
     return data;
   });
 }
+/**
+ * The sheet's scale is shared by everyone on the job. Anyone who may mark up
+ * the sheet can set it; only the scale changes, so other sheet details being
+ * edited elsewhere are kept.
+ */
+export async function setDrawingScale(
+  ctx: DrawingContext,
+  input: { sheetId: string; scale: DrawingMetadata["scale"] },
+) {
+  return withSheet(ctx, input.sheetId, async (tx, access) => {
+    const current = await sheetMetadata(tx, input.sheetId);
+    const data = { ...current, scale: input.scale, revision: current.revision + 1 };
+    await writeMetadata(tx, input.sheetId, data);
+    await record(tx, input.sheetId, access.actor, "scale_updated", null);
+    return data;
+  });
+}
 export async function setDrawingCurrentVersion(
   ctx: DrawingContext,
   input: { sheetId: string; sourceSheetId: string; expectedRevision: number },

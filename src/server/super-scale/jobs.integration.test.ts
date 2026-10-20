@@ -54,8 +54,6 @@ vi.mock("./reader", () => ({
 vi.mock("~/server/conversations/push", () => ({
   enqueueConversationPush: vi.fn(async () => undefined),
 }));
-import { drawingPersonalScales } from "~/server/db/drawing-workspace-schema";
-import { personalDrawingScale, savePersonalDrawingScale } from "../drawings/personal-scale";
 import { superScaleJobs } from "~/server/db/super-scale-schema";
 import {
   conversations,
@@ -105,7 +103,6 @@ const grids = identifyGrids(
 const ctx = { db, userId: "owner" };
 const tables = [
   superScaleJobs,
-  drawingPersonalScales,
   conversations,
   conversationMembers,
   conversationMessages,
@@ -119,7 +116,7 @@ describe.skipIf(!socket)("server Super scale durable jobs", () => {
         (c) => `"${c.name}" ${c.getSQLType()}`,
       );
       const pk =
-        table === drawingPersonalScales ? 'PRIMARY KEY ("sheetId","userId")' : table === conversationMembers
+        table === conversationMembers
           ? 'PRIMARY KEY ("conversationId","userId")'
           : "PRIMARY KEY (id)";
       await conn.unsafe(
@@ -139,19 +136,6 @@ describe.skipIf(!socket)("server Super scale durable jobs", () => {
   });
   afterAll(async () => {
     await conn.end();
-  });
-  it("keeps personal calibrations separate by user and sheet and allows a shared-default reset", async () => {
-    state.manage = false;
-    const scale = {unit: "m" as const, unitsPerSheetWidth: 80};
-    await savePersonalDrawingScale(ctx, id(3), scale);
-    expect(await personalDrawingScale(ctx, id(3))).toEqual(scale);
-    expect(await personalDrawingScale({...ctx,userId:"colleague"}, id(3))).toBeNull();
-    expect(await personalDrawingScale(ctx, id(4))).toBeNull();
-    await savePersonalDrawingScale(ctx,id(3),{...scale,unitsPerSheetWidth:90});
-    expect((await personalDrawingScale(ctx,id(3)))?.unitsPerSheetWidth).toBe(90);
-    await expect(savePersonalDrawingScale({...ctx,userId:"outsider"},id(3),scale)).rejects.toThrow("Forbidden");
-    await savePersonalDrawingScale(ctx,id(3),null);
-    expect(await personalDrawingScale(ctx,id(3))).toBeNull();
   });
   const start = (n = 10) =>
     startSuperScale(ctx, {

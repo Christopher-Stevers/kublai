@@ -20,6 +20,7 @@ import {
   getDrawingWorkspaceChanges,
   listDrawingWorkspace,
   saveDrawingEntity,
+  setDrawingScale,
 } from "~/server/drawings/service";
 import { drawingsRouter } from "~/server/api/routers/drawings";
 import { toStoredConfig } from "~/server/auth/permissions";
@@ -191,7 +192,13 @@ it.skipIf(!socket)(
     const starred = await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: annotated.revision });
     expect(starred.workspace?.favorite).toBe(true);
     await db.delete(workspaceTables.drawingWorkspaceFavorites).where(eq(workspaceTables.drawingWorkspaceFavorites.sheetId, first.id));
-    expect((await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: starred.revision })).workspace?.favorite).toBe(false);
+    const unstarred = await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: starred.revision });
+    expect(unstarred.workspace?.favorite).toBe(false);
+    // The scale is shared: it reaches every viewer's next poll and keeps other sheet details.
+    const scale = { unit: "m" as const, unitsPerSheetWidth: 42 };
+    const scaled = await setDrawingScale(ctx, { sheetId: first.id, scale });
+    expect(scaled).toMatchObject({ scale, revision: initial.metadata.revision + 1, title: initial.metadata.title });
+    expect((await getDrawingWorkspaceChanges(ctx, { sheetId: first.id, revision: unstarred.revision })).workspace?.metadata.scale).toEqual(scale);
     expect((await getDrawingWorkspace(ctx, pages[1]!.id)).entities).toEqual([]);
     await expect(
       getDrawingWorkspace({ db, userId: "outsider" }, first.id),
@@ -238,6 +245,7 @@ it.skipIf(!socket)(
       [],
     );
     expect((await getDrawingWorkspace(ctx, first.id)).canAnnotate).toBe(false);
+    await expect(setDrawingScale(ctx, { sheetId: first.id, scale: null })).rejects.toMatchObject({ code: "FORBIDDEN" });
     const saved = (await getDrawingWorkspace(ctx, first.id)).entities[0]!;
     await expect(
       saveDrawingEntity(

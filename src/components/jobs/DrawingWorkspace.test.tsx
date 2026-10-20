@@ -28,8 +28,7 @@ const mocks = vi.hoisted(() => ({
   data: null as Workspace | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
   metadata: vi.fn(),
-  personal: null as Workspace["metadata"]["scale"],
-  savePersonal: vi.fn(),
+  setScale: vi.fn(),
   archive: vi.fn(),
   comment: vi.fn(),
   version: vi.fn(),
@@ -48,7 +47,6 @@ vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
       drawingsWorkspace: {
-        personalScale: { setData: (_: unknown, scale: Workspace["metadata"]["scale"]) => { mocks.personal = scale; } },
         get: {
           invalidate: mocks.invalidate,
           cancel: mocks.cancel,
@@ -64,9 +62,8 @@ vi.mock("~/trpc/react", () => ({
       },
     }),
     drawingsWorkspace: {
-      personalScale: { useQuery: () => ({ data: mocks.personal }) },
       addMeasurementLayer: { useMutation: () => ({ mutateAsync: vi.fn(async () => undefined) }) },
-      setPersonalScale: { useMutation: () => ({ mutateAsync: mocks.savePersonal }) },
+      setScale: { useMutation: () => ({ mutateAsync: mocks.setScale }) },
       linkTargets: {
         useQuery: () => ({
           data: { jobs: [], targets: [] },
@@ -392,8 +389,9 @@ const chooseTool = (id: string) => {
 };
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.personal = null;
-  mocks.savePersonal.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => scale);
+  mocks.setScale.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => ({
+    ...mocks.data!.metadata, scale, revision: mocks.data!.metadata.revision + 1,
+  }));
   mocks.account = null;
   mocks.data = fixture();
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
@@ -1492,19 +1490,25 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("shared-scale")).toHaveTextContent("unset");
   });
 
-  it("Set scale saves a personal override without changing the shared calibration", async () => {
-    mocks.data = fixture();
+  it("Set scale changes the shared scale for everyone, without needing manager rights", async () => {
+    mocks.data = { ...fixture(), canManage: false };
     mocks.data.metadata.scale = {unit: "m", unitsPerSheetWidth: 80};
     render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
-    await waitFor(() => expect(mocks.savePersonal).toHaveBeenCalledWith({sheetId, scale: {unit:"m", unitsPerSheetWidth:120}}));
+    await waitFor(() => expect(mocks.setScale).toHaveBeenCalledWith({sheetId, scale: {unit:"m", unitsPerSheetWidth:120}}));
+    await waitFor(() => expect(mocks.scaleResult).toHaveBeenCalledWith(true));
     expect(mocks.metadata).not.toHaveBeenCalled();
-    expect(mocks.data.metadata.scale.unitsPerSheetWidth).toBe(80);
+    expect(mocks.data.metadata.scale?.unitsPerSheetWidth).toBe(120);
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("120");
   });
-  it("uses the personal scale ahead of the shared scale", () => {
-    mocks.personal = {unit:"m", unitsPerSheetWidth:42};
-    open();
-    expect(screen.getByTestId("shared-scale")).toHaveTextContent("42");
+  it("reports a failed shared scale save and keeps the previous scale", async () => {
+    mocks.data!.metadata.scale = {unit: "m", unitsPerSheetWidth: 80};
+    mocks.setScale.mockRejectedValueOnce(new Error("Connection lost"));
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
+    await waitFor(() => expect(mocks.scaleResult).toHaveBeenCalledWith(false));
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("80");
+    expect(await screen.findByText("Connection lost")).toBeTruthy();
   });
 
   it("keeps local metadata edits during refresh and submits their original expected revision", async () => {

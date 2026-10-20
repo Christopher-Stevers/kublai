@@ -1,7 +1,6 @@
 import { pipeLegendReferences } from "~/server/drawings/legend-components";
 import { listLegendItems, scanLegend, saveLegendItems, updateLegendItem } from "~/server/drawings/legend";
 import { legendItemSchema } from "~/lib/drawing-legend";
-import { personalDrawingScale, savePersonalDrawingScale } from "~/server/drawings/personal-scale";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
@@ -26,6 +25,7 @@ import {
   listDrawingWorkspace,
   saveDrawingEntity,
   saveDrawingMetadata,
+  setDrawingScale,
   setDrawingCurrentVersion,
   watchDrawing,
 } from "~/server/drawings/service";
@@ -48,8 +48,7 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   saveLegendItems: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId,items:z.array(legendItemSchema).min(1).max(300)})).mutation(({ctx,input})=>saveLegendItems(ctx,input)),
   updateLegendItem: hasDashboardAccess.input(z.object({sheetId,id:sheetId,revision:z.number().int().min(1),data:legendItemSchema.nullable()})).mutation(({ctx,input})=>updateLegendItem(ctx,input)),
   addMeasurementLayer: hasDashboardAccess.input(z.object({sheetId, name:z.string().trim().min(1).max(80)})).mutation(({ctx,input})=>addDrawingMeasurementLayer(ctx,input)),
-  personalScale: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input}) => personalDrawingScale(ctx,input.sheetId)),
-  setPersonalScale: hasDashboardAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => savePersonalDrawingScale(ctx,input.sheetId,input.scale)),
+  setScale: hasDashboardAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => setDrawingScale(ctx,input)),
   superScaleLatest: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),
   superScaleStart: hasDashboardAccess.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: hasDashboardAccess.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),
