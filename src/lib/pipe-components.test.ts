@@ -214,6 +214,26 @@ describe("piping component recognition", () => {
     ]);
     expect(result.candidates.every((c) => c.source === "geometry")).toBe(true);
   });
+  it("tells 45° wyes apart from square tees", () => {
+    const data = model({
+      segments: [
+        line("run", 0.1, 0.3, 0.9, 0.3),
+        line("tee-branch", 0.3, 0.3, 0.3, 0.1),
+        line("wye-branch", 0.6, 0.3, 0.7, 0.2),
+        line("wye-back", 0.5, 0.5, 0.8, 0.5),
+        line("wye-back-branch", 0.6, 0.5, 0.5, 0.6),
+      ],
+    });
+    const result = analyze(data);
+    const found = result.candidates
+      .map((c) => [c.kind, c.name, c.point.x, c.point.y, c.marker?.label])
+      .sort();
+    expect(found).toEqual([
+      ["tee", "Possible tee / branch", 0.3, 0.3, "T"],
+      ["wye", "Possible wye", 0.6, 0.3, "Y"],
+      ["wye", "Possible wye", 0.6, 0.5, "Y"],
+    ]);
+  });
   it("keeps a real tee beside a valve instead of masking the surrounding area", () => {
     const data = model({
       segments: [

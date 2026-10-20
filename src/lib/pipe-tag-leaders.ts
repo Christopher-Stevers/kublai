@@ -8,17 +8,22 @@ const noteLayer = (layer?: string) =>
 type Path = { segments: PipeSegment[]; points: SheetPoint[] };
 
 /** Recognize annotation leaders by three independent cues: a narrow filled
- * arrowhead, a shaft starting at its base, and a tagged annotation at the other
- * end. Exclude only those source paths, never the pipe touched by the tip. */
+ * arrowhead, a shaft starting at its base, and an annotation at the other end:
+ * either a tag on a note layer, or any printed note (such as "150Ø SAN @ 1%")
+ * where the shaft ends freely beside the text. Exclude only those source
+ * paths, never the pipe touched by the tip. */
 export function pipeTagLeaderPaths(linework: PipeLinework): Set<string> {
   const excluded = new Set<string>();
   const aspect = linework.aspect;
   if (!(aspect > 0) || !Number.isFinite(aspect) || aspect > 100)
     return excluded;
-  const tags = (linework.texts ?? [])
+  const texts = (linework.texts ?? [])
     .slice(0, 30000)
-    .filter((t) => /^[A-Z]{1,8}\s*[-–]?\s*\d{1,5}[A-Z]?$/i.test(t.text.trim()));
-  if (!tags.length) return excluded;
+    .filter((t) => /[A-Z0-9]/i.test(t.text) && t.bottom > t.top);
+  const tags = texts.filter((t) =>
+    /^[A-Z]{1,8}\s*[-–]?\s*\d{1,5}[A-Z]?$/i.test(t.text.trim()),
+  );
+  if (!texts.length) return excluded;
   const dist = (a: SheetPoint, b: SheetPoint) =>
     Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
   const start = (s: PipeSegment) => ({ x: s.x1, y: s.y1 });
@@ -32,12 +37,30 @@ export function pipeTagLeaderPaths(linework: PipeLinework): Set<string> {
       [-1, 0, 1].map((dy) => `${x + dx},${y + dy}`),
     );
   };
+  const textCells = new Map<string, typeof texts>();
+  for (const t of texts) {
+    const x0 = Math.floor(t.left / CELL),
+      x1 = Math.floor(t.right / CELL),
+      y0 = Math.floor((t.top * aspect) / CELL),
+      y1 = Math.floor((t.bottom * aspect) / CELL);
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 400) continue;
+    for (let x = x0 - 1; x <= x1 + 1; x++)
+      for (let y = y0 - 1; y <= y1 + 1; y++) {
+        const bucket = textCells.get(`${x},${y}`) ?? [];
+        if (bucket.length < 64) bucket.push(t);
+        textCells.set(`${x},${y}`, bucket);
+      }
+  }
+  const layers = new Map<string | undefined, PipeSegment[]>();
   const groups = new Map<string, PipeSegment[]>();
   const notes = new Map<string, SheetPoint[]>();
   for (const s of linework.segments.slice(0, 200000)) {
     const group = groups.get(s.pathId) ?? [];
     if (group.length < 17) group.push(s);
     groups.set(s.pathId, group);
+    const layer = layers.get(s.layer) ?? [];
+    layer.push(s);
+    layers.set(s.layer, layer);
     if (noteLayer(s.layer))
       for (const p of [start(s), end(s)]) {
         const bucket = notes.get(key(p)) ?? [];
@@ -88,6 +111,34 @@ export function pipeTagLeaderPaths(linework: PipeLinework): Set<string> {
       return h > 0 && Math.hypot(dx, dy) <= Math.min(0.008, h * 2);
     });
   };
+  const textGap = (
+    t: (typeof texts)[number],
+    p: SheetPoint,
+    limit: number,
+  ) => {
+    const h = (t.bottom - t.top) * aspect;
+    const dx = Math.max(t.left - p.x, 0, p.x - t.right);
+    const dy = Math.max(t.top - p.y, 0, p.y - t.bottom) * aspect;
+    return h > 0 && Math.hypot(dx, dy) <= Math.min(limit, h * 1.5);
+  };
+  const onSegment = (p: SheetPoint, s: PipeSegment) => {
+    const ax = s.x2 - s.x1,
+      ay = (s.y2 - s.y1) * aspect,
+      px = p.x - s.x1,
+      py = (p.y - s.y1) * aspect,
+      l2 = ax * ax + ay * ay;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, (px * ax + py * ay) / l2)) : 0;
+    return Math.hypot(px - t * ax, py - t * ay) <= JOIN;
+  };
+  // A pipe continues into other linework; a note leader stops beside its text.
+  const noted = (p: SheetPoint, path: Path, arrow: Path) => {
+    const near = neighbors(p).flatMap((k) => textCells.get(k) ?? []);
+    if (!near.some((t) => textGap(t, p, 0.004))) return false;
+    const pool = layers.get(path.segments[0]!.layer) ?? [];
+    if (pool.length > 50000) return false;
+    const own = new Set([path.segments[0]!.pathId, arrow.segments[0]!.pathId]);
+    return !pool.some((s) => !own.has(s.pathId) && onSegment(p, s));
+  };
   for (const arrow of arrows) {
     const vertices = arrow.points.slice(0, 3);
     const edges = vertices
@@ -127,7 +178,11 @@ export function pipeTagLeaderPaths(linework: PipeLinework): Set<string> {
         const nx = points[1]!.x - points[0]!.x,
           ny = (points[1]!.y - points[0]!.y) * aspect;
         if ((nx * ax + ny * ay) / (Math.hypot(nx, ny) * al) < 0.98) continue;
-        if (points.some((p) => dist(p, base) > 0.15) || !tagged(points.at(-1)!))
+        const far = points.at(-1)!;
+        if (
+          points.some((p) => dist(p, base) > 0.15) ||
+          !(tagged(far) || noted(far, path, arrow))
+        )
           continue;
         matches.add(path);
       }

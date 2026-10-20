@@ -197,8 +197,8 @@ export function componentDescription(text: string): {
       );
     name = angle ? `${angle[1] ?? angle[2] ?? angle[3]}° elbow` : "Elbow";
   } else if (/\bTEE\b|\bWYE\b/i.test(t)) {
-    kind = "tee";
-    name = /\bWYE\b/i.test(t) ? "Wye" : "Tee";
+    kind = /\bWYE\b/i.test(t) ? "wye" : "tee";
+    name = kind === "wye" ? "Wye" : "Tee";
   } else if (/\bREDUCER\b/i.test(t)) {
     kind = "reducer";
     name = "Reducer";
@@ -593,6 +593,24 @@ export function savedLegendTemplates(
 }
 const abbreviationKey = (text: string) =>
   text.trim().toUpperCase().replace(/[.\s]/g, "");
+
+/** A branch meeting a straight run square on is a tee; one entering at about
+ * 45° (a sanitary wye or combination) is a wye. Unclear geometry stays a tee. */
+export function branchKind(rays: SheetPoint[]): "tee" | "wye" {
+  for (let i = 0; i < rays.length; i++)
+    for (let j = i + 1; j < rays.length; j++) {
+      const a = rays[i]!,
+        b = rays[j]!;
+      if (a.x * b.x + a.y * b.y > -0.985) continue;
+      const c = rays.find((_, k) => k !== i && k !== j)!;
+      const angle =
+        (Math.acos(Math.max(-1, Math.min(1, Math.abs(c.x * a.x + c.y * a.y)))) *
+          180) /
+        Math.PI;
+      return Math.abs(angle - 45) <= 8 ? "wye" : "tee";
+    }
+  return "tee";
+}
 
 export function analyzePipeComponents(
   linework: PipeLinework,
@@ -1035,7 +1053,7 @@ export function analyzePipeComponents(
       // the surrounding area. A pipe may have a real branch inside this box.
       const topologyKind = named?.kind ?? direct?.kind;
       const topologyShape =
-        topologyKind && ["tee", "elbow"].includes(topologyKind);
+        topologyKind && ["tee", "wye", "elbow"].includes(topologyKind);
       if (g.fittingOnly || !topologyShape)
         for (const path of g.paths) symbolInkPaths.add(path.id);
     }
@@ -1055,7 +1073,7 @@ export function analyzePipeComponents(
             ? `; nearby tag ${named.abbreviation}`
             : "; matching symbol geometry"),
         {
-          marker: ["elbow", "tee", "rise", "drop"].includes(named.kind)
+          marker: ["elbow", "tee", "wye", "rise", "drop"].includes(named.kind)
             ? customComponentMarker(named.kind, named.name)
             : vectorComponentMarker(g.paths, aspect, named.legendId),
         },
@@ -1091,7 +1109,7 @@ export function analyzePipeComponents(
         {
           size: direct.size,
           material: direct.material,
-          marker: ["elbow", "tee", "rise", "drop"].includes(direct.kind)
+          marker: ["elbow", "tee", "wye", "rise", "drop"].includes(direct.kind)
             ? customComponentMarker(direct.kind, direct.name)
             : vectorComponentMarker(g.paths, aspect),
         },
@@ -1179,7 +1197,7 @@ export function analyzePipeComponents(
         {
           locationVerified: false,
           tag: t.text,
-          marker: ["elbow", "tee", "rise", "drop"].includes(r.kind)
+          marker: ["elbow", "tee", "wye", "rise", "drop"].includes(r.kind)
             ? customComponentMarker(r.kind, r.name)
             : vectorComponentMarker(
                 r.group.paths,
@@ -1344,10 +1362,11 @@ export function analyzePipeComponents(
         top: Math.max(0, p.y - 0.001 / aspect),
         bottom: Math.min(1, p.y + 0.001 / aspect),
       };
-      if (rays.length === 3)
+      const branch = rays.length === 3 ? branchKind(rays) : null;
+      if (branch)
         junctionCandidates.push([
-          "tee",
-          "Possible tee / branch",
+          branch,
+          branch === "wye" ? "Possible wye" : "Possible tee / branch",
           p,
           box,
           "geometry",
@@ -1355,8 +1374,16 @@ export function analyzePipeComponents(
             ? "A branch endpoint meets a repeated dashed pipe run across small drafting gaps. Confirm this tee / branch against the drawing."
             : contact
               ? "A branch's printed stroke touches a matching pipe run across a small centerline gap. Confirm this tee / branch against the drawing."
-              : "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee, wye, or another connection.",
-          { marker: customComponentMarker("tee", "Tee", rays) },
+              : branch === "wye"
+                ? "A branch joins a straight pipe run at about 45°. Confirm this wye against the drawing."
+                : "Three pipe directions meet at an endpoint. Confirm whether this represents one physical tee or another connection.",
+          {
+            marker: customComponentMarker(
+              branch,
+              branch === "wye" ? "Wye" : "Tee",
+              rays,
+            ),
+          },
         ]);
       if (rays.length === 2) {
         const angle =
@@ -1408,7 +1435,9 @@ export function analyzePipeComponents(
     if (
       kind === "elbow" &&
       junctionCandidates.some(
-        (other) => other[0] === "tee" && sameJunction(junction, other),
+        (other) =>
+          (other[0] === "tee" || other[0] === "wye") &&
+          sameJunction(junction, other),
       )
     )
       continue;

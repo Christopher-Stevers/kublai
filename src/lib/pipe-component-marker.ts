@@ -124,7 +124,7 @@ export function customComponentMarker(
           [0.3, 0.2],
         ]),
       );
-    if (kind === "tee")
+    if (kind === "tee" || kind === "wye")
       marker.paths.push(
         path([
           [-1, 0],
@@ -144,12 +144,12 @@ export function customComponentMarker(
     marker.label =
       profile.direction === "unknown"
         ? direction
-        : kind === "tee"
-          ? `T ${direction}`
+        : kind === "tee" || kind === "wye"
+          ? `${kind === "wye" ? "Y" : "T"} ${direction}`
           : kind === "elbow"
             ? `${angle ?? "90"}° ${direction}`
             : direction;
-  } else if (kind === "elbow" || kind === "tee") {
+  } else if (kind === "elbow" || kind === "tee" || kind === "wye") {
     const bend =
       (Number(angle === "22" ? "22.5" : (angle ?? 90)) * Math.PI) / 180;
     const arms = rays?.length
@@ -160,6 +160,12 @@ export function customComponentMarker(
             { x: 1, y: 0 },
             { x: 0, y: -1 },
           ]
+        : kind === "wye"
+          ? [
+              { x: -1, y: 0 },
+              { x: 1, y: 0 },
+              { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+            ]
         : [
             { x: -1, y: 0 },
             { x: Math.cos(bend), y: -Math.sin(bend) },
@@ -173,7 +179,9 @@ export function customComponentMarker(
     marker.label =
       kind === "tee"
         ? "T"
-        : angle
+        : kind === "wye"
+          ? "Y"
+          : angle
           ? `${angle === "22" ? "22.5" : angle}°`
           : "?";
   } else if (kind === "rise" || kind === "drop") {

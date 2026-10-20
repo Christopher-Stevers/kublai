@@ -153,16 +153,46 @@ describe("tag leader exclusion", () => {
       "shaft",
     ]);
   });
-  it("keeps shafts without both tag text and annotation border evidence", () => {
+  it("excludes leaders that end freely beside a size or slope note", () => {
     const data = fixture();
     for (const changed of [
-      { ...data, texts: [] },
-      { ...data, texts: data.texts!.map((t) => ({ ...t, text: '2"' })) },
       {
         ...data,
+        texts: data.texts!.map((t) => ({ ...t, text: "150Ø SAN @ 1%" })),
         segments: data.segments.filter((s) => s.pathId !== "tag-border"),
       },
+      { ...data, texts: data.texts!.map((t) => ({ ...t, text: '2"' })) },
+    ])
+      expect([...pipeTagLeaderPaths(changed)].sort()).toEqual([
+        "arrow",
+        "shaft",
+      ]);
+  });
+  it("keeps shafts without nearby text, an arrowhead, or a free end", () => {
+    const data = fixture();
+    const shaftEnd = data.segments.filter((s) => s.pathId === "shaft").at(-1)!;
+    const note = data.texts!.map((t) => ({ ...t, text: "150Ø SAN @ 1%" }));
+    const bare = data.segments.filter((s) => s.pathId !== "tag-border");
+    for (const changed of [
+      { ...data, texts: [] },
       { ...data, segments: data.segments.filter((s) => s.pathId !== "arrow") },
+      {
+        ...data,
+        texts: note,
+        // The "shaft" continues into more pipe of the same system.
+        segments: [
+          ...bare,
+          {
+            ...shaftEnd,
+            id: "more-pipe",
+            pathId: "more-pipe",
+            x1: shaftEnd.x2,
+            y1: shaftEnd.y2,
+            x2: shaftEnd.x2,
+            y2: shaftEnd.y2 + 0.02,
+          },
+        ],
+      },
     ])
       expect(pipeTagLeaderPaths(changed).size).toBe(0);
   });
