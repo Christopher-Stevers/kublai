@@ -130,13 +130,26 @@ export function inferPlanLayers(segments: StyledSegment[], aspect: number) {
   const ranked = [...votes].sort((a, b) => b[1] - a[1]);
   if (!ranked.length || ranked[0]![1] < doors.length * 0.5) return null;
   const wallStyles = new Set(ranked.filter(([, v]) => v >= ranked[0]![1] * 0.8).map(([style]) => style));
-  const walls = segments.map((s, i) => !doorSegments.has(i) && wallStyles.has(styleOf(s)) && !s.dash?.length);
+  // Other arcs of door size (turning circles, fixtures) are never walls.
+  const walls = segments.map((s, i) => !doorSegments.has(i) && !arcSegments.has(i) && wallStyles.has(styleOf(s)) && !s.dash?.length);
+  for (const i of curves(segments, walls, aspect, typical)) walls[i] = false;
   for (const i of dashedLines(segments, walls, aspect, typical)) walls[i] = false;
   for (const i of wallCrossings(segments, walls, aspect, typical)) walls[i] = false;
+  const cores = wallCores(segments, walls, aspect, typical);
+  for (const i of cores.keys()) walls[i] = false;
   const out: StyledSegment[] = segments.map((s, i) => ({
     ...s,
     layer: doorSegments.has(i) ? "A-DOOR" : walls[i] ? "A-WALL" : undefined,
   }));
+  for (const [i, pieces] of cores) {
+    const s = segments[i]!;
+    for (const [from, to] of pieces)
+      out.push({
+        x1: s.x1 + (s.x2 - s.x1) * from, y1: s.y1 + (s.y2 - s.y1) * from,
+        x2: s.x1 + (s.x2 - s.x1) * to, y2: s.y1 + (s.y2 - s.y1) * to,
+        layer: "A-WALL",
+      });
+  }
   // Redraw each swing as a clean arc on the door layer; the source strokes
   // may be split, overlapping or mixed with other symbols.
   for (const door of doors) {
@@ -232,6 +245,38 @@ function wallCrossings(segments: StyledSegment[], candidates: boolean[], aspect:
     }
   });
   const crossers: number[] = [];
+  const twinned = (i: number) => {
+    const p = pts[i]!;
+    const dx = p.bx - p.ax, dy = p.by - p.ay, len = Math.hypot(dx, dy);
+    const ux = dx / len, uy = dy / len;
+    const spans: Array<[number, number]> = [];
+    const seen = new Set<number>();
+    const steps = Math.ceil(len / cell);
+    for (let k = 0; k <= steps; k++) {
+      const gx = Math.floor((p.ax + (dx * k) / steps) / cell), gy = Math.floor((p.ay + (dy * k) / steps) / cell);
+      // The twin face can sit across a cell boundary.
+      const near = [-1, 0, 1].flatMap((ox) => [-1, 0, 1].flatMap((oy) => grid.get(`${gx + ox},${gy + oy}`) ?? []));
+      for (const j of near) {
+        if (j === i || seen.has(j)) continue;
+        seen.add(j);
+        const q = pts[j]!;
+        const ex = q.bx - q.ax, ey = q.by - q.ay, qlen = Math.hypot(ex, ey);
+        if (!qlen || Math.abs((ex * ux + ey * uy) / qlen) < 0.995) continue;
+        const gap = Math.abs((q.ax - p.ax) * uy - (q.ay - p.ay) * ux);
+        if (gap < doorRadius * 0.03 || gap > doorRadius * 0.6) continue;
+        const a = (q.ax - p.ax) * ux + (q.ay - p.ay) * uy, b = (q.bx - p.ax) * ux + (q.by - p.ay) * uy;
+        spans.push([Math.max(0, Math.min(a, b)), Math.min(len, Math.max(a, b))]);
+      }
+    }
+    spans.sort((a, b) => a[0] - b[0]);
+    let covered = 0, end = 0;
+    for (const [a, b] of spans) {
+      if (b <= end) continue;
+      covered += b - Math.max(a, end);
+      end = b;
+    }
+    return covered >= len * 0.6;
+  };
   pts.forEach((p, i) => {
     if (!candidates[i]) return;
     const dx = p.bx - p.ax, dy = p.by - p.ay, len = Math.hypot(dx, dy);
@@ -260,6 +305,8 @@ function wallCrossings(segments: StyledSegment[], candidates: boolean[], aspect:
         crossed.push({ ux, uy, offset: q.ax * uy - q.ay * ux });
       }
     }
+    // A wall face has its twin a wall's thickness away; a grid line is alone.
+    if (twinned(i)) return;
     // Both faces of one wall: parallel strokes a wall's thickness apart.
     for (let a = 0; a < crossed.length; a++)
       for (let b = a + 1; b < crossed.length; b++) {
@@ -270,4 +317,124 @@ function wallCrossings(segments: StyledSegment[], candidates: boolean[], aspect:
       }
   });
   return crossers;
+}
+
+/**
+ * Lines drawn inside a wall, between its two faces (centre lines, fire and
+ * acoustic rating lines), that carry on across a doorway or cased opening
+ * and seal it. Each maps to the stretches (fractions of its length) that lie
+ * between faces; the rest is dropped. A party wall drawn with light faces
+ * may have only its centre line in the wall pen, so that part stays.
+ */
+function wallCores(segments: StyledSegment[], candidates: boolean[], aspect: number, doorRadius: number) {
+  const cell = doorRadius;
+  const grid = new Map<string, number[]>();
+  const pts = segments.map((s) => ({ ax: s.x1, ay: s.y1 * aspect, bx: s.x2, by: s.y2 * aspect }));
+  pts.forEach((p, i) => {
+    if (!candidates[i]) return;
+    const steps = Math.max(1, Math.ceil(Math.hypot(p.bx - p.ax, p.by - p.ay) / cell));
+    const seen = new Set<string>();
+    for (let k = 0; k <= steps; k++) {
+      const key = `${Math.floor((p.ax + ((p.bx - p.ax) * k) / steps) / cell)},${Math.floor((p.ay + ((p.by - p.ay) * k) / steps) / cell)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const list = grid.get(key);
+      if (list) list.push(i);
+      else grid.set(key, [i]);
+    }
+  });
+  const thinnest = doorRadius * 0.02, thickest = doorRadius * 0.4;
+  const cores = new Map<number, Array<[number, number]>>();
+  pts.forEach((p, i) => {
+    if (!candidates[i]) return;
+    const dx = p.bx - p.ax, dy = p.by - p.ay, len = Math.hypot(dx, dy);
+    if (len < doorRadius * 0.5) return;
+    const ux = dx / len, uy = dy / len;
+    const parallel: Array<{ side: number; from: number; to: number }> = [];
+    const seen = new Set<number>();
+    const steps = Math.ceil(len / cell);
+    for (let k = 0; k <= steps; k++) {
+      const gx = Math.floor((p.ax + (dx * k) / steps) / cell), gy = Math.floor((p.ay + (dy * k) / steps) / cell);
+      for (let ox = -1; ox <= 1; ox++)
+        for (let oy = -1; oy <= 1; oy++)
+          for (const j of grid.get(`${gx + ox},${gy + oy}`) ?? []) {
+            if (j === i || seen.has(j)) continue;
+            seen.add(j);
+            const q = pts[j]!;
+            const ex = q.bx - q.ax, ey = q.by - q.ay, qlen = Math.hypot(ex, ey);
+            if (!qlen || Math.abs((ex * ux + ey * uy) / qlen) < 0.995) continue;
+            const side = (q.ax - p.ax) * uy - (q.ay - p.ay) * ux;
+            if (Math.abs(side) < thinnest || Math.abs(side) > thickest) continue;
+            const a = (q.ax - p.ax) * ux + (q.ay - p.ay) * uy, b = (q.bx - p.ax) * ux + (q.by - p.ay) * uy;
+            parallel.push({ side, from: Math.min(a, b), to: Math.max(a, b) });
+          }
+    }
+    // Most of the line has a wall face on both sides, and some of it doesn't.
+    const samples = Math.max(20, Math.ceil(len / (doorRadius * 0.05)));
+    const inside: boolean[] = [];
+    for (let k = 0; k < samples; k++) {
+      const t = ((k + 0.5) / samples) * len;
+      const covered = (sign: number) => parallel.some((f) => f.side * sign > 0 && f.from <= t && f.to >= t);
+      inside.push(covered(1) && covered(-1));
+    }
+    const count = inside.filter(Boolean).length;
+    if (count < samples * 0.5 || count === samples) return;
+    const pieces: Array<[number, number]> = [];
+    for (let k = 0; k < samples; k++) {
+      if (!inside[k]) continue;
+      const last = pieces[pieces.length - 1];
+      if (last && last[1] === k / samples) last[1] = (k + 1) / samples;
+      else pieces.push([k / samples, (k + 1) / samples]);
+    }
+    // Ends reach the faces' ends rather than stopping a sample short.
+    if (inside[0]) pieces[0]![0] = 0;
+    if (inside[samples - 1]) pieces[pieces.length - 1]![1] = 1;
+    cores.set(i, pieces);
+  });
+  return cores;
+}
+
+/**
+ * Curves flattened into chords (turning circles, swings the arc finder
+ * missed, fixtures): chains of short strokes meeting end to end at a slight
+ * bend. Walls meet square or run straight on.
+ */
+function curves(segments: StyledSegment[], candidates: boolean[], aspect: number, doorRadius: number) {
+  const tol = doorRadius * 0.01;
+  const maxLength = doorRadius * 0.3;
+  const ends = new Map<string, Array<{ i: number; ux: number; uy: number }>>();
+  const key = (x: number, y: number) => `${Math.round(x / tol)},${Math.round(y / tol)}`;
+  const short: number[] = [];
+  segments.forEach((s, i) => {
+    if (!candidates[i]) return;
+    const ax = s.x1, ay = s.y1 * aspect, bx = s.x2, by = s.y2 * aspect;
+    const len = Math.hypot(bx - ax, by - ay);
+    if (!len || len > maxLength) return;
+    short.push(i);
+    // Direction pointing away from the shared end.
+    for (const [x, y, ux, uy] of [[ax, ay, (bx - ax) / len, (by - ay) / len], [bx, by, (ax - bx) / len, (ay - by) / len]] as const) {
+      const k = key(x, y);
+      const list = ends.get(k);
+      if (list) list.push({ i, ux, uy });
+      else ends.set(k, [{ i, ux, uy }]);
+    }
+  });
+  const parent = new Map<number, number>(short.map((i) => [i, i]));
+  const find = (i: number): number => {
+    while (parent.get(i) !== i) { const p = parent.get(parent.get(i)!)!; parent.set(i, p); i = p; }
+    return i;
+  };
+  // Two strokes leaving a point in nearly opposite directions, but bent by 4–50°.
+  const bendMin = Math.cos((176 * Math.PI) / 180), bendMax = Math.cos((130 * Math.PI) / 180);
+  for (const list of ends.values())
+    for (let a = 0; a < list.length; a++)
+      for (let b = a + 1; b < list.length; b++) {
+        const A = list[a]!, B = list[b]!;
+        if (A.i === B.i) continue;
+        const dot = A.ux * B.ux + A.uy * B.uy;
+        if (dot > bendMin && dot < bendMax) parent.set(find(A.i), find(B.i));
+      }
+  const size = new Map<number, number>();
+  for (const i of short) size.set(find(i), (size.get(find(i)) ?? 0) + 1);
+  return short.filter((i) => size.get(find(i))! >= 4);
 }

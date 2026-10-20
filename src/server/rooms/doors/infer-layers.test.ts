@@ -65,6 +65,31 @@ describe("inferPlanLayers", () => {
     expect(layerOf(plan.grid)).toBeUndefined();
   });
 
+  it("opens lines inside walls across openings and drops chorded curves", () => {
+    const plan = flattenedPlan();
+    // A centre line inside the y = 0.4 wall that runs on through a doorway.
+    const core = line(0.3, 0.4 + THICK / 2, 0.5, 0.4 + THICK / 2);
+    // A turning circle drawn as 24 chords.
+    const circle: StyledSegment[] = [];
+    for (let i = 0; i < 24; i++) {
+      const a0 = (i / 24) * 2 * Math.PI, a1 = ((i + 1) / 24) * 2 * Math.PI;
+      circle.push(line(0.5 + 0.01 * Math.cos(a0), 0.5 + 0.01 * Math.sin(a0), 0.5 + 0.01 * Math.cos(a1), 0.5 + 0.01 * Math.sin(a1)));
+    }
+    // A party wall: both faces crossed by the y = 0.6 corridor wall's faces.
+    const party = [line(0.55, 0.45, 0.55, 0.75), line(0.55 + THICK, 0.45, 0.55 + THICK, 0.75)];
+    const segments = [...plan.segments, core, ...circle, ...party];
+    const inferred = inferPlanLayers(segments, 1)!;
+    const layerOf = (s: StyledSegment) => inferred.segments[segments.indexOf(s)]!.layer;
+
+    expect(layerOf(core)).toBeUndefined();
+    // Only the stretches between the wall's faces are kept: none of it crosses the door at x 0.34–0.352.
+    const kept = inferred.segments.filter((s) => s.layer === "A-WALL" && s.y1 === core.y1 && s.y2 === core.y2 && s !== core);
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.some((s) => Math.min(s.x1, s.x2) < 0.34 + 1e-3 && Math.max(s.x1, s.x2) > 0.352 - 1e-3)).toBe(false);
+    for (const s of circle) expect(layerOf(s)).not.toBe("A-WALL");
+    for (const s of party) expect(layerOf(s)).toBe("A-WALL");
+  });
+
   it("leaves layered exports and sheets without door swings alone", () => {
     const plan = flattenedPlan();
     expect(inferPlanLayers(plan.segments.map((s) => ({ ...s, layer: "A-WALL" })), 1)).toBeNull();
