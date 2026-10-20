@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { EmptyState } from "~/components/ui/empty-state";
-import { materialListTrade, TRADE_TAB } from "~/lib/material-list-trade";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import {
@@ -764,7 +763,6 @@ export function DashboardClient({
                         });
                       }}
                     >
-                      <span aria-hidden data-trade={materialListTrade(list)} className={`absolute inset-y-0 left-0 w-1.5 ${TRADE_TAB[materialListTrade(list)]}`} />
                       <CardHeader>
                         <div className="flex items-start justify-between gap-3">
                           <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
