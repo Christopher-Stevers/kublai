@@ -9,9 +9,9 @@ import { assertDocumentAccess } from "~/server/documents/access";
 import { documentOverview } from "~/server/documents/service";
 import { documentBlobPath } from "~/server/documents/storage";
 import { equipmentIndex, drawingPdfLocation } from "./equipment-index";
+import { jobEquipmentVocabulary } from "./equipment-register";
 import {
   containsEquipmentTag,
-  equipmentScheduleTags,
   equipmentDrawingDestination,
   equipmentDocumentDestination,
   equipmentTagLocations,
@@ -26,7 +26,7 @@ export type EquipmentSource = {
 };
 
 /** Read access and shared job data once per batch, never whole annotation workspaces. */
-async function searchContext(ctx: DrawingContext, sheetId: string) {
+export async function searchContext(ctx: DrawingContext, sheetId: string) {
   const access = await accessSheet(ctx.db, ctx.userId, sheetId);
   const [sheets, versions, docs] = await Promise.all([
     jobSheets(
@@ -67,36 +67,28 @@ async function searchContext(ctx: DrawingContext, sheetId: string) {
     .map((s) => ({ kind: "drawing", id: s.id, name: s.name }));
   for (const doc of docs.documents.filter((d) => !d.deletedAt))
     sources.push({ kind: "document", id: doc.id, name: doc.name });
-  return { access, sheets, docs, sources };
+  return { access, sheets, docs, sources, historical };
 }
 
 export async function equipmentSources(ctx: DrawingContext, sheetId: string) {
-  const context = await searchContext(ctx, sheetId);
-  const [metadata] = await ctx.db
-    .select({ data: drawingWorkspaceMetadata.data })
-    .from(drawingWorkspaceMetadata)
-    .where(eq(drawingWorkspaceMetadata.sheetId, sheetId));
-  const source =
-    context.sheets.find((s) => s.id === metadata?.data.currentSourceSheetId) ??
-    context.access.sheet;
-  const location = drawingPdfLocation(
-    source.imageUrl,
-    context.access.sheet.jobId,
-  );
-  let knownTags: string[] = [];
+  const [context, vocabulary] = await Promise.all([
+    searchContext(ctx, sheetId),
+    // Schedules and sheet numbers anywhere in the job decide what is equipment.
+    jobEquipmentVocabulary(ctx, sheetId).catch(() => null),
+  ]);
   const warnings: string[] = [];
-  if (location) {
-    try {
-      knownTags = equipmentScheduleTags(
-        (await equipmentIndex(location.file, "pdf")).pages,
-      );
-    } catch {
-      warnings.push(
-        "Equipment schedules could not be read; standard equipment names are still checked.",
-      );
-    }
-  }
-  return { sources: context.sources, knownTags, warnings };
+  if (!vocabulary || vocabulary.failed)
+    warnings.push(
+      `${vocabulary ? "Some equipment schedules" : "Equipment schedules"} could not be read; standard equipment names are still checked.`,
+    );
+  if (vocabulary?.pending)
+    warnings.push("Some job files are still being read; tags defined only in their schedules may be missed. Scan again shortly.");
+  return {
+    sources: context.sources,
+    knownTags: vocabulary?.knownTags ?? [],
+    sheetNumbers: vocabulary?.sheetNumbers ?? [],
+    warnings,
+  };
 }
 
 export async function equipmentMatchesBatch(

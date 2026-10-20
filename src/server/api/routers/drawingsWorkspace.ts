@@ -4,6 +4,7 @@ import { legendItemSchema } from "~/lib/drawing-legend";
 import { personalDrawingScale, savePersonalDrawingScale } from "~/server/drawings/personal-scale";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
+import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
 import { drawingLinkTargetKinds } from "~/lib/drawing-links";
@@ -54,6 +55,7 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   superScaleCancel: hasDashboardAccess.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),
   equipmentMatchesBatch: hasDashboardAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), sources: z.array(equipmentSource).min(1).max(32), groupBySheet: z.boolean().optional() })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
   equipmentSources: hasDashboardAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
+  equipmentTag: hasDashboardAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), exclude: z.object({ left: z.number().finite(), top: z.number().finite(), right: z.number().finite(), bottom: z.number().finite() }).optional() })).query(({ctx,input})=>equipmentTagDestinations(ctx,input)),
   equipmentMatches: hasDashboardAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),
   reviewRevisionUpload: hasDashboardAccess
     .input(z.object({ uploadedSetId: sheetId }))

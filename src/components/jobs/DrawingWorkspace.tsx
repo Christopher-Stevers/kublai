@@ -16,6 +16,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
 import { EquipmentTagLinks } from "./EquipmentTagLinks";
+import { EquipmentTagDestinations } from "./EquipmentTagDestinations";
 import { MAX_DRAWING_LINKS, drawingMarkupLinks as equipmentExistingLinks } from "~/lib/drawing-links";
 import { useDrawingDestination } from "./DrawingDestinationProvider";
 import { DRAWING_DESTINATION_EVENT, type SnapshotState, readSnapshotState } from "~/lib/snapshot-source";
@@ -1199,11 +1200,33 @@ export function DrawingWorkspace({
   const activate = useCallback(
     (markup: DrawingMarkup) => {
       const links = drawingDestinationLinks(markup, sheet.id);
-      if (links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
+      // An equipment tag always offers every place it appears in the job.
+      if (markup.equipmentTag || links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
       else if (links[0]) void openDestination(links[0]);
       else setError("Add a destination to this hyperlink.");
     },
     [openDestination, sheet.id],
+  );
+  const renderLinkChoice = (link: DrawingMarkupLink, content: ReactNode, key: string, className?: string) => (
+    <Button
+      key={key}
+      variant="outline"
+      className={className}
+      onPointerDown={() => { linkChoiceArmed.current = true; }}
+      onClick={(event) => {
+        // The opening touch's synthetic click must not pick a destination.
+        // Keyboard/assistive activation has detail 0 and remains supported.
+        if (event.detail > 0 && !linkChoiceArmed.current) {
+          event.preventDefault();
+          return;
+        }
+        linkChoiceArmed.current = false;
+        setLinkChooser(null);
+        void openDestination(link);
+      }}
+    >
+      {content}
+    </Button>
   );
   const requestedLink = useRef<string | null>(null);
   useEffect(() => {
@@ -3603,33 +3626,27 @@ export function DrawingWorkspace({
                 : "Choose a link"}
             </DialogTitle>
             <DialogDescription>
-              Choose a destination for this hyperlink.
+              {linkChooser?.equipmentTag
+                ? `Every place ${linkChooser.equipmentTag} appears in this job.`
+                : "Choose a destination for this hyperlink."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[60vh] gap-2 overflow-y-auto">
-            {linkChooser &&
-              drawingDestinationLinks(linkChooser, sheet.id).map((link, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="h-auto min-h-12 justify-start text-left whitespace-normal"
-                  onPointerDown={() => { linkChoiceArmed.current = true; }}
-                  onClick={(event) => {
-                    // The opening touch's synthetic click must not pick a destination.
-                    // Keyboard/assistive activation has detail 0 and remains supported.
-                    if (event.detail > 0 && !linkChoiceArmed.current) {
-                      event.preventDefault();
-                      return;
-                    }
-                    linkChoiceArmed.current = false;
-                    setLinkChooser(null);
-                    void openDestination(link);
-                  }}
-                >
-                  {link.label}
-                </Button>
-              ))}
-          </div>
+          {linkChooser?.equipmentTag ? (
+            <EquipmentTagDestinations
+              sheetId={sheet.id}
+              markup={linkChooser}
+              saved={drawingDestinationLinks(linkChooser, sheet.id)}
+              online={online}
+              renderLink={renderLinkChoice}
+            />
+          ) : (
+            <div className="grid max-h-[60vh] gap-2 overflow-y-auto">
+              {linkChooser &&
+                drawingDestinationLinks(linkChooser, sheet.id).map((link, index) =>
+                  renderLinkChoice(link, link.label, String(index), "h-auto min-h-12 justify-start text-left whitespace-normal"),
+                )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

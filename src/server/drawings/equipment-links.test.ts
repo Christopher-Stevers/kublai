@@ -31,6 +31,7 @@ import {
   equipmentMatchesBatch,
   equipmentSources,
 } from "./equipment-links";
+import { clearEquipmentRegisters } from "./equipment-register";
 import { drawingWorkspaceEntities } from "~/server/db/drawing-workspace-schema";
 import type { DrawingContext } from "./service";
 const ctx = {
@@ -50,6 +51,7 @@ const a = { id: uuid(1), setId: uuid(3), name: "A", imageUrl: "a" },
   b = { id: uuid(2), setId: uuid(3), name: "B", imageUrl: "b" };
 beforeEach(() => {
   vi.clearAllMocks();
+  clearEquipmentRegisters();
   mock.access.mockResolvedValue({
     sheet: { ...a, jobId: uuid(4), organizationId: "org" },
     actor: { organizationId: "org" },
@@ -237,4 +239,31 @@ it("opens a submittal at its exact PDF page and tag even when metadata already m
   expect(state.pdf.viewport.center.x).toBeCloseTo(.65);
   expect(state.pdf.viewport.center.y).toBeCloseTo(.31);
   expect(state.pdf.viewport.zoom).toBeGreaterThan(1);
+});
+
+it("finds a clicked tag's schedule row, other drawings and documents across the job", async () => {
+  const { equipmentTagDestinations } = await import("./equipment-register");
+  const docId = uuid(50), versionId = uuid(51);
+  mock.sheets.mockResolvedValue([a, b]);
+  mock.overview.mockResolvedValue({documents:[{id:docId,name:"Pump submittal",description:"",tags:[],currentVersionId:versionId}],versions:[{id:versionId,name:"p.pdf",mimeType:"application/pdf",sha256:"hash"}]});
+  const word = (text: string, left: number, top: number) => ({ text, left, right: left + 0.04, top, bottom: top + 0.01 });
+  mock.index.mockImplementation(async (file: string) => file === "/private/plan.pdf"
+    ? { pages: [{ page: 1, words: [
+        word("PUMP SCHEDULE", 0.1, 0.05), word("TAG", 0.1, 0.1), word("GPM", 0.2, 0.1),
+        word("P-1", 0.1, 0.15), word("150", 0.2, 0.15), word("P-2", 0.1, 0.2), word("90", 0.2, 0.2),
+        word("P-1", 0.6, 0.6), word("P-10", 0.7, 0.7),
+      ] }], incomplete: false }
+    : { pages: [{ page: 1, words: [] }, { page: 4, words: [word("P-1", 0.5, 0.5)] }], incomplete: false });
+  const result = await equipmentTagDestinations(ctx, { sheetId: a.id, tag: "p-1", exclude: { left: 0.59, right: 0.65, top: 0.59, bottom: 0.62 } });
+  expect(result.tag).toBe("P-1");
+  expect(result.schedules.map((s) => [s.title, s.cells, s.source])).toEqual([
+    ["PUMP SCHEDULE", ["150"], "A"],
+    ["PUMP SCHEDULE", ["150"], "B"],
+  ]);
+  // The viewed sheet comes first, without the occurrence that was clicked.
+  expect(result.drawings.map((d) => [d.name, d.here, d.links.length])).toEqual([["A", true, 1], ["B", false, 2]]);
+  expect(result.documents).toEqual([expect.objectContaining({ documentId: docId, pages: [4] })]);
+  expect(result.documents[0]!.url).toContain("#snapshot=");
+  expect(result.warnings).toEqual([]);
+  await expect(equipmentTagDestinations(ctx, { sheetId: a.id, tag: "ZONE" })).rejects.toThrow("equipment tag");
 });
