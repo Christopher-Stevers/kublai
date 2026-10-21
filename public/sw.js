@@ -273,7 +273,7 @@ const IMAGE_CONCURRENCY = 4;
 function drainImages() {
   while (activeImageDownloads < IMAGE_CONCURRENCY && imageQueue.length) {
     // Leave three download slots free for the photos the user can actually see.
-    let index = imageQueue.findIndex(job => job.visible);
+    let index = imageQueue.findIndex((job) => job.visible);
     if (index < 0) {
       if (activeBackgroundImageDownloads >= 1) return;
       index = 0;
@@ -411,7 +411,14 @@ self.addEventListener("message", (event) => {
           queueImage(new Request(url.href, { credentials: "same-origin" })),
         ),
       );
-      event.ports?.[0]?.postMessage({ cached: urls.filter((_, index) => results[index].status === "fulfilled" && results[index].value.ok).map(url => url.pathname + url.search) });
+      event.ports?.[0]?.postMessage({
+        cached: urls
+          .filter(
+            (_, index) =>
+              results[index].status === "fulfilled" && results[index].value.ok,
+          )
+          .map((url) => url.pathname + url.search),
+      });
     })(),
   );
 });
@@ -580,7 +587,8 @@ self.addEventListener("message", (event) => {
         const previousAccount = await pushAccount();
         const cache = await caches.open(PUSH_BINDING_CACHE);
         await cache.put(PUSH_BINDING_URL, new Response(account ?? ""));
-        if (!account || previousAccount !== account) await updateAppIconBadge(0);
+        if (!account || previousAccount !== account)
+          await updateAppIconBadge(0);
         if (!account) {
           const notifications = await self.registration.getNotifications();
           for (const notification of notifications)
@@ -646,7 +654,9 @@ self.addEventListener("push", (event) => {
           body:
             message ??
             (data.type === "material-list"
-              ? "Someone who reports to you added or edited material. Open ForemanHQ to review the list."
+              ? Number.isSafeInteger(data.itemCount) && data.itemCount > 0
+                ? `${data.itemCount} item${data.itemCount === 1 ? "" : "s"} added. Open ForemanHQ to review the latest list.`
+                : "Someone who reports to you added or edited material. Open ForemanHQ to review the list."
               : data.type === "job-drawing"
                 ? "There is new drawing activity. Open ForemanHQ to review it."
                 : data.type === "conversation-chat"
@@ -661,7 +671,9 @@ self.addEventListener("push", (event) => {
           vibrate: [90, 60, 90],
           tag:
             data.type === "material-list"
-              ? `material-list-${new URL(url).pathname.split("/").at(-1)}`
+              ? /^[a-f0-9]{64}$/.test(data.group ?? "")
+                ? `material-sender-${data.group}`
+                : `material-list-${new URL(url).pathname.split("/").at(-1)}`
               : data.type === "job-drawing"
                 ? `job-drawing-${new URL(url).searchParams.get("drawingSheet")}`
                 : data.type === "conversation-chat"

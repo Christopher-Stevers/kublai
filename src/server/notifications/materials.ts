@@ -59,9 +59,18 @@ export async function enqueueMaterialNotification(
 export function materialPushPayload(
   materialListId: string,
   recipientId: string,
+  group?: { senderId: string; count: number },
 ) {
   return JSON.stringify({
     type: "material-list",
+    ...(group
+      ? {
+          group: createHash("sha256")
+            .update(`${recipientId}:${group.senderId}:added`)
+            .digest("hex"),
+          itemCount: group.count,
+        }
+      : {}),
     url: `/dashboard/material-lists/${materialListId}`,
     account: createHash("sha256").update(recipientId).digest("hex"),
   });

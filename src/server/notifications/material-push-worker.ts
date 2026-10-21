@@ -27,6 +27,8 @@ type Candidate = {
   organizationId: string;
   senderId: string;
   materialListId: string;
+  action: string;
+  itemCount: number;
 };
 async function productionDependencies(): Promise<Dependencies> {
   const [{ db }, { getPushConfiguration }] = await Promise.all([
@@ -49,6 +51,13 @@ export async function drainMaterialPush(options?: Dependencies) {
   );
   await db.execute(sql`update kublai_material_push_outbox set "completedAt"=now(),outcome='expired',"leaseToken"=null,"leasedUntil"=null
     where "completedAt" is null and ("createdAt"<now()-interval '1 day' or attempts>=${MAX_PUSH_ATTEMPTS}) and ("leasedUntil" is null or "leasedUntil"<now())`);
+  // Keep only the latest pending addition per sender; the next push carries the total.
+  await db.execute(sql`update kublai_material_push_outbox o set "completedAt"=now(),outcome='superseded'
+    from kublai_material_notification n where o."notificationId"=n.id and o."completedAt" is null
+      and (o."leasedUntil" is null or o."leasedUntil"<now()) and n.action='added' and n."readAt" is null
+      and exists (select 1 from kublai_material_notification newer where newer."organizationId"=n."organizationId"
+        and newer."recipientId"=n."recipientId" and newer."senderId"=n."senderId" and newer.action='added'
+        and newer."readAt" is null and (newer."createdAt",newer.id)>(n."createdAt",n.id))`);
   if (!configuration) return;
   const leaseToken = randomUUID();
   const deliveries = await db.execute<Delivery>(sql`
@@ -66,7 +75,9 @@ export async function drainMaterialPush(options?: Dependencies) {
   await Promise.allSettled(
     deliveries.map(async (delivery) => {
       const [current] = await db.execute<Candidate>(sql`
-        select to_jsonb(u) as "user",n."organizationId",n."senderId",n."materialListId"
+        select to_jsonb(u) as "user",n."organizationId",n."senderId",n."materialListId",n.action,
+          (select count(*)::int from kublai_material_notification additions where additions."organizationId"=n."organizationId"
+            and additions."recipientId"=n."recipientId" and additions."senderId"=n."senderId" and additions.action='added' and additions."readAt" is null) as "itemCount"
         from kublai_material_push_outbox o
         join kublai_material_notification n on n.id=o."notificationId" and n."readAt" is null
         join kublai_material_list l on l.id=n."materialListId" and l."organizationId"=n."organizationId"
@@ -92,7 +103,13 @@ export async function drainMaterialPush(options?: Dependencies) {
         await send(
           delivery,
           configuration,
-          materialPushPayload(current.materialListId, current.user.id),
+          materialPushPayload(
+            current.materialListId,
+            current.user.id,
+            current.action === "added"
+              ? { senderId: current.senderId, count: current.itemCount }
+              : undefined,
+          ),
         );
         await settle(delivery, "sent");
       } catch (error) {

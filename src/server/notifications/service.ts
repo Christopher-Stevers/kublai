@@ -101,18 +101,26 @@ function sources(ctx: Context) {
           and decision.entity->'data'->>'requestId'=e.id::text)
     union all
     select 'material-list:' || n.id::text, 'material-list', n.id, null::bigint,
-      coalesce(sender.name,'A team member') || case n.action when 'added' then ' added material' else ' edited material' end,
+      coalesce(sender.name,'A team member') || case n.action when 'added' then ' added ' || n."itemCount"::text || case when n."itemCount"=1 then ' item' else ' items' end else ' edited material' end,
       j.name || ' · ' || l.name,
-      case n.action when 'added' then 'Material was added to this list.' else 'Material in this list was changed.' end,
+      case n.action when 'added' then n."itemCount"::text || ' item additions awaiting review. Opens the most recently updated list.' else 'Material in this list was changed.' end,
       n."createdAt", n."readAt" is null,
       '/dashboard/material-lists/' || l.id
-    from kublai_material_notification n
+    from (
+      select event.*, count(*) over (partition by "senderId", "recipientId", action,
+        case when action='added' and "readAt" is null then null else id end) as "itemCount",
+        row_number() over (partition by "senderId", "recipientId", action,
+          case when action='added' and "readAt" is null then null else id end
+          order by "createdAt" desc,id desc) as "groupRank"
+      from kublai_material_notification event
+      where "organizationId"=${user.organizationId}::uuid and "recipientId"=${user.id}
+    ) n
     join kublai_material_list l on l.id=n."materialListId" and l."organizationId"=${user.organizationId}
     join kublai_job j on j.id=l."jobId" and j."organizationId"=l."organizationId"
     join kublai_user sender on sender.id=n."senderId" and sender."organizationId"=l."organizationId"
     join kublai_organization_department d on d."organizationId"=l."organizationId" and lower(btrim(d.name))=lower(btrim(sender.department))
     join kublai_organization_department_lead lead on lead."organizationId"=d."organizationId" and lead."departmentId"=d.id and lead."userId"=${user.id}
-    where n."recipientId"=${user.id} and n."senderId"<>${user.id}
+    where n."recipientId"=${user.id} and n."senderId"<>${user.id} and n."groupRank"=1
     union all
     select 'job-chat:' || m.id::text, 'job-chat', j.id, m.sequence,
       coalesce(a.name, 'Former member') || ' in job chat', j.name,
@@ -218,7 +226,12 @@ export async function readNotifications(
     from selected s where s.kind='drawing' and n.id=s."sourceId" and n."recipientId"=${ctx.user.id} returning n.id
   ), material_reads as (
     update kublai_material_notification n set "readAt"=coalesce(n."readAt",now())
-    from selected s where s.kind='material-list' and n.id=s."sourceId" and n."recipientId"=${ctx.user.id} returning n.id
+    from selected s join kublai_material_notification anchor on anchor.id=s."sourceId"
+    where s.kind='material-list' and n."recipientId"=${ctx.user.id}
+      and n."organizationId"=anchor."organizationId"
+      and (n.id=anchor.id or (anchor.action='added' and anchor."readAt" is null
+        and n.action='added' and n."readAt" is null and n."senderId"=anchor."senderId"
+        and (n."createdAt",n.id)<=(anchor."createdAt",anchor.id))) returning n.id
   ), job_reads as (
     insert into kublai_job_chat_member ("jobId","userId","lastReadSequence")
     select "sourceId",${ctx.user.id},sequence from selected where kind='job-chat'

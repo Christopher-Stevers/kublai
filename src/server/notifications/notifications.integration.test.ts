@@ -175,7 +175,7 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       await enqueueMaterialNotification(ctx.db, change);
       const page = await notificationPage(ctx, { unreadOnly: true, limit: 30 });
       const item = page.items.find((n) => n.kind === "material-list")!;
-      expect(item.title).toBe("Sender added material");
+      expect(item.title).toBe("Sender added 1 item");
       expect(item.context).toBe("Job site · Room supplies");
       expect(item.url).toBe(`/dashboard/material-lists/${list}`);
       expect((await notificationOverview(ctx)).unreadCount).toBe(5);
@@ -190,6 +190,67 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
         },
       });
       expect(sent).toEqual([]);
+    });
+    it("groups unread additions per person across lists and starts fresh after reading", async () => {
+      await materialFixture();
+      const secondList = randomUUID();
+      await conn`insert into kublai_material_list (id,"organizationId","jobId",name) values (${secondList},${org},${job},'Second list')`;
+      await enqueueMaterialNotification(ctx.db, {
+        ...change,
+        eventKey: "first",
+      });
+      await enqueueMaterialNotification(ctx.db, {
+        ...change,
+        eventKey: "second",
+        materialListId: secondList,
+      });
+      let page = await notificationPage(ctx, { unreadOnly: true, limit: 30 });
+      let grouped = page.items.filter((n) => n.kind === "material-list");
+      expect(grouped).toHaveLength(1);
+      expect(grouped[0]!.title).toBe("Sender added 2 items");
+      expect(grouped[0]!.url).toBe(`/dashboard/material-lists/${secondList}`);
+      const sent: string[] = [];
+      await drainMaterialPush({
+        db: ctx.db as never,
+        configuration: pushConfig,
+        send: async (_d, _c, p) => {
+          sent.push(p);
+        },
+      });
+      expect(sent).toHaveLength(1);
+      expect(JSON.parse(sent[0]!)).toMatchObject({ itemCount: 2 });
+      await readNotifications(ctx, [grouped[0]!.target]);
+      expect(
+        await conn`select * from kublai_material_notification where "readAt" is null`,
+      ).toHaveLength(0);
+      await enqueueMaterialNotification(ctx.db, {
+        ...change,
+        eventKey: "third",
+      });
+      page = await notificationPage(ctx, { unreadOnly: true, limit: 30 });
+      grouped = page.items.filter((n) => n.kind === "material-list");
+      expect(grouped).toHaveLength(1);
+      expect(grouped[0]!.title).toBe("Sender added 1 item");
+    });
+    it("keeps additions arriving after the displayed snapshot unread", async () => {
+      await materialFixture();
+      await enqueueMaterialNotification(ctx.db, {
+        ...change,
+        eventKey: "first",
+      });
+      const page = await notificationPage(ctx, { unreadOnly: true, limit: 30 });
+      await enqueueMaterialNotification(ctx.db, {
+        ...change,
+        eventKey: "second",
+      });
+      await readNotifications(ctx, [
+        page.items.find((n) => n.kind === "material-list")!.target,
+      ]);
+      expect(
+        (
+          await notificationPage(ctx, { unreadOnly: true, limit: 30 })
+        ).items.filter((n) => n.kind === "material-list"),
+      ).toHaveLength(1);
     });
     it("uses department leads instead of reporting managers and excludes self alerts", async () => {
       await materialFixture();
