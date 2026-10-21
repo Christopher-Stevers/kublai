@@ -163,7 +163,14 @@ export function JobWorkspaceOptions({
           }
         }}
       >
-        <CardHeader><CardTitle>Systems</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
+            <span>Systems</span>
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              Experimental
+            </span>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <NetworkIcon className="h-4 w-4" />
