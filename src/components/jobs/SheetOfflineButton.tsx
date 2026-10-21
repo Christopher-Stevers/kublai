@@ -97,7 +97,6 @@ export function SheetOfflineButton({
   return (
     <div
       className={iconOnly ? "shrink-0" : "min-w-0"}
-      onClick={(event) => event.stopPropagation()}
     >
       <button
         type="button"
@@ -119,7 +118,13 @@ export function SheetOfflineButton({
             ? "Saved on this device. Select to refresh."
             : "Save in ForemanHQ for use without internet"
         }
-        onClick={() => (progress ? controller.current?.abort() : void save())}
+        onClick={(event) => {
+          // Only the control consumes the tap; blank row space still opens
+          // the containing floor/drawing card.
+          event.stopPropagation();
+          if (progress) controller.current?.abort();
+          else void save();
+        }}
       >
         {progress ? (
           <Loader2Icon className="size-4 shrink-0 animate-spin" />

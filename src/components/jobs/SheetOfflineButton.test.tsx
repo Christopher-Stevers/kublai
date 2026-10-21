@@ -87,3 +87,15 @@ it("updates mounted sheets when a folder finishes saving or downloads are remove
   window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   await waitFor(() => expect(screen.queryByText("Available offline")).toBeNull());
 });
+
+it("opens the containing floor from blank download-row space, but not from the download button", async () => {
+  const openFloor = vi.fn();
+  render(<div onClick={openFloor}><SheetOfflineButton sheet={sheet} /></div>);
+  const button = screen.getByRole("button", { name: "Save A101 offline" });
+  fireEvent.click(button.parentElement!);
+  expect(openFloor).toHaveBeenCalledTimes(1);
+  fireEvent.click(button);
+  await screen.findByRole("button", { name: "A101 available offline; refresh" });
+  expect(openFloor).toHaveBeenCalledTimes(1);
+  expect(mocks.store.saveAssets).toHaveBeenCalledOnce();
+});
