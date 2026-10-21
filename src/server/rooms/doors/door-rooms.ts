@@ -13,6 +13,8 @@ const MANY_DOORS = 10;
 const CLOSET_AREA = 4;
 /** A doorless space smaller than this is a shaft or chase, not a room. */
 const SHAFT_AREA = 8;
+/** Suite-tagged units that mark a residential floor. */
+const TAGGED_FLOOR = 3;
 
 export type DoorSeed = { x: number; y: number; name: string };
 
@@ -213,12 +215,22 @@ export function detectDoorRooms(
       .sort((a, b) => Number(prefer(b)) - Number(prefer(a)) || Number(COMMON_NAME.test(b)) - Number(COMMON_NAME.test(a)) || rank.get(a)! - rank.get(b)!)[0];
   for (const c of classes.common) rooms.push({ kind: "common", name: nameOf([c], (n) => CIRCULATION.test(n)), spaces: [c] });
   const shaft = SHAFT_AREA * doorSize ** 2;
-  for (const unit of classes.units) {
-    const total = unit.reduce((sum, s) => sum + area[s]!, 0);
-    const hasDoor = doors.some((d) => d.some((s) => s && unit.includes(s)));
+  const isTag = (n: string) => UNIT_TAG.test(n.split(" ")[0]!);
+  const units = classes.units.map((unit) => ({
+    spaces: unit,
+    name: nameOf(unit, isTag),
+    total: unit.reduce((sum, s) => sum + area[s]!, 0),
+    hasDoor: doors.some((d) => d.some((s) => s && unit.includes(s))),
+  }));
+  // On a floor of tagged suites every room is common space or a suite, so a
+  // doorless space with no name is outdoors: a balcony, terrace or the gap
+  // between buildings. Elsewhere (parkades, service floors) doors are often
+  // missed and the space is kept.
+  const suites = units.filter((u) => u.name && isTag(u.name)).length >= TAGGED_FLOOR;
+  for (const unit of units) {
     // Shafts and chases: small, no door. Not rooms.
-    if (!hasDoor && total < shaft) continue;
-    rooms.push({ kind: "unit", name: nameOf(unit, (n) => UNIT_TAG.test(n.split(" ")[0]!)), spaces: unit });
+    if (!unit.hasDoor && (unit.total < shaft || (suites && !unit.name))) continue;
+    rooms.push({ kind: "unit", name: unit.name, spaces: unit.spaces });
   }
 
   const roomOf = new Int32Array(graph.count + 1);

@@ -159,4 +159,18 @@ describe("detectDoorRooms", () => {
     // Trade codes never name a room.
     expect(result.rooms.some((r) => r.name === "DW-38")).toBe(false);
   });
+
+  it("drops doorless unnamed spaces on a floor of tagged suites", () => {
+    const { segments, seeds } = corridorPlan();
+    // A balcony strip along the outside wall, with no door into it.
+    const balcony = [wall(50, 800, 950, 800), wall(50, 700, 50, 800), wall(950, 700, 950, 800)];
+    const tags = [{ x: n(350), y: n(320), name: "N102" }, { x: n(350), y: n(600), name: "N103" }];
+    const strip = (rooms: { spaces: number[] }[], labels: Int32Array) =>
+      rooms.some((_, i) => labels[750 * SIZE + 500] === i + 1);
+    const few = detectDoorRooms([...segments, ...balcony], { width: SIZE, height: SIZE, seeds });
+    expect(strip(few.rooms, few.labels)).toBe(true);
+    const tagged = detectDoorRooms([...segments, ...balcony], { width: SIZE, height: SIZE, seeds: [...seeds, ...tags] });
+    expect(strip(tagged.rooms, tagged.labels)).toBe(false);
+    expect(tagged.rooms.filter((r) => r.kind === "unit")).toHaveLength(8);
+  });
 });
