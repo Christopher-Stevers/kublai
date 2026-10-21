@@ -273,3 +273,41 @@ describe("specification assessment", () => {
     expect(calls).toBeGreaterThan(1);
   });
 });
+
+it("recognizes drawing service labels without inventing material rules", async () => {
+  const drawing = {
+    setId: id(3),
+    sheetId: id(1),
+    sourceSheetId: id(2),
+    imageUrl: "/synthetic",
+    jobId: id(4),
+  };
+  const passages = specificationPassages(
+    { ...source, drawing },
+    {
+      pages: [
+        {
+          page: 7,
+          text: "PIPING LEGEND\nDCW - DOMESTIC COLD WATER\nDHW - DOMESTIC HOT WATER",
+        },
+      ],
+      warnings: [],
+    },
+  );
+  expect(passages.flatMap((p) => p.systems.map((s) => s.code))).toContain(
+    "DCW",
+  );
+  const result = await assessPassages(passages, [], fixture);
+  const cold = result.systems.find((s) => s.code === "DCW")!.requirements;
+  expect(cold.applicabilityEvidence[0]?.drawing).toEqual({
+    setId: id(3),
+    sheetId: id(1),
+    sourceSheetId: id(2),
+  });
+  expect(cold.rules).toHaveLength(0);
+  expect(
+    cold.issues.some(
+      (i) => i.code === "drawing_applicability" && i.blocking && !i.resolved,
+    ),
+  ).toBe(true);
+});

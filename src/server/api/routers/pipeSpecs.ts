@@ -17,6 +17,7 @@ import {
   validateSpecEvidence,
   validateSpecReferences,
 } from "~/server/job-systems/service";
+import { assessmentSelectionSchema } from "~/server/job-systems/types";
 import { redactSystemRequirements } from "~/server/job-systems/sources";
 
 /**
@@ -67,8 +68,15 @@ export const pipeSpecsRouter = createTRPCRouter({
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => getAssessment(userIdOf(ctx), input.jobId)),
   assess: hasDashboardAccess
-    .input(z.object({ jobId: z.string().uuid() }))
-    .mutation(({ ctx, input }) => startAssessment(userIdOf(ctx), input.jobId)),
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        selection: assessmentSelectionSchema.optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      startAssessment(userIdOf(ctx), input.jobId, input.selection),
+    ),
   ensureSpecifications: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(({ ctx, input }) =>
@@ -119,7 +127,7 @@ export const pipeSpecsRouter = createTRPCRouter({
       return {
         company: company.sort(order),
         currentSources:
-          sourceContext?.sources.map((s) => ({
+          sourceContext?.availableSources.map((s) => ({
             documentId: s.documentId,
             versionId: s.versionId,
           })) ?? [],

@@ -7,6 +7,28 @@ import { makeSnapshotSource } from "~/lib/snapshot-source";
 
 /** Open the cited version and its one-based PDF page in the existing viewer. */
 export function systemEvidenceHref(jobId: string, evidence: SystemEvidence) {
+  if (evidence.drawing)
+    return makeSnapshotSource(
+      `/dashboard/jobs/${jobId}/drawings`,
+      {
+        version: 1,
+        drawing: {
+          jobId,
+          ...evidence.drawing,
+          viewport: { center: { x: 0.5, y: 0.5 }, zoom: 1 },
+          appearance: { inverted: false, lineColor: null },
+          layers: {
+            markups: true,
+            issues: true,
+            private: true,
+            published: true,
+          },
+          selectedId: null,
+          search: "",
+        },
+      },
+      evidence.documentTitle,
+    ).href;
   return makeSnapshotSource(
     `/dashboard/jobs/${jobId}/documents`,
     {

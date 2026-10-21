@@ -1,4 +1,9 @@
 import { z } from "zod";
+export const assessmentSelectionSchema = z.object({
+  documentIds: z.array(z.string().uuid()).max(20),
+  drawingSetIds: z.array(z.string().uuid()).max(50),
+});
+export type AssessmentSelection = z.infer<typeof assessmentSelectionSchema>;
 export const assessmentSourceSchema = z.object({
   documentId: z.string().uuid(),
   versionId: z.string().uuid(),
@@ -6,6 +11,15 @@ export const assessmentSourceSchema = z.object({
   fileName: z.string().optional(),
   sha256: z.string(),
   mimeType: z.string(),
+  drawing: z
+    .object({
+      setId: z.string().uuid(),
+      sheetId: z.string().uuid(),
+      sourceSheetId: z.string().uuid(),
+      imageUrl: z.string(),
+      jobId: z.string().uuid(),
+    })
+    .optional(),
 });
 export type AssessmentSource = z.infer<typeof assessmentSourceSchema>;
 export const assessmentSchema = z.object({
@@ -18,6 +32,7 @@ export const assessmentSchema = z.object({
   warnings: z.array(z.string()),
   sourceFingerprint: z.string(),
   sources: z.array(assessmentSourceSchema),
+  selection: assessmentSelectionSchema.optional(),
   model: z.string().optional(),
   systemCount: z.number().optional(),
 });

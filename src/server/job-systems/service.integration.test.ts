@@ -24,11 +24,13 @@ vi.mock("~/server/db", () => ({
 }));
 vi.mock("~/server/auth/permissions", () => ({
   userCan: (u: { role?: string }, p: string) =>
-    p === "documents.manage"
-      ? u.role === "manager"
-      : p === "lists.edit"
-        ? u.role !== "readonly"
-        : true,
+    p === "drawings.view"
+      ? u.role !== "no-drawings"
+      : p === "documents.manage"
+        ? u.role === "manager"
+        : p === "lists.edit"
+          ? u.role !== "readonly"
+          : true,
   hasManagingSeat: (u: { role?: string }) => u.role === "manager",
 }));
 vi.mock("~/server/job-systems/extract", () => ({
@@ -44,7 +46,16 @@ vi.mock("~/server/job-systems/analyze", async (importOriginal) => {
     },
   };
 });
+vi.mock("~/server/job-systems/drawings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./drawings")>()),
+  extractDrawingSource: mocked.extract,
+}));
 import * as schema from "~/server/db/schema";
+import {
+  drawingWorkspaceEntities,
+  drawingWorkspaceMetadata,
+} from "~/server/db/drawing-workspace-schema";
+import { defaultDrawingMetadata } from "../drawings/domain";
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
@@ -56,6 +67,7 @@ import { jobSystemRequirementsSchema } from "~/lib/job-systems";
 import { defaultPipeSpec } from "~/lib/pipe-spec";
 import {
   getSpecificationContext,
+  selectedAssessmentSources,
   getAssessment,
   startAssessment,
   retainManualEdits,
@@ -88,6 +100,10 @@ const tables = [
   schema.categories,
   schema.catalogs,
   schema.partDefinitions,
+  schema.jobDrawingSets,
+  schema.jobDrawingSheets,
+  drawingWorkspaceEntities,
+  drawingWorkspaceMetadata,
 ] as PgTable[];
 const req = () =>
   jobSystemRequirementsSchema.parse({
@@ -522,14 +538,12 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
     const [workspace] = await db.select().from(schema.jobDocumentWorkspaces);
     const jobs = [job, ...Array.from({ length: 5 }, (_, n) => id(90 + n))];
     for (const otherJob of jobs.slice(1)) {
-      await db
-        .insert(schema.jobs)
-        .values({
-          id: otherJob,
-          organizationId: org,
-          name: "Other",
-          poNumber: "T",
-        });
+      await db.insert(schema.jobs).values({
+        id: otherJob,
+        organizationId: org,
+        name: "Other",
+        poNumber: "T",
+      });
       const state = structuredClone(workspace!.state);
       for (const d of state.documents) d.jobId = otherJob;
       await db
@@ -567,5 +581,144 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
     expect(retainManualEdits(previous, defaultPipeSpec()).requirements).toEqual(
       previous.requirements,
     );
+  });
+  it("selects only requested documents and current drawing revisions, with tenant/access isolation", async () => {
+    await db.insert(schema.jobDrawingSets).values([
+      { id: id(40), jobId: job, organizationId: org, name: "Mechanical" },
+      {
+        id: id(41),
+        jobId: id(91),
+        organizationId: id(99),
+        name: "Private other job",
+      },
+    ]);
+    await db.insert(schema.jobDrawingSheets).values([
+      {
+        id: id(42),
+        setId: id(40),
+        jobId: job,
+        organizationId: org,
+        name: "M-001",
+        imageUrl: `/api/job-rooms/files/${job}/${id(70)}/floor-1.webp`,
+        width: 100,
+        height: 100,
+      },
+      {
+        id: id(43),
+        setId: id(40),
+        jobId: job,
+        organizationId: org,
+        name: "M-001 revision",
+        imageUrl: `/api/job-rooms/files/${job}/${id(71)}/floor-1.webp`,
+        width: 100,
+        height: 100,
+      },
+    ]);
+    await db.insert(drawingWorkspaceMetadata).values({
+      sheetId: id(42),
+      revision: 1,
+      data: {
+        ...defaultDrawingMetadata(id(42)),
+        currentSourceSheetId: id(43),
+      },
+    });
+    const context = await getSpecificationContext("editor", job);
+    const selected = selectedAssessmentSources(context, {
+      documentIds: [],
+      drawingSetIds: [id(40)],
+    });
+    expect(selected.find((s) => s.documentId === id(42))).toMatchObject({
+      versionId: id(43),
+      drawing: { sheetId: id(42), sourceSheetId: id(43) },
+    });
+    expect(selected.every((s) => s.drawing)).toBe(true);
+    expect(selected).toHaveLength(1);
+    expect(() =>
+      selectedAssessmentSources(context, {
+        documentIds: [],
+        drawingSetIds: [id(41)],
+      }),
+    ).toThrow(/unavailable/);
+    expect(() =>
+      selectedAssessmentSources(context, {
+        documentIds: [id(999)],
+        drawingSetIds: [],
+      }),
+    ).toThrow(/unavailable/);
+    const status = await getAssessment("editor", job);
+    expect(status.drawingSets.map((s) => s.id)).toEqual([id(40)]);
+    expect(
+      selectedAssessmentSources(context, {
+        documentIds: [doc],
+        drawingSetIds: [],
+      }).map((s) => s.documentId),
+    ).toEqual([doc]);
+  });
+  it("ignores unselected documents and aborts when a selected drawing changes during assessment", async () => {
+    const [workspace] = await db.select().from(schema.jobDocumentWorkspaces);
+    const state = workspace!.state;
+    state!.documents[0]!.folderId = null;
+    await db
+      .update(schema.jobDocumentWorkspaces)
+      .set({ state })
+      .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    let context = await getSpecificationContext("editor", job);
+    expect(context.sources).toHaveLength(0);
+    expect(
+      selectedAssessmentSources(context, {
+        documentIds: [doc],
+        drawingSetIds: [],
+      }),
+    ).toHaveLength(1);
+    await db.insert(schema.jobDrawingSets).values({
+      id: id(50),
+      jobId: job,
+      organizationId: org,
+      name: "Mechanical",
+    });
+    await db.insert(schema.jobDrawingSheets).values({
+      id: id(51),
+      setId: id(50),
+      jobId: job,
+      organizationId: org,
+      name: "M-001",
+      imageUrl: `/api/job-rooms/files/${job}/${id(70)}/floor-1.webp`,
+      width: 100,
+      height: 100,
+    });
+    context = await getSpecificationContext("editor", job);
+    expect(
+      selectedAssessmentSources(context, {
+        documentIds: [],
+        drawingSetIds: [id(50)],
+      }).map((s) => s.documentId),
+    ).toEqual([id(51)]);
+    let release!: () => void;
+    mocked.wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await startAssessment("editor", job, {
+      documentIds: [],
+      drawingSetIds: [id(50)],
+    });
+    await vi.waitFor(() => expect(mocked.extract).toHaveBeenCalled());
+    await db
+      .update(schema.jobDrawingSheets)
+      .set({ imageUrl: `/api/job-rooms/files/${job}/${id(71)}/floor-1.webp` })
+      .where(eq(schema.jobDrawingSheets.id, id(51)));
+    release();
+    await vi.waitFor(async () =>
+      expect((await getAssessment("editor", job)).assessment?.status).toBe(
+        "failed",
+      ),
+    );
+    expect(await db.select().from(schema.pipeSystemSpecs)).toHaveLength(0);
+    await db
+      .update(schema.users)
+      .set({ role: "no-drawings" })
+      .where(eq(schema.users.id, "editor"));
+    expect(
+      (await getSpecificationContext("editor", job)).drawingSets,
+    ).toHaveLength(0);
   });
 });

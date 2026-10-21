@@ -158,11 +158,12 @@ afterEach(cleanup);
 it("assesses only on request and refreshes systems when a run completes", async () => {
   const view = render(<JobSystemsView jobId={uuid("1")} />);
   expect(mock.assess).not.toHaveBeenCalled();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Assess Specifications" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Assess Sources" }));
   await waitFor(() =>
-    expect(mock.assess).toHaveBeenCalledWith({ jobId: uuid("1") }),
+    expect(mock.assess).toHaveBeenCalledWith({
+      jobId: uuid("1"),
+      selection: { documentIds: [uuid("2")], drawingSetIds: [] },
+    }),
   );
   mock.status = {
     ...mock.status,
@@ -184,7 +185,7 @@ it("assesses only on request and refreshes systems when a run completes", async 
     expect(mock.invalidate).toHaveBeenCalledWith({ jobId: uuid("1") }),
   );
   expect(
-    screen.getByRole("button", { name: "Reassess Specifications" }),
+    screen.getByRole("button", { name: "Reassess Sources" }),
   ).toBeEnabled();
 });
 
@@ -304,5 +305,58 @@ it("opens the cited document version at its exact one-based page", () => {
   expect(readSnapshotState(href.hash)).toMatchObject({
     document: { versionId: uuid("3") },
     pdf: { page: 17 },
+  });
+});
+
+it("lets the user select documents outside Specifications and drawing sets", async () => {
+  mock.status = {
+    ...mock.status,
+    documents: [
+      { id: uuid("2"), name: "Specifications", inSpecifications: true },
+      { id: uuid("3"), name: "Piping schedule", inSpecifications: false },
+    ],
+    drawingSets: [{ id: uuid("4"), name: "Mechanical", sheetCount: 41 }],
+  };
+  render(<JobSystemsView jobId={uuid("1")} />);
+  fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+  expect(screen.getByRole("button", { name: "Assess Sources" })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("Include document Piping schedule"));
+  fireEvent.click(screen.getByLabelText("Include drawing set Mechanical"));
+  fireEvent.click(screen.getByRole("button", { name: "Assess Sources" }));
+  await waitFor(() =>
+    expect(mock.assess).toHaveBeenCalledWith({
+      jobId: uuid("1"),
+      selection: { documentIds: [uuid("3")], drawingSetIds: [uuid("4")] },
+    }),
+  );
+});
+it("reuses the last assessment source selection", () => {
+  mock.status = {
+    ...mock.status,
+    drawingSets: [{ id: uuid("4"), name: "Mechanical", sheetCount: 41 }],
+    assessment: {
+      runId: "prior",
+      status: "ready",
+      warnings: [],
+      selection: { documentIds: [], drawingSetIds: [uuid("4")] },
+    },
+  };
+  render(<JobSystemsView jobId={uuid("1")} />);
+  expect(screen.getByLabelText("Include drawing set Mechanical")).toBeChecked();
+  expect(
+    screen.getByLabelText("Include document Mechanical specifications"),
+  ).not.toBeChecked();
+});
+it("opens drawing evidence at the cited sheet and immutable revision", () => {
+  const href = systemEvidenceHref(uuid("1"), {
+    ...evidence,
+    drawing: { setId: uuid("4"), sheetId: uuid("5"), sourceSheetId: uuid("6") },
+  });
+  const url = new URL(href, "https://app.test");
+  expect(url.pathname).toBe(`/dashboard/jobs/${uuid("1")}/drawings`);
+  expect(readSnapshotState(url.hash)?.drawing).toMatchObject({
+    sheetId: uuid("5"),
+    sourceSheetId: uuid("6"),
+    setId: uuid("4"),
   });
 });

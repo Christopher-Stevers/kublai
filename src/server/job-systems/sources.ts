@@ -7,6 +7,7 @@ import type { AssessmentSource } from "./types";
 export function specificationSources(
   state: DocumentState,
   access: DocumentAccess,
+  allDocuments = false,
 ) {
   const actor = documentActor(access, []);
   const roots = state.folders.filter(
@@ -28,8 +29,7 @@ export function specificationSources(
     (d) =>
       d.jobId === access.job.id &&
       !d.deletedAt &&
-      d.folderId &&
-      ids.has(d.folderId) &&
+      (allDocuments || (d.folderId && ids.has(d.folderId))) &&
       folderRole(state, actor, d.folderId),
   );
   const sources: AssessmentSource[] = [];

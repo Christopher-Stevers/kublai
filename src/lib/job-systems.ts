@@ -14,6 +14,7 @@ export const systemEvidenceSchema = z.object({
   page: z.number().int().positive().max(100000).nullable().default(null),
   section: z.string().trim().max(240).nullable().default(null),
   quote: z.string().trim().min(1).max(6000),
+  drawing: z.object({ setId: z.string().uuid(), sheetId: z.string().uuid(), sourceSheetId: z.string().uuid() }).optional(),
 });
 export type SystemEvidence = z.infer<typeof systemEvidenceSchema>;
 
@@ -86,7 +87,7 @@ export const jobSystemRequirementsSchema = z.object({
   applicabilityEvidence: z.array(systemEvidenceSchema).max(100).default([]),
   rules: z.array(systemRuleSchema).max(400).default([]),
   issues: z.array(systemIssueSchema).max(400).default([]),
-  sourceVersions: z.array(systemSourceVersionSchema).max(200).default([]),
+  sourceVersions: z.array(systemSourceVersionSchema).max(600).default([]),
   /** Explicit deletions are tombstones so the next assessment cannot resurrect them. */
   suppressedRuleIds: z.array(keySchema).max(400).default([]),
   manualName: z.boolean().default(false),
@@ -173,7 +174,7 @@ export function systemSourceIssues(requirements: JobSystemRequirements, current:
   }
   return [...outdated.values()].map((source) => issue(
     "source_changed",
-    versions.has(source.documentId) ? "A specification document has a newer version. Reassess the system before generating materials." : "A referenced specification document is no longer in the available Specifications folder.",
+    versions.has(source.documentId) ? "A source document or drawing has a newer version. Reassess the system before generating materials." : "A referenced document or drawing is no longer available.",
   ));
 }
 

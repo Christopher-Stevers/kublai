@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
-  FileTextIcon,
   FolderOpenIcon,
   Loader2Icon,
   PlusIcon,
@@ -23,6 +22,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { confirmAction } from "~/components/ui/app-dialogs";
+import type { AssessmentSelection } from "~/server/job-systems/types";
 import { pipeSystemCode } from "~/lib/pipe-spec";
 import { JobSystemsEditor, newManualSystemSpec } from "./JobSystemsEditor";
 
@@ -36,6 +36,11 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
   const [name, setName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [sourceChoice, setSourceChoice] = useState<{
+    jobId: string;
+    value: AssessmentSelection;
+  } | null>(null);
+  const [sourceSearch, setSourceSearch] = useState("");
   const previousRun = useRef<string | null>(null);
   const systems = api.pipeSpecs.list.useQuery({ jobId }, { staleTime: 30_000 });
   const status = api.pipeSpecs.assessment.useQuery(
@@ -53,6 +58,32 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
   const save = api.pipeSpecs.save.useMutation();
   const assessment = status.data?.assessment;
   const running = starting || assessment?.status === "processing";
+  const documents = status.data?.documents ?? [];
+  const drawingSets = status.data?.drawingSets ?? [];
+  const selection =
+    sourceChoice?.jobId === jobId
+      ? sourceChoice.value
+      : (assessment?.selection ?? {
+          documentIds: documents
+            .filter((d) => d.inSpecifications !== false)
+            .map((d) => d.id),
+          drawingSetIds: [],
+        });
+  const choose = (
+    kind: "documentIds" | "drawingSetIds",
+    id: string,
+    checked: boolean,
+  ) => {
+    setSourceChoice({
+      jobId,
+      value: {
+        ...selection,
+        [kind]: checked
+          ? [...new Set([...selection[kind], id])]
+          : selection[kind].filter((v) => v !== id),
+      },
+    });
+  };
   const refreshSystems = async () => {
     await utils.pipeSpecs.list.invalidate({ jobId });
   };
@@ -83,7 +114,7 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
     setError(null);
     setStarting(true);
     try {
-      await assess.mutateAsync({ jobId });
+      await assess.mutateAsync({ jobId, selection });
       await status.refetch();
     } catch (cause) {
       setError(
@@ -146,13 +177,12 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
       );
     }
   };
-  const documents = status.data?.documents ?? [];
   return (
     <div className="space-y-6">
       <PageHeader
         level="section"
         title="Systems"
-        description="Turn this job’s specifications into material requirements for drawing takeoffs."
+        description="Use job documents and drawings to identify systems and review material requirements for takeoffs."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -172,7 +202,9 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
                 running ||
                 !status.data?.canAssess ||
                 !status.data?.providerConfigured ||
-                !documents.length ||
+                !(
+                  selection.documentIds.length + selection.drawingSetIds.length
+                ) ||
                 dirty
               }
             >
@@ -184,8 +216,8 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
               {running
                 ? "Assessing…"
                 : assessment
-                  ? "Reassess Specifications"
-                  : "Assess Specifications"}
+                  ? "Reassess Sources"
+                  : "Assess Sources"}
             </Button>
           </div>
         }
@@ -207,8 +239,8 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
           >
             <Loader2Icon className="size-4 shrink-0 animate-spin" />
             <span>
-              {assessment?.stage ?? "Starting specification assessment…"} You
-              can leave this page while it runs.
+              {assessment?.stage ?? "Starting source assessment…"} You can leave
+              this page while it runs.
             </span>
           </div>
         )}
@@ -221,7 +253,7 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
         {status.data?.stale && (
           <p className="flex gap-2 rounded-lg border border-amber-500/40 p-3 text-amber-700 dark:text-amber-400">
             <AlertTriangleIcon className="size-4 shrink-0" />
-            Specification documents have changed. Reassess and review the
+            Selected documents or drawings have changed. Reassess and review the
             affected requirements before using them.
           </p>
         )}
@@ -264,47 +296,126 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
           </p>
         )}
       </div>
-      <details className="rounded-lg border p-3 text-sm">
+      <details open className="rounded-lg border p-3 text-sm">
         <summary className="cursor-pointer font-medium">
-          Specifications folder · {documents.length} document
-          {documents.length === 1 ? "" : "s"}
+          Assessment sources · {selection.documentIds.length} documents ·{" "}
+          {selection.drawingSetIds.length} drawing sets
         </summary>
-        <div className="mt-3 space-y-2">
-          {documents.length ? (
-            <ul className="space-y-2">
-              {documents.map((document) => (
-                <li key={document.id} className="flex items-center gap-2">
-                  <FileTextIcon className="size-4 shrink-0" />
-                  <button
-                    className="text-primary text-left underline underline-offset-2"
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/jobs/${jobId}/documents?document=${document.id}`,
-                      )
-                    }
-                  >
-                    {document.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">
-              Open Specifications and upload the source documents for this job.
-              You can also move existing documents into that folder.
-            </p>
-          )}
+        <p className="text-muted-foreground mt-2">
+          Choose what to consider. Drawing notes, labels and legends provide
+          clues; image-only symbols may need manual review. Selected text is
+          sent to the assessment provider only when you press Assess Sources.
+        </p>
+        <Input
+          aria-label="Filter assessment sources"
+          className="mt-3"
+          placeholder="Find a document or drawing set…"
+          value={sourceSearch}
+          onChange={(e) => setSourceSearch(e.target.value)}
+        />
+        <div className="my-3 flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void openSpecifications()}
-            disabled={
-              folder.isPending ||
-              (!status.data?.folderId && !status.data?.canAssess)
+            disabled={running}
+            onClick={() =>
+              setSourceChoice({
+                jobId,
+                value: {
+                  documentIds: documents
+                    .filter((d) => d.inSpecifications !== false)
+                    .map((d) => d.id),
+                  drawingSetIds: [],
+                },
+              })
             }
           >
-            Manage source documents
+            Use Specifications folder
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={running}
+            onClick={() =>
+              setSourceChoice({
+                jobId,
+                value: { documentIds: [], drawingSetIds: [] },
+              })
+            }
+          >
+            Clear selection
+          </Button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <fieldset disabled={running} className="min-w-0 space-y-2">
+            <legend className="mb-2 font-medium">Documents</legend>
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {documents
+                .filter((d) =>
+                  d.name.toLowerCase().includes(sourceSearch.toLowerCase()),
+                )
+                .map((document) => (
+                  <label key={document.id} className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      aria-label={`Include document ${document.name}`}
+                      checked={selection.documentIds.includes(document.id)}
+                      onChange={(e) =>
+                        choose("documentIds", document.id, e.target.checked)
+                      }
+                    />
+                    <span className="min-w-0 break-words">
+                      {document.name}
+                      {document.inSpecifications && (
+                        <span className="text-muted-foreground block text-xs">
+                          Specifications
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              {!documents.length && (
+                <p className="text-muted-foreground">
+                  No accessible uploaded documents yet.
+                </p>
+              )}
+            </div>
+          </fieldset>
+          <fieldset disabled={running} className="min-w-0 space-y-2">
+            <legend className="mb-2 font-medium">Drawing sets</legend>
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {drawingSets
+                .filter((s) =>
+                  s.name.toLowerCase().includes(sourceSearch.toLowerCase()),
+                )
+                .map((set) => (
+                  <label key={set.id} className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      aria-label={`Include drawing set ${set.name}`}
+                      disabled={!set.sheetCount}
+                      checked={selection.drawingSetIds.includes(set.id)}
+                      onChange={(e) =>
+                        choose("drawingSetIds", set.id, e.target.checked)
+                      }
+                    />
+                    <span className="min-w-0 break-words">
+                      {set.name}
+                      <span className="text-muted-foreground block text-xs">
+                        {set.sheetCount} current sheets
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              {!drawingSets.length && (
+                <p className="text-muted-foreground">
+                  No accessible drawing sets yet.
+                </p>
+              )}
+            </div>
+          </fieldset>
         </div>
       </details>
       {systems.isLoading && (

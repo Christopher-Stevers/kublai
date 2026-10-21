@@ -1,12 +1,12 @@
 # Job systems and specification assessment
 
-A job's **Systems** page connects its specification documents to drawing takeoff. Upload the source files under **Documents → Specifications** (nested folders are included), then choose **Assess specifications**. Assessment runs only when requested. It does not run when a document is uploaded, a drawing opens, or someone changes a filter.
+A job's **Systems** page connects selected documents and drawing sets to drawing takeoff. Under **Assessment sources**, select individual accessible job documents and/or whole drawing sets, then choose **Assess Sources**. The Specifications folder is selected initially; the last assessment selection is remembered. Assessment runs only when requested. It does not run when a document is uploaded, a drawing opens, or someone changes a filter.
 
 Results are interactive system specifications, stored alongside existing company/job pipe standards. They are not a generated report filed in Documents. The existing company standards continue to work for legacy takeoff. A drawing selection can choose the applicable job system. Its pipe, fitting, valve and joining requirements constrain the catalog candidates for each measured size before material-list creation.
 
 ## Reviewing and using a system
 
-Each result includes source passages with immutable document-version IDs, page numbers and section headings. PDFs use physical, one-based pages matching the document viewer. Word/text sources may have section citations without page numbers. The extraction copies the source text; the model selects candidate values rather than writing requirements or invented quotations.
+Each result includes source passages with immutable document-version IDs or drawing sheet/revision IDs, page numbers and section headings. Drawing evidence opens the cited sheet revision. PDFs use physical, one-based pages matching the document viewer. Word/text sources may have section citations without page numbers. The extraction copies the source text; the model selects candidate values rather than writing requirements or invented quotations.
 
 Review the applicable size intervals, component scopes and allowed materials. The system retains multiple permitted alternatives; it never silently picks one when several are allowed. Map unresolved alternatives to the actual catalog's material, category and catalog filters. Type, schedule and standards qualifiers stay visible, as do joining methods. A single clear alternative can resolve automatically after review; competing options require a choice. Confirmed rules constrain the existing part matcher, with size and fitting type checks still applied.
 
@@ -18,14 +18,16 @@ Reruns merge into the latest saved revision. They preserve manual corrections, u
 
 - Migration `0088_job_system_assessments.sql` adds the job-level assessment status table. Rule data extends existing `pipe_system_spec` JSON. No source files are copied into a second document store.
 - `TYPESAFE_API_KEY` stays server-side. The existing TypeSafe System One endpoint and `jev-latest` alias are used. Its returned model ID is recorded. A missing key produces an explicit configuration message; manual setup remains available.
-- Only the explicit assessment mutation sends selected specification passages, catalog material names, and narrow typed questions to TypeSafe. PDF/Word text extraction and OCR run locally. No customer document was submitted during development validation.
+- Only the explicit assessment mutation sends selected document and drawing passages, catalog material names, and narrow typed questions to TypeSafe. PDF/Word text extraction and OCR run locally. No customer document was submitted during development validation.
 - Organization membership, dashboard access, job existence, folder ACLs and job-list editing permission are checked. Completion rechecks current access and source fingerprints. Private source titles, status messages and passages are redacted from users without document access.
 - Manual saves use optimistic revisions and validate tenant-owned catalog IDs. Assessment commits and saves serialize on the same job lock. Assessment merges the latest row instead of overwriting edits made during processing. Client-provided citations cannot replace the original assessed quote.
 - Status survives a browser close. Work runs in a bounded process-local queue (at most four queued/running requests in one application process). It is not an external durable worker queue: an interrupted run becomes retryable after its 20-minute lease expires. Work has a 15-minute execution deadline; source extraction is isolated in a child process with a three-minute timeout and memory limit. A superseded run stops before further provider work.
 
 ## Bounds and current limitations
 
-Assessment accepts up to 20 source documents per job request. A PDF reader processes at most 300 pages and 2.5 million text characters per file; at most 12 scanned pages use local Tesseract OCR. OCR, unreadable pages, truncation and unsupported file formats are reported. Searchable PDF, DOCX, TXT and Markdown are supported. Linked Office URLs need an uploaded file. Word pagination is not fabricated.
+Assessment accepts up to 20 documents and 500 current drawing sheets per request. The picker supports jobs with up to 2,000 stored drawing sheets. Drawing notes, schedules, legends and system labels are extracted from the existing local PDF text index, using the current revision only. Image-only symbols and scanned drawing sheets require manual review; drawing extraction does not run OCR. A legend/system label is a clue, not proof of installed scope or material requirements: drawing-derived systems include an applicability review issue.
+
+For documents, A PDF reader processes at most 300 pages and 2.5 million text characters per file; at most 12 scanned pages use local Tesseract OCR. OCR, unreadable pages, truncation and unsupported file formats are reported. Searchable PDF, DOCX, TXT and Markdown are supported. Linked Office URLs need an uploaded file. Word pagination is not fabricated.
 
 At most the first 240 relevant passages are assessed, with a visible warning when more are present. Provider requests split at approximately 20,000 question characters and share bounded source context. Large specifications should be split/organized and reviewed carefully; the feature does not claim exhaustive extraction. English is the currently validated language. Unrecognized system names/materials and complex tables can require manual rules. Generic common-system terminology and source headings are used, with no project-specific drawing or equipment tags hardcoded.
 

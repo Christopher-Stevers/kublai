@@ -27,7 +27,13 @@ import { systemCatalogCategories as categories } from "./catalog-schema";
 import { assessPassages, specificationPassages } from "./analyze";
 import { extractSpecification } from "./extract";
 import { specificationSources, sourceFingerprint } from "./sources";
-import { assessmentSchema, type SystemsAssessment } from "./types";
+import {
+  assessmentSchema,
+  type SystemsAssessment,
+  type AssessmentSelection,
+  type AssessmentSource,
+} from "./types";
+import { drawingSources, extractDrawingSource } from "./drawings";
 const LEASE_MS = 20 * 60_000;
 const tasks = new Map<string, Promise<void>>();
 let admissions = 0;
@@ -59,7 +65,54 @@ export async function getSpecificationContext(
       )
       .map((d) => d.id),
   );
-  return { access, state, ...context, readableDocumentIds };
+  const allDocuments = specificationSources(state, access, true);
+  const drawings = await drawingSources(reader, access);
+  for (const source of drawings.sources)
+    readableDocumentIds.add(source.documentId);
+  return {
+    access,
+    state,
+    ...context,
+    readableDocumentIds,
+    availableSources: [...allDocuments.sources, ...drawings.sources],
+    drawingSets: drawings.sets,
+  };
+}
+
+export function selectedAssessmentSources(
+  context: Awaited<ReturnType<typeof getSpecificationContext>>,
+  selection?: AssessmentSelection,
+): AssessmentSource[] {
+  if (!selection) return context.sources;
+  const docs = new Set(selection.documentIds),
+    sets = new Set(selection.drawingSetIds);
+  if (
+    [...docs].some(
+      (id) =>
+        !context.availableSources.some(
+          (s) => !s.drawing && s.documentId === id,
+        ),
+    ) ||
+    [...sets].some((id) => !context.drawingSets.some((s) => s.id === id))
+  )
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "A selected document or drawing set is unavailable or outside this job. Refresh the source picker.",
+    });
+  const sources = context.availableSources.filter((s) =>
+    s.drawing ? sets.has(s.drawing.setId) : docs.has(s.documentId),
+  );
+  if (
+    sources.filter((s) => s.drawing).length > 500 ||
+    sources.filter((s) => !s.drawing).length > 20
+  )
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message:
+        "Choose up to 20 documents and 500 drawing sheets per assessment.",
+    });
+  return sources;
 }
 async function assertStoredSystemsReadable(
   reader: Pick<typeof db, "select">,
@@ -68,7 +121,8 @@ async function assertStoredSystemsReadable(
   readable: ReadonlySet<string>,
   canManage: boolean,
 ) {
-  if (canManage) return;
+  // Managers can recover deleted document citations via readableDocumentIds.
+  void canManage;
   const rows = await reader
     .select({ data: pipeSystemSpecs.data })
     .from(pipeSystemSpecs)
@@ -120,6 +174,7 @@ export async function getAssessment(userId: string, jobId: string) {
     assessment = {
       ...assessment,
       sources: [],
+      selection: undefined,
       stage: "Source access restricted",
       warnings: [
         "Some assessed sources are restricted. Ask your job manager for access.",
@@ -143,14 +198,31 @@ export async function getAssessment(userId: string, jobId: string) {
     assessment,
     stale:
       !!assessment &&
-      assessment.sourceFingerprint !== sourceFingerprint(context.sources),
+      assessment.sourceFingerprint !==
+        sourceFingerprint(
+          assessment.selection
+            ? context.availableSources.filter((s) =>
+                s.drawing
+                  ? assessment.selection!.drawingSetIds.includes(
+                      s.drawing.setId,
+                    )
+                  : assessment.selection!.documentIds.includes(s.documentId),
+              )
+            : context.sources,
+        ),
     providerConfigured: !!process.env.TYPESAFE_API_KEY,
-    documents: context.sources.map((s) => ({
-      id: s.documentId,
-      name: s.name,
-      versionId: s.versionId,
-      mimeType: s.mimeType,
-    })),
+    documents: context.availableSources
+      .filter((s) => !s.drawing)
+      .map((s) => ({
+        id: s.documentId,
+        name: s.name,
+        versionId: s.versionId,
+        mimeType: s.mimeType,
+        inSpecifications: context.sources.some(
+          (d) => d.documentId === s.documentId,
+        ),
+      })),
+    drawingSets: context.drawingSets,
     folderId: context.folderId,
     canAssess: userCan(context.access.user, "lists.edit"),
   };
@@ -287,10 +359,7 @@ export async function validateSpecEvidence(
     ...(previous?.requirements?.applicabilityEvidence ?? []),
     ...(previous?.requirements?.rules.flatMap((r) => r.evidence) ?? []),
   ];
-  if (
-    !context.access.canManage &&
-    priorEvidence.some((e) => !context.readableDocumentIds.has(e.documentId))
-  )
+  if (priorEvidence.some((e) => !context.readableDocumentIds.has(e.documentId)))
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You cannot replace a system whose sources are restricted.",
@@ -305,8 +374,9 @@ export async function validateSpecEvidence(
   ];
   for (const e of references) {
     if (
-      !context.access.canManage &&
-      (!context.readableDocumentIds.has(e.documentId) ||
+      !context.readableDocumentIds.has(e.documentId) ||
+      (!e.drawing &&
+        !context.access.canManage &&
         !context.state.versions.some(
           (v) => v.documentId === e.documentId && v.id === e.versionId,
         ))
@@ -323,7 +393,11 @@ export async function validateSpecEvidence(
       });
   }
 }
-export async function startAssessment(userId: string, jobId: string) {
+export async function startAssessment(
+  userId: string,
+  jobId: string,
+  selection?: AssessmentSelection,
+) {
   const context = await getSpecificationContext(userId, jobId);
   assertAssessPermission(context.access.user);
   await assertStoredSystemsReadable(
@@ -339,17 +413,21 @@ export async function startAssessment(userId: string, jobId: string) {
       message:
         "Specifications assessment is not configured. Add the server TypeSafe API key, or set up systems manually.",
     });
-  if (!context.sources.length)
+  const selectedSources = selectedAssessmentSources(context, selection);
+  if (!selectedSources.length)
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Upload source documents to Documents → Specifications before assessing.",
+        "Choose at least one document or drawing set with sheets before assessing.",
     });
-  if (context.sources.length > 20)
+  if (
+    selectedSources.filter((s) => !s.drawing).length > 20 ||
+    selectedSources.filter((s) => s.drawing).length > 500
+  )
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Assessment supports up to 20 specification documents at once. Combine or archive superseded documents.",
+        "Choose up to 20 documents and 500 drawing sheets per assessment.",
     });
   if (tasks.size + admissions >= 4)
     throw new TRPCError({
@@ -387,12 +465,15 @@ export async function startAssessment(userId: string, jobId: string) {
         status: "processing",
         startedAt: new Date().toISOString(),
         stage: "Queued",
-        warnings: fresh.unsupported.map(
+        warnings: (selection ? [] : fresh.unsupported).map(
           (n) =>
             `${n} is a linked or unavailable document; upload its file to assess it.`,
         ),
-        sources: fresh.sources,
-        sourceFingerprint: sourceFingerprint(fresh.sources),
+        sources: selectedAssessmentSources(fresh, selection),
+        selection,
+        sourceFingerprint: sourceFingerprint(
+          selectedAssessmentSources(fresh, selection),
+        ),
       };
       await tx
         .insert(jobSystemAssessments)
@@ -464,7 +545,9 @@ export async function startAssessment(userId: string, jobId: string) {
             assertAssessPermission(fresh.access.user);
             if (
               fresh.access.job.organizationId !== organizationId ||
-              sourceFingerprint(fresh.sources) !== assessment.sourceFingerprint
+              sourceFingerprint(
+                selectedAssessmentSources(fresh, assessment.selection),
+              ) !== assessment.sourceFingerprint
             )
               throw Error(
                 "Specification documents or access changed during assessment. Existing systems are unchanged. Retry with the current sources.",
@@ -494,10 +577,9 @@ export async function startAssessment(userId: string, jobId: string) {
           for (const source of assessment.sources) {
             await guard();
             await update({ stage: `Reading ${source.name}` });
-            const extracted = await extractSpecification(
-              organizationId,
-              source,
-            );
+            const extracted = source.drawing
+              ? await extractDrawingSource(source)
+              : await extractSpecification(organizationId, source);
             passages.push(...specificationPassages(source, extracted));
             assessment.warnings.push(
               ...extracted.warnings.map((w) => `${source.name}: ${w}`),
@@ -533,7 +615,9 @@ export async function startAssessment(userId: string, jobId: string) {
               fresh.access.canManage,
             );
             if (
-              sourceFingerprint(fresh.sources) !== assessment.sourceFingerprint
+              sourceFingerprint(
+                selectedAssessmentSources(fresh, assessment.selection),
+              ) !== assessment.sourceFingerprint
             )
               throw Error(
                 "Sources changed while assessment ran. Retry with the current documents.",
