@@ -161,3 +161,23 @@ it("stops a late camera stream after unmount", async () => {
   resolve({ getTracks: () => [{ stop }] });
   await waitFor(() => expect(stop).toHaveBeenCalled());
 });
+it("offers an upload when the device has no camera", async () => {
+  vi.stubGlobal("navigator", {
+    mediaDevices: {
+      getUserMedia: vi.fn(async () => {
+        throw new DOMException("Requested device not found", "NotFoundError");
+      }),
+    },
+  });
+  const onUpload = vi.fn();
+  render(
+    <PackingSlipScanner
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onUpload={onUpload}
+    />,
+  );
+  await screen.findByText(/No camera found on this device/);
+  fireEvent.click(screen.getByRole("button", { name: "Upload photo or PDF" }));
+  expect(onUpload).toHaveBeenCalledOnce();
+});

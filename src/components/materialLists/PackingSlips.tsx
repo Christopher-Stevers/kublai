@@ -84,7 +84,12 @@ export function PackingSlips({
         setOrderItems(result.order?.items ?? null);
         if (scanOnLoad.current) {
           scanOnLoad.current = false;
-          setScanning(Boolean(orderId && result.canUpload));
+          // Computers without a camera go straight to the list to upload.
+          setScanning(
+            Boolean(orderId && result.canUpload) &&
+              (await hasCamera()) &&
+              !signal?.aborted,
+          );
         }
       } finally {
         if (!signal?.aborted) {
@@ -249,12 +254,29 @@ export function PackingSlips({
               {notice}
             </p>
           )}
+          {/* Kept mounted so the scanner can offer an upload instead. */}
+          <input
+            ref={files}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+            className="hidden"
+            aria-label="Upload packing slip"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              // A failed upload shows its error and Retry on the list.
+              void upload(file).then((ok) => {
+                if (!ok) setScanning(false);
+              });
+            }}
+          />
           {openingScanner ? (
             <p role="status">Opening scanner…</p>
           ) : scanning ? (
             <PackingSlipScanner
               key={`${jobId}:${materialListId}:${orderId}`}
               onSave={upload}
+              onUpload={() => files.current?.click()}
               onCancel={() => {
                 scanOnLoad.current = false;
                 setOpen(false);
@@ -284,18 +306,6 @@ export function PackingSlips({
                   </Button>
                 </div>
               )}
-              <input
-                ref={files}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-                className="hidden"
-                aria-label="Upload packing slip"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  void upload(file);
-                }}
-              />
               {busy && <p role="status">Saving packing slip…</p>}
               {loading && !busy && <p role="status">Loading packing slips…</p>}
               {error && (
@@ -377,6 +387,16 @@ export function PackingSlips({
       </Dialog>
     </>
   );
+}
+
+/** False only when the browser can tell there is no camera at all. */
+async function hasCamera() {
+  try {
+    const devices = await navigator.mediaDevices?.enumerateDevices?.();
+    return !devices || devices.some((device) => device.kind === "videoinput");
+  } catch {
+    return true;
+  }
 }
 
 const SLIP_STATE = {

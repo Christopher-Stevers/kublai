@@ -52,9 +52,12 @@ function Outline({ quad, locked }: { quad: Quad; locked: boolean }) {
 export default function PackingSlipScanner({
   onSave,
   onCancel,
+  onUpload,
 }: {
   onSave: (file: File) => Promise<boolean>;
   onCancel: () => void;
+  /** Choose a saved photo or PDF instead, e.g. on a computer without a camera. */
+  onUpload?: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [pages, setPages] = useState<string[]>([]),
@@ -97,7 +100,19 @@ export default function PackingSlipScanner({
     };
     const fail = (e: unknown, fallback: string) => {
       stop();
-      if (!disposed) setError(e instanceof Error ? e.message : fallback);
+      if (disposed) return;
+      // Camera errors are DOMExceptions, which are not Errors everywhere.
+      const name =
+        typeof e === "object" && e && "name" in e ? String(e.name) : "";
+      setError(
+        name === "NotFoundError" || name === "OverconstrainedError"
+          ? "No camera found on this device. Upload a photo or PDF of the slip instead."
+          : name === "NotAllowedError"
+            ? "Camera access is blocked. Allow the camera for this site, or upload a photo or PDF instead."
+            : e instanceof Error
+              ? e.message
+              : fallback,
+      );
     };
     const hidden = () => {
       if (document.hidden) {
@@ -140,7 +155,7 @@ export default function PackingSlipScanner({
       try {
         if (!navigator.mediaDevices?.getUserMedia)
           throw Error(
-            "Live scanning is unavailable in this browser. Close the scanner and use Upload photo or PDF.",
+            "Live scanning is unavailable in this browser. Upload a photo or PDF of the slip instead.",
           );
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
@@ -444,8 +459,26 @@ export default function PackingSlipScanner({
         </>
       )}
       {error && <p role="alert">{error}</p>}
-      {mode === "camera" && error && (
-        <Button onClick={() => setRestart((n) => n + 1)}>Restart camera</Button>
+      {mode === "camera" && (error || onUpload) && (
+        <div className="flex flex-wrap gap-2">
+          {error && (
+            <Button
+              variant={onUpload ? "outline" : "default"}
+              onClick={() => setRestart((n) => n + 1)}
+            >
+              Restart camera
+            </Button>
+          )}
+          {onUpload && !pages.length && (
+            <Button
+              variant={error ? "default" : "outline"}
+              disabled={processing}
+              onClick={onUpload}
+            >
+              Upload photo or PDF
+            </Button>
+          )}
+        </div>
       )}
       {mode === "camera" && pages.length > 0 && (
         <Button disabled={processing} onClick={() => setMode("review")}>

@@ -140,3 +140,14 @@ it("does not open the camera before upload permission is confirmed", async () =>
   await screen.findByText("No packing slips attached yet.");
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
 });
+it("shows the slip list with Upload instead of the scanner on a computer without a camera", async () => {
+  vi.stubGlobal("navigator", {
+    ...navigator,
+    mediaDevices: { enumerateDevices: async () => [{ kind: "audioinput" }] },
+  });
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ canUpload: true, documents: [] })));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("button", { name: "Upload photo or PDF" });
+  expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
+});
