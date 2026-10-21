@@ -84,9 +84,9 @@ export function PackingSlips({
         setOrderItems(result.order?.items ?? null);
         if (scanOnLoad.current) {
           scanOnLoad.current = false;
-          // Computers without a camera go straight to the list to upload.
+          // Existing slips open their saved comparisons; only a first scan opens the camera.
           setScanning(
-            Boolean(orderId && result.canUpload) &&
+            Boolean(orderId && result.canUpload && !result.documents?.length) &&
               (await hasCamera()) &&
               !signal?.aborted,
           );
@@ -279,7 +279,6 @@ export function PackingSlips({
               onUpload={() => files.current?.click()}
               onCancel={() => {
                 scanOnLoad.current = false;
-                setOpen(false);
                 setOpeningScanner(false);
                 setScanning(false);
                 setRetryFile(null);

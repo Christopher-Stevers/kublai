@@ -128,9 +128,9 @@ it("opens the scanner directly for an order without requiring Take photo", async
   expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Scan packing slip" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
-  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("button", { name: "Take photo" });
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Take photo" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
 });
 it("does not open the camera before upload permission is confirmed", async () => {
@@ -150,4 +150,26 @@ it("shows the slip list with Upload instead of the scanner on a computer without
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("button", { name: "Upload photo or PDF" });
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
+});
+
+it("opens a saved slip's comparison instead of restarting the camera", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    canUpload: true,
+    documents: [{
+      id: "doc", name: "Packing slip - PO-123.pdf", createdAt: "2026-10-17",
+      currentVersionId: "version",
+      packingSlip: { orderId: "order", materialListId: "list", orderNumber: "PO-123" },
+      packingSlipAnalysis: { runId: "run", versionId: "version", status: "ready",
+        startedAt: new Date().toISOString(), items: [], lines: [], warnings: [] },
+    }],
+  })));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("region", { name: "Review delivery" });
+  expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Take photo" }));
+  await screen.findByRole("region", { name: "Packing slip camera" });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
+  await screen.findByRole("region", { name: "Review delivery" });
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
 });
