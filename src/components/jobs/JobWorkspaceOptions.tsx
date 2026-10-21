@@ -1,5 +1,6 @@
 "use client";
 
+import { FrequentJobCards } from "./FrequentJobCards";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   BoxIcon,
@@ -34,8 +35,9 @@ export function JobWorkspaceOptions({
 }) {
   const canAccessDrawings = useDrawingsAccess();
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <FrequentJobCards>
       <Card
+        data-job-card="material-lists"
         data-tutorial="material-lists"
         role="button"
         tabIndex={0}
@@ -66,6 +68,7 @@ export function JobWorkspaceOptions({
       </Card>
       {canAccessDrawings && (
         <Card
+          data-job-card="drawings"
           data-tutorial="drawings"
           role="button"
           tabIndex={0}
@@ -92,6 +95,7 @@ export function JobWorkspaceOptions({
         </Card>
       )}
       <Card
+        data-job-card="chat"
         role="button"
         data-tutorial="chat"
         tabIndex={0}
@@ -127,6 +131,7 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>
       <Card
+        data-job-card="documents"
         data-tutorial="documents"
         role="button"
         aria-label="Documents"
@@ -151,6 +156,7 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>
       <Card
+        data-job-card="systems"
         role="button"
         aria-label="Systems"
         tabIndex={0}
@@ -174,13 +180,24 @@ export function JobWorkspaceOptions({
         <CardContent>
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <NetworkIcon className="h-4 w-4" />
-            <span>Job specifications, material rules &amp; catalogue choices</span>
+            <span>
+              Job specifications, material rules &amp; catalogue choices
+            </span>
           </div>
         </CardContent>
       </Card>
       {onTools && (
         <Card
+          data-job-card="tools"
           className="cursor-pointer transition-shadow hover:shadow-md"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onTools();
+            }
+          }}
           onClick={onTools}
         >
           <CardHeader>
@@ -199,6 +216,7 @@ export function JobWorkspaceOptions({
         </Card>
       )}
       <Card
+        data-job-card="rooms"
         data-tutorial="rooms"
         aria-label="Rooms, experimental"
         role="button"
@@ -237,6 +255,7 @@ export function JobWorkspaceOptions({
       </Card>
       {canAccessDrawings && (
         <Card
+          data-job-card="models"
           role="button"
           tabIndex={0}
           aria-label="Models, experimental"
@@ -265,6 +284,6 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
-    </div>
+    </FrequentJobCards>
   );
 }
