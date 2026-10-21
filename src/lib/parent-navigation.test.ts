@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { parentRoute } from "./parent-navigation";
 it.each([
   ["/dashboard/jobs/alma/drawings", "/dashboard/jobs/alma"],
+  ["/dashboard/jobs/alma/systems", "/dashboard/jobs/alma"],
   ["/dashboard/jobs/alma/material-lists", "/dashboard/jobs/alma"],
   ["/dashboard/jobs/alma/chat", "/dashboard/jobs/alma"],
   ["/dashboard/jobs/alma", "/dashboard"],

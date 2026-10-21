@@ -49,6 +49,7 @@ export const snapshotStateSchema = z.object({
         "drawings",
         "models",
         "documents",
+        "systems",
         "chat",
       ]),
       materialListId: z.uuid().nullable(),

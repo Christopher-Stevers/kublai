@@ -2663,3 +2663,19 @@ export const pipeSystemSpecs = createTable("pipe_system_spec", d => ({
   uniqueIndex("pipe_system_spec_job_idx").on(t.jobId, t.system).where(sql`"jobId" IS NOT NULL`),
   index("pipe_system_spec_org_idx").on(t.organizationId),
 ]);
+
+// Latest explicitly requested specification assessment, including empty/failed runs.
+export const jobSystemAssessments = createTable("job_system_assessment", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull().references(() => (jobs as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  requestedBy: d.varchar({ length: 255 }).notNull(),
+  status: d.varchar({ length: 20 }).notNull(),
+  data: d.jsonb().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("job_system_assessment_job_idx").on(t.jobId),
+  index("job_system_assessment_org_idx").on(t.organizationId, t.jobId),
+  check("job_system_assessment_status_check", sql`${t.status} in ('processing', 'ready', 'failed')`),
+]);

@@ -204,6 +204,9 @@ export default function JobOptionsPage({
             if (optionId === "documents") {
               router.push(`/dashboard/jobs/${job.id}/documents`);
             }
+            if (optionId === "systems") {
+              router.push(`/dashboard/jobs/${job.id}/systems`);
+            }
             if (optionId === "rooms") {
               router.push(`/dashboard/jobs/${job.id}/rooms`);
             }

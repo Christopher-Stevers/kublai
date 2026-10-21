@@ -5,7 +5,7 @@ import { PageHeader } from "~/components/ui/page-header";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
-import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobChatView } from "~/components/app/DeferredFeatures";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -669,6 +669,8 @@ export function DashboardClient({
                 />
               ) : offlineJobView === "documents" ? (
                 <JobDocumentsView key={offlineJob.id} jobId={offlineJob.id} />
+              ) : offlineJobView === "systems" ? (
+                <JobSystemsView key={offlineJob.id} jobId={offlineJob.id} />
               ) : offlineJobView === "models" ? (
                 <DeferredJobModelsView jobId={offlineJob.id} />
               ) : offlineJobView === "drawings" ? (

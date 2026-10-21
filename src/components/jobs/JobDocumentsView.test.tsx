@@ -1084,3 +1084,12 @@ it("refocuses a mounted document when an equipment destination changes pages", a
     await waitFor(()=>expect(screen.getByTitle("Preview Specification.pdf version 2")).toHaveAttribute("data-page",String(page)));
   }
 });
+
+it("opens a linked Specifications folder for uploads without opening a document", async () => {
+  overview.folders[0]!.name = "Specifications";
+  window.history.replaceState(null, "", "/dashboard/jobs/job-1/documents?folder=folder-1");
+  render(<JobDocumentsView jobId="job-1" />);
+  expect(await screen.findByRole("button", { name: "Open Agreement.docx" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Open Specification.pdf" })).not.toBeInTheDocument();
+  expect(posts()).toHaveLength(0);
+});

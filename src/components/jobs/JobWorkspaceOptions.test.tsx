@@ -9,7 +9,7 @@ it("orders the job cards and opens Chat with keyboard or touch", () => {
   const chat = screen.getByRole("button", { name: "Chat, 7 unread messages" });
   expect(screen.getAllByRole("button").map(button =>
     button.querySelector('[data-slot="card-title"]')?.textContent?.replace(/Experimental|7/g, "").trim(),
-  )).toEqual(["Material Lists", "Drawings", "Chat", "Documents", "Rooms", "Models"]);
+  )).toEqual(["Material Lists", "Drawings", "Chat", "Documents", "Systems", "Rooms", "Models"]);
   fireEvent.keyDown(chat, { key: "Enter" });
   fireEvent.click(chat);
   expect(select).toHaveBeenNthCalledWith(1, "chat");

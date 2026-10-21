@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   MessageCircleIcon,
   PackageIcon,
+  NetworkIcon,
   WrenchIcon,
 } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
@@ -146,6 +147,27 @@ export function JobWorkspaceOptions({
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <FilesIcon className="h-4 w-4" />
             <span>Files, revisions, reviews &amp; Office documents</span>
+          </div>
+        </CardContent>
+      </Card>
+      <Card
+        role="button"
+        aria-label="Systems"
+        tabIndex={0}
+        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
+        onClick={() => onSelect("systems")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("systems");
+          }
+        }}
+      >
+        <CardHeader><CardTitle>Systems</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <NetworkIcon className="h-4 w-4" />
+            <span>Job specifications, material rules &amp; catalogue choices</span>
           </div>
         </CardContent>
       </Card>

@@ -273,8 +273,18 @@ export function JobDocumentsView({
     if (loading || error || sandbox || loadedJobId.current !== jobId) return;
     const destination = new URL(documentLinkHref ?? window.location.href);
     const id = destination.searchParams.get("document");
-    const request = `${jobId}:${id ?? ""}:${destination.hash}`;
-    if (!id || openedDocumentLink.current === request) return;
+    const linkedFolderId = destination.searchParams.get("folder");
+    const request = `${jobId}:${id ?? ""}:${linkedFolderId ?? ""}:${destination.hash}`;
+    if (openedDocumentLink.current === request) return;
+    if (!id) {
+      if (linkedFolderId && data.folders.some((item) => item.id === linkedFolderId)) {
+        openedDocumentLink.current = request;
+        setFolderId(linkedFolderId);
+        setView("files");
+        setSelectedId(null);
+      }
+      return;
+    }
     openedDocumentLink.current = request;
     const document = data.documents.find(
       (item) => item.id === id && !item.deletedAt,
@@ -286,7 +296,7 @@ export function JobDocumentsView({
     setFolderId(document.folderId);
     setView("files");
     setSelectedId(id);
-  }, [data.documents, loading, error, jobId, sandbox, documentLinkHref]);
+  }, [data.documents, data.folders, loading, error, jobId, sandbox, documentLinkHref]);
   useEffect(() => {
     if (
       openedOfficeSnapshot.current ||
