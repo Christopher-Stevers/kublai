@@ -438,7 +438,7 @@ export function OrdersPreviewSheet({
 
     if (isToolRequest || order.isToolRequest) {
       return (
-        <div key={order.id} className="rounded-lg border p-4">
+        <div key={order.id} className="min-w-0 rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
@@ -521,13 +521,13 @@ export function OrdersPreviewSheet({
     }
 
     return (
-      <div key={order.id} className="rounded-lg border p-4">
-        <div className="flex items-center justify-between gap-3">
+      <div key={order.id} className="min-w-0 rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => toggleOrder(order.id)}
             aria-expanded={isExpanded}
-            className="flex min-w-0 items-center gap-2 font-semibold"
+            className="flex min-w-0 items-center gap-2 text-left font-semibold"
           >
             {isExpanded ? (
               <ChevronDownIcon className="h-4 w-4 shrink-0" />
@@ -538,9 +538,9 @@ export function OrdersPreviewSheet({
               <SupplierLabel name={order.supplier?.name} bookName={order.isToolRequest ? "Standard" : order.supplier?.priceBookName ?? orderPriceBookLabel(order.items)} fallback="Supplier Order" />
             </span>
           </button>
-          <div className="flex min-h-8 shrink-0 items-center justify-center">
+          <div className="ml-auto flex min-h-8 max-w-full items-center justify-end">
             {isSent ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <span className="text-sm font-medium text-green-700">Sent</span>
                 {canGenerateDocuments && <UndoOrderButton orderId={order.id} disabled={!isOnline || isSending} onUndone={loadPreview} />}
                 {draft && (
@@ -718,7 +718,7 @@ export function OrdersPreviewSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isToolRequest ? "Send to Tool Room" : "Orders"}
@@ -730,7 +730,7 @@ export function OrdersPreviewSheet({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="min-w-0 space-y-6 py-4">
           {syncError && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {syncError}
