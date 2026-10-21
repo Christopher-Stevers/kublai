@@ -12,8 +12,8 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   SparklesIcon,
+  PlusIcon,
   TrashIcon,
-  UploadIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -46,9 +46,9 @@ import { Input } from "~/components/ui/input";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { getRoomColor } from "~/lib/room-colors";
 import { roomLabelPoint, toPolygon } from "~/lib/room-shape";
-import { uploadDrawings } from "~/lib/upload-drawings";
 import { api } from "~/trpc/react";
 import { FloorPlanCanvas, type FloorRoomShape } from "./FloorPlanCanvas";
+import { RoomDrawingPicker } from "./RoomDrawingPicker";
 import { useRoomTracePreview } from "./useRoomTracePreview";
 
 type DetectionProgress = {
@@ -78,9 +78,11 @@ function detectionMessage(detection: DetectionProgress | null | undefined) {
 export function JobRoomsView({
   jobId,
   onOpenMaterialList,
+  onOpenDrawings,
 }: {
   jobId: string;
   onOpenMaterialList?: (id: string) => void;
+  onOpenDrawings?: () => void;
 }) {
   const router = useRouter();
   const sandbox = useTutorialSandbox();
@@ -88,7 +90,6 @@ export function JobRoomsView({
     Record<string, RoomNotesDraft | undefined>
   >({});
   const roomEditVersions = useRef(new Map<string, number>());
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFloorId, setSelectedFloorId] = usePageViewState<string | null>(
     `rooms:${jobId}:selectedFloorId`,
     null,
@@ -120,12 +121,7 @@ export function JobRoomsView({
     `rooms:${jobId}:isRoomListOpen`,
     false,
   );
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [pendingSheets, setPendingSheets] = useState<
-    { id: string; name: string; imageUrl: string }[]
-  >([]);
-  const [keepSheetIds, setKeepSheetIds] = useState<Record<string, boolean>>({});
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [floorToDelete, setFloorToDelete] = useState<{
@@ -247,7 +243,6 @@ export function JobRoomsView({
     },
     onError: (error) => notify(error.message, "error"),
   });
-  const confirmDrawingUpload = api.rooms.confirmDrawingUpload.useMutation();
   const detectRooms = api.rooms.detectRooms.useMutation({
     onSuccess: () => {
       setDetectError(null);
@@ -313,18 +308,24 @@ export function JobRoomsView({
   ]);
 
   const account = useDrawingAccount();
-  const roomSnapshot = useDrawingSnapshot(`room-sheets:${jobId}`, roomsQuery.data);
+  const roomSnapshot = useDrawingSnapshot(
+    `room-sheets:${jobId}`,
+    roomsQuery.data,
+  );
   const data = roomSnapshot.data;
-  const canManage = !sandbox && roomSnapshot.online && (data?.canManage ?? false);
+  const canManage =
+    !sandbox && roomSnapshot.online && (data?.canManage ?? false);
   const drawingPermissions = useDrawingCapabilities();
   const canUpload =
-    !sandbox && roomSnapshot.online &&
+    !sandbox &&
+    roomSnapshot.online &&
     (drawingPermissions.canUpload ??
       data?.canUpload ??
       data?.canManage ??
       false);
   const canDelete =
-    !sandbox && roomSnapshot.online &&
+    !sandbox &&
+    roomSnapshot.online &&
     (drawingPermissions.canDelete ??
       data?.canDelete ??
       data?.canManage ??
@@ -361,11 +362,6 @@ export function JobRoomsView({
           : editingRoomId
             ? "Drag corners to reshape. Use Add/Delete vertex for extra control."
             : null;
-  const uploadLabel = uploading
-    ? "Processing PDF..."
-    : data?.plan || floors.length > 0
-      ? "Upload additional drawings"
-      : "Upload drawings";
   const selectedRoom =
     selectedFloor?.rooms.find((room) => room.id === selectedRoomId) ?? null;
   // The overview can know a batch is queued before the selected floor's detailed
@@ -582,52 +578,14 @@ export function JobRoomsView({
     roomEditVersions.current.set(room.id, room.updatedAt.getTime());
   };
 
-  const handleUpload = async (file: File) => {
-    if (sandbox) return;
-    setUploadError(null);
-    setUploading(true);
-    try {
-      const sheets = await uploadDrawings(jobId, file);
-      setPendingSheets(sheets);
-      setKeepSheetIds(
-        Object.fromEntries(sheets.map((sheet) => [sheet.id, true])),
-      );
-      setSelectedFloorId(null);
-      setSelectedRoomId(null);
-      await utils.rooms.getJobRooms.invalidate({ jobId });
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const confirmPendingSheets = async () => {
-    if (sandbox) return;
-    const keepFloorIds = pendingSheets
-      .filter((sheet) => keepSheetIds[sheet.id] !== false)
-      .map((sheet) => sheet.id);
-    setUploadError(null);
-    try {
-      const result = await confirmDrawingUpload.mutateAsync({
-        jobId,
-        keepFloorIds,
-      });
-      setPendingSheets([]);
-      setKeepSheetIds({});
-      await utils.rooms.getJobRooms.invalidate({ jobId });
-      // Confirmation queues every kept sheet atomically on the server. The
-      // browser only follows progress; it does not launch workers per sheet.
-      if (result.keptFloorIds[0]) {
-        setSelectedFloorId(result.keptFloorIds[0]);
-        setDetectingRoomId(result.keptFloorIds[0]);
-        setEditMode(true);
-      }
-    } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : "Could not save drawings",
-      );
-    }
+  // Added floors are queued for detection on the server; open the first.
+  const floorsAdded = (floorIds: string[]) => {
+    const first = floorIds[0];
+    if (!first) return;
+    setSelectedFloorId(first);
+    setSelectedRoomId(null);
+    setDetectingRoomId(first);
+    setEditMode(true);
   };
 
   if (roomsQuery.isLoading) {
@@ -702,111 +660,35 @@ export function JobRoomsView({
               titleProps={{ "data-tutorial": "rooms-root" }}
             />
             {canUpload ? (
-              <>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (file) void handleUpload(file);
-                  }}
-                />
-                <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-                  <div className="mx-auto max-w-6xl">
-                    <Button
-                      onClick={() => fileRef.current?.click()}
-                      disabled={uploading}
-                      size="lg"
-                      className="h-12 w-full"
-                    >
-                      <UploadIcon className="mr-2 h-5 w-5" />
-                      {uploadLabel}
-                    </Button>
-                  </div>
+              <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+                <div className="mx-auto max-w-6xl">
+                  <Button
+                    onClick={() => setPickerOpen(true)}
+                    size="lg"
+                    className="h-12 w-full"
+                  >
+                    <PlusIcon className="mr-2 h-5 w-5" />
+                    {floors.length > 0
+                      ? "Add more floors from Drawings"
+                      : "Choose floor plans from Drawings"}
+                  </Button>
                 </div>
-              </>
+              </div>
             ) : null}
           </div>
 
-          {uploadError ? (
-            <p className="mb-4 text-sm text-red-600">{uploadError}</p>
+          {canUpload ? (
+            <RoomDrawingPicker
+              jobId={jobId}
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
+              onAdded={floorsAdded}
+              onOpenDrawings={
+                onOpenDrawings ??
+                (() => router.push(`/dashboard/jobs/${jobId}/drawings`))
+              }
+            />
           ) : null}
-
-          <Dialog open={pendingSheets.length > 0}>
-            <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Review uploaded drawings</DialogTitle>
-                <DialogDescription>
-                  Keep or discard each sheet. After you confirm, kept sheets are
-                  detected one at a time. You can leave this screen while they
-                  finish.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {pendingSheets.map((sheet) => {
-                  const keep = keepSheetIds[sheet.id] !== false;
-                  return (
-                    <div
-                      key={sheet.id}
-                      className={`overflow-hidden rounded-lg border ${
-                        keep ? "border-blue-500" : "border-border opacity-60"
-                      }`}
-                    >
-                      <img
-                        src={sheet.imageUrl}
-                        alt={sheet.name}
-                        className="bg-muted h-40 w-full object-contain"
-                      />
-                      <div className="flex items-center justify-between gap-2 p-3">
-                        <span className="text-sm font-medium">
-                          {sheet.name}
-                        </span>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={keep ? "default" : "outline"}
-                            onClick={() =>
-                              setKeepSheetIds((current) => ({
-                                ...current,
-                                [sheet.id]: true,
-                              }))
-                            }
-                          >
-                            Keep
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={!keep ? "default" : "outline"}
-                            onClick={() =>
-                              setKeepSheetIds((current) => ({
-                                ...current,
-                                [sheet.id]: false,
-                              }))
-                            }
-                          >
-                            Discard
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <DialogFooter>
-                <Button
-                  onClick={() => void confirmPendingSheets()}
-                  disabled={confirmDrawingUpload.isPending}
-                >
-                  {confirmDrawingUpload.isPending
-                    ? "Saving..."
-                    : "Confirm sheets"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           {data?.plan?.status === "failed" ? (
             <p className="mb-4 text-sm text-red-600">{data.plan.error}</p>
           ) : null}
@@ -840,7 +722,11 @@ export function JobRoomsView({
               <CardContent className="p-0">
                 <EmptyState
                   art="blueprint"
-                  title={canUpload ? "No rooms yet. Upload the architectural PDF to find them." : "No rooms yet."}
+                  title={
+                    canUpload
+                      ? "No rooms yet. Choose the floor plans from Drawings to find them."
+                      : "No rooms yet."
+                  }
                 />
               </CardContent>
             </Card>
@@ -921,9 +807,18 @@ export function JobRoomsView({
                       ) : null}
                     </div>
                   </CardHeader>
-                  <div className="px-6 pb-2"><SheetOfflineButton sheet={floor} prepare={async () => {
-                    if (data) await account?.store?.saveSnapshot(`room-sheets:${jobId}`, data);
-                  }} /></div>
+                  <div className="px-6 pb-2">
+                    <SheetOfflineButton
+                      sheet={floor}
+                      prepare={async () => {
+                        if (data)
+                          await account?.store?.saveSnapshot(
+                            `room-sheets:${jobId}`,
+                            data,
+                          );
+                      }}
+                    />
+                  </div>
                   <CardContent>
                     <div className="text-muted-foreground space-y-2 text-sm">
                       <div className="flex items-center gap-2">
@@ -1460,9 +1355,16 @@ export function JobRoomsView({
                 <PencilIcon className="mr-1 h-4 w-4 shrink-0" />
                 {editMenuOpen ? "Done" : "Edit"}
               </Button>
-              <SheetOfflineButton sheet={selectedFloor} prepare={async () => {
-                if (data) await account?.store?.saveSnapshot(`room-sheets:${jobId}`, data);
-              }} />
+              <SheetOfflineButton
+                sheet={selectedFloor}
+                prepare={async () => {
+                  if (data)
+                    await account?.store?.saveSnapshot(
+                      `room-sheets:${jobId}`,
+                      data,
+                    );
+                }}
+              />
             </div>
           </div>
         </div>

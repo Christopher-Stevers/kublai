@@ -678,6 +678,8 @@ export function DashboardClient({
               ) : offlineJobView === "rooms" ? (
                 <JobRoomsView jobId={offlineJob.id} onOpenMaterialList={(materialListId) =>
                   navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })
+                } onOpenDrawings={() =>
+                  navigateWorkspace({ jobId: offlineJob.id, view: "drawings", materialListId: null })
                 } />
               ) : (
                 <>
