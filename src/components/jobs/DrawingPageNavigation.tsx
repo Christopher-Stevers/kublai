@@ -28,26 +28,13 @@ export function showZoomReadout(element: HTMLElement | null, text?: string) {
   );
 }
 
-/** Shared navigation for Drawings and document PDFs. */
-export function DrawingPageNavigation({
-  name,
-  index,
-  count,
+/** Transient zoom feedback, anchored to the viewing area rather than the bottom bar. */
+export function DrawingZoomReadout({
   zoom = 1,
   zoomRef,
-  nameControl,
-  onPrevious,
-  onNext,
 }: {
-  scrollPages?: boolean;
-  name: string;
-  index: number;
-  count: number;
   zoom?: number;
   zoomRef?: Ref<HTMLSpanElement>;
-  nameControl?: React.ReactNode;
-  onPrevious: () => void;
-  onNext: () => void;
 }) {
   const readout = useRef<HTMLSpanElement | null>(null);
   const attachReadout = useCallback(
@@ -65,6 +52,33 @@ export function DrawingPageNavigation({
     };
   }, []);
   return (
+    <span
+      ref={attachReadout}
+      aria-label="Drawing zoom"
+      title="Zoom (100% = fit to screen)"
+      className="bg-background/85 pointer-events-none absolute top-3 right-3 z-20 rounded-md px-3 py-1.5 text-base font-medium tabular-nums shadow-sm transition-opacity duration-500 data-[idle=true]:opacity-0"
+    >
+      {Math.round(zoom * 100)}%
+    </span>
+  );
+}
+
+/** Shared navigation for Drawings and document PDFs. */
+export function DrawingPageNavigation({
+  name,
+  index,
+  count,
+  onPrevious,
+  onNext,
+}: {
+  scrollPages?: boolean;
+  name: string;
+  index: number;
+  count: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
     <div
       data-drawing-chrome
       className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
@@ -81,21 +95,11 @@ export function DrawingPageNavigation({
         </Button>
         <div className="flex min-w-0 flex-col items-center">
           <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-            {nameControl ?? (
-              <span
-                className="min-w-0 truncate py-1 text-center text-sm"
-                title={name}
-              >
-                {name}
-              </span>
-            )}
             <span
-              ref={attachReadout}
-              aria-label="Drawing zoom"
-              title="Zoom (100% = fit to screen)"
-              className="text-muted-foreground shrink-0 text-xs tabular-nums transition-opacity duration-500 data-[idle=true]:opacity-0"
+              className="min-w-0 truncate py-1 text-center text-sm"
+              title={name}
             >
-              {Math.round(zoom * 100)}%
+              {name}
             </span>
           </div>
           <span className="text-muted-foreground text-xs tabular-nums">

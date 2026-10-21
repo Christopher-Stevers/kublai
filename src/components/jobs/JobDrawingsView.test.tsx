@@ -345,23 +345,16 @@ describe("Drawings", () => {
     expect(screen.getByTestId("inherited-view")).toHaveTextContent("null");
   });
 
-  it("shows the current drawing name in the bottom bar and renames the sheet being viewed", async () => {
+  it("shows centered sheet names without in-view rename controls, including for editors", () => {
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
     fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rename drawing M-101" }));
-    expect(screen.getByRole("dialog", { name: "Rename drawing" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Name")).toHaveValue("M-101");
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  M-101 Plumbing plan  " } });
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save" })));
-    expect(state.calls).toContainEqual(["renameSheet", { sheetId: "s1", name: "M-101 Plumbing plan" }]);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: "Rename drawing M-101 Plumbing plan" })).toBeInTheDocument();
+    expect(screen.getByText("M-101")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Rename drawing/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Rename drawing M-102" }));
-    expect(screen.getByLabelText("Name")).toHaveValue("M-102");
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(state.calls.filter(([name]) => name === "renameSheet")).toHaveLength(1);
+    expect(screen.getByText("M-102")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Rename drawing/ })).toBeNull();
+    expect(state.calls.filter(([name]) => name === "renameSheet")).toHaveLength(0);
   });
 
   it("shows the drawing name without a rename control for viewers", () => {

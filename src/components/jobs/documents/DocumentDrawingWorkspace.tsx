@@ -11,7 +11,7 @@ import type { SnapshotState } from "~/lib/snapshot-source";
 import { useDrawingAccount } from "../DrawingAccountProvider";
 import { useDrawingSnapshot } from "../useDrawingSnapshot";
 import { DrawingWorkspace } from "../DrawingWorkspace";
-import { DrawingPageNavigation, showZoomReadout } from "../DrawingPageNavigation";
+import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "../DrawingPageNavigation";
 import { useDrawingFullscreen } from "../useDrawingFullscreen";
 import type { DrawingViewport } from "../DrawingSheetViewer";
 
@@ -128,6 +128,7 @@ export function DocumentDrawingWorkspace({
               }}
             />
             </DrawingScrollPages>
+            <DrawingZoomReadout key={sheet.id} zoom={camera.zoom} zoomRef={zoomLabel} />
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
           {!quickWheel && <DrawingPageNavigation
@@ -135,8 +136,6 @@ export function DocumentDrawingWorkspace({
             name={sheet.name}
             index={actualIndex}
             count={sheets.length}
-            zoom={camera.zoom}
-            zoomRef={zoomLabel}
             onPrevious={() => openPage(actualIndex - 1)}
             onNext={() => openPage(actualIndex + 1)}
           />}

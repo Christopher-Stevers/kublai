@@ -367,7 +367,7 @@ export function DrawingWorkspace({
   /** Shows a full screen button in the middle of the toolbar. */
   onFullscreen?: () => void;
   fullscreenRef?: Ref<HTMLButtonElement>;
-  pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void; onRename?: () => void };
+  pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
   const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
   const { scroll, setScroll } = useDrawingPageMode();
@@ -1635,7 +1635,6 @@ export function DrawingWorkspace({
       ...(pageNavigation ? [
         { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
         { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
-        ...(pageNavigation.onRename ? [{ id: "rename", label: "Rename drawing", run: pageNavigation.onRename }] : []),
       ] : []),
       { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
       ...(onFullscreen ? [{ id: "full", label: "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),

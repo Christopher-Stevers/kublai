@@ -1,7 +1,7 @@
 "use client";
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingScrollPages } from "./DrawingScrollPages";
-import { DrawingPageNavigation, showZoomReadout } from "./DrawingPageNavigation";
+import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "./DrawingPageNavigation";
 import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -574,7 +574,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             pageNavigation={{ index: sheetIndex, count: sheets.length,
               onPrevious: () => { if (sheetIndex > 0) openSheet(sheets[sheetIndex - 1]!.id, true); },
               onNext: () => { if (sheetIndex < sheets.length - 1) openSheet(sheets[sheetIndex + 1]!.id, true); },
-              onRename: canUpload ? () => openNameDialog({ kind: "rename-sheet", id: sheet.id, name: sheet.name }) : undefined,
             }}
             fullscreenRef={full.enterButton}
             onFullscreen={full.enter}
@@ -593,6 +592,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             }}
           />
           </DrawingScrollPages>
+          <DrawingZoomReadout key={sheet.id} zoom={entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />
         </div>
         <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
         {!quickWheel && <DrawingPageNavigation
@@ -600,35 +600,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           name={sheet.name}
           index={sheetIndex}
           count={sheets.length}
-          zoom={entryViewport?.zoom ?? 1}
-          zoomRef={zoomLabel}
           onPrevious={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
           onNext={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
-          nameControl={
-            canUpload ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-6 min-w-0 shrink gap-1 px-1 text-xs"
-                aria-label={`Rename drawing ${sheet.name}`}
-                title={sheet.name}
-                disabled={renameSheet.isPending}
-                onClick={() =>
-                  openNameDialog({
-                    kind: "rename-sheet",
-                    id: sheet.id,
-                    name: sheet.name,
-                  })
-                }
-              >
-                <span className="truncate">{sheet.name}</span>
-                <PencilIcon
-                  className="h-3.5 w-3.5 shrink-0"
-                  aria-hidden="true"
-                />
-              </Button>
-            ) : undefined
-          }
         />}
         {nameDialogView}
         {revisionDialog}
