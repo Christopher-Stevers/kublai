@@ -187,6 +187,16 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+/* Keep mobile browser pinches from scaling app navigation, including portalled
+   dialogs and nested scrollers. Low specificity preserves viewer/quick-wheel
+   touch-action: none and pan-y rules; custom pinch handlers remain in control.
+   Browser menu/keyboard zoom and non-dashboard pages remain available. */
+@layer base {
+  :where(html:has([data-app-shell]), html:has([data-app-shell]) body, html:has([data-app-shell]) body *) {
+    touch-action: pan-x pan-y;
+  }
+}
+
 /* Smooth scroll behavior */
 html {
   min-height: 100%;

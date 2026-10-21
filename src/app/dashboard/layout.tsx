@@ -19,6 +19,7 @@ import { ReplicacheSyncBootstrap } from "~/components/offline/ReplicacheSyncBoot
 import { TabAccessGate } from "./_components/TabAccessGate";
 import { DrawingAccountProvider } from "~/components/jobs/DrawingAccountProvider";
 import { AppKeyboardNavigation } from "~/components/app/AppKeyboardNavigation";
+import { AppTouchGestures } from "~/components/app/AppTouchGestures";
 import { ViewportBottomSync } from "~/components/app/ViewportBottomSync";
 
 export default async function DashboardLayout({
@@ -84,6 +85,7 @@ export default async function DashboardLayout({
                   <div data-app-shell className="bg-canvas flex min-h-screen flex-col">
                     <AppKeyboardNavigation />
                     <ViewportBottomSync />
+                    <AppTouchGestures />
                     <ReplicacheSyncBootstrap
                       userId={effectiveUserId}
                       organizationId={organizationId}
