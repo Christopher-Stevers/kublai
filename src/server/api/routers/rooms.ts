@@ -28,6 +28,10 @@ import {
 import { sourceDrawingHash } from "~/server/rooms/drawing-hash";
 import { validReviewShape } from "~/server/rooms/review-memory";
 import { RoomReviewSourceError } from "~/server/rooms/review-source";
+import {
+  addFloorsFromDrawings,
+  drawingChoices,
+} from "~/server/rooms/floors-from-drawings";
 
 const roomPointSchema = z.object({
   x: z.number().min(0).max(1),
@@ -1044,6 +1048,52 @@ export const roomsRouter = createTRPCRouter({
         console.error("[detect-queue]", error),
       );
       return { started: true as const };
+    }),
+
+  /** Drawings-folder sheets that can become Rooms floors. */
+  drawingChoices: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!userCan(ctx.user as never, "drawings.view"))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't have permission to access drawings",
+        });
+      // Both lookups are scoped to the organization; another job's ID
+      // simply returns nothing.
+      const organizationId = (ctx.user as { organizationId: string })
+        .organizationId;
+      return drawingChoices(ctx.db, { jobId: input.jobId, organizationId });
+    }),
+
+  /** Adds chosen drawings as floors (sharing their stored pages) and queues
+   * room detection for each. */
+  addFloorsFromDrawings: hasDashboardAccess
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        sheetIds: z.array(z.string().uuid()).min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        !userCan(ctx.user as never, "drawings.view") ||
+        !userCan(ctx.user as never, "drawings.upload")
+      ) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const user = ctx.user as { organizationId: string; id?: string };
+      const result = await addFloorsFromDrawings(ctx.db, {
+        jobId: input.jobId,
+        organizationId: user.organizationId,
+        userId: user.id ?? null,
+        sheetIds: input.sheetIds,
+      });
+      if (result.floorIds.length)
+        void dispatchDetectQueue().catch((error) =>
+          console.error("[detect-queue]", error),
+        );
+      return result;
     }),
 
   confirmDrawingUpload: hasDashboardAccess

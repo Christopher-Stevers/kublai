@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDrawingAccount } from "./DrawingAccountProvider";
+import { DrawingTileLayer } from "./DrawingTileLayer";
+import {
+  isTileManifest,
+  planDrawingTiles,
+  tileBase,
+  type TileManifest,
+} from "~/lib/drawing-tiles";
 import { roomReviewTransform } from "~/lib/floor-plan-viewport";
 import { getRoomColor } from "~/lib/room-colors";
 import {
@@ -96,14 +103,35 @@ export function FloorPlanCanvas({
   const [asset, setAsset] = useState<{ key: string; url: string } | null>(null);
   useEffect(() => {
     let active = true;
-    if (store) void store.resolveAssetUrl(imageUrl).then(url => {
-      if (active) setAsset({ key: imageUrl, url });
-    }).catch(() => undefined);
-    return () => { active = false; };
+    if (store)
+      void store
+        .resolveAssetUrl(imageUrl)
+        .then((url) => {
+          if (active) setAsset({ key: imageUrl, url });
+        })
+        .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [store, imageUrl]);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const planRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  // The same sharper zoom tiles the Drawings viewer uses, for the visible area.
+  const tiles = tileBase(imageUrl);
+  const resolveAssetUrl = useMemo(
+    () => (store ? (url: string) => store.resolveAssetUrl(url) : undefined),
+    [store],
+  );
+  const [manifest, setManifest] = useState<{
+    tiles: string;
+    value: TileManifest;
+  } | null>(null);
+  const [sizes, setSizes] = useState<{
+    plan: { width: number; height: number };
+    viewport: { width: number; height: number };
+    natural: number;
+  } | null>(null);
   const pointers = useRef(new Map<number, Point>());
   const pinch = useRef<{
     dist: number;
@@ -152,6 +180,91 @@ export function FloorPlanCanvas({
     transformRef.current = transform;
     roomsRef.current = rooms;
   }, [detectMode, transform, rooms]);
+
+  useEffect(() => {
+    if (!tiles) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+    const load = async () => {
+      try {
+        const url = `${tiles}/manifest.json`;
+        const response = await fetch(
+          resolveAssetUrl ? await resolveAssetUrl(url) : url,
+          { credentials: "same-origin", signal: controller.signal },
+        );
+        if (response.ok) {
+          const value: unknown = await response.json();
+          if (isTileManifest(value)) {
+            if (!controller.signal.aborted) setManifest({ tiles, value });
+            return;
+          }
+        }
+        if (response.status === 401 || response.status === 403) return;
+      } catch {
+        if (controller.signal.aborted) return;
+      }
+      // Tiles may still be generating for a newly added drawing.
+      const delay = [1_000, 4_000, 15_000, 30_000][attempt++];
+      if (delay !== undefined && !controller.signal.aborted)
+        timer = setTimeout(() => void load(), delay);
+    };
+    void load();
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [tiles, resolveAssetUrl]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current,
+      plan = planRef.current,
+      image = imageRef.current;
+    if (!viewport || !plan || !image) return;
+    const measure = () => {
+      if (!image.naturalWidth || !plan.offsetWidth) return;
+      setSizes({
+        plan: { width: plan.offsetWidth, height: plan.offsetHeight },
+        viewport: {
+          width: viewport.clientWidth,
+          height: viewport.clientHeight,
+        },
+        natural: image.naturalWidth,
+      });
+    };
+    image.addEventListener("load", measure);
+    const resize =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    resize?.observe(viewport);
+    resize?.observe(plan);
+    if (image.complete) measure();
+    return () => {
+      image.removeEventListener("load", measure);
+      resize?.disconnect();
+    };
+  }, [imageUrl]);
+
+  const tileRequests = useMemo(() => {
+    if (!tiles || manifest?.tiles !== tiles || !sizes) return [];
+    const width = sizes.plan.width * transform.scale,
+      height = sizes.plan.height * transform.scale;
+    if (!width || !height) return [];
+    const dpr =
+      typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+    return planDrawingTiles(
+      tiles,
+      manifest.value,
+      (width * dpr) / sizes.natural,
+      {
+        left: -transform.tx / width,
+        top: -transform.ty / height,
+        right: (sizes.viewport.width - transform.tx) / width,
+        bottom: (sizes.viewport.height - transform.ty) / height,
+      },
+    );
+  }, [tiles, manifest, sizes, transform]);
 
   const editingRoom = rooms.find((room) => room.id === editingRoomId) ?? null;
   const visibleEditShape =
@@ -695,6 +808,11 @@ export function FloorPlanCanvas({
             className="block max-h-[78dvh] w-auto max-w-[92vw] select-none"
             draggable={false}
           />
+          <DrawingTileLayer
+            key={tiles ?? imageUrl}
+            requests={tileRequests}
+            resolveAssetUrl={resolveAssetUrl}
+          />
           <svg
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 1 1"
@@ -815,7 +933,7 @@ export function FloorPlanCanvas({
                   type="button"
                   disabled={!canEdit}
                   data-vertex-index={index}
-                  className="absolute h-7 w-7 rounded-full border-2 border-white bg-primary shadow"
+                  className="bg-primary absolute h-7 w-7 rounded-full border-2 border-white shadow"
                   style={{
                     left: `${point.x * 100}%`,
                     top: `${point.y * 100}%`,

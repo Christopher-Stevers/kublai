@@ -13,7 +13,7 @@ const harness = vi.hoisted(() => ({
   sandbox: false,
   data: {} as Record<string, unknown>,
   detectStatus: undefined as Record<string, unknown> | undefined,
-  uploadSheets: [] as Array<{ id: string; name: string; imageUrl: string }>,
+  choices: { sets: [] } as { sets: unknown[] },
   queryOptions: {} as Record<
     string,
     {
@@ -46,7 +46,11 @@ vi.mock("~/trpc/react", async () => {
   return {
     api: {
       useUtils: () => ({
-        rooms: { getJobRooms: query, detectRoomsStatus: query },
+        rooms: {
+          getJobRooms: query,
+          detectRoomsStatus: query,
+          drawingChoices: query,
+        },
       }),
       rooms: new Proxy(
         {},
@@ -59,7 +63,11 @@ vi.mock("~/trpc/react", async () => {
               if (options) harness.queryOptions[name] = options;
               return {
                 data:
-                  name === "getJobRooms" ? harness.data : harness.detectStatus,
+                  name === "getJobRooms"
+                    ? harness.data
+                    : name === "drawingChoices"
+                      ? harness.choices
+                      : harness.detectStatus,
                 isLoading: false,
               };
             },
@@ -118,9 +126,6 @@ vi.mock("~/components/jobs/FloorPlanCanvas", () => ({
     </div>
   ),
 }));
-vi.mock("~/lib/upload-drawings", () => ({
-  uploadDrawings: vi.fn(async () => harness.uploadSheets),
-}));
 vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn() }));
 
 import { JobRoomsView } from "./JobRoomsView";
@@ -132,7 +137,7 @@ beforeEach(() => {
   harness.sandbox = false;
   harness.calls.length = 0;
   harness.detectStatus = undefined;
-  harness.uploadSheets = [];
+  harness.choices = { sets: [] };
   harness.queryOptions = {};
   harness.data = {
     canManage: true,
@@ -262,9 +267,7 @@ describe("floor plan bottom bar", () => {
   it("opens the real room controls in practice without upload or detection tools", () => {
     harness.sandbox = true;
     render(<JobRoomsView jobId="job-a" />);
-    expect(
-      screen.queryByRole("button", { name: /Upload drawings/ }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /from Drawings/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Delete floor/ })).toBeNull();
     fireEvent.click(document.querySelector('[data-tutorial="floor-card"]')!);
     expect(
@@ -416,40 +419,72 @@ describe("server-managed sheet detection queue", () => {
     floors[index]!.detection = detection;
   }
 
-  it("confirms a multi-sheet upload once without launching detection from the browser", async () => {
-    harness.uploadSheets = ["a", "b"].map((id) => ({
-      id: `floor-${id}`,
-      name: `Sheet ${id.toUpperCase()}`,
-      imageUrl: `/floor-${id}.webp`,
-    }));
-    render(<JobRoomsView jobId="job-a" />);
-    fireEvent.change(document.querySelector('input[type="file"]')!, {
-      target: {
-        files: [new File(["pdf"], "drawings.pdf", { type: "application/pdf" })],
-      },
+  it("adds floors chosen from Drawings once, in folder order, without launching detection from the browser", async () => {
+    const sheet = (id: string, name: string, floorId: string | null) => ({
+      id,
+      name,
+      imageUrl: `/api/job-rooms/files/job-a/upload/${id}.webp`,
+      width: 100,
+      height: 80,
+      floorId,
     });
+    harness.choices = {
+      sets: [
+        {
+          id: "set-1",
+          name: "Architectural",
+          sheets: [
+            sheet("sheet-1", "Level 1", null),
+            sheet("sheet-2", "Level 2", null),
+            sheet("sheet-3", "Roof", "floor-x"),
+          ],
+        },
+      ],
+    };
+    render(<JobRoomsView jobId="job-a" />);
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    click("Add more floors from Drawings");
     expect(
-      await screen.findByText("Review uploaded drawings"),
+      await screen.findByText("Choose drawings for Rooms"),
     ).toBeInTheDocument();
-    click("Confirm sheets");
-    const confirmation = harness.calls.find(
-      (call) => call.name === "confirmDrawingUpload",
+    expect(screen.getByRole("button", { name: /Roof/ })).toBeDisabled();
+    expect(screen.getByText("Already in Rooms")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Level 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Level 1/ }));
+    expect(screen.getByRole("button", { name: /Level 1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    click("Add 2 drawings");
+    const added = harness.calls.find(
+      (call) => call.name === "addFloorsFromDrawings",
     )!;
-    expect(confirmation.input).toEqual({
+    expect(added.input).toEqual({
       jobId: "job-a",
-      keepFloorIds: ["floor-a", "floor-b"],
+      sheetIds: ["sheet-1", "sheet-2"],
     });
     setFloorDetection(0, { status: "queued", queuePosition: 1 });
     setFloorDetection(1, { status: "queued", queuePosition: 2 });
     await act(async () => {
-      confirmation.resolve({ keptFloorIds: ["floor-a", "floor-b"] });
+      added.resolve({ floorIds: ["floor-a", "floor-b"], existingFloorIds: [] });
     });
     expect(harness.calls.filter((call) => call.name === "detectRooms")).toEqual(
       [],
     );
+    expect(screen.queryByText("Choose drawings for Rooms")).toBeNull();
     expect(screen.getByRole("button", { name: "Queued…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "New room" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Trace room" })).toBeDisabled();
+  });
+
+  it("sends people to Drawings when there is nothing to choose", async () => {
+    render(<JobRoomsView jobId="job-a" />);
+    click("Add more floors from Drawings");
+    expect(
+      await screen.findByText("No drawings to choose from yet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Go to Drawings" }),
+    ).toBeInTheDocument();
   });
 
   it("shows overview progress and each sheet's queue position without calling queued sheets failures", () => {
