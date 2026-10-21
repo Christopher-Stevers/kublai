@@ -90,6 +90,30 @@ describe("inferPlanLayers", () => {
     for (const s of party) expect(layerOf(s)).toBe("A-WALL");
   });
 
+  it("ignores a crosshatch drawn in the wall pen across a room", () => {
+    const plan = flattenedPlan();
+    // Two families of diagonals clipped to a box between the y = 0.2 and 0.4 walls.
+    const [x0, x1, y0, y1] = [0.36, 0.46, 0.22, 0.38];
+    const step = 0.004 * Math.SQRT2;
+    const hatch: StyledSegment[] = [];
+    for (const dir of [1, -1]) {
+      // Lines y = dir * x + c, clipped to the box.
+      const cs = dir === 1 ? [y0 - x1, y1 - x0] : [y0 + x0, y1 + x1];
+      for (let c = cs[0]! + step; c < cs[1]!; c += step) {
+        const pts: [number, number][] = [];
+        for (const x of [x0, x1]) { const y = dir * x + c; if (y >= y0 && y <= y1) pts.push([x, y]); }
+        for (const y of [y0, y1]) { const x = (y - c) * dir; if (x > x0 && x < x1) pts.push([x, y]); }
+        if (pts.length >= 2) hatch.push(line(pts[0]![0], pts[0]![1], pts[1]![0], pts[1]![1]));
+      }
+    }
+    expect(hatch.length).toBeGreaterThan(40);
+    const segments = [...plan.segments, ...hatch];
+    const inferred = inferPlanLayers(segments, 1)!;
+    const layerOf = (s: StyledSegment) => inferred.segments[segments.indexOf(s)]!.layer;
+    for (const s of hatch) expect(layerOf(s)).not.toBe("A-WALL");
+    expect(layerOf(plan.segments[0]!)).toBe("A-WALL");
+  });
+
   it("leaves layered exports and sheets without door swings alone", () => {
     const plan = flattenedPlan();
     expect(inferPlanLayers(plan.segments.map((s) => ({ ...s, layer: "A-WALL" })), 1)).toBeNull();

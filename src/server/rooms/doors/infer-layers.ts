@@ -1,3 +1,4 @@
+import { hatchSegmentIndices } from "../hatch-filter";
 import { swingSeals, type LayeredSegment } from "./door-graph";
 
 /** A stroke as read from the PDF: sheet coordinates (0–1) plus its drawing style. */
@@ -132,6 +133,10 @@ export function inferPlanLayers(segments: StyledSegment[], aspect: number) {
   const wallStyles = new Set(ranked.filter(([, v]) => v >= ranked[0]![1] * 0.8).map(([style]) => style));
   // Other arcs of door size (turning circles, fixtures) are never walls.
   const walls = segments.map((s, i) => !doorSegments.has(i) && !arcSegments.has(i) && wallStyles.has(styleOf(s)) && !s.dash?.length);
+  // Hatch fills (ceiling grids, floor finishes) are often drawn in the wall
+  // pen and would cut a room into diamonds.
+  const candidates = segments.flatMap((s, i) => (walls[i] ? [{ x1: s.x1, y1: s.y1 * aspect, x2: s.x2, y2: s.y2 * aspect, order: i, index: i }] : []));
+  for (const k of hatchSegmentIndices(candidates)) walls[candidates[k]!.index] = false;
   for (const i of curves(segments, walls, aspect, typical)) walls[i] = false;
   for (const i of dashedLines(segments, walls, aspect, typical)) walls[i] = false;
   for (const i of wallCrossings(segments, walls, aspect, typical)) walls[i] = false;

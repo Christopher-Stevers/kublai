@@ -208,11 +208,12 @@ export function detectDoorRooms(
 
   const rooms: DoorRoom[] = [];
   // Best name first; a corridor prefers a shared-space name over a suite tag
-  // that spilled across its door, and a unit the reverse.
+  // that spilled across its door, and a unit the reverse. Then the name in
+  // the biggest space: a room with a closet off it is named for the room.
   const nameOf = (members: number[], prefer: (name: string) => boolean) =>
     members
-      .flatMap((s) => names.get(s) ?? [])
-      .sort((a, b) => Number(prefer(b)) - Number(prefer(a)) || Number(COMMON_NAME.test(b)) - Number(COMMON_NAME.test(a)) || rank.get(a)! - rank.get(b)!)[0];
+      .flatMap((s) => (names.get(s) ?? []).map((name) => ({ name, size: area[s]! })))
+      .sort((a, b) => Number(prefer(b.name)) - Number(prefer(a.name)) || b.size - a.size || Number(COMMON_NAME.test(b.name)) - Number(COMMON_NAME.test(a.name)) || rank.get(a.name)! - rank.get(b.name)!)[0]?.name;
   for (const c of classes.common) rooms.push({ kind: "common", name: nameOf([c], (n) => CIRCULATION.test(n)), spaces: [c] });
   const shaft = SHAFT_AREA * doorSize ** 2;
   const isTag = (n: string) => UNIT_TAG.test(n.split(" ")[0]!);

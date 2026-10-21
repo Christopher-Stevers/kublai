@@ -1,5 +1,7 @@
 import type { WallSegment } from "./pdf-walls";
 
+type Stroke = Pick<WallSegment, "x1" | "y1" | "x2" | "y2" | "order">;
+
 /**
  * Hatch patterns (floor/ceiling fills, stair treads, insulation) are drawn as
  * families of parallel lines at a fixed pitch, and CAD exporters emit a hatch
@@ -25,7 +27,7 @@ type Oriented = {
   order: number;
 };
 
-function orient(segment: WallSegment, index: number): Oriented | null {
+function orient(segment: Stroke, index: number): Oriented | null {
   const dx = segment.x2 - segment.x1;
   const dy = segment.y2 - segment.y1;
   if (Math.hypot(dx, dy) === 0) return null;
@@ -91,6 +93,13 @@ function isLattice(run: Oriented[]) {
 }
 
 export function removeHatchSegments(segments: WallSegment[]): WallSegment[] {
+  const drop = hatchSegmentIndices(segments);
+  if (drop.size === 0) return segments;
+  return segments.filter((_, index) => !drop.has(index));
+}
+
+/** Indices of the strokes that belong to hatch fills. */
+export function hatchSegmentIndices(segments: Stroke[]): Set<number> {
   const families = new Map<number, Oriented[]>();
   for (let index = 0; index < segments.length; index += 1) {
     const oriented = orient(segments[index]!, index);
@@ -108,6 +117,5 @@ export function removeHatchSegments(segments: WallSegment[]): WallSegment[] {
       for (const item of run) drop.add(item.index);
     }
   }
-  if (drop.size === 0) return segments;
-  return segments.filter((_, index) => !drop.has(index));
+  return drop;
 }
