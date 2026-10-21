@@ -10,6 +10,7 @@ import { SwitchTrack } from "~/components/ui/switch";
 import { pushDeviceType } from "~/lib/member-notifications";
 
 const STORAGE_KEY = "foremanhq-chat-push-device-v1";
+const OPT_OUT_KEY = "foremanhq-push-opt-out-v1:";
 const DEVICE_EVENT = "foremanhq-chat-push-device-change";
 type StoredDevice = {
   userId: string;
@@ -285,10 +286,14 @@ export function PushAccountBinding() {
         });
     } else void setWorkerAccount(device.account).catch(() => undefined);
   }, [identity.data, refetch, revision]);
-  return null;
+  return <PushNotifications onboarding />;
 }
 
-export function PushNotifications() {
+export function PushNotifications({
+  onboarding = false,
+}: {
+  onboarding?: boolean;
+}) {
   const simulation = useEmployeeSimulation();
   const isOnline = useOnlineStatus();
   const identity = api.push.identity.useQuery(undefined, {
@@ -304,6 +309,8 @@ export function PushNotifications() {
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [error, setError] = useState("");
+  const [optedOut, setOptedOut] = useState(false);
+  const autoAttempt = useRef<string | null>(null);
   useEffect(() => {
     setAvailable(supported());
     setEnabled(false);
@@ -315,6 +322,11 @@ export function PushNotifications() {
       const generation = ++inspection;
       setChecking(true);
       setPermission(Notification.permission);
+      setOptedOut(
+        identity.data?.userId
+          ? localStorage.getItem(OPT_OUT_KEY + identity.data.userId) === "off"
+          : false,
+      );
       const device = readDevice();
       const reg = await navigator.serviceWorker.getRegistration("/");
       const current = await reg?.pushManager?.getSubscription();
@@ -370,6 +382,9 @@ export function PushNotifications() {
     };
     try {
       if (enabled) {
+        if (identity.data?.userId)
+          localStorage.setItem(OPT_OUT_KEY + identity.data.userId, "off");
+        setOptedOut(true);
         await disconnectPushDevice();
         setEnabled(false);
         return;
@@ -378,7 +393,10 @@ export function PushNotifications() {
         throw new Error("Notifications are not configured yet.");
       const expectedUserId = identity.data.userId;
       // Permission is requested directly from this button gesture, never on mount.
-      const granted = await Notification.requestPermission();
+      const granted =
+        Notification.permission === "granted"
+          ? "granted"
+          : await Notification.requestPermission();
       requireCurrentOperation();
       setPermission(granted);
       if (granted !== "granted")
@@ -447,6 +465,8 @@ export function PushNotifications() {
         throw new Error(
           "The notification device changed. Try enabling it again.",
         );
+      localStorage.removeItem(OPT_OUT_KEY + expectedUserId);
+      setOptedOut(false);
       setEnabled(true);
     } catch (failure) {
       // Revoke the returned capability itself: it may arrive after logout, before
@@ -485,6 +505,93 @@ export function PushNotifications() {
       setBusy(false);
     }
   };
+  // The global instance enrolls devices with existing permission once per account.
+  // Permission prompts still require an explicit button gesture.
+  useEffect(() => {
+    const userId = identity.data?.userId;
+    if (
+      !onboarding ||
+      !userId ||
+      simulation ||
+      identity.data?.simulation ||
+      checking ||
+      busy ||
+      enabled ||
+      optedOut ||
+      !available ||
+      !isOnline ||
+      !identity.data?.eligible ||
+      !identity.data.publicKey ||
+      identity.isError ||
+      permission !== "granted" ||
+      autoAttempt.current === userId
+    )
+      return;
+    try {
+      if (localStorage.getItem(OPT_OUT_KEY + userId) === "off") return;
+    } catch {
+      return;
+    }
+    autoAttempt.current = userId;
+    void toggle();
+  });
+  if (onboarding) {
+    if (
+      !identity.data?.eligible ||
+      identity.data.simulation ||
+      simulation ||
+      !isOnline ||
+      !available ||
+      checking ||
+      enabled ||
+      optedOut ||
+      !identity.data.publicKey ||
+      identity.isError ||
+      permission === "denied"
+    )
+      return null;
+    return (
+      <aside
+        aria-label="Enable push notifications"
+        className="bg-card fixed right-3 bottom-24 left-3 z-50 rounded-xl border p-4 shadow-lg sm:left-auto sm:max-w-sm"
+      >
+        <p className="font-semibold">Stay up to date with your crew</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Notifications are on by default. Allow this device to receive alerts,
+          or turn them off below.
+        </p>
+        <div className="mt-3 flex gap-3">
+          <button
+            className="bg-primary text-primary-foreground rounded-md px-3 py-2"
+            disabled={busy}
+            onClick={() => void toggle()}
+          >
+            {busy ? "Enabling…" : "Enable notifications"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2"
+            disabled={busy}
+            onClick={() => {
+              try {
+                localStorage.setItem(OPT_OUT_KEY + identity.data.userId, "off");
+                setOptedOut(true);
+                window.dispatchEvent(new Event(DEVICE_EVENT));
+              } catch {
+                setError("Could not save your preference. Please try again.");
+              }
+            }}
+          >
+            Keep off
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="mt-2 text-sm">
+            {error}
+          </p>
+        )}
+      </aside>
+    );
+  }
   const missingConfig = Boolean(
     identity.data?.eligible && !identity.data.publicKey,
   );

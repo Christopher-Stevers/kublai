@@ -217,6 +217,7 @@ describe("device notification opt-in", () => {
     fireEvent.click(off);
     await screen.findByRole("button", { name: "Turn push notifications on" });
     await waitFor(() => expect(localStorage.getItem(storageKey)).toBeNull());
+    expect(localStorage.getItem("foremanhq-push-opt-out-v1:user-a")).toBe("off");
     expect(mocks.unsubscribe).toHaveBeenCalled();
     expect(mocks.fetch).toHaveBeenCalledWith(
       "/api/trpc/push.revokeDevice",
@@ -427,3 +428,62 @@ describe("device notification opt-in", () => {
 function readStored(): unknown {
   return JSON.parse(localStorage.getItem(storageKey) ?? "null") as unknown;
 }
+
+describe("default crew notification setup", () => {
+  it("automatically registers an allowed device without prompting", async () => {
+    Object.defineProperty(Notification, "permission", {
+      value: "granted",
+      configurable: true,
+    });
+    render(<PushNotifications onboarding />);
+    await waitFor(() => expect(mocks.subscribe).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem(storageKey)!)).toMatchObject(
+        stored,
+      ),
+    );
+    expect(mocks.permission).not.toHaveBeenCalled();
+  });
+  it("asks for a gesture when permission is missing and remembers Keep off", async () => {
+    const view = render(<PushNotifications onboarding />);
+    await screen.findByRole("button", { name: "Enable notifications" });
+    expect(mocks.permission).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep off" }));
+    expect(localStorage.getItem("foremanhq-push-opt-out-v1:user-a")).toBe(
+      "off",
+    );
+    view.unmount();
+    Object.defineProperty(Notification, "permission", {
+      value: "granted",
+      configurable: true,
+    });
+    render(<PushNotifications onboarding />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(mocks.subscribe).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Enable notifications" }),
+    ).not.toBeInTheDocument();
+  });
+  it("lets a user enable from the setup prompt", async () => {
+    render(<PushNotifications onboarding />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Enable notifications" }),
+    );
+    await waitFor(() => expect(mocks.subscribe).toHaveBeenCalledOnce());
+    expect(mocks.permission).toHaveBeenCalledOnce();
+  });
+  it("does not override a browser denial", async () => {
+    Object.defineProperty(Notification, "permission", {
+      value: "denied",
+      configurable: true,
+    });
+    render(<PushNotifications onboarding />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(mocks.permission).not.toHaveBeenCalled();
+    expect(mocks.subscribe).not.toHaveBeenCalled();
+  });
+});
