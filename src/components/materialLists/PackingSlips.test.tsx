@@ -29,7 +29,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-it("saves a scan with its order and closes to the order without an intermediate window", async () => {
+it("saves a scan with its order and returns to the slip list to watch it being read", async () => {
   let saved = false;
   const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
     if (options?.method === "POST") {
@@ -49,10 +49,20 @@ it("saves a scan with its order and closes to the order without an intermediate 
               id: "doc",
               name: "Packing slip - PO-123.jpg",
               createdAt: "2026-10-17",
+              currentVersionId: "version",
               packingSlip: {
                 orderId: "order",
                 materialListId: "list",
                 orderNumber: "PO-123",
+              },
+              packingSlipAnalysis: {
+                runId: "run",
+                versionId: "version",
+                status: "processing",
+                startedAt: new Date().toISOString(),
+                items: [],
+                lines: [],
+                warnings: [],
               },
             },
           ]
@@ -64,10 +74,13 @@ it("saves a scan with its order and closes to the order without an intermediate 
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
-  await screen.findByText("PDF saved");
-  expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Close scan" }));
-  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  await screen.findByText(/Reading packing slip and comparing it/);
+  expect(screen.getByText("Reading…")).toBeInTheDocument();
+  expect(screen.getByText(/It's being read now/)).toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "Packing slip camera" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
   expect(
     fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),
   ).toHaveLength(1);
@@ -92,7 +105,7 @@ it("retains a failed scan for retry and offers read-only slips from a normal mat
   await screen.findByRole("alert");
   fail = false;
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
-  await screen.findByText("PDF saved");
+  await screen.findByText(/It's being read now/);
   await waitFor(() =>
     expect(
       fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),

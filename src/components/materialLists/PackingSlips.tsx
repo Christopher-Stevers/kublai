@@ -133,11 +133,13 @@ export function PackingSlips({
       setRetryFile(null);
       setNotice(
         result.analysisError ??
-          "Packing slip saved. Analysis will prepare quantities for your review.",
+          "Packing slip saved. It's being read now; the comparison with the order appears below.",
       );
       await load().catch(() =>
         setError("Packing slip saved. Reopen this window to refresh the list."),
       );
+      // Back to the list so the analysis can be watched as it runs.
+      setScanning(false);
       return true;
     } catch (e) {
       setRetryFile(file);
