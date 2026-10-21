@@ -1,5 +1,6 @@
 "use client";
 
+import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
 import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
 import { useLandingPage } from "~/hooks/use-landing-page";
 import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
@@ -96,6 +97,7 @@ export default function SettingsPage() {
       </Card>
 
       <RestartTutorialCard />
+      <AssessmentAiSettings key={me?.id} />
       <DiagnosticsSettings />
 
       <Card>

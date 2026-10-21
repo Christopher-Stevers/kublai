@@ -177,7 +177,6 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
       mocked.db[method] = db[method].bind(db);
   });
   beforeEach(async () => {
-    process.env.TYPESAFE_API_KEY = "synthetic-provider-not-used";
     mocked.wait = null;
     mocked.extract.mockReset().mockResolvedValue({
       pages: [{ page: 1, text: "HEATING WATER PIPING\nCopper pipe." }],
@@ -267,10 +266,9 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
       .values({ jobId: job, organizationId: org, state, revision: 1 });
   });
   afterAll(async () => {
-    delete process.env.TYPESAFE_API_KEY;
     await sql.end();
   });
-  it("enforces organization, existence, edit permission and missing provider before queueing", async () => {
+  it("enforces organization, existence, edit permission before queueing", async () => {
     await expect(getSpecificationContext("other", job)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
@@ -279,10 +277,6 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(startAssessment("reader", job)).rejects.toMatchObject({
       code: "FORBIDDEN",
-    });
-    delete process.env.TYPESAFE_API_KEY;
-    await expect(startAssessment("editor", job)).rejects.toMatchObject({
-      code: "PRECONDITION_FAILED",
     });
     expect(mocked.extract).not.toHaveBeenCalled();
   });

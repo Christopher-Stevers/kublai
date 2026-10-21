@@ -1,3 +1,10 @@
+import { assessmentAiSchema } from "~/lib/assessment-ai";
+import {
+  readAssessmentAi,
+  storeAssessmentAi,
+} from "~/server/job-systems/ai-settings";
+import { customEndpoint } from "~/server/job-systems/ai-transport";
+import { testAssessmentAi } from "~/server/job-systems/ai-evaluator";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -64,6 +71,53 @@ export type PipeSpecRow = {
 };
 
 export const pipeSpecsRouter = createTRPCRouter({
+  aiConnection: hasDashboardAccess.query(async ({ ctx }) => {
+    if (!userCan(ctx.user as never, "org.settings"))
+      return { canConfigure: false as const, settings: null };
+    const { apiKey, ...settings } = await readAssessmentAi(organizationOf(ctx));
+    return {
+      canConfigure: true as const,
+      settings: { ...settings, hasKey: !!apiKey },
+    };
+  }),
+  saveAiConnection: hasDashboardAccess
+    .input(assessmentAiSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user as never, "org.settings"))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Company-settings permission is required.",
+        });
+      try {
+        if (input.mode === "custom") {
+          customEndpoint(input.baseUrl);
+          if (!input.model) throw Error("Enter the provider's model ID.");
+          if (!input.apiKey) {
+            const old = await readAssessmentAi(organizationOf(ctx));
+            if (old.mode === "custom" && old.baseUrl === input.baseUrl)
+              input.apiKey = old.apiKey;
+          }
+        } else
+          input = {
+            mode: "hosted",
+            baseUrl: "",
+            model: "",
+            apiKey: "",
+            reasoning: "default",
+          };
+        const tested = await testAssessmentAi(input);
+        await storeAssessmentAi(organizationOf(ctx), input);
+        return tested;
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            error instanceof Error
+              ? error.message
+              : "AI connection could not be saved.",
+        });
+      }
+    }),
   assessment: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => getAssessment(userIdOf(ctx), input.jobId)),

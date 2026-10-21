@@ -10,10 +10,6 @@ if (process.env.RUN_REAL_SYSTEMS_ASSESSMENT !== "1")
     "Set RUN_REAL_SYSTEMS_ASSESSMENT=1 to send the synthetic fixture to the configured provider.",
   );
 config({ path: ".env", quiet: true });
-if (!process.env.TYPESAFE_API_KEY)
-  throw Error(
-    "No TypeSafe API key configured; live provider validation cannot run.",
-  );
 const directory = await mkdtemp(path.join(tmpdir(), "foreman-systems-smoke-"));
 try {
   process.env.JOB_DOCUMENT_STORAGE_ROOT = directory;

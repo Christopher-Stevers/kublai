@@ -1,3 +1,5 @@
+import { readAssessmentAi } from "./ai-settings";
+import { createEvaluator } from "./ai-evaluator";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -210,7 +212,7 @@ export async function getAssessment(userId: string, jobId: string) {
               )
             : context.sources,
         ),
-    providerConfigured: !!process.env.TYPESAFE_API_KEY,
+    providerConfigured: true,
     documents: context.availableSources
       .filter((s) => !s.drawing)
       .map((s) => ({
@@ -407,12 +409,8 @@ export async function startAssessment(
     context.readableDocumentIds,
     context.access.canManage,
   );
-  if (!process.env.TYPESAFE_API_KEY)
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message:
-        "Specifications assessment is not configured. Add the server TypeSafe API key, or set up systems manually.",
-    });
+  // Capture the company connection once; a settings change cannot retarget a queued run.
+  const provider = await readAssessmentAi(context.access.job.organizationId);
   const selectedSources = selectedAssessmentSources(context, selection);
   if (!selectedSources.length)
     throw new TRPCError({
@@ -588,7 +586,7 @@ export async function startAssessment(
           const output = await assessPassages(
             passages,
             materialRows.map((m) => m.name),
-            undefined,
+            createEvaluator(provider),
             async (stage) => {
               await guard();
               await update({ stage });

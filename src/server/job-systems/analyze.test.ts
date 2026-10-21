@@ -153,7 +153,9 @@ describe("specification assessment", () => {
     });
     const result = await assessPassages(passages, [], fixture);
     expect(result.systems).toEqual([]);
-    expect(result.warnings[0]).toContain("could not be associated");
+    expect(
+      result.warnings.some((w) => w.includes("could not be associated")),
+    ).toBe(true);
     const no: Evaluator = async (_s, q) => ({
       model: "test",
       answers: Object.fromEntries(

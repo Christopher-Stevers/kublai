@@ -1,5 +1,5 @@
+import { createEvaluator } from "./ai-evaluator";
 import { createHash } from "node:crypto";
-import { z } from "zod";
 import {
   jobSystemRequirementsSchema,
   systemRuleSchema,
@@ -13,49 +13,15 @@ type Question = {
   instructions: unknown;
   criteria: Record<string, unknown>;
 };
-const answer = z.object({
-  type: z.literal("choice"),
-  choice: z.string(),
-  confidence: z.number().min(0).max(1),
-});
+type Answer = { type: "choice"; choice: string; confidence: number };
 export type Evaluator = (
   state: unknown,
   questions: Record<string, Question>,
 ) => Promise<{
   model: string;
-  answers: Record<string, z.infer<typeof answer>>;
+  answers: Record<string, Answer>;
 }>;
-export const evaluate: Evaluator = async (state, questions) => {
-  const key = process.env.TYPESAFE_API_KEY;
-  if (!key)
-    throw Error(
-      "Specifications assessment requires a server TypeSafe API key. Add systems manually until configured.",
-    );
-  const response = await fetch("https://api.typesafe.ai/v1/systemone", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: "jev-latest", state, questions }),
-    signal: AbortSignal.timeout(45000),
-  });
-  if (!response.ok)
-    throw Error(
-      "Specification assessment is temporarily unavailable. Your existing systems are unchanged; retry later.",
-    );
-  const parsed = z
-    .object({ model: z.string(), answers: z.record(z.string(), answer) })
-    .parse(await response.json());
-  for (const [id, q] of Object.entries(questions)) {
-    const a = parsed.answers[id];
-    if (!a || !(a.choice in q.criteria))
-      throw Error(
-        "Specification assessment returned an invalid answer. Retry later.",
-      );
-  }
-  return parsed;
-};
+export const evaluate: Evaluator = (...args) => createEvaluator()(...args);
 const hash = (s: string) =>
   createHash("sha256").update(s).digest("hex").slice(0, 24);
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -347,7 +313,9 @@ export async function assessPassages(
   run: Evaluator = evaluate,
   onProgress?: (stage: string) => Promise<void>,
 ): Promise<AssessmentOutput> {
-  const warnings: string[] = [];
+  const warnings: string[] = [
+    "AI-generated requirements need review. Model confidence is self-reported, not a calibrated probability or verification of correctness.",
+  ];
   const systems = new Map<string, JobSystemRequirements>();
   let model = "";
   const candidates = passages.filter((p) => p.systems.length > 0);
@@ -545,8 +513,8 @@ export async function assessPassages(
       }
     }
     if (!Object.keys(questions).length) continue;
-    // Leave a large margin below the provider's 64k request / 32k question contexts.
-    const answers: Record<string, z.infer<typeof answer>> = {};
+    // Bound input and output for the hosted model; preserve evidence across batches.
+    const answers: Record<string, Answer> = {};
     let slice: Record<string, Question> = {};
     let bytes = 0;
     const dispatch = async () => {
@@ -569,7 +537,8 @@ export async function assessPassages(
     };
     for (const [key, q] of Object.entries(questions)) {
       const size = JSON.stringify(q).length;
-      if (bytes + size > 20000) await dispatch();
+      if (bytes + size > 12000 || Object.keys(slice).length >= 16)
+        await dispatch();
       slice[key] = q;
       bytes += size;
     }
