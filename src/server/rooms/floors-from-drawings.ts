@@ -8,6 +8,8 @@ import {
   jobFloorPlans,
   jobFloors,
 } from "~/server/db/schema";
+import { drawingWorkspaceMetadata } from "~/server/db/drawing-workspace-schema";
+import { roomLevelName } from "./level-name";
 import { enqueueDetectJobs } from "./detect-job";
 import { JOB_ROOM_FILE_PUBLIC_PREFIX } from "./storage";
 
@@ -130,9 +132,14 @@ export async function addFloorsFromDrawings(
         width: jobDrawingSheets.width,
         height: jobDrawingSheets.height,
         sourceFilename: jobDrawingSheets.sourceFilename,
+        metadata: drawingWorkspaceMetadata.data,
       })
       .from(jobDrawingSheets)
       .innerJoin(jobDrawingSets, eq(jobDrawingSets.id, jobDrawingSheets.setId))
+      .leftJoin(
+        drawingWorkspaceMetadata,
+        eq(drawingWorkspaceMetadata.sheetId, jobDrawingSheets.id),
+      )
       .where(
         and(
           inArray(jobDrawingSheets.id, input.sheetIds),
@@ -215,7 +222,7 @@ export async function addFloorsFromDrawings(
           jobId: input.jobId,
           floorPlanId: plan!.id,
           pageNumber: start + index + 1,
-          name: sheet.name.slice(0, 255),
+          name: roomLevelName(sheet.metadata?.title, sheet.name).slice(0, 255),
           imageUrl: sheet.imageUrl,
           width: sheet.width,
           height: sheet.height,

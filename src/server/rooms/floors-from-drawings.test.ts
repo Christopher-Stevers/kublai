@@ -33,6 +33,7 @@ function fakeDb(reads: Row[][], job: Row[] = [{ id: jobId }]) {
     const query = Object.assign(Promise.resolve(rows), {
       from: () => query,
       innerJoin: () => query,
+      leftJoin: () => query,
       where: () => query,
       orderBy: () => query,
       limit: () => query,
@@ -131,7 +132,7 @@ describe("Rooms floors from Drawings", () => {
 
   it("adds after the job's existing floors without a second plan", async () => {
     const { db, writes } = fakeDb([
-      [sheet("s1", 1)],
+      [{ ...sheet("s1", 1), metadata: { title: "EIGHTH FLOOR PLAN" } }],
       [],
       [{ id: "plan-1", jobId }],
       [{ pageNumber: 7 }],
@@ -141,7 +142,11 @@ describe("Rooms floors from Drawings", () => {
       expect.objectContaining({
         table: jobFloors,
         values: [
-          expect.objectContaining({ floorPlanId: "plan-1", pageNumber: 8 }),
+          expect.objectContaining({
+            floorPlanId: "plan-1",
+            pageNumber: 8,
+            name: "Level 8",
+          }),
         ],
       }),
     ]);
