@@ -212,7 +212,14 @@ export function skuScore(item: ReceiptOrderItem, code: string, text: string) {
   const shape = skuShape(want);
   if (codes.some((c) => skuShape(c) === shape)) return 0.92;
   // Codes split by OCR or printed with spaces.
-  if (want.length >= 5 && normalizeSku(text).includes(want)) return 0.9;
+  const pieces = text.split(/\s+/).map(normalizeSku).filter(Boolean);
+  if (
+    want.length >= 5 &&
+    pieces.some((_, i) =>
+      [2, 3, 4].some((n) => pieces.slice(i, i + n).join("") === want),
+    )
+  )
+    return 0.9;
   if (want.length >= 6 && codes.some((c) => edits(skuShape(c), shape) === 1))
     return 0.5;
   return 0;
@@ -321,14 +328,19 @@ export function matchLines(
   const pairs = scored
     .flatMap((s, line) => s.map((x) => ({ ...x, line })))
     .filter((p) => p.score >= 0.45)
-    .sort((a, b) => b.score - a.score);
+    .sort(
+      (a, b) => Number(b.sku === 1) - Number(a.sku === 1) || b.score - a.score,
+    );
   const taken = new Map<string, number>();
   for (const p of pairs) {
     const r = result[p.line]!;
     if (r.itemId || r.ambiguous) continue;
     const others = scored[p.line]!.filter((x) => x.itemId !== p.itemId);
     const exactCodes = scored[p.line]!.filter((x) => x.sku === 1).length;
-    if (p.sku >= 0.9 && exactCodes <= 1 && !others.some((o) => o.sku >= 0.9)) {
+    if (
+      (p.sku === 1 && exactCodes === 1) ||
+      (p.sku >= 0.9 && exactCodes === 0 && !others.some((o) => o.sku >= 0.9))
+    ) {
       // A unique code decides, even for a second line of the same item.
       r.itemId = p.itemId;
       r.confidence = "high";

@@ -2681,3 +2681,22 @@ export const jobSystemAssessments = createTable("job_system_assessment", d => ({
 ]);
 
 export { diagnosticCounts } from "./diagnostics-schema";
+
+/** Durable, company-scoped evidence for reviewing packing-slip reader failures. */
+export const packingSlipReviewHistory = createTable("packing_slip_review_history", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull(),
+  documentId: d.uuid().notNull(),
+  versionId: d.uuid().notNull(),
+  runId: d.uuid().notNull(),
+  kind: d.varchar({ length: 24 }).notNull(),
+  userId: d.varchar({ length: 255 }).notNull(),
+  release: d.varchar({ length: 100 }).notNull(),
+  data: d.jsonb().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [
+  uniqueIndex("packing_slip_history_run_kind_idx").on(t.organizationId, t.runId, t.kind),
+  index("packing_slip_history_job_idx").on(t.organizationId, t.jobId, t.createdAt),
+  check("packing_slip_history_kind_check", sql`${t.kind} in ('analysis', 'failure', 'confirmation')`),
+]);

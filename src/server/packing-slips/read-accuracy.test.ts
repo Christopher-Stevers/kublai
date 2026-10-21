@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { proposedReceipts, type SlipAnalysis } from "~/lib/packing-slip-review";
 import { analyzeSlip } from "./analyze";
-import { tokens } from "./match";
+import { tokens, matchLines, skuScore } from "./match";
 import { wordRows, type SlipWord } from "./ocr-rows";
 import { readSlipTable } from "./read-table";
 import { makeSlip, slipRows } from "./test-slips";
@@ -102,4 +102,97 @@ it("treats a row with a number under an unread heading as its own item", () => {
   ]);
   expect(table.lines).toHaveLength(2);
   expect(table.lines[0]!.extra).toEqual([]);
+});
+
+it("reads stacked quantity headers and does not stop at stray marks or count carton notes", async () => {
+  const row = (y: number, cells: Array<[string, number]>) => ({
+    page: 1,
+    words: cells.map(([t, x]) => word(t, x, y)),
+    text: cells.map(([t]) => t).join(" "),
+  });
+  const rows = [
+    row(0.2, [
+      ["Line", 0.04],
+      ["Description", 0.12],
+      ["Order", 0.5],
+      ["B/IO", 0.62],
+      ["Ship", 0.73],
+      ["Qty", 0.85],
+    ]),
+    row(0.216, [
+      ["Quantity", 0.5],
+      ["Quantity", 0.62],
+      ["Quantity", 0.73],
+      ["UM", 0.85],
+    ]),
+    row(0.25, [
+      ["1", 0.04],
+      ["ABC123", 0.12],
+      ["10.00", 0.5],
+      ["0.00", 0.62],
+      ["10.00", 0.73],
+      ["EA", 0.85],
+    ]),
+    row(0.28, [
+      ["Carton #: BOX123 Qty: 10", 0.12],
+      ["3", 0.73],
+    ]),
+    row(0.4, [["~", 0.2]]),
+    row(0.44, [
+      ["2", 0.04],
+      ["ABC456", 0.12],
+      ["20.00", 0.5],
+      ["5.00", 0.62],
+      ["15.00", 0.73],
+      ["EA", 0.85],
+    ]),
+    row(0.5, [["2 Lines Total", 0.1]]),
+  ];
+  const table = readSlipTable(rows);
+  expect(table.lines).toHaveLength(2);
+  expect(table.layouts[0]!.columns.map((c) => c.field)).toEqual(
+    expect.arrayContaining(["ordered", "backordered", "shipped", "unit"]),
+  );
+  const items = ["ABC123", "ABC456"].map((sku, i) => ({
+    id: sku,
+    sku,
+    description: sku,
+    aliases: [],
+    ordered: i ? 20 : 10,
+    received: 0,
+    verificationStatus: "pending",
+    unit: "ea",
+    piecesPerPack: null,
+    individualUnit: null,
+  }));
+  const result = await analyzeSlip(rows, items, noEvaluator);
+  expect(result.lines.map((l) => l.proposed)).toEqual([10, 15]);
+});
+
+it("does not confuse complete supplier codes with code substrings or OCR lookalikes", () => {
+  const item = (sku: string) => ({
+    id: sku,
+    sku,
+    description: "Fitting",
+    aliases: [],
+    ordered: 10,
+    received: 0,
+    verificationStatus: "pending",
+    unit: "ea",
+    piecesPerPack: null,
+    individualUnit: null,
+  });
+  expect(skuScore(item("112XFRTY"), "", "2X112XFRTY fitting")).toBe(0);
+  expect(
+    matchLines(
+      [item("112XFRTY"), item("2X112XFRTY")],
+      [{ code: "2X112XFRTY", text: "Fitting" }],
+    )[0]!.itemId,
+  ).toBe("2X112XFRTY");
+  expect(
+    matchLines(
+      [item("ABO123"), item("AB0123")],
+      [{ code: "ABO123", text: "Fitting" }],
+    )[0]!.itemId,
+  ).toBe("ABO123");
 });

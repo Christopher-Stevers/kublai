@@ -42,7 +42,9 @@ for (const [field, phrases] of Object.entries({
   ordered: [
     "qty ord",
     "qty ordered",
+    "order",
     "quantity ordered",
+    "order quantity",
     "ordered qty",
     "order qty",
     "ord qty",
@@ -69,6 +71,7 @@ for (const [field, phrases] of Object.entries({
     "qty shp",
     "qty shipped",
     "quantity shipped",
+    "ship quantity",
     "shipped qty",
     "ship qty",
     "qty ship",
@@ -90,6 +93,7 @@ for (const [field, phrases] of Object.entries({
   backordered: [
     "qty b/o",
     "b/o qty",
+    "b/o quantity",
     "b/o",
     "bo",
     "qty bo",
@@ -143,11 +147,22 @@ for (const [field, phrases] of Object.entries({
     "description",
     "desc",
     "product description",
+    "product and description",
     "item description",
     "details",
     "description of goods",
   ],
-  unit: ["unit", "uom", "u/m", "um", "u m", "unit of measure", "units"],
+  unit: [
+    "qty um",
+    "qty u/m",
+    "unit",
+    "uom",
+    "u/m",
+    "um",
+    "u m",
+    "unit of measure",
+    "units",
+  ],
   price: [
     "unit price",
     "price",
@@ -159,6 +174,7 @@ for (const [field, phrases] of Object.entries({
     "disc",
     "discount",
     "amount",
+    "amount (net)",
     "ext",
     "ext price",
     "extension",
@@ -168,7 +184,22 @@ for (const [field, phrases] of Object.entries({
     "value",
   ],
   line: ["ln", "line", "line #", "#", "no", "seq"],
-  ignore: ["weight", "wt", "loc", "location", "bin", "lot", "tax", "tag"],
+  ignore: [
+    "upc",
+    "upc item",
+    "bin location",
+    "recd",
+    "cartons",
+    "recd cartons",
+    "weight",
+    "wt",
+    "loc",
+    "location",
+    "bin",
+    "lot",
+    "tax",
+    "tag",
+  ],
 }))
   for (const phrase of phrases) LABELS[phrase] = field as SlipField;
 
@@ -181,7 +212,7 @@ export const QUANTITY: SlipField[] = [
 ];
 const TEXT: SlipField[] = ["sku", "description"];
 const STOP =
-  /^(?:sub-?total|total\b|received by|receiver|signature|thank you|terms\b|all claims|claims\b|freight\b|carrier\b|continued on)|\b(?:sub-?total|total (?:qty|quantity|lines|items|weight|shipped|pieces|pcs)|received by|signature|thank you|page \d+ of \d+)\b/i;
+  /^(?:customer copy|printed:|\d+\s+lines total|sub-?total|total\b|received by|receiver|signature|thank you|terms\b|all claims|claims\b|freight\b|carrier\b|continued on)|\b(?:sub-?total|total (?:qty|quantity|lines|items|weight|shipped|pieces|pcs)|received by|signature|thank you|page \d+ of \d+)\b/i;
 const HEADER_BLOCK =
   /\b(?:ship(?:ped)? to|sold to|bill to|ship via|page \d+ of|order (?:no|#|number)|customer po|p\.?o\.? ?(?:no|#)|ship date|invoice|continued)\b/i;
 const NOTE = /^\s*(?:\*|note\b|notes\b|comment)/i;
@@ -193,7 +224,9 @@ const norm = (s: string) =>
     .replace(/^[(]|[)]$/g, "")
     .replace(/\s+/g, " ")
     .trim()
+    .replace(/\b[a-z]{1,4}scription\b/g, "description")
     // Common OCR misreads of header words: B/O as BIO or 8/0, Qty as Oty.
+    .replace(/(^| )[b8]\/[iIl1]?[o0](?= |$)/g, "$1b/o")
     .replace(/(^| )[b8][/|il1\\]?[o0](?= |$)/g, "$1b/o")
     .replace(/(^| )[aoq0]t[yv](?= |$)/g, "$1qty")
     .replace(/(^| )[o0]?[o0]rd(?= |$)/g, "$1ord");
@@ -284,7 +317,15 @@ function scoreHeader(columns: SlipColumn[], unknown: number) {
   // Two columns read as the same quantity means part of a header was missed.
   const repeats =
     columns.filter((c) => QUANTITY.includes(c.field)).length - quantities;
-  return columns.length * 2 - unknown - repeats * 2;
+  // Prefer complete quantity/unit headings over many incidental labels (#, bin, etc.).
+  return (
+    quantities * 5 -
+    (fields.has("qty") ? 4 : 0) +
+    (fields.has("unit") ? 4 : 0) +
+    columns.length * 0.5 -
+    unknown * 0.5 -
+    repeats * 5
+  );
 }
 
 /** When there is both an item/product column and a description column,
@@ -460,6 +501,14 @@ export function readSlipTable(rows: SlipRow[]) {
         current = null;
         continue;
       }
+      // Packaging references and handwritten counts beside them are not item rows.
+      if (
+        /^\s*(?:carton|carlon|pallet|package)\s*(?:#|:|no\b|[A-Z]*\d)/i.test(
+          row.text,
+        )
+      ) {
+        continue;
+      }
       const words = splitWords(row);
       const cells = cellsFor(words, layout.columns);
       const h = lineHeight(row);
@@ -507,7 +556,9 @@ export function readSlipTable(rows: SlipRow[]) {
             width: x2 - Math.min(b.x, box.x),
             height: y2 - b.y,
           };
-        } else if (current && gap > h * 6) break;
+        }
+        // A stray mark or whitespace between table rows must not truncate the page.
+        // Explicit footer labels above end the table instead.
         continue;
       }
       current = { page, box, text: row.text, cells, extra: [], row, layout };

@@ -12,7 +12,11 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableName, getTableColumns, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-const test = vi.hoisted(() => ({ transaction: vi.fn(), receive: true }));
+const test = vi.hoisted(() => ({
+  transaction: vi.fn(),
+  receive: true,
+  extractionFails: false,
+}));
 vi.mock("~/server/db", () => ({ db: { transaction: test.transaction } }));
 vi.mock("~/server/auth/permissions", () => ({
   userCan: (_: unknown, key: string) =>
@@ -28,7 +32,10 @@ import {
   refreshSlipReview,
 } from "./service";
 vi.mock("./extract", () => ({
-  extractSlip: async () => ({ rows: [], warnings: [] }),
+  extractSlip: async () => {
+    if (test.extractionFails) throw Error("Fixture reading failure");
+    return { rows: [], warnings: [] };
+  },
 }));
 vi.mock("./analyze", () => ({
   analyzeSlip: async () => ({
@@ -67,6 +74,7 @@ const org = id(1),
   list = id(3),
   order = id(4);
 const tables = [
+  schema.packingSlipReviewHistory,
   schema.users,
   schema.jobs,
   schema.materialLists,
@@ -98,10 +106,14 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         `CREATE TABLE "${getTableName(table)}" (${columns.join(",")})`,
       );
     }
+    await conn.unsafe(
+      `CREATE UNIQUE INDEX packing_slip_history_test_unique ON kublai_packing_slip_review_history ("organizationId", "runId", kind)`,
+    );
     test.transaction.mockImplementation(db.transaction.bind(db));
   });
   beforeEach(async () => {
     test.receive = true;
+    test.extractionFails = false;
     for (const table of [...tables].reverse())
       await conn.unsafe(`TRUNCATE "${getTableName(table)}"`);
     await db.insert(schema.users).values({
@@ -178,6 +190,104 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(
       (await workspace()).documents[0]!.packingSlipAnalysis!.applied,
     ).toBeDefined();
+  });
+  it("retains failed attempts after a successful retry", async () => {
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    test.extractionFails = true;
+    await startSlipAnalysis(access, doc.documentId);
+    for (
+      let i = 0;
+      i < 100 &&
+      (await workspace()).documents[0]!.packingSlipAnalysis?.status !==
+        "failed";
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 10));
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "failed",
+    );
+    test.extractionFails = false;
+    await startSlipAnalysis(access, doc.documentId, true);
+    for (
+      let i = 0;
+      i < 100 &&
+      (await workspace()).documents[0]!.packingSlipAnalysis?.status !== "ready";
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 10));
+    const history = await db.select().from(schema.packingSlipReviewHistory);
+    expect(history.map((r) => r.kind).sort()).toEqual(["analysis", "failure"]);
+    expect(history.find((r) => r.kind === "failure")!.data).toMatchObject({
+      analysis: { error: "Fixture reading failure" },
+    });
+  });
+  it("archives original matches and human changes once, without calling receipt differences OCR truth", async () => {
+    const { access, doc, analysis } = await ready();
+    const initial = await db.select().from(schema.packingSlipReviewHistory);
+    expect(initial).toHaveLength(1);
+    expect(initial[0]).toMatchObject({
+      organizationId: org,
+      jobId: job,
+      kind: "analysis",
+      userId: "receiver",
+    });
+    const links = { "0": null };
+    await confirmSlipReceipt(
+      access,
+      doc.documentId,
+      analysis.runId,
+      { [id(6)]: 5 },
+      links,
+    );
+    await confirmSlipReceipt(
+      access,
+      doc.documentId,
+      analysis.runId,
+      { [id(6)]: 5 },
+      links,
+    );
+    const history = await db.select().from(schema.packingSlipReviewHistory);
+    expect(history).toHaveLength(2);
+    const saved = history.find((r) => r.kind === "confirmation")!.data as {
+      originalAnalysis: typeof analysis;
+      confirmedAnalysis: typeof analysis;
+      quantityMeaning: string;
+      source: { sha256: string };
+    };
+    expect(saved.originalAnalysis.lines[0]!.orderItemId).toBe(id(6));
+    expect(saved.confirmedAnalysis.lines[0]!.orderItemId).toBeNull();
+    expect(saved.confirmedAnalysis.applied!.quantities[id(6)]).toBe(5);
+    expect(saved.originalAnalysis.lines[0]!.shipped).toBe(6);
+    expect(saved.quantityMeaning).toBe(
+      "physically_received_not_transcribed_shipped",
+    );
+    expect(saved.source.sha256).toBe(file.sha256);
+  });
+  it("rolls back receipt changes if correction history cannot be saved", async () => {
+    const { access, doc, analysis } = await ready();
+    await conn.unsafe(
+      `ALTER TABLE kublai_packing_slip_review_history ADD CONSTRAINT block_confirmation CHECK (kind <> 'confirmation')`,
+    );
+    try {
+      await expect(
+        confirmSlipReceipt(access, doc.documentId, analysis.runId, {
+          [id(6)]: 5,
+        }),
+      ).rejects.toThrow();
+      expect(
+        Number(
+          (await db.select().from(schema.orderItems))[0]!.receivedQuantity,
+        ),
+      ).toBe(2);
+      expect(
+        (await workspace()).documents[0]!.packingSlipAnalysis!.applied,
+      ).toBeUndefined();
+    } finally {
+      await conn.unsafe(
+        `ALTER TABLE kublai_packing_slip_review_history DROP CONSTRAINT block_confirmation`,
+      );
+    }
   });
   it("flags differences between actual delivery and slip", async () => {
     const { access, doc, analysis } = await ready();

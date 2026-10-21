@@ -8,6 +8,7 @@ import {
   supplierParts,
   partSynonyms,
   units,
+  packingSlipReviewHistory,
 } from "~/server/db/schema";
 import { userCan } from "~/server/auth/permissions";
 import { mutateWorkspace } from "~/server/documents/service";
@@ -25,6 +26,30 @@ import {
 import { extractSlip } from "./extract";
 import { analyzeSlip } from "./analyze";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
+/** Written in the same transaction as the result/receipt: never lose the original matches. */
+async function recordReviewHistory(
+  tx: Tx,
+  access: DocumentAccess,
+  doc: { id: string; packingSlip?: unknown },
+  analysis: SlipAnalysis,
+  kind: "analysis" | "failure" | "confirmation",
+  data: Record<string, unknown>,
+) {
+  await tx
+    .insert(packingSlipReviewHistory)
+    .values({
+      organizationId: access.job.organizationId,
+      jobId: access.job.id,
+      documentId: doc.id,
+      versionId: analysis.versionId,
+      runId: analysis.runId,
+      kind,
+      userId: access.user.id,
+      release: process.env.NEXT_PUBLIC_APP_RELEASE ?? "unknown",
+      data: { schemaVersion: 1, packingSlip: doc.packingSlip, ...data },
+    })
+    .onConflictDoNothing();
+}
 async function orderFor(tx: Tx, access: DocumentAccess, orderId: string) {
   const [order] = await tx
     .select()
@@ -216,6 +241,38 @@ export async function startSlipAnalysis(
           code: "NOT_FOUND",
           message: "Packing slip file unavailable.",
         });
+      const previous = doc.packingSlipAnalysis;
+      if (previous) {
+        const previousVersion = state.versions.find(
+          (v) => v.id === previous.versionId,
+        );
+        await recordReviewHistory(
+          tx,
+          fresh,
+          doc,
+          previous,
+          previous.status === "ready" ? "analysis" : "failure",
+          {
+            analysis:
+              previous.status === "processing"
+                ? {
+                    ...previous,
+                    status: "failed",
+                    error:
+                      "Previous analysis was interrupted or exceeded its lease before retry.",
+                  }
+                : previous,
+            source: previousVersion
+              ? {
+                  sha256: previousVersion.sha256,
+                  mimeType: previousVersion.mimeType,
+                }
+              : null,
+            archivedBeforeRetry: true,
+            originalReleaseUnknown: true,
+          },
+        );
+      }
       const analysis: SlipAnalysis = {
         runId: randomUUID(),
         versionId: version.id,
@@ -267,22 +324,60 @@ export async function startSlipAnalysis(
               status: "ready",
               completedAt: new Date().toISOString(),
             };
+            await recordReviewHistory(
+              tx,
+              fresh,
+              doc,
+              doc.packingSlipAnalysis,
+              "analysis",
+              {
+                analysis: doc.packingSlipAnalysis,
+                source: {
+                  sha256: task.version.sha256,
+                  mimeType: task.version.mimeType,
+                },
+              },
+            );
             assertStateBounds(state);
           },
         );
       } catch (error) {
-        await mutateWorkspace(access.user.id, access.job.id, (state, actor) => {
-          const doc = accessibleDocument(state, actor, documentId);
-          if (doc.packingSlipAnalysis?.runId === task.analysis.runId)
-            doc.packingSlipAnalysis = {
-              ...task.analysis,
-              status: "failed",
-              error:
-                error instanceof Error
-                  ? error.message.slice(0, 250)
-                  : "Analysis failed. Retry or verify manually.",
-            };
-        }).catch(() => undefined);
+        await mutateWorkspace(
+          access.user.id,
+          access.job.id,
+          async (state, actor, fresh, tx) => {
+            const doc = accessibleDocument(state, actor, documentId);
+            if (doc.packingSlipAnalysis?.runId === task.analysis.runId) {
+              doc.packingSlipAnalysis = {
+                ...task.analysis,
+                status: "failed",
+                error:
+                  error instanceof Error
+                    ? error.message.slice(0, 250)
+                    : "Analysis failed. Retry or verify manually.",
+              };
+              await recordReviewHistory(
+                tx,
+                fresh,
+                doc,
+                doc.packingSlipAnalysis,
+                "failure",
+                {
+                  analysis: doc.packingSlipAnalysis,
+                  source: {
+                    sha256: task.version.sha256,
+                    mimeType: task.version.mimeType,
+                  },
+                },
+              );
+            }
+          },
+        ).catch((persistError) =>
+          console.error(
+            "[packing-slip] Could not persist failed analysis",
+            persistError,
+          ),
+        );
       }
     });
   inflight.set(task.analysis.runId, work);
@@ -382,6 +477,7 @@ export async function confirmSlipReceipt(
           code: "BAD_REQUEST",
           message: "Choose order items to confirm.",
         });
+      const originalAnalysis = structuredClone(a);
       for (const [key, itemId] of Object.entries(links)) {
         const line = a.lines[Number(key)];
         const item = current.find((i) => i.id === itemId);
@@ -456,6 +552,16 @@ export async function confirmSlipReceipt(
         quantities,
         ...(Object.keys(links).length ? { links } : {}),
       };
+      const source = state.versions.find((v) => v.id === a.versionId);
+      await recordReviewHistory(tx, fresh, doc, a, "confirmation", {
+        originalAnalysis,
+        confirmedAnalysis: a,
+        source: source
+          ? { sha256: source.sha256, mimeType: source.mimeType }
+          : null,
+        // Received quantities are physical receipt observations, not corrected OCR ground truth.
+        quantityMeaning: "physically_received_not_transcribed_shipped",
+      });
       state.activity.push({
         id: randomUUID(),
         documentId: doc.id,
