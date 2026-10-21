@@ -32,10 +32,13 @@ export function roomLevelName(
   for (const source of [title, sheetName]) {
     if (!source?.trim()) continue;
     const text = source
+      .replace(/\bMPH\b/gi, "Mechanical Penthouse")
       .replace(/[_–—-]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     const names = new Set<string>();
+    for (const match of text.matchAll(/\blevel\s+([PB]\d+)\b/gi))
+      names.add(`Level ${match[1]!.toUpperCase()}`);
     for (const match of text.matchAll(
       /\b(?:(mechanical|electrical)\s+)?penthouse\b|\b(basement|mezzanine|lower ground|ground floor|ground level|roof)\b/gi,
     )) {
@@ -57,8 +60,9 @@ export function roomLevelName(
         names.add(`Level ${words[value] ?? parseInt(value, 10)}`);
       }
     // Multiple levels on a sheet must not silently become just one of them.
-    if (names.size > 1) return source.trim();
+    if (names.size > 1)
+      return source.trim().replace(/\bMPH\b/gi, "Mechanical Penthouse");
     if (names.size === 1) return [...names][0]!;
   }
-  return title?.trim() ? title.trim() : sheetName;
+  return sheetName;
 }

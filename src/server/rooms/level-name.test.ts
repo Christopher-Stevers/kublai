@@ -3,6 +3,9 @@ import { roomLevelName } from "./level-name";
 
 describe("Rooms level labels", () => {
   it.each([
+    ["Level P1", "Level P1"],
+    ["Level 9 NB - MPH SB", "Level 9 NB - Mechanical Penthouse SB"],
+    ["MPH NB - Roof Plan SB", "Mechanical Penthouse NB - Roof Plan SB"],
     ["LEVEL ONE FLOOR PLAN", "Level 1"],
     ["GROUND FLOOR PLAN", "Level 1"],
     ["FLOOR 8 PLAN", "Level 8"],
@@ -18,7 +21,7 @@ describe("Rooms level labels", () => {
   });
   it("does not interpret drawing IDs or source page numbers as levels", () => {
     expect(roomLevelName(undefined, "A-108")).toBe("A-108");
-    expect(roomLevelName("GENERAL PLAN", "page 8")).toBe("GENERAL PLAN");
+    expect(roomLevelName("GENERAL PLAN", "page 8")).toBe("page 8");
     expect(roomLevelName(undefined, "Floor 8")).toBe("Level 8");
   });
 });
