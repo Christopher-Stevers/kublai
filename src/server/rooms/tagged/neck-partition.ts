@@ -10,7 +10,8 @@
  *     (watershed on the distance map), so neighbouring spaces meet at the
  *     narrowest point between them: the doorway.
  *  4. Name regions from the room seeds; a region holding several seeds is
- *     shared out by distance to each seed.
+ *     shared out by distance to each seed, a corridor/vestibule/stair first
+ *     keeping to its own space up to the doorways off it.
  *  5. Unit level: an unnamed region whose neighbours are (almost) all one
  *     named room (a suite's bathroom or bedroom) joins it. Unnamed regions
  *     between several rooms (corridors, lobbies) stay their own space.
@@ -20,6 +21,73 @@ export type NeckSeed = { x: number; y: number; name: string };
 
 const SMALL_ROOM = /\b(?:closet|elec(?:trical)?|riser|shaft|garbage|janitor|storage|mech(?:anical)?|data|chute|intake)\b/i;
 const CIRCULATION = /\b(?:corr(?:idor)?|lobby|vestibule|vest|hall(?:way)?|stair|elev(?:ator)?|foyer|entry|exit|passage)\b/i;
+
+/** Openings narrower than this share of a corridor's width are doorways off it. */
+const CIRCULATION_DOOR = 0.6;
+
+/** Climbs the distance map from a pixel to the nearest ridge (middle of its space). */
+function climb(dist: Int32Array, width: number, p: number, inside: (q: number) => boolean) {
+  const path = [p];
+  for (;;) {
+    const x = p % width;
+    let best = p;
+    for (const q of [p - 1, p + 1, p - width, p + width, p - width - 1, p - width + 1, p + width - 1, p + width + 1]) {
+      if (q < 0 || q >= dist.length || Math.abs((q % width) - x) > 1 || !inside(q)) continue;
+      if (dist[q]! > dist[best]!) best = q;
+    }
+    if (best === p) return path;
+    path.push((p = best));
+  }
+}
+
+/**
+ * Marks the space a label sits in, up to the doorways off it: every pixel a
+ * disc of `CIRCULATION_DOOR` × the space's own half-width can reach from the
+ * middle without squeezing through a narrower opening. Returns its pixels
+ * (`mark` is scratch, stamped with `id`).
+ */
+function markOwnSpace(
+  dist: Int32Array,
+  width: number,
+  seed: number,
+  inside: (q: number) => boolean,
+  mark: Int32Array,
+  id: number,
+) {
+  const path = climb(dist, width, seed, inside);
+  const r = Math.round(dist[path.at(-1)!]! * CIRCULATION_DOOR);
+  const cost = new Map<number, number>();
+  const core: number[] = [];
+  const reach = (q: number) => mark[q] === id;
+  for (const p of path) if (dist[p]! >= r && !reach(p)) { mark[p] = id; core.push(p); }
+  for (let h = 0; h < core.length; h++) {
+    const p = core[h]!;
+    const x = p % width;
+    for (const q of [p - 1, p + 1, p - width, p + width]) {
+      if (q < 0 || q >= dist.length || Math.abs((q % width) - x) > 1) continue;
+      if (!reach(q) && inside(q) && dist[q]! >= r) { mark[q] = id; core.push(q); }
+    }
+  }
+  // Grow the core by the disc radius (3-4 chamfer steps, as `dist`), from
+  // its rim only: pixels within r of a wall.
+  const buckets: number[][] = [core.filter((p) => dist[p]! < r + 4)];
+  for (const p of buckets[0]!) cost.set(p, 0);
+  for (let c = 0; c < buckets.length; c++)
+    for (const p of buckets[c] ?? []) {
+      if (cost.get(p) !== c) continue;
+      const x = p % width;
+      for (const [q, step] of [[p - 1, 3], [p + 1, 3], [p - width, 3], [p + width, 3], [p - width - 1, 4], [p - width + 1, 4], [p + width - 1, 4], [p + width + 1, 4]] as const) {
+        if (q < 0 || q >= dist.length || Math.abs((q % width) - x) > 1 || !inside(q) || reach(q)) continue;
+        const next = c + step;
+        if (next > r || (cost.get(q) ?? Infinity) <= next) continue;
+        cost.set(q, next);
+        (buckets[next] ??= []).push(q);
+      }
+    }
+  for (const q of cost.keys()) mark[q] = id;
+  for (const p of path) mark[p] = id;
+  return [...core, ...cost.keys(), ...path];
+}
 
 /** 3-4 chamfer distance (≈ Euclidean px × 3) to the nearest wall pixel. */
 function chamfer(free: Uint8Array, width: number, height: number) {
@@ -149,18 +217,50 @@ export function partitionAtNecks(
     }
   }
   // Regions with several seeds: share by geodesic distance from each seed.
+  // A corridor, vestibule or stair keeps to its own space (up to the
+  // doorways off it) until the rooms have filled, so a vestibule doesn't
+  // take half of the plant room it opens into.
+  let own: Int32Array | undefined, scratch: Int32Array | undefined, stamp = 0;
   for (const [l, owners] of seedsByRegion) {
     if (owners.length < 2) continue;
     let head = 0, tail = 0;
-    for (const i of owners) { const p = seedPixel[i]!; if (!out[p]) { out[p] = i + 1; queue[tail++] = p; } }
-    while (head < tail) {
-      const p = queue[head++]!;
-      const x = p % width;
-      for (const q of [p - 1, p + 1, p - width, p + width]) {
-        if (q < 0 || q >= N) continue;
-        if ((q === p - 1 && x === 0) || (q === p + 1 && x === width - 1)) continue;
-        if (!out[q] && label[q] === l) { out[q] = out[p]!; queue[tail++] = q; }
+    const held = new Set<number>();
+    for (const i of owners) {
+      const p = seedPixel[i]!;
+      if (CIRCULATION.test(seeds[i]!.name)) {
+        own ??= new Int32Array(N);
+        scratch ??= new Int32Array(N);
+        const space = markOwnSpace(dist, width, p, (q) => label[q] === l, scratch, ++stamp);
+        // A space holding another label ran on past the doorways (a stair
+        // landing open to a unit, a vestibule to an open floor): share it out
+        // like any other.
+        if (owners.every((j) => j === i || scratch![seedPixel[j]!] !== stamp)) {
+          for (const q of space) if (!own[q]) own[q] = i + 1;
+          held.add(i + 1);
+        }
       }
+      if (!out[p]) { out[p] = i + 1; queue[tail++] = p; }
+    }
+    const waiting: number[] = [];
+    for (let pass = 0; pass < 2; pass++) {
+      while (head < tail) {
+        const p = queue[head++]!;
+        const x = p % width;
+        const keep = held.has(out[p]!);
+        for (const q of [p - 1, p + 1, p - width, p + width]) {
+          if (q < 0 || q >= N) continue;
+          if ((q === p - 1 && x === 0) || (q === p + 1 && x === width - 1)) continue;
+          if (out[q] || label[q] !== l) continue;
+          // In the first pass a corridor stays in its own space and nobody
+          // else may enter it.
+          if (held.size && (keep ? own![q] !== out[p] : held.has(own![q]!))) { waiting.push(p); continue; }
+          out[q] = out[p]!;
+          queue[tail++] = q;
+        }
+      }
+      held.clear();
+      head = tail = 0;
+      for (const p of waiting) queue[tail++] = p;
     }
   }
 

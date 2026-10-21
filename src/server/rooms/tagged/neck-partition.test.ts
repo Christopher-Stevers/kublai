@@ -59,4 +59,27 @@ describe("partitionAtNecks", () => {
     expect(r.labels[90 * W + 30]).toBe(1);
     expect(r.labels[90 * W + 170]).toBe(2);
   });
+
+  it("splits a space holding two labels at the doorway, not halfway", () => {
+    // A long plant room with a small vestibule at its east end, joined by an
+    // opening wider than the neck. The plant room's label sits near its west
+    // wall, so halfway between the labels is deep inside the plant room.
+    const W = 220, H = 80;
+    const walls = new Uint8Array(W * H);
+    const wall = (x0: number, y0: number, x1: number, y1: number) => {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) walls[y * W + x] = 1;
+    };
+    wall(0, 0, W - 1, 9); wall(0, 70, W - 1, H - 1); wall(0, 0, 9, H - 1); wall(210, 0, W - 1, H - 1);
+    wall(170, 10, 173, 69); // vestibule wall
+    for (let y = 45; y <= 62; y++) for (let x = 170; x <= 173; x++) walls[y * W + x] = 0; // wide opening
+    const seeds = [
+      { name: "MECH PH", x: 20 / W, y: 40 / H },
+      { name: "VEST.", x: 190 / W, y: 40 / H },
+    ];
+    const r = partitionAtNecks(walls, W, H, seeds, { neck: 6, minRoomPx: 50 });
+    const at = (x: number, y: number) => r.labels[y * W + x]!;
+    expect(at(150, 40)).toBe(1);
+    expect(at(120, 20)).toBe(1);
+    expect(at(195, 20)).toBe(2);
+  });
 });
