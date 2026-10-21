@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useLandingPage } from "./use-landing-page";
-import { makeSnapshotSource } from "~/lib/snapshot-source";
+import { makeSnapshotSource, readSnapshotState } from "~/lib/snapshot-source";
 const orders = makeSnapshotSource("/dashboard/orders", { version: 1 }, "Orders");
 const alma = makeSnapshotSource("/dashboard/jobs/0391aed4-7773-47ec-9141-09df373ec008", { version: 1 }, "Alma Phase #2");
 beforeEach(() => {
@@ -39,4 +39,28 @@ it("uses an invite's default until the user chooses a destination", () => {
   expect(view.result.current.source).toEqual(orders);
   act(() => { view.result.current.setLandingPage(null); });
   expect(view.result.current.source).toEqual(alma);
+});
+
+it("opens old account and device job destinations in the current workspace", () => {
+  const view = renderHook(() => useLandingPage("tim", alma));
+  const checkDestination = () => {
+    const url = new URL(view.result.current.landingPage, "https://app.test");
+    expect(url.pathname).toBe("/dashboard");
+    expect(readSnapshotState(url.hash)?.workspace).toEqual({
+      jobId: "0391aed4-7773-47ec-9141-09df373ec008", view: "options", materialListId: null,
+    });
+  };
+  checkDestination();
+  act(() => { view.result.current.setLandingPage(alma); });
+  checkDestination();
+  expect(view.result.current.source).toEqual(alma);
+});
+
+it("preserves custom drawing, document and other nested destinations", () => {
+  const view = renderHook(() => useLandingPage("tim"));
+  for (const href of ["/dashboard/orders", `${alma.href.split("#")[0]}/drawings?drawingSheet=sheet`, `${alma.href.split("#")[0]}/documents?document=doc`]) {
+    const destination = makeSnapshotSource(href, { version: 1 }, "Custom destination");
+    act(() => { view.result.current.setLandingPage(destination); });
+    expect(view.result.current.landingPage).toBe(destination.href);
+  }
 });

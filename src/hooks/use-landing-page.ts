@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { snapshotSourceSchema, type SnapshotSource } from "~/lib/snapshot-source";
+import { landingPageDestination } from "~/lib/landing-page-destination";
 export const DefaultLandingPageContext = createContext<SnapshotSource | null>(null);
 const EVENT = "foremenhq:landing-page";
 
@@ -38,5 +39,5 @@ export function useLandingPage(userId?: string, initial?: SnapshotSource | null)
     } catch { return false; }
   };
   const source = (saved.key === key ? saved.source : null) ?? fallback;
-  return { landingPage: source?.href ?? "/dashboard", source, setLandingPage };
+  return { landingPage: landingPageDestination(source), source, setLandingPage };
 }
