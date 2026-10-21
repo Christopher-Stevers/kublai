@@ -2679,3 +2679,5 @@ export const jobSystemAssessments = createTable("job_system_assessment", d => ({
   index("job_system_assessment_org_idx").on(t.organizationId, t.jobId),
   check("job_system_assessment_status_check", sql`${t.status} in ('processing', 'ready', 'failed')`),
 ]);
+
+export { diagnosticCounts } from "./diagnostics-schema";

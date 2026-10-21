@@ -1,5 +1,6 @@
 "use client";
 
+import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
 import { useLandingPage } from "~/hooks/use-landing-page";
 import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
 import { api } from "~/trpc/react";
@@ -95,6 +96,7 @@ export default function SettingsPage() {
       </Card>
 
       <RestartTutorialCard />
+      <DiagnosticsSettings />
 
       <Card>
         <CardHeader>

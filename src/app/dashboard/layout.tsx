@@ -1,3 +1,4 @@
+import { AutomaticDiagnostics } from "~/components/app/AutomaticDiagnostics";
 import { SupplierLabelProvider } from "~/components/suppliers/SupplierLabelProvider";
 import { snapshotSourceSchema } from "~/lib/snapshot-source";
 import { LandingPageProvider } from "~/components/app/LandingPageProvider";
@@ -86,6 +87,7 @@ export default async function DashboardLayout({
                     <AppKeyboardNavigation />
                     <ViewportBottomSync />
                     <AppTouchGestures />
+                    <AutomaticDiagnostics />
                     <ReplicacheSyncBootstrap
                       userId={effectiveUserId}
                       organizationId={organizationId}

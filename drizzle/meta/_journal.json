@@ -454,6 +454,13 @@
       "when": 1792542575612,
       "tag": "0088_job_system_assessments",
       "breakpoints": false
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792576384646,
+      "tag": "0089_diagnostic_counts",
+      "breakpoints": false
     }
   ]
 }
