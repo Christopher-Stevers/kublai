@@ -12,6 +12,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableColumns, getTableName, eq } from "drizzle-orm";
 import type * as AnalyzeModule from "./analyze";
+import type * as DrawingsModule from "./drawings";
 import type { PgTable } from "drizzle-orm/pg-core";
 const mocked = vi.hoisted(() => ({
   db: {} as Record<string, unknown>,
@@ -47,7 +48,7 @@ vi.mock("~/server/job-systems/analyze", async (importOriginal) => {
   };
 });
 vi.mock("~/server/job-systems/drawings", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./drawings")>()),
+  ...(await importOriginal<typeof DrawingsModule>()),
   extractDrawingSource: mocked.extract,
 }));
 import * as schema from "~/server/db/schema";
@@ -657,7 +658,7 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
   it("ignores unselected documents and aborts when a selected drawing changes during assessment", async () => {
     const [workspace] = await db.select().from(schema.jobDocumentWorkspaces);
     const state = workspace!.state;
-    state!.documents[0]!.folderId = null;
+    state.documents[0]!.folderId = null;
     await db
       .update(schema.jobDocumentWorkspaces)
       .set({ state })
@@ -713,10 +714,7 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
       ),
     );
     expect(await db.select().from(schema.pipeSystemSpecs)).toHaveLength(0);
-    await db
-      .update(schema.users)
-      .set({ role: "no-drawings" })
-      .where(eq(schema.users.id, "editor"));
+    await sql`update kublai_user set role = ${"no-drawings"} where id = ${"editor"}`;
     expect(
       (await getSpecificationContext("editor", job)).drawingSets,
     ).toHaveLength(0);
