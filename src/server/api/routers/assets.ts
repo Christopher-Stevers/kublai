@@ -1,3 +1,5 @@
+import { publishMaterialListEvent } from "~/server/material-list-events";
+import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gt, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -36,6 +38,7 @@ import {
   orderItems,
   orders,
   partDefinitions,
+  quoteItems,
   users,
 } from "~/server/db/schema";
 
@@ -80,12 +83,13 @@ function toolTypeFilter(organizationId: string) {
   );
 }
 
-async function loadOrder(db: Tx, organizationId: string, orderId: string) {
-  const [order] = await db
+async function loadOrder(db: Tx, organizationId: string, orderId: string, lock = false) {
+  const query = db
     .select()
     .from(orders)
     .where(and(eq(orders.id, orderId), eq(orders.organizationId, organizationId)))
     .limit(1);
+  const [order] = await (lock ? query.for("update") : query);
   if (!order || (order.kind !== "tool_request" && order.kind !== "tool_return")) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Tool request not found." });
   }
@@ -882,7 +886,7 @@ export const assetsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const org = ctx.organizationId;
       return ctx.db.transaction(async (tx) => {
-        const order = await loadOrder(tx, org, input.orderId);
+        const order = await loadOrder(tx, org, input.orderId, true);
         if (order.kind !== "tool_request") throw new TRPCError({ code: "BAD_REQUEST", message: "This is a return, not a request." });
         if (order.fulfillmentStatus === "fulfilled" || order.fulfillmentStatus === "cancelled") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This request is already closed." });
@@ -1007,7 +1011,7 @@ export const assetsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const org = ctx.organizationId;
       return ctx.db.transaction(async (tx) => {
-        const order = await loadOrder(tx, org, input.orderId);
+        const order = await loadOrder(tx, org, input.orderId, true);
         if (order.kind !== "tool_return") throw new TRPCError({ code: "BAD_REQUEST", message: "This is a request, not a return." });
         const location: Holder = { type: "location", id: input.locationId };
         await assertHolder(tx, org, location);
@@ -1031,6 +1035,30 @@ export const assetsRouter = createTRPCRouter({
         }
         return updateFulfillment(tx, order.id);
       });
+    }),
+
+  /** Remove the request, unlocking its source items without reversing physical checkouts. */
+  deleteRequest: toolRoomProcedure
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db.transaction(async tx => {
+        const initial = await loadOrder(tx, ctx.organizationId, input.orderId);
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${ctx.organizationId}:${initial.jobId}:orders`}))`);
+        const order = await loadOrder(tx, ctx.organizationId, input.orderId, true);
+        if (order.kind !== "tool_request") throw new TRPCError({ code: "BAD_REQUEST", message: "Only tool requests can be deleted here." });
+        const lines = await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.orderId, order.id));
+        const unlocked = lines.length ? await tx.update(quoteItems)
+          .set({ sentOrderItemId: null, updatedAt: new Date() })
+          .where(inArray(quoteItems.sentOrderItemId, lines.map(line => line.id)))
+          .returning({ quoteId: quoteItems.quoteId }) : [];
+        await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));
+        // Movement rows survive via ON DELETE SET NULL; custody and stock are unchanged.
+        await tx.delete(orders).where(eq(orders.id, order.id));
+        for (const quoteId of new Set(unlocked.map(line => line.quoteId))) await recalculatePurchaseTotals(tx, quoteId);
+        return { materialListId: order.materialListId };
+      });
+      if (result.materialListId) publishMaterialListEvent(result.materialListId, "updated", ctx.organizationId);
+      return result;
     }),
 
   /** Tool room closes a request or return without (further) filling it. */

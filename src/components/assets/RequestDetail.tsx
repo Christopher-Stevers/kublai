@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CheckIcon } from "lucide-react";
 
@@ -21,10 +22,16 @@ type Line = Request["lines"][number];
 const outstanding = (line: Line) => Math.max(0, line.quantity - line.fulfilledQuantity);
 
 export function RequestDetail({ orderId }: { orderId: string }) {
+  const router = useRouter();
   const isOnline = useIsOnline();
   const utils = api.useUtils();
   const query = api.assets.getRequest.useQuery({ orderId }, { enabled: isOnline });
   const cancel = api.assets.cancelRequest.useMutation({ onSuccess: () => utils.assets.invalidate() });
+  const remove = api.assets.deleteRequest.useMutation({ onSuccess: async () => {
+    router.replace("/dashboard/assets/requests");
+    await Promise.all([utils.assets.invalidate(), utils.materialList.invalidate()]);
+    notify("Request deleted. Its list items are unlocked.", "success");
+  }});
   const request = query.data;
   const isOpen = request?.fulfillmentStatus === "open" || request?.fulfillmentStatus === "partial";
 
@@ -44,6 +51,13 @@ export function RequestDetail({ orderId }: { orderId: string }) {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/material-lists/${request.materialListId}`}>Open list</Link>
               </Button>
+            )}
+            {request.canManageAssets && request.kind === "tool_request" && (
+              <Button variant="destructive" size="sm" disabled={!isOnline || remove.isPending || cancel.isPending}
+                onClick={async () => {
+                  const ok = await confirmAction({ title: "Delete tool request?", description: "This deletes the request and unlocks its source list items for editing and sending again. Tools already checked out stay with the job; their movement history is kept.", confirmLabel: "Delete request" });
+                  if (ok) remove.mutate({ orderId });
+                }}>{remove.isPending ? "Deleting…" : "Delete request"}</Button>
             )}
             {request.canManageAssets && isOpen && (
               <Button
@@ -84,7 +98,7 @@ export function RequestDetail({ orderId }: { orderId: string }) {
           ) : (
             <ReadOnlyLines request={request} />
           )}
-          <ErrorText message={cancel.error?.message} />
+          <ErrorText message={remove.error?.message ?? cancel.error?.message} />
         </div>
       )}
     </AssetsShell>

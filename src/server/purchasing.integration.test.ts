@@ -1,3 +1,4 @@
+import { assertCanManageAssets } from "~/server/auth/permissions";
 import { supplierPriceBooksRouter } from "~/server/api/routers/supplierPriceBooks";
 import { readSupplierEmailPreference, saveSupplierEmailPreference } from "~/server/supplier-email-preferences";
 // @vitest-environment node
@@ -84,6 +85,7 @@ const material = materialListRouter.createCaller(context as never);
 const priceBooks = supplierPriceBooksRouter.createCaller(context as never);
 const suppliers = supplierRouter.createCaller(context as never);
 const tables = [
+  schema.assetMovements,
   schema.organizations,
   schema.users,
   schema.locations,
@@ -127,6 +129,7 @@ describe.skipIf(!socket)(
           `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("id"))`,
         );
       }
+      await conn`ALTER TABLE kublai_asset_movement ADD CONSTRAINT test_movement_order_fk FOREIGN KEY ("orderId") REFERENCES kublai_order(id) ON DELETE SET NULL`;
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS supplier_sku_unique ON kublai_supplier_part ("organizationId", "supplierId", "supplierSku")`;
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS prefab_item_unique ON kublai_material_prefab_item ("prefabId", "partDefinitionId")`;
       await conn`CREATE UNIQUE INDEX tombstone_entity_unique ON kublai_material_list_sync_tombstone ("organizationId", "entityType", "entityId")`;
@@ -636,6 +639,36 @@ describe.skipIf(!socket)(
       await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("same job");
       await db.update(schema.materialLists).set({organizationId:id(999)}).where(eq(schema.materialLists.id,target.id));
       await expect(material.merge({sourceId:list,targetId:target.id})).rejects.toThrow("not found");
+    });
+    it("deletes tool requests, unlocks source rows, preserves movements and permits resending", async () => {
+      await conn`update kublai_material_list set kind='tools' where id=${list}`;
+      await db.update(schema.quoteItems).set({supplierId:null,supplierPartId:null}).where(eq(schema.quoteItems.id,item));
+      const toolSupplier = (await material.previewOrders({materialListId:list})).possible[0]!.supplierId;
+      const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:toolSupplier,sentTo:"Tool room"});
+      await db.update(schema.orders).set({fulfillmentStatus:"partial"}).where(eq(schema.orders.id,sent.id));
+      await db.insert(schema.assetMovements).values({id:id(980),organizationId:org,partDefinitionId:part,kind:"checkout",orderId:sent.id,toType:"job",toId:job,quantity:"1"});
+      const room = assetsRouter.createCaller(context as never);
+      const foreign = assetsRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
+      await expect(foreign.deleteRequest({orderId:sent.id})).rejects.toThrow("not found");
+      vi.mocked(assertCanManageAssets).mockImplementationOnce(() => {throw Error("Tool room permission required");});
+      await expect(room.deleteRequest({orderId:sent.id})).rejects.toThrow("permission");
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.sentOrderItemId).toBeTruthy();
+      await room.deleteRequest({orderId:sent.id});
+      expect(await room.listRequests({status:"all"})).toHaveLength(0);
+      expect((await db.select().from(schema.quoteItems).where(eq(schema.quoteItems.id,item)))[0]!.sentOrderItemId).toBeNull();
+      expect(await db.select().from(schema.orderItems)).toHaveLength(0);
+      expect((await db.select().from(schema.assetMovements))[0]).toMatchObject({orderId:null,toId:job,quantity:"1.000"});
+      expect((await material.previewOrders({materialListId:list})).possible).toHaveLength(1);
+      const again = await material.sendGeneratedOrder({materialListId:list,supplierId:toolSupplier,sentTo:"Tool room"});
+      expect(again.id).not.toBe(sent.id);
+    });
+    it("does not delete material orders or tool returns through asset request deletion", async () => {
+      const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"supplier"});
+      const room = assetsRouter.createCaller(context as never);
+      await expect(room.deleteRequest({orderId:sent.id})).rejects.toThrow("not found");
+      await db.update(schema.orders).set({kind:"tool_return"}).where(eq(schema.orders.id,sent.id));
+      await expect(room.deleteRequest({orderId:sent.id})).rejects.toThrow("Only tool requests");
+      expect(await db.select().from(schema.orders)).toHaveLength(1);
     });
     it("undoes an order completely, clears receipts and makes its original demand orderable", async () => {
       const sent = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
