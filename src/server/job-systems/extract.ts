@@ -1,3 +1,5 @@
+import { checkpoint } from "./checkpoint";
+import type { ExtractedSource } from "./types";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -5,9 +7,10 @@ import path from "node:path";
 import { documentBlobPath } from "../documents/storage";
 import { extractedSourceSchema, type AssessmentSource } from "./types";
 /** Local, bounded extraction; only selected passages leave the server for assessment. */
-export async function extractSpecification(
+async function extractChunk(
   organizationId: string,
   source: AssessmentSource,
+  startPage: number,
 ) {
   const directory = await mkdtemp(path.join(tmpdir(), "foreman-spec-"));
   try {
@@ -24,6 +27,8 @@ export async function extractSpecification(
           target,
           source.mimeType,
           source.fileName ?? source.name,
+          String(startPage),
+          "8",
         ],
         {
           stdio: "ignore",
@@ -62,4 +67,40 @@ export async function extractSpecification(
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+export async function extractSpecification(
+  organizationId: string,
+  source: AssessmentSource,
+  options?: {
+    checkpointRoot: string;
+    progress: (stage: string) => Promise<void>;
+  },
+): Promise<ExtractedSource> {
+  const result: ExtractedSource = { pages: [], warnings: [] };
+  let nextPage = 1;
+  do {
+    await options?.progress(
+      `Reading ${source.name}: pages ${nextPage}–${result.totalPages ? Math.min(nextPage + 7, result.totalPages) : nextPage + 7}${result.totalPages ? ` of ${result.totalPages}` : ""}`,
+    );
+    const start = nextPage;
+    const work = () => extractChunk(organizationId, source, start);
+    const chunk = options
+      ? await checkpoint(
+          options.checkpointRoot,
+          { version: 1, type: "extraction", source, start },
+          (v) => extractedSourceSchema.parse(v),
+          work,
+        )
+      : await work();
+    result.pages.push(...chunk.pages);
+    result.warnings.push(...chunk.warnings);
+    result.totalPages = chunk.totalPages;
+    nextPage += 8;
+  } while (
+    source.mimeType === "application/pdf" &&
+    result.totalPages &&
+    nextPage <= result.totalPages
+  );
+  return result;
 }

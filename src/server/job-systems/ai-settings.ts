@@ -7,8 +7,13 @@ const root = path.resolve(
   process.env.ASSESSMENT_STORAGE_ROOT ??
     path.join(process.cwd(), "uploads", "assessment-ai"),
 );
-const location = (id: string) =>
-  path.join(root, z.string().uuid().parse(id), "connection.json");
+const location = (id: string, runId?: string) =>
+  path.join(
+    root,
+    z.string().uuid().parse(id),
+    ...(runId ? ["runs", z.string().uuid().parse(runId)] : []),
+    "connection.json",
+  );
 export const hostedSettings: AssessmentAi = {
   mode: "hosted",
   baseUrl: "",
@@ -67,12 +72,17 @@ async function encryptionKey() {
 }
 export async function readAssessmentAi(
   organizationId: string,
+  runId?: string,
 ): Promise<AssessmentAi> {
   let text: string;
   try {
-    text = await readFile(location(organizationId), "utf8");
+    text = await readFile(location(organizationId, runId), "utf8");
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    if (runId)
+      throw Error(
+        "Assessment connection snapshot is missing; start a new assessment.",
+      );
     return { ...hostedSettings };
   }
   const envelope = z
@@ -83,7 +93,9 @@ export async function readAssessmentAi(
     await encryptionKey(),
     Buffer.from(envelope.iv, "base64"),
   );
-  cipher.setAAD(Buffer.from(organizationId));
+  cipher.setAAD(
+    Buffer.from(runId ? `${organizationId}:${runId}` : organizationId),
+  );
   cipher.setAuthTag(Buffer.from(envelope.tag, "base64"));
   const clear = Buffer.concat([
     cipher.update(Buffer.from(envelope.ciphertext, "base64")),
@@ -94,16 +106,19 @@ export async function readAssessmentAi(
 export async function storeAssessmentAi(
   organizationId: string,
   credentials: AssessmentAi,
+  runId?: string,
 ) {
   credentials = assessmentAiSchema.parse(credentials);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", await encryptionKey(), iv);
-  cipher.setAAD(Buffer.from(organizationId));
+  cipher.setAAD(
+    Buffer.from(runId ? `${organizationId}:${runId}` : organizationId),
+  );
   const ciphertext = Buffer.concat([
     cipher.update(JSON.stringify(credentials), "utf8"),
     cipher.final(),
   ]);
-  const file = location(organizationId);
+  const file = location(organizationId, runId);
   await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const temp = file + "." + randomBytes(8).toString("hex");
   try {

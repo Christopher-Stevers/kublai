@@ -240,7 +240,9 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
             <Loader2Icon className="size-4 shrink-0 animate-spin" />
             <span>
               {assessment?.stage ?? "Starting source assessment…"} You can leave
-              this page while it runs.
+              this page while it runs. Completed batches are saved, and
+              interrupted runs resume automatically. Large projects may take a
+              while.
             </span>
           </div>
         )}

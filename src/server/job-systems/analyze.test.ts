@@ -313,3 +313,32 @@ it("recognizes drawing service labels without inventing material rules", async (
     ),
   ).toBe(true);
 });
+
+it("assesses relevant passages beyond the former 240-passage cutoff", async () => {
+  let sawLast = false;
+  const passages = Array.from({ length: 241 }, (_, index) => ({
+    source,
+    page: index + 1,
+    section: null,
+    text: `Domestic cold water uses copper. Passage ${index}.`,
+    systems: [{ code: "DCW", name: "Domestic cold water" }],
+  }));
+  const result = await assessPassages(
+    passages,
+    [],
+    async (state, questions) => {
+      if (JSON.stringify(state).includes("Passage 240.")) sawLast = true;
+      return {
+        model: "simulated",
+        answers: Object.fromEntries(
+          Object.keys(questions).map((id) => [
+            id,
+            { type: "choice" as const, choice: "no", confidence: 0.99 },
+          ]),
+        ),
+      };
+    },
+  );
+  expect(sawLast).toBe(true);
+  expect(result.warnings.some((w) => w.includes("first 240"))).toBe(false);
+});

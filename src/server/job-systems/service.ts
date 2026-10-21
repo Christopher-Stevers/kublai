@@ -1,5 +1,7 @@
-import { readAssessmentAi } from "./ai-settings";
-import { createEvaluator } from "./ai-evaluator";
+import { checkpoint, checkpointRoot, checkpointEvaluator } from "./checkpoint";
+import { extractedSourceSchema } from "./types";
+import { readAssessmentAi, storeAssessmentAi } from "./ai-settings";
+import { createEvaluator, hostedBase, hostedModel } from "./ai-evaluator";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -36,7 +38,7 @@ import {
   type AssessmentSource,
 } from "./types";
 import { drawingSources, extractDrawingSource } from "./drawings";
-const LEASE_MS = 20 * 60_000;
+const LEASE_MS = 90_000;
 const tasks = new Map<string, Promise<void>>();
 let admissions = 0;
 let tail = Promise.resolve();
@@ -188,13 +190,11 @@ export async function getAssessment(userId: string, jobId: string) {
     };
   if (
     assessment?.status === "processing" &&
-    Date.now() - Date.parse(assessment.startedAt) > LEASE_MS
+    Date.now() - new Date(row!.updatedAt).getTime() > LEASE_MS
   )
     assessment = {
       ...assessment,
-      status: "failed",
-      error: "Assessment was interrupted. Start assessment again to retry.",
-      stage: "Interrupted",
+      stage: "Waiting to resume saved progress",
     };
   return {
     assessment,
@@ -399,6 +399,7 @@ export async function startAssessment(
   userId: string,
   jobId: string,
   selection?: AssessmentSelection,
+  recoverRunId?: string,
 ) {
   const context = await getSpecificationContext(userId, jobId);
   assertAssessPermission(context.access.user);
@@ -410,7 +411,11 @@ export async function startAssessment(
     context.access.canManage,
   );
   // Capture the company connection once; a settings change cannot retarget a queued run.
-  const provider = await readAssessmentAi(context.access.job.organizationId);
+  const connection = await readAssessmentAi(context.access.job.organizationId);
+  const provider =
+    connection.mode === "hosted"
+      ? { ...connection, model: hostedModel(), baseUrl: hostedBase() }
+      : connection;
   const selectedSources = selectedAssessmentSources(context, selection);
   if (!selectedSources.length)
     throw new TRPCError({
@@ -455,14 +460,47 @@ export async function startAssessment(
       if (
         prior.success &&
         prior.data.status === "processing" &&
-        Date.now() - Date.parse(prior.data.startedAt) < LEASE_MS
+        Date.now() - new Date(existing!.updatedAt).getTime() < LEASE_MS
       )
         return { assessment: prior.data, started: false };
+      if (
+        recoverRunId &&
+        (!prior.success ||
+          prior.data.runId !== recoverRunId ||
+          prior.data.status !== "processing")
+      )
+        return {
+          assessment: prior.success ? prior.data : { runId: recoverRunId },
+          started: false as const,
+        };
+      const fingerprint = sourceFingerprint(
+        selectedAssessmentSources(fresh, selection),
+      );
+      const frozen =
+        prior.success && prior.data.checkpointVersion === 1
+          ? await readAssessmentAi(organizationId, prior.data.runId).catch(
+              () => null,
+            )
+          : null;
+      const resumable =
+        prior.success &&
+        !!frozen &&
+        prior.data.checkpointVersion === 1 &&
+        prior.data.sourceFingerprint === fingerprint &&
+        prior.data.status !== "ready" &&
+        (recoverRunId !== undefined ||
+          JSON.stringify(frozen) === JSON.stringify(provider));
+      if (recoverRunId && !resumable)
+        throw Error(
+          "Assessment sources changed or checkpoints are unavailable. Start a new assessment.",
+        );
       const assessment: SystemsAssessment = {
-        runId: randomUUID(),
+        runId: resumable && prior.success ? prior.data.runId : randomUUID(),
+        checkpointVersion: 1,
+        workerId: randomUUID(),
         status: "processing",
         startedAt: new Date().toISOString(),
-        stage: "Queued",
+        stage: resumable ? "Queued to resume saved progress" : "Queued",
         warnings: (selection ? [] : fresh.unsupported).map(
           (n) =>
             `${n} is a linked or unavailable document; upload its file to assess it.`,
@@ -473,6 +511,8 @@ export async function startAssessment(
           selectedAssessmentSources(fresh, selection),
         ),
       };
+      if (!resumable)
+        await storeAssessmentAi(organizationId, provider, assessment.runId);
       await tx
         .insert(jobSystemAssessments)
         .values({
@@ -498,6 +538,25 @@ export async function startAssessment(
     });
     if (!task.started) return { runId: task.assessment.runId };
     const assessment = task.assessment;
+    const savedProvider = await readAssessmentAi(
+      organizationId,
+      assessment.runId,
+    );
+    const root = checkpointRoot(organizationId, assessment.runId);
+    const owned = and(
+      eq(jobSystemAssessments.status, "processing"),
+      eq(jobSystemAssessments.id, assessment.runId),
+      eq(jobSystemAssessments.organizationId, organizationId),
+      sql`${jobSystemAssessments.data}->>'workerId' = ${assessment.workerId!}`,
+    );
+    const heartbeat = setInterval(() => {
+      void db
+        .update(jobSystemAssessments)
+        .set({ updatedAt: new Date() })
+        .where(and(owned, eq(jobSystemAssessments.status, "processing")))
+        .catch(() => undefined);
+    }, 15000);
+    heartbeat.unref();
     const update = async (patch: Partial<SystemsAssessment>) => {
       Object.assign(assessment, patch);
       await db
@@ -507,27 +566,13 @@ export async function startAssessment(
           data: assessment,
           updatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(jobSystemAssessments.id, assessment.runId),
-            eq(jobSystemAssessments.organizationId, organizationId),
-          ),
-        );
+        .where(owned);
     };
     const work = tail
       .catch(() => undefined)
       .then(async () => {
         try {
-          if (Date.now() - Date.parse(assessment.startedAt) > LEASE_MS)
-            throw Error(
-              "Assessment waited too long in the queue. Retry when the service is less busy.",
-            );
-          const started = Date.now();
           const guard = async () => {
-            if (Date.now() - started > 15 * 60_000)
-              throw Error(
-                "Assessment reached its time limit. Existing systems are unchanged; split large documents and retry.",
-              );
             const [active] = await db
               .select({ id: jobSystemAssessments.id })
               .from(jobSystemAssessments)
@@ -535,6 +580,7 @@ export async function startAssessment(
                 and(
                   eq(jobSystemAssessments.jobId, jobId),
                   eq(jobSystemAssessments.id, assessment.runId),
+                  sql`${jobSystemAssessments.data}->>'workerId' = ${assessment.workerId!}`,
                 ),
               );
             if (!active)
@@ -576,8 +622,19 @@ export async function startAssessment(
             await guard();
             await update({ stage: `Reading ${source.name}` });
             const extracted = source.drawing
-              ? await extractDrawingSource(source)
-              : await extractSpecification(organizationId, source);
+              ? await checkpoint(
+                  root,
+                  { version: 1, type: "drawing", source },
+                  (v) => extractedSourceSchema.parse(v),
+                  () => extractDrawingSource(source),
+                )
+              : await extractSpecification(organizationId, source, {
+                  checkpointRoot: root,
+                  progress: async (stage) => {
+                    await guard();
+                    await update({ stage });
+                  },
+                });
             passages.push(...specificationPassages(source, extracted));
             assessment.warnings.push(
               ...extracted.warnings.map((w) => `${source.name}: ${w}`),
@@ -586,7 +643,10 @@ export async function startAssessment(
           const output = await assessPassages(
             passages,
             materialRows.map((m) => m.name),
-            createEvaluator(provider),
+            checkpointEvaluator(root, async (state, questions) => {
+              await guard();
+              return createEvaluator(savedProvider)(state, questions);
+            }),
             async (stage) => {
               await guard();
               await update({ stage });
@@ -623,7 +683,7 @@ export async function startAssessment(
             const [active] = await tx
               .select()
               .from(jobSystemAssessments)
-              .where(eq(jobSystemAssessments.id, assessment.runId))
+              .where(owned)
               .for("update");
             if (!active) return;
             for (const system of output.systems) {
@@ -752,9 +812,76 @@ export async function startAssessment(
       });
     tasks.set(assessment.runId, work);
     tail = work;
-    void work.finally(() => tasks.delete(assessment.runId));
+    void work.finally(() => {
+      clearInterval(heartbeat);
+      tasks.delete(assessment.runId);
+    });
     return { runId: assessment.runId };
   } finally {
     admissions--;
+  }
+}
+
+let dispatching = false;
+/** Recover abandoned processing rows after a server restart; never rerun completed assessments. */
+export async function dispatchSystemAssessments() {
+  if (dispatching || tasks.size + admissions >= 4) return;
+  dispatching = true;
+  try {
+    const rows = await db
+      .select()
+      .from(jobSystemAssessments)
+      .where(
+        and(
+          eq(jobSystemAssessments.status, "processing"),
+          sql`${jobSystemAssessments.updatedAt} < now() - interval '90 seconds'`,
+        ),
+      )
+      .limit(4);
+    for (const row of rows) {
+      if (tasks.has(row.id) || tasks.size + admissions >= 4) continue;
+      const parsed = assessmentSchema.safeParse(row.data);
+      try {
+        if (
+          !parsed.success ||
+          parsed.data.checkpointVersion !== 1 ||
+          !row.requestedBy
+        )
+          throw Error(
+            "This earlier assessment cannot resume. Start a new assessment.",
+          );
+        await startAssessment(
+          row.requestedBy,
+          row.jobId,
+          parsed.data.selection,
+          row.id,
+        );
+      } catch (error) {
+        if (parsed.success)
+          await db
+            .update(jobSystemAssessments)
+            .set({
+              status: "failed",
+              updatedAt: new Date(),
+              data: {
+                ...parsed.data,
+                status: "failed",
+                stage: "Assessment stopped",
+                error:
+                  error instanceof Error
+                    ? error.message.slice(0, 500)
+                    : "Could not resume assessment.",
+              },
+            })
+            .where(
+              and(
+                eq(jobSystemAssessments.id, row.id),
+                eq(jobSystemAssessments.updatedAt, row.updatedAt),
+              ),
+            );
+      }
+    }
+  } finally {
+    dispatching = false;
   }
 }

@@ -71,6 +71,7 @@ import {
   selectedAssessmentSources,
   getAssessment,
   startAssessment,
+  dispatchSystemAssessments,
   retainManualEdits,
   validateSpecEvidence,
   validateSpecReferences,
@@ -411,7 +412,7 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
     ]);
     expect(listed.job[0]?.revision).toBe(2);
   });
-  it("shows expired processing leases as retryable and keeps previous system data", async () => {
+  it("recovers old abandoned rows without claiming they completed", async () => {
     const assessment = {
       runId: id(50),
       status: "processing",
@@ -428,12 +429,54 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
       requestedBy: "editor",
       status: "processing",
       data: assessment,
+      updatedAt: new Date(Date.now() - 120000),
     });
+    expect((await getAssessment("editor", job)).assessment?.stage).toBe(
+      "Waiting to resume saved progress",
+    );
+    await dispatchSystemAssessments();
     expect((await getAssessment("editor", job)).assessment?.status).toBe(
       "failed",
     );
     await startAssessment("editor", job);
     expect((await done())?.status).toBe("ready");
+  });
+  it("resumes an abandoned checkpointed run with a new worker lease", async () => {
+    const first = await startAssessment("editor", job);
+    await done();
+    const [stored] = await db.select().from(schema.jobSystemAssessments);
+    const prior = stored!.data as Record<string, unknown>;
+    await db
+      .update(schema.jobSystemAssessments)
+      .set({
+        status: "processing",
+        updatedAt: new Date(Date.now() - 120000),
+        data: { ...prior, status: "processing" },
+      })
+      .where(eq(schema.jobSystemAssessments.id, first.runId));
+    await dispatchSystemAssessments();
+    const finished = await done();
+    expect(finished?.status).toBe("ready");
+    expect(finished?.id).toBe(first.runId);
+    expect((finished?.data as Record<string, unknown>).workerId).not.toBe(
+      prior.workerId,
+    );
+  });
+  it("keeps a long-running assessment alive past the former fifteen-minute deadline", async () => {
+    let release!: () => void;
+    mocked.wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await startAssessment("editor", job);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 3600000);
+    try {
+      release();
+      expect((await done())?.status).toBe("ready");
+    } finally {
+      clock.mockRestore();
+      mocked.wait = null;
+    }
   });
   it("refuses a partial-access assessment that would replace an existing restricted system", async () => {
     await startAssessment("editor", job);

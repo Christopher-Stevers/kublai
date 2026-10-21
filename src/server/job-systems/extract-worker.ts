@@ -11,12 +11,16 @@ import {
 import { SERVER_PDF_RENDER_OPTIONS } from "../rooms/pdf-render-options";
 import { wordRows, type SlipWord } from "../packing-slips/ocr-rows";
 async function main() {
-  const [source, target, mime, name] = process.argv.slice(2);
+  const [source, target, mime, name, startArg, countArg] =
+    process.argv.slice(2);
   if (!source || !target) throw Error();
   const bytes = await readFile(source);
   if (bytes.length > 50 * 1024 * 1024) throw Error();
   const pages: { page: number | null; text: string }[] = [],
     warnings: string[] = [];
+  let totalPages: number | undefined;
+  const startPage = Math.max(1, Number(startArg ?? 1));
+  const pageCount = Math.min(8, Math.max(1, Number(countArg ?? 8)));
   let chars = 0;
   const push = (page: number | null, text: string) => {
     if (chars >= 2_500_000) return;
@@ -37,12 +41,12 @@ async function main() {
     });
     try {
       const pdf = await task.promise;
-      let ocrPages = 0;
-      if (pdf.numPages > 300)
-        warnings.push(
-          `Only the first 300 of ${pdf.numPages} pages were read. Split this specification into smaller PDFs.`,
-        );
-      for (let n = 1; n <= Math.min(pdf.numPages, 300); n++) {
+      totalPages = pdf.numPages;
+      for (
+        let n = startPage;
+        n <= Math.min(pdf.numPages, startPage + pageCount - 1);
+        n++
+      ) {
         if (chars >= 2_500_000) {
           warnings.push(
             `Text limit reached at page ${n}; later pages were not read.`,
@@ -73,7 +77,7 @@ async function main() {
                 .map((r) => r.text)
                 .join("\n"),
             );
-          else if (ocrPages++ < 12) {
+          else {
             const scaled = page.getViewport({
               scale: Math.min(3, 2600 / Math.max(view.width, view.height)),
             });
@@ -105,10 +109,7 @@ async function main() {
             } finally {
               canvas.width = canvas.height = 1;
             }
-          } else
-            warnings.push(
-              `Scanned page ${n} was not read after the 12-page OCR limit. Upload searchable PDFs.`,
-            );
+          }
           page.cleanup();
         } catch {
           warnings.push(`Page ${n} could not be read. Review it manually.`);
@@ -146,7 +147,9 @@ async function main() {
   } else if (mime?.startsWith("text/") || /\.(txt|md)$/i.test(name ?? ""))
     push(null, bytes.toString("utf8"));
   else throw Error();
-  await writeFile(target, JSON.stringify({ pages, warnings }), { mode: 0o600 });
+  await writeFile(target, JSON.stringify({ pages, warnings, totalPages }), {
+    mode: 0o600,
+  });
 }
 main().catch(() => {
   process.exitCode = 1;

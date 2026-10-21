@@ -5,17 +5,20 @@ import { hostedSettings } from "./ai-settings";
 import { customCompletion } from "./ai-transport";
 export const hostedModel = () =>
   process.env.ASSESSMENT_QWEN_MODEL ?? "Qwen3.8-27B";
-const hostedBase = () =>
+export const hostedBase = () =>
   process.env.ASSESSMENT_QWEN_URL ?? "http://127.0.0.1:8082/v1";
-export async function verifyHostedModel() {
-  const response = await fetch(`${hostedBase().replace(/\/+$/, "")}/models`, {
+export async function verifyHostedModel(
+  expected = hostedModel(),
+  base = hostedBase(),
+) {
+  const response = await fetch(`${base.replace(/\/+$/, "")}/models`, {
     signal: AbortSignal.timeout(5000),
     redirect: "error",
   });
   const models = z
     .object({ data: z.array(z.object({ id: z.string() })) })
     .parse(await response.json());
-  if (!response.ok || !models.data.some((m) => m.id === hostedModel()))
+  if (!response.ok || !models.data.some((m) => m.id === expected))
     throw Error(
       "Hosted Qwen is unavailable or the wrong model is loaded. Existing systems are unchanged.",
     );
@@ -28,12 +31,16 @@ const answer = z.object({
 export function createEvaluator(
   settings: AssessmentAi = hostedSettings,
 ): Evaluator {
-  const model = settings.mode === "hosted" ? hostedModel() : settings.model;
+  const model =
+    settings.mode === "hosted"
+      ? settings.model || hostedModel()
+      : settings.model;
   return async (state, questions) => {
     const input = JSON.stringify({ state, questions });
     if (input.length > 60000)
       throw Error("Assessment batch is too large. Split the source and retry.");
-    if (settings.mode === "hosted") await verifyHostedModel();
+    if (settings.mode === "hosted")
+      await verifyHostedModel(model, settings.baseUrl || hostedBase());
     const body = JSON.stringify({
       model,
       stream: false,
@@ -59,7 +66,7 @@ export function createEvaluator(
       raw = await customCompletion(settings.baseUrl, settings.apiKey, body);
     else {
       const response = await fetch(
-        `${hostedBase().replace(/\/+$/, "")}/chat/completions`,
+        `${(settings.baseUrl || hostedBase()).replace(/\/+$/, "")}/chat/completions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

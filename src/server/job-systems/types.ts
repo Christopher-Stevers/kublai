@@ -26,6 +26,8 @@ export const assessmentSchema = z.object({
   runId: z.string().uuid(),
   status: z.enum(["processing", "ready", "failed"]),
   startedAt: z.string(),
+  checkpointVersion: z.literal(1).optional(),
+  workerId: z.string().uuid().optional(),
   completedAt: z.string().optional(),
   stage: z.string(),
   error: z.string().optional(),
@@ -45,7 +47,8 @@ export const extractedSourceSchema = z.object({
         text: z.string().max(100000),
       }),
     )
-    .max(300),
-  warnings: z.array(z.string()).max(350),
+    .max(100000),
+  warnings: z.array(z.string()).max(100000),
+  totalPages: z.number().int().positive().optional(),
 });
 export type ExtractedSource = z.infer<typeof extractedSourceSchema>;

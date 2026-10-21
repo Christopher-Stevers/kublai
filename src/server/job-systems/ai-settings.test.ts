@@ -28,7 +28,13 @@ it("encrypts company credentials, rejects cross-company copies, and defaults to 
     await mkdir(path.join(root, b));
     await copyFile(file, path.join(root, b, "connection.json"));
     await expect(readAssessmentAi(b)).rejects.toThrow();
+    const run = "00000000-0000-4000-8000-000000000003";
+    await storeAssessmentAi(a, settings, run);
     await storeAssessmentAi(a, hostedSettings);
+    expect(await readAssessmentAi(a, run)).toEqual(settings);
+    await expect(readAssessmentAi(b, run)).rejects.toThrow(
+      "snapshot is missing",
+    );
     expect((await readAssessmentAi(a)).apiKey).toBe("");
   } finally {
     vi.unstubAllEnvs();

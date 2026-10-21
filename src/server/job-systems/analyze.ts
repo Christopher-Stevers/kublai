@@ -323,15 +323,11 @@ export async function assessPassages(
     warnings.push(
       "Some piping passages could not be associated with a named system. Review source sections and add missing systems manually.",
     );
-  if (candidates.length > 240)
-    warnings.push(
-      `Only the first 240 of ${candidates.length} relevant passages were assessed. Split large specifications and review unassessed sections.`,
-    );
-  for (let offset = 0; offset < Math.min(candidates.length, 240); offset += 4) {
+  for (let offset = 0; offset < candidates.length; offset += 4) {
     await onProgress?.(
-      `Assessing passages ${offset + 1}–${Math.min(offset + 4, candidates.length, 240)}`,
+      `Assessing passages ${offset + 1}–${Math.min(offset + 4, candidates.length)}`,
     );
-    const batch = candidates.slice(offset, Math.min(offset + 4, 240));
+    const batch = candidates.slice(offset, offset + 4);
     const questions: Record<string, Question> = {};
     const details = batch.map((p) => {
       const scope = `${p.source.name}${p.page ? ` page ${p.page}` : ""}`;
@@ -520,7 +516,7 @@ export async function assessPassages(
     const dispatch = async () => {
       if (!Object.keys(slice).length) return;
       await onProgress?.(
-        `Assessing source requirements (${offset + 1} of ${Math.min(candidates.length, 240)} passages)`,
+        `Assessing source requirements (${offset + 1} of ${candidates.length} passages)`,
       );
       const result = await run(
         {

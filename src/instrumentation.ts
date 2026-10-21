@@ -1,4 +1,5 @@
 const state = globalThis as typeof globalThis & {
+  assessmentTimer?: NodeJS.Timeout;
   superScaleTimer?: NodeJS.Timeout;
   chatMaintenanceTimer?: NodeJS.Timeout;
   modelConversionTimer?: NodeJS.Timeout;
@@ -9,9 +10,16 @@ export async function register() {
     process.env.NEXT_RUNTIME === "nodejs" &&
     process.env.NEXT_PHASE !== "phase-production-build"
   ) {
-    if (!state.modelConversionTimer && process.env.BIM_WORKER_DISABLED !== "1") {
-      const { dispatchModelConversions } = await import("~/server/models/conversion");
-      const dispatch = () => void dispatchModelConversions().catch(() => console.warn("Model conversion queue will retry."));
+    if (
+      !state.modelConversionTimer &&
+      process.env.BIM_WORKER_DISABLED !== "1"
+    ) {
+      const { dispatchModelConversions } =
+        await import("~/server/models/conversion");
+      const dispatch = () =>
+        void dispatchModelConversions().catch(() =>
+          console.warn("Model conversion queue will retry."),
+        );
       state.modelConversionTimer = setInterval(dispatch, 30000);
       state.modelConversionTimer.unref();
       dispatch();
@@ -29,10 +37,25 @@ export async function register() {
       dispatch();
     }
     if (!state.superScaleTimer) {
-      const { dispatchSuperScale } = await import("~/server/super-scale/dispatch");
-      const dispatch = () => void dispatchSuperScale().catch(error => console.error("Super scale will retry", error));
+      const { dispatchSuperScale } =
+        await import("~/server/super-scale/dispatch");
+      const dispatch = () =>
+        void dispatchSuperScale().catch((error) =>
+          console.error("Super scale will retry", error),
+        );
       state.superScaleTimer = setInterval(dispatch, 3000);
       state.superScaleTimer.unref();
+      dispatch();
+    }
+    if (!state.assessmentTimer) {
+      const { dispatchSystemAssessments } =
+        await import("~/server/job-systems/service");
+      const dispatch = () =>
+        void dispatchSystemAssessments().catch(() =>
+          console.warn("System assessment recovery will retry."),
+        );
+      state.assessmentTimer = setInterval(dispatch, 30000);
+      state.assessmentTimer.unref();
       dispatch();
     }
     const { startChatPushWorker } = await import("~/server/chat/push");

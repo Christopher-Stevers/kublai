@@ -13,4 +13,4 @@ trap cleanup EXIT INT TERM
 "$pg_bin/pg_ctl" -D "$systems_test_dir/data" -l "$systems_test_dir/server.log" -o "-h '' -k $systems_test_dir -p 55467" start >/dev/null
 "$pg_bin/createdb" -h "$systems_test_dir" -p 55467 systems_integration
 cd "$repo_root"
-SYSTEMS_TEST_SOCKET="$systems_test_dir" ./node_modules/.bin/vitest run src/server/job-systems/service.integration.test.ts --reporter=verbose
+ASSESSMENT_STORAGE_ROOT="$systems_test_dir/ai" ASSESSMENT_CHECKPOINT_ROOT="$systems_test_dir/checkpoints" SYSTEMS_TEST_SOCKET="$systems_test_dir" ./node_modules/.bin/vitest run src/server/job-systems/service.integration.test.ts --reporter=verbose
