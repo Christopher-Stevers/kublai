@@ -91,29 +91,39 @@ export function inferPlanLayers(segments: StyledSegment[], aspect: number) {
   // A swing has its leaf: a straight stroke from the hinge out to one arc
   // end. Toilet seats, bubbles and other arcs don't.
   const arcSegments = new Set(arcs.flatMap((a) => a.segments));
-  const doors: InferredDoor[] = [];
-  for (const arc of arcs) {
-    if (arc.r < typical * 0.4 || arc.r > typical * 2) continue;
-    const leaf: number[] = [];
-    for (const end of arc.ends) {
-      const ux = (end.x - arc.hinge.x) / arc.r, uy = (end.y - arc.hinge.y) / arc.r;
-      for (const i of near(arc.hinge)) {
-        if (arcSegments.has(i)) continue;
-        const s = segments[i]!;
-        const a = pt(s.x1, s.y1), b = pt(s.x2, s.y2);
-        const len = Math.hypot(b.x - a.x, b.y - a.y);
-        if (len < arc.r * 0.6 || len > arc.r * 1.3) continue;
-        if (Math.abs(((b.x - a.x) * ux + (b.y - a.y) * uy) / len) < 0.97) continue;
-        const off = (p: Pt) => Math.abs((p.x - arc.hinge.x) * uy - (p.y - arc.hinge.y) * ux);
-        if (off(a) > arc.r * 0.12 || off(b) > arc.r * 0.12) continue;
-        const along = (p: Pt) => (p.x - arc.hinge.x) * ux + (p.y - arc.hinge.y) * uy;
-        if (Math.min(along(a), along(b)) > arc.r * 0.25 || Math.max(along(a), along(b)) < arc.r * 0.75) continue;
-        leaf.push(i);
+  const matchDoors = (size: number) => {
+    const doors: InferredDoor[] = [];
+    for (const arc of arcs) {
+      if (arc.r < size * 0.4 || arc.r > size * 2) continue;
+      const leaf: number[] = [];
+      for (const end of arc.ends) {
+        const ux = (end.x - arc.hinge.x) / arc.r, uy = (end.y - arc.hinge.y) / arc.r;
+        for (const i of near(arc.hinge)) {
+          if (arcSegments.has(i)) continue;
+          const s = segments[i]!;
+          const a = pt(s.x1, s.y1), b = pt(s.x2, s.y2);
+          const len = Math.hypot(b.x - a.x, b.y - a.y);
+          if (len < arc.r * 0.6 || len > arc.r * 1.3) continue;
+          if (Math.abs(((b.x - a.x) * ux + (b.y - a.y) * uy) / len) < 0.97) continue;
+          const off = (p: Pt) => Math.abs((p.x - arc.hinge.x) * uy - (p.y - arc.hinge.y) * ux);
+          if (off(a) > arc.r * 0.12 || off(b) > arc.r * 0.12) continue;
+          const along = (p: Pt) => (p.x - arc.hinge.x) * ux + (p.y - arc.hinge.y) * uy;
+          if (Math.min(along(a), along(b)) > arc.r * 0.25 || Math.max(along(a), along(b)) < arc.r * 0.75) continue;
+          leaf.push(i);
+        }
       }
+      if (leaf.length) doors.push({ ...arc, segments: [...arc.segments, ...leaf] });
     }
-    if (leaf.length) doors.push({ ...arc, segments: [...arc.segments, ...leaf] });
-  }
+    return doors;
+  };
+  const medianRadius = (list: InferredDoor[]) => list.map((d) => d.r).sort((a, b) => a - b)[Math.floor(list.length / 2)]!;
+  let doors = matchDoors(typical);
   if (doors.length < MIN_DOORS) return null;
+  // Arcs of every size set `typical`; on sheets thick with fixtures
+  // (toilets, basins, turning circles) it is far smaller than a door and
+  // wide double doors fall outside the band. Match again around the doors.
+  const doorRadius = medianRadius(doors);
+  if (doorRadius > typical * 1.1) doors = matchDoors(doorRadius);
 
   // Wall styles: the pens drawn at nearly every hinge (door jambs). Frames,
   // glazing and partitions are often drawn with lighter pens than the cut
@@ -138,6 +148,10 @@ export function inferPlanLayers(segments: StyledSegment[], aspect: number) {
   const candidates = segments.flatMap((s, i) => (walls[i] ? [{ x1: s.x1, y1: s.y1 * aspect, x2: s.x2, y2: s.y2 * aspect, order: i, index: i }] : []));
   for (const k of hatchSegmentIndices(candidates)) walls[candidates[k]!.index] = false;
   for (const i of curves(segments, walls, aspect, typical)) walls[i] = false;
+  // Closed circles (wheelchair turning circles, round columns) are never
+  // room boundaries; sized against doors, as a turning circle outsizes a
+  // fixture-heavy sheet's `typical`.
+  for (const i of curves(segments, walls, aspect, doorRadius, true)) walls[i] = false;
   for (const i of dashedLines(segments, walls, aspect, typical)) walls[i] = false;
   for (const i of wallCrossings(segments, walls, aspect, typical)) walls[i] = false;
   const cores = wallCores(segments, walls, aspect, typical);
@@ -404,7 +418,7 @@ function wallCores(segments: StyledSegment[], candidates: boolean[], aspect: num
  * missed, fixtures): chains of short strokes meeting end to end at a slight
  * bend. Walls meet square or run straight on.
  */
-function curves(segments: StyledSegment[], candidates: boolean[], aspect: number, doorRadius: number) {
+function curves(segments: StyledSegment[], candidates: boolean[], aspect: number, doorRadius: number, closedOnly = false) {
   const tol = doorRadius * 0.01;
   const maxLength = doorRadius * 0.3;
   const ends = new Map<string, Array<{ i: number; ux: number; uy: number }>>();
@@ -431,15 +445,23 @@ function curves(segments: StyledSegment[], candidates: boolean[], aspect: number
   };
   // Two strokes leaving a point in nearly opposite directions, but bent by 4–50°.
   const bendMin = Math.cos((176 * Math.PI) / 180), bendMax = Math.cos((130 * Math.PI) / 180);
+  // Bent joins at each end of a stroke; a closed loop has one at both.
+  const joined = new Map<number, number>();
   for (const list of ends.values())
     for (let a = 0; a < list.length; a++)
       for (let b = a + 1; b < list.length; b++) {
         const A = list[a]!, B = list[b]!;
         if (A.i === B.i) continue;
         const dot = A.ux * B.ux + A.uy * B.uy;
-        if (dot > bendMin && dot < bendMax) parent.set(find(A.i), find(B.i));
+        if (dot > bendMin && dot < bendMax) {
+          parent.set(find(A.i), find(B.i));
+          joined.set(A.i, (joined.get(A.i) ?? 0) + 1);
+          joined.set(B.i, (joined.get(B.i) ?? 0) + 1);
+        }
       }
   const size = new Map<number, number>();
   for (const i of short) size.set(find(i), (size.get(find(i)) ?? 0) + 1);
-  return short.filter((i) => size.get(find(i))! >= 4);
+  if (!closedOnly) return short.filter((i) => size.get(find(i))! >= 4);
+  const open = new Set(short.filter((i) => (joined.get(i) ?? 0) < 2).map(find));
+  return short.filter((i) => size.get(find(i))! >= 8 && !open.has(find(i)));
 }

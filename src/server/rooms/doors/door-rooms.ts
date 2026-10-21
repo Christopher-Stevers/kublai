@@ -21,7 +21,8 @@ export type DoorSeed = { x: number; y: number; name: string };
 /** Fixture/equipment codes from other trades (DW-38, PD-80, FD-2), not room names. */
 const CODE = /^(?:[A-Z]{1,3}-\d+[A-Z]?|[A-Z]{2,4}|\d+)$/;
 const UNIT_TAG = /^[A-Z]{0,2}\d{3,4}[A-Z]?$/;
-const UNIT_TYPE = /^(?:micro|nano|studio|bachelor|junior\b.*|\d\s*(?:bd|br|bed(?:room)?s?)\b.*|\d\s*\+\s*den.*)$/i;
+// With an optional qualifier: "MICRO (BF)" is a barrier-free micro suite.
+const UNIT_TYPE = /^(?:micro|nano|studio|bachelor|junior\b.*|\d\s*(?:bd|br|bed(?:room)?s?)\b.*|\d\s*\+\s*den.*)(?:\s*\([^)]*\))?$/i;
 
 /** Drops trade codes from a seed name; null when nothing readable is left. */
 export function cleanRoomName(name: string) {

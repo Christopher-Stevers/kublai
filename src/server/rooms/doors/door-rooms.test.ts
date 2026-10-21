@@ -114,6 +114,11 @@ describe("unitTagSeeds", () => {
     ], 1.4);
     expect(seeds).toEqual([{ x: 0.3, y: 0.303, name: "N119 NANO" }]);
   });
+
+  it("keeps a barrier-free qualifier on the unit type", () => {
+    const seeds = unitTagSeeds([label("N130", 0.5, 0.15), label("MICRO (BF)", 0.5, 0.155)], 1.4);
+    expect(seeds.map((s) => s.name)).toEqual(["N130 MICRO (BF)"]);
+  });
 });
 
 describe("classifyDoorSpaces", () => {

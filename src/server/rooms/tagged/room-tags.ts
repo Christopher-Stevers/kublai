@@ -92,7 +92,7 @@ export function findRoomTagSeeds(labels: PdfLabel[], aspect = 1): RoomTagSeed[] 
   }
   // Unit/suite tags often sit ABOVE their description instead (N221 / MICRO /
   // 28.5 m² / 307 SF). Pair those with the type line directly below.
-  const UNIT_TYPE = /^(?:micro|nano|studio|\d+\s*(?:bd|bed(?:room)?s?|br)\b.*|\d+\s*bd\s*\(bf\)|junior.*|bachelor|1\s*\+\s*den.*)$/i;
+  const UNIT_TYPE = /^(?:micro|nano|studio|\d+\s*(?:bd|bed(?:room)?s?|br)\b.*|junior.*|bachelor|1\s*\+\s*den.*)(?:\s*\([^)]*\))?$/i;
   for (const tag of candidates) {
     if (paired.some((p) => p.tag === tag)) continue;
     const h = textHeight(tag);

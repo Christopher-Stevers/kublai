@@ -114,6 +114,31 @@ describe("inferPlanLayers", () => {
     expect(layerOf(plan.segments[0]!)).toBe("A-WALL");
   });
 
+  it("drops a turning circle on a sheet crowded with fixture arcs", () => {
+    const plan = flattenedPlan();
+    // Basins and toilet seats: small leafless arcs that outnumber the doors.
+    const fixtures: StyledSegment[] = [];
+    for (let k = 0; k < 40; k++) {
+      const x = 0.06 + (k % 20) * 0.04, y = k < 20 ? 0.3 : 0.7, r = R * 0.55;
+      for (let i = 0; i < 8; i++) {
+        const a0 = (i / 8) * (Math.PI / 2), a1 = ((i + 1) / 8) * (Math.PI / 2);
+        fixtures.push(line(x + r * Math.cos(a0), y - r * Math.sin(a0), x + r * Math.cos(a1), y - r * Math.sin(a1), THIN));
+      }
+    }
+    // A 1.5 m turning circle in the wall pen, chorded more coarsely than a fixture.
+    const circle: StyledSegment[] = [];
+    for (let i = 0; i < 32; i++) {
+      const a0 = (i / 32) * 2 * Math.PI, a1 = ((i + 1) / 32) * 2 * Math.PI;
+      circle.push(line(0.65 + 0.015 * Math.cos(a0), 0.5 + 0.015 * Math.sin(a0), 0.65 + 0.015 * Math.cos(a1), 0.5 + 0.015 * Math.sin(a1)));
+    }
+    const segments = [...plan.segments, ...fixtures, ...circle];
+    const inferred = inferPlanLayers(segments, 1)!;
+    const layerOf = (s: StyledSegment) => inferred.segments[segments.indexOf(s)]!.layer;
+    expect(inferred.doors).toHaveLength(24);
+    for (const s of circle) expect(layerOf(s)).not.toBe("A-WALL");
+    expect(layerOf(plan.segments[0]!)).toBe("A-WALL");
+  });
+
   it("leaves layered exports and sheets without door swings alone", () => {
     const plan = flattenedPlan();
     expect(inferPlanLayers(plan.segments.map((s) => ({ ...s, layer: "A-WALL" })), 1)).toBeNull();
