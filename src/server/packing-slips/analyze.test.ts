@@ -81,7 +81,7 @@ it("copies shipped values, matches exact SKU, preserves backorders and converts 
     unit: "ea",
     proposed: 6,
   });
-  expect(result.lines[0]!.issues).toContain("4 ea backordered on slip.");
+  expect(result.lines[0]!.notes).toContain("4 ea backordered on slip.");
   expect(explicitSlipUnit([header, line], line)).toBe("ea");
   expect(numberCandidates(line).map((n) => n.value)).toEqual([10, 6, 4]);
 });

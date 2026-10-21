@@ -18,8 +18,26 @@ export type SlipLine = {
   backordered: number | null;
   unit: string | null;
   proposed: number | null;
+  /** Blocking: the quantity is not prefilled until someone checks these. */
   issues: string[];
+  /** Slip line outline on its page, 0–1 of the page size. */
+  box?: SlipBox;
+  /** Ordered quantity as printed on the slip. */
+  ordered?: number | null;
+  sku?: string | null;
+  description?: string;
+  confidence?: "high" | "medium" | "low";
+  /** Informational: backorders, assumed units, differences from the order. */
+  notes?: string[];
+  /** Likely order items when no unique match was made, best first. */
+  candidates?: string[];
+  source?: "table" | "assistant";
+  /** Shipped was read clearly and agrees with the other columns. */
+  quantityClear?: boolean;
+  /** Matched to an order item by the user at confirmation. */
+  linked?: "user";
 };
+export type SlipBox = { x: number; y: number; width: number; height: number };
 export type SlipAnalysis = {
   runId: string;
   versionId: string;
@@ -31,8 +49,18 @@ export type SlipAnalysis = {
   items: ReceiptOrderItem[];
   lines: SlipLine[];
   warnings: string[];
-  applied?: { at: string; by: string; quantities: Record<string, number> };
+  /** Column header outline per page, shown above slip line images. */
+  headers?: Array<{ page: number; box: SlipBox; printedOn?: number }>;
+  applied?: {
+    at: string;
+    by: string;
+    quantities: Record<string, number>;
+    links?: Record<string, string | null>;
+  };
 };
+/** Issues about which order item a line is; settled once the user links it. */
+export const MATCH_ISSUE =
+  /^(?:Not on this order|Matches more than one order line|Check the product|Uncertain product match)/;
 export function receiptUnit(unit: string | null | undefined) {
   const s = (unit ?? "").trim().toLowerCase().replace(/\.$/, "");
   const groups: Record<string, string> = {
@@ -52,7 +80,16 @@ export function receiptUnit(unit: string | null | undefined) {
     coils: "coil",
     rolls: "roll",
     lengths: "length",
+    lg: "length",
+    len: "length",
     bags: "bag",
+    bg: "bag",
+    cl: "coil",
+    rl: "roll",
+    pkg: "pack",
+    cs: "case",
+    cases: "case",
+    lf: "ft",
   };
   return groups[s] ?? s;
 }
@@ -79,6 +116,13 @@ export function convertSlipQuantity(
     from === receiptUnit(item.individualUnit)
   )
     return Math.round((quantity / item.piecesPerPack) * 1e6) / 1e6;
+  // "2 EA" of a coil, roll or bag sold whole is two of them.
+  if (
+    from === "ea" &&
+    !(item.piecesPerPack && item.piecesPerPack > 1) &&
+    ["coil", "roll", "length", "bag", "case", "box", "pack"].includes(to)
+  )
+    return quantity;
   return null;
 }
 export function proposedReceipts(analysis: SlipAnalysis) {

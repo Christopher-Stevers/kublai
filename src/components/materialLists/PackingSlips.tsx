@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PackingSlipReview } from "./PackingSlipReview";
-import type { SlipAnalysis } from "~/lib/packing-slip-review";
+import { DeliveryTracker } from "./DeliveryTracker";
+import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
 import dynamic from "next/dynamic";
 const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
   ssr: false,
@@ -47,7 +48,8 @@ export function PackingSlips({
     [loading, setLoading] = useState(false),
     [error, setError] = useState<string | null>(null),
     [slips, setSlips] = useState<Slip[]>([]),
-    [canUpload, setCanUpload] = useState(false);
+    [canUpload, setCanUpload] = useState(false),
+    [orderItems, setOrderItems] = useState<ReceiptOrderItem[] | null>(null);
   const [retryFile, setRetryFile] = useState<File | null>(null);
   useEffect(() => setRetryFile(null), [jobId, materialListId, orderId]);
   const [notice, setNotice] = useState("");
@@ -71,6 +73,7 @@ export function PackingSlips({
         const result = (await response.json()) as {
           documents?: Slip[];
           canUpload?: boolean;
+          order?: { items: ReceiptOrderItem[] };
           error?: string;
         };
         if (!response.ok)
@@ -78,6 +81,7 @@ export function PackingSlips({
         if (signal?.aborted) return;
         setSlips(result.documents ?? []);
         setCanUpload(!!result.canUpload);
+        setOrderItems(result.order?.items ?? null);
         if (scanOnLoad.current) {
           scanOnLoad.current = false;
           setScanning(Boolean(orderId && result.canUpload));
@@ -97,6 +101,7 @@ export function PackingSlips({
     setError(null);
     setSlips([]);
     setCanUpload(false);
+    setOrderItems(null);
     void load(controller.signal).catch((e) => {
       if (!controller.signal.aborted)
         setError(
@@ -158,6 +163,7 @@ export function PackingSlips({
     slip: Slip,
     action: "analyze" | "refresh" | "confirm",
     quantities?: Record<string, number>,
+    links?: Record<string, string | null>,
   ) => {
     setBusy(true);
     setError(null);
@@ -171,6 +177,7 @@ export function PackingSlips({
           documentId: slip.id,
           runId: slip.packingSlipAnalysis?.runId,
           quantities,
+          links,
         }),
       });
       const result = (await res.json()) as { error?: string };
@@ -193,13 +200,18 @@ export function PackingSlips({
   };
   return (
     <>
-      <Button variant={buttonVariant} className={buttonClassName} size="sm" onClick={() => {
-        scanOnLoad.current = Boolean(orderId);
-        setOpeningScanner(Boolean(orderId && online));
-        setScanning(false);
-        setNotice("");
-        setOpen(true);
-      }}>
+      <Button
+        variant={buttonVariant}
+        className={buttonClassName}
+        size="sm"
+        onClick={() => {
+          scanOnLoad.current = Boolean(orderId);
+          setOpeningScanner(Boolean(orderId && online));
+          setScanning(false);
+          setNotice("");
+          setOpen(true);
+        }}
+      >
         <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
         Packing slips
       </Button>
@@ -212,15 +224,22 @@ export function PackingSlips({
           }
         }}
       >
-        <DialogContent showCloseButton={!scanning} className="max-h-[90dvh] max-w-lg overflow-y-auto">
+        <DialogContent
+          showCloseButton={!scanning}
+          className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
+        >
           <DialogHeader>
-            <DialogTitle>{scanning || openingScanner ? "Scan packing slip" : "Packing slips"}</DialogTitle>
+            <DialogTitle>
+              {scanning || openingScanner
+                ? "Scan packing slip"
+                : "Packing slips"}
+            </DialogTitle>
             <DialogDescription>
               {scanning || openingScanner
                 ? "Keep the whole page in view. Captured pages are saved together as a PDF."
                 : orderId
-                ? "Photograph or upload this delivery’s packing slip. It is saved in Documents → Packing Slips and linked to this material list. Receiving quantities stay unchanged."
-                : "Packing slips attached to orders from this material list."}
+                  ? "Photograph or upload this delivery’s packing slip. It is saved in Documents → Packing Slips and linked to this material list. Receiving quantities stay unchanged."
+                  : "Packing slips attached to orders from this material list."}
             </DialogDescription>
           </DialogHeader>
           {notice && (
@@ -312,6 +331,9 @@ export function PackingSlips({
                   {!orderId ? " Open Verify Order to attach one." : ""}
                 </p>
               )}
+              {orderItems && orderItems.length > 0 && (
+                <DeliveryTracker items={orderItems} slips={slips} />
+              )}
               <div className="space-y-3">
                 {slips.map((slip) => (
                   <div key={slip.id} className="space-y-3 rounded border p-3">
@@ -320,10 +342,15 @@ export function PackingSlips({
                       className="hover:bg-accent block rounded-lg border p-3 text-sm"
                       onClick={() => setOpen(false)}
                     >
-                      <span className="block font-medium">{slip.name}</span>
-                      <span className="text-muted-foreground">
-                        {slip.packingSlip.orderNumber} ·{" "}
-                        {new Date(slip.createdAt).toLocaleDateString()}
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="min-w-0">
+                          <span className="block font-medium">{slip.name}</span>
+                          <span className="text-muted-foreground">
+                            {slip.packingSlip.orderNumber} ·{" "}
+                            {new Date(slip.createdAt).toLocaleDateString()}
+                          </span>
+                        </span>
+                        <SlipState analysis={slip.packingSlipAnalysis} />
                       </span>
                     </Link>
                     {(Boolean(orderId && canUpload) ||
@@ -332,9 +359,10 @@ export function PackingSlips({
                         key={`${slip.packingSlipAnalysis?.runId ?? slip.id}:${slip.packingSlipAnalysis?.status ?? "none"}`}
                         analysis={slip.packingSlipAnalysis}
                         versionId={slip.currentVersionId}
+                        jobId={jobId}
                         busy={busy}
-                        onAction={(action, quantities) =>
-                          analysisAction(slip, action, quantities)
+                        onAction={(action, quantities, links) =>
+                          analysisAction(slip, action, quantities, links)
                         }
                       />
                     )}
@@ -346,5 +374,36 @@ export function PackingSlips({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+const SLIP_STATE = {
+  applied: [
+    "Received",
+    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  ],
+  processing: [
+    "Reading…",
+    "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  ],
+  ready: [
+    "To review",
+    "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  ],
+  failed: [
+    "Not read",
+    "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  ],
+} as const;
+function SlipState({ analysis }: { analysis?: SlipAnalysis }) {
+  if (!analysis) return null;
+  const [label, tone] =
+    SLIP_STATE[analysis.applied ? "applied" : analysis.status];
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
+    >
+      {label}
+    </span>
   );
 }

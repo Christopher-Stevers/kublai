@@ -33,6 +33,10 @@ const input = z.discriminatedUnion("action", [
     quantities: z
       .record(z.uuid(), z.number().finite().min(0).max(999999))
       .refine((q) => Object.keys(q).length <= 200),
+    links: z
+      .record(z.string().regex(/^\d{1,3}$/), z.uuid().nullable())
+      .refine((l) => Object.keys(l).length <= 200)
+      .optional(),
   }),
 ]);
 export async function POST(request: Request) {
@@ -53,6 +57,7 @@ export async function POST(request: Request) {
               body.documentId,
               body.runId,
               body.quantities,
+              body.links,
             );
     return Response.json(
       { success: true, result },

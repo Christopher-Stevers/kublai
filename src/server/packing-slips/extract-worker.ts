@@ -9,7 +9,8 @@ import {
   Util,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { SERVER_PDF_RENDER_OPTIONS } from "../rooms/pdf-render-options";
-import { tsvWords, wordRows, type SlipRow, type SlipWord } from "./ocr-rows";
+import { wordRows, type SlipRow, type SlipWord } from "./ocr-rows";
+import { ocrPage, type Tesseract } from "./ocr-page";
 async function main() {
   const [source, target, mime] = process.argv.slice(2);
   if (!source || !target) throw Error();
@@ -19,33 +20,17 @@ async function main() {
   if (bytes.length > 50 * 1024 * 1024) throw Error();
   const rows: SlipRow[] = [],
     warnings: string[] = [];
+  const tesseract: Tesseract = async (args, input) =>
+    execFileSync("tesseract", args, {
+      input,
+      encoding: "utf8",
+      timeout: 25000,
+      maxBuffer: 8 * 1024 * 1024,
+      env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+      stdio: ["pipe", "pipe", "ignore"],
+    });
   const ocr = async (png: Buffer, page: number) => {
-    const image = await sharp(png, { limitInputPixels: 24_000_000 })
-      .rotate()
-      .resize({
-        width: 2400,
-        height: 3200,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .flatten({ background: "white" })
-      .png()
-      .toBuffer({ resolveWithObject: true });
-    const tsv = execFileSync(
-      "tesseract",
-      ["stdin", "stdout", "-l", "eng", "--psm", "6", "tsv"],
-      {
-        input: image.data,
-        encoding: "utf8",
-        timeout: 25000,
-        maxBuffer: 8 * 1024 * 1024,
-        env: { ...process.env, OMP_THREAD_LIMIT: "1" },
-        stdio: ["pipe", "pipe", "ignore"],
-      },
-    );
-    rows.push(
-      ...wordRows(tsvWords(tsv, image.info.width, image.info.height), page),
-    );
+    rows.push(...(await ocrPage(png, page, tesseract, [...rows])));
   };
   if (mime === "application/pdf") {
     const task = getDocument({

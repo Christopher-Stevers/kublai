@@ -17,7 +17,11 @@ import {
 } from "~/server/documents/domain";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { DocumentAccess } from "~/server/documents/access";
-import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
+import {
+  convertSlipQuantity,
+  type ReceiptOrderItem,
+  type SlipAnalysis,
+} from "~/lib/packing-slip-review";
 import { extractSlip } from "./extract";
 import { analyzeSlip } from "./analyze";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
@@ -55,7 +59,7 @@ async function orderFor(tx: Tx, access: DocumentAccess, orderId: string) {
   return order;
 }
 async function orderSnapshot(
-  tx: Tx,
+  tx: Pick<Tx, "select">,
   access: DocumentAccess,
   orderId: string,
 ): Promise<ReceiptOrderItem[]> {
@@ -125,6 +129,24 @@ async function orderSnapshot(
     piecesPerPack: r.piecesPerPack,
     individualUnit: r.individualUnit,
   }));
+}
+/** Current received totals for the delivery tracker; read-only. */
+export async function liveOrderItems(access: DocumentAccess, orderId: string) {
+  if (!userCan(access.user, "orders.receive")) return null;
+  // Loaded here so upload routes importing this module stay free of the pool.
+  const { db } = await import("~/server/db");
+  const [order] = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.jobId, access.job.id),
+        eq(orders.organizationId, access.job.organizationId),
+      ),
+    )
+    .limit(1);
+  return order ? orderSnapshot(db, access, order.id) : null;
 }
 export function orderFingerprint(
   items: ReceiptOrderItem[],
@@ -313,6 +335,8 @@ export async function confirmSlipReceipt(
   documentId: string,
   runId: string,
   quantities: Record<string, number>,
+  /** Slip line index → order item chosen by the user (null: not on order). */
+  links: Record<string, string | null> = {},
 ) {
   const result = await mutateWorkspace(
     access.user.id,
@@ -358,6 +382,29 @@ export async function confirmSlipReceipt(
           code: "BAD_REQUEST",
           message: "Choose order items to confirm.",
         });
+      for (const [key, itemId] of Object.entries(links)) {
+        const line = a.lines[Number(key)];
+        const item = current.find((i) => i.id === itemId);
+        if (!line || (itemId !== null && !item))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A linked slip line or order item no longer exists.",
+          });
+        line.orderItemId = item?.id ?? null;
+        line.linked = "user";
+        // A clearly read quantity still counts as the slip's figure.
+        line.proposed =
+          item && line.quantityClear && line.shipped !== null
+            ? convertSlipQuantity(
+                line.shipped,
+                line.unit ??
+                  (item.piecesPerPack && item.piecesPerPack > 1
+                    ? null
+                    : item.unit),
+                item,
+              )
+            : null;
+      }
       for (const item of current) {
         const quantity = quantities[item.id];
         if (quantity === undefined) continue;
@@ -407,6 +454,7 @@ export async function confirmSlipReceipt(
         at: new Date().toISOString(),
         by: fresh.user.id,
         quantities,
+        ...(Object.keys(links).length ? { links } : {}),
       };
       state.activity.push({
         id: randomUUID(),
