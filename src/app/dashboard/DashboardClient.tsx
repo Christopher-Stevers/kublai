@@ -1,4 +1,5 @@
 "use client";
+import { MaterialListOrderNumbers } from "~/components/materialLists/MaterialListOrderNumbers";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
@@ -818,6 +819,7 @@ export function DashboardClient({
                             </DropdownMenu>
                           )}
                         </div>
+                        <MaterialListOrderNumbers numbers={list.orderNumbers} />
                       </CardHeader>
                       <CardContent className="flex flex-1 flex-col">
                         <div className="flex flex-1 flex-col gap-2 text-sm text-muted-foreground">

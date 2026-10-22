@@ -1,4 +1,5 @@
 "use client";
+import { MaterialListOrderNumbers } from "~/components/materialLists/MaterialListOrderNumbers";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
@@ -449,19 +450,7 @@ export default function JobDetailPage({
                       </DropdownMenu>
                     )}
                   </div>
-                  {!!list.orderNumbers?.length && (
-                    <div className="flex flex-wrap items-center gap-2" aria-label="Linked orders">
-                      {list.orderNumbers.map((number) => (
-                        <span
-                          key={number}
-                          className="inline-flex rounded-md border px-2.5 py-1 text-sm font-semibold"
-                          style={{ backgroundColor: "#dbeafe", color: "#172554", borderColor: "#93c5fd" }}
-                        >
-                          {number}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <MaterialListOrderNumbers numbers={list.orderNumbers} />
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
                   <div className="flex flex-1 flex-col gap-2 text-sm text-muted-foreground">
