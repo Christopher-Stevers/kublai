@@ -119,7 +119,7 @@ it("does not start order selection from the actions button", () => {
   expect(p.onOpen).not.toHaveBeenCalled();
 });
 
-it("groups people on separate department rows with a person symbol for each contributor", () => {
+it("shows each department row in icon, department pill, contributor name order", () => {
  const p=props();
  p.list.contributors=[
   {id:"tim",name:"Tim",email:null,department:"Plumbing"},
@@ -128,12 +128,14 @@ it("groups people on separate department rows with a person symbol for each cont
  ];
  render(<MaterialListCard {...p}/>);
  const plumbing=screen.getByLabelText("Plumbing contributors");
- expect(within(plumbing).getByText("Tim")).toBeInTheDocument();
- expect(within(plumbing).getByText("Diego")).toBeInTheDocument();
+ expect(within(plumbing).getByText("Tim, Diego")).toBeInTheDocument();
  expect(within(plumbing).queryByText("Luca")).toBeNull();
- expect(plumbing.querySelectorAll('svg')).toHaveLength(2);
+ expect(plumbing.querySelectorAll('svg')).toHaveLength(1);
+ expect(plumbing.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+ expect(plumbing.querySelector('svg')).toHaveClass("lucide-users");
+ expect(within(plumbing).getByText("Plumbing")).toHaveClass("rounded-full");
  expect(screen.getByLabelText("Sheet Metal contributors")).toHaveTextContent("Luca");
- fireEvent.click(within(plumbing).getByText("Tim"));expect(p.onOpen).toHaveBeenCalledOnce();
+ fireEvent.click(within(plumbing).getByText("Tim, Diego"));expect(p.onOpen).toHaveBeenCalledOnce();
 });
 it("keeps people without a saved department visible",()=>{
  const p=props();p.list.contributors=[{id:"tim",name:"Tim",email:null}];

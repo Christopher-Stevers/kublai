@@ -9,6 +9,7 @@ import {
   TrashIcon,
   PackageIcon,
   UserIcon,
+  UsersIcon,
   CalendarIcon,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
@@ -211,14 +212,16 @@ export function MaterialListCard({
           {!!list.contributors?.length && (
             <div aria-label="Contributors by department" className="space-y-1.5">
               {contributorDepartments(list.contributors).map(group => (
-                <div key={group.key} aria-label={`${group.label} contributors`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 leading-snug">
-                  <span className="font-medium">{group.label}</span>
-                  {group.people.map(person => (
-                    <span key={person.id} className="inline-flex min-w-0 items-center gap-1">
-                      <UserIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                      <span className="break-words">{formatContributorName(person)}</span>
-                    </span>
-                  ))}
+                <div key={group.key} aria-label={`${group.label} contributors`} className="flex items-start gap-2 leading-snug">
+                  {group.people.length > 1 ? (
+                    <UsersIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                  ) : (
+                    <UserIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="bg-muted/40 text-foreground max-w-full rounded-full border px-2 py-0.5 text-xs font-medium break-words">{group.label}</span>
+                    <span className="min-w-0 break-words">{group.people.map(formatContributorName).join(", ")}</span>
+                  </div>
                 </div>
               ))}
             </div>
