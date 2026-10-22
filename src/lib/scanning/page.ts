@@ -768,6 +768,41 @@ function enclosed(
 /** Share of an outline's edge that must show a consistent paper edge. */
 const MIN_SUPPORT = 0.65;
 
+const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+function sameHeading(a: Point, b: Point, c: Point, d: Point) {
+  let turn =
+    Math.atan2(d.y - c.y, d.x - c.x) - Math.atan2(b.y - a.y, b.x - a.x);
+  while (turn <= -Math.PI) turn += 2 * Math.PI;
+  while (turn > Math.PI) turn -= 2 * Math.PI;
+  return Math.abs(turn) < 0.12;
+}
+
+/** Two outlines meeting along a whole side, as the panels of a folded page do
+ * when its crease shows as an edge, joined into one; null if they don't. */
+function joinPanels(a: Quad, b: Quad): Quad | null {
+  const at = (q: Quad, i: number) => q[(i + 4) % 4]!;
+  for (let k = 0; k < 4; k++)
+    for (let j = 0; j < 4; j++) {
+      const near = Math.max(3, 0.06 * distance(at(a, k), at(a, k + 1)));
+      if (
+        distance(at(a, k), at(b, j + 1)) > near ||
+        distance(at(a, k + 1), at(b, j)) > near
+      )
+        continue;
+      // The sides running into the shared one must carry straight on.
+      if (
+        !sameHeading(at(a, k - 1), at(a, k), at(b, j + 1), at(b, j + 2)) ||
+        !sameHeading(at(b, j - 1), at(b, j), at(a, k + 1), at(a, k + 2))
+      )
+        continue;
+      const joined = [...a] as Quad;
+      joined[k] = at(b, j + 2);
+      joined[(k + 1) % 4] = at(b, j + 3);
+      return orderQuad(joined);
+    }
+  return null;
+}
+
 export function detectPage(
   data: Uint8ClampedArray,
   width: number,
@@ -799,8 +834,23 @@ export function detectPage(
     sampler(smoothChroma, w, h),
   ];
   const r = Math.max(1, Math.round(Math.max(w, h) / 180));
-  let best: { quad: Quad; score: number } | null = null,
-    clipped = false;
+  const candidates: Array<{ quad: Quad; score: number }> = [];
+  let clipped = false;
+  const score = (quad: Quad) => {
+    const support = edgeSupport(channels, quad);
+    if (support.fraction < MIN_SUPPORT) return null;
+    if (
+      quad.some((p) => p.x < 1.5 || p.y < 1.5 || p.x > w - 1.5 || p.y > h - 1.5)
+    ) {
+      clipped = true;
+      return null;
+    }
+    return (
+      support.fraction +
+      0.5 * Math.min(1, support.contrast / 40) +
+      0.4 * (polygonArea(quad) / n)
+    );
+  };
   const consider = (mask: Uint8Array, close = true) => {
     for (const region of regions(
       close ? closeMask(mask, w, h, r) : mask,
@@ -825,21 +875,8 @@ export function detectPage(
           region.size / area < (close ? 0.45 : 0.2)
         )
           continue;
-        const support = edgeSupport(channels, quad);
-        if (support.fraction < MIN_SUPPORT) continue;
-        if (
-          quad.some(
-            (p) => p.x < 1.5 || p.y < 1.5 || p.x > w - 1.5 || p.y > h - 1.5,
-          )
-        ) {
-          clipped = true;
-          continue;
-        }
-        const score =
-          support.fraction +
-          0.5 * Math.min(1, support.contrast / 40) +
-          0.4 * (area / n);
-        if (!best || score > best.score) best = { quad, score };
+        const scored = score(quad);
+        if (scored !== null) candidates.push({ quad, score: scored });
       }
     }
   };
@@ -856,7 +893,36 @@ export function detectPage(
   consider(split(smoothLow, tLow, false));
   for (const mask of enclosed([smooth, smoothLow], smoothChroma, w, h, r))
     consider(mask, false);
-  const found = best as { quad: Quad; score: number } | null;
+  // A crease can split a folded page into panels; the page they make up wins
+  // over each of them. Two rounds join a page folded in three.
+  let added = candidates.slice();
+  for (let round = 0; round < 2 && added.length; round++) {
+    const joined: typeof candidates = [];
+    for (const a of added)
+      for (const b of candidates) {
+        if (a === b) continue;
+        const quad = joinPanels(a.quad, b.quad);
+        if (
+          !quad ||
+          polygonArea(quad) > n * 0.985 ||
+          !plausible(quad, w, h) ||
+          joined.some((c) => cornerShift(c.quad, quad) < 2)
+        )
+          continue;
+        const scored = score(quad);
+        if (scored !== null)
+          joined.push({
+            quad,
+            score: Math.max(scored, a.score, b.score) + 0.01,
+          });
+      }
+    candidates.push(...joined);
+    added = joined;
+  }
+  const found = candidates.reduce<(typeof candidates)[number] | null>(
+    (best, c) => (!best || c.score > best.score ? c : best),
+    null,
+  );
   if (!found) return { brightness, quad: null, sharpness: 0, clipped };
   let quad = refineQuad(sampler(luma, w, h), found.quad, r + 2);
   if (
@@ -986,6 +1052,118 @@ export async function rectifyPage(
   const page = { data: out, width, height };
   evenLighting(page);
   return page;
+}
+
+/** Page blur past which numbers start to misread. In synthetic phone photos
+ * sharp pages measure 0.6–1.0 and clearly blurred ones 1.2 and up. */
+export const BLURRY = 1.25;
+
+/** Gaussian of spread 1 px, for blurring an edge again. */
+const REBLUR = [0.0044, 0.054, 0.242, 0.399, 0.242, 0.054, 0.0044];
+
+/** How blurred a straightened page is: the spread of its strongest edges, in
+ * thousandths of the page width; a sharp photo measures under 1. Blurring an
+ * edge again weakens it less the more blurred it already was, which gives the
+ * spread (Zhuo and Sim, 2011). Only edges running along the page are used, as
+ * text and rules mostly do. `channels` is 4 for RGBA, 1 for grey. A page with
+ * too little print to judge measures 0. */
+export function pageBlur(
+  {
+    data,
+    width,
+    height,
+  }: { data: ArrayLike<number>; width: number; height: number },
+  channels = 4,
+) {
+  // Always measured 800 px across, so a page reads the same at any size.
+  // Averaging whole blocks first keeps fine print from aliasing to sharp.
+  const f = Math.max(1, Math.floor(width / 800)),
+    bw = Math.floor(width / f),
+    bh = Math.floor(height / f);
+  if (bw < 40 || bh < 40) return 0;
+  const block = new Float32Array(bw * bh);
+  for (let y = 0; y < bh; y++)
+    for (let x = 0; x < bw; x++) {
+      let sum = 0;
+      for (let dy = 0; dy < f; dy++)
+        for (let dx = 0; dx < f; dx++) {
+          const i = ((y * f + dy) * width + x * f + dx) * channels;
+          sum +=
+            channels === 1
+              ? data[i]!
+              : data[i]! * 0.299 + data[i + 1]! * 0.587 + data[i + 2]! * 0.114;
+        }
+      block[y * bw + x] = sum / (f * f);
+    }
+  const w = 800,
+    h = Math.max(40, Math.round((bh * w) / bw));
+  const luma = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const fy = Math.min(bh - 1.001, Math.max(0, ((y + 0.5) * bh) / h - 0.5)),
+      iy = fy | 0,
+      ty = fy - iy;
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(bw - 1.001, Math.max(0, ((x + 0.5) * bw) / w - 0.5)),
+        ix = fx | 0,
+        tx = fx - ix,
+        i = iy * bw + ix;
+      luma[y * w + x] =
+        (block[i]! * (1 - tx) + block[i + 1]! * tx) * (1 - ty) +
+        (block[i + bw]! * (1 - tx) + block[i + bw + 1]! * tx) * ty;
+    }
+  }
+  // Leave out the page's own edge and anything past it.
+  const x0 = Math.max(5, Math.round(w * 0.03)),
+    x1 = Math.min(w - 6, Math.round(w * 0.97)),
+    y0 = Math.max(5, Math.round(h * 0.03)),
+    y1 = Math.min(h - 6, Math.round(h * 0.97));
+  if (x1 <= x0 || y1 <= y0) return 0;
+  const strength = new Uint32Array(256);
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++) {
+      const i = y * w + x;
+      const g = Math.max(
+        Math.abs(luma[i + 1]! - luma[i - 1]!),
+        Math.abs(luma[i + w]! - luma[i - w]!),
+      );
+      strength[Math.min(255, g | 0)]!++;
+    }
+  // The strongest edges: the top 1% of gradients, and those at least half as strong.
+  let top = 0;
+  for (let v = 255, seen = 0, all = (x1 - x0) * (y1 - y0); v > 0; v--)
+    if ((seen += strength[v]!) >= all * 0.01) {
+      top = v;
+      break;
+    }
+  const floor = Math.max(8, top / 2);
+  const spreads: number[] = [];
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++) {
+      const i = y * w + x;
+      const gx = luma[i + 1]! - luma[i - 1]!,
+        gy = luma[i + w]! - luma[i - w]!;
+      const along = Math.abs(gx) >= Math.abs(gy);
+      const g = along ? gx : gy,
+        other = along ? gy : gx,
+        s = along ? 1 : w;
+      if (Math.abs(g) < floor || Math.abs(other) > Math.abs(g) * 0.45) continue;
+      const at = (k: number) => luma[i + k * s]!;
+      // Only the steepest point of each edge.
+      if (
+        Math.abs(at(0) - at(-2)) > Math.abs(g) ||
+        Math.abs(at(2) - at(0)) >= Math.abs(g)
+      )
+        continue;
+      let again = 0;
+      for (let j = -3; j <= 3; j++)
+        again += REBLUR[j + 3]! * (at(1 - j) - at(-1 - j));
+      const ratio = Math.abs(g / again);
+      if (ratio > 1.0005)
+        spreads.push(Math.min(20, 1 / Math.sqrt(ratio ** 2 - 1)));
+    }
+  if (spreads.length < 50) return 0;
+  spreads.sort((a, b) => a - b);
+  return (spreads[spreads.length >> 1]! * 1000) / w;
 }
 
 /** Divide out uneven light (hand and phone shadows, a dim cab) using the local

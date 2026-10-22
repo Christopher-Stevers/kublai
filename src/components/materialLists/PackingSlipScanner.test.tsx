@@ -15,6 +15,12 @@ const quad = [
 ];
 const scanning = vi.hoisted(() => ({
   detectPage: vi.fn(),
+  grabFrame: vi.fn(() => ({
+    data: new Uint8ClampedArray(4),
+    width: 1,
+    height: 1,
+  })),
+  pageBlur: vi.fn(() => 0.7),
   rectifyPage: vi.fn(async () => ({
     data: new Uint8ClampedArray(4),
     width: 1,
@@ -25,14 +31,18 @@ vi.mock("~/lib/scanning/page", () => ({
   detectPage: scanning.detectPage,
   cornerShift: () => 0,
   averageQuad: (quads: unknown[]) => quads[0],
-  grabFrame: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
+  grabFrame: scanning.grabFrame,
   locatePage: (_: unknown, q: unknown) => q,
+  BLURRY: 1.25,
+  pageBlur: scanning.pageBlur,
   rectifyPage: scanning.rectifyPage,
   toJpeg: () => "data:image/jpeg;base64,test",
   scanPdf: async () =>
     new File(["pdf"], "Packing slip.pdf", { type: "application/pdf" }),
 }));
 beforeEach(() => {
+  scanning.grabFrame.mockClear();
+  scanning.pageBlur.mockReset().mockReturnValue(0.7);
   scanning.detectPage.mockReturnValue({
     quad,
     brightness: 60,
@@ -89,6 +99,24 @@ it("automatically captures, stops the camera, keeps pages after failed save, and
   expect(save).toHaveBeenCalledTimes(2);
   expect(save.mock.calls[1]![0]).toBe(save.mock.calls[0]![0]);
 });
+it("tries again for a sharper frame and warns when every one is blurry", async () => {
+  camera();
+  scanning.pageBlur.mockReturnValue(2);
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  expect(scanning.grabFrame).toHaveBeenCalledTimes(3);
+  expect(screen.getByText(/This page looks blurry/)).toBeInTheDocument();
+  // A sharp second frame is kept, with no warning.
+  cleanup();
+  scanning.grabFrame.mockClear();
+  scanning.pageBlur.mockReset().mockReturnValueOnce(2).mockReturnValue(0.7);
+  camera();
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  expect(scanning.grabFrame).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText(/This page looks blurry/)).toBeNull();
+});
+
 it("asks to move back when the page is cut off", async () => {
   camera();
   scanning.detectPage.mockReturnValue({

@@ -7,7 +7,7 @@
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import type { SlipRow } from "./ocr-rows";
 
-type Field =
+export type Field =
   | "ordered"
   | "previous"
   | "shipped"
@@ -34,10 +34,21 @@ export type SlipText = {
   size: number;
   align: "left" | "right";
   bold?: boolean;
+  /** Table column the text is in. */
+  field?: Field;
+  /** Index into the slip's truth of the line it belongs to. */
+  line?: number;
+  role?: "heading" | "total" | "count";
 };
 export type SlipPage = {
   texts: SlipText[];
   rules: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+  /** Item table: from the rule above the headings to the rule below the lines. */
+  table?: {
+    top: number;
+    bottom: number;
+    columns: Array<{ field: Field; left: number; right: number }>;
+  };
 };
 export type SlipTruth = {
   itemId: string | null;
@@ -304,7 +315,7 @@ export const charWidth = (mono: boolean) => (mono ? 0.6 : 0.54);
 
 export function makeSlip(
   seed: number,
-  overrides: { layout?: string; items?: number } = {},
+  overrides: { layout?: string; items?: number; mono?: boolean } = {},
 ): TestSlip {
   const rnd = random(seed * 7919 + 13);
   const pick = <T>(list: readonly T[]) =>
@@ -313,7 +324,8 @@ export function makeSlip(
   const layout = overrides.layout
     ? LAYOUTS.find((l) => l.name === overrides.layout)!
     : LAYOUTS[seed % LAYOUTS.length]!;
-  const mono = rnd() < 0.4;
+  const drawn = rnd() < 0.4;
+  const mono = overrides.mono ?? drawn;
   const fields = new Set(layout.columns.map((c) => c.field));
   const secondDelivery = fields.has("previous") ? rnd() < 0.5 : rnd() < 0.15;
 
@@ -494,6 +506,7 @@ export function makeSlip(
     }
     // Table header, sometimes over two lines.
     const twoLine = columns.some((c) => c.label.length > 1);
+    const tableTop = y - pitch;
     page.rules.push({ x1: left, y1: y - pitch, x2: 1 - left, y2: y - pitch });
     if (p === 0 || repeatHeader) {
       for (const c of columns)
@@ -502,7 +515,12 @@ export function makeSlip(
             label,
             c.align === "right" ? c.end - 0.006 : c.start,
             y + (twoLine ? (k - c.label.length + 2) * pitch * 0.9 : 0),
-            { bold: true, align: c.align ?? "left" },
+            {
+              bold: true,
+              align: c.align ?? "left",
+              field: c.field,
+              role: "heading",
+            },
           ),
         );
       y += twoLine ? pitch * 0.9 : 0;
@@ -559,6 +577,8 @@ export function makeSlip(
         if (!t) continue;
         text(t, c.align === "right" ? c.end - 0.006 : c.start, y, {
           align: c.align ?? "left",
+          field: c.field,
+          line: truth.length,
         });
       }
       truth.push({
@@ -571,10 +591,16 @@ export function makeSlip(
       });
       y += pitch;
       if (overflow) {
-        text(overflow, descWidth.start, y);
+        text(overflow, descWidth.start, y, {
+          field: "description",
+          line: truth.length - 1,
+        });
         y += pitch;
       } else if (line.item && rnd() < 0.08) {
-        text(`MFR# ${line.code.replace(/\D/g, "")}`, descWidth.start, y);
+        text(`MFR# ${line.code.replace(/\D/g, "")}`, descWidth.start, y, {
+          field: "description",
+          line: truth.length - 1,
+        });
         y += pitch;
       }
       if (line.backordered > 0 && rnd() < 0.15) {
@@ -582,17 +608,30 @@ export function makeSlip(
           "** BACKORDERED - WILL SHIP WHEN AVAILABLE **",
           descWidth.start,
           y,
+          { field: "description", line: truth.length - 1 },
         );
         y += pitch;
       }
     }
     page.rules.push({ x1: left, y1: y, x2: 1 - left, y2: y });
+    page.table = {
+      top: tableTop,
+      bottom: y,
+      columns: columns.map((c) => ({
+        field: c.field,
+        left: c.start,
+        right: c.end,
+      })),
+    };
     y += pitch * 1.5;
     if (p === pageCount - 1) {
       const shipped = lines.reduce((s, l) => s + l.printedQty, 0);
-      text(`TOTAL QTY SHIPPED: ${shipped}`, 0.55, y, { bold: true });
+      text(`TOTAL QTY SHIPPED: ${shipped}`, 0.55, y, {
+        bold: true,
+        role: "total",
+      });
       y += pitch;
-      text(`Total lines: ${lines.length}`, 0.55, y);
+      text(`Total lines: ${lines.length}`, 0.55, y, { role: "count" });
       y += pitch * 2;
       text("Received by: ______________________   Date: __________", left, y);
       y += pitch * 1.4;

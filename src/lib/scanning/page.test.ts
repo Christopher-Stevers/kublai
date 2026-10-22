@@ -1,10 +1,12 @@
 import { expect, it } from "vitest";
 import {
   averageQuad,
+  BLURRY,
   cornerShift,
   detectPage,
   evenLighting,
   locatePage,
+  pageBlur,
   project,
   rectifyPage,
   type Quad,
@@ -171,4 +173,67 @@ it("projective rectification preserves all four corners and straight lines", () 
     b = project(q, 0.5, 0.4),
     c = project(q, 0.8, 0.4);
   expect((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)).toBeCloseTo(0);
+});
+
+/** A page of print, `scale` × 800 px across and blurred by `sigma` px. Its
+ * glyphs are thin strokes, 2 px at 800 px across, like body text on a slip. */
+function printed(scale: number, sigma: number) {
+  const w = 800 * scale,
+    h = 1100 * scale;
+  let grey = new Float32Array(w * h).fill(240);
+  const ink = (x0: number, y0: number, x1: number, y1: number) => {
+    for (let y = y0 * scale; y < y1 * scale; y++)
+      for (let x = x0 * scale; x < x1 * scale; x++) grey[y * w + x] = 30;
+  };
+  for (let line = 0; line < 40; line++)
+    for (let k = 0; k < 60; k++) {
+      const x = 60 + k * 11,
+        y = 60 + line * 25,
+        bar = y + ((k * 7) % 10);
+      ink(x, y, x + 2, y + 12);
+      ink(x, bar, x + 7, bar + 2);
+    }
+  if (sigma) {
+    const r = Math.ceil(sigma * 3),
+      kernel = Array.from({ length: 2 * r + 1 }, (_, i) =>
+        Math.exp(-((i - r) ** 2) / (2 * sigma * sigma)),
+      ),
+      total = kernel.reduce((a, b) => a + b);
+    for (const [step, size] of [
+      [1, w],
+      [w, h],
+    ] as const) {
+      const out = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const at = step === 1 ? i % w : Math.floor(i / w);
+        let sum = 0;
+        for (let k = -r; k <= r; k++)
+          sum +=
+            kernel[k + r]! *
+            grey[i + (Math.min(size - 1, Math.max(0, at + k)) - at) * step]!;
+        out[i] = sum / total;
+      }
+      grey = out;
+    }
+  }
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = grey[i]!;
+    data[i * 4 + 3] = 255;
+  }
+  return { data, width: w, height: h };
+}
+
+it("measures page blur relative to the page, whatever its size", () => {
+  const blurred = pageBlur(printed(1, 2));
+  expect(pageBlur(printed(1, 0))).toBeLessThan(1);
+  expect(blurred).toBeGreaterThanOrEqual(BLURRY);
+  // The same page photographed twice as large, with blur to match.
+  expect(pageBlur(printed(2, 0))).toBeLessThan(1);
+  expect(Math.abs(pageBlur(printed(2, 4)) - blurred)).toBeLessThan(
+    blurred * 0.15,
+  );
+  // A blank page cannot be judged, so it is not called blurry.
+  const blank = new Uint8ClampedArray(800 * 1100 * 4).fill(240);
+  expect(pageBlur({ data: blank, width: 800, height: 1100 })).toBe(0);
 });

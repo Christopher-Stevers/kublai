@@ -3,10 +3,12 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Button } from "~/components/ui/button";
 import {
   averageQuad,
+  BLURRY,
   cornerShift,
   detectPage,
   grabFrame,
   locatePage,
+  pageBlur,
   rectifyPage,
   scanPdf,
   toJpeg,
@@ -20,6 +22,8 @@ const PREVIEW = 480;
 const STEADY = 4;
 /** Outlines closer than this, in frame fractions, count as the same position. */
 const SAME_PLACE = 0.02;
+/** Further frames tried when a capture is blurry, keeping the sharpest. */
+const RETRIES = 2;
 /** Outline used when capturing by hand without a detected page. */
 const WHOLE_FRAME: Quad = [
   { x: 0.06, y: 0.06 },
@@ -73,14 +77,16 @@ export default function PackingSlipScanner({
   const [light, setLight] = useState(""),
     [processing, setProcessing] = useState(false);
   const [shot, setShot] = useState<Shot | null>(null),
-    [corners, setCorners] = useState<Quad | null>(null);
+    [corners, setCorners] = useState<Quad | null>(null),
+    [blurry, setBlurry] = useState(false);
   const pdf = useRef<File | null>(null);
   const capture = useRef<(() => void) | null>(null);
 
-  /** Straighten the page in a frame and add it, or replace the last page. */
-  const addPage = async (frame: Pixels, outline: Quad, replace: boolean) => {
-    const image = toJpeg(await rectifyPage(frame, outline), 0.85);
+  /** Add a straightened page, or replace the last page. */
+  const addPage = (page: Pixels, replace: boolean, blur = pageBlur(page)) => {
+    const image = toJpeg(page, 0.85);
     setPages((old) => [...(replace ? old.slice(0, -1) : old), image]);
+    setBlurry(blur >= BLURRY);
     pdf.current = null;
   };
 
@@ -127,13 +133,33 @@ export default function PackingSlipScanner({
       setProcessing(true);
       setMessage("Capturing page…");
       try {
-        const frame = grabFrame(el);
-        stop();
         const found = recent.length ? averageQuad(recent.slice(-3)) : null;
-        // The preview outline is refined against the full-resolution frame.
-        const outline = found ? locatePage(frame, found) : WHOLE_FRAME;
-        await addPage(frame, outline, false);
-        if (disposed) return;
+        // A shake or focus still settling blurs a frame; another a moment
+        // later is often sharp. The sharpest is kept.
+        let best: {
+          frame: Pixels;
+          outline: Quad;
+          page: Pixels;
+          blur: number;
+        } | null = null;
+        for (let attempt = 0; attempt <= (found ? RETRIES : 0); attempt++) {
+          if (attempt) {
+            setMessage("Blurry. Hold still…");
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            if (disposed) return;
+          }
+          const frame = grabFrame(el);
+          // The preview outline is refined against the full-resolution frame.
+          const outline = found ? locatePage(frame, found) : WHOLE_FRAME;
+          const page = await rectifyPage(frame, outline);
+          const blur = pageBlur(page);
+          if (!best || blur < best.blur) best = { frame, outline, page, blur };
+          if (blur < BLURRY) break;
+        }
+        stop();
+        if (disposed || !best) return;
+        const { frame, outline, page, blur } = best;
+        addPage(page, false, blur);
         setShot({ frame, preview: toJpeg(frame, 0.8, 1200), quad: outline });
         if (found) setMode("review");
         else {
@@ -301,7 +327,7 @@ export default function PackingSlipScanner({
     setProcessing(true);
     setError("");
     try {
-      await addPage(shot.frame, corners, true);
+      addPage(await rectifyPage(shot.frame, corners), true);
       setShot({ ...shot, quad: corners });
       setMode("review");
     } catch {
@@ -364,6 +390,12 @@ export default function PackingSlipScanner({
             alt="Captured packing slip page"
             className="max-h-[45dvh] w-full object-contain"
           />
+          {blurry && (
+            <p className="text-sm font-medium text-amber-700">
+              This page looks blurry, so some numbers may misread. Retake it,
+              holding the phone still.
+            </p>
+          )}
           <p className="text-muted-foreground text-sm">
             {pages.length} page{pages.length === 1 ? "" : "s"} · not saved yet
           </p>
@@ -387,6 +419,7 @@ export default function PackingSlipScanner({
                 setPages((old) => old.slice(0, -1));
                 pdf.current = null;
                 setShot(null);
+                setBlurry(false);
                 setMode("camera");
               }}
             >

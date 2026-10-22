@@ -251,6 +251,71 @@ it("offers a handwritten quantity without prefilling it", async () => {
   expect(plain.calls).not.toContain("handwritten");
 });
 
+it("accepts pen marks that agree with a printed count that adds up", async () => {
+  // A tick beside the printed 6, read as a written 6.
+  const ticked = fakeJev({
+    main: { handwriting: pick("unclear") },
+    hand: pick("v6", 0.9),
+  });
+  const [read] = (await analyze([header, line], ticked.ask)).lines;
+  expect(ticked.calls).toContain("handwritten");
+  expect(read).toMatchObject({ proposed: 6, issues: [] });
+  expect(read!.notes).toContain(
+    "Pen marks on this line agree with the printed 6.",
+  );
+  // When the line does not add up, the pen may be what does not fit.
+  const unbalanced = fakeJev({
+    main: { handwriting: pick("yes"), ordered: pick("v13") },
+    cells: { ordered: pick("v13") },
+    hand: pick("v6", 0.9),
+  });
+  expect(
+    (await analyze([header, line], unbalanced.ask)).lines[0]!.issues,
+  ).toContain(
+    "Handwriting on this line may change the quantity. Check the slip.",
+  );
+});
+
+it("counts earlier deliveries in the slip's ordered quantity", async () => {
+  // Ordered 10: 2 received before, 6 now and 2 still to come.
+  const second = {
+    main: { backordered: pick("v2") },
+    cells: { backordered: pick("v2") },
+  };
+  const [read] = (await analyze([header, line], fakeJev(second).ask)).lines;
+  expect(read).toMatchObject({ proposed: 6, issues: [] });
+  expect(read!.notes).toContain(
+    "The slip's ordered quantity includes the 2 ea received earlier.",
+  );
+  const [first] = (
+    await analyze([header, line], fakeJev(second).ask, [
+      { ...item, received: 0 },
+    ])
+  ).lines;
+  expect(first!.proposed).toBeNull();
+  expect(first!.issues).toContain(
+    "Ordered 10, shipped 6 and backordered 2 do not add up. Check the slip.",
+  );
+});
+
+it("reads only the quantity cells under headings Jev is sure of", async () => {
+  const jev = fakeJev({
+    page: {
+      // Unsure, and a weaker second box over the shipped column.
+      backordered: { ...box(0.78, 0.86), confidence: 0.3 },
+      ordered: { ...box(0.69, 0.75), confidence: 0.6 },
+    },
+  });
+  const asked: string[][] = [];
+  const ask: VisionAsk = (inputs, questions) => {
+    asked.push(Object.keys(inputs));
+    return jev.ask(inputs, questions);
+  };
+  const [read] = (await analyze([header, line], ask)).lines;
+  expect(asked).toContainEqual(["shippedCell"]);
+  expect(read!.proposed).toBe(6);
+});
+
 it("checks each item's shipped total read from the whole page when no totals are printed", async () => {
   const noTotals = {
     lines: pick("not_printed", 0.95),
@@ -477,12 +542,34 @@ it("finds lines on pages without a readable table and ends each where the next s
   ];
   const { lines } = await analyze(loose, jev.ask);
   const edges = lines.map((l) => [l.box!.y, l.box!.y + l.box!.height]);
-  for (const [k, value] of [0.2, 0.28, 0.28, 0.36].entries())
-    expect(edges.flat()[k]).toBeCloseTo(value);
+  // Each line starts just above its text, which Jev places less exactly.
+  for (const [k, value] of [0.208, 0.288, 0.288, 0.36].entries())
+    expect(edges.flat()[k]).toBeCloseTo(value, 3);
   expect(lines.map((l) => l.evidence)).toEqual([
     "Brass valve 6",
     "Steel pipe 6",
   ]);
+});
+
+it("finds the lines the table reader missed when Jev counts more on a page", async () => {
+  const rows = { row1: box(0, 1, 0.19, 0.24), row2: box(0, 1, 0.27, 0.33) };
+  const more = fakeJev({
+    page: { count: pick("n2", 0.9), lines: pick("n2", 0.95) },
+    total: pick("v12"),
+    rows,
+  });
+  const { lines } = await analyze([header, line], more.ask);
+  expect(more.calls).toContain("rows");
+  // The line the table reader did find keeps its code and description.
+  expect(lines.map((l) => [l.sku, l.box!.y])).toEqual([
+    ["ABC123", 0.198],
+    [null, 0.27],
+  ]);
+  expect(lines[1]!.evidence).toBe("Line 2");
+  // An unsure count leaves the table reader's lines alone.
+  const unsure = fakeJev({ page: { count: pick("n2", 0.4) }, rows });
+  expect((await analyze([header, line], unsure.ask)).lines).toHaveLength(1);
+  expect(unsure.calls).not.toContain("rows");
 });
 
 it("falls back to the text reading when the images cannot be read", async () => {

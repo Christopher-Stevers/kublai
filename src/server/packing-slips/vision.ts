@@ -20,6 +20,10 @@ import type { SlipRow } from "./ocr-rows";
 /** Pinned: the decision thresholds were tuned against this model version. */
 export const VISION_MODEL = "jev-1.14.0";
 const PRODUCT_MIN = 0.6,
+  /** Jev's line count must be this sure to overrule the table reader's. */
+  COUNT_MIN = 0.6,
+  /** Column headings found less surely than this were wrong in testing. */
+  HEADING_MIN = 0.5,
   QUANTITY_MIN = 0.8,
   TOTAL_MIN = 0.6,
   /** A first product answer this sure was never changed by the other views. */
@@ -160,12 +164,12 @@ const QUANTITIES = [
   ...[900, 1000, 1500, 2000, 2500, 3000, 4000, 5000],
 ];
 const values = Object.fromEntries(QUANTITIES.map((v) => [`v${v}`, String(v)]));
-const quantity = (name: string): Choice => ({
+const quantity = (name: string, column = ""): Choice => ({
   type: "choice",
   instructions:
     COMMON +
-    "Ignore handwriting when reading printed quantities. " +
-    `What is the printed ${name} quantity in this product row? Select blank if the cell is blank, no_column if no corresponding column exists, and unclear if unreadable, not a whole number, or not in the choices.`,
+    "Ignore handwriting when reading printed quantities. Check marks, ticks or slashes drawn over or beside a printed number are not part of it and do not make the cell blank. " +
+    `What is the printed ${name} quantity in this product row? ${column}Select blank if the cell is blank, no_column if no corresponding column exists, and unclear if unreadable, not a whole number, or not in the choices.`,
   criteria: {
     ...values,
     blank: "Cell is blank",
@@ -241,31 +245,34 @@ const heading = (name: string): BoxQuestion => ({
   instructions: `Locate the column heading of the ${name} column in the item table of \`page\`. Include all lines of that heading text only, not neighbouring headings. ${EVIDENCE}`,
 });
 const TOTAL = `Below the item table, find the printed TOTAL SHIPPED quantity (the sum of all shipped quantities, e.g. 'Total Shipped 144.00'), ignoring decimals. Read only what is printed; do not count or add up rows yourself. ${EVIDENCE}`;
-function pageQuestions(last: boolean, count: boolean) {
+function pageQuestions(last: boolean) {
   const q: Record<string, VisionQuestion> = {
     header: {
       type: "box",
       instructions: `Locate the column headings immediately above the product/shipment item table in \`page\`. Include all heading lines. ${EVIDENCE}`,
     },
-    shipped: heading("quantity SHIPPED (e.g. Ship Quantity / Qty Shipped)"),
+    shipped: heading(
+      "quantity SHIPPED (e.g. Ship Quantity / Qty Shipped / Supplied, or QTY when it is the only quantity column)",
+    ),
     ordered: heading("quantity ORDERED (e.g. Order Quantity / Qty Ordered)"),
-    backordered: heading("BACKORDERED quantity (e.g. B/O Quantity / Qty B/O)"),
+    backordered: heading(
+      "BACKORDERED quantity, still to come (e.g. B/O Quantity / Qty B/O / Back Order / Balance / Remaining / To Follow)",
+    ),
     product: {
       type: "box",
       instructions: `Locate the column(s) holding the product number/code and the product description in the item table of \`page\`: from the left edge of the product code column to the right edge of the description column, spanning the item rows. ${EVIDENCE}`,
     },
   };
-  if (count)
-    q.count = {
-      type: "choice",
-      instructions: `Count distinct product/shipment line items visibly STARTING on this page. Count each product once even if its description wraps. Exclude carton notes, headers, totals, addresses, delivery comments and description continuations from the prior page. Return unclear if cannot count or more than 40. ${EVIDENCE}`,
-      criteria: {
-        ...Object.fromEntries(
-          Array.from({ length: 41 }, (_, i) => [`n${i}`, String(i)]),
-        ),
-        unclear: "Cannot count reliably or more than 40",
-      },
-    };
+  q.count = {
+    type: "choice",
+    instructions: `Count distinct product/shipment line items visibly STARTING on this page. Count each product once even if its description wraps. Exclude carton notes, headers, totals, addresses, delivery comments and description continuations from the prior page. Return unclear if cannot count or more than 40. ${EVIDENCE}`,
+    criteria: {
+      ...Object.fromEntries(
+        Array.from({ length: 41 }, (_, i) => [`n${i}`, String(i)]),
+      ),
+      unclear: "Cannot count reliably or more than 40",
+    },
+  };
   if (last) {
     q.lines = {
       type: "choice",
@@ -302,6 +309,8 @@ type Band = {
   page: number;
   top: number;
   bottom: number;
+  /** The top is where the line's text starts, not an estimate. */
+  precise?: boolean;
   evidence: string;
   table?: SlipLine;
 };
@@ -311,6 +320,33 @@ const edges = (a: VisionAnswer | undefined) =>
   a?.type === "box" ? a.box : undefined;
 const number = (a: ChoiceAnswer | undefined) =>
   a && /^v\d+$/.test(a.choice) ? Number(a.choice.slice(1)) : null;
+
+const QUANTITY_FIELDS = ["shipped", "ordered", "backordered"] as const;
+/** The quantity columns' headings Jev is sure of. One overlapping a surer
+ * one is that column again, as Jev answers when a slip lacks the column. */
+function quantityColumns(answers: Record<string, VisionAnswer>) {
+  const found = QUANTITY_FIELDS.flatMap((field) => {
+    const a = answers[field];
+    return a?.type === "box" &&
+      a.confidence >= HEADING_MIN &&
+      a.box.bottom - a.box.top <= 0.08
+      ? [{ field, ...a }]
+      : [];
+  });
+  const overlap = (a: Edges, b: Edges) =>
+    Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) /
+    Math.max(1e-6, Math.min(a.right - a.left, b.right - b.left));
+  const columns: Partial<Record<(typeof QUANTITY_FIELDS)[number], Edges>> = {};
+  for (const c of found)
+    if (
+      !found.some(
+        (o) =>
+          o !== c && o.confidence > c.confidence && overlap(o.box, c.box) > 0.5,
+      )
+    )
+      columns[c.field] = c.box;
+  return columns;
+}
 
 /** Table lines split mid-item (no next line number) are joined back up. */
 export function bandsFromTable(lines: SlipLine[]): Band[] {
@@ -333,6 +369,7 @@ export function bandsFromTable(lines: SlipLine[]): Band[] {
       page: line.page,
       top: line.box.y,
       bottom: line.box.y + line.box.height,
+      precise: true,
       evidence: line.evidence,
       table: line,
       num: num ? Number(num) : null,
@@ -377,8 +414,14 @@ type Reading = {
   backorderedConf: number;
   backorderedUnclear: boolean;
   ordered: number | null;
+  /** Ordered less shipped and backordered, when not zero: delivered earlier,
+   * or misread. */
+  earlier: number | null;
   unit: string | null;
   handwritten: number | null;
+  /** Pen marks on the line: whether a confident read of them agrees with
+   * the shipped quantity. */
+  pen: "agrees" | "differs" | null;
   flags: string[];
   notes: string[];
 };
@@ -435,12 +478,7 @@ export async function readSlipImages(input: {
       const image = await prepared(png);
       const a = await ask(
         { page: image },
-        pageQuestions(
-          page === pages.length,
-          // Only without any table: a page holding just a wrapped
-          // description from the page before would be counted as a line.
-          !tableBands.length,
-        ),
+        pageQuestions(page === pages.length),
       );
       let total: { value: number | null; confidence: number } | null = null;
       const range = choice(a.range);
@@ -508,17 +546,26 @@ export async function readSlipImages(input: {
           return answers;
         }),
       ).catch(() => null);
-  // Pages the table reader could not read: Jev finds the lines.
-  const bands = [...tableBands];
+  // Photos often defeat the table reader, which then finds only some lines.
+  // Where Jev counts more lines starting on a page, Jev finds them all. A
+  // count it is unsure of only stands in when there is no table at all.
+  const bands: Band[] = [];
   for (const info of pageInfo) {
+    const own = tableBands.filter((b) => b.page === info.page);
     const count = choice(info.answers.count);
     const n =
       count && /^n\d+$/.test(count.choice) ? Number(count.choice.slice(1)) : 0;
-    if (count?.choice === "unclear")
+    if (count?.choice === "unclear" && !own.length)
       warnings.push(
         `Page ${info.page}: the slip lines could not be counted. Check it by hand.`,
       );
-    if (!n) continue;
+    if (
+      n <= own.length ||
+      (tableBands.length && count!.confidence < COUNT_MIN)
+    ) {
+      bands.push(...own);
+      continue;
+    }
     const located = await ask(
       { page: await prepared(pages[info.page - 1]!) },
       Object.fromEntries(
@@ -536,20 +583,49 @@ export async function readSlipImages(input: {
     )
       .filter((b): b is Edges => !!b)
       .sort((a, b) => a.top - b.top);
-    // Jev finds where a line starts well but often runs its box into the
-    // next line: each line ends where the next starts, wrapped text included.
-    found.forEach((b, k) => {
-      const next = found[k + 1];
-      if (next) b.bottom = next.top;
+    if (found.length <= own.length) {
+      bands.push(...own);
+      continue;
+    }
+    // Jev places a line only to about a hundredth of the page, which on a
+    // dense slip is half a line: text the OCR found starting within it marks
+    // where the line starts more exactly.
+    const starts = rows
+      .filter(
+        (r) =>
+          r.page === info.page &&
+          r.words.length &&
+          r.text.replace(/\W/g, "").length >= 3,
+      )
+      .map((r) => Math.min(...r.words.map((w) => w.y)));
+    const tops = found.map((b, k) => {
+      const end = found[k + 1]?.top ?? b.bottom;
+      const start = Math.min(
+        ...starts.filter((y) => y >= b.top - 0.002 && y < end - 0.002),
+      );
+      return Number.isFinite(start)
+        ? { top: Math.max(b.top, start - 0.002), precise: true }
+        : { top: b.top, precise: false };
     });
-    found.forEach((b, k) =>
+    // Jev often runs a line's box into the next line: each line ends where
+    // the next starts, wrapped text included.
+    found.forEach((b, k) => {
+      const { top, precise } = tops[k]!,
+        bottom = tops[k + 1]?.top ?? b.bottom;
+      // Keep the table reader's code and description for the same line.
+      const table = own.find((t) => {
+        const mid = t.top + (t.table?.box?.height ?? 0) / 2;
+        return mid >= top && mid < bottom;
+      })?.table;
       bands.push({
         page: info.page,
-        top: b.top,
-        bottom: b.bottom,
-        evidence: ocrText(rows, info.page, b.top, b.bottom) || `Line ${k + 1}`,
-      }),
-    );
+        top,
+        bottom,
+        precise,
+        evidence: ocrText(rows, info.page, top, bottom) || `Line ${k + 1}`,
+        ...(table ? { table } : {}),
+      });
+    });
   }
   bands.sort((a, b) => a.page - b.page || a.top - b.top);
 
@@ -561,9 +637,14 @@ export async function readSlipImages(input: {
       const columnHeadings = await prepared(
         await crop(png, header ?? { top: 0, bottom: 0.1 }),
       );
-      const row = await prepared(await crop(png, band));
-      const cell = async (field: string) => {
-        const c = edges(info.answers[field]);
+      // Where the line's text starts is known, little margin is needed; more
+      // would show the neighbouring lines on a dense slip.
+      const row = await prepared(
+        await crop(png, band, band.precise ? 0.003 : 0.008),
+      );
+      const columns = quantityColumns(info.answers);
+      const cell = async (field: keyof typeof columns) => {
+        const c = columns[field];
         if (!c) return null;
         const w = c.right - c.left;
         return prepared(
@@ -571,11 +652,14 @@ export async function readSlipImages(input: {
             png,
             {
               top: band.top,
-              bottom: Math.min(band.bottom, band.top + 0.035),
+              bottom: Math.min(
+                band.bottom,
+                band.top + (band.precise ? 0.02 : 0.035),
+              ),
               left: c.left - w * 0.35,
               right: c.right + w * 0.35,
             },
-            0.006,
+            band.precise ? 0.003 : 0.006,
           ),
           900,
         );
@@ -597,7 +681,7 @@ export async function readSlipImages(input: {
           {
             kind: {
               type: "choice",
-              instructions: `Does \`row\` depict one product item, multiple items, or no product item? A wrapped description belongs to the same item. ${EVIDENCE}`,
+              instructions: `Does \`row\` depict one product item, multiple items, or no product item? A wrapped description belongs to the same item. Text cut off at the top or bottom edge of the image belongs to neighbouring lines; ignore it. ${EVIDENCE}`,
               criteria: {
                 one: "Exactly one product line",
                 multiple: "Multiple distinct product lines",
@@ -606,8 +690,14 @@ export async function readSlipImages(input: {
               },
             },
             part: productQuestion(items),
-            shipped: quantity("SHIPPED"),
-            backordered: quantity("BACKORDERED"),
+            shipped: quantity(
+              "SHIPPED",
+              "A table with a single quantity column (e.g. QTY or Quantity) shows the shipped quantity there. ",
+            ),
+            backordered: quantity(
+              "BACKORDERED",
+              "It is the quantity still to come, in a column such as B/O, Back Order, Balance, Remaining, Outstanding or To Follow. ",
+            ),
             ordered: quantity("ORDERED (order quantity, not shipped)"),
             unit: {
               type: "choice",
@@ -676,7 +766,7 @@ export async function readSlipImages(input: {
               ),
             )
           : Promise.resolve(null),
-        choice(main.handwriting)?.choice === "yes"
+        ["yes", "unclear"].includes(choice(main.handwriting)?.choice ?? "")
           ? ask({ row, columnHeadings }, { handwritten })
           : Promise.resolve(null),
       ]);
@@ -793,10 +883,10 @@ export function decideReading(
     ordered.value !== null &&
     shipped.value !== null &&
     ordered.value === shipped.value + (backordered.value ?? 0);
-  if (ordered.value !== null && shipped.value !== null && !balanced)
-    flags.push(
-      `Ordered ${ordered.value}, shipped ${shipped.value} and backordered ${backordered.value ?? 0} do not add up. Check the slip.`,
-    );
+  const earlier =
+    ordered.value !== null && shipped.value !== null && !balanced
+      ? ordered.value - shipped.value - (backordered.value ?? 0)
+      : null;
   // Two separate reads that agree, and balance with the other columns.
   if (balanced && rowShipped.value === cellShipped.value) {
     shippedConf = Math.max(
@@ -816,11 +906,14 @@ export function decideReading(
     flags.push(
       "Check this slip line: it may hold more than one product, or none.",
     );
-  const handwriting = choice(main.handwriting);
-  if (handwriting && handwriting.choice !== "no")
-    flags.push(
-      "Handwriting on this line may change the quantity. Check the slip.",
-    );
+  const handwriting = choice(main.handwriting),
+    handwritten = hand && hand.confidence >= PRODUCT_MIN ? number(hand) : null;
+  const pen =
+    !handwriting || handwriting.choice === "no"
+      ? null
+      : handwritten !== null && handwritten === shipped.value
+        ? "agrees"
+        : "differs";
   // Product: average the three views' probabilities.
   const used = views.filter((v): v is ChoiceAnswer => !!v);
   const probabilities: Record<string, number> = {};
@@ -857,7 +950,8 @@ export function decideReading(
         ? "not_on_order"
         : null,
     partConf,
-    handwritten: hand && hand.confidence >= PRODUCT_MIN ? number(hand) : null,
+    handwritten,
+    pen,
     probabilities,
     shipped: shipped.value,
     shippedConf,
@@ -868,6 +962,7 @@ export function decideReading(
     backorderedConf,
     backorderedUnclear: backordered.choice === "unclear",
     ordered: ordered.value,
+    earlier,
     unit: unit && !["blank", "other", "unclear"].includes(unit) ? unit : null,
     flags,
     notes,
@@ -921,7 +1016,8 @@ export function checkAgainstOrder(
       issues.push(
         `Check the product: only ${sure} sure it is this order item.`,
       );
-    let unit = r.unit;
+    let unit = r.unit,
+      explained = false;
     if (item) {
       if ((matched.get(r.part as number) ?? 0) > 1)
         issues.push(
@@ -935,6 +1031,13 @@ export function checkAgainstOrder(
           (o) =>
             Math.abs(q - o) < 1e-6 ||
             (pack > 0 && Math.abs(q - o * pack) < 1e-6),
+        );
+      // A later delivery's slip may count the earlier ones as ordered.
+      explained =
+        r.earlier !== null &&
+        item.received > 0 &&
+        [1, pack || 1].some(
+          (m) => Math.abs(r.earlier! - item.received * m) < 1e-6,
         );
       if (r.ordered !== null && !fits(r.ordered))
         issues.push(
@@ -963,7 +1066,24 @@ export function checkAgainstOrder(
       );
     if (r.backorderedConf < QUANTITY_MIN || r.backorderedUnclear)
       issues.push("Check backordered quantity against the slip.");
+    if (explained)
+      notes.push(
+        `The slip's ordered quantity includes the ${item!.received} ${item!.unit} received earlier.`,
+      );
+    else if (r.earlier !== null)
+      issues.push(
+        `Ordered ${r.ordered}, shipped ${r.shipped} and backordered ${r.backordered ?? 0} do not add up. Check the slip.`,
+      );
     issues.push(...r.flags);
+    // A tick beside a printed count is often taken for a written count. A
+    // pen read equal to the printed count only stands when the line adds up.
+    const adds = r.ordered !== null && (r.earlier === null || explained);
+    if (r.pen === "differs" || (r.pen === "agrees" && !adds))
+      issues.push(
+        "Handwriting on this line may change the quantity. Check the slip.",
+      );
+    else if (r.pen === "agrees")
+      notes.push(`Pen marks on this line agree with the printed ${r.shipped}.`);
     if (r.backordered !== null && r.backordered > 0)
       notes.push(`${r.backordered} ${unit ?? "units"} backordered on slip.`);
     let proposed =

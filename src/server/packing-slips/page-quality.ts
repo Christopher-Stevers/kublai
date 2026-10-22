@@ -1,11 +1,14 @@
 /** Cheap checks on a photographed or scanned page, so the reviewer hears
  * about a blurry or dark picture before trusting what was read from it. */
 import sharp from "sharp";
+import { BLURRY, pageBlur } from "~/lib/scanning/page";
 
 const SHARP_MIN = 1;
 
 export type PageQuality = {
   sharpness: number;
+  /** Edge spread in thousandths of the page width; see pageBlur. */
+  blur: number;
   brightness: number;
   contrast: number;
 };
@@ -68,7 +71,12 @@ export async function measurePage(png: Buffer): Promise<PageQuality> {
       p99 = v;
       break;
     }
-  return { sharpness: p99 / spread, brightness, contrast };
+  return {
+    sharpness: p99 / spread,
+    blur: pageBlur({ data, width: w, height: h }, 1),
+    brightness,
+    contrast,
+  };
 }
 
 export function qualityWarnings(page: number, q: PageQuality) {
@@ -81,7 +89,8 @@ export function qualityWarnings(page: number, q: PageQuality) {
     out.push(
       `Page ${page} looks faded or washed out. Check the numbers against the paper slip.`,
     );
-  if (q.sharpness < SHARP_MIN)
+  // The edge spread also catches blur the Laplacian misses on busy pages.
+  if (q.sharpness < SHARP_MIN || q.blur >= BLURRY)
     out.push(
       `Page ${page} looks blurry. Check the numbers against the paper slip, or scan it again holding the phone still.`,
     );
