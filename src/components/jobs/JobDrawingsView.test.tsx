@@ -634,3 +634,18 @@ it("refocuses an already open drawing for every hyperlink, including repeated sa
   act(()=>{window.history.replaceState(null,"",other);window.dispatchEvent(new PopStateEvent("popstate"));});
   expect(screen.getByTestId("mounted-view")).toHaveTextContent('"x":0.6');
 });
+
+it("shows a renamed drawing instead of stale extracted numbering in grid and table views", async () => {
+  state.summaries = [{ sheetId: "s1", favorite: false, metadata: { number: "M-101", title: "Sleeving plan", discipline: "", tags: [], status: "" } }];
+  render(<JobDrawingsView jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+  fireEvent.keyDown(screen.getByRole("button", { name: "More actions for M-101" }), { key: "Enter" });
+  fireEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Level 2 North" } });
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
+  expect(state.calls).toContainEqual(["renameSheet", { sheetId: "s1", name: "Level 2 North" }]);
+  expect(screen.getByRole("button", { name: "Open Level 2 North" })).toHaveTextContent("Level 2 North");
+  expect(screen.queryByText("M-101", { exact: true })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Table view" }));
+  expect(screen.getByRole("button", { name: "Open Level 2 North" })).toHaveTextContent("Level 2 North");
+});

@@ -314,8 +314,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       );
     })
     .sort((a, b) =>
-      nonempty(bySheet.get(a.id)?.metadata.number, a.name).localeCompare(
-        nonempty(bySheet.get(b.id)?.metadata.number, b.name),
+      nonempty(a.name, bySheet.get(a.id)?.metadata.number ?? "").localeCompare(
+        nonempty(b.name, bySheet.get(b.id)?.metadata.number ?? ""),
         undefined,
         { numeric: true, sensitivity: "base" },
       ),
@@ -762,8 +762,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">
                       {nonempty(
-                        bySheet.get(item.id)?.metadata.number,
                         item.name,
+                        bySheet.get(item.id)?.metadata.number ?? "",
                       )}
                     </span>
                     <span className="text-muted-foreground block min-h-4 truncate text-xs">
