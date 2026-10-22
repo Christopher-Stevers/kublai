@@ -72,3 +72,24 @@ Current references read for this evaluation:
 
 TypeSafe labels image input experimental. Current documented image bounds are
 280–1568 pixels per side; the runner pads small crops and bounds larger ones.
+
+## Saved evaluations in Packing slips (2026-10-21)
+
+Packing slips now has a separate **Open Jev test review** control when a saved
+image evaluation exists for that document version. It displays the source crop,
+header, row-location confidence, and separate part/shipped/backordered confidence.
+Scores below 80% are labelled for human review. This is the selected review policy,
+not a validated accuracy guarantee. Full-PDF access helps reviewers find omitted
+rows and page continuations. The original model answers are retained, including
+wrong quantities and duplicate continuation rows. No receipt quantities or normal
+analysis records are changed by importing or viewing a test.
+
+`scripts/bench/import-slip-test-review.mjs` imports an existing benchmark review
+under the private document-storage root, scoped to organization, job and immutable
+version. It checks the current document association before importing. The GET
+endpoint rechecks document access before reading the saved evaluation and disables
+response caching. Source files and imported business data must not be committed.
+
+The three saved Order 155/159 slips contain five pages and 25 *candidate* rows;
+that is not an independently verified item count. Page-break merging, correction
+alias learning, and production image-reader integration remain separate work.
