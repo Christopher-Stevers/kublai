@@ -21,9 +21,20 @@ function props(): ComponentProps<typeof MaterialListCard> {
       materialTotal: 20,
       orderNumbers: ["ORDER-155", "ORDER-156"],
       orderStatuses: [
-        { id: "155", number: "ORDER-155", complete: true },
-        { id: "156", number: "ORDER-156", complete: false },
+        {
+          id: "155",
+          number: "ORDER-155",
+          complete: true,
+          deliveredPercent: 100,
+        },
+        {
+          id: "156",
+          number: "ORDER-156",
+          complete: false,
+          deliveredPercent: 25,
+        },
       ],
+      overallProgress: 62.5,
       sentSupplierCount: 2,
       totalSupplierCount: 2,
       verifiedSupplierCount: 1,
@@ -53,12 +64,18 @@ it("shows all linked orders and status in the shared card and opens on click", (
   expect(screen.getByText("ORDER-156")).toBeTruthy();
   expect(screen.queryByText("1/2 verified")).toBeNull();
   expect(
-    screen.getByLabelText("ORDER-155: 100% complete and verified").className,
-  ).toContain("bg-emerald-50");
+    screen
+      .getByLabelText("ORDER-155: 100% complete and verified")
+      .getAttribute("title"),
+  ).toBe("100% delivered · fully verified");
   expect(
-    screen.getByLabelText("ORDER-156: not fully complete and verified")
-      .className,
-  ).not.toContain("bg-emerald-50");
+    screen
+      .getByLabelText("ORDER-156: not fully complete and verified")
+      .getAttribute("title"),
+  ).toBe("25% delivered");
+  expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+    "63",
+  );
   fireEvent.click(screen.getByText("October 14"));
   expect(p.onOpen).toHaveBeenCalledOnce();
 });

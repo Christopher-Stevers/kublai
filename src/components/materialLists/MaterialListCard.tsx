@@ -1,4 +1,5 @@
 "use client";
+import { materialProgressStyle } from "~/lib/material-progress-style";
 import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import {
@@ -12,7 +13,6 @@ import {
   UserIcon,
   CalendarIcon,
   SendIcon,
-  CheckCircle2Icon,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -36,6 +36,7 @@ type List = Pick<
   | "materialTotal"
   | "orderNumbers"
   | "orderStatuses"
+  | "overallProgress"
   | "contributors"
   | "sentSupplierCount"
   | "totalSupplierCount"
@@ -222,6 +223,7 @@ export function MaterialListCard({
             </div>
           )}
           <MaterialListSendStatus
+            overallProgress={list.overallProgress}
             orders={list.orderStatuses}
             orderNumbers={list.orderNumbers}
             sentSupplierCount={list.sentSupplierCount}
@@ -247,43 +249,14 @@ export function MaterialListCard({
   );
 }
 
-function getSendStatusTone(
-  sentSupplierCount: number,
-  totalSupplierCount: number,
-) {
-  if (totalSupplierCount === 0) {
-    return {
-      chip: "border-border bg-muted/50 text-muted-foreground",
-      bar: "bg-gray-300",
-    };
-  }
-
-  if (sentSupplierCount >= totalSupplierCount) {
-    return {
-      chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      bar: "bg-emerald-500",
-    };
-  }
-
-  if (sentSupplierCount > 0) {
-    return {
-      chip: "border-amber-200 bg-amber-50 text-amber-700",
-      bar: "bg-amber-500",
-    };
-  }
-
-  return {
-    chip: "border-border bg-muted/50 text-foreground/80",
-    bar: "bg-gray-400",
-  };
-}
-
 function MaterialListSendStatus({
+  overallProgress = 0,
   sentSupplierCount = 0,
   totalSupplierCount = 0,
   orders,
   orderNumbers,
 }: {
+  overallProgress?: number;
   sentSupplierCount?: number;
   totalSupplierCount?: number;
   verifiedSupplierCount?: number;
@@ -295,16 +268,15 @@ function MaterialListSendStatus({
     totalSupplierCount > 0
       ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
       : 0;
-  const tone = getSendStatusTone(normalizedSentCount, totalSupplierCount);
+  const overall = Math.max(0, Math.min(100, overallProgress));
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-1.5">
         <div
-          className={
-            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium " +
-            tone.chip
-          }
+          className="border-border text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium"
+          style={materialProgressStyle(progress)}
+          title={`${progress}% sent`}
         >
           <SendIcon className="h-3.5 w-3.5" />
           <span>
@@ -313,10 +285,18 @@ function MaterialListSendStatus({
         </div>
         <MaterialListOrderNumbers orders={orders} numbers={orderNumbers} />
       </div>
-      <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-orange-500/25"
+        role="progressbar"
+        aria-label="Overall sending, delivery and verification"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(overall)}
+        title={`${Math.round(overall)}% overall · sending, delivery and verification`}
+      >
         <div
-          className={"h-full rounded-full transition-all " + tone.bar}
-          style={{ width: progress + "%" }}
+          className="h-full bg-emerald-500 transition-all"
+          style={{ width: overall + "%" }}
         />
       </div>
     </div>

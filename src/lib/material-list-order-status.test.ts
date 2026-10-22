@@ -25,3 +25,22 @@ it("requires every item complete, excludes cancelled/other lists, and handles em
     ["empty", false],
   ]);
 });
+it("weights deliveries by quantity rather than number of rows", () => {
+  const rows = [
+    { id: "a", materialListId: "l", orderNumber: "ORDER-1", status: "sent" },
+  ];
+  const counts = new Map([
+    [
+      "a",
+      {
+        itemCount: 2,
+        completeItemCount: 0,
+        orderedQuantity: 100,
+        receivedQuantity: 25,
+      },
+    ],
+  ]);
+  expect(
+    materialListOrderStatuses("l", rows, counts)[0]?.deliveredPercent,
+  ).toBe(25);
+});

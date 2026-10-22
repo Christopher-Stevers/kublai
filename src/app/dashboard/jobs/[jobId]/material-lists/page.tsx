@@ -91,6 +91,7 @@ export default function JobDetailPage({
       {
         orderNumbers: list.orderNumbers,
         orderStatuses: list.orderStatuses,
+        overallProgress: list.overallProgress,
         sentSupplierCount: list.sentSupplierCount,
         totalSupplierCount: list.totalSupplierCount,
         verifiedSupplierCount: list.verifiedSupplierCount,

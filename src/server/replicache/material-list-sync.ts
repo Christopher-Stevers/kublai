@@ -1,3 +1,4 @@
+import { materialListProgress } from "~/lib/material-list-progress";
 import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
@@ -1209,6 +1210,7 @@ export async function handleMaterialListReplicachePull(
           priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
           sentOrderNumber: orders.orderNumber,
           sentOrderStatus: orders.status,
+          sentAt: orders.sentAt,
           sentQuantity: orderItems.quantity,
           receivedQuantity: orderItems.receivedQuantity,
           verificationStatus: orderItems.verificationStatus,
@@ -1336,6 +1338,8 @@ export async function handleMaterialListReplicachePull(
             .select({
               orderId: orderItems.orderId,
               itemCount: sql<number>`count(*)::int`,
+              orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}, 0)), 0)::float8`,
+              receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}, 0))), 0)::float8`,
               completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
               verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
@@ -1417,6 +1421,7 @@ export async function handleMaterialListReplicachePull(
           key: `materialList/${materialList.id}`,
           value: {
             ...materialList,
+          overallProgress: materialListProgress(itemRows.filter(row => row.quoteId === materialList.quoteId)),
           orderStatuses: materialListOrderStatuses(materialList.id, orderRows, verificationByOrderId),
             orderNumbers: [
               ...new Set(

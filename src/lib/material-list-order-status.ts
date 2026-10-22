@@ -2,6 +2,7 @@ export type MaterialListOrderStatus = {
   id: string;
   number: string;
   complete: boolean;
+  deliveredPercent: number;
 };
 
 export function materialListOrderStatuses(
@@ -14,7 +15,12 @@ export function materialListOrderStatuses(
   }[],
   verification: ReadonlyMap<
     string,
-    { itemCount: number; completeItemCount: number }
+    {
+      itemCount: number;
+      completeItemCount: number;
+      orderedQuantity?: number;
+      receivedQuantity?: number;
+    }
   >,
 ): MaterialListOrderStatus[] {
   return orders
@@ -29,6 +35,15 @@ export function materialListOrderStatuses(
       return {
         id: order.id,
         number: order.orderNumber!.trim(),
+        deliveredPercent: counts?.orderedQuantity
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                ((counts.receivedQuantity ?? 0) / counts.orderedQuantity) * 100,
+              ),
+            )
+          : 0,
         complete:
           !!counts &&
           counts.itemCount > 0 &&

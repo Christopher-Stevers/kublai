@@ -1,3 +1,4 @@
+import { materialListProgress } from "~/lib/material-list-progress";
 import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -104,6 +105,12 @@ export const jobRouter = createTRPCRouter({
           ? ctx.db
               .select({
                 quoteId: quoteItems.quoteId,
+                quantity: quoteItems.quantity,
+                sentQuantity: orderItems.quantity,
+                receivedQuantity: orderItems.receivedQuantity,
+                verificationStatus: orderItems.verificationStatus,
+                sentOrderStatus: orders.status,
+                sentAt: orders.sentAt,
                 selectedSupplierId: quoteItems.supplierId,
                 supplierPartSupplierId: supplierParts.supplierId,
                 partDefinitionId: quoteItems.partDefinitionId,
@@ -113,6 +120,8 @@ export const jobRouter = createTRPCRouter({
                 supplierParts,
                 eq(quoteItems.supplierPartId, supplierParts.id),
               )
+              .leftJoin(orderItems, eq(quoteItems.sentOrderItemId, orderItems.id))
+              .leftJoin(orders, eq(orderItems.orderId, orders.id))
               .where(inArray(quoteItems.quoteId, quoteIds))
           : Promise.resolve([]),
         listIds.length
@@ -152,6 +161,8 @@ export const jobRouter = createTRPCRouter({
             .select({
               orderId: orderItems.orderId,
               itemCount: sql<number>`count(*)::int`,
+              orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}, 0)), 0)::float8`,
+              receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}, 0))), 0)::float8`,
               completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
               verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
@@ -200,6 +211,7 @@ export const jobRouter = createTRPCRouter({
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
+          overallProgress: materialListProgress(supplierRows.filter(row => row.quoteId === list.quoteId)),
           orderStatuses: materialListOrderStatuses(list.id, orderRows, verificationByOrderId),
           orderNumbers: [
             ...new Set(
