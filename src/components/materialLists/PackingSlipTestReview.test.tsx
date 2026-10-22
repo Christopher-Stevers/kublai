@@ -44,7 +44,7 @@ it("shows saved crops and separate confidence without receipt actions", async ()
   fireEvent.click(
     await screen.findByRole("button", { name: "Open Jev test review" }),
   );
-  expect(screen.getByText("Page 2, detected row 2")).toBeTruthy();
+  expect(screen.getByText("Original page 2, detected row 2")).toBeTruthy();
   expect(
     screen.getByText("0 · 39% confidence · Needs human review"),
   ).toBeTruthy();

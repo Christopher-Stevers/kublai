@@ -234,7 +234,7 @@ export function PackingSlips({
       >
         <DialogContent
           showCloseButton={!scanning}
-          className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
+          className="max-h-[90dvh] overflow-y-auto sm:max-w-[96vw] xl:max-w-[1500px]"
         >
           <DialogHeader>
             <DialogTitle>

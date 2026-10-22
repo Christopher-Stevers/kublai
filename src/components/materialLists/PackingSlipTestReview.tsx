@@ -101,74 +101,84 @@ export function PackingSlipTestReview({
               <h4 className="font-medium">
                 Page {row.page} · detected row {row.index}
               </h4>
-              <SlipLineImage
-                url={url}
-                page={row.page}
-                box={row.box}
-                header={
-                  row.header ? { page: row.page, box: row.header } : undefined
+              <div
+                className={
+                  row.dewarped
+                    ? "grid grid-cols-1 gap-4 lg:grid-cols-2"
+                    : "space-y-2"
                 }
-                label={`Page ${row.page}, detected row ${row.index}`}
-              />
+              >
+                {(
+                  ["original", ...(row.dewarped ? ["dewarped"] : [])] as const
+                ).map((mode) => {
+                  const after = mode === "dewarped";
+                  const answers = after ? row.dewarped! : row;
+                  const imageUrl = after
+                    ? `/api/job-documents/packing-slips/test-review?jobId=${encodeURIComponent(jobId)}&versionId=${encodeURIComponent(versionId)}&page=${row.page}`
+                    : url;
+                  return (
+                    <section
+                      key={mode}
+                      className="min-w-0 space-y-3 rounded border p-3"
+                      aria-label={after ? "After dewarping" : "Original scan"}
+                    >
+                      <h5 className="font-medium">
+                        {after ? "After dewarping" : "Original scan"}
+                      </h5>
+                      <SlipLineImage
+                        url={imageUrl}
+                        page={after ? 1 : row.page}
+                        box={row.box}
+                        header={
+                          row.header
+                            ? { page: after ? 1 : row.page, box: row.header }
+                            : undefined
+                        }
+                        label={`${after ? "Dewarped" : "Original"} page ${row.page}, detected row ${row.index}`}
+                      />
+                      <dl className="space-y-2 text-sm">
+                        {(
+                          [
+                            ["Part", "part"],
+                            ["Shipped", "shipped"],
+                            ["Backordered", "backordered"],
+                          ] as const
+                        ).map(([label, key]) => {
+                          const answer = answers[key];
+                          const delta = Math.round(
+                            (answer.confidence - row[key].confidence) * 100,
+                          );
+                          return (
+                            <div key={key}>
+                              <dt className="font-medium">{label}</dt>
+                              <dd>
+                                {answer.value} ·{" "}
+                                {Math.round(answer.confidence * 100)}%
+                                confidence
+                                {after
+                                  ? ` · ${delta > 0 ? "+" : ""}${delta} percentage points`
+                                  : ""}
+                                {answer.confidence < 0.8
+                                  ? " · Needs human review"
+                                  : ""}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    </section>
+                  );
+                })}
+              </div>
               <p className="text-muted-foreground text-xs">
-                Row location confidence:{" "}
+                Original row location confidence:{" "}
                 {Math.round(row.locationConfidence * 100)}%.{" "}
                 {row.kind.value !== "one"
-                  ? "Possible multiple items or non-item row—review the image."
+                  ? "Possible multiple items or non-item row—review the image. "
                   : ""}
+                Confidence changes do not establish accuracy. Row locations and
+                questions were held fixed.
               </p>
-              <dl className="space-y-2 text-sm">
-                {(
-                  [
-                    ["Part", row.part],
-                    ["Shipped", row.shipped],
-                    ["Backordered", row.backordered],
-                  ] as const
-                ).map(([label, answer]) => (
-                  <div key={label}>
-                    <dt className="font-medium">{label}</dt>
-                    <dd>
-                      {answer.value} · {Math.round(answer.confidence * 100)}%
-                      confidence
-                      {answer.confidence < 0.8 ? " · Needs human review" : ""}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              {row.dewarped && (
-                <div className="space-y-2 border-t pt-2 text-sm">
-                  <h5 className="font-medium">
-                    After dewarping · same row and questions
-                  </h5>
-                  {(
-                    [
-                      ["Part", "part"],
-                      ["Shipped", "shipped"],
-                      ["Backordered", "backordered"],
-                    ] as const
-                  ).map(([label, key]) => {
-                    const before = row[key],
-                      after = row.dewarped![key];
-                    const delta = Math.round(
-                      (after.confidence - before.confidence) * 100,
-                    );
-                    return (
-                      <p key={key}>
-                        <strong>{label}:</strong> {before.value} (
-                        {Math.round(before.confidence * 100)}%) → {after.value}{" "}
-                        ({Math.round(after.confidence * 100)}%) ·{" "}
-                        {delta > 0 ? "+" : ""}
-                        {delta} percentage points
-                        {after.confidence < 0.8 ? " · Needs human review" : ""}
-                      </p>
-                    );
-                  })}
-                  <p className="text-muted-foreground text-xs">
-                    Confidence changes do not establish accuracy. Row locations
-                    were held fixed for this comparison.
-                  </p>
-                </div>
-              )}
             </article>
           ))}
         </>
