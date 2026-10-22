@@ -612,7 +612,7 @@ export function PipeMaterialListDialog({
                 }
               : null,
             addedBySnapshot: me
-              ? { id: me.id, name: me.name, email: me.email }
+              ? { id: me.id, name: me.name, email: me.email, department: me.department ?? null }
               : null,
           }),
         ),

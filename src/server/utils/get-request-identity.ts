@@ -8,6 +8,7 @@ import { getDevBypassUser } from "~/server/utils/get-dev-bypass-user";
 export type RequestUser = {
   id: string;
   name: string | null;
+  department?: string | null;
   email: string;
   image: string | null;
   role: string | null;

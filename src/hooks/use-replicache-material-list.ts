@@ -74,6 +74,7 @@ export interface ReplicacheMaterialListItem {
     supplier: { id: string; name: string } | null;
   } | null;
   addedBy?: {
+    department?: string | null;
     id: string;
     name: string | null;
     email: string | null;

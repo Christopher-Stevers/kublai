@@ -1297,11 +1297,12 @@ export async function handleMaterialListReplicachePull(
                 id: users.id,
                 name: users.name,
                 email: users.email,
+                department: sql<string | null>`${users}."department"`,
               })
               .from(users)
-              .where(inArray(users.id, contributorUserIds))
+              .where(and(inArray(users.id, contributorUserIds), sql`${users}."organizationId" = ${organizationId}`))
           : [];
-      const contributorUserMap = new Map<string, { id: string; name: string | null; email: string | null }>(
+      const contributorUserMap = new Map<string, { id: string; name: string | null; email: string | null; department: string | null }>(
         contributorUserRows.map((user) => [user.id, user]),
       );
 
@@ -1547,6 +1548,7 @@ export async function handleMaterialListReplicachePull(
                     id: item.addedByUserId,
                     name: addedByUser?.name ?? addedByUser?.email ?? "Unknown",
                     email: addedByUser?.email ?? null,
+                    department: addedByUser?.department ?? null,
                   };
                 })()
               : null,

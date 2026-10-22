@@ -118,3 +118,16 @@ it("does not start order selection from the actions button", () => {
   expect(p.onOrders).not.toHaveBeenCalled();
   expect(p.onOpen).not.toHaveBeenCalled();
 });
+
+it("shows contributing departments alongside contributors without hiding list actions", () => {
+ const p=props();p.list.departments=["HVAC","Plumbing"];p.list.contributors=[{id:"tim",name:"Tim",email:null}];
+ render(<MaterialListCard {...p}/>);
+ expect(screen.getByLabelText("Contributing departments")).toHaveTextContent("HVAC");
+ expect(screen.getByLabelText("Contributing departments")).toHaveTextContent("Plumbing");
+ expect(screen.getByText("Tim")).toBeInTheDocument();
+ fireEvent.click(screen.getByText("Plumbing"));expect(p.onOpen).toHaveBeenCalledOnce();
+});
+it("does not invent departments for an empty or older cached list",()=>{
+ render(<MaterialListCard {...props()}/>);
+ expect(screen.queryByLabelText("Contributing departments")).toBeNull();
+});

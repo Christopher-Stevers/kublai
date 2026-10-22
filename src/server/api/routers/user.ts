@@ -85,6 +85,7 @@ export const userRouter = createTRPCRouter({
       id: ctx.user.id,
       name: ctx.user.name,
       email: ctx.user.email,
+      department: ctx.user.department ?? null,
     };
   }),
 

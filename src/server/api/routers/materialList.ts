@@ -483,6 +483,7 @@ export const materialListRouter = createTRPCRouter({
             addedByUserId: quoteItems.addedByUserId,
             addedByName: users.name,
             addedByEmail: users.email,
+            addedByDepartment: sql<string | null>`${users}."department"`,
           })
           .from(quoteItems)
           .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
@@ -497,7 +498,7 @@ export const materialListRouter = createTRPCRouter({
           .leftJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
           .leftJoin(units, eq(quoteItems.uomId, units.id))
           .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
-          .leftJoin(users, eq(quoteItems.addedByUserId, users.id))
+          .leftJoin(users, and(eq(quoteItems.addedByUserId, users.id), sql`${users}."organizationId" = ${ctx.user.organizationId}`))
           .where(eq(quoteItems.quoteId, materialList.quoteId))
           .orderBy(asc(quoteItems.createdAt), asc(quoteItems.id)),
       ]);
@@ -573,6 +574,7 @@ export const materialListRouter = createTRPCRouter({
               id: item.addedByUserId,
               name: item.addedByName ?? item.addedByEmail ?? "Unknown",
               email: item.addedByEmail,
+              department: item.addedByDepartment,
             }
           : null,
       }));

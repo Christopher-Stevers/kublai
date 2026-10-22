@@ -56,3 +56,21 @@ it("indexes lists once without mixing jobs, including pending and quote-linked i
   expect(next.lists.list1?.materialTotal).toBe(4.75);
   expect(next.details.job1?.materialLists[0]?.itemCount).toBe(1);
 });
+
+it("shows departments of line-item adders, excluding the creator alone, and updates when items are removed", () => {
+  const jobs=[{id:"job",name:"One"},{id:"other",name:"Two"}];
+  const lists=[{id:"list",jobId:"job",quoteId:"quote",createdBy:{id:"creator",department:"Office"}},{id:"empty",jobId:"job",createdBy:{id:"creator",department:"Office"}},{id:"other-list",jobId:"other"}];
+  const items=[
+    {id:"a",materialListId:"list",quantity:"1",addedBy:{id:"plumber",department:" Plumbing "}},
+    {id:"b",quoteId:"quote",quantity:"1",addedBy:{id:"plumber2",department:"plumbing"}},
+    {id:"c",materialListId:"list",quantity:"1",pendingSync:true,addedBy:{id:"hvac",department:"HVAC"}},
+    {id:"d",materialListId:"list",quantity:"1",addedBy:{id:"unknown",department:" "}},
+    {id:"e",materialListId:"other-list",quantity:"1",addedBy:{id:"electric",department:"Electrical"}},
+  ];
+  const result=indexWorkspaceRecords(jobs,lists,items);
+  expect(result.details.job?.materialLists.find(list=>list.id==="list")?.departments).toEqual(["HVAC","Plumbing"]);
+  expect(result.details.job?.materialLists.find(list=>list.id==="empty")?.departments).toEqual([]);
+  expect(result.details.other?.materialLists[0]?.departments).toEqual(["Electrical"]);
+  const updated=indexWorkspaceRecords(jobs,lists,items.filter(item=>item.id!=="c"));
+  expect(updated.details.job?.materialLists.find(list=>list.id==="list")?.departments).toEqual(["Plumbing"]);
+});

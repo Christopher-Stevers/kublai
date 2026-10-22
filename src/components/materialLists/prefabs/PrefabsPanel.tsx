@@ -69,7 +69,7 @@ export function PrefabsPanel({
   onAddParts: (prefab: { id: string; name: string }) => void;
   onAdded: () => void;
   isOnline: boolean;
-  addedBy: { id: string; name: string | null; email: string | null } | null;
+  addedBy: { id: string; name: string | null; email: string | null; department?: string | null } | null;
 }) {
   const utils = api.useUtils();
   const { data: prefabs, isLoading } = api.prefabs.list.useQuery({kind}, {

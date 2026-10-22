@@ -29,6 +29,7 @@ export interface ReplicacheJob {
 }
 
 export interface ReplicacheContributor {
+  department?: string | null;
   id: string;
   name: string | null;
   email: string | null;
@@ -54,6 +55,7 @@ export interface ReplicacheMaterialListSummary {
   verifiedSupplierCount?: number;
   createdBy?: ReplicacheContributor | null;
   contributors?: ReplicacheContributor[];
+  departments?: string[];
   pendingSync?: boolean;
 }
 
@@ -142,6 +144,7 @@ export function indexWorkspaceRecords(
         : 0,
     );
     let total = 0;
+    const departments = new Map<string, string>();
     const contributors: ReplicacheContributor[] = [],
       seen = new Set<string>();
     addContributor(contributors, seen, list.createdBy);
@@ -149,6 +152,10 @@ export function indexWorkspaceRecords(
       const price = Number(item.extendedPrice);
       if (Number.isFinite(price)) total += price;
       addContributor(contributors, seen, item.addedBy);
+      const department = item.addedBy?.department?.trim();
+      if (department && !departments.has(department.toLocaleLowerCase())) {
+        departments.set(department.toLocaleLowerCase(), department);
+      }
     }
     result.lists[list.id] = {
       materialList: list,
@@ -163,6 +170,7 @@ export function indexWorkspaceRecords(
       itemCount: items.length,
       materialTotal: total,
       contributors,
+      departments: [...departments.values()].sort((a, b) => a.localeCompare(b)),
     });
     listsByJob.set(list.jobId, bucket);
   }

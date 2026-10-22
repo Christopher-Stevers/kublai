@@ -826,6 +826,7 @@ export function AddPartDialog({
                   id: currentUser.id,
                   name: currentUser.name,
                   email: currentUser.email,
+                  department: currentUser.department ?? null,
                 }
               : null,
           }),
@@ -1112,7 +1113,7 @@ export function AddPartDialog({
                 isOnline={isOnline}
                 addedBy={
                   currentUser
-                    ? { id: currentUser.id, name: currentUser.name, email: currentUser.email }
+                    ? { id: currentUser.id, name: currentUser.name, email: currentUser.email, department: currentUser.department ?? null }
                     : null
                 }
               />

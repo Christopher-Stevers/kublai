@@ -60,6 +60,7 @@ export type MaterialListReplicacheMutators = {
         supplier: { id: string; name: string } | null;
       } | null;
       addedBySnapshot?: {
+        department?: string | null;
         id: string;
         name: string | null;
         email: string | null;

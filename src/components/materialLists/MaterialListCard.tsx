@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import {
+  Building2Icon,
   CopyIcon,
   MergeIcon,
   WrenchIcon,
@@ -36,6 +37,7 @@ type List = Pick<
   | "orderStatuses"
   | "overallProgress"
   | "contributors"
+  | "departments"
   | "sentSupplierCount"
   | "totalSupplierCount"
   | "verifiedSupplierCount"
@@ -218,6 +220,16 @@ export function MaterialListCard({
               <span className="min-w-0 leading-snug">
                 {list.contributors.map(formatContributorName).join(", ")}
               </span>
+            </div>
+          )}
+          {!!list.departments?.length && (
+            <div className="flex items-start gap-2">
+              <Building2Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div aria-label="Contributing departments" className="flex min-w-0 flex-wrap gap-1">
+                {list.departments.map(department => (
+                  <span key={department} className="bg-muted/40 text-foreground max-w-full rounded border px-2 py-0.5 text-xs break-words">{department}</span>
+                ))}
+              </div>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
