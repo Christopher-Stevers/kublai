@@ -1,3 +1,5 @@
+import { getJobPriceBook } from "~/server/job-pricing";
+import { jobPriceStatus } from "~/lib/job-price-status";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
@@ -93,6 +95,8 @@ async function orderSnapshot(
     .select({
       id: orderItems.id,
       partId: orderItems.partDefinitionId,
+      supplierId: supplierParts.supplierId,
+      supplierPartId: orderItems.supplierPartId,
       description: orderItems.descriptionSnapshot,
       displayName: partDefinitions.displayName,
       sku: orderItems.supplierSkuSnapshot,
@@ -135,7 +139,9 @@ async function orderSnapshot(
           ),
         )
     : [];
+  const book = await getJobPriceBook(tx, access.job.organizationId, access.job.id);
   return rows.map((r) => ({
+    jobPriceStatus: jobPriceStatus(book, r.partId, r.supplierId, r.supplierPartId),
     id: r.id,
     description: r.description?.trim() ? r.description : r.displayName,
     sku: r.sku?.trim() ? r.sku : r.currentSku,

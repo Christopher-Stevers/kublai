@@ -1094,6 +1094,7 @@ export function AddPartDialog({
             )}
             {prefabView ? (
               <PrefabsPanel
+                priceBook={jobPriceBook}
                 kind={isToolRequest ? "tools" : "materials"}
                 onKindChange={kind => { setManagedPrefabKind(kind); setPrefabTarget(null); setPendingParts([]); resetWizard(); setPrefabView({kind:"list"}); }}
                 materialListId={materialListId}

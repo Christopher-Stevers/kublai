@@ -1,4 +1,6 @@
 "use client";
+import { jobPriceStatus } from "~/lib/job-price-status";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { PackQuantityControls } from "../PackQuantityControls";
@@ -42,6 +44,7 @@ function partCount(prefab: Prefab) {
  * offline mutations, so it works without a connection once prefabs are loaded.
  */
 export function PrefabsPanel({
+  priceBook,
   kind = "materials",
   onKindChange,
   materialListId,
@@ -54,6 +57,7 @@ export function PrefabsPanel({
   isOnline,
   addedBy,
 }: {
+  priceBook?: Parameters<typeof jobPriceStatus>[0];
   kind?: "materials" | "tools";
   onKindChange?: (kind: "materials" | "tools") => void;
   materialListId: string;
@@ -230,7 +234,7 @@ export function PrefabsPanel({
                   <li key={item.id} className="flex items-center gap-2 px-3 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        {item.partDefinition.displayName}
+                        {item.partDefinition.displayName} <QuotedBadge status={jobPriceStatus(priceBook, item.partDefinition.id, item.supplierPart?.supplier.id, item.supplierPart?.id)} />
                       </p>
                       <p
                         className={`truncate text-xs ${item.supplierPart ? "text-muted-foreground" : "text-amber-700"}`}

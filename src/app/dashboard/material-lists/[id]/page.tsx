@@ -84,7 +84,7 @@ export default function MaterialListDetailPage({
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
   const {data:jobPriceBook}=useJobPricing(mlHeader?.kind === "tools" ? null : mlHeader?.jobId);
   const items=useMemo(()=>{
-    const annotated=ordinaryItems.map(item=>({...item,jobPriceStatus:jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id)}));
+    const annotated=ordinaryItems.map(item=>({...item,jobPriceStatus:jobPriceBook ? jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id) : item.jobPriceStatus}));
     return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,item=>item.jobPriceStatus!=="unlisted") : annotated;
   },[ordinaryItems,jobPriceBook]);
   const jobDetail = useReplicacheJob(mlHeader?.jobId ?? "");

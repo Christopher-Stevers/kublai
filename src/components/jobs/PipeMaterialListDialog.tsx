@@ -1,4 +1,6 @@
 "use client";
+import { jobPriceStatus } from "~/lib/job-price-status";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -91,6 +93,7 @@ function sizedTakeoff(
 }
 
 function LineRow({
+  priceBook,
   line,
   options,
   part,
@@ -105,6 +108,7 @@ function LineRow({
   issue,
   disabled,
 }: {
+  priceBook?: Parameters<typeof jobPriceStatus>[0];
   line: PipeTakeoffLine;
   options: PipeCataloguePart[];
   part: PipeCataloguePart | null;
@@ -136,7 +140,7 @@ function LineRow({
           onChange={(event) => onIncluded(event.target.checked)}
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium">{line.label}</span>
+          <span className="block text-sm font-medium">{line.label} <QuotedBadge status={jobPriceStatus(priceBook, part?.id)} /></span>
           <span className="text-muted-foreground block text-xs">{detail}</span>
         </span>
       </label>
@@ -869,6 +873,7 @@ export function PipeMaterialListDialog({
                     <ul aria-busy={searching}>
                       {rows.map((row) => (
                         <LineRow
+                          priceBook={priceBook}
                           key={row.line.key}
                           {...row}
                           spec={spec}

@@ -1,4 +1,5 @@
 "use client";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { cn } from "~/lib/utils";
 import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
 
@@ -89,7 +90,7 @@ export function DeliveryTracker({
               key={item.id}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1.5"
             >
-              <span className="min-w-0 flex-1">{item.description}</span>
+              <span className="min-w-0 flex-1">{item.description} <QuotedBadge status={item.jobPriceStatus} /></span>
               <span className="text-xs tabular-nums">
                 {round(item.received)} / {item.ordered} {item.unit}
               </span>

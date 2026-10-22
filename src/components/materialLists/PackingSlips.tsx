@@ -376,7 +376,7 @@ export function PackingSlips({
                       Boolean(slip.packingSlipAnalysis?.applied)) && (
                       <PackingSlipReview
                         key={`${slip.packingSlipAnalysis?.runId ?? slip.id}:${slip.packingSlipAnalysis?.status ?? "none"}`}
-                        analysis={slip.packingSlipAnalysis}
+                        analysis={slip.packingSlipAnalysis ? { ...slip.packingSlipAnalysis, items: slip.packingSlipAnalysis.items.map(item => ({ ...item, jobPriceStatus: orderItems ? orderItems.find(current => current.id === item.id)?.jobPriceStatus : item.jobPriceStatus })) } : undefined}
                         versionId={slip.currentVersionId}
                         jobId={jobId}
                         busy={busy}

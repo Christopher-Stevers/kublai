@@ -13,6 +13,8 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
   kind: "tools",
   itemMode: vi.fn(),
+  quotedStatus: vi.fn(),
+  priceBook: undefined as undefined | { policy: { active: boolean }; entries: Array<{id: string; partDefinitionId: string; supplierId: string; supplierPartId: string; supplierSku: null; unitCost: string; priceStatus: string}> },
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ prefetch: vi.fn(), replace: vi.fn() }),
@@ -37,7 +39,7 @@ vi.mock("~/hooks/use-replicache-jobs", () => ({
 vi.mock("~/hooks/use-replicache-material-list", () => ({
   useReplicacheMaterialList: () => ({
     materialList: { id: "list", name: "Tool request", kind: state.kind },
-    items: [{ id: "item", quantity: "2" }],
+    items: [{ id: "item", quantity: "2", partDefinition: { id: "part" }, supplierId: "supplier" }],
     materialTotal: 0,
   }),
 }));
@@ -65,8 +67,9 @@ vi.mock("~/components/permissions/FinancialVisibility", () => ({
   FinancialOnly: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("~/components/materialLists/MaterialListItem", () => ({
-  MaterialListItem: (props: { isToolRequest?: boolean }) => {
+  MaterialListItem: (props: { isToolRequest?: boolean; item: { jobPriceStatus?: string } }) => {
     state.itemMode(props.isToolRequest);
+    state.quotedStatus(props.item.jobPriceStatus);
     return <div>Drill</div>;
   },
 }));
@@ -134,7 +137,7 @@ vi.mock("~/trpc/react", () => ({
       duplicate: { useMutation: () => ({ isPending: false }) },
       sendGeneratedOrder: { useMutation: () => ({ mutateAsync: state.send }) },
     },
-    jobPricing: { requestApproval: { useMutation: () => ({}) } },
+    jobPricing: { get: { useQuery: () => ({data: state.priceBook}) }, requestApproval: { useMutation: () => ({}) } },
   },
 }));
 
@@ -187,9 +190,17 @@ it("lets a foreman send tools from the job workspace to Asset Management without
       supplierId: "tool-room",
       sentTo: "Tool room",
       notes: undefined,
+      orderedItemIds: ["item"],
     }),
   );
   expect(
     await screen.findByRole("link", { name: "Waiting on tool room" }),
   ).toHaveAttribute("href", "/dashboard/assets/requests/request-id");
+});
+
+it("passes the current job's quoted status into dashboard material cards", () => {
+  state.kind = "materials";
+  state.priceBook = { policy: { active: true }, entries: [{ id: "entry", partDefinitionId: "part", supplierId: "supplier", supplierPartId: "listing", supplierSku: null, unitCost: "10", priceStatus: "confirmed" }] };
+  render(<DashboardClient initialJobs={[]} />);
+  expect(state.quotedStatus).toHaveBeenLastCalledWith("confirmed");
 });

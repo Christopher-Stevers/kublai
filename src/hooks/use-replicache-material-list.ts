@@ -34,6 +34,7 @@ export function useReplicacheSyncing() {
 }
 
 export interface ReplicacheMaterialListItem {
+  jobPriceStatus?: string;
   sentOrderItemId?: string | null;
   priceBookNameSnapshot?: string | null;
   sentOrder?: SentMaterialOrder | null;

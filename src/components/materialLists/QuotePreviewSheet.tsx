@@ -1,4 +1,6 @@
 "use client";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 
 import { formatOrderedBulkQuantity, packContents } from "~/lib/pack-quantity";
 import {
@@ -59,6 +61,8 @@ export function QuotePreviewSheet({
     { quoteId: providedQuoteId ?? "" },
     { enabled: isOnline && open && !!providedQuoteId },
   );
+
+  const { data: jobPriceBook } = useJobPricing(existingQuote?.jobId ?? materialList?.job.id);
 
   // Load notes and markup from quote when available
   useEffect(() => {
@@ -233,7 +237,7 @@ export function QuotePreviewSheet({
                       className="flex justify-between border-b pb-2 text-sm"
                     >
                       <span>
-                        {displayName} × {qty}
+                        {displayName} × {qty} <QuotedBadge status={jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierPart?.supplierId, item.supplierPart?.id)} />
                       </span>
                       <FinancialOnly>
                         <span>${price.toFixed(2)}</span>

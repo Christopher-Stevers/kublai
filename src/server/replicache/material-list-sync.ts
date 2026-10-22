@@ -1,3 +1,6 @@
+import { getJobPriceBook } from "~/server/job-pricing";
+import { jobPriceStatus } from "~/lib/job-price-status";
+import { indexJobPrices } from "~/lib/job-pricing";
 import { materialListProgress } from "~/lib/material-list-progress";
 import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
@@ -1232,6 +1235,7 @@ export async function handleMaterialListReplicachePull(
           partDefinitionMaterial: materials.name,
           supplierPartId: quoteItems.supplierPartId,
           supplierId: quoteItems.supplierId,
+          supplierPartSupplierId: supplierParts.supplierId,
           supplierPartSku: supplierParts.supplierSku,
           supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
             supplierPartPackSize: supplierParts.packSize,
@@ -1467,12 +1471,18 @@ export async function handleMaterialListReplicachePull(
         });
       }
 
+      const priceBooks = new Map(await Promise.all(jobRows.map(async job => {
+        const book = await getJobPriceBook(tx, organizationId, job.id);
+        return [job.id, { ...book, entries: indexJobPrices(book.entries) }] as const;
+      })));
+      const listJobs = new Map(materialListRows.map(list => [list.id, list.jobId]));
       for (const item of itemRows) {
         patch.push({
           op: "put",
           key: `materialListItem/${item.id}`,
           value: {
             id: item.id,
+            jobPriceStatus: jobPriceStatus(priceBooks.get(listJobs.get(item.materialListId ?? "") ?? ""), item.partDefinitionId, item.supplierId ?? item.supplierPartSupplierId, item.supplierPartId),
             sentOrderItemId: item.sentOrderItemId,
             priceBookNameSnapshot: item.priceBookNameSnapshot,
             sentOrder: item.sentOrderId ? {

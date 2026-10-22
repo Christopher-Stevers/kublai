@@ -468,6 +468,13 @@
       "when": 1792619296590,
       "tag": "0090_packing_slip_review_history",
       "breakpoints": false
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792703317448,
+      "tag": "0091_job_pricing_sync",
+      "breakpoints": false
     }
   ]
 }

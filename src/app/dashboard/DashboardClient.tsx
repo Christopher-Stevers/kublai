@@ -1,4 +1,5 @@
 "use client";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
@@ -178,6 +179,7 @@ export function DashboardClient({
   const offlineMaterialListDetail = useReplicacheMaterialList(
     offlineMaterialListId ?? "",
   );
+  const { data: jobPriceBook } = useJobPricing(offlineMaterialListDetail.materialList?.kind === "tools" ? null : offlineJobId);
   const utils = api.useUtils();
   const refreshMaterialLists = () => {
     requestSync();
@@ -299,7 +301,7 @@ export function DashboardClient({
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
     const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
-    const selectedItems = sortedItems;
+    const selectedItems = sortedItems.map(item => ({ ...item, jobPriceStatus: jobPriceBook ? jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierId ?? item.supplierPart?.supplierId, item.supplierPart?.id) : item.jobPriceStatus }));
     const isToolRequest = selectedMaterialList?.kind === "tools";
     const hasToolItems = selectedItems.some(item => !!item.partDefinition?.assetTracking);
     const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;

@@ -1,4 +1,5 @@
 "use client";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangleIcon,
@@ -487,7 +488,7 @@ export function PackingSlipReview({
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{item.description}</p>
+                  <p className="font-medium">{item.description} <QuotedBadge status={item.jobPriceStatus} /></p>
                   <p className="text-muted-foreground text-xs">
                     {item.sku ? `SKU ${item.sku}` : "No SKU"}
                     {confidence && confidence !== "high"

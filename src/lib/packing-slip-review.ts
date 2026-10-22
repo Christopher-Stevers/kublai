@@ -1,4 +1,5 @@
 export type ReceiptOrderItem = {
+  jobPriceStatus?: string;
   id: string;
   description: string;
   sku: string | null;

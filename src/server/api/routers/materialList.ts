@@ -1,3 +1,4 @@
+import { jobPriceStatus } from "~/lib/job-price-status";
 import { orderItemSequence } from "~/lib/order-item-sequence";
 import { supplierEmailPreferences } from "~/server/db/supplier-email-preferences-schema";
 import { readSupplierEmailPreference } from "~/server/supplier-email-preferences";
@@ -576,6 +577,8 @@ export const materialListRouter = createTRPCRouter({
           : null,
       }));
 
+      const priceBook = await getJobPriceBook(ctx.db, ctx.user.organizationId, materialList.job.id);
+
       // Calculate material total
       const materialTotal = items.reduce((sum, item) => {
         const extendedPrice = item.extendedPrice
@@ -624,7 +627,7 @@ export const materialListRouter = createTRPCRouter({
             : null,
         },
         quote,
-        items,
+        items: items.map(item => ({ ...item, jobPriceStatus: jobPriceStatus(priceBook, item.partDefinition?.id, item.selectedSupplierId ?? item.supplierPart?.supplierId, item.supplierPart?.id) })),
         materialTotal,
       };
     }),
