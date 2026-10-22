@@ -225,7 +225,7 @@ function NotificationInbox({
           {hasUnread && (
             <span
               aria-hidden="true"
-              className="bg-destructive text-destructive-foreground ring-background absolute top-0.5 right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold ring-2"
+              className="ring-background absolute -top-1 -right-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-700 px-1.5 text-sm leading-none font-bold text-white tabular-nums shadow-sm ring-2"
             >
               {notificationBadge(unreadCount)}
             </span>
