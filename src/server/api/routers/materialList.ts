@@ -1,3 +1,4 @@
+import { nextMaterialOrderNumber } from "~/server/order-number";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { orderItemSequence } from "~/lib/order-item-sequence";
 import { supplierEmailPreferences } from "~/server/db/supplier-email-preferences-schema";
@@ -1383,7 +1384,7 @@ ${foremanName}`;
         });
       }
 
-      const [requestedSupplier] = await ctx.db.select({ kind: suppliers.kind }).from(suppliers)
+      const [requestedSupplier] = await ctx.db.select({ kind: suppliers.kind, name: suppliers.name }).from(suppliers)
         .where(and(eq(suppliers.id, input.supplierId), eq(suppliers.organizationId, ctx.user.organizationId))).limit(1);
       const isToolRequest = materialList.kind === "tools" || requestedSupplier?.kind === "tool_room";
       if (!isToolRequest) assertCan(ctx.user, "orders.send");
@@ -1428,24 +1429,27 @@ ${foremanName}`;
           if (input.approvalFingerprint && input.approvalFingerprint!==approval.fingerprint) throw new TRPCError({code:"CONFLICT",message:"This list or its prices changed. Refresh the order preview before sending."});
         }
 
-        const [existingOrderCountResult] = await tx
-          .select({
-            count: sql<number>`coalesce(max(substring(${orders.orderNumber} from '([0-9]{1,9})$')::int), 0)::int`,
-          })
-          .from(orders)
-          .where(
-            and(
-              eq(orders.jobId, materialList.jobId),
-              eq(orders.organizationId, ctx.user.organizationId),
-              // Tool requests are numbered separately (TOOLS-001, …).
-              isToolRequest
-                ? eq(orders.kind, "tool_request")
-                : eq(orders.kind, "materials"),
-            ),
-          );
+        let orderNumber: string;
+        if (isToolRequest) {
+          const [existingOrderCountResult] = await tx
+            .select({
+              count: sql<number>`coalesce(max(substring(${orders.orderNumber} from '([0-9]{1,9})$')::int), 0)::int`,
+            })
+            .from(orders)
+            .where(
+              and(
+                eq(orders.jobId, materialList.jobId),
+                eq(orders.organizationId, ctx.user.organizationId),
+                eq(orders.kind, "tool_request"),
+              ),
+            );
 
-        const createdOrderSequence =
-          Number(existingOrderCountResult?.count ?? 0) + 1;
+          const createdOrderSequence = Number(existingOrderCountResult?.count ?? 0) + 1;
+
+          orderNumber = `TOOLS-${String(createdOrderSequence).padStart(3, "0")}`;
+        } else {
+          orderNumber = await nextMaterialOrderNumber(tx, ctx.user.organizationId!, requestedSupplier?.name ?? "Supplier");
+        }
 
         const [createdOrder] = await tx
           .insert(orders)
@@ -1453,7 +1457,7 @@ ${foremanName}`;
             organizationId: ctx.user.organizationId,
             jobId: materialList.jobId,
             materialListId: input.materialListId,
-            orderNumber: `${isToolRequest ? "TOOLS" : "ORDER"}-${String(createdOrderSequence).padStart(3, "0")}`,
+            orderNumber,
             supplierId: input.supplierId,
             createdByUserId: ctx.userId,
             status: "sent",

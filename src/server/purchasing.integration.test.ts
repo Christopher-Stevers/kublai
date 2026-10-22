@@ -1,3 +1,4 @@
+import { materialOrderReference, nextMaterialOrderNumber } from "~/server/order-number";
 import { assertCanManageAssets } from "~/server/auth/permissions";
 import { supplierPriceBooksRouter } from "~/server/api/routers/supplierPriceBooks";
 import { readSupplierEmailPreference, saveSupplierEmailPreference } from "~/server/supplier-email-preferences";
@@ -145,12 +146,13 @@ describe.skipIf(!socket)(
       await conn.unsafe(await readFile(new URL("../../drizzle/0074_job_pricing.sql",import.meta.url),"utf8"));
       await conn.unsafe(await readFile(new URL("../../drizzle/0077_supplier_email_preferences.sql",import.meta.url),"utf8"));
       await conn.unsafe(await readFile(new URL("../../drizzle/0082_supplier_price_books.sql",import.meta.url),"utf8"));
+      await conn.unsafe(await readFile(new URL("../../drizzle/0092_order_number_counter.sql",import.meta.url),"utf8"));
     });
     beforeEach(async () => {
       supplierAccess.financial = true;
       supplierAccess.orders = true;
       await conn.unsafe(
-        `TRUNCATE kublai_job_supplier_price_book,kublai_supplier_price_book_entry,kublai_supplier_price_book,kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+        `TRUNCATE kublai_order_number_counter,kublai_job_supplier_price_book,kublai_supplier_price_book_entry,kublai_supplier_price_book,kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
       await db
         .insert(schema.organizations)
@@ -693,8 +695,25 @@ describe.skipIf(!socket)(
       await material.undoOrder({orderId:first.id});
       expect((await material.previewOrders({materialListId:copy.id})).possible).toHaveLength(0);
       const third = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
-      expect(third.orderNumber).toBe("ORDER-003");
+      expect(third.orderNumber).toBe("3-Synthetic supplier");
       expect((await material.getOrderById({orderId:second.id})).items).toHaveLength(1);
+    });
+    it("formats supplier names safely within the stored reference length", () => {
+      expect(materialOrderReference(170, "  Fastening   House  ")).toBe("170-Fastening House");
+      expect(materialOrderReference(171, "A".repeat(255))).toHaveLength(100);
+    });
+    it("continues legacy numbers across jobs while keeping other companies separate", async () => {
+      await db.insert(schema.orders).values([
+        { organizationId: org, jobId: id(903), supplierId: supplier, orderNumber: "ORDER-047", kind: "materials" },
+        { organizationId: id(901), jobId: id(902), supplierId: supplier, orderNumber: "ORDER-900", kind: "materials" },
+      ]);
+      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, "Next"))).toBe("48-Next");
+    });
+    it("shares an atomic sequence across suppliers and retains it after deletion", async () => {
+      const refs = await Promise.all(["Next", "Fastening House"].map(name => db.transaction(tx => nextMaterialOrderNumber(tx, org, name))));
+      expect(refs.map(ref => ref.match(/^(\d+)-/)![1]).sort()).toEqual(["1", "2"]);
+      await db.delete(schema.orders);
+      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, "Next"))).toBe("3-Next");
     });
     it("serializes simultaneous sends so a row is ordered once", async () => {
       const results = await Promise.allSettled([1, 2].map(() => material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })));
