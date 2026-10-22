@@ -93,3 +93,27 @@ response caching. Source files and imported business data must not be committed.
 The three saved Order 155/159 slips contain five pages and 25 *candidate* rows;
 that is not an independently verified item count. Page-break merging, correction
 alias learning, and production image-reader integration remain separate work.
+
+## Conservative dewarping (2026-10-21)
+
+The OCR reader now estimates mild vertical curvature from at least three consistent
+printed table baselines. Numeric tokens identify geometry, never replacement
+values. A product-code anchor can extend the correction leftward. It resamples
+original pixels once, leaves flat/unsupported pages alone, bounds displacement,
+and rejects transforms that would cross rows. Original files remain unchanged.
+OCR is repeated on the prepared image; failed correction or substantial text loss
+falls back to the original. Review boxes are mapped back to source coordinates.
+This is mild table dewarping, not reconstruction of arbitrary folds or occlusion.
+
+`scripts/bench/prepare-slip-dewarp.ts` saves version-scoped private preview images
+for existing evaluation reviews. Prepared-page links are authenticated through the
+same document ACL. Scores displayed in the original review still describe the
+original test, not the prepared images.
+
+On Order 155 first slip page two, four baseline groups supported correction.
+A five-row live image experiment kept questions and choices unchanged and used
+prepared imagery. The two-inch cap changed from shipped 0 (39%) to 15 (79%);
+backorder changed from 0 (30%) to unclear (31%). Other confidence changes were
+mixed. Thus dewarping helped this shipped reading but did not establish a general
+backorder improvement. Full raw requests/results remain in the private benchmark
+folder; do not commit them. No receipt quantities were modified.

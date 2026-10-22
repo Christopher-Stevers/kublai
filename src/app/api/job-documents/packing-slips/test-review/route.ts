@@ -37,6 +37,27 @@ export async function GET(request: Request) {
     const review = slipTestReviewSchema.parse(JSON.parse(raw));
     if (review.versionId !== versionId || review.documentId !== document.id)
       throw Error("Review source mismatch");
+    if (url.searchParams.has("page")) {
+      const page = z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .parse(url.searchParams.get("page"));
+      if (!review.preparedPages?.includes(page))
+        return new Response(null, { status: 404, headers });
+      const png = await readFile(
+        path.join(path.dirname(filename), `${versionId}-page-${page}.png`),
+      );
+      return new Response(new Uint8Array(png), {
+        headers: {
+          ...headers,
+          "Content-Type": "image/png",
+          "X-Content-Type-Options": "nosniff",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        },
+      });
+    }
     return Response.json({ review }, { headers });
   } catch (error) {
     return documentHttpError(error);

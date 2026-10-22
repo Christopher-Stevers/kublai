@@ -74,6 +74,25 @@ export function PackingSlipTestReview({
           >
             Open full packing slip to check missed or split rows
           </a>
+          {!!review.preparedPages?.length && (
+            <div className="space-y-2 rounded border p-3 text-sm">
+              <p>
+                Dewarped comparison images are ready. These straighten the page;
+                the scores below still belong to the original test.
+              </p>
+              {review.preparedPages.map((page) => (
+                <a
+                  key={page}
+                  className="block underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={`/api/job-documents/packing-slips/test-review?jobId=${encodeURIComponent(jobId)}&versionId=${encodeURIComponent(versionId)}&page=${page}`}
+                >
+                  View dewarped page {page}
+                </a>
+              ))}
+            </div>
+          )}
           {review.rows.map((row) => (
             <article
               key={`${row.page}:${row.index}`}

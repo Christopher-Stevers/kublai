@@ -58,3 +58,23 @@ it("returns no review when no test was saved", async () => {
   mocks.read.mockRejectedValue(Object.assign(Error(), { code: "ENOENT" }));
   expect(await (await GET(request())).json()).toEqual({ review: null });
 });
+it("serves prepared images only after authorization and manifest membership", async () => {
+  mocks.read
+    .mockResolvedValueOnce(
+      JSON.stringify({
+        documentId: id,
+        versionId: id,
+        model: "jev-1.14.0",
+        rows: [],
+        preparedPages: [2],
+      }),
+    )
+    .mockResolvedValueOnce(Buffer.from([137, 80, 78, 71]));
+  const response = await GET(new Request(request().url + "&page=2"));
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
+});
+it("does not read arbitrary page paths or unprepared pages", async () => {
+  expect((await GET(new Request(request().url + "&page=2"))).status).toBe(404);
+  expect(mocks.read).toHaveBeenCalledTimes(1);
+});

@@ -1,5 +1,6 @@
 /** OCR of one page image, shared by the extract worker and the benchmark. */
 import sharp from "sharp";
+import { estimatePageWarp, dewarpPage, originalWord } from "./dewarp";
 import {
   mergeWords,
   tsvWords,
@@ -33,7 +34,7 @@ export async function ocrPage(
   tesseract: Tesseract,
   earlier: SlipRow[] = [],
 ): Promise<SlipRow[]> {
-  const image = await sharp(png, { limitInputPixels: 24_000_000 })
+  let image = await sharp(png, { limitInputPixels: 24_000_000 })
     .rotate()
     .resize({
       width: 2400,
@@ -50,12 +51,36 @@ export async function ocrPage(
       image.info.width,
       image.info.height,
     );
-  const block = await read("6");
-  const sparse = await read("11");
+  let block = await read("6");
+  let sparse = await read("11");
+  const candidate = estimatePageWarp(sparse);
+  let warp: typeof candidate = null;
+  if (candidate) {
+    const original = image;
+    try {
+      image = await sharp(await dewarpPage(image.data, candidate))
+        .png()
+        .toBuffer({ resolveWithObject: true });
+      const correctedBlock = await read("6");
+      const correctedSparse = await read("11");
+      // A failed correction must not silently discard readable source text.
+      if (correctedSparse.length < sparse.length * 0.8) image = original;
+      else {
+        block = correctedBlock;
+        sparse = correctedSparse;
+        warp = candidate;
+      }
+    } catch {
+      image = original;
+    }
+  }
   const rows = wordRows(mergeWords(block, sparse), page);
   await rereadCells(image, rows, page, tesseract, earlier).catch(
     () => undefined,
   );
+  if (warp)
+    for (const row of rows)
+      row.words = row.words.map((w) => originalWord(warp, w));
   return rows;
 }
 

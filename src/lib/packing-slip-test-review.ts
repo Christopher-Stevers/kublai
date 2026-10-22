@@ -13,6 +13,7 @@ export const slipTestReviewSchema = z.object({
   versionId: z.uuid(),
   documentId: z.uuid(),
   model: z.string().max(80),
+  preparedPages: z.array(z.number().int().min(1).max(20)).max(20).optional(),
   rows: z
     .array(
       z.object({
