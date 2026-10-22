@@ -181,6 +181,14 @@
   height: 106% !important;
 }
 
+/* Material-list photos fit entirely within the tile, including in dark mode. */
+.dark .part-photo-frame-fit > .part-photo {
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: 100%;
+  height: 100% !important;
+}
+
 @theme {
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,

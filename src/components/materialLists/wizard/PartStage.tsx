@@ -366,13 +366,13 @@ function PartCard({
     >
       <CardContent className="p-0">
         <div className="flex w-full flex-col p-3">
-          <div className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
+          <div className="part-photo-frame part-photo-frame-fit relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
             {part.imageUrl ? (
               <Image
                 src={part.imageUrl}
                 alt={part.displayName}
                 fill
-                className="part-photo object-cover"
+                className="part-photo object-contain p-[8%]"
                 draggable={false}
               />
             ) : (

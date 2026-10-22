@@ -679,7 +679,7 @@ function MaterialListItemComponent({
             </DropdownMenu>
           )}
           <div
-            className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
+            className="part-photo-frame part-photo-frame-fit relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
             style={
               verifyMode
                 ? {
@@ -698,7 +698,7 @@ function MaterialListItemComponent({
                 src={item.partDefinition.imageUrl}
                 alt={item.partDefinition.displayName}
                 fill
-                className="part-photo object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                className="part-photo object-contain p-[8%]"
                 draggable={false}
                 onContextMenu={
                   verifyMode ? (event) => event.preventDefault() : undefined
