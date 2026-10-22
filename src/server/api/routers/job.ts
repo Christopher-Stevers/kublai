@@ -1,3 +1,4 @@
+import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -151,6 +152,7 @@ export const jobRouter = createTRPCRouter({
             .select({
               orderId: orderItems.orderId,
               itemCount: sql<number>`count(*)::int`,
+              completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
               verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
             .from(orderItems)
@@ -198,6 +200,7 @@ export const jobRouter = createTRPCRouter({
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
+          orderStatuses: materialListOrderStatuses(list.id, orderRows, verificationByOrderId),
           orderNumbers: [
             ...new Set(
               orderRows

@@ -90,6 +90,7 @@ export default function JobDetailPage({
       list.id,
       {
         orderNumbers: list.orderNumbers,
+        orderStatuses: list.orderStatuses,
         sentSupplierCount: list.sentSupplierCount,
         totalSupplierCount: list.totalSupplierCount,
         verifiedSupplierCount: list.verifiedSupplierCount,

@@ -1,3 +1,4 @@
+import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
@@ -1335,6 +1336,7 @@ export async function handleMaterialListReplicachePull(
             .select({
               orderId: orderItems.orderId,
               itemCount: sql<number>`count(*)::int`,
+              completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
               verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
             })
             .from(orderItems)
@@ -1415,6 +1417,7 @@ export async function handleMaterialListReplicachePull(
           key: `materialList/${materialList.id}`,
           value: {
             ...materialList,
+          orderStatuses: materialListOrderStatuses(materialList.id, orderRows, verificationByOrderId),
             orderNumbers: [
               ...new Set(
                 orderRows

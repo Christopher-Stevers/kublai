@@ -20,6 +20,10 @@ function props(): ComponentProps<typeof MaterialListCard> {
       itemCount: 18,
       materialTotal: 20,
       orderNumbers: ["ORDER-155", "ORDER-156"],
+      orderStatuses: [
+        { id: "155", number: "ORDER-155", complete: true },
+        { id: "156", number: "ORDER-156", complete: false },
+      ],
       sentSupplierCount: 2,
       totalSupplierCount: 2,
       verifiedSupplierCount: 1,
@@ -47,7 +51,14 @@ it("shows all linked orders and status in the shared card and opens on click", (
   render(<MaterialListCard {...p} />);
   expect(screen.getByText("ORDER-155")).toBeTruthy();
   expect(screen.getByText("ORDER-156")).toBeTruthy();
-  expect(screen.getByText("1/2 verified")).toBeTruthy();
+  expect(screen.queryByText("1/2 verified")).toBeNull();
+  expect(
+    screen.getByLabelText("ORDER-155: 100% complete and verified").className,
+  ).toContain("bg-emerald-50");
+  expect(
+    screen.getByLabelText("ORDER-156: not fully complete and verified")
+      .className,
+  ).not.toContain("bg-emerald-50");
   fireEvent.click(screen.getByText("October 14"));
   expect(p.onOpen).toHaveBeenCalledOnce();
 });

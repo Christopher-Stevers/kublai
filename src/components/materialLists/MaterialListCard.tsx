@@ -35,6 +35,7 @@ type List = Pick<
   | "itemCount"
   | "materialTotal"
   | "orderNumbers"
+  | "orderStatuses"
   | "contributors"
   | "sentSupplierCount"
   | "totalSupplierCount"
@@ -198,7 +199,6 @@ export function MaterialListCard({
             </DropdownMenu>
           )}
         </div>
-        <MaterialListOrderNumbers numbers={list.orderNumbers} />
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         <div className="text-muted-foreground flex flex-1 flex-col gap-2 text-sm">
@@ -222,6 +222,8 @@ export function MaterialListCard({
             </div>
           )}
           <MaterialListSendStatus
+            orders={list.orderStatuses}
+            orderNumbers={list.orderNumbers}
             sentSupplierCount={list.sentSupplierCount}
             totalSupplierCount={list.totalSupplierCount}
             verifiedSupplierCount={list.verifiedSupplierCount}
@@ -279,17 +281,16 @@ function getSendStatusTone(
 function MaterialListSendStatus({
   sentSupplierCount = 0,
   totalSupplierCount = 0,
-  verifiedSupplierCount = 0,
+  orders,
+  orderNumbers,
 }: {
   sentSupplierCount?: number;
   totalSupplierCount?: number;
   verifiedSupplierCount?: number;
+  orders?: import("~/lib/material-list-order-status").MaterialListOrderStatus[];
+  orderNumbers?: string[];
 }) {
   const normalizedSentCount = Math.min(sentSupplierCount, totalSupplierCount);
-  const normalizedVerifiedCount = Math.min(
-    verifiedSupplierCount,
-    normalizedSentCount,
-  );
   const progress =
     totalSupplierCount > 0
       ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
@@ -310,14 +311,7 @@ function MaterialListSendStatus({
             {normalizedSentCount}/{totalSupplierCount} sent
           </span>
         </div>
-        {normalizedSentCount > 0 && (
-          <div className="border-border bg-card text-foreground/80 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium">
-            <CheckCircle2Icon className="text-muted-foreground h-3.5 w-3.5" />
-            <span>
-              {normalizedVerifiedCount}/{normalizedSentCount} verified
-            </span>
-          </div>
-        )}
+        <MaterialListOrderNumbers orders={orders} numbers={orderNumbers} />
       </div>
       <div className="bg-muted h-1.5 overflow-hidden rounded-full">
         <div

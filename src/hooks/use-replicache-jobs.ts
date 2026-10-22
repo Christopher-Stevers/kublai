@@ -47,6 +47,7 @@ export interface ReplicacheMaterialListSummary {
   itemCount: number;
   materialTotal: number;
   orderNumbers?: string[];
+  orderStatuses?: import("~/lib/material-list-order-status").MaterialListOrderStatus[];
   sentSupplierCount?: number;
   totalSupplierCount?: number;
   verifiedSupplierCount?: number;
