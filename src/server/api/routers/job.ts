@@ -119,6 +119,7 @@ export const jobRouter = createTRPCRouter({
               .select({
                 id: orders.id,
                 materialListId: orders.materialListId,
+                orderNumber: orders.orderNumber,
                 supplierId: orders.supplierId,
                 status: orders.status,
                 sentAt: orders.sentAt,
@@ -197,6 +198,18 @@ export const jobRouter = createTRPCRouter({
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
+          orderNumbers: [
+            ...new Set(
+              orderRows
+                .filter(
+                  (order) =>
+                    order.materialListId === list.id &&
+                    order.status !== "cancelled",
+                )
+                .map((order) => order.orderNumber?.trim())
+                .filter((number): number is string => Boolean(number)),
+            ),
+          ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
           totalSupplierCount: !list.quoteId
             ? 0
             : list.kind === "tools"

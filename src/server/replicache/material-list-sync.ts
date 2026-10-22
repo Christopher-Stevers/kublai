@@ -1320,6 +1320,7 @@ export async function handleMaterialListReplicachePull(
             .select({
               id: orders.id,
               materialListId: orders.materialListId,
+              orderNumber: orders.orderNumber,
               supplierId: orders.supplierId,
               status: orders.status,
               sentAt: orders.sentAt,
@@ -1414,6 +1415,18 @@ export async function handleMaterialListReplicachePull(
           key: `materialList/${materialList.id}`,
           value: {
             ...materialList,
+            orderNumbers: [
+              ...new Set(
+                orderRows
+                  .filter(
+                    (order) =>
+                      order.materialListId === materialList.id &&
+                      order.status !== "cancelled",
+                  )
+                  .map((order) => order.orderNumber?.trim())
+                  .filter((number): number is string => Boolean(number)),
+              ),
+            ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
             totalSupplierCount: !materialList.quoteId
               ? 0
               : materialList.kind === "tools"

@@ -210,6 +210,7 @@ export default function JobDetailPage({
     serverJob?.materialLists.map((list) => [
       list.id,
       {
+        orderNumbers: list.orderNumbers,
         sentSupplierCount: list.sentSupplierCount,
         totalSupplierCount: list.totalSupplierCount,
         verifiedSupplierCount: list.verifiedSupplierCount,
@@ -448,6 +449,11 @@ export default function JobDetailPage({
                       </DropdownMenu>
                     )}
                   </div>
+                  {!!list.orderNumbers?.length && (
+                    <p className="text-muted-foreground text-sm break-words">
+                      {list.orderNumbers.join(" · ")}
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
                   <div className="flex flex-1 flex-col gap-2 text-sm text-muted-foreground">
