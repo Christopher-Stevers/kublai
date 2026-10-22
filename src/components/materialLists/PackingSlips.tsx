@@ -1,4 +1,5 @@
 "use client";
+import { PackingSlipTestReview } from "./PackingSlipTestReview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PackingSlipReview } from "./PackingSlipReview";
@@ -364,6 +365,13 @@ export function PackingSlips({
                         <SlipState analysis={slip.packingSlipAnalysis} />
                       </span>
                     </Link>
+                    {slip.currentVersionId && (
+                      <PackingSlipTestReview
+                        key={`${jobId}:${slip.currentVersionId}`}
+                        jobId={jobId}
+                        versionId={slip.currentVersionId}
+                      />
+                    )}
                     {(Boolean(orderId && canUpload) ||
                       Boolean(slip.packingSlipAnalysis?.applied)) && (
                       <PackingSlipReview
