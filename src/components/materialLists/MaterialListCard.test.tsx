@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { MaterialListCard } from "./MaterialListCard";
 vi.mock("~/components/permissions/FinancialVisibility", () => ({
@@ -119,15 +119,28 @@ it("does not start order selection from the actions button", () => {
   expect(p.onOpen).not.toHaveBeenCalled();
 });
 
-it("shows contributing departments alongside contributors without hiding list actions", () => {
- const p=props();p.list.departments=["HVAC","Plumbing"];p.list.contributors=[{id:"tim",name:"Tim",email:null}];
+it("groups people on separate department rows with a person symbol for each contributor", () => {
+ const p=props();
+ p.list.contributors=[
+  {id:"tim",name:"Tim",email:null,department:"Plumbing"},
+  {id:"luca",name:"Luca",email:null,department:"Sheet Metal"},
+  {id:"diego",name:"Diego",email:null,department:"Plumbing"},
+ ];
  render(<MaterialListCard {...p}/>);
- expect(screen.getByLabelText("Contributing departments")).toHaveTextContent("HVAC");
- expect(screen.getByLabelText("Contributing departments")).toHaveTextContent("Plumbing");
- expect(screen.getByText("Tim")).toBeInTheDocument();
- fireEvent.click(screen.getByText("Plumbing"));expect(p.onOpen).toHaveBeenCalledOnce();
+ const plumbing=screen.getByLabelText("Plumbing contributors");
+ expect(within(plumbing).getByText("Tim")).toBeInTheDocument();
+ expect(within(plumbing).getByText("Diego")).toBeInTheDocument();
+ expect(within(plumbing).queryByText("Luca")).toBeNull();
+ expect(plumbing.querySelectorAll('svg')).toHaveLength(2);
+ expect(screen.getByLabelText("Sheet Metal contributors")).toHaveTextContent("Luca");
+ fireEvent.click(within(plumbing).getByText("Tim"));expect(p.onOpen).toHaveBeenCalledOnce();
 });
-it("does not invent departments for an empty or older cached list",()=>{
+it("keeps people without a saved department visible",()=>{
+ const p=props();p.list.contributors=[{id:"tim",name:"Tim",email:null}];
+ render(<MaterialListCard {...p}/>);
+ expect(screen.getByLabelText("No department contributors")).toHaveTextContent("Tim");
+});
+it("does not show empty contributor rows",()=>{
  render(<MaterialListCard {...props()}/>);
- expect(screen.queryByLabelText("Contributing departments")).toBeNull();
+ expect(screen.queryByLabelText("Contributors by department")).toBeNull();
 });

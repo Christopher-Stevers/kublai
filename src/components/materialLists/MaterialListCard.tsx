@@ -2,14 +2,12 @@
 import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import {
-  Building2Icon,
   CopyIcon,
   MergeIcon,
   WrenchIcon,
   MoreVerticalIcon,
   TrashIcon,
   PackageIcon,
-  UsersIcon,
   UserIcon,
   CalendarIcon,
 } from "lucide-react";
@@ -210,26 +208,19 @@ export function MaterialListCard({
             </span>
           </div>
 
-          {list.contributors && list.contributors.length > 0 && (
-            <div className="flex items-start gap-2">
-              {list.contributors.length > 1 ? (
-                <UsersIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              ) : (
-                <UserIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              )}
-              <span className="min-w-0 leading-snug">
-                {list.contributors.map(formatContributorName).join(", ")}
-              </span>
-            </div>
-          )}
-          {!!list.departments?.length && (
-            <div className="flex items-start gap-2">
-              <Building2Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <div aria-label="Contributing departments" className="flex min-w-0 flex-wrap gap-1">
-                {list.departments.map(department => (
-                  <span key={department} className="bg-muted/40 text-foreground max-w-full rounded border px-2 py-0.5 text-xs break-words">{department}</span>
-                ))}
-              </div>
+          {!!list.contributors?.length && (
+            <div aria-label="Contributors by department" className="space-y-1.5">
+              {contributorDepartments(list.contributors).map(group => (
+                <div key={group.key} aria-label={`${group.label} contributors`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 leading-snug">
+                  <span className="font-medium">{group.label}</span>
+                  {group.people.map(person => (
+                    <span key={person.id} className="inline-flex min-w-0 items-center gap-1">
+                      <UserIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                      <span className="break-words">{formatContributorName(person)}</span>
+                    </span>
+                  ))}
+                </div>
+              ))}
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -259,4 +250,19 @@ function formatContributorName(contributor: {
   email: string | null;
 }) {
   return contributor.name?.trim() || contributor.email?.trim() || "Unknown";
+}
+
+function contributorDepartments(people: NonNullable<List["contributors"]>) {
+  const groups = new Map<string, { key: string; label: string; people: typeof people }>();
+  for (const person of people) {
+    const department = person.department?.trim();
+    const key = department?.toLocaleLowerCase() ?? "";
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, label: department || "No department", people: [] };
+      groups.set(key, group);
+    }
+    if (!group.people.some(existing => existing.id === person.id)) group.people.push(person);
+  }
+  return [...groups.values()].sort((a, b) => !a.key ? 1 : !b.key ? -1 : a.label.localeCompare(b.label));
 }
