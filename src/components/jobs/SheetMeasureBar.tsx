@@ -36,6 +36,8 @@ export const MEASURE_TILE =
  * Pointer events stop here so a tap on a button is not another point on the sheet.
  */
 export type SheetMeasureBarProps = {
+  showAngles?: boolean;
+  onShowAngles?: (show: boolean) => void;
   measurementLayer?: string[];
   measurementLayers?: string[];
   onAddMeasurementLayer?: (name: string) => Promise<void>;
@@ -94,6 +96,8 @@ export function SheetMeasureBar(props: SheetMeasureBarProps) {
 }
 
 function RegularSheetMeasureBar({
+  showAngles = false,
+  onShowAngles,
   measurementLayer = ["General"],
   measurementLayers = [],
   onAddMeasurementLayer,
@@ -191,6 +195,8 @@ function RegularSheetMeasureBar({
             />
           ) : (
             <Tracing
+              showAngles={showAngles}
+              onShowAngles={onShowAngles}
               layerControl={
                 onMeasurementLayer ? (
                   <MeasurementLayerPicker
@@ -331,6 +337,8 @@ function UnitToggle({
 }
 
 function Tracing({
+  showAngles,
+  onShowAngles,
   layerControl,
   pointCount,
   total,
@@ -357,6 +365,8 @@ function Tracing({
   gapMessage,
   onGap,
 }: {
+  showAngles?: boolean;
+  onShowAngles?: (show: boolean) => void;
   layerControl?: ReactNode;
   pointCount: number;
   total: string | null;
@@ -415,6 +425,7 @@ function Tracing({
             <ChevronDownIcon aria-hidden="true" className="ml-1 inline size-3" />
           </button>
         </div>
+        <AngleToggle enabled={showAngles ?? false} onChange={onShowAngles} />
         {scaleSet && <UnitToggle unit={unit} onUnit={onUnit} />}
         {controls}
       </div>
@@ -622,4 +633,20 @@ function Calibration({
       </div>
     </>
   );
+}
+
+function AngleToggle({ enabled, onChange }: { enabled: boolean; onChange?: (enabled: boolean) => void }) {
+  return <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button type="button" size="sm" variant="secondary" className="h-9 shrink-0 gap-1 rounded-full px-3 font-semibold" aria-label={`Angles: ${enabled ? "on" : "off"}`}>
+        Angles <ChevronDownIcon className="h-3.5 w-3.5" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent side="top" align="end">
+      <DropdownMenuRadioGroup value={enabled ? "on" : "off"} onValueChange={value => onChange?.(value === "on")}>
+        <DropdownMenuRadioItem value="off">Off</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value="on">On</DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+    </DropdownMenuContent>
+  </DropdownMenu>;
 }

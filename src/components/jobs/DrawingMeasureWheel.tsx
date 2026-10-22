@@ -28,6 +28,8 @@ import type { SheetMeasureBarProps } from "./SheetMeasureBar";
 
 /** Wheel actions share the viewer's existing measuring callbacks and draft state. */
 export function DrawingMeasureWheel({
+  showAngles = false,
+  onShowAngles,
   measurementLayer = ["General"],
   measurementLayers = [],
   onAddMeasurementLayer,
@@ -117,6 +119,10 @@ export function DrawingMeasureWheel({
                   disabled: saving,
                   run: onCancelScale,
                 },
+                { id: "angles", label: "Angles", children: [
+                  { id: "off", label: "Off", selected: !showAngles, run: () => onShowAngles?.(false) },
+                  { id: "on", label: "On", selected: showAngles, run: () => onShowAngles?.(true) },
+                ] },
                 { id: "units", label: "Units", children: unitItems },
               ]
             : [
@@ -223,6 +229,10 @@ export function DrawingMeasureWheel({
                     onCustom: () => setWheelDialog("style"),
                   }),
                 },
+                { id: "angles", label: "Angles", children: [
+                  { id: "off", label: "Off", selected: !showAngles, run: () => onShowAngles?.(false) },
+                  { id: "on", label: "On", selected: showAngles, run: () => onShowAngles?.(true) },
+                ] },
                 { id: "units", label: "Units", children: unitItems },
               ],
         }

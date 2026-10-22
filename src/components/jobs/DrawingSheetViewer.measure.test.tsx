@@ -21,6 +21,12 @@ import {
 import { DrawingCompare } from "./DrawingCompare";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 
+// Geometry regression cases opt into angle display; visibility is tested separately.
+const anglePreference = vi.hoisted(() => ({ initial: "on" as "on" | "off" }));
+vi.mock("./useDrawingAngles", async () => {
+  const { useState } = await import("react");
+  return { useDrawingAngles: () => useState(anglePreference.initial) };
+});
 const unitIdentity = vi.hoisted(() => ({ account: null as { accountKey: string } | null }));
 vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => unitIdentity.account }));
 
@@ -35,6 +41,7 @@ vi.mock("~/lib/pdf-sheet-scale", () => ({
 }));
 
 beforeEach(() => {
+  anglePreference.initial = "on";
   unitIdentity.account = null;
   vi.mocked(loadSnapLines).mockResolvedValue([]);
   vi.mocked(readPdfSheetScale).mockResolvedValue({ ok: false, reason: "none" });
@@ -1605,4 +1612,20 @@ it("keeps personal units across other sheets and scale changes without changing 
   tap(second.frame, 200, 300); tap(second.frame, 600, 300);
   expect(screen.getByRole("status")).toHaveTextContent("15240 mm");
   expect(onScaleChange).not.toHaveBeenCalled();
+});
+
+it("lets users enable and hide angle labels without changing the measured run", () => {
+  anglePreference.initial = "off";
+  const { frame } = openSheet("angle-visibility", undefined, { sharedScale: { unit: "ft", unitsPerSheetWidth: 100 } });
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  tap(frame, 200, 300); tap(frame, 600, 300); tap(frame, 600, 180);
+  expect(frame.querySelector('[data-measure-angle]')).toBeNull();
+  const path = frame.querySelector('[data-measure-path]')?.getAttribute('d');
+  fireEvent.pointerDown(screen.getByRole("button", { name: "Angles: off" }), { button: 0, ctrlKey: false });
+  fireEvent.click(screen.getByRole("menuitemradio", { name: /^On$/ }));
+  expect(frame.querySelector('[data-measure-angle]')).not.toBeNull();
+  fireEvent.pointerDown(screen.getByRole("button", { name: "Angles: on" }), { button: 0, ctrlKey: false });
+  fireEvent.click(screen.getByRole("menuitemradio", { name: /^Off$/ }));
+  expect(frame.querySelector('[data-measure-angle]')).toBeNull();
+  expect(frame.querySelector('[data-measure-path]')?.getAttribute('d')).toBe(path);
 });

@@ -23,6 +23,7 @@ export function DrawingMeasureRunSvg({
   aspect,
   sharedScale,
   displayUnit,
+  showAngles = false,
   screenPixelSize,
   sheetPixelSize,
 }: {
@@ -30,6 +31,7 @@ export function DrawingMeasureRunSvg({
   aspect: number;
   sharedScale?: SheetScale | null;
   displayUnit?: LengthUnit;
+  showAngles?: boolean;
   screenPixelSize: number;
   sheetPixelSize?: number;
 }) {
@@ -57,7 +59,7 @@ export function DrawingMeasureRunSvg({
     height: bounds.bottom - bounds.top + maskPadding * 2,
   };
   const edges = drawingMarkupEdges(data);
-  const angles = savedMeasureAngleArcs(data, aspect, screenPixelSize);
+  const angles = showAngles ? savedMeasureAngleArcs(data, aspect, screenPixelSize) : [];
   const storedUnit = data.unit ?? sharedScale?.unit;
   const rawScale = data.scale ?? sharedScale?.unitsPerSheetWidth;
   const baseUnit = storedUnit === "ft" || storedUnit === "in" ? "ft" : "m";

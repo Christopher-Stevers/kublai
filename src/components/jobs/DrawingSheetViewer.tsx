@@ -95,6 +95,7 @@ import { DrawingPdfLayer } from "./DrawingPdfLayer";
 import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
 import { readDrawingPdfLinks } from "~/lib/drawing-pdf-links";
 import type { DrawingPdfLink } from "~/lib/drawing-text";
+import { useDrawingAngles } from "./useDrawingAngles";
 import { useDrawingUnit } from "./useDrawingUnit";
 import { useDrawingKeyboardControls } from "./useDrawingKeyboardControls";
 import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
@@ -535,6 +536,8 @@ export function DrawingSheetViewer({
   // The unit lengths are typed and shown in (m, mm, in, ft). The shared scale
   // itself stays in meters or feet.
   const [unit, setUnit, personalUnit] = useDrawingUnit();
+  const [angleSetting, setAngleSetting] = useDrawingAngles();
+  const showAngles = angleSetting === "on";
   // The next measuring or calibration point locked square (90°) or at 45°.
   const [angleSnap, setAngleSnap] = useState<45 | 90 | null>(null);
   const [draft, setDraft] = useState("");
@@ -1690,7 +1693,7 @@ export function DrawingSheetViewer({
           )
           .join(" "),
       };
-  const angleArcs = fit
+  const angleArcs = fit && showAngles
     ? markedEdges.flatMap(({ end, index, endIndex: edgeEnd }) => {
         const active =
           index === activeAngleSegment &&
@@ -2930,6 +2933,7 @@ export function DrawingSheetViewer({
             hidden={editorProps.hideAnnotations}
             sharedScale={sheetScale}
             displayUnit={personalUnit ? unit : undefined}
+            showAngles={showAngles}
             onSelect={pipeMode || viewing ? undefined : editorProps.onSelect}
             onActivate={
               !measuring && !pipeMode && annotationTool === "pan"
@@ -3299,6 +3303,8 @@ export function DrawingSheetViewer({
           })()}
       </div>
       <SheetMeasureBar
+        showAngles={showAngles}
+        onShowAngles={show => setAngleSetting(show ? "on" : "off")}
         measurementLayer={measurementLayer}
         measurementLayers={editorProps.measurementLayers ?? []}
         onMeasurementLayer={setMeasurementLayer}

@@ -23,6 +23,7 @@ type DrawingAnnotationLayerProps = {
   interactive?: boolean;
   sharedScale?: SheetScale | null;
   displayUnit?: LengthUnit;
+  showAngles?: boolean;
   onSelect?: (id: string) => void;
   onActivate?: (markup: DrawingMarkup) => void;
   screenPixelSize?: number;
@@ -49,6 +50,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   aspect,
   sharedScale,
   displayUnit,
+  showAngles = false,
   onSelect,
   onActivate,
   screenPixelSize,
@@ -67,6 +69,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   | "interactive"
   | "sharedScale"
   | "displayUnit"
+  | "showAngles"
   | "onSelect"
   | "onActivate"
   | "sheetPixelSize"
@@ -151,6 +154,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
             aspect={aspect}
             sharedScale={sharedScale}
             displayUnit={displayUnit}
+            showAngles={showAngles}
             screenPixelSize={
               (data.type === "dimension" && data.parents) || data.pipeComponent
                 ? screenPixelSize
@@ -314,6 +318,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   interactive = true,
   sharedScale,
   displayUnit,
+  showAngles = false,
   onSelect,
   onActivate,
   screenPixelSize = 1,
@@ -365,6 +370,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 aspect={aspect}
                 sharedScale={sharedScale}
                 displayUnit={displayUnit}
+                showAngles={showAngles}
                 onSelect={onSelect}
                 onActivate={onActivate}
                 screenPixelSize={usesScreenSize ? screenPixelSize : 1}
@@ -385,6 +391,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
             aspect={aspect}
             sharedScale={sharedScale}
             displayUnit={displayUnit}
+            showAngles={showAngles}
             screenPixelSize={screenPixelSize}
             sheetPixelSize={sheetPixelSize}
           />

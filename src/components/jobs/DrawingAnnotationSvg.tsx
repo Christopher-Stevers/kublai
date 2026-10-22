@@ -22,6 +22,7 @@ export function DrawingAnnotationSvg({
   aspect,
   sharedScale,
   displayUnit,
+  showAngles = false,
   screenPixelSize,
   sheetPixelSize,
 }: {
@@ -29,6 +30,7 @@ export function DrawingAnnotationSvg({
   aspect: number;
   sharedScale?: SheetScale | null;
   displayUnit?: LengthUnit;
+  showAngles?: boolean;
   screenPixelSize?: number;
   sheetPixelSize?: number;
 }) {
@@ -40,6 +42,7 @@ export function DrawingAnnotationSvg({
         aspect={aspect}
         sharedScale={sharedScale}
         displayUnit={displayUnit}
+            showAngles={showAngles}
         screenPixelSize={screenPixelSize}
         sheetPixelSize={sheetPixelSize}
       />
