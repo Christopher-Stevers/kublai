@@ -27,8 +27,8 @@ it("updates part labels when the supplier preference changes while snapshots sta
   );
   const result = render(view(entries));
   expect(screen.getByText("Next (Alma)")).toBeInTheDocument();
-  expect(screen.getByText("Next (Standard)")).toBeInTheDocument();
+  expect(screen.getByText("Next")).toBeInTheDocument();
   result.rerender(view([{ ...entries[0]!, preferJobPricing: false }]));
-  expect(screen.getAllByText("Next (Standard)")).toHaveLength(2);
+  expect(screen.getAllByText("Next")).toHaveLength(2);
   expect(screen.getByText("Next (Original book)")).toBeInTheDocument();
 });
