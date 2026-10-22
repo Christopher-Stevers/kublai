@@ -117,3 +117,15 @@ backorder changed from 0 (30%) to unclear (31%). Other confidence changes were
 mixed. Thus dewarping helped this shipped reading but did not establish a general
 backorder improvement. Full raw requests/results remain in the private benchmark
 folder; do not commit them. No receipt quantities were modified.
+
+### Controlled rerun displayed in the app
+
+`compare-slip-dewarp.mjs` reuses the original questions, choices and exact crop
+rounding on prepared pixels, preserving original responses and saving full raw
+rerun outputs privately. The two supported pages contained 12 candidate rows
+(including a page continuation). Mean confidence: part 77.8% → 82.1%, shipped
+83.9% → 92.3%, backordered 79.0% → 82.8%. Only one chosen quantity changed:
+the two-inch cap shipped 0 → 15, confidence 39% → 74%; its backorder remained
+0 at 29%. These are confidence statistics, not measured accuracy. Row locations
+were held fixed, so this experiment does not establish improved row detection.
+The review now shows original and dewarped answers with percentage-point changes.

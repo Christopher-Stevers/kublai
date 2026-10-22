@@ -26,6 +26,9 @@ export const slipTestReviewSchema = z.object({
         part: answer,
         shipped: answer,
         backordered: answer,
+        dewarped: z
+          .object({ part: answer, shipped: answer, backordered: answer })
+          .optional(),
       }),
     )
     .max(200),

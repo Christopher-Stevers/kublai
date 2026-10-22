@@ -77,8 +77,8 @@ export function PackingSlipTestReview({
           {!!review.preparedPages?.length && (
             <div className="space-y-2 rounded border p-3 text-sm">
               <p>
-                Dewarped comparison images are ready. These straighten the page;
-                the scores below still belong to the original test.
+                Dewarped comparison images are ready. Original scores are
+                preserved; rerun scores appear below where available.
               </p>
               {review.preparedPages.map((page) => (
                 <a
@@ -135,6 +135,40 @@ export function PackingSlipTestReview({
                   </div>
                 ))}
               </dl>
+              {row.dewarped && (
+                <div className="space-y-2 border-t pt-2 text-sm">
+                  <h5 className="font-medium">
+                    After dewarping · same row and questions
+                  </h5>
+                  {(
+                    [
+                      ["Part", "part"],
+                      ["Shipped", "shipped"],
+                      ["Backordered", "backordered"],
+                    ] as const
+                  ).map(([label, key]) => {
+                    const before = row[key],
+                      after = row.dewarped![key];
+                    const delta = Math.round(
+                      (after.confidence - before.confidence) * 100,
+                    );
+                    return (
+                      <p key={key}>
+                        <strong>{label}:</strong> {before.value} (
+                        {Math.round(before.confidence * 100)}%) → {after.value}{" "}
+                        ({Math.round(after.confidence * 100)}%) ·{" "}
+                        {delta > 0 ? "+" : ""}
+                        {delta} percentage points
+                        {after.confidence < 0.8 ? " · Needs human review" : ""}
+                      </p>
+                    );
+                  })}
+                  <p className="text-muted-foreground text-xs">
+                    Confidence changes do not establish accuracy. Row locations
+                    were held fixed for this comparison.
+                  </p>
+                </div>
+              )}
             </article>
           ))}
         </>
