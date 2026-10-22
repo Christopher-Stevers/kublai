@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   convertSlipQuantity,
   type ReceiptOrderItem,
+  type SlipBox,
   type SlipLine,
 } from "~/lib/packing-slip-review";
 import type { SlipRow, SlipWord } from "./ocr-rows";
@@ -12,6 +13,7 @@ import {
   type TableLine,
 } from "./read-table";
 import { matchLines } from "./match";
+import { readSlipImages, type VisionAsk } from "./vision";
 type Question = {
   type: "choice";
   instructions: unknown;
@@ -657,6 +659,8 @@ export async function analyzeSlip(
   rows: SlipRow[],
   items: ReceiptOrderItem[],
   run: Evaluator = evaluate,
+  /** Page images (PNG, page order): Jev then reads every line from them. */
+  images?: { pages: Buffer[]; ask?: VisionAsk },
 ) {
   if (items.length > 200)
     throw Error("This order has more than 200 lines. Verify it manually.");
@@ -664,7 +668,42 @@ export async function analyzeSlip(
   const table = readSlipTable(rows);
   let lines = tableLines(table, items),
     model = table.layouts.length ? "table reader" : "";
-  if (!table.layouts.length) {
+  let headers: Array<{ page: number; box: SlipBox; printedOn?: number }> =
+    table.layouts.map((l) => ({
+      page: l.page,
+      box: l.header,
+      printedOn: table.layouts.find((x) => x.header === l.header)!.page,
+    }));
+  const canRead = Boolean(
+    images?.pages.length && (images.ask ?? process.env.TYPESAFE_API_KEY),
+  );
+  const vision =
+    images && canRead
+      ? await readSlipImages({
+          pages: images.pages,
+          rows,
+          items,
+          tableLines: lines,
+          ask: images.ask,
+        }).catch((error: unknown) => {
+          // Message only: document contents never go into logs.
+          console.warn(
+            "Packing-slip image reading failed:",
+            error instanceof Error ? error.message : "unknown error",
+          );
+          return null;
+        })
+      : null;
+  if (canRead && !vision?.lines.length)
+    warnings.push(
+      "The slip images could not be checked; lines were read from text only.",
+    );
+  if (vision?.lines.length) {
+    lines = vision.lines;
+    model = vision.model;
+    warnings.push(...vision.warnings);
+    if (!headers.length) headers = vision.headers;
+  } else if (!table.layouts.length) {
     const assisted = await assistRows(table.unread, items, run);
     lines = assisted.lines;
     warnings.push(...assisted.warnings);
@@ -704,10 +743,6 @@ export async function analyzeSlip(
     warnings,
     model,
     // A table continued from an earlier page keeps that page's headings.
-    headers: table.layouts.map((l) => ({
-      page: l.page,
-      box: l.header,
-      printedOn: table.layouts.find((x) => x.header === l.header)!.page,
-    })),
+    headers,
   };
 }

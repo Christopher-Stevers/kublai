@@ -297,7 +297,12 @@ export async function startSlipAnalysis(
           task.version.sha256,
           task.version.mimeType,
         );
-        const result = await analyzeSlip(extracted.rows, task.analysis.items);
+        const result = await analyzeSlip(
+          extracted.rows,
+          task.analysis.items,
+          undefined,
+          { pages: extracted.pages },
+        );
         await mutateWorkspace(
           access.user.id,
           access.job.id,

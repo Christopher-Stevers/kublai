@@ -1,5 +1,6 @@
 /** Bounded, short-lived process; document bytes and OCR output never go into logs. */
 import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createCanvas } from "@napi-rs/canvas";
 import sharp from "sharp";
@@ -29,7 +30,25 @@ async function main() {
       env: { ...process.env, OMP_THREAD_LIMIT: "1" },
       stdio: ["pipe", "pipe", "ignore"],
     });
+  /** Page image for the line-by-line image check, upright, ≤2000 px. */
+  const keep = async (png: Buffer, page: number) =>
+    writeFile(
+      path.join(path.dirname(target), `page-${page}.png`),
+      await sharp(png, { limitInputPixels: 24_000_000 })
+        .rotate()
+        .resize({
+          width: 2000,
+          height: 2000,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .flatten({ background: "white" })
+        .png()
+        .toBuffer(),
+      { mode: 0o600 },
+    );
   const ocr = async (png: Buffer, page: number) => {
+    await keep(png, page).catch(() => undefined);
     rows.push(...(await ocrPage(png, page, tesseract, [...rows])));
   };
   if (mime === "application/pdf") {
@@ -63,12 +82,13 @@ async function main() {
               confidence: 100,
             });
           }
-          if (words.reduce((s, w) => s + w.text.length, 0) > 80) {
-            rows.push(...wordRows(words, n));
-            continue;
-          }
+          const textLayer = words.reduce((s, w) => s + w.text.length, 0) > 80;
+          if (textLayer) rows.push(...wordRows(words, n));
           const view = page.getViewport({
-            scale: Math.min(3.5, 3000 / Math.max(raw.width, raw.height)),
+            scale: Math.min(
+              3.5,
+              (textLayer ? 2000 : 3000) / Math.max(raw.width, raw.height),
+            ),
           });
           const canvas = createCanvas(
             Math.ceil(view.width),
@@ -79,7 +99,9 @@ async function main() {
               canvas: canvas as unknown as HTMLCanvasElement,
               viewport: view,
             }).promise;
-            await ocr(canvas.toBuffer("image/png"), n);
+            const png = canvas.toBuffer("image/png");
+            if (textLayer) await keep(png, n).catch(() => undefined);
+            else await ocr(png, n);
           } finally {
             canvas.width = canvas.height = 1;
           }

@@ -80,7 +80,17 @@ export async function extractSlip(
     const data = await readFile(target, "utf8");
     if (data.length > 4 * 1024 * 1024)
       throw Error("Packing slip contains too much text.");
-    return result.parse(JSON.parse(data));
+    const parsed = result.parse(JSON.parse(data));
+    // Page images, in order; a missing page stops the list (no image check past it).
+    const pages: Buffer[] = [];
+    for (let n = 1; n <= 20; n++) {
+      const png = await readFile(path.join(directory, `page-${n}.png`)).catch(
+        () => null,
+      );
+      if (!png) break;
+      pages.push(png);
+    }
+    return { ...parsed, pages };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

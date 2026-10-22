@@ -31,7 +31,7 @@ export type SlipLine = {
   notes?: string[];
   /** Likely order items when no unique match was made, best first. */
   candidates?: string[];
-  source?: "table" | "assistant";
+  source?: "table" | "assistant" | "vision";
   /** Shipped was read clearly and agrees with the other columns. */
   quantityClear?: boolean;
   /** Matched to an order item by the user at confirmation. */
