@@ -10,7 +10,6 @@ import {
   MessageCircleIcon,
   PackageIcon,
   NetworkIcon,
-  WrenchIcon,
 } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
@@ -23,15 +22,12 @@ export function JobWorkspaceOptions({
   roomCountLoading = false,
   chatUnreadCount = 0,
   onSelect,
-  onTools,
 }: {
   materialListCount?: number;
   roomCount?: number;
   roomCountLoading?: boolean;
   chatUnreadCount?: number;
   onSelect: (id: JobWorkspaceOptionId) => void;
-  /** Opens the job's tools in Asset Management (when that tab is available). */
-  onTools?: () => void;
 }) {
   const canAccessDrawings = useDrawingsAccess();
   return (
@@ -186,35 +182,6 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      {onTools && (
-        <Card
-          data-job-card="tools"
-          className="cursor-pointer transition-shadow hover:shadow-md"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onTools();
-            }
-          }}
-          onClick={onTools}
-        >
-          <CardHeader>
-            <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
-              Tools
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-muted-foreground space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <WrenchIcon className="h-4 w-4" />
-                <span>Checked out, requests &amp; returns</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       <Card
         data-job-card="rooms"
         data-tutorial="rooms"

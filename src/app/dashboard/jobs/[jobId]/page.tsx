@@ -7,7 +7,6 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import {
   MapPinIcon,
-  CalculatorIcon,
   PencilIcon,
   UserIcon,
   WifiOffIcon,
@@ -60,15 +59,9 @@ export default function JobOptionsPage({
   const router = useRouter();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const isBrowserOnline = useOnlineStatus();
-  const { data: roleData } = api.user.getMyRole.useQuery(undefined, {
-    enabled: isBrowserOnline,
-  });
   const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId }, {
     enabled: isBrowserOnline, refetchInterval: 30_000, refetchIntervalInBackground: false,
   });
-  const canOpenAssets = roleData?.permissions.tabAccess.assets === true;
-  const canOpenEstimating = roleData?.permissions.tabAccess.estimating === true;
-  const {data:pricingSummary}=api.jobPricing.summary.useQuery({jobId},{enabled:isBrowserOnline,refetchInterval:30_000,refetchIntervalInBackground:false});
   const roomCount = useJobRoomCount(jobId);
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
@@ -211,25 +204,7 @@ export default function JobOptionsPage({
               router.push(`/dashboard/jobs/${job.id}/rooms`);
             }
           }}
-          onTools={
-            canOpenAssets
-              ? () => router.push(`/dashboard/assets/where/job/${job.id}`)
-              : undefined
-          }
         />
-
-        <Button variant="outline" className="mt-4 mr-2 gap-2" onClick={()=>router.push(`/dashboard/jobs/${job.id}/pricing`)}>Job pricing & approvals{(pricingSummary?.pendingCount??0)>0&&<span className="rounded-full bg-amber-100 px-2 text-xs text-amber-900">{pricingSummary?.pendingCount}</span>}</Button>
-
-        {canOpenEstimating && (
-          <Button
-            variant="outline"
-            className="mt-4 gap-2"
-            onClick={() => router.push(`/dashboard/estimating?jobId=${job.id}`)}
-          >
-            <CalculatorIcon className="h-4 w-4" />
-            Estimate this job
-          </Button>
-        )}
 
         <JobEditDialog
           open={showEditDialog}
