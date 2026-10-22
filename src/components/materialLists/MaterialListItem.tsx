@@ -19,7 +19,6 @@ import {
 import {
   CheckCircle2Icon,
   Clock3Icon,
-  Loader2Icon,
   MoreVerticalIcon,
   TrashIcon,
   XCircleIcon,
@@ -161,17 +160,10 @@ function InitialsSyncBadge({
 
   const statusClasses =
     status === "syncing"
-      ? "bg-primary text-primary-foreground ring-primary/20"
+      ? "ring-primary"
       : status === "pending"
-        ? "bg-amber-500 text-white ring-amber-100"
-        : "bg-emerald-500 text-white ring-emerald-100";
-
-  const StatusIcon =
-    status === "syncing"
-      ? Loader2Icon
-      : status === "pending"
-        ? Clock3Icon
-        : CheckCircle2Icon;
+        ? "ring-amber-500"
+        : "ring-emerald-500";
 
   return (
     <div
@@ -179,19 +171,13 @@ function InitialsSyncBadge({
       title={`Added by ${displayName} • ${statusLabel}`}
       aria-label={`Added by ${displayName}. ${statusLabel}.`}
     >
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-xs font-semibold text-foreground shadow-sm ring-1 ring-black/10 backdrop-blur dark:border-border dark:bg-card/95 dark:text-foreground dark:ring-black/40">
+      <div
+        className={cn(
+          "relative flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-xs font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 backdrop-blur dark:bg-card/95 dark:text-foreground",
+          statusClasses,
+        )}
+      >
         {initials}
-        <span
-          className={cn(
-            "absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2",
-            statusClasses,
-          )}
-        >
-          <StatusIcon
-            className={cn("h-2.5 w-2.5", status === "syncing" && "animate-spin")}
-            strokeWidth={2.8}
-          />
-        </span>
       </div>
     </div>
   );
