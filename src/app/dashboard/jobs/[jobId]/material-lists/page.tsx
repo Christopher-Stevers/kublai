@@ -450,9 +450,17 @@ export default function JobDetailPage({
                     )}
                   </div>
                   {!!list.orderNumbers?.length && (
-                    <p className="text-muted-foreground text-sm break-words">
-                      {list.orderNumbers.join(" · ")}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2" aria-label="Linked orders">
+                      {list.orderNumbers.map((number) => (
+                        <span
+                          key={number}
+                          className="inline-flex rounded-md border px-2.5 py-1 text-sm font-semibold"
+                          style={{ backgroundColor: "#dbeafe", color: "#172554", borderColor: "#93c5fd" }}
+                        >
+                          {number}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
