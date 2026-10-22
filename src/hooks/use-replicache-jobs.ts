@@ -86,7 +86,14 @@ function addContributor(
   seenIds: Set<string>,
   contributor: ReplicacheContributor | null | undefined,
 ) {
-  if (!contributor?.id || seenIds.has(contributor.id)) return;
+  if (!contributor?.id) return;
+  if (seenIds.has(contributor.id)) {
+    const index = contributors.findIndex(person => person.id === contributor.id);
+    const existing = contributors[index];
+    if (existing && !existing.department?.trim() && contributor.department?.trim())
+      contributors[index] = { ...existing, department: contributor.department };
+    return;
+  }
   contributors.push(contributor);
   seenIds.add(contributor.id);
 }

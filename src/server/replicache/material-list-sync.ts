@@ -1465,6 +1465,7 @@ export async function handleMaterialListReplicachePull(
                     name:
                       createdByUser?.name ?? createdByUser?.email ?? "Unknown",
                     email: createdByUser?.email ?? null,
+                    department: createdByUser?.department ?? null,
                   };
                 })()
               : null,

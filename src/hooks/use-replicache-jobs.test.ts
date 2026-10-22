@@ -74,3 +74,9 @@ it("shows departments of line-item adders, excluding the creator alone, and upda
   const updated=indexWorkspaceRecords(jobs,lists,items.filter(item=>item.id!=="c"));
   expect(updated.details.job?.materialLists.find(list=>list.id==="list")?.departments).toEqual(["Plumbing"]);
 });
+
+it("uses an item contributor's department when the cached creator is missing it", () => {
+ const author={id:"person",name:"Luca",email:null};
+ const result=indexWorkspaceRecords([{id:"job",name:"Job"}],[{id:"list",jobId:"job",createdBy:author}],[{id:"item",materialListId:"list",quantity:"1",addedBy:{...author,department:"Plumbing"}}]);
+ expect(result.details.job?.materialLists[0]?.contributors).toEqual([{...author,department:"Plumbing"}]);
+});
