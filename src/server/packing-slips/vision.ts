@@ -14,6 +14,7 @@ import {
   type SlipBox,
   type SlipLine,
 } from "~/lib/packing-slip-review";
+import { locatedBands, pageInk, type QuantityColumns } from "./line-bands";
 import { skuScore } from "./match";
 import type { SlipRow } from "./ocr-rows";
 
@@ -320,11 +321,13 @@ const edges = (a: VisionAnswer | undefined) =>
   a?.type === "box" ? a.box : undefined;
 const number = (a: ChoiceAnswer | undefined) =>
   a && /^v\d+$/.test(a.choice) ? Number(a.choice.slice(1)) : null;
+const lineCount = (a: ChoiceAnswer | undefined) =>
+  a && /^n\d+$/.test(a.choice) ? Number(a.choice.slice(1)) : null;
 
 const QUANTITY_FIELDS = ["shipped", "ordered", "backordered"] as const;
 /** The quantity columns' headings Jev is sure of. One overlapping a surer
  * one is that column again, as Jev answers when a slip lacks the column. */
-function quantityColumns(answers: Record<string, VisionAnswer>) {
+export function quantityColumns(answers: Record<string, VisionAnswer>) {
   const found = QUANTITY_FIELDS.flatMap((field) => {
     const a = answers[field];
     return a?.type === "box" &&
@@ -336,7 +339,7 @@ function quantityColumns(answers: Record<string, VisionAnswer>) {
   const overlap = (a: Edges, b: Edges) =>
     Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) /
     Math.max(1e-6, Math.min(a.right - a.left, b.right - b.left));
-  const columns: Partial<Record<(typeof QUANTITY_FIELDS)[number], Edges>> = {};
+  const columns: QuantityColumns = {};
   for (const c of found)
     if (
       !found.some(
@@ -550,11 +553,27 @@ export async function readSlipImages(input: {
   // Where Jev counts more lines starting on a page, Jev finds them all. A
   // count it is unsure of only stands in when there is no table at all.
   const bands: Band[] = [];
+  // Lines the slip's printed line count says the pages' counts missed; with
+  // no count printed, any page may hold one more than Jev counted.
+  const listed = choice(last?.answers.lines);
+  const printedLines =
+    listed && listed.confidence >= TOTAL_MIN ? lineCount(listed) : null;
+  let spare =
+    printedLines === null
+      ? Infinity
+      : pageInfo.reduce(
+          (left, info) =>
+            left -
+            Math.max(
+              lineCount(choice(info.answers.count)) ?? 0,
+              tableBands.filter((b) => b.page === info.page).length,
+            ),
+          printedLines,
+        );
   for (const info of pageInfo) {
     const own = tableBands.filter((b) => b.page === info.page);
     const count = choice(info.answers.count);
-    const n =
-      count && /^n\d+$/.test(count.choice) ? Number(count.choice.slice(1)) : 0;
+    const n = lineCount(count) ?? 0;
     if (count?.choice === "unclear" && !own.length)
       warnings.push(
         `Page ${info.page}: the slip lines could not be counted. Check it by hand.`,
@@ -587,31 +606,22 @@ export async function readSlipImages(input: {
       bands.push(...own);
       continue;
     }
-    // Jev places a line only to about a hundredth of the page, which on a
-    // dense slip is half a line: text the OCR found starting within it marks
-    // where the line starts more exactly.
-    const starts = rows
-      .filter(
-        (r) =>
-          r.page === info.page &&
-          r.words.length &&
-          r.text.replace(/\W/g, "").length >= 3,
-      )
-      .map((r) => Math.min(...r.words.map((w) => w.y)));
-    const tops = found.map((b, k) => {
-      const end = found[k + 1]?.top ?? b.bottom;
-      const start = Math.min(
-        ...starts.filter((y) => y >= b.top - 0.002 && y < end - 0.002),
-      );
-      return Number.isFinite(start)
-        ? { top: Math.max(b.top, start - 0.002), precise: true }
-        : { top: b.top, precise: false };
-    });
-    // Jev often runs a line's box into the next line: each line ends where
-    // the next starts, wrapped text included.
-    found.forEach((b, k) => {
-      const { top, precise } = tops[k]!,
-        bottom = tops[k + 1]?.top ?? b.bottom;
+    const pageRows = rows.filter((r) => r.page === info.page);
+    const columns = quantityColumns(info.answers);
+    // The ink only sharpens where lines start; the OCR's rows place them
+    // without it.
+    const ink = await pageInk(pages[info.page - 1]!, found, columns).catch(
+      () => [],
+    );
+    const placed = locatedBands(
+      found,
+      pageRows,
+      columns,
+      ink,
+      spare > 0 ? 1 : 0,
+    );
+    spare -= Math.max(0, placed.length - found.length);
+    placed.forEach(({ top, bottom, precise }, k) => {
       // Keep the table reader's code and description for the same line.
       const table = own.find((t) => {
         const mid = t.top + (t.table?.box?.height ?? 0) / 2;

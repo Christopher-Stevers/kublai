@@ -542,8 +542,10 @@ it("finds lines on pages without a readable table and ends each where the next s
   ];
   const { lines } = await analyze(loose, jev.ask);
   const edges = lines.map((l) => [l.box!.y, l.box!.y + l.box!.height]);
-  // Each line starts just above its text, which Jev places less exactly.
-  for (const [k, value] of [0.208, 0.288, 0.288, 0.36].entries())
+  // Each line starts just above its text, which Jev places less exactly. The
+  // last ends where Jev's box does, moved down as far as Jev's lines sit
+  // above their text.
+  for (const [k, value] of [0.208, 0.288, 0.288, 0.37].entries())
     expect(edges.flat()[k]).toBeCloseTo(value, 3);
   expect(lines.map((l) => l.evidence)).toEqual([
     "Brass valve 6",
@@ -560,16 +562,51 @@ it("finds the lines the table reader missed when Jev counts more on a page", asy
   });
   const { lines } = await analyze([header, line], more.ask);
   expect(more.calls).toContain("rows");
-  // The line the table reader did find keeps its code and description.
+  // The line the table reader did find keeps its code and description. The
+  // other starts where Jev put it, moved down as far as Jev placed the found
+  // one above its text.
   expect(lines.map((l) => [l.sku, l.box!.y])).toEqual([
     ["ABC123", 0.198],
-    [null, 0.27],
+    [null, 0.278],
   ]);
   expect(lines[1]!.evidence).toBe("Line 2");
   // An unsure count leaves the table reader's lines alone.
   const unsure = fakeJev({ page: { count: pick("n2", 0.4) }, rows });
   expect((await analyze([header, line], unsure.ask)).lines).toHaveLength(1);
   expect(unsure.calls).not.toContain("rows");
+});
+
+it("reads a line Jev missed counting when the slip's printed count has room for it", async () => {
+  const loose = [
+    row(["Brass", "valve", "6"], 0.21),
+    row(["Steel", "pipe", "6"], 0.26),
+    row(["Copper", "tee", "6"], 0.31),
+  ];
+  const read = (printed: string) =>
+    analyze(
+      loose,
+      fakeJev({
+        page: {
+          count: pick("n2", 0.95),
+          lines: pick(printed, 0.95),
+          range: pick("r0", 0.99),
+        },
+        total: pick("v18"),
+        // Jev counts two lines and misses the middle one.
+        rows: {
+          row1: box(0, 1, 0.2, 0.25),
+          row2: box(0, 1, 0.29, 0.34),
+        },
+      }).ask,
+    );
+  const { lines } = await read("n3");
+  expect(lines.map((l) => l.evidence)).toEqual([
+    "Brass valve 6",
+    "Steel pipe 6",
+    "Copper tee 6",
+  ]);
+  // A printed count that agrees with Jev's leaves no room.
+  expect((await read("n2")).lines).toHaveLength(2);
 });
 
 it("falls back to the text reading when the images cannot be read", async () => {
