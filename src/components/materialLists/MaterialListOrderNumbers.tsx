@@ -48,7 +48,9 @@ export function MaterialListOrderNumbers({
         className="border-border text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium"
       >
         <Icon aria-hidden="true" className="h-3.5 w-3.5" />
-        {order.number}
+        {Array.from(order.number).length > 12
+          ? `${Array.from(order.number).slice(0, 11).join("")}…`
+          : order.number}
       </span>
     );
   });
