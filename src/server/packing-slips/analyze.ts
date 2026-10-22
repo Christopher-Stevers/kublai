@@ -660,7 +660,12 @@ export async function analyzeSlip(
   items: ReceiptOrderItem[],
   run: Evaluator = evaluate,
   /** Page images (PNG, page order): Jev then reads every line from them. */
-  images?: { pages: Buffer[]; ask?: VisionAsk },
+  images?: {
+    pages: Buffer[];
+    ask?: VisionAsk;
+    /** What earlier deliveries from this supplier taught. */
+    memory?: { known: Record<string, string[]>; expectFooter: boolean };
+  },
 ) {
   if (items.length > 200)
     throw Error("This order has more than 200 lines. Verify it manually.");
@@ -685,6 +690,8 @@ export async function analyzeSlip(
           items,
           tableLines: lines,
           ask: images.ask,
+          known: images.memory?.known,
+          expectFooter: images.memory?.expectFooter,
         }).catch((error: unknown) => {
           // Message only: document contents never go into logs.
           console.warn(
@@ -744,5 +751,6 @@ export async function analyzeSlip(
     model,
     // A table continued from an earlier page keeps that page's headings.
     headers,
+    ...(vision?.lines.length ? { layout: vision.layout } : {}),
   };
 }

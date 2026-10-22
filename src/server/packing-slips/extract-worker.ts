@@ -12,6 +12,7 @@ import {
 import { SERVER_PDF_RENDER_OPTIONS } from "../rooms/pdf-render-options";
 import { wordRows, type SlipRow, type SlipWord } from "./ocr-rows";
 import { ocrPage, type Tesseract } from "./ocr-page";
+import { measurePage, qualityWarnings } from "./page-quality";
 async function main() {
   const [source, target, mime] = process.argv.slice(2);
   if (!source || !target) throw Error();
@@ -49,6 +50,11 @@ async function main() {
     );
   const ocr = async (png: Buffer, page: number) => {
     await keep(png, page).catch(() => undefined);
+    warnings.push(
+      ...(await measurePage(png)
+        .then((q) => qualityWarnings(page, q))
+        .catch(() => [])),
+    );
     rows.push(...(await ocrPage(png, page, tesseract, [...rows])));
   };
   if (mime === "application/pdf") {

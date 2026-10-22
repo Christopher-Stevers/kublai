@@ -160,3 +160,67 @@ it("filters order items by delivery status", () => {
     screen.queryByLabelText("Received this delivery: Valve"),
   ).not.toBeInTheDocument();
 });
+it("puts items needing a decision first and keeps them in place while typing", () => {
+  const sure = { ...analysis.items[0]!, id: "s", description: "Sure valve" };
+  const doubtful = { ...analysis.items[0]!, id: "d", description: "Doubtful" };
+  const line = analysis.lines[0]!;
+  render(
+    <PackingSlipReview
+      analysis={{
+        ...analysis,
+        items: [sure, doubtful],
+        lines: [
+          { ...line, orderItemId: "s", issues: [] },
+          {
+            ...line,
+            orderItemId: "d",
+            proposed: null,
+            quantityClear: false,
+            issues: ["Check shipped quantity against the slip."],
+          },
+        ],
+      }}
+      versionId="v"
+      busy={false}
+      onAction={vi.fn()}
+    />,
+  );
+  const order = () =>
+    screen
+      .getAllByLabelText(/^Received this delivery: /)
+      .map((e) => e.getAttribute("aria-label"));
+  expect(order()).toEqual([
+    "Received this delivery: Doubtful",
+    "Received this delivery: Sure valve",
+  ]);
+  fireEvent.change(screen.getByLabelText("Received this delivery: Doubtful"), {
+    target: { value: "6" },
+  });
+  expect(order()[0]).toBe("Received this delivery: Doubtful");
+});
+it("offers a handwritten quantity without prefilling it", () => {
+  render(
+    <PackingSlipReview
+      analysis={{
+        ...analysis,
+        lines: [
+          {
+            ...analysis.lines[0]!,
+            proposed: null,
+            handwritten: 5,
+            issues: [
+              "Handwriting on this line may change the quantity. Check the slip.",
+            ],
+          },
+        ],
+      }}
+      versionId="v"
+      busy={false}
+      onAction={vi.fn()}
+    />,
+  );
+  const input = screen.getByLabelText("Received this delivery: Valve");
+  expect(input).toHaveValue(null);
+  fireEvent.click(screen.getByRole("button", { name: "Use handwritten 5" }));
+  expect(input).toHaveValue(5);
+});

@@ -69,6 +69,8 @@ function fakeJev(set: {
   main?: Answers;
   cells?: Answers;
   views?: VisionAnswer;
+  pageItems?: Answers;
+  hand?: VisionAnswer;
 }) {
   const calls: string[] = [];
   const ask: VisionAsk = async (_inputs, questions) => {
@@ -119,6 +121,17 @@ function fakeJev(set: {
         ...set.cells,
       });
     }
+    if (ids.includes("handwritten")) {
+      calls.push("handwritten");
+      return { handwritten: set.hand ?? pick("none") };
+    }
+    if (ids.every((id) => /^item\d+$/.test(id))) {
+      calls.push("items");
+      return only({
+        ...Object.fromEntries(ids.map((id) => [id, pick("unclear")])),
+        ...set.pageItems,
+      });
+    }
     calls.push("view");
     return { part: set.views ?? pick("item0", 0.95) };
   };
@@ -129,7 +142,10 @@ const analyze = (
   ask: VisionAsk,
   items = [item],
   pages = [page],
-) => analyzeSlip(rows, items, noAssistant, { pages, ask });
+  memory?: { known: Record<string, string[]>; expectFooter: boolean },
+) => analyzeSlip(rows, items, noAssistant, { pages, ask, memory });
+/** The same item without a SKU, so no printed code settles the product. */
+const uncoded = { ...item, sku: null };
 
 it("prefills a line when every reading is confident and fits the order", async () => {
   const jev = fakeJev({});
@@ -149,10 +165,163 @@ it("prefills a line when every reading is confident and fits the order", async (
     confidence: "high",
     source: "vision",
   });
-  // Page, exact total, then four views of the one line.
-  expect(jev.calls.sort()).toEqual(
-    ["cells", "main", "page", "total", "view", "view"].sort(),
+  expect(result.lines[0]!.notes).toContain(
+    "Matched by the order's SKU ABC123.",
   );
+  // Page, exact total, then the line and its cells. The printed SKU settles
+  // the product, so no extra product views.
+  expect(jev.calls.sort()).toEqual(["cells", "main", "page", "total"].sort());
+  // Without a code, a sure first answer also skips the extra views...
+  const sure = fakeJev({});
+  await analyze([header, line], sure.ask, [uncoded]);
+  expect(sure.calls).not.toContain("view");
+  // ...and an unsure one asks for them.
+  const unsure = fakeJev({
+    main: { part: { ...pick("item0", 0.85), probabilities: { item0: 0.85 } } },
+  });
+  await analyze([header, line], unsure.ask, [uncoded]);
+  expect(unsure.calls.filter((c) => c === "view")).toHaveLength(2);
+});
+
+it("lets a printed code decide the product unless the image clearly disagrees", async () => {
+  const other = { ...item, id: "b", sku: "XYZ999", description: "Steel pipe" };
+  // Jev leans to the other item, but not surely: the code wins.
+  const leaning = fakeJev({
+    main: {
+      part: {
+        ...pick("item1", 0.6),
+        probabilities: { item0: 0.4, item1: 0.6 },
+      },
+    },
+    views: { ...pick("item1", 0.6), probabilities: { item0: 0.4, item1: 0.6 } },
+  });
+  const [coded] = (await analyze([header, line], leaning.ask, [item, other]))
+    .lines;
+  expect(coded).toMatchObject({ orderItemId: "a", proposed: 6 });
+  // Sure it is the other item: flagged instead.
+  const sure = fakeJev({
+    main: {
+      part: {
+        ...pick("item1", 0.9),
+        probabilities: { item0: 0.1, item1: 0.9 },
+      },
+    },
+    views: { ...pick("item1", 0.9), probabilities: { item0: 0.1, item1: 0.9 } },
+  });
+  const [flagged] = (await analyze([header, line], sure.ask, [item, other]))
+    .lines;
+  expect(flagged!.proposed).toBeNull();
+  expect(flagged!.issues).toContain(
+    "Check the product: code ABC123 belongs to another order item, but the line looks like a different product.",
+  );
+});
+
+it("uses supplier codes confirmed on earlier deliveries", async () => {
+  const learnedLine = row(["SUP-4471", "Valve", "10", "6", "4", "ea"], 0.2);
+  const unsure = fakeJev({
+    main: { part: { ...pick("item0", 0.6), probabilities: { item0: 0.6 } } },
+    views: { ...pick("item0", 0.6), probabilities: { item0: 0.6 } },
+  });
+  const [read] = (
+    await analyze([header, learnedLine], unsure.ask, [uncoded], [page], {
+      known: { a: ["SUP4471"] },
+      expectFooter: false,
+    })
+  ).lines;
+  expect(read).toMatchObject({ orderItemId: "a", proposed: 6 });
+  expect(read!.notes).toContain(
+    "Matched by supplier code SUP4471, confirmed on an earlier delivery.",
+  );
+});
+
+it("offers a handwritten quantity without prefilling it", async () => {
+  const jev = fakeJev({
+    main: { handwriting: pick("yes") },
+    hand: pick("v5", 0.9),
+  });
+  const [read] = (await analyze([header, line], jev.ask)).lines;
+  expect(read!.handwritten).toBe(5);
+  expect(read!.proposed).toBeNull();
+  expect(read!.issues).toContain(
+    "Handwriting on this line may change the quantity. Check the slip.",
+  );
+  // No handwriting: not asked.
+  const plain = fakeJev({});
+  await analyze([header, line], plain.ask);
+  expect(plain.calls).not.toContain("handwritten");
+});
+
+it("checks each item's shipped total read from the whole page when no totals are printed", async () => {
+  const noTotals = {
+    lines: pick("not_printed", 0.95),
+    range: pick("not_printed", 0.95),
+  };
+  // With printed totals the whole-page check is not needed.
+  const footed = fakeJev({
+    pageItems: { item0: pick("v8", 0.9) },
+  });
+  expect((await analyze([header, line], footed.ask)).lines[0]!.proposed).toBe(
+    6,
+  );
+  expect(footed.calls).not.toContain("items");
+  const disagree = fakeJev({
+    page: noTotals,
+    pageItems: { item0: pick("v8", 0.9) },
+  });
+  const [read] = (await analyze([header, line], disagree.ask)).lines;
+  expect(read!.proposed).toBeNull();
+  expect(read!.issues).toContain(
+    "Reading the whole slip finds 8 shipped of this item, but the lines read add up to 6. Check the slip.",
+  );
+  // Unsure whole-page readings are ignored.
+  const unsure = fakeJev({
+    page: noTotals,
+    pageItems: { item0: pick("v8", 0.6) },
+  });
+  expect((await analyze([header, line], unsure.ask)).lines[0]!.proposed).toBe(
+    6,
+  );
+  // An item found on the page but on no line read.
+  const other = { ...item, id: "b", sku: null, description: "Steel pipe" };
+  const missed = fakeJev({
+    page: noTotals,
+    pageItems: { item0: pick("v6", 0.9), item1: pick("v3", 0.9) },
+  });
+  const result = await analyze([header, line], missed.ask, [item, other]);
+  expect(result.warnings).toContain(
+    "Reading the whole slip finds 3 shipped of “Steel pipe”, but no line was matched to it. Check for a missed line.",
+  );
+  expect(result.lines[0]!.proposed).toBe(6);
+});
+
+it("warns when a supplier's usual totals are missing", async () => {
+  const memory = { known: {}, expectFooter: true };
+  const none = fakeJev({
+    page: {
+      lines: pick("not_printed", 0.95),
+      range: pick("not_printed", 0.95),
+    },
+  });
+  const result = await analyze(
+    [header, line],
+    none.ask,
+    [item],
+    [page],
+    memory,
+  );
+  expect(result.layout).toEqual({ footer: false });
+  expect(result.warnings).toContain(
+    "This supplier's slips usually print totals at the bottom, but none were found. Check that no page is missing or cut off.",
+  );
+  const printed = await analyze(
+    [header, line],
+    fakeJev({}).ask,
+    [item],
+    [page],
+    memory,
+  );
+  expect(printed.layout).toEqual({ footer: true });
+  expect(printed.warnings).toEqual([]);
 });
 
 it("blocks a product whose printed order quantity does not fit the order item", async () => {
@@ -249,18 +418,23 @@ it("raises confidence when the line and cell agree and balance", async () => {
 });
 
 it("averages the three product views", async () => {
-  // The row view alone is sure; the other two views doubt it.
+  // The row view leans to the item, short of sure; the other two doubt it.
   const doubt = {
     ...pick("not_on_order", 0.7),
     probabilities: { item0: 0.3, not_on_order: 0.7 },
   };
-  const jev = fakeJev({ views: doubt });
-  const [read] = (await analyze([header, line], jev.ask)).lines;
-  // (0.95 + 0.3 + 0.3) / 3 = 0.52 for the item; 0.47 against.
+  const jev = fakeJev({
+    main: {
+      part: { ...pick("item0", 0.85), probabilities: { item0: 0.85 } },
+    },
+    views: doubt,
+  });
+  const [read] = (await analyze([header, line], jev.ask, [uncoded])).lines;
+  // (0.85 + 0.3 + 0.3) / 3 = 0.48 for the item; 0.47 against.
   expect(read!.orderItemId).toBe("a");
   expect(read!.confidence).toBe("low");
   expect(read!.issues).toEqual([
-    "Check the product: only 52% sure it is this order item.",
+    "Check the product: only 48% sure it is this order item.",
   ]);
   const notOrdered = fakeJev({
     main: {
@@ -271,7 +445,8 @@ it("averages the three product views", async () => {
     },
     views: doubt,
   });
-  const [other] = (await analyze([header, line], notOrdered.ask)).lines;
+  const [other] = (await analyze([header, line], notOrdered.ask, [uncoded]))
+    .lines;
   expect(other).toMatchObject({
     orderItemId: null,
     proposed: null,

@@ -91,6 +91,37 @@ function suggestions(analysis: SlipAnalysis, links: Links) {
   return amounts;
 }
 
+/** 0 = needs a decision, 1 = read with doubts, then over, short, missing,
+ * complete; ties keep the order's own sequence. */
+function reviewOrder(analysis: SlipAnalysis) {
+  const amounts = suggestions(analysis, {});
+  return Object.fromEntries(
+    analysis.items.map((item) => {
+      const lines = analysis.lines.filter((l) => l.orderItemId === item.id);
+      const amount = amounts[item.id];
+      const total = item.received + (amount ?? 0);
+      const rank = !lines.length
+        ? 4
+        : amount === undefined
+          ? 0
+          : lines.some(
+                (l) =>
+                  l.issues.length ||
+                  !l.quantityClear ||
+                  l.handwritten !== undefined ||
+                  (l.confidence && l.confidence !== "high"),
+              )
+            ? 1
+            : total > item.ordered + 1e-6
+              ? 2
+              : total < item.ordered - 1e-6
+                ? 3
+                : 5;
+      return [item.id, rank];
+    }),
+  ) as Record<string, number>;
+}
+
 /** Issues still open on a line; a line the user linked has its match settled. */
 const openIssues = (line: SlipLine, linked: boolean) =>
   linked ? line.issues.filter((i) => !MATCH_ISSUE.test(i)) : line.issues;
@@ -124,6 +155,12 @@ export function PackingSlipReview({
         ([id, n]) => [id, String(n)],
       ),
     ),
+  );
+  /** Likely-wrong items first. Ranked once from the analysis, so items do
+   * not jump around while the user types. */
+  const order = useMemo(
+    () => (analysis ? reviewOrder(analysis) : {}),
+    [analysis],
   );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -229,6 +266,7 @@ export function PackingSlipReview({
               : "complete";
     return { item, lines, value, n, suggested, total, status };
   });
+  rows.sort((a, b) => (order[a.item.id] ?? 9) - (order[b.item.id] ?? 9));
   const extras = analysis.lines
     .map((line, index) => ({ line, index }))
     .filter(({ index }) => !linkOf(index));
@@ -475,8 +513,42 @@ export function PackingSlipReview({
               </div>
               {lines.map(({ line, index }) => (
                 <div key={index} className="space-y-1.5">
-                  {printed(line, index)}
-                  {slipNumbers(line)}
+                  <div className="space-y-1.5 md:grid md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start md:gap-3 md:space-y-0">
+                    {printed(line, index)}
+                    <div className="space-y-1.5">
+                      {slipNumbers(line)}
+                      {line.handwritten !== undefined && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => {
+                            const pack =
+                              !!item.piecesPerPack && item.piecesPerPack > 1;
+                            const written = convertSlipQuantity(
+                              line.handwritten!,
+                              line.unit ?? (pack ? null : item.unit),
+                              item,
+                            );
+                            if (written === null) return;
+                            setChecked(false);
+                            setValues((old) => ({
+                              ...old,
+                              [item.id]: String(
+                                round(
+                                  (suggested ?? 0) -
+                                    (lineAmount(line, item.id, item) ?? 0) +
+                                    written,
+                                ),
+                              ),
+                            }));
+                          }}
+                        >
+                          Use handwritten {line.handwritten}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   {messages(line, index in links)}
                   <details className="text-xs">
                     <summary className="text-muted-foreground cursor-pointer">

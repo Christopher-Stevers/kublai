@@ -25,6 +25,7 @@ import {
 } from "~/lib/packing-slip-review";
 import { extractSlip } from "./extract";
 import { analyzeSlip } from "./analyze";
+import { supplierMemory } from "./memory";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 /** Written in the same transaction as the result/receipt: never lose the original matches. */
 async function recordReviewHistory(
@@ -284,7 +285,7 @@ export async function startSlipAnalysis(
       };
       doc.packingSlipAnalysis = analysis;
       assertStateBounds(state);
-      return { analysis, version };
+      return { analysis, version, orderId: order.id };
     },
   );
   if (!task) return;
@@ -297,11 +298,18 @@ export async function startSlipAnalysis(
           task.version.sha256,
           task.version.mimeType,
         );
+        const memory = extracted.pages.length
+          ? await import("~/server/db")
+              .then(({ db }) =>
+                supplierMemory(db, access.job.organizationId, task.orderId),
+              )
+              .catch(() => undefined)
+          : undefined;
         const result = await analyzeSlip(
           extracted.rows,
           task.analysis.items,
           undefined,
-          { pages: extracted.pages },
+          { pages: extracted.pages, memory },
         );
         await mutateWorkspace(
           access.user.id,

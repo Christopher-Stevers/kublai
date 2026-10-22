@@ -14,13 +14,17 @@ import {
   type SlipBox,
   type SlipLine,
 } from "~/lib/packing-slip-review";
+import { skuScore } from "./match";
 import type { SlipRow } from "./ocr-rows";
 
 /** Pinned: the decision thresholds were tuned against this model version. */
 export const VISION_MODEL = "jev-1.14.0";
 const PRODUCT_MIN = 0.6,
   QUANTITY_MIN = 0.8,
-  TOTAL_MIN = 0.6;
+  TOTAL_MIN = 0.6,
+  /** A first product answer this sure was never changed by the other views. */
+  VIEWS_SKIP = 0.9,
+  CHECK_MIN = 0.8;
 
 type Choice = {
   type: "choice";
@@ -181,6 +185,27 @@ const cellQuantity = (name: string, image: string): Choice => ({
     blank: "Empty cell",
     unclear: "Not legible or not among choices",
   },
+});
+const handwritten: Choice = {
+  type: "choice",
+  instructions: `Read the HANDWRITTEN quantity on \`row\` that corrects or replaces the printed shipped quantity, e.g. a number written beside a crossed-out figure. Ignore printed text, ticks and signatures. ${EVIDENCE}`,
+  criteria: {
+    ...values,
+    none: "No handwritten quantity",
+    unclear: "Not legible or not among choices",
+  },
+};
+/** Whole-page reading of one order item, as a check on the line readings. */
+const pageItem = (item: ReceiptOrderItem): Choice => ({
+  type: "choice",
+  instructions: `How many of this product does \`page\` list as SHIPPED in this delivery (not ordered or backordered)? If it is on several lines of this page, add them up. Choose v0 if it is not listed on this page. A product differing in any size, angle, type or material is a different product. Product: ${JSON.stringify(
+    {
+      description: item.description,
+      sku: item.sku,
+      aliases: item.aliases.slice(0, 5),
+    },
+  )}. ${EVIDENCE}`,
+  criteria: { ...values, unclear: "Cannot tell" },
 });
 /** Makes Jev check every attribute and allow for the product not being ordered. */
 export function productQuestion(
@@ -353,9 +378,38 @@ type Reading = {
   backorderedUnclear: boolean;
   ordered: number | null;
   unit: string | null;
+  handwritten: number | null;
   flags: string[];
   notes: string[];
 };
+/** An order item identified by a supplier code printed on the line. */
+type CodeMatch = { index: number; code: string; learned: boolean };
+
+/** Supplier codes are only trusted when long enough not to be a quantity. */
+const usableCode = (code: string) => {
+  const c = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return c.length >= 4 && (!/^\d+$/.test(c) || c.length >= 5);
+};
+/** The one order item whose SKU, or a code confirmed on an earlier
+ * delivery, is printed on the line; null when none or several. */
+export function codeMatch(
+  text: string,
+  items: ReceiptOrderItem[],
+  known: Record<string, string[]> = {},
+): CodeMatch | null {
+  const found: CodeMatch[] = [];
+  items.forEach((item, index) => {
+    const codes = [
+      ...(item.sku ? [{ code: item.sku, learned: false }] : []),
+      ...(known[item.id] ?? []).map((code) => ({ code, learned: true })),
+    ].filter((c) => usableCode(c.code));
+    const hit = codes.find(
+      (c) => skuScore({ ...item, sku: c.code }, "", text) >= 0.9,
+    );
+    if (hit) found.push({ index, ...hit });
+  });
+  return found.length === 1 ? found[0]! : null;
+}
 
 export async function readSlipImages(input: {
   pages: Buffer[];
@@ -364,6 +418,10 @@ export async function readSlipImages(input: {
   /** Lines from the OCR table reader, used for where each line is. */
   tableLines: SlipLine[];
   ask?: VisionAsk;
+  /** Order item id → supplier codes confirmed on earlier deliveries. */
+  known?: Record<string, string[]>;
+  /** This supplier's earlier slips all printed totals. */
+  expectFooter?: boolean;
 }) {
   const { pages, rows, items, ask = askJev } = input;
   const warnings: string[] = [];
@@ -419,6 +477,37 @@ export async function readSlipImages(input: {
     }),
     4,
   );
+  const last = pageInfo.at(-1);
+  const printed = (a: ChoiceAnswer | undefined) =>
+    !!a && a.choice !== "not_printed" && a.confidence >= TOTAL_MIN;
+  const footer =
+    !!last &&
+    (printed(choice(last.answers.lines)) ||
+      printed(choice(last.answers.range)));
+  // Without printed totals, each page read whole, per order item, checks the
+  // line readings instead. With totals it found nothing more and cost a third
+  // more output tokens in testing, so it is skipped there.
+  const itemChecks = footer
+    ? Promise.resolve(null)
+    : Promise.all(
+        pages.map(async (png) => {
+          const image = await prepared(png);
+          const answers: Record<number, ChoiceAnswer | undefined> = {};
+          for (let start = 0; start < items.length; start += 30) {
+            const chunk = items.slice(start, start + 30);
+            const a = await ask(
+              { page: image },
+              Object.fromEntries(
+                chunk.map((item, k) => [`item${start + k}`, pageItem(item)]),
+              ),
+            );
+            chunk.forEach((_, k) => {
+              answers[start + k] = choice(a[`item${start + k}`]);
+            });
+          }
+          return answers;
+        }),
+      ).catch(() => null);
   // Pages the table reader could not read: Jev finds the lines.
   const bands = [...tableBands];
   for (const info of pageInfo) {
@@ -501,7 +590,8 @@ export async function readSlipImages(input: {
       const cellInputs = Object.fromEntries(
         Object.entries(cells).filter((e): e is [string, Buffer] => !!e[1]),
       );
-      const [main, cellRead, withText, withCrop] = await Promise.all([
+      const code = codeMatch(text || band.evidence, items, input.known);
+      const [main, cellRead] = await Promise.all([
         ask(
           { row, columnHeadings },
           {
@@ -559,13 +649,18 @@ export async function readSlipImages(input: {
               ),
             )
           : Promise.resolve({} as Record<string, VisionAnswer>),
-        text
+      ]);
+      // A printed supplier code, or a sure first answer, settles the product.
+      const settled =
+        code !== null || (choice(main.part)?.confidence ?? 0) >= VIEWS_SKIP;
+      const [withText, withCrop, hand] = await Promise.all([
+        !settled && text
           ? ask(
               { row, columnHeadings, ocrText: text },
               { part: productQuestion(items, "ocr") },
             )
           : Promise.resolve(null),
-        product
+        !settled && product
           ? crop(
               png,
               {
@@ -581,19 +676,30 @@ export async function readSlipImages(input: {
               ),
             )
           : Promise.resolve(null),
+        choice(main.handwriting)?.choice === "yes"
+          ? ask({ row, columnHeadings }, { handwritten })
+          : Promise.resolve(null),
       ]);
-      return decideReading(band, main, cellRead, [
-        choice(main.part),
-        choice(withText?.part),
-        choice(withCrop?.part),
-      ]);
+      return decideReading(
+        band,
+        main,
+        cellRead,
+        [choice(main.part), choice(withText?.part), choice(withCrop?.part)],
+        code,
+        choice(hand?.handwritten),
+      );
     }),
     3,
   );
 
   const lines = checkAgainstOrder(readings, items);
-  const last = pageInfo.at(-1);
   if (last) checkTotals(lines, readings, last.answers, last.total, warnings);
+  const checks = await itemChecks;
+  if (checks) checkItems(lines, items, checks, warnings);
+  if (input.expectFooter && !footer)
+    warnings.push(
+      "This supplier's slips usually print totals at the bottom, but none were found. Check that no page is missing or cut off.",
+    );
   const headers = pageInfo.flatMap(({ page, answers }) => {
     const h = edges(answers.header);
     return h && bands.some((b) => b.page === page)
@@ -610,7 +716,13 @@ export async function readSlipImages(input: {
         ]
       : [];
   });
-  return { lines, warnings, headers, model: `${VISION_MODEL} (images)` };
+  return {
+    lines,
+    warnings,
+    headers,
+    layout: { footer },
+    model: `${VISION_MODEL} (images)`,
+  };
 }
 
 function ocrText(rows: SlipRow[], page: number, top: number, bottom: number) {
@@ -632,6 +744,8 @@ export function decideReading(
   main: Record<string, VisionAnswer>,
   cellRead: Record<string, VisionAnswer>,
   views: Array<ChoiceAnswer | undefined>,
+  code: CodeMatch | null = null,
+  hand?: ChoiceAnswer,
 ): Reading {
   const flags: string[] = [],
     notes: string[] = [];
@@ -715,9 +829,25 @@ export function decideReading(
       v.probabilities ?? { [v.choice]: v.confidence },
     ))
       probabilities[k] = (probabilities[k] ?? 0) + p / used.length;
-  const [best, partConf] = Object.entries(probabilities).sort(
+  let [best, partConf] = Object.entries(probabilities).sort(
     (a, b) => b[1] - a[1],
   )[0] ?? ["unclear", 0];
+  if (code) {
+    const coded = `item${code.index}`;
+    // The code decides unless the image clearly shows another product.
+    if (best === coded || best === "unclear" || partConf < 0.8) {
+      best = coded;
+      partConf = Math.max(probabilities[coded] ?? 0, 0.95);
+      notes.push(
+        code.learned
+          ? `Matched by supplier code ${code.code}, confirmed on an earlier delivery.`
+          : `Matched by the order's SKU ${code.code}.`,
+      );
+    } else
+      flags.push(
+        `Check the product: code ${code.code} belongs to another order item, but the line looks like a different product.`,
+      );
+  }
   const unit = choice(main.unit)?.choice;
   return {
     band,
@@ -727,6 +857,7 @@ export function decideReading(
         ? "not_on_order"
         : null,
     partConf,
+    handwritten: hand && hand.confidence >= PRODUCT_MIN ? number(hand) : null,
     probabilities,
     shipped: shipped.value,
     shippedConf,
@@ -884,6 +1015,7 @@ export function checkAgainstOrder(
             : "low"
         : undefined,
       candidates: candidates?.length ? candidates : undefined,
+      ...(r.handwritten !== null ? { handwritten: r.handwritten } : {}),
       source: "vision",
     };
   });
@@ -924,4 +1056,39 @@ function checkTotals(
     line.proposed = null;
     line.quantityClear = false;
   }
+}
+
+/** Each order item's shipped total, read from the whole page, must agree with
+ * the lines read for it; an item found only on the page may be a missed line. */
+function checkItems(
+  lines: SlipLine[],
+  items: ReceiptOrderItem[],
+  pages: Array<Record<number, ChoiceAnswer | undefined>>,
+  warnings: string[],
+) {
+  items.forEach((item, i) => {
+    const answers = pages.map((p) => p[i]);
+    if (
+      answers.some((a) => !a || a.confidence < CHECK_MIN || number(a) === null)
+    )
+      return;
+    const onPage = answers.reduce((s, a) => s + number(a)!, 0);
+    const matched = lines.filter((l) => l.orderItemId === item.id);
+    if (matched.some((l) => l.shipped === null)) return;
+    const read = matched.reduce((s, l) => s + l.shipped!, 0);
+    if (Math.abs(onPage - read) < 1e-6) return;
+    if (!matched.length) {
+      warnings.push(
+        `Reading the whole slip finds ${onPage} shipped of “${item.description}”, but no line was matched to it. Check for a missed line.`,
+      );
+      return;
+    }
+    for (const line of matched) {
+      line.issues.push(
+        `Reading the whole slip finds ${onPage} shipped of this item, but the lines read add up to ${read}. Check the slip.`,
+      );
+      line.proposed = null;
+      line.quantityClear = false;
+    }
+  });
 }

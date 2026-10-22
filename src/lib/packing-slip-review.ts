@@ -36,6 +36,8 @@ export type SlipLine = {
   quantityClear?: boolean;
   /** Matched to an order item by the user at confirmation. */
   linked?: "user";
+  /** Quantity handwritten on the line; offered to the user, never prefilled. */
+  handwritten?: number;
 };
 export type SlipBox = { x: number; y: number; width: number; height: number };
 export type SlipAnalysis = {
@@ -51,6 +53,8 @@ export type SlipAnalysis = {
   warnings: string[];
   /** Column header outline per page, shown above slip line images. */
   headers?: Array<{ page: number; box: SlipBox; printedOn?: number }>;
+  /** What the slip looked like; remembered per supplier. */
+  layout?: { footer: boolean };
   applied?: {
     at: string;
     by: string;
