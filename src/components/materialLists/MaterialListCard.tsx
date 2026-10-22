@@ -1,5 +1,4 @@
 "use client";
-import { materialProgressStyle } from "~/lib/material-progress-style";
 import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import {
@@ -12,7 +11,6 @@ import {
   UsersIcon,
   UserIcon,
   CalendarIcon,
-  SendIcon,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -222,14 +220,9 @@ export function MaterialListCard({
               </span>
             </div>
           )}
-          <MaterialListSendStatus
-            overallProgress={list.overallProgress}
-            orders={list.orderStatuses}
-            orderNumbers={list.orderNumbers}
-            sentSupplierCount={list.sentSupplierCount}
-            totalSupplierCount={list.totalSupplierCount}
-            verifiedSupplierCount={list.verifiedSupplierCount}
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <MaterialListOrderNumbers orders={list.orderStatuses} numbers={list.orderNumbers} />
+          </div>
           <div className="mt-auto flex items-end justify-between gap-3 pt-1">
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4" />
@@ -246,60 +239,6 @@ export function MaterialListCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function MaterialListSendStatus({
-  overallProgress = 0,
-  sentSupplierCount = 0,
-  totalSupplierCount = 0,
-  orders,
-  orderNumbers,
-}: {
-  overallProgress?: number;
-  sentSupplierCount?: number;
-  totalSupplierCount?: number;
-  verifiedSupplierCount?: number;
-  orders?: import("~/lib/material-list-order-status").MaterialListOrderStatus[];
-  orderNumbers?: string[];
-}) {
-  const normalizedSentCount = Math.min(sentSupplierCount, totalSupplierCount);
-  const progress =
-    totalSupplierCount > 0
-      ? Math.round((normalizedSentCount / totalSupplierCount) * 100)
-      : 0;
-  const overall = Math.max(0, Math.min(100, overallProgress));
-
-  return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div
-          className="border-border text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium"
-          style={materialProgressStyle(progress)}
-          title={`${progress}% sent`}
-        >
-          <SendIcon className="h-3.5 w-3.5" />
-          <span>
-            {normalizedSentCount}/{totalSupplierCount} sent
-          </span>
-        </div>
-        <MaterialListOrderNumbers orders={orders} numbers={orderNumbers} />
-      </div>
-      <div
-        className="h-1.5 overflow-hidden rounded-full bg-orange-500/25"
-        role="progressbar"
-        aria-label="Overall sending, delivery and verification"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(overall)}
-        title={`${Math.round(overall)}% overall · sending, delivery and verification`}
-      >
-        <div
-          className="h-full bg-emerald-500 transition-all"
-          style={{ width: overall + "%" }}
-        />
-      </div>
-    </div>
   );
 }
 

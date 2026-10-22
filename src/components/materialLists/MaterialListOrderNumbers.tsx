@@ -1,5 +1,5 @@
 import { materialProgressStyle } from "~/lib/material-progress-style";
-import { CheckCircle2Icon } from "lucide-react";
+import { CheckCircle2Icon, Clock3Icon, SendIcon } from "lucide-react";
 import type { MaterialListOrderStatus } from "~/lib/material-list-order-status";
 
 export function MaterialListOrderNumbers({
@@ -18,16 +18,38 @@ export function MaterialListOrderNumbers({
       deliveredPercent: 0,
     })) ??
     [];
-  return entries.map((order) => (
-    <span
-      key={order.id}
-      aria-label={`${order.number}: ${order.complete ? "100% complete and verified" : "not fully complete and verified"}`}
-      title={`${Math.round(order.deliveredPercent ?? 0)}% delivered${order.complete ? " · fully verified" : ""}`}
-      style={materialProgressStyle(order.deliveredPercent ?? 0)}
-      className="border-border text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium"
-    >
-      <CheckCircle2Icon className="h-3.5 w-3.5" />
-      {order.number}
-    </span>
-  ));
+  return entries.map((order) => {
+    const state = order.complete
+      ? "verified"
+      : "state" in order
+        ? (order.state ?? "sent")
+        : "sent";
+    const label =
+      state === "verified"
+        ? "fully verified"
+        : state === "sent"
+          ? "sent, awaiting full verification"
+          : "not sent";
+    const Icon =
+      state === "verified"
+        ? CheckCircle2Icon
+        : state === "sent"
+          ? SendIcon
+          : Clock3Icon;
+    return (
+      <span
+        key={order.id}
+        data-order-state={state}
+        aria-label={`${order.number}: ${label}`}
+        title={`${order.number} · ${label}`}
+        style={materialProgressStyle(
+          state === "verified" ? 100 : state === "sent" ? 50 : 0,
+        )}
+        className="border-border text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium"
+      >
+        <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+        {order.number}
+      </span>
+    );
+  });
 }

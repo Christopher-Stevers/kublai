@@ -15,6 +15,7 @@ import {
   orders,
   quoteItems,
   supplierParts,
+  suppliers,
   users,
 } from "~/server/db/schema";
 
@@ -111,6 +112,8 @@ export const jobRouter = createTRPCRouter({
                 verificationStatus: orderItems.verificationStatus,
                 sentOrderStatus: orders.status,
                 sentAt: orders.sentAt,
+                sentOrderId: orders.id,
+                supplierName: suppliers.name,
                 selectedSupplierId: quoteItems.supplierId,
                 supplierPartSupplierId: supplierParts.supplierId,
                 partDefinitionId: quoteItems.partDefinitionId,
@@ -120,6 +123,7 @@ export const jobRouter = createTRPCRouter({
                 supplierParts,
                 eq(quoteItems.supplierPartId, supplierParts.id),
               )
+              .leftJoin(suppliers, eq(suppliers.id, sql`coalesce(${quoteItems.supplierId}, ${supplierParts.supplierId})`))
               .leftJoin(orderItems, eq(quoteItems.sentOrderItemId, orderItems.id))
               .leftJoin(orders, eq(orderItems.orderId, orders.id))
               .where(inArray(quoteItems.quoteId, quoteIds))
@@ -212,7 +216,12 @@ export const jobRouter = createTRPCRouter({
         materialLists: lists.map((list) => ({
           ...list,
           overallProgress: materialListProgress(supplierRows.filter(row => row.quoteId === list.quoteId)),
-          orderStatuses: materialListOrderStatuses(list.id, orderRows, verificationByOrderId),
+          orderStatuses: materialListOrderStatuses(list.id, orderRows, verificationByOrderId,
+            supplierRows.filter(row => row.quoteId === list.quoteId && row.partDefinitionId && Number(row.quantity) > 0).map(row => ({
+              sentOrderId: row.sentOrderId,
+              supplierId: list.kind === "tools" ? "tool-room" : row.selectedSupplierId ?? row.supplierPartSupplierId,
+              supplierName: list.kind === "tools" ? "Tool Room" : row.supplierName,
+            }))),
           orderNumbers: [
             ...new Set(
               orderRows

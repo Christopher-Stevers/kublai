@@ -65,17 +65,16 @@ it("shows all linked orders and status in the shared card and opens on click", (
   expect(screen.queryByText("1/2 verified")).toBeNull();
   expect(
     screen
-      .getByLabelText("ORDER-155: 100% complete and verified")
+      .getByLabelText("ORDER-155: fully verified")
       .getAttribute("title"),
-  ).toBe("100% delivered · fully verified");
+  ).toBe("ORDER-155 · fully verified");
   expect(
     screen
-      .getByLabelText("ORDER-156: not fully complete and verified")
+      .getByLabelText("ORDER-156: sent, awaiting full verification")
       .getAttribute("title"),
-  ).toBe("25% delivered");
-  expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
-    "63",
-  );
+  ).toBe("ORDER-156 · sent, awaiting full verification");
+  expect(screen.queryByText(/\d+\/\d+ sent/)).toBeNull();
+  expect(screen.queryByRole("progressbar")).toBeNull();
   fireEvent.click(screen.getByText("October 14"));
   expect(p.onOpen).toHaveBeenCalledOnce();
 });

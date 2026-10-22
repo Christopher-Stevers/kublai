@@ -1319,6 +1319,7 @@ export async function handleMaterialListReplicachePull(
         totalSupplierIdsByQuoteId.set(item.quoteId, supplierIds);
       }
 
+      const supplierNamesById = new Map(supplierRows.map(supplier => [supplier.id, supplier.name]));
       const materialListIds = materialListRows.map(
         (materialList) => materialList.id,
       );
@@ -1426,7 +1427,12 @@ export async function handleMaterialListReplicachePull(
           value: {
             ...materialList,
           overallProgress: materialListProgress(itemRows.filter(row => row.quoteId === materialList.quoteId)),
-          orderStatuses: materialListOrderStatuses(materialList.id, orderRows, verificationByOrderId),
+          orderStatuses: materialListOrderStatuses(materialList.id, orderRows, verificationByOrderId,
+            itemRows.filter(row => row.quoteId === materialList.quoteId && row.partDefinitionId && Number(row.quantity) > 0).map(row => ({
+              sentOrderId: row.sentOrderId,
+              supplierId: materialList.kind === "tools" ? "tool-room" : row.supplierId ?? row.supplierPartSupplierId,
+              supplierName: materialList.kind === "tools" ? "Tool Room" : supplierNamesById.get(row.supplierId ?? row.supplierPartSupplierId ?? ""),
+            }))),
             orderNumbers: [
               ...new Set(
                 orderRows
