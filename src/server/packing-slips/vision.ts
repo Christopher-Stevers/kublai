@@ -384,7 +384,7 @@ const QUANTITY_FIELDS = ["shipped", "ordered", "backordered"] as const;
 const NONE = ["v0", "blank", "no_column"];
 /** The quantity columns' headings Jev is sure of. One overlapping a surer
  * one is that column again, as Jev answers when a slip lacks the column. */
-export function quantityColumns(answers: Record<string, VisionAnswer>) {
+function quantityHeadings(answers: Record<string, VisionAnswer>) {
   const found = QUANTITY_FIELDS.flatMap((field) => {
     const a = answers[field];
     // Jev's edges come in hundredths, which floating point may round up.
@@ -397,16 +397,28 @@ export function quantityColumns(answers: Record<string, VisionAnswer>) {
   const overlap = (a: Edges, b: Edges) =>
     Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) /
     Math.max(1e-6, Math.min(a.right - a.left, b.right - b.left));
+  return found.map((c) => ({
+    ...c,
+    again: found.some(
+      (o) =>
+        o !== c && o.confidence > c.confidence && overlap(o.box, c.box) > 0.5,
+    ),
+  }));
+}
+
+export function quantityColumns(answers: Record<string, VisionAnswer>) {
   const columns: QuantityColumns = {};
-  for (const c of found)
-    if (
-      !found.some(
-        (o) =>
-          o !== c && o.confidence > c.confidence && overlap(o.box, c.box) > 0.5,
-      )
-    )
-      columns[c.field] = c.box;
+  for (const c of quantityHeadings(answers))
+    if (!c.again) columns[c.field] = c.box;
   return columns;
+}
+
+/** The quantity columns other than shipped that a slip lacks: Jev found
+ * their headings on another column's, as on a docket's one QTY column. */
+export function lackedColumns(answers: Record<string, VisionAnswer>) {
+  return quantityHeadings(answers)
+    .filter((c) => c.again && c.field !== "shipped")
+    .map((c) => c.field);
 }
 
 /** Table lines split mid-item (no next line number) are joined back up. */
@@ -732,7 +744,8 @@ export async function readSlipImages(input: {
       const png = pages[band.page - 1]!;
       const titled = headingsFor(info),
         titles = pages[titled.page - 1]!;
-      const columns = quantityColumns(titled.answers);
+      const columns = quantityColumns(titled.answers),
+        lacked: string[] = lackedColumns(titled.answers);
       const boxed = edges(titled.answers.header);
       // Jev's box for the headings may stop short of quantity columns it
       // found on the page; then it is widened to take them in.
@@ -924,7 +937,10 @@ export async function readSlipImages(input: {
       ]);
       return decideReading(
         band,
-        main,
+        // The line's figure for a column the slip lacks is another column's.
+        Object.fromEntries(
+          Object.entries(main).filter(([k]) => !lacked.includes(k)),
+        ),
         cellRead,
         [choice(main.part), choice(withText?.part), choice(withCrop?.part)],
         code,

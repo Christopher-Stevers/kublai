@@ -782,6 +782,34 @@ it("reads a docket's one quantity column from its cell when the line finds no sh
   expect(none!.shipped).toBeNull();
 });
 
+it("drops the ordered figure a line reads where the slip has no ordered column", async () => {
+  // A docket's one QTY heading, found as both the shipped and ordered column.
+  const qty = box(0.68, 0.74);
+  const page = {
+    shipped: qty,
+    ordered: { ...qty, confidence: 0.6 },
+    backordered: { ...qty, confidence: 0.2 },
+  };
+  const docket = {
+    main: {
+      shipped: pick("no_column", 0.85),
+      ordered: pick("v6", 0.64),
+      backordered: pick("no_column"),
+    },
+    cells: { shipped: pick("v6", 0.94), ordered: pick("v6") },
+  };
+  const [read] = (
+    await analyze([header, line], fakeJev({ ...docket, page }).ask)
+  ).lines;
+  expect(read).toMatchObject({ shipped: 6, proposed: 6, issues: [] });
+  // A slip printing its own ordered column is held to it.
+  const [held] = (await analyze([header, line], fakeJev(docket).ask)).lines;
+  expect(held!.proposed).toBeNull();
+  expect(held!.issues).toContain(
+    "Check the product: the slip shows 6 ordered; the order has 10 ea.",
+  );
+});
+
 it("raises confidence when the line and cell agree and balance", async () => {
   // 78% twice is too unsure alone; read twice and balanced it is not.
   const jev = fakeJev({
