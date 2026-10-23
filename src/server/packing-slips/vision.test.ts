@@ -642,6 +642,77 @@ it("keeps the lines the whole page confirms when a missed line may explain the t
   expect(sure.calls).not.toContain("items");
 });
 
+it("keeps the sure lines when a line in review may square the printed total", async () => {
+  const elbow: ReceiptOrderItem = {
+    ...item,
+    id: "b",
+    description: "Copper elbow",
+    sku: "XYZ789",
+    received: 0,
+  };
+  const other = row(["XYZ789", "Copper elbow", "10", "3", "2", "ea"], 0.3);
+  // The second line's crops are tinted, so the fake can tell them apart.
+  const tinted = await sharp(page)
+    .composite([
+      {
+        input: {
+          create: {
+            width: 1000,
+            height: 56,
+            channels: 3,
+            background: { r: 230, g: 230, b: 230 },
+          },
+        },
+        top: 434,
+        left: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
+  const isOther = async (image: Buffer | string | undefined) =>
+    Buffer.isBuffer(image) &&
+    (await sharp(image).stats()).channels[0]!.min < 240;
+  // Jev reads its 8 as a 3, but thought 8 likely too.
+  const unsure = {
+    ...pick("v3", 0.6),
+    probabilities: { v3: 0.6, v8: 0.35 },
+  };
+  const read = async (set: Parameters<typeof fakeJev>[0]) => {
+    const jev = fakeJev(set);
+    const ask: VisionAsk = async (inputs, questions) => {
+      const answers = await jev.ask(inputs, questions);
+      if ("kind" in questions && (await isOther(inputs.row)))
+        return {
+          ...answers,
+          part: { ...pick("item1", 0.95), probabilities: { item1: 0.95 } },
+          shipped: unsure,
+          backordered: pick("v2"),
+        };
+      if ("shippedCell" in inputs && (await isOther(inputs.shippedCell)))
+        return { ...answers, shipped: unsure, backordered: pick("v2") };
+      return answers;
+    };
+    return (await analyze([header, line, other], ask, [item, elbow], [tinted]))
+      .lines;
+  };
+  const two = { lines: pick("n2", 0.95) };
+  const squared = await read({ page: two, total: pick("v14") });
+  expect(squared.map((l) => l.proposed)).toEqual([6, null]);
+  expect(squared[0]!.issues).toEqual([]);
+  // No reading of the line in review makes 15.
+  const short = await read({ page: two, total: pick("v15") });
+  expect(short.map((l) => l.proposed)).toEqual([null, null]);
+  expect(short[0]!.issues).toEqual([
+    "The slip's printed totals do not match the lines read.",
+  ]);
+  // A line may be missing too, so the total cannot settle the rest.
+  const missing = await read({
+    page: { lines: pick("n3", 0.95) },
+    total: pick("v14"),
+  });
+  expect(missing[0]!.proposed).toBeNull();
+});
+
 it("prefers the enlarged cell but blocks when it disagrees with the line", async () => {
   const jev = fakeJev({ cells: { shipped: pick("v8", 0.95) } });
   const [read] = (await analyze([header, line], jev.ask)).lines;

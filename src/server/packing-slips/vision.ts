@@ -30,6 +30,8 @@ const PRODUCT_MIN = 0.6,
   /** A first product answer this sure was never changed by the other views. */
   VIEWS_SKIP = 0.9,
   CHECK_MIN = 0.8,
+  /** A reading Jev gives this much of its belief is worth considering. */
+  OPTION_MIN = 0.05,
   /** Column headings are at least this tall, as a share of the page. */
   HEADING_HEIGHT = 0.008;
 
@@ -439,6 +441,9 @@ type Reading = {
   probabilities: Record<string, number>;
   shipped: number | null;
   shippedConf: number;
+  /** Amounts the line may ship besides the one read: what Jev also thought
+   * likely, and what makes ordered, shipped and backordered add up. */
+  shippedOptions: number[];
   backordered: number | null;
   backorderedConf: number;
   backorderedUnclear: boolean;
@@ -892,17 +897,24 @@ export async function readSlipImages(input: {
 
   const lines = checkAgainstOrder(readings, items);
   let checks = await itemChecks;
-  const { problems, countOff } = last
+  const { problems, countOff, shipped } = last
     ? totalsProblems(lines, readings, last.answers, last.total)
-    : { problems: [], countOff: false };
+    : { problems: [], countOff: false, shipped: null };
   if (problems.length) {
     warnings.push(`Check every line: ${problems.join(", and ")}.`);
     // Lines left for review, or missed, may account for the difference.
     // Then a line keeps its quantity where reading each page whole finds the
-    // same for its item; otherwise no line can be trusted.
+    // same for its item; otherwise no line can be trusted. With every line
+    // counted, the lines left for review may square the total by themselves,
+    // read as Jev also thought they might be: then the rest stand.
     const doubt = countOff || lines.some((l) => l.proposed === null);
     if (doubt) checks ??= await readItems();
+    const laid =
+      !countOff &&
+      shipped !== null &&
+      squaredByReview(lines, readings, shipped);
     for (const line of lines) {
+      if (laid && line.proposed !== null) continue;
       if (doubt && line.proposed !== null && checks) {
         const i = items.findIndex((item) => item.id === line.orderItemId);
         if (i >= 0 && pageAgreement(lines, items[i]!, i, checks)?.agrees)
@@ -1055,6 +1067,13 @@ export function decideReading(
   };
   const sure = agreed(balanced);
   if (sure) ({ shippedConf, backorderedConf } = sure);
+  const shippedOptions = new Set<number>();
+  for (const a of [main.shipped, cellRead.shipped])
+    for (const [k, p] of Object.entries(choice(a)?.probabilities ?? {}))
+      if (p >= OPTION_MIN && /^v\d+$/.test(k))
+        shippedOptions.add(Number(k.slice(1)));
+  if (ordered.value !== null && ordered.value >= (backordered.value ?? 0))
+    shippedOptions.add(ordered.value - (backordered.value ?? 0));
   const kind = choice(main.kind);
   if (kind && kind.choice !== "one")
     flags.push(
@@ -1109,6 +1128,7 @@ export function decideReading(
     probabilities,
     shipped: shipped.value,
     shippedConf,
+    shippedOptions: [...shippedOptions],
     backordered:
       backordered.choice === "blank" || backordered.choice === "no_column"
         ? 0
@@ -1310,7 +1330,8 @@ function totalsProblems(
   total: { value: number | null; confidence: number } | null,
 ) {
   const problems: string[] = [];
-  let countOff = false;
+  let countOff = false,
+    shipped: number | null = null;
   const count = choice(answers.lines);
   if (count && /^n\d+$/.test(count.choice) && count.confidence >= TOTAL_MIN) {
     const printed = Number(count.choice.slice(1));
@@ -1326,12 +1347,34 @@ function totalsProblems(
     readings.every((r) => r.shipped !== null)
   ) {
     const sum = readings.reduce((s, r) => s + r.shipped!, 0);
-    if (Math.abs(sum - total.value) > 1e-6)
+    if (Math.abs(sum - total.value) > 1e-6) {
+      shipped = total.value;
       problems.push(
         `the slip's total shipped is ${total.value} but the lines add up to ${sum}`,
       );
+    }
   }
-  return { problems, countOff };
+  return { problems, countOff, shipped };
+}
+
+/** Whether the lines left for review, read as Jev also thought they might
+ * be, square the slip's printed total shipped. */
+export function squaredByReview(
+  lines: SlipLine[],
+  readings: Reading[],
+  total: number,
+) {
+  const sure = readings
+    .filter((_, k) => lines[k]!.proposed !== null)
+    .reduce((s, r) => s + r.shipped!, 0);
+  let sums = new Set([sure]);
+  for (const [k, r] of readings.entries()) {
+    if (lines[k]!.proposed !== null) continue;
+    const options = new Set([r.shipped!, ...r.shippedOptions]);
+    sums = new Set([...sums].flatMap((s) => [...options].map((o) => s + o)));
+    if (sums.size > 10000) return false;
+  }
+  return [...sums].some((s) => Math.abs(s - total) < 1e-6);
 }
 
 /** An order item's shipped total read from the whole page, beside what its
