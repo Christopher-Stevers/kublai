@@ -1,3 +1,4 @@
+import { supplierVersionLabel } from "~/lib/supplier-label";
 import { buildSupplierChoices } from "~/lib/supplier-choices";
 import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
 import type { SupplierVersion } from "~/lib/job-supplier-defaults";
@@ -297,7 +298,7 @@ export function ReviewStage({
       selectedSupplierPart,
       label:
         optimisticSelection?.label ??
-        pendingPart.supplierVersion?.label ??
+        (pendingPart.supplierVersion ? supplierVersionLabel(pendingPart.supplierVersion) : null) ??
         (selectedSupplierPart
           ? supplierLabel(
               selectedSupplierPart.supplier.name,

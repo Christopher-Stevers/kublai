@@ -1,4 +1,5 @@
 "use client";
+import { supplierVersionLabel } from "~/lib/supplier-label";
 import {
   buildSupplierChoices,
   type SupplierChoice,
@@ -151,7 +152,7 @@ export function SupplierSelector({
             <span className="min-w-0 text-left whitespace-normal">
               {optimisticDisplayLabel ??
                 (currentVersion
-                  ? currentVersion.label
+                  ? supplierVersionLabel(currentVersion)
                   : optimisticSupplierId
                     ? supplierLabel(
                         displayValue,

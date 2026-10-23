@@ -3,6 +3,7 @@ import {
   applicablePriceBook,
   orderPriceBookLabel,
   supplierLabel,
+  supplierVersionLabel,
 } from "./supplier-label";
 const entries = [
   {
@@ -27,7 +28,7 @@ describe("supplier price book labels", () => {
     ).toBe("Standard");
   });
   it("keeps names intact and missing suppliers unlabelled", () => {
-    expect(supplierLabel("Next", "Alma")).toBe("Next (Alma)");
+    expect(supplierLabel("Next", "Alma")).toBe("Next - Alma");
     expect(supplierLabel("Fastening House")).toBe("Fastening House");
     expect(supplierLabel("Next", "Standard")).toBe("Next");
     expect(supplierLabel("Next", " standard ")).toBe("Next");
@@ -43,4 +44,11 @@ describe("supplier price book labels", () => {
     ).toBe("Alma / Standard");
     expect(orderPriceBookLabel([{}])).toBe("Not recorded");
   });
+});
+
+it("updates old book snapshots while preserving parentheses in supplier names", () => {
+  expect(supplierVersionLabel({label:"Next (Alma)",bookId:"book"})).toBe("Next - Alma");
+  expect(supplierVersionLabel({label:"ACME (East) (Alma)",bookId:"book"})).toBe("ACME (East) - Alma");
+  expect(supplierVersionLabel({label:"ACME (East)",bookId:null})).toBe("ACME (East)");
+  expect(supplierVersionLabel({label:"Next - Alma",bookId:"book"})).toBe("Next - Alma");
 });

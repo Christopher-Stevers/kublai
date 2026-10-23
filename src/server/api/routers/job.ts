@@ -75,7 +75,7 @@ export const jobRouter = createTRPCRouter({
         bookId: string | null;
         label: string;
       }>(sql`select s.id as "supplierId",null::uuid as "bookId",s.name as label from kublai_supplier s where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room'
-      union all select s.id,b.id,s.name || ' (' || b.name || ')' from kublai_supplier s join kublai_supplier_price_book b on b."supplierId"=s.id and b."organizationId"=${org} where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room' order by label`);
+      union all select s.id,b.id,s.name || ' - ' || b.name from kublai_supplier s join kublai_supplier_price_book b on b."supplierId"=s.id and b."organizationId"=${org} where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room' order by label`);
       return { defaults: job.supplierDefaults, options: [...options] };
     }),
   syncEntityMutations: retiredOfflineMutation,

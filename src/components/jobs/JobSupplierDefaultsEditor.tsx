@@ -1,4 +1,5 @@
 "use client";
+import { supplierVersionLabel } from "~/lib/supplier-label";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownIcon,
@@ -106,7 +107,7 @@ export function JobSupplierDefaultsEditor({
         </option>
         {options.map((option) => (
           <option key={versionKey(option)} value={versionKey(option)}>
-            {option.label}
+            {supplierVersionLabel(option)}
           </option>
         ))}
       </select>

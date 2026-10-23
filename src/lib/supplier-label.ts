@@ -9,7 +9,7 @@ export function supplierLabel(
   const bookName = book.trim();
   return !bookName || bookName.toLowerCase() === "standard"
     ? supplierName
-    : `${supplierName} (${bookName})`;
+    : `${supplierName} - ${bookName}`;
 }
 export function orderPriceBookLabel(
   items: readonly { priceBookNameSnapshot?: string | null }[],
@@ -47,4 +47,11 @@ export function applicablePriceBook(
   const entry =
     matches.find((e) => e.supplierPartId === listingId) ?? matches[0];
   return entry?.priceBookName ?? "Standard";
+}
+
+/** Older offline selections keep a display snapshot; modernize it without changing identity. */
+export function supplierVersionLabel(version: { label: string; bookId: string | null }) {
+  return version.bookId
+    ? version.label.replace(/^(.*) \(([^()]*)\)$/, "$1 - $2")
+    : version.label;
 }

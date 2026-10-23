@@ -55,7 +55,7 @@ it("shows title, supplier, then the actual sent timestamp on separate lines", ()
   const lines = option.firstElementChild!.children;
   expect(lines).toHaveLength(3);
   expect(lines[0]).toHaveTextContent("166-Fastening House");
-  expect(lines[1]).toHaveTextContent("Fastening House (Alma)");
+  expect(lines[1]).toHaveTextContent("Fastening House - Alma");
   expect(lines[2]).toHaveTextContent(
     `Sent ${format(state.orders[0]!.sentAt!, "MMM d, yyyy 'at' h:mm a")}`,
   );
