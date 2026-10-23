@@ -75,26 +75,28 @@ export function MaterialListOrderPickerDialog({
                   onOpenChange(false);
                   onVerifyOrder(order.id);
                 }}
-                className="flex w-full items-center rounded-lg border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                className="hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary flex w-full items-center rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
-                <div className="min-w-0">
-                  <div className="font-medium text-foreground">
-                    {order.orderNumber || `Order #${order.id.slice(0, 8)}`}
-                    {order.supplier?.name && (
-                      <span className="text-muted-foreground ml-2">
-                        - <SupplierLabel name={order.supplier.name} bookName={order.supplier.priceBookName} />
-                      </span>
+                <div className="min-w-0 space-y-1">
+                  <div className="text-foreground font-medium break-words">
+                    {order.orderNumber?.trim()
+                      ? order.orderNumber
+                      : `Order #${order.id.slice(0, 8)}`}
+                  </div>
+                  <div className="text-muted-foreground text-sm break-words">
+                    {order.supplier?.name ? (
+                      <SupplierLabel
+                        name={order.supplier.name}
+                        bookName={order.supplier.priceBookName}
+                      />
+                    ) : (
+                      "Supplier not recorded"
                     )}
                   </div>
                   <div className="text-muted-foreground text-sm">
-                    Created{" "}
-                    {format(
-                      new Date(order.createdAt),
-                      "MMM d, yyyy 'at' h:mm a",
-                    )}
-                    {order.status && (
-                      <span className="ml-2">({order.status})</span>
-                    )}
+                    {order.sentAt
+                      ? `Sent ${format(new Date(order.sentAt), "MMM d, yyyy 'at' h:mm a")}`
+                      : "Sent date not recorded"}
                   </div>
                 </div>
               </button>

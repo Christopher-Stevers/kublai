@@ -1811,6 +1811,7 @@ ${foremanName}`;
           orderNumber: orders.orderNumber,
           status: orders.status,
           createdAt: orders.createdAt,
+          sentAt: orders.sentAt,
           supplierId: suppliers.id,
           supplierName: suppliers.name,
           priceBookName: orderPriceBookName(),
@@ -1832,6 +1833,7 @@ ${foremanName}`;
         orderNumber: order.orderNumber,
         status: order.status,
         createdAt: order.createdAt,
+        sentAt: order.sentAt,
         supplier: order.supplierId
           ? {
               id: order.supplierId,
