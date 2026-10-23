@@ -444,6 +444,9 @@ type Reading = {
   /** Ordered less shipped and backordered, when not zero: delivered earlier,
    * or misread. */
   earlier: number | null;
+  /** The confidences should the order's earlier deliveries account for
+   * `earlier`; null unless the line and its cell read shipped alike. */
+  ifEarlier: { shippedConf: number; backorderedConf: number } | null;
   unit: string | null;
   handwritten: number | null;
   /** Pen marks on the line: whether a confident read of them agrees with
@@ -960,19 +963,25 @@ export function decideReading(
       ? ordered.value - shipped.value - (backordered.value ?? 0)
       : null;
   // Two separate reads that agree, and balance with the other columns.
-  if (balanced && rowShipped.value === cellShipped.value) {
-    shippedConf = Math.max(
+  const agreed = (balancing: boolean) => {
+    if (!balancing || rowShipped.value !== cellShipped.value) return null;
+    const shipped = Math.max(
       shippedConf,
       Math.min(
         0.99,
         1 - (1 - rowShipped.confidence) * (1 - cellShipped.confidence) * 4,
       ),
     );
-    backorderedConf = Math.max(
-      backorderedConf,
-      Math.min(0.99, ordered.confidence, shippedConf),
-    );
-  }
+    return {
+      shippedConf: shipped,
+      backorderedConf: Math.max(
+        backorderedConf,
+        Math.min(0.99, ordered.confidence, shipped),
+      ),
+    };
+  };
+  const sure = agreed(balanced);
+  if (sure) ({ shippedConf, backorderedConf } = sure);
   const kind = choice(main.kind);
   if (kind && kind.choice !== "one")
     flags.push(
@@ -1035,6 +1044,7 @@ export function decideReading(
     backorderedUnclear: backordered.choice === "unclear",
     ordered: ordered.value,
     earlier,
+    ifEarlier: agreed(earlier !== null),
     unit: unit && !["blank", "other", "unclear"].includes(unit) ? unit : null,
     flags,
     notes,
@@ -1089,7 +1099,8 @@ export function checkAgainstOrder(
         `Check the product: only ${sure} sure it is this order item.`,
       );
     let unit = r.unit,
-      explained = false;
+      explained = false,
+      { shippedConf, backorderedConf } = r;
     if (item) {
       if ((matched.get(r.part as number) ?? 0) > 1)
         issues.push(
@@ -1130,13 +1141,17 @@ export function checkAgainstOrder(
           `Ships ${r.shipped} ${unit}, more than the ${remaining} ${item.unit} still due.`,
         );
     }
+    // Lines that add up once earlier deliveries are counted are as sure as
+    // lines that add up by themselves.
+    if (explained && r.ifEarlier)
+      ({ shippedConf, backorderedConf } = r.ifEarlier);
     if (r.shipped === null)
       issues.push("Shipped quantity could not be read confidently.");
-    else if (r.shippedConf < QUANTITY_MIN)
+    else if (shippedConf < QUANTITY_MIN)
       issues.push(
         "Check shipped quantity against the slip; the print is unclear.",
       );
-    if (r.backorderedConf < QUANTITY_MIN || r.backorderedUnclear)
+    if (backorderedConf < QUANTITY_MIN || r.backorderedUnclear)
       issues.push("Check backordered quantity against the slip.");
     if (explained)
       notes.push(
@@ -1167,7 +1182,7 @@ export function checkAgainstOrder(
       proposed = null;
     }
     notes.push(
-      `Read from the slip image: product ${sure} sure, shipped ${Math.round(r.shippedConf * 100)}% sure.`,
+      `Read from the slip image: product ${sure} sure, shipped ${Math.round(shippedConf * 100)}% sure.`,
     );
     const table = r.band.table;
     const box: SlipBox = {

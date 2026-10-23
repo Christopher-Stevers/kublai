@@ -550,9 +550,18 @@ it("raises confidence when the line and cell agree and balance", async () => {
   });
   const [read] = (await analyze([header, line], jev.ask)).lines;
   expect(read!.proposed).toBe(6);
+  // Or once the 2 delivered earlier are counted.
+  const later = fakeJev({
+    main: { shipped: pick("v6", 0.78), backordered: pick("v2", 0.7) },
+    cells: { shipped: pick("v6", 0.78), backordered: pick("v2", 0.7) },
+  });
+  const [counted] = (await analyze([header, line], later.ask)).lines;
+  expect(counted!.proposed).toBe(6);
+  expect(counted!.issues).toEqual([]);
+  // 13 ordered leaves 3 unaccounted for.
   const unbalanced = fakeJev({
-    main: { shipped: pick("v6", 0.78), ordered: pick("v12") },
-    cells: { shipped: pick("v6", 0.78), ordered: pick("v12") },
+    main: { shipped: pick("v6", 0.78), ordered: pick("v13") },
+    cells: { shipped: pick("v6", 0.78), ordered: pick("v13") },
   });
   const [blocked] = (await analyze([header, line], unbalanced.ask)).lines;
   expect(blocked!.proposed).toBeNull();
