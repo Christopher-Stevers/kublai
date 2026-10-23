@@ -953,9 +953,21 @@ export async function readSlipImages(input: {
   for (const [k, r] of readings.entries()) readings[k] = settleHidden(r, items);
   const lines = checkAgainstOrder(readings, items);
   let checks = await itemChecks;
-  const { problems, countOff, shipped } = last
+  const { problems, countOff, counted, shipped } = last
     ? totalsProblems(lines, readings, last.answers, last.total)
-    : { problems: [], countOff: false, shipped: null };
+    : { problems: [], countOff: false, counted: false, shipped: null };
+  const total =
+    last?.total?.value != null && last.total.confidence >= TOTAL_MIN
+      ? last.total.value
+      : null;
+  // With every line counted, the printed total may leave a line in review
+  // only one figure it can ship.
+  if (
+    counted &&
+    total !== null &&
+    (!problems.length || squaredByReview(lines, readings, total))
+  )
+    settledByTotal(lines, readings, items, total);
   if (problems.length) {
     warnings.push(`Check every line: ${problems.join(", and ")}.`);
     // Lines left for review, or missed, may account for the difference.
@@ -1518,7 +1530,7 @@ export function checkAgainstOrder(
 }
 
 /** Where the slip's printed line count and shipped total differ from what
- * was read, and whether the count does. */
+ * was read, and whether the count is off or agrees. */
 function totalsProblems(
   lines: SlipLine[],
   readings: Reading[],
@@ -1527,11 +1539,13 @@ function totalsProblems(
 ) {
   const problems: string[] = [];
   let countOff = false,
+    counted = false,
     shipped: number | null = null;
   const count = choice(answers.lines);
   if (count && /^n\d+$/.test(count.choice) && count.confidence >= TOTAL_MIN) {
     const printed = Number(count.choice.slice(1));
     countOff = printed !== lines.length;
+    counted = !countOff;
     if (countOff)
       problems.push(
         `the slip lists ${printed} lines but ${lines.length} were read`,
@@ -1565,7 +1579,7 @@ function totalsProblems(
       `the slip's total shipped is ${total.value} but the lines read cannot add up to it`,
     );
   }
-  return { problems, countOff, shipped };
+  return { problems, countOff, counted, shipped };
 }
 
 /** Whether some choice of one figure from each list sums to the total; null
@@ -1597,6 +1611,93 @@ export function squaredByReview(
         ],
   );
   return reaches(figures, total) === true;
+}
+
+/** Each line's figures that some way of squaring the total uses; null when
+ * there are too many sums to tell. */
+function squaringFigures(figures: number[][], total: number) {
+  const sums = (from: number[][]) => {
+    const out = [new Set([0])];
+    for (const options of from) {
+      const next = new Set(
+        [...out.at(-1)!].flatMap((s) => options.map((o) => s + o)),
+      );
+      if (next.size > 10000) return null;
+      out.push(next);
+    }
+    return out;
+  };
+  const before = sums(figures),
+    after = sums([...figures].reverse());
+  if (!before || !after) return null;
+  return figures.map((options, k) =>
+    options.filter((o) =>
+      [...before[k]!].some((s) =>
+        after[figures.length - 1 - k]!.has(total - s - o),
+      ),
+    ),
+  );
+}
+
+/** Lines left for review in doubt only over what they ship, where the
+ * slip's printed total, with every line counted, leaves just one of the
+ * figures Jev thought each might be. Settled, they replace those lines. */
+export function settledByTotal(
+  lines: SlipLine[],
+  readings: Reading[],
+  items: ReceiptOrderItem[],
+  total: number,
+) {
+  const figures = readings.map((r, k) =>
+    lines[k]!.proposed !== null
+      ? [r.shipped!]
+      : [
+          ...new Set([
+            ...(r.shipped !== null ? [r.shipped] : []),
+            ...r.shippedOptions,
+          ]),
+        ],
+  );
+  const squaring = squaringFigures(figures, total);
+  if (!squaring) return;
+  for (const [k, r] of readings.entries()) {
+    const only = squaring[k]!;
+    if (lines[k]!.proposed !== null || only.length !== 1 || r.pen) continue;
+    const v = only[0]!;
+    // A misread elsewhere, or in the total, may square it too: the figure
+    // must also be what Jev leaned to, or what ordered less backordered
+    // leaves.
+    if (
+      !(v === r.shipped && r.shippedConf >= 0.5) &&
+      !(r.ordered !== null && v === r.ordered - (r.backordered ?? 0))
+    )
+      continue;
+    const off =
+      r.ordered !== null && r.ordered !== v + (r.backordered ?? 0)
+        ? r.ordered - v - (r.backordered ?? 0)
+        : null;
+    const settled: Reading = {
+      ...r,
+      shipped: v,
+      shippedConf: Math.max(r.shippedConf, QUANTITY_MIN),
+      earlier: off,
+      ifEarlier: null,
+      flags: r.flags.filter((f) => !f.startsWith("Shipped reads as")),
+    };
+    const line = checkAgainstOrder(
+      readings.map((x, j) => (j === k ? settled : x)),
+      items,
+    )[k]!;
+    if (line.proposed === null) continue;
+    readings[k] = settled;
+    lines[k] = {
+      ...line,
+      notes: [
+        ...(line.notes ?? []),
+        `The slip's printed total settles the shipped ${v}.`,
+      ],
+    };
+  }
 }
 
 /** An order item's shipped total read from the whole page, beside what its

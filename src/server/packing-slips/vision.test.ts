@@ -696,6 +696,7 @@ it("keeps the sure lines when a line in review may square the printed total", as
   const read = async (
     set: Parameters<typeof fakeJev>[0],
     shipped: ChoiceAnswer = unsure,
+    kind = "one",
   ) => {
     const jev = fakeJev(set);
     const ask: VisionAsk = async (inputs, questions) => {
@@ -703,6 +704,7 @@ it("keeps the sure lines when a line in review may square the printed total", as
       if ("kind" in questions && (await isOther(inputs.row)))
         return {
           ...answers,
+          kind: pick(kind, 0.99),
           part: { ...pick("item1", 0.95), probabilities: { item1: 0.95 } },
           shipped,
           backordered: pick("v2"),
@@ -715,9 +717,22 @@ it("keeps the sure lines when a line in review may square the printed total", as
       .lines;
   };
   const two = { lines: pick("n2", 0.95) };
+  // Of the 3 and 8 Jev read, only 8 makes 14, as 10 ordered less 2
+  // backordered does: the total settles it.
   const squared = await read({ page: two, total: pick("v14") });
-  expect(squared.map((l) => l.proposed)).toEqual([6, null]);
-  expect(squared[0]!.issues).toEqual([]);
+  expect(squared.map((l) => l.proposed)).toEqual([6, 8]);
+  expect(squared[1]!.issues).toEqual([]);
+  expect(squared[1]!.notes).toContain(
+    "The slip's printed total settles the shipped 8.",
+  );
+  // Not so a line that may hold more than one product; the sure line stands.
+  const doubted = await read(
+    { page: two, total: pick("v14") },
+    unsure,
+    "multiple",
+  );
+  expect(doubted.map((l) => l.proposed)).toEqual([6, null]);
+  expect(doubted[0]!.issues).toEqual([]);
   // No reading of the line in review makes 15.
   const short = await read({ page: two, total: pick("v15") });
   expect(short.map((l) => l.proposed)).toEqual([null, null]);
@@ -729,7 +744,7 @@ it("keeps the sure lines when a line in review may square the printed total", as
     page: { lines: pick("n3", 0.95) },
     total: pick("v14"),
   });
-  expect(missing[0]!.proposed).toBeNull();
+  expect(missing.map((l) => l.proposed)).toEqual([null, null]);
   // A line Jev could not read may still ship only what it thought likely,
   // or what its ordered and backordered figures leave: 3 or 8.
   const unread = {
@@ -739,7 +754,7 @@ it("keeps the sure lines when a line in review may square the printed total", as
   const fits = await read({ page: two, total: pick("v14") }, unread);
   expect(fits.map((l) => [l.shipped, l.proposed])).toEqual([
     [6, 6],
-    [null, null],
+    [8, 8],
   ]);
   expect(fits[0]!.issues).toEqual([]);
   // Taking it as 0 would square a total of 6.
@@ -750,10 +765,23 @@ it("keeps the sure lines when a line in review may square the printed total", as
       "The slip's printed totals do not match the lines read.",
     ]);
   }
+  // With no ordered column to check, a 3 squaring a total of 9 settles the
+  // line only where Jev read it so, not where it thought it might be.
+  const docket = {
+    page: two,
+    total: pick("v9"),
+    main: { ordered: pick("no_column") },
+    cells: { ordered: pick("no_column") },
+  };
+  const leaned = await read(docket);
+  expect(leaned.map((l) => l.proposed)).toEqual([6, 3]);
+  const guessed = await read(docket, unread);
+  expect(guessed.map((l) => l.proposed)).toEqual([6, null]);
 });
 
 it("prefers the enlarged cell but blocks when it disagrees with the line", async () => {
-  const jev = fakeJev({ cells: { shipped: pick("v8", 0.95) } });
+  const cells = { shipped: pick("v8", 0.95) };
+  const jev = fakeJev({ cells, total: pick("unclear") });
   const [read] = (await analyze([header, line], jev.ask)).lines;
   expect(read!.shipped).toBe(8);
   expect(read!.proposed).toBeNull();
@@ -763,6 +791,10 @@ it("prefers the enlarged cell but blocks when it disagrees with the line", async
   expect(read!.issues).toContain(
     "Ordered 10, shipped 8 and backordered 4 do not add up. Check the slip.",
   );
+  // The slip's printed total of 6 settles it as the line read it.
+  const [settled] = (await analyze([header, line], fakeJev({ cells }).ask))
+    .lines;
+  expect(settled).toMatchObject({ shipped: 6, proposed: 6, issues: [] });
 });
 
 it("reads a docket's one quantity column from its cell when the line finds no shipped column", async () => {
@@ -863,7 +895,12 @@ it("reads a shipped figure hidden under a mark from the ordered and backordered 
   );
   // With 2 received earlier, the slip's 10 ordered and 4 backordered leave
   // 4 for this delivery, not the 6 Jev saw.
-  const [earlier] = (await analyze([header, line], fakeJev(hidden).ask)).lines;
+  const [earlier] = (
+    await analyze(
+      [header, line],
+      fakeJev({ ...hidden, total: pick("unclear") }).ask,
+    )
+  ).lines;
   expect(earlier!.proposed).toBeNull();
   // And where Jev saw a 4, it stands.
   const sawFour = {
@@ -885,6 +922,7 @@ it("reads a shipped figure hidden under a mark from the ordered and backordered 
   // Jev saw a 5 there more than a 6.
   const five = fakeJev({
     ...hidden,
+    total: pick("unclear"),
     cells: {
       shipped: {
         ...pick("v5", 0.6),
@@ -897,6 +935,7 @@ it("reads a shipped figure hidden under a mark from the ordered and backordered 
   // Backordered read differently in the cell settles nothing.
   const unsure = fakeJev({
     ...hidden,
+    total: pick("unclear"),
     cells: { ...hidden.cells, backordered: pick("v3", 0.5) },
   });
   const [torn] = (await analyze([header, line], unsure.ask, [fresh])).lines;
