@@ -354,9 +354,10 @@ const QUANTITY_FIELDS = ["shipped", "ordered", "backordered"] as const;
 export function quantityColumns(answers: Record<string, VisionAnswer>) {
   const found = QUANTITY_FIELDS.flatMap((field) => {
     const a = answers[field];
+    // Jev's edges come in hundredths, which floating point may round up.
     return a?.type === "box" &&
       a.confidence >= HEADING_MIN &&
-      a.box.bottom - a.box.top <= 0.08
+      a.box.bottom - a.box.top <= 0.08 + 1e-6
       ? [{ field, ...a }]
       : [];
   });

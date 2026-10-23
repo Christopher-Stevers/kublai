@@ -314,6 +314,21 @@ it("reads only the quantity cells under headings Jev is sure of", async () => {
   const [read] = (await analyze([header, line], ask)).lines;
   expect(asked).toContainEqual(["shippedCell"]);
   expect(read!.proposed).toBe(6);
+  // A two-line heading 0.08 high is a heading still, however 0.33 - 0.25
+  // rounds.
+  const tall = fakeJev({
+    page: {
+      shipped: box(0.68, 0.74, 0.25, 0.33),
+      ordered: { ...box(0.58, 0.64), confidence: 0.3 },
+      backordered: { ...box(0.78, 0.86), confidence: 0.3 },
+    },
+  });
+  asked.length = 0;
+  await analyze([header, line], (inputs, questions) => {
+    asked.push(Object.keys(inputs));
+    return tall.ask(inputs, questions);
+  });
+  expect(asked).toContainEqual(["shippedCell"]);
 });
 
 it("shows each line under the column headings, and no other line", async () => {
