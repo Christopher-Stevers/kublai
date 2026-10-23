@@ -169,7 +169,7 @@ export function PackingSlips({
   }, [open, online, slips, load]);
   const analysisAction = async (
     slip: Slip,
-    action: "analyze" | "refresh" | "confirm",
+    action: "analyze" | "refresh" | "confirm" | "clear",
     quantities?: Record<string, number>,
     links?: Record<string, string | null>,
   ) => {
@@ -192,6 +192,8 @@ export function PackingSlips({
       if (!res.ok)
         throw Error(result.error ?? "Could not update this receipt.");
       await load();
+      if (action === "clear") setNotice("Detection cleared. The file and confirmed receipts were kept.");
+      if (action === "analyze") setNotice("Detection started. Received quantities stay unchanged.");
       if (action === "confirm") {
         setNotice(
           "Received quantities updated. Differences are flagged on the order.",
@@ -379,7 +381,8 @@ export function PackingSlips({
                         analysis={slip.packingSlipAnalysis ? { ...slip.packingSlipAnalysis, items: slip.packingSlipAnalysis.items.map(item => ({ ...item, jobPriceStatus: orderItems ? orderItems.find(current => current.id === item.id)?.jobPriceStatus : item.jobPriceStatus })) } : undefined}
                         versionId={slip.currentVersionId}
                         jobId={jobId}
-                        busy={busy}
+                        busy={busy || !online}
+                        canManage={canUpload}
                         onAction={(action, quantities, links) =>
                           analysisAction(slip, action, quantities, links)
                         }
@@ -407,6 +410,7 @@ async function hasCamera() {
 }
 
 const SLIP_STATE = {
+  cleared: ["Detection cleared", "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"],
   applied: [
     "Received",
     "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",

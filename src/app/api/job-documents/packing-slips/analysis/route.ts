@@ -8,6 +8,7 @@ import {
 } from "~/server/documents/http";
 import {
   startSlipAnalysis,
+  clearSlipAnalysis,
   confirmSlipReceipt,
   refreshSlipReview,
 } from "~/server/packing-slips/service";
@@ -16,8 +17,15 @@ export const dynamic = "force-dynamic";
 const input = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("analyze"),
+    runId: z.uuid().optional(),
     jobId: z.uuid(),
     documentId: z.uuid(),
+  }),
+  z.object({
+    action: z.literal("clear"),
+    jobId: z.uuid(),
+    documentId: z.uuid(),
+    runId: z.uuid(),
   }),
   z.object({
     action: z.literal("refresh"),
@@ -49,16 +57,18 @@ export async function POST(request: Request) {
     const access = await assertDocumentAccess(userId, body.jobId);
     const result =
       body.action === "analyze"
-        ? await startSlipAnalysis(access, body.documentId, true)
-        : body.action === "refresh"
-          ? await refreshSlipReview(access, body.documentId, body.runId)
-          : await confirmSlipReceipt(
-              access,
-              body.documentId,
-              body.runId,
-              body.quantities,
-              body.links,
-            );
+        ? await startSlipAnalysis(access, body.documentId, true, body.runId)
+        : body.action === "clear"
+          ? await clearSlipAnalysis(access, body.documentId, body.runId)
+          : body.action === "refresh"
+            ? await refreshSlipReview(access, body.documentId, body.runId)
+            : await confirmSlipReceipt(
+                access,
+                body.documentId,
+                body.runId,
+                body.quantities,
+                body.links,
+              );
     return Response.json(
       { success: true, result },
       { headers: { "Cache-Control": "private, no-store" } },

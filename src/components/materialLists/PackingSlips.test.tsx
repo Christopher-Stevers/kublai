@@ -173,3 +173,27 @@ it("opens a saved slip's comparison instead of restarting the camera", async () 
   await screen.findByRole("region", { name: "Review delivery" });
   expect(screen.getByRole("dialog")).toBeInTheDocument();
 });
+
+it("sends per-slip clear and rerun actions for the current detection without confirming a receipt", async () => {
+  let analysis={runId:"old-run",versionId:"version",status:"ready",startedAt:"2026-10-22",items:[],lines:[],warnings:[],applied:{at:"2026-10-22",by:"u",quantities:{}}};
+  const actions:Record<string,unknown>[]=[];
+  const verified=vi.fn();
+  vi.stubGlobal("fetch",vi.fn(async (url:string,options?:RequestInit)=>{
+    if(options?.method==="POST"){
+      const body=JSON.parse(options.body as string) as Record<string, unknown>;actions.push(body);
+      analysis={...analysis,runId:body.action==="clear"?"cleared-run":"new-run",status:body.action==="clear"?"cleared":"ready"};
+      return Response.json({success:true});
+    }
+    return Response.json({canUpload:true,documents:[{id:"doc",name:"Packing slip - PO-123.pdf",createdAt:"2026-10-22",currentVersionId:"version",packingSlip:{orderId:"order",materialListId:"list",orderNumber:"PO-123"},packingSlipAnalysis:analysis}]});
+  }));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" onVerified={verified}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Packing slips"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Clear detection"}));
+  await screen.findByText("Detection cleared. The file and confirmed receipts were kept.");
+  expect(actions[0]).toMatchObject({action:"clear",jobId:"job",documentId:"doc",runId:"old-run"});
+  fireEvent.click(screen.getByRole("button",{name:"Rerun detection"}));
+  await waitFor(()=>expect(actions).toHaveLength(2));
+  expect(actions[1]).toMatchObject({action:"analyze",documentId:"doc",runId:"cleared-run"});
+  expect(verified).not.toHaveBeenCalled();
+  expect(actions.some(action=>action.action==="confirm")).toBe(false);
+});

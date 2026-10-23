@@ -6,6 +6,8 @@ import {
   CheckCircle2Icon,
   InfoIcon,
   Loader2Icon,
+  EraserIcon,
+  RotateCcwIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -127,7 +129,88 @@ function reviewOrder(analysis: SlipAnalysis) {
 const openIssues = (line: SlipLine, linked: boolean) =>
   linked ? line.issues.filter((i) => !MATCH_ISSUE.test(i)) : line.issues;
 
-export function PackingSlipReview({
+export function PackingSlipReview(
+  props: Parameters<typeof PackingSlipComparison>[0] & { canManage?: boolean },
+) {
+  const { analysis, busy, onAction, canManage = true } = props;
+  return (
+    <div className="space-y-3">
+      {analysis && canManage && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-10 flex-1"
+              disabled={busy || analysis.status === "processing"}
+              onClick={() => void onAction("analyze")}
+            >
+              <RotateCcwIcon className="size-4" /> Rerun detection
+            </Button>
+            {analysis.status !== "cleared" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-10 flex-1"
+                disabled={busy}
+                onClick={() => void onAction("clear")}
+              >
+                <EraserIcon className="size-4" /> Clear detection
+              </Button>
+            )}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Clearing or rerunning detection keeps the file and confirmed
+            received quantities.
+          </p>
+        </div>
+      )}
+      <PackingSlipComparison {...props} />
+    </div>
+  );
+}
+
+function RerunResults({ analysis }: { analysis: SlipAnalysis }) {
+  return (
+    <section
+      aria-label="New detection results"
+      className="space-y-2 rounded-lg border p-3 text-sm"
+    >
+      <h4 className="font-medium">New detection results</h4>
+      <p className="text-muted-foreground text-xs">
+        Comparison only. This delivery was already confirmed; these results do
+        not add received quantities.
+      </p>
+      {!analysis.lines.length && <p>No item lines detected.</p>}
+      <ul className="divide-y">
+        {analysis.lines.map((line, i) => (
+          <li key={i} className="space-y-1 py-2">
+            <p className="break-words whitespace-pre-wrap">{line.evidence}</p>
+            <p className="text-muted-foreground text-xs">
+              {analysis.items.find((item) => item.id === line.orderItemId)
+                ?.description ?? "No order item matched"}
+              {line.shipped !== null
+                ? ` · Detected ${line.shipped} ${line.unit ?? ""}`
+                : " · Quantity unclear"}
+            </p>
+            {line.issues.map((issue, j) => (
+              <p key={j} className="text-xs text-amber-800 dark:text-amber-300">
+                {issue}
+              </p>
+            ))}
+          </li>
+        ))}
+      </ul>
+      {analysis.warnings.map((warning, i) => (
+        <p key={i} className="text-xs text-amber-800 dark:text-amber-300">
+          {warning}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+function PackingSlipComparison({
   analysis,
   versionId,
   jobId,
@@ -139,7 +222,7 @@ export function PackingSlipReview({
   /** Shows each slip line as printed; without it the read text is shown. */
   jobId?: string;
   onAction: (
-    action: "analyze" | "refresh" | "confirm",
+    action: "analyze" | "refresh" | "confirm" | "clear",
     quantities?: Record<string, number>,
     links?: Record<string, string | null>,
   ) => Promise<void>;
@@ -172,23 +255,55 @@ export function PackingSlipReview({
     [error, setError] = useState(""),
     [filter, setFilter] = useState<Filter>("all");
 
+  if (analysis?.applied)
+    return (
+      <div className="space-y-3">
+        <Applied analysis={analysis} />
+        {analysis.status === "cleared" && (
+          <p role="status" className="text-muted-foreground text-sm">
+            Detection cleared. You can rerun it at any time.
+          </p>
+        )}
+        {analysis.status === "processing" && (
+          <p role="status" className="flex items-center gap-2 text-sm">
+            <Loader2Icon className="size-4 animate-spin" />
+            Rerunning detection. Confirmed received quantities stay unchanged.
+          </p>
+        )}
+        {analysis.status === "failed" && (
+          <p role="alert" className="text-destructive text-sm">
+            {analysis.error ?? "Detection failed. You can rerun it."}
+          </p>
+        )}
+        {analysis.status === "ready" && analysis.confirmedItems && (
+          <RerunResults analysis={analysis} />
+        )}
+      </div>
+    );
+  if (analysis?.status === "cleared")
+    return (
+      <p role="status" className="text-muted-foreground text-sm">
+        Detection cleared. You can rerun it at any time.
+      </p>
+    );
   if (!analysis || analysis.status === "failed")
     return (
       <div className="bg-muted/40 space-y-2 rounded-lg p-3 text-sm">
         <p>
           {analysis?.error ?? "Read the slip and propose delivery quantities."}
         </p>
-        <Button
-          disabled={busy}
-          size="sm"
-          variant="outline"
-          onClick={() => void onAction("analyze")}
-        >
-          {analysis ? "Retry analysis" : "Analyze slip"}
-        </Button>
+        {!analysis && (
+          <Button
+            disabled={busy}
+            size="sm"
+            variant="outline"
+            onClick={() => void onAction("analyze")}
+          >
+            Run detection
+          </Button>
+        )}
       </div>
     );
-  if (analysis.applied) return <Applied analysis={analysis} />;
   if (analysis.status === "processing")
     return (
       <div className="bg-muted/40 space-y-3 rounded-lg p-3 text-sm">
@@ -488,7 +603,10 @@ export function PackingSlipReview({
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{item.description} <QuotedBadge status={item.jobPriceStatus} /></p>
+                  <p className="font-medium">
+                    {item.description}{" "}
+                    <QuotedBadge status={item.jobPriceStatus} />
+                  </p>
                   <p className="text-muted-foreground text-xs">
                     {item.sku ? `SKU ${item.sku}` : "No SKU"}
                     {confidence && confidence !== "high"
@@ -697,13 +815,6 @@ export function PackingSlipReview({
           >
             Refresh totals
           </Button>
-          <Button
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void onAction("analyze")}
-          >
-            Reanalyze slip
-          </Button>
         </div>
       </div>
     </section>
@@ -721,15 +832,17 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 function Applied({ analysis }: { analysis: SlipAnalysis }) {
   const applied = analysis.applied!;
-  const proposed = suggestions(
-    analysis,
-    Object.fromEntries(
-      Object.entries(applied.links ?? {}).map(([i, id]) => [Number(i), id]),
-    ),
-  );
+  const proposed = analysis.confirmedItems
+    ? {}
+    : suggestions(
+        analysis,
+        Object.fromEntries(
+          Object.entries(applied.links ?? {}).map(([i, id]) => [Number(i), id]),
+        ),
+      );
   const linked = Object.keys(applied.links ?? {}).length;
   return (
-    <details className="space-y-2" open>
+    <details className="space-y-2" open={!analysis.confirmedItems}>
       <summary
         className="flex cursor-pointer items-start gap-2 rounded-lg bg-emerald-50 p-2 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
         role="status"
@@ -744,7 +857,7 @@ function Applied({ analysis }: { analysis: SlipAnalysis }) {
         </span>
       </summary>
       <ul className="divide-y rounded-lg border text-sm">
-        {analysis.items.map((item) => {
+        {(analysis.confirmedItems ?? analysis.items).map((item) => {
           const confirmed = applied.quantities[item.id];
           const slip = proposed[item.id];
           const differs =
@@ -760,7 +873,12 @@ function Applied({ analysis }: { analysis: SlipAnalysis }) {
                 {item.description}
               </span>
               <span className="text-muted-foreground text-xs tabular-nums">
-                Slip {slip === undefined ? "unclear" : fmt(slip, item.unit)} ·
+                {!analysis.confirmedItems && (
+                  <>
+                    Slip {slip === undefined ? "unclear" : fmt(slip, item.unit)}{" "}
+                    ·{" "}
+                  </>
+                )}
                 Confirmed{" "}
                 {confirmed === undefined
                   ? "not changed"

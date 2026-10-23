@@ -207,6 +207,7 @@ export async function startSlipAnalysis(
   access: DocumentAccess,
   documentId: string,
   force = false,
+  expectedRunId?: string,
 ) {
   if (inflight.size >= 8)
     throw new TRPCError({
@@ -230,7 +231,9 @@ export async function startSlipAnalysis(
           code: "CONFLICT",
           message: "The material list link changed.",
         });
-      if (doc.packingSlipAnalysis?.applied) return null;
+      if (expectedRunId && doc.packingSlipAnalysis?.runId !== expectedRunId)
+        throw new TRPCError({ code: "CONFLICT", message: "Detection changed. Reopen this packing slip." });
+      if (doc.packingSlipAnalysis?.applied && !force) return null;
       if (
         doc.packingSlipAnalysis?.status === "processing" &&
         Date.now() - Date.parse(doc.packingSlipAnalysis.startedAt) < 15 * 60_000
@@ -249,7 +252,7 @@ export async function startSlipAnalysis(
           message: "Packing slip file unavailable.",
         });
       const previous = doc.packingSlipAnalysis;
-      if (previous) {
+      if (previous && previous.status !== "cleared") {
         const previousVersion = state.versions.find(
           (v) => v.id === previous.versionId,
         );
@@ -288,6 +291,10 @@ export async function startSlipAnalysis(
         items: await orderSnapshot(tx, fresh, order.id),
         lines: [],
         warnings: [],
+        ...(previous?.applied ? {
+          applied: previous.applied,
+          confirmedItems: previous.confirmedItems ?? previous.items,
+        } : {}),
       };
       doc.packingSlipAnalysis = analysis;
       assertStateBounds(state);
@@ -334,7 +341,7 @@ export async function startSlipAnalysis(
               warnings: [
                 ...extracted.warnings,
                 ...result.warnings,
-                ...(task.analysis.items.some((i) => i.received > 0)
+                ...(!task.analysis.applied && task.analysis.items.some((i) => i.received > 0)
                   ? [
                       "Previous receipts exist. Check that this is a new delivery before adding quantities.",
                     ]
@@ -402,6 +409,51 @@ export async function startSlipAnalysis(
   inflight.set(task.analysis.runId, work);
   tail = work;
   void work.finally(() => inflight.delete(task.analysis.runId));
+}
+/** Clear only the current detection. Keep the file, audit history, and receipt guard. */
+export async function clearSlipAnalysis(
+  access: DocumentAccess,
+  documentId: string,
+  runId: string,
+) {
+  return mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
+    const doc = accessibleDocument(state, actor, documentId);
+    if (!doc.packingSlip)
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Not a packing slip." });
+    const order = await orderFor(tx, fresh, doc.packingSlip.orderId);
+    if (order.materialListId !== doc.packingSlip.materialListId)
+      throw new TRPCError({ code: "CONFLICT", message: "The material list link changed." });
+    const previous = doc.packingSlipAnalysis;
+    if (previous?.runId !== runId)
+      throw new TRPCError({ code: "CONFLICT", message: "Detection changed. Reopen this packing slip." });
+    if (previous.status === "cleared") return previous;
+    await recordReviewHistory(tx, fresh, doc, previous,
+      previous.status === "ready" ? "analysis" : "failure", {
+        analysis: previous.status === "processing"
+          ? { ...previous, status: "failed", error: "Detection was cleared by the user." }
+          : previous,
+        archivedBeforeClear: true,
+      });
+    doc.packingSlipAnalysis = {
+      runId: randomUUID(),
+      versionId: previous.versionId,
+      status: "cleared",
+      startedAt: new Date().toISOString(),
+      items: [], lines: [], warnings: [],
+      ...(previous.applied ? {
+        applied: previous.applied,
+        confirmedItems: previous.confirmedItems ?? previous.items,
+      } : {}),
+    };
+    state.activity.push({
+      id: randomUUID(), documentId: doc.id, folderId: doc.folderId,
+      action: "clearPackingSlipDetection",
+      detail: "Cleared packing slip detection. File and confirmed receipts kept.",
+      createdBy: fresh.user.id, createdAt: new Date().toISOString(),
+    });
+    assertStateBounds(state);
+    return doc.packingSlipAnalysis;
+  });
 }
 export async function refreshSlipReview(
   access: DocumentAccess,

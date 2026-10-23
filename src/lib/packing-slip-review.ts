@@ -44,7 +44,7 @@ export type SlipBox = { x: number; y: number; width: number; height: number };
 export type SlipAnalysis = {
   runId: string;
   versionId: string;
-  status: "processing" | "ready" | "failed";
+  status: "processing" | "ready" | "failed" | "cleared";
   startedAt: string;
   completedAt?: string;
   error?: string;
@@ -56,6 +56,8 @@ export type SlipAnalysis = {
   headers?: Array<{ page: number; box: SlipBox; printedOn?: number }>;
   /** What the slip looked like; remembered per supplier. */
   layout?: { footer: boolean };
+  /** Original receipt items survive clearing or rerunning detection. */
+  confirmedItems?: ReceiptOrderItem[];
   applied?: {
     at: string;
     by: string;

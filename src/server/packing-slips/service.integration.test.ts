@@ -16,6 +16,7 @@ const test = vi.hoisted(() => ({
   transaction: vi.fn(),
   receive: true,
   extractionFails: false,
+  extractionGate: null as Promise<void> | null,
 }));
 vi.mock("~/server/db", () => ({ db: { transaction: test.transaction } }));
 vi.mock("~/server/auth/permissions", () => ({
@@ -28,13 +29,15 @@ import { saveDocumentVersion } from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
   startSlipAnalysis,
+  clearSlipAnalysis,
   confirmSlipReceipt,
   refreshSlipReview,
 } from "./service";
 vi.mock("./extract", () => ({
   extractSlip: async () => {
+    await test.extractionGate;
     if (test.extractionFails) throw Error("Fixture reading failure");
-    return { rows: [], warnings: [] };
+    return { rows: [], pages: [], warnings: [] };
   },
 }));
 vi.mock("./analyze", () => ({
@@ -75,6 +78,7 @@ const org = id(1),
   order = id(4);
 const tables = [
   schema.packingSlipReviewHistory,
+  schema.jobPriceLists,
   schema.users,
   schema.jobs,
   schema.materialLists,
@@ -114,6 +118,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   beforeEach(async () => {
     test.receive = true;
     test.extractionFails = false;
+    test.extractionGate = null;
     for (const table of [...tables].reverse())
       await conn.unsafe(`TRUNCATE "${getTableName(table)}"`);
     await db.insert(schema.users).values({
@@ -363,4 +368,89 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
     ).toBe(2);
   });
+  async function waitForReady() {
+    for (let i = 0; i < 100; i++) {
+      const analysis = (await workspace()).documents[0]!.packingSlipAnalysis;
+      if (analysis?.status === "ready") return analysis;
+      await new Promise(r => setTimeout(r, 10));
+    }
+    throw Error("Detection did not finish");
+  }
+  it("clears unconfirmed detection while retaining the file and rejecting an old review", async () => {
+    const {access,doc,analysis}=await ready();
+    const cleared=await clearSlipAnalysis(access,doc.documentId,analysis.runId);
+    expect(cleared).toMatchObject({status:"cleared",items:[],lines:[],warnings:[]});
+    expect(cleared.runId).not.toBe(analysis.runId);
+    const state=await workspace();
+    expect(state.documents[0]!.currentVersionId).toBe(analysis.versionId);
+    expect(state.versions).toHaveLength(1);
+    await expect(confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6})).rejects.toMatchObject({code:"CONFLICT"});
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+    await startSlipAnalysis(access,doc.documentId,true,cleared.runId);
+    const rerun=await waitForReady();
+    expect(rerun.lines).toHaveLength(1);
+    expect(rerun.applied).toBeUndefined();
+    await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6});
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
+  });
+  it("keeps a confirmed delivery protected through clearing and repeated detection", async () => {
+    const {access,doc,analysis}=await ready();
+    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
+    const applied=(await workspace()).documents[0]!.packingSlipAnalysis!.applied!;
+    const cleared=await clearSlipAnalysis(access,doc.documentId,analysis.runId);
+    expect(cleared.applied).toEqual(applied);
+    expect(cleared.confirmedItems).toEqual(analysis.items);
+    expect(cleared.lines).toEqual([]);
+    await startSlipAnalysis(access,doc.documentId,true,cleared.runId);
+    const rerun=await waitForReady();
+    expect(rerun.runId).not.toBe(analysis.runId);
+    expect(rerun.applied).toEqual(applied);
+    expect(rerun.confirmedItems).toEqual(analysis.items);
+    expect(rerun.lines).toHaveLength(1);
+    expect(await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6})).toMatchObject({alreadyApplied:true});
+    const again=await clearSlipAnalysis(access,doc.documentId,rerun.runId);
+    await startSlipAnalysis(access,doc.documentId,true,again.runId);
+    const latest=await waitForReady();
+    await confirmSlipReceipt(access,doc.documentId,latest.runId,{[id(6)]:6});
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
+    expect((await db.select().from(schema.packingSlipReviewHistory)).filter(row=>row.kind==="confirmation")).toHaveLength(1);
+  });
+  it("allows rerunning a confirmed slip directly without changing quantities", async () => {
+    const {access,doc,analysis}=await ready();
+    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
+    await startSlipAnalysis(access,doc.documentId,true,analysis.runId);
+    const rerun=await waitForReady();
+    expect(rerun.runId).not.toBe(analysis.runId);
+    expect(rerun.applied?.quantities).toEqual({[id(6)]:6});
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
+  });
+  it("requires receiving permission and a current run for detection controls", async () => {
+    const {access,doc,analysis}=await ready();
+    test.receive=false;
+    await expect(clearSlipAnalysis(access,doc.documentId,analysis.runId)).rejects.toMatchObject({code:"FORBIDDEN"});
+    test.receive=true;
+    await expect(clearSlipAnalysis(access,doc.documentId,id(90))).rejects.toMatchObject({code:"CONFLICT"});
+    await expect(startSlipAnalysis(access,doc.documentId,true,id(90))).rejects.toMatchObject({code:"CONFLICT"});
+    expect((await workspace()).documents[0]!.packingSlipAnalysis!.runId).toBe(analysis.runId);
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+  });
+
+  it("discards an in-flight result after detection is cleared", async () => {
+    let release!: () => void;
+    test.extractionGate=new Promise<void>(resolve=>{release=resolve;});
+    const access=await assertDocumentAccess("receiver",job,db);
+    const doc=await saveDocumentVersion(access,file,async()=>undefined);
+    await startSlipAnalysis(access,doc.documentId);
+    const processing=(await workspace()).documents[0]!.packingSlipAnalysis!;
+    expect(processing.status).toBe("processing");
+    const cleared=await clearSlipAnalysis(access,doc.documentId,processing.runId);
+    const transactions=test.transaction.mock.calls.length;
+    release();
+    for(let i=0;i<100 && test.transaction.mock.calls.length===transactions;i++)await new Promise(r=>setTimeout(r,10));
+    expect(test.transaction.mock.calls.length).toBeGreaterThan(transactions);
+    await test.transaction.mock.results.at(-1)!.value;
+    expect((await workspace()).documents[0]!.packingSlipAnalysis).toEqual(cleared);
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+  });
+
 });

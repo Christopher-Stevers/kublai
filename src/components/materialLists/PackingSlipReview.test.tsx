@@ -224,3 +224,81 @@ it("offers a handwritten quantity without prefilling it", () => {
   fireEvent.click(screen.getByRole("button", { name: "Use handwritten 5" }));
   expect(input).toHaveValue(5);
 });
+
+it("offers clear and rerun detection on a confirmed slip without another receipt action", () => {
+  const action = vi.fn().mockResolvedValue(undefined);
+  render(
+    <PackingSlipReview
+      analysis={{
+        ...analysis,
+        applied: { at: "2026-10-17", by: "u", quantities: { a: 6 } },
+      }}
+      versionId="v"
+      busy={false}
+      onAction={action}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Clear detection" }));
+  expect(action).toHaveBeenLastCalledWith("clear");
+  fireEvent.click(screen.getByRole("button", { name: "Rerun detection" }));
+  expect(action).toHaveBeenLastCalledWith("analyze");
+  expect(screen.queryByText("Confirm received quantities")).toBeNull();
+});
+it("keeps a confirmed receipt visible after clearing and displays new detection separately", () => {
+  const applied = { at: "2026-10-17", by: "u", quantities: { a: 6 } };
+  const cleared = {
+    ...analysis,
+    status: "cleared" as const,
+    items: [],
+    lines: [],
+    confirmedItems: analysis.items,
+    applied,
+  };
+  const view = render(
+    <PackingSlipReview
+      analysis={cleared}
+      versionId="v"
+      busy={false}
+      onAction={vi.fn()}
+    />,
+  );
+  expect(screen.getByText(/Receipt confirmed/)).toBeInTheDocument();
+  expect(screen.getByText(/Detection cleared/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Clear detection" })).toBeNull();
+  view.rerender(
+    <PackingSlipReview
+      analysis={{ ...analysis, confirmedItems: analysis.items, applied }}
+      versionId="v"
+      busy={false}
+      onAction={vi.fn()}
+    />,
+  );
+  expect(
+    screen.getByRole("region", { name: "New detection results" }),
+  ).toHaveTextContent("Detected 6 ea");
+  expect(screen.getByText(/Comparison only/)).toBeInTheDocument();
+  expect(screen.queryByText("Confirm received quantities")).toBeNull();
+  expect(screen.queryByText(/Delivery differs from the slip/)).toBeNull();
+});
+it("disables detection actions while saving and hides them from read-only viewers", () => {
+  const props = {
+    analysis: {
+      ...analysis,
+      applied: { at: "2026-10-17", by: "u", quantities: { a: 6 } },
+    },
+    versionId: "v",
+    onAction: vi.fn(),
+  };
+  const view = render(<PackingSlipReview {...props} busy />);
+  expect(
+    screen.getByRole("button", { name: "Clear detection" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("button", { name: "Rerun detection" }),
+  ).toBeDisabled();
+  view.rerender(
+    <PackingSlipReview {...props} busy={false} canManage={false} />,
+  );
+  expect(screen.queryByRole("button", { name: "Clear detection" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Rerun detection" })).toBeNull();
+});
