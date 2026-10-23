@@ -1,5 +1,11 @@
 "use client";
 
+import { JobSupplierDefaultsEditor } from "./JobSupplierDefaultsEditor";
+import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
+import {
+  jobSupplierDefaultsSchema,
+  type JobSupplierDefaults,
+} from "~/lib/job-supplier-defaults";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -33,7 +39,22 @@ export function JobEditDialog({
   initialForemanName,
   initialPoNumber,
 }: JobEditDialogProps) {
-  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
+  const job = useReplicacheJobDetail(jobId)?.job;
+  const [supplierDefaultsDraft, setSupplierDefaults] = useState<
+    JobSupplierDefaults | undefined
+  >(undefined);
+  const [editingSession, setEditingSession] = useState({ jobId, open });
+  // Discard a cancelled draft on reopening; synced changes never overwrite edits.
+  if (editingSession.jobId !== jobId || editingSession.open !== open) {
+    setEditingSession({ jobId, open });
+    setSupplierDefaults(undefined);
+  }
+  const supplierDefaults =
+    supplierDefaultsDraft ?? job?.supplierDefaults ?? null;
+  const {
+    getReplicache: getMaterialListReplicache,
+    mutateAndSync: mutateMaterialListAndSync,
+  } = useWorkspaceMutations();
   const [jobName, setJobName] = useState(initialName || "");
   const [locationId, setLocationId] = useState<string | null>(
     initialLocationId ?? null,
@@ -47,20 +68,29 @@ export function JobEditDialog({
     setLocationId(initialLocationId ?? null);
     setPoNumber(initialPoNumber || "");
     setForemanName(initialForemanName || "");
-  }, [initialName, initialLocationId, initialForemanName, initialPoNumber, open]);
+  }, [
+    initialName,
+    initialLocationId,
+    initialForemanName,
+    initialPoNumber,
+    open,
+  ]);
 
   const handleSave = () => {
     if (!jobName.trim()) {
       return;
     }
 
-    void mutateMaterialListAndSync(getMaterialListReplicache().mutate.updateJob({
-      jobId,
-      name: jobName.trim(),
-      locationId: locationId,
-      poNumber: poNumber.trim() || null,
-      foremanName: foremanName.trim() || null,
-    }));
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.updateJob({
+        jobId,
+        name: jobName.trim(),
+        ...(supplierDefaults ? { supplierDefaults } : {}),
+        locationId: locationId,
+        poNumber: poNumber.trim() || null,
+        foremanName: foremanName.trim() || null,
+      }),
+    );
     onOpenChange(false);
   };
 
@@ -68,7 +98,7 @@ export function JobEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Job</DialogTitle>
           <DialogDescription>
@@ -128,6 +158,11 @@ export function JobEditDialog({
               disabled={isLoading}
             />
           </div>
+          <JobSupplierDefaultsEditor
+            jobId={jobId}
+            value={supplierDefaults}
+            onChange={setSupplierDefaults}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -135,7 +170,12 @@ export function JobEditDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!jobName.trim() || isLoading}
+            disabled={
+              !jobName.trim() ||
+              isLoading ||
+              (!!supplierDefaults &&
+                !jobSupplierDefaultsSchema.safeParse(supplierDefaults).success)
+            }
           >
             Save Changes
           </Button>

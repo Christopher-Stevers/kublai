@@ -113,6 +113,7 @@ export function PrefabsPanel({
         ),
         ...plan.adds.map((line) =>
           replicache.mutate.addItem({
+            useJobDefaults: true,
             materialListId,
             itemId: crypto.randomUUID(),
             partDefinitionId: line.partDefinitionId,

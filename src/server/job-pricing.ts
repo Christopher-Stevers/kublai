@@ -1,3 +1,5 @@
+import { supplierVersionPrice } from "./job-supplier-defaults";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import {
   pricingMaterialLists as materialLists,
   pricingSuppliers as suppliers,
@@ -94,6 +96,7 @@ export async function getJobPriceBook(
 }
 
 type Priceable = {
+  supplierVersion?: SupplierVersion | null;
   id: string;
   partDefinitionId: string | null;
   supplierPartId: string | null;
@@ -105,7 +108,7 @@ type Priceable = {
 };
 /** Resolve by immutable part ID, supplier and listing. Never by fuzzy description at order time. */
 export async function resolveJobOrderItems<T extends Priceable>(
-  database: Pick<typeof db, "select">,
+  database: Pick<typeof db, "select"> & Partial<Pick<typeof db, "execute">>,
   org: string,
   jobId: string,
   items: T[],
@@ -113,29 +116,63 @@ export async function resolveJobOrderItems<T extends Priceable>(
   const book = await getJobPriceBook(database, org, jobId);
   const priceIndex = indexJobPrices(book.entries);
   const listingIds = new Set<string>();
-  const resolved = items.map((item) => {
-    const entry = findJobPrice(
-      priceIndex,
-      item.partDefinitionId,
-      item.selectedSupplierId ?? item.supplierPartSupplierId,
-      item.supplierPartId,
-    );
-    if (!entry)
-      return { ...item, jobListed: false, priceStatus: null as string | null, priceBookNameSnapshot: "Standard" };
-    if (entry.preferJobPricing === false)
-      return { ...item, jobListed: true, priceStatus: null as string | null, priceBookNameSnapshot: "Standard" };
-    listingIds.add(entry.supplierPartId);
-    return {
-      ...item,
-      jobListed: true,
-      priceStatus: entry.priceStatus,
-      priceBookNameSnapshot: entry.priceBookName,
-      supplierPartId: entry.supplierPartId,
-      supplierPartSupplierId: entry.supplierId,
-      supplierSku: entry.supplierSku,
-      unitCost: entry.unitCost ?? item.unitCost,
-    };
-  });
+  const resolved = await Promise.all(
+    items.map(async (item) => {
+      const entry = findJobPrice(
+        priceIndex,
+        item.partDefinitionId,
+        item.selectedSupplierId ?? item.supplierPartSupplierId,
+        item.supplierPartId,
+      );
+      if (item.supplierVersion && item.partDefinitionId) {
+        if (!database.execute)
+          throw new Error("Supplier version pricing is unavailable");
+        const selected = await supplierVersionPrice(
+          { execute: database.execute.bind(database) },
+          org,
+          item.supplierVersion,
+          item.partDefinitionId,
+          item.supplierPartId,
+        );
+        return {
+          ...item,
+          jobListed: !!entry,
+          priceStatus: selected.unitCost === null ? "none" : "confirmed",
+          priceBookNameSnapshot: selected.bookName,
+          supplierPartId: selected.listing?.id ?? null,
+          supplierPartSupplierId: item.supplierVersion.supplierId,
+          supplierSku: selected.listing?.supplierSku ?? null,
+          unitCost: selected.unitCost ?? "0",
+          packSize: selected.listing?.packSize ?? null,
+        };
+      }
+      if (!entry)
+        return {
+          ...item,
+          jobListed: false,
+          priceStatus: null as string | null,
+          priceBookNameSnapshot: "Standard",
+        };
+      if (entry.preferJobPricing === false)
+        return {
+          ...item,
+          jobListed: true,
+          priceStatus: null as string | null,
+          priceBookNameSnapshot: "Standard",
+        };
+      listingIds.add(entry.supplierPartId);
+      return {
+        ...item,
+        jobListed: true,
+        priceStatus: entry.priceStatus,
+        priceBookNameSnapshot: entry.priceBookName,
+        supplierPartId: entry.supplierPartId,
+        supplierPartSupplierId: entry.supplierId,
+        supplierSku: entry.supplierSku,
+        unitCost: entry.unitCost ?? item.unitCost,
+      };
+    }),
+  );
   // A catalogue's generic supplier row may have a different order multiple.
   const listings = listingIds.size
     ? await database
@@ -145,7 +182,7 @@ export async function resolveJobOrderItems<T extends Priceable>(
     : [];
   const multiples = new Map(listings.map((l) => [l.id, l.packSize]));
   return resolved.map((item) =>
-    item.jobListed
+    item.jobListed && !item.supplierVersion
       ? { ...item, packSize: multiples.get(item.supplierPartId!) ?? null }
       : item,
   );
@@ -261,6 +298,7 @@ export async function applyJobQuotePrices(database: Database, quoteId: string) {
   const items = await database
     .select({
       id: quoteItems.id,
+      supplierVersion: quoteItems.supplierVersion,
       partDefinitionId: quoteItems.partDefinitionId,
       supplierPartId: quoteItems.supplierPartId,
       selectedSupplierId: quoteItems.supplierId,
@@ -283,7 +321,7 @@ export async function applyJobQuotePrices(database: Database, quoteId: string) {
   for (const item of resolved) {
     const before = items.find((i) => i.id === item.id)!;
     if (
-      item.jobListed &&
+      (item.jobListed || !!item.supplierVersion) &&
       (before.supplierPartId !== item.supplierPartId ||
         Number(before.unitCost) !== Number(item.unitCost))
     )
@@ -330,6 +368,7 @@ export async function loadJobApprovalSnapshot(
   const rows = await database
     .select({
       id: quoteItems.id,
+      supplierVersion: quoteItems.supplierVersion,
       partDefinitionId: quoteItems.partDefinitionId,
       supplierPartId: quoteItems.supplierPartId,
       selectedSupplierId: quoteItems.supplierId,

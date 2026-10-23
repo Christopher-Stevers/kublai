@@ -196,3 +196,18 @@ it("keeps a sent row unchanged during optimistic edits and deletion", async () =
   await mutators().removeItem(tx, { materialListId: "list", itemId: "item" });
   expect(rows.get("materialListItem/item")).toEqual(locked);
 });
+
+it("keeps offline job defaults and material version snapshots, then clears a manual override", async () => {
+  const version = {supplierId: "supplier", bookId: "alma", label: "Next (Alma)"};
+  const defaults = {rules: [], fallback: version};
+  rows.set("job/job", {id: "job", name: "Existing job", supplierDefaults: defaults});
+  await mutators().updateJob(tx, {jobId: "job", name: "Renamed"});
+  expect(rows.get("job/job")).toMatchObject({supplierDefaults: defaults});
+  await mutators().updateJob(tx, {jobId: "job", supplierDefaults: {rules: [], fallback: null}});
+  expect(rows.get("job/job")).toMatchObject({supplierDefaults: {rules: [], fallback: null}});
+  await mutators().createMaterialList(tx, listArgs);
+  await mutators().addItem(tx, {...addArgs, useJobDefaults: true, supplierVersionSnapshot: version});
+  expect(rows.get("materialListItem/item")).toMatchObject({supplierVersion: version});
+  await mutators().updateItemSupplierPart(tx, {itemId: "item", supplierPartId: "manual", supplierId: "manual-supplier"});
+  expect(rows.get("materialListItem/item")).toMatchObject({supplierVersion: null});
+});

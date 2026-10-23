@@ -19,6 +19,8 @@ export interface PendingSupplierPartSnapshot {
 }
 
 export interface PendingPart {
+  manualSupplier?: boolean;
+  supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
   isTool?: boolean;
   partId: string;
   partDefinition: {

@@ -33,7 +33,9 @@ import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
-import { useCatalogueFirstDownload } from "~/hooks/use-replicache-catalogue";
+import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
+import { matchJobSupplierDefault } from "~/lib/job-supplier-defaults";
+import { useCatalogueFirstDownload, useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
 import {
   getOfflineSupplierPartsByPart,
   setOfflineSupplierPartsByPart,
@@ -160,6 +162,9 @@ export function AddPartDialog({
   const toolPartIds = new Set(baseFilteredPartsForSelection
     .filter(part => catalogsWithCounts.some(catalog => catalog.id === part.catalogId && catalog.kind === "assets"))
     .map(part => part.id));
+  const defaultJob=useReplicacheJobDetail(listHeader?.jobId??"")?.job;
+  const defaultCatalogue=useReplicacheCatalogue();
+  const defaultPartsById=useMemo(()=>new Map(defaultCatalogue.parts.map(part=>[part.id,part])),[defaultCatalogue.parts]);
   const {data:priceBookSnapshot}=useJobPricing(listHeader?.kind === "tools" ? null : listHeader?.jobId);
   const jobPriceBook = useMemo(() => priceBookSnapshot && ({ ...priceBookSnapshot, entries: indexJobPrices(priceBookSnapshot.entries) }), [priceBookSnapshot]);
   const filteredPartsForSelection=useMemo(()=>{
@@ -323,6 +328,91 @@ export function AddPartDialog({
     pendingParts.forEach((pendingPart) => {
       if (pendingPart.supplierPartId || pendingPart.isTool) return;
 
+      const partMetadata = defaultPartsById.get(pendingPart.partId);
+      const wanted =
+        !pendingPart.manualSupplier && partMetadata
+          ? matchJobSupplierDefault(defaultJob?.supplierDefaults, partMetadata)
+          : null;
+      if (wanted) {
+        const existing = supplierPartsData
+          .get(pendingPart.partId)
+          ?.find((option) => option.supplierId === wanted.supplierId);
+        const option = {
+          id:
+            existing?.id ??
+            `offline-supplier-part:${pendingPart.partId}:${wanted.supplierId}`,
+          supplierId: wanted.supplierId,
+          supplierSku: existing?.supplierSku ?? null,
+          lastKnownUnitCost: wanted.bookId
+            ? null
+            : (existing?.lastKnownUnitCost ?? null),
+          packSize: existing?.packSize ?? null,
+          isPreferred: false,
+          supplier: { id: wanted.supplierId, name: wanted.label },
+        };
+        setSupplierPartsData((prev) => {
+          const next = new Map(prev);
+          next.set(pendingPart.partId, [
+            ...(prev.get(pendingPart.partId) ?? []).filter(
+              (item) => item.id !== option.id,
+            ),
+            option,
+          ]);
+          return next;
+        });
+        setPendingParts((prev) =>
+          prev.map((item) =>
+            item.partId === pendingPart.partId && !item.manualSupplier
+              ? {
+                  ...item,
+                  supplierPartId: option.id,
+                  supplierPartSnapshot: option,
+                  supplierVersion: wanted,
+                }
+              : item,
+          ),
+        );
+        if (isOnline)
+          void utils.job.previewSupplierDefault
+            .fetch(
+              { jobId: listHeader!.jobId, partId: pendingPart.partId },
+              { staleTime: 0 },
+            )
+            .then((result) => {
+              if (!result) return;
+              const resolved = {
+                ...option,
+                id: result.listing?.id ?? option.id,
+                lastKnownUnitCost: result.unitCost,
+                supplierSku: result.listing?.supplierSku ?? null,
+                packSize: result.listing?.packSize ?? null,
+              };
+              setSupplierPartsData((prev) => {
+                const next = new Map(prev);
+                next.set(pendingPart.partId, [
+                  ...(prev.get(pendingPart.partId) ?? []).filter(
+                    (item) => item.id !== option.id && item.id !== resolved.id,
+                  ),
+                  resolved,
+                ]);
+                return next;
+              });
+              setPendingParts((prev) =>
+                prev.map((item) =>
+                  item.partId === pendingPart.partId && !item.manualSupplier
+                    ? {
+                        ...item,
+                        supplierPartId: resolved.id,
+                        supplierPartSnapshot: resolved,
+                        supplierVersion: result.version,
+                      }
+                    : item,
+                ),
+              );
+            })
+            .catch(() => undefined);
+        return;
+      }
       const partsData = supplierPartsData.get(pendingPart.partId);
       if (partsData && partsData.length > 0) {
         const jobEntry = findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId);
@@ -337,7 +427,7 @@ export function AddPartDialog({
         }
       }
     });
-  }, [pendingParts, supplierPartsData, jobPriceBook]);
+  }, [pendingParts, supplierPartsData, jobPriceBook, defaultPartsById, defaultJob?.supplierDefaults, isOnline, utils.job.previewSupplierDefault, listHeader]);
 
   // Handler for individual part selection
   const handlePartSelect = (
@@ -621,6 +711,8 @@ export function AddPartDialog({
         if (p.partId === partId) {
           return {
             ...p,
+            manualSupplier: true,
+            supplierVersion: null,
             supplierPartId,
             supplierPartSnapshot: supplierPartSnapshot ?? null,
           };
@@ -770,7 +862,7 @@ export function AddPartDialog({
             (supplierPart) => supplierPart.id === pendingPart.supplierPartId,
           ) ??
           null;
-        const jobCost=findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
+        const jobCost=pendingPart.supplierVersion ? undefined : findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart?.supplierId,selectedSupplierPart?.id)?.unitCost;
         const unitCost=pendingPart.isTool ? 0 : Number(jobCost ?? selectedSupplierPart?.lastKnownUnitCost ?? 0);
         const partDefinitionSnapshot = {
           id: pendingPart.partDefinition.id,
@@ -787,7 +879,7 @@ export function AddPartDialog({
               id: selectedSupplierPart.id,
               supplierId: selectedSupplierPart.supplierId,
               supplierSku: selectedSupplierPart.supplierSku,
-              lastKnownUnitCost: findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart.supplierId,selectedSupplierPart.id)?.unitCost ?? selectedSupplierPart.lastKnownUnitCost,
+              lastKnownUnitCost: pendingPart.supplierVersion ? selectedSupplierPart.lastKnownUnitCost : findPreferredJobPrice(jobPriceBook?.entries??[],pendingPart.partId,selectedSupplierPart.supplierId,selectedSupplierPart.id)?.unitCost ?? selectedSupplierPart.lastKnownUnitCost,
               packSize: selectedSupplierPart.packSize ?? null,
               supplier: selectedSupplierPart.supplier,
             }
@@ -815,6 +907,8 @@ export function AddPartDialog({
             materialListId,
             itemId: item.localItemId,
             partDefinitionId: item.pendingPart.partId,
+            useJobDefaults: !item.pendingPart.manualSupplier && !item.pendingPart.isTool,
+            supplierVersionSnapshot: item.pendingPart.supplierVersion??null,
             supplierPartId: item.pendingPart.supplierPartId ?? null,
             supplierId: item.supplierId,
             quantity: item.pendingPart.quantity,

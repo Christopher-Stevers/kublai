@@ -53,6 +53,7 @@ function firstName(name: string | null | undefined) {
 function orderPriceBookName() { return sql<string>`(select string_agg(distinct coalesce(oi."priceBookNameSnapshot", 'Not recorded'), ' / ' order by coalesce(oi."priceBookNameSnapshot", 'Not recorded')) from kublai_order_item oi where oi."orderId"=${orders.id})`; }
 
 type OrderableQuoteItem = {
+  supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
   assetTracking?: string | null;
   id: string;
   supplierPartId: string | null;
@@ -200,6 +201,7 @@ async function loadOrderableQuoteItems(
       roomName: jobRooms.name,
       supplierPartId: quoteItems.supplierPartId,
       selectedSupplierId: quoteItems.supplierId,
+      supplierVersion: quoteItems.supplierVersion,
       partDefinitionId: quoteItems.partDefinitionId,
       partDefinitionDisplayName: partDefinitions.displayName,
       assetTracking: sql<string | null>`case when ${catalogs.kind} = 'assets' then coalesce(${partDefinitions.assetTracking}, 'serialized') else null end`,
@@ -466,6 +468,7 @@ export const materialListRouter = createTRPCRouter({
             partDefinitionMaterialName: materials.name,
             supplierPartId: supplierParts.id,
             selectedSupplierId: quoteItems.supplierId,
+      supplierVersion: quoteItems.supplierVersion,
             supplierPartSupplierId: supplierParts.supplierId,
             supplierPartSku: supplierParts.supplierSku,
             supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
@@ -546,6 +549,7 @@ export const materialListRouter = createTRPCRouter({
               sizeUnitId: item.oneOffSizeUnitId,
             }
           : null,
+        supplierVersion: item.supplierVersion,
         selectedSupplierId:
           item.selectedSupplierId ?? item.supplierPartSupplierId ?? null,
         supplierPart: item.supplierPartId

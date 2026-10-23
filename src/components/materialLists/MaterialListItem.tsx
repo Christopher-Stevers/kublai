@@ -40,6 +40,7 @@ interface MaterialListItemProps {
   item: {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
+    supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
@@ -809,6 +810,7 @@ function MaterialListItemComponent({
                   </span>
                 ) : (
                   <SupplierSelector
+                    currentVersion={item.supplierVersion}
                     itemId={item.id}
                     partDefinitionId={item.partDefinition?.id ?? ""}
                     currentSupplierPartId={item.supplierPart?.id}

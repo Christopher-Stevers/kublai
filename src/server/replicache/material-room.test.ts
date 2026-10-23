@@ -3,8 +3,13 @@ import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ transaction: vi.fn() }));
+const state = vi.hoisted(() => ({ transaction: vi.fn(), resolveDefaultSupplier: vi.fn(), supplierVersionPrice: vi.fn() }));
 vi.mock("~/server/job-pricing",async(importOriginal)=>({...await importOriginal<typeof import("~/server/job-pricing")>(),applyJobQuotePrices:vi.fn()}));
+vi.mock("~/server/job-supplier-defaults", async (original) => ({
+  ...await original<typeof import("~/server/job-supplier-defaults")>(),
+  resolveDefaultSupplier: state.resolveDefaultSupplier,
+  supplierVersionPrice: state.supplierVersionPrice,
+}));
 vi.mock("~/server/db", () => ({ db: { transaction: state.transaction } }));
 vi.mock("./pull", () => ({
   ensureClientGroup: vi.fn(),
@@ -62,8 +67,10 @@ function setup(reads: Row[][]) {
   const writes: { kind: string; table: unknown; data: Row }[] = [];
   const dialect = new PgDialect();
   const tx = {
-    select: vi.fn(() => {
-      const rows = queued.shift();
+    select: vi.fn((fields?: Record<string, unknown>) => {
+      // Catalogue-kind reads were added after these room fixtures. Keep their
+      // empty material result independent of the room/totals read sequence.
+      const rows = fields && "catalogKind" in fields ? [] : queued.shift();
       if (!rows) throw new Error("Unexpected database read");
       let table: unknown;
       const query = Object.assign(Promise.resolve(rows), {
@@ -122,7 +129,7 @@ function setup(reads: Row[][]) {
   };
 }
 
-function push(name: string, args: Record<string, string | number | null>) {
+function push(name: string, args: Record<string, string | number | boolean | null>) {
   return handleMaterialListReplicachePush(
     {
       pushVersion: 1,
@@ -150,7 +157,11 @@ function assertRoomScope(test: ReturnType<typeof setup>) {
   expect(predicate.sql).toContain('"organizationId"');
   expect(predicate.params).toEqual([roomId, jobId, organizationId]);
 }
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  state.resolveDefaultSupplier.mockReset().mockResolvedValue(null);
+  state.supplierVersionPrice.mockReset();
+});
 
 describe("material-line room attribution", () => {
   it("saves the room on list creation through Replicache", async () => {
@@ -452,3 +463,23 @@ it.each(["updateItemQuantity", "updateItemSupplierPart", "removeItem"])(
     test.assertConsumed();
   },
 );
+
+describe("job supplier defaults on new material lines", () => {
+  it("resolves the authoritative default and selected version price on push", async () => {
+    const version = { supplierId: organizationId, bookId: jobId, label: "Next (Alma)" };
+    state.resolveDefaultSupplier.mockResolvedValue(version);
+    state.supplierVersionPrice.mockResolvedValue({ listing: { id: quoteId }, unitCost: "3.25" });
+    const test = setup([[client], [{lastMutationId: 0}], [{...list, roomId: null}], [], [{cvrVersion: 0}]]);
+    await push("addItem", {...addArgs(), useJobDefaults: true, supplierId: otherRoomId, unitCost: 99});
+    expect(state.resolveDefaultSupplier).toHaveBeenCalledWith(test.tx, organizationId, jobId, partId);
+    expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion: version, supplierId: organizationId, supplierPartId: quoteId, unitCost: "3.25", extendedPrice: "6.5"});
+    test.assertConsumed();
+  });
+  it("preserves an explicit manual supplier without consulting the job defaults", async () => {
+    const test = setup([[client], [{lastMutationId: 0}], [{...list, roomId: null}], [], [{cvrVersion: 0}]]);
+    await push("addItem", {...addArgs(), useJobDefaults: false, supplierId: otherRoomId, unitCost: 9});
+    expect(state.resolveDefaultSupplier).not.toHaveBeenCalled();
+    expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion: null, supplierId: otherRoomId, unitCost: "9"});
+    test.assertConsumed();
+  });
+});

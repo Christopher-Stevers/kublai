@@ -971,6 +971,7 @@ export const jobs = createTable(
     }),
     foremanName: d.varchar({ length: 255 }),
     poNumber: d.varchar({ length: 100 }),
+    supplierDefaults: d.jsonb().$type<import("~/lib/job-supplier-defaults").JobSupplierDefaults>(),
 
     status: d.varchar({ length: 50 }).notNull().default("draft"), // draft|quoted|ordered|completed
     pricingProfileId: d
@@ -1617,6 +1618,7 @@ export const quoteItems = createTable(
     partDefinitionId: d
       .uuid()
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    supplierVersion: d.jsonb().$type<import("~/lib/job-supplier-defaults").SupplierVersion>(),
     // One-off part fields (used when partDefinitionId is null)
     oneOffDisplayName: d.varchar({ length: 255 }),
     oneOffDescription: d.text(),

@@ -29,6 +29,8 @@ export type MaterialListReplicacheMutators = {
   addItem(
     tx: WriteTransaction,
     args: {
+      useJobDefaults?: boolean;
+      supplierVersionSnapshot?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
       materialListId: string;
       itemId: string;
       partDefinitionId?: string | null;
@@ -87,6 +89,7 @@ export type MaterialListReplicacheMutators = {
   updateJob(
     tx: WriteTransaction,
     args: {
+      supplierDefaults?: import("~/lib/job-supplier-defaults").JobSupplierDefaults | null;
       jobId: string;
       name?: string;
       locationId?: string | null;
@@ -247,6 +250,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           roomName,
           // Snapshot fields for optimistic display in UI
           partDefinition: args.partDefinitionSnapshot ?? null,
+          supplierVersion: args.supplierVersionSnapshot??null,
           supplierPart: args.supplierPartSnapshot ?? null,
           addedBy: args.addedBySnapshot ?? null,
           createdAt: new Date().toISOString(),
@@ -275,6 +279,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           supplierPart: args.supplierPartSnapshot ?? null,
           unitCost: String(unitCost),
           extendedPrice: String(extendedPrice),
+          supplierVersion: null,
           pendingSync: true,
         });
       },
@@ -307,6 +312,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
         await tx.put(`job/${args.jobId}`, {
           ...existing,
           ...(args.name !== undefined ? { name: args.name } : {}),
+          ...(args.supplierDefaults !== undefined ? {supplierDefaults:args.supplierDefaults} : {}),
           ...("locationId" in args
             ? { locationId: args.locationId ?? null }
             : {}),

@@ -482,6 +482,13 @@
       "when": 1792705324835,
       "tag": "0092_order_number_counter",
       "breakpoints": false
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792714577829,
+      "tag": "0093_job_supplier_defaults",
+      "breakpoints": false
     }
   ]
 }

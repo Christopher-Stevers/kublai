@@ -1,3 +1,5 @@
+import { jobSupplierDefaultsSchema } from "~/lib/job-supplier-defaults";
+import { resolveDefaultSupplier, supplierVersionPrice, validateJobSupplierDefaults } from "~/server/job-supplier-defaults";
 import { getJobPriceBook } from "~/server/job-pricing";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { indexJobPrices } from "~/lib/job-pricing";
@@ -131,6 +133,7 @@ function isUuid(value: string | null | undefined) {
 }
 
 const addItemArgs = z.object({
+  useJobDefaults: z.boolean().optional(),
   roomId: z.string().uuid().nullable().optional(),
   materialListId: z.string().uuid(),
   itemId: z.string().uuid(),
@@ -157,6 +160,7 @@ const createJobArgs = z.object({
 });
 
 const updateJobArgs = z.object({
+  supplierDefaults: jobSupplierDefaultsSchema.nullable().optional(),
   jobId: z.string().uuid(),
   name: z.string().min(1).max(255).optional(),
   locationId: z.string().uuid().nullable().optional(),
@@ -570,15 +574,21 @@ async function applyReplicacheMutation(
       const offlineSupplierPart = parseOfflineSupplierPartId(
         args.supplierPartId,
       );
-      const serverSupplierPartId = !isTool && isUuid(args.supplierPartId)
+      let serverSupplierPartId = !isTool && isUuid(args.supplierPartId)
         ? args.supplierPartId
         : null;
-      const resolvedSupplierId =
+      let resolvedSupplierId =
         isTool ? await ensureToolRoomSupplier(tx, input.organizationId) : args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
       if (serverSupplierPartId) {
         unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
+      }
+      const version = args.useJobDefaults && !isTool && args.partDefinitionId
+        ? await resolveDefaultSupplier(tx,input.organizationId,materialList.jobId,args.partDefinitionId) : null;
+      if(version && args.partDefinitionId){
+        const selected=await supplierVersionPrice(tx,input.organizationId,version,args.partDefinitionId,serverSupplierPartId);
+        resolvedSupplierId=version.supplierId;serverSupplierPartId=selected.listing?.id??null;unitCost=Number(selected.unitCost??0);
       }
       if (isTool || !Number.isFinite(unitCost)) unitCost = 0;
 
@@ -592,6 +602,7 @@ async function applyReplicacheMutation(
           roomId,
           partDefinitionId: args.partDefinitionId ?? null,
           supplierPartId: serverSupplierPartId,
+          supplierVersion: version,
           supplierId: resolvedSupplierId,
           quantity: args.quantity.toString(),
           unitCost: unitCost.toString(),
@@ -622,6 +633,7 @@ async function applyReplicacheMutation(
           quoteId: quoteItems.quoteId,
           quantity: quoteItems.quantity,
           supplierPartId: quoteItems.supplierPartId,
+          supplierVersion: quoteItems.supplierVersion,
           supplierId: quoteItems.supplierId,
           unitCost: quoteItems.unitCost,
           materialListId: quotes.materialListId,
@@ -662,7 +674,7 @@ async function applyReplicacheMutation(
       }
       if (!Number.isFinite(unitCost)) unitCost = 0;
 
-      if (item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
+      if (!item.supplierVersion && item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
       const quantity = parseFloat(String(item.quantity));
       const extendedPrice =
         (Number.isFinite(quantity) ? quantity : 0) * unitCost;
@@ -671,6 +683,7 @@ async function applyReplicacheMutation(
         .update(quoteItems)
         .set({
           supplierPartId: serverSupplierPartId,
+          supplierVersion: null,
           supplierId: resolvedSupplierId,
           unitCost: unitCost.toString(),
           extendedPrice: extendedPrice.toString(),
@@ -707,6 +720,10 @@ async function applyReplicacheMutation(
     case "updateJob": {
       const args = updateJobArgs.parse(input.args);
       const setValues: Partial<typeof jobs.$inferInsert> = {};
+      if(args.supplierDefaults !== undefined){
+        if(args.supplierDefaults)await validateJobSupplierDefaults(tx,input.organizationId,args.supplierDefaults);
+        setValues.supplierDefaults=args.supplierDefaults;
+      }
       if (args.name !== undefined) setValues.name = args.name;
       if ("locationId" in args) setValues.locationId = args.locationId ?? null;
       if ("foremanName" in args)
@@ -1171,6 +1188,7 @@ export async function handleMaterialListReplicachePull(
           status: jobs.status,
           foremanName: jobs.foremanName,
           poNumber: jobs.poNumber,
+          supplierDefaults: sql<import("~/lib/job-supplier-defaults").JobSupplierDefaults | null>`${jobs}."supplierDefaults"`,
           createdAt: jobs.createdAt,
           updatedAt: jobs.updatedAt,
           locationName: locations.name,
@@ -1235,6 +1253,7 @@ export async function handleMaterialListReplicachePull(
           partDefinitionMaterial: materials.name,
           supplierPartId: quoteItems.supplierPartId,
           supplierId: quoteItems.supplierId,
+          supplierVersion: quoteItems.supplierVersion,
           supplierPartSupplierId: supplierParts.supplierId,
           supplierPartSku: supplierParts.supplierSku,
           supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
@@ -1405,6 +1424,7 @@ export async function handleMaterialListReplicachePull(
             status: job.status,
             foremanName: job.foremanName ?? job.foremanUserName ?? null,
             poNumber: job.poNumber ?? null,
+            supplierDefaults: job.supplierDefaults,
             createdAt: job.createdAt?.toISOString?.() ?? String(job.createdAt),
             updatedAt: job.updatedAt?.toISOString?.() ?? String(job.updatedAt),
             location: job.locationName
@@ -1480,7 +1500,7 @@ export async function handleMaterialListReplicachePull(
       }
 
       const priceBooks = new Map(await Promise.all(jobRows.map(async job => {
-        const book = await getJobPriceBook(tx, organizationId, job.id);
+        const book = await getJobPriceBook(tx, organizationId, job.id as string);
         return [job.id, { ...book, entries: indexJobPrices(book.entries) }] as const;
       })));
       const listJobs = new Map(materialListRows.map(list => [list.id, list.jobId]));
@@ -1510,6 +1530,7 @@ export async function handleMaterialListReplicachePull(
             supplierPartId: item.supplierPartId,
             supplierId: item.supplierId,
             selectedSupplierId: item.supplierId,
+            supplierVersion: item.supplierVersion,
             partDefinition: item.partDefinitionId
               ? {
                   id: item.partDefinitionId,

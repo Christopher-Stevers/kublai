@@ -10,6 +10,7 @@ import type {
 } from "./use-replicache-material-list";
 
 export interface ReplicacheJob {
+  supplierDefaults?: import("~/lib/job-supplier-defaults").JobSupplierDefaults | null;
   id: string;
   name: string;
   locationId: string | null;

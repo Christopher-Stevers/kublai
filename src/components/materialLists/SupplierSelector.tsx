@@ -22,6 +22,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import { getOfflineSupplierPartsByPart, setOfflineSupplierPartsByPart } from "~/lib/offline-supplier-parts";
 
 interface SupplierSelectorProps {
+  currentVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
   itemId: string;
   partDefinitionId: string;
   currentSupplierPartId: string | null | undefined;
@@ -32,6 +33,7 @@ interface SupplierSelectorProps {
 }
 
 export function SupplierSelector({
+  currentVersion,
   itemId,
   partDefinitionId,
   currentSupplierPartId,
@@ -234,7 +236,7 @@ export function SupplierSelector({
             className={`${compact ? "min-h-8 text-xs" : "min-h-10 sm:min-h-11"} h-auto w-full justify-between py-2`}
             style={compact ? { touchAction: "auto" } : undefined}
           >
-            <span className="min-w-0 whitespace-normal text-left">{optimisticSupplierId ? supplierLabel(displayValue, optimisticSupplierId, partDefinitionId, optimisticSupplierPartId) : displayValue}</span>
+            <span className="min-w-0 whitespace-normal text-left">{currentVersion && !optimisticDisplayLabel ? currentVersion.label : optimisticSupplierId ? supplierLabel(displayValue, optimisticSupplierId, partDefinitionId, optimisticSupplierPartId) : displayValue}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>

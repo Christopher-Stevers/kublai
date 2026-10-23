@@ -281,6 +281,7 @@ export function ReviewStage({
       selectedSupplierPart,
       label:
         optimisticSelection?.label ??
+        pendingPart.supplierVersion?.label ??
         (selectedSupplierPart ? supplierLabel(selectedSupplierPart.supplier.name, selectedSupplierPart.supplier.id, pendingPart.partId, selectedSupplierPart.id) : undefined) ??
         "Select supplier",
       lastKnownUnitCost:

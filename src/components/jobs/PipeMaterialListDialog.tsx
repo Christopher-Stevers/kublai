@@ -585,6 +585,7 @@ export function PipeMaterialListDialog({
       await Promise.all(
         items.map(({ part, quantity, offer, cost }) =>
           replicache.mutate.addItem({
+            useJobDefaults: true,
             materialListId,
             itemId: crypto.randomUUID(),
             partDefinitionId: part.id,

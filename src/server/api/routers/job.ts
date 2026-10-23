@@ -1,3 +1,8 @@
+import { userCan } from "~/server/auth/permissions";
+import {
+  resolveDefaultSupplier,
+  supplierVersionPrice,
+} from "~/server/job-supplier-defaults";
 import { materialListProgress } from "~/lib/material-list-progress";
 import { materialListOrderStatuses } from "~/lib/material-list-order-status";
 import { TRPCError } from "@trpc/server";
@@ -20,6 +25,59 @@ import {
 } from "~/server/db/schema";
 
 export const jobRouter = createTRPCRouter({
+  previewSupplierDefault: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid(), partId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const org = ctx.user.organizationId;
+      if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+      const version = await resolveDefaultSupplier(
+        ctx.db,
+        org,
+        input.jobId,
+        input.partId,
+      );
+      if (!version) return null;
+      const price = await supplierVersionPrice(
+        ctx.db,
+        org,
+        version,
+        input.partId,
+      );
+      return {
+        version,
+        ...price,
+        unitCost: userCan(ctx.user, "financial.view") ? price.unitCost : null,
+        listing: price.listing
+          ? {
+              ...price.listing,
+              unitCost: userCan(ctx.user, "financial.view")
+                ? price.listing.unitCost
+                : null,
+            }
+          : undefined,
+      };
+    }),
+  supplierDefaultOptions: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const org = ctx.user.organizationId;
+      if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+      const [job] = await ctx.db.execute<{
+        supplierDefaults:
+          | import("~/lib/job-supplier-defaults").JobSupplierDefaults
+          | null;
+      }>(
+        sql`select "supplierDefaults" from kublai_job where id=${input.jobId} and "organizationId"=${org}`,
+      );
+      if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+      const options = await ctx.db.execute<{
+        supplierId: string;
+        bookId: string | null;
+        label: string;
+      }>(sql`select s.id as "supplierId",null::uuid as "bookId",s.name as label from kublai_supplier s where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room'
+      union all select s.id,b.id,s.name || ' (' || b.name || ')' from kublai_supplier s join kublai_supplier_price_book b on b."supplierId"=s.id and b."organizationId"=${org} where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room' order by label`);
+      return { defaults: job.supplierDefaults, options: [...options] };
+    }),
   syncEntityMutations: retiredOfflineMutation,
 
   /**
@@ -40,6 +98,9 @@ export const jobRouter = createTRPCRouter({
           id: jobs.id,
           name: jobs.name,
           poNumber: jobs.poNumber,
+          supplierDefaults: sql<
+            import("~/lib/job-supplier-defaults").JobSupplierDefaults | null
+          >`${jobs}."supplierDefaults"`,
           locationId: jobs.locationId,
           foremanUserId: jobs.foremanUserId,
           foremanName: jobs.foremanName,
@@ -123,8 +184,17 @@ export const jobRouter = createTRPCRouter({
                 supplierParts,
                 eq(quoteItems.supplierPartId, supplierParts.id),
               )
-              .leftJoin(suppliers, eq(suppliers.id, sql`coalesce(${quoteItems.supplierId}, ${supplierParts.supplierId})`))
-              .leftJoin(orderItems, eq(quoteItems.sentOrderItemId, orderItems.id))
+              .leftJoin(
+                suppliers,
+                eq(
+                  suppliers.id,
+                  sql`coalesce(${quoteItems.supplierId}, ${supplierParts.supplierId})`,
+                ),
+              )
+              .leftJoin(
+                orderItems,
+                eq(quoteItems.sentOrderItemId, orderItems.id),
+              )
               .leftJoin(orders, eq(orderItems.orderId, orders.id))
               .where(inArray(quoteItems.quoteId, quoteIds))
           : Promise.resolve([]),
@@ -215,13 +285,30 @@ export const jobRouter = createTRPCRouter({
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
-          overallProgress: materialListProgress(supplierRows.filter(row => row.quoteId === list.quoteId)),
-          orderStatuses: materialListOrderStatuses(list.id, orderRows, verificationByOrderId,
-            supplierRows.filter(row => row.quoteId === list.quoteId && row.partDefinitionId && Number(row.quantity) > 0).map(row => ({
-              sentOrderId: row.sentOrderId,
-              supplierId: list.kind === "tools" ? "tool-room" : row.selectedSupplierId ?? row.supplierPartSupplierId,
-              supplierName: list.kind === "tools" ? "Tool Room" : row.supplierName,
-            }))),
+          overallProgress: materialListProgress(
+            supplierRows.filter((row) => row.quoteId === list.quoteId),
+          ),
+          orderStatuses: materialListOrderStatuses(
+            list.id,
+            orderRows,
+            verificationByOrderId,
+            supplierRows
+              .filter(
+                (row) =>
+                  row.quoteId === list.quoteId &&
+                  row.partDefinitionId &&
+                  Number(row.quantity) > 0,
+              )
+              .map((row) => ({
+                sentOrderId: row.sentOrderId,
+                supplierId:
+                  list.kind === "tools"
+                    ? "tool-room"
+                    : (row.selectedSupplierId ?? row.supplierPartSupplierId),
+                supplierName:
+                  list.kind === "tools" ? "Tool Room" : row.supplierName,
+              })),
+          ),
           orderNumbers: [
             ...new Set(
               orderRows

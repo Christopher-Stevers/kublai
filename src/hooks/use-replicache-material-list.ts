@@ -34,6 +34,7 @@ export function useReplicacheSyncing() {
 }
 
 export interface ReplicacheMaterialListItem {
+  supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
   jobPriceStatus?: string;
   sentOrderItemId?: string | null;
   priceBookNameSnapshot?: string | null;

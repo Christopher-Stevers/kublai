@@ -23,6 +23,7 @@ export interface MaterialListTableRowProps {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
     priceBookNameSnapshot?: string | null;
+    supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
@@ -169,6 +170,7 @@ function MaterialListTableRowComponent({
             <div className="text-muted-foreground text-sm">Tool room</div>
           ) : item.partDefinition?.id && !item.sentOrderItemId ? (
             <SupplierSelector
+                    currentVersion={item.supplierVersion}
               itemId={item.id}
               partDefinitionId={item.partDefinition.id}
               currentSupplierPartId={item.supplierPart?.id}
