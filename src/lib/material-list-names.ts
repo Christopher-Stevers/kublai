@@ -19,7 +19,7 @@ export function isDefaultMaterialListName(name: string | null | undefined) {
   // Keep accepting names queued by older offline clients.
   return (
     /^[A-Z][a-z]+ \d{1,2}, \d{4}(?: - \d+)?$/.test(trimmed) ||
-    /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d{2}\/\d{2}\/\d{2}-[1-9]\d*$/.test(
+    /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d{2}\/\d{2}\/\d{2}(?:-[1-9]\d*)?$/.test(
       trimmed,
     )
   );
@@ -40,7 +40,7 @@ export function getNextMaterialListNameFromNames(
   for (const existingName of existingNames) {
     const name = existingName?.trim();
     if (!name) continue;
-    if (name === legacyDateName) {
+    if (name === dateName || name === legacyDateName) {
       highest = Math.max(highest, 1);
       continue;
     }
@@ -54,5 +54,5 @@ export function getNextMaterialListNameFromNames(
       highest = Math.max(highest, number);
     }
   }
-  return `${dateName}-${highest + 1}`;
+  return highest === 0 ? dateName : `${dateName}-${highest + 1}`;
 }

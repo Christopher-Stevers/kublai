@@ -7,14 +7,19 @@ import {
 
 const friday = new Date("2026-10-23T16:00:00Z");
 describe("automatic material-list names", () => {
-  it("uses the weekday, day/month/two-digit year, and always includes a number", () => {
+  it("uses the weekday, day/month/two-digit year, and leaves the first list unnumbered", () => {
     expect(formatMaterialListDate(friday)).toBe("Friday 23/10/26");
     expect(getNextMaterialListNameFromNames([], friday)).toBe(
-      "Friday 23/10/26-1",
+      "Friday 23/10/26",
     );
     expect(formatMaterialListDate(new Date("2027-01-01T16:00:00Z"))).toBe(
       "Friday 01/01/27",
     );
+  });
+  it("starts suffixes at two and still accepts previous first-list suffixes", () => {
+    expect(getNextMaterialListNameFromNames(["Friday 23/10/26"], friday)).toBe("Friday 23/10/26-2");
+    expect(getNextMaterialListNameFromNames(["Friday 23/10/26-1"], friday)).toBe("Friday 23/10/26-2");
+    expect(isDefaultMaterialListName("Friday 23/10/26")).toBe(true);
   });
   it("continues the day's sequence without reusing a deleted lower number", () => {
     expect(
@@ -44,13 +49,13 @@ describe("automatic material-list names", () => {
   it("uses the Toronto calendar day across midnight and the daylight-saving change", () => {
     expect(
       getNextMaterialListNameFromNames([], new Date("2026-10-24T01:00:00Z")),
-    ).toBe("Friday 23/10/26-1");
+    ).toBe("Friday 23/10/26");
     expect(
       getNextMaterialListNameFromNames([], new Date("2026-11-01T06:30:00Z")),
-    ).toBe("Sunday 01/11/26-1");
+    ).toBe("Sunday 01/11/26");
     expect(
       getNextMaterialListNameFromNames([], new Date("2026-11-02T05:00:00Z")),
-    ).toBe("Monday 02/11/26-1");
+    ).toBe("Monday 02/11/26");
   });
   it("recognizes new and legacy auto names while preserving custom titles", () => {
     for (const name of [
