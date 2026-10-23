@@ -9,6 +9,8 @@ type UploadReply = {
   restartRequired?: boolean;
 };
 const CHUNK_BYTES = 5 * 1024 * 1024;
+// A release restart may take 90 seconds while the old process drains.
+const UPLOAD_RECOVERY_MS = 3 * 60_000;
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export class UploadResponseError extends Error {
   constructor(
@@ -45,29 +47,26 @@ export async function readUploadResponse(
   return body;
 }
 async function request(url: string, init?: RequestInit): Promise<UploadReply> {
-  let last: unknown;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const deadline = Date.now() + UPLOAD_RECOVERY_MS;
+  for (let attempt = 0; ; attempt++) {
     try {
       return await readUploadResponse(
         await fetch(url, {
           ...init,
           cache: "no-store",
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(Math.max(1, Math.min(30_000, deadline - Date.now()))),
         }),
       );
     } catch (error) {
-      last = error;
       if (
         error instanceof UploadResponseError &&
-        ![408, 409, 429, 500, 502, 503, 504, 520, 522, 524].includes(
-          error.status,
-        )
-      )
-        throw error;
-      if (attempt < 3) await pause(3000 * (attempt + 1));
+        ![408, 409, 429, 500, 502, 503, 504, 520, 522, 524].includes(error.status)
+      ) throw error;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw error;
+      await pause(Math.min(10_000, 3000 * (attempt + 1), remaining));
     }
   }
-  throw last;
 }
 /**
  * Uploads a PDF and waits until it is split into sheets. Without a drawing set
