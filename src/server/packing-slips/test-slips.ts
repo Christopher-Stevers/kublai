@@ -456,7 +456,9 @@ export function makeSlip(
   const perPage = lines.length > 10 && rnd() < 0.6 ? int(6, 9) : 99;
   const pageCount = Math.max(1, Math.ceil(lines.length / perPage));
   const repeatHeader = rnd() < 0.8;
-  let lineNo = 0;
+  let lineNo = 0,
+    // The footer totals the shipped numbers as printed, in pieces or not.
+    printedTotal = 0;
   for (let p = 0; p < pageCount; p++) {
     const page: SlipPage = { texts: [], rules: [] };
     pages.push(page);
@@ -562,6 +564,7 @@ export function makeSlip(
         value.previous = String(line.previous * line.item.pack);
         value.backordered = String(line.backordered * line.item.pack);
       }
+      printedTotal += Number(value.shipped);
       // Some slips leave zero cells blank.
       const blankZero = rnd() < 0.3;
       let description = value.description,
@@ -625,8 +628,7 @@ export function makeSlip(
     };
     y += pitch * 1.5;
     if (p === pageCount - 1) {
-      const shipped = lines.reduce((s, l) => s + l.printedQty, 0);
-      text(`TOTAL QTY SHIPPED: ${shipped}`, 0.55, y, {
+      text(`TOTAL QTY SHIPPED: ${printedTotal}`, 0.55, y, {
         bold: true,
         role: "total",
       });
