@@ -351,6 +351,50 @@ it("shows each line under the column headings, and no other line", async () => {
   for (const [headings, row] of seen) expect(headings).toBe(row);
 });
 
+it("shows each quantity cell under its column's heading", async () => {
+  const jev = fakeJev({});
+  let shippedCell: Buffer | undefined;
+  const ask: VisionAsk = async (inputs, questions) => {
+    if (inputs.shippedCell) shippedCell = inputs.shippedCell as Buffer;
+    return jev.ask(inputs, questions);
+  };
+  const mark = (left: number, top: number, width: number, r: number) => ({
+    input: {
+      create: {
+        width,
+        height: 14,
+        channels: 3 as const,
+        background: { r, g: 0, b: 0 },
+      },
+    },
+    left,
+    top,
+  });
+  // The Shipped heading is red; the line's shipped number, set to the right
+  // under it, black.
+  const printed = await sharp(page)
+    .composite([mark(690, 136, 40, 255), mark(722, 284, 16, 0)])
+    .png()
+    .toBuffer();
+  await analyze([header, line], ask, [item], [printed]);
+  const { data, info } = await sharp(shippedCell)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const rowsWhere = (test: (r: number, g: number) => boolean) =>
+    Array.from({ length: info.height }, (_, y) => y).filter((y) =>
+      Array.from(
+        { length: info.width },
+        (_, x) => (y * info.width + x) * 3,
+      ).some((i) => test(data[i]!, data[i + 1]!)),
+    );
+  const red = rowsWhere((r, g) => r - g > 100),
+    black = rowsWhere((r) => r < 64);
+  expect(red.length).toBeGreaterThan(0);
+  expect(black.length).toBeGreaterThan(0);
+  expect(Math.max(...red)).toBeLessThan(Math.min(...black));
+});
+
 it("checks each item's shipped total read from the whole page when no totals are printed", async () => {
   const noTotals = {
     lines: pick("not_printed", 0.95),
