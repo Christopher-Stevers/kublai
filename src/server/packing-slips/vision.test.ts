@@ -700,6 +700,33 @@ it("raises confidence when the line and cell agree and balance", async () => {
   );
 });
 
+it("counts a 0, a blank and no column alike as nothing backordered", async () => {
+  // Jev's doubt is over how the empty cell looks, not over the amount.
+  const empty = (choice: string, other: string) => ({
+    ...pick(choice, 0.5),
+    probabilities: { [choice]: 0.5, [other]: 0.46, unclear: 0.04 },
+  });
+  const read = async (main: ChoiceAnswer, cell: ChoiceAnswer) => {
+    const jev = fakeJev({
+      total: pick("v8", 0.99),
+      main: { shipped: pick("v8", 0.95), backordered: main },
+      // With the 2 delivered earlier it adds up, but the cell's shipped is
+      // too unsure to vouch for the line's.
+      cells: { shipped: pick("v16", 0.4), backordered: cell },
+    });
+    return (await analyze([header, line], jev.ask)).lines[0];
+  };
+  expect(
+    await read(empty("no_column", "blank"), empty("blank", "v0")),
+  ).toMatchObject({ shipped: 8, backordered: 0, proposed: 8, issues: [] });
+  // Torn between none and some, it still needs checking.
+  const torn = await read(empty("v0", "v4"), empty("v0", "v4"));
+  expect(torn!.proposed).toBeNull();
+  expect(torn!.issues).toEqual([
+    "Check backordered quantity against the slip.",
+  ]);
+});
+
 it("averages the three product views", async () => {
   // The row view leans to the item, short of sure; the other two doubt it.
   const doubt = {

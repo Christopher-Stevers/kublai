@@ -349,6 +349,7 @@ const lineCount = (a: ChoiceAnswer | undefined) =>
   a && /^n\d+$/.test(a.choice) ? Number(a.choice.slice(1)) : null;
 
 const QUANTITY_FIELDS = ["shipped", "ordered", "backordered"] as const;
+const NONE = ["v0", "blank", "no_column"];
 /** The quantity columns' headings Jev is sure of. One overlapping a surer
  * one is that column again, as Jev answers when a slip lacks the column. */
 export function quantityColumns(answers: Record<string, VisionAnswer>) {
@@ -995,8 +996,25 @@ export function decideReading(
       choice(main.shipped)?.choice === "no_column" && cellShipped.value !== null
         ? { value: null, confidence: 0, choice: undefined }
         : read("shipped");
+  // A 0, a blank and no column at all each mean nothing is backordered; Jev
+  // shares its belief among them by how the cell looks, not by the amount.
+  const none = (r: ReturnType<typeof read>, a: VisionAnswer | undefined) => {
+    const p = choice(a)?.probabilities;
+    return p && r.choice && NONE.includes(r.choice)
+      ? {
+          ...r,
+          confidence: Math.max(
+            r.confidence,
+            NONE.reduce((sum, k) => sum + (p[k] ?? 0), 0),
+          ),
+        }
+      : r;
+  };
   const shipped = pick(rowShipped, cellShipped),
-    backordered = pick(read("backordered"), cell("backordered")),
+    backordered = pick(
+      none(read("backordered"), main.backordered),
+      none(cell("backordered"), cellRead.backordered),
+    ),
     ordered = pick(read("ordered"), cell("ordered"));
   let shippedConf = shipped.confidence,
     backorderedConf = backordered.confidence;
