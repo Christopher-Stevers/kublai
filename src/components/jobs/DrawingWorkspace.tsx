@@ -130,6 +130,7 @@ import {
   DrawingField,
   drawingFieldClass,
 } from "./DrawingEntityForm";
+import { SuperLabelDialog } from "./SuperLabelDialog";
 import { SuperScaleDialog } from "./SuperScaleDialog";
 import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
 import { useDrawingAppearance } from "./useDrawingAppearance";
@@ -425,6 +426,7 @@ export function DrawingWorkspace({
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => { if (quickWheel) { setMoreOpen(false); setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
+  const [superLabelOpen, setSuperLabelOpen] = useState(false);
   const [superScaleOpen, setSuperScaleOpen] = useState(false);
   const [superScalePrompt, setSuperScalePrompt] = useState(false);
   useEffect(() => {
@@ -1647,6 +1649,7 @@ export function DrawingWorkspace({
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
+      ...(!data.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !data.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
       ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
@@ -1730,6 +1733,7 @@ export function DrawingWorkspace({
           </div>
         </DialogContent>
       </Dialog>
+      {superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={()=>{void refresh();}}/>}
       {superScaleOpen && (
         <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
@@ -3433,6 +3437,7 @@ export function DrawingWorkspace({
                 </DropdownMenuItem>}
                 {!data.documentSource && (
                   <>
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canManage || !online} onSelect={()=>{setMoreOpen(false);setSuperLabelOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Label</DropdownMenuItem>
                   <DropdownMenuItem className={MENU_ITEM}
                     disabled={!data.canManage || !online}
                     onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>

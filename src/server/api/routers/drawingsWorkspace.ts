@@ -1,3 +1,5 @@
+import { superLabelSettings, saveSuperLabelBoxes, applySuperLabel } from "~/server/drawings/service";
+import { superLabelSchema } from "~/lib/super-label";
 import { pipeLegendReferences } from "~/server/drawings/legend-components";
 import { listLegendItems, scanLegend, saveLegendItems, updateLegendItem } from "~/server/drawings/legend";
 import { legendItemSchema } from "~/lib/drawing-legend";
@@ -42,6 +44,9 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  superLabelSettings: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>superLabelSettings(ctx,input.sheetId)),
+  saveSuperLabelBoxes: hasDashboardAccess.input(z.object({sheetId,boxes:superLabelSchema})).mutation(({ctx,input})=>saveSuperLabelBoxes(ctx,input)),
+  applySuperLabel: hasDashboardAccess.input(z.object({sheetId,targetId:sheetId,boxes:superLabelSchema})).mutation(({ctx,input})=>applySuperLabel(ctx,input)),
   pipeLegendReferences: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>pipeLegendReferences(ctx,input.sheetId)),
   legendItems: hasDashboardAccess.input(z.object({sheetId})).query(({ctx,input})=>listLegendItems(ctx,input.sheetId)),
   scanLegend: hasDashboardAccess.input(z.object({sheetId,sourceSheetId:sheetId})).mutation(({ctx,input})=>scanLegend(ctx,input)),

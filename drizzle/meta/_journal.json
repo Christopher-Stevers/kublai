@@ -489,6 +489,13 @@
       "when": 1792714577829,
       "tag": "0093_job_supplier_defaults",
       "breakpoints": false
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792758107309,
+      "tag": "0094_super_label_boxes",
+      "breakpoints": false
     }
   ]
 }

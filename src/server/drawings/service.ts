@@ -1708,3 +1708,48 @@ export async function addDrawingMeasurementLayer(ctx: DrawingContext, input: {sh
     return data;
   });
 }
+
+/** Set-scoped title-block selections; a sheet never supplies text for another sheet. */
+export async function superLabelSettings(ctx:DrawingContext,sheetId:string){
+ const {sheet,actor}=await accessSheet(ctx.db,ctx.userId,sheetId);
+ assertDrawingManager(actor);
+ const [set]=await ctx.db.select().from(jobDrawingSets).where(and(eq(jobDrawingSets.id,sheet.setId),eq(jobDrawingSets.organizationId,sheet.organizationId)));
+ const sheets=await ctx.db.select({id:jobDrawingSheets.id,name:jobDrawingSheets.name}).from(jobDrawingSheets).where(and(eq(jobDrawingSheets.setId,sheet.setId),eq(jobDrawingSheets.organizationId,sheet.organizationId))).orderBy(asc(jobDrawingSheets.sortOrder));
+ return {boxes:set?.labelBoxes??null,sheets};
+}
+export async function saveSuperLabelBoxes(ctx:DrawingContext,input:{sheetId:string;boxes:import("~/lib/super-label").SuperLabelBoxes}){
+ return withSheet(ctx,input.sheetId,async(tx,access)=>{
+ assertDrawingManager(access.actor);
+ if(access.sheet.documentVersionId)throw new TRPCError({code:"BAD_REQUEST",message:"Choose a drawing set."});
+ await tx.update(jobDrawingSets).set({labelBoxes:input.boxes,updatedAt:new Date()}).where(and(eq(jobDrawingSets.id,access.sheet.setId),eq(jobDrawingSets.organizationId,access.sheet.organizationId)));
+ });
+}
+export async function applySuperLabel(ctx:DrawingContext,input:{sheetId:string;targetId:string;boxes:import("~/lib/super-label").SuperLabelBoxes}){
+ const reference=await accessSheet(ctx.db,ctx.userId,input.sheetId);
+ assertDrawingManager(reference.actor);
+ const target=await accessSheet(ctx.db,ctx.userId,input.targetId);
+ if(reference.sheet.setId!==target.sheet.setId||reference.sheet.organizationId!==target.sheet.organizationId)throw new TRPCError({code:"BAD_REQUEST",message:"Choose a drawing in this set."});
+ const original=await sheetMetadata(ctx.db,input.targetId);
+ const {readLabelBox}=await import("./super-label");
+ const title=await readLabelBox(target.sheet,input.boxes.title);
+ const number=await readLabelBox(target.sheet,input.boxes.number);
+ return withSheet(ctx,input.targetId,async(tx,access)=>{
+ assertDrawingManager(access.actor);
+ if(access.sheet.setId!==reference.sheet.setId||access.sheet.imageUrl!==target.sheet.imageUrl||access.sheet.name!==target.sheet.name)throw new TRPCError({code:"CONFLICT",message:"Drawing changed; retry."});
+ const [set]=await tx.select().from(jobDrawingSets).where(eq(jobDrawingSets.id,access.sheet.setId));
+ if(JSON.stringify(set?.labelBoxes)!==JSON.stringify(input.boxes)){
+  // JSONB key order is not stable; compare the parsed fields instead.
+  const same=(["title","number"] as const).every(k=>(["left","top","right","bottom"] as const).every(v=>set?.labelBoxes?.[k][v]===input.boxes[k][v]));
+  if(!same)throw new TRPCError({code:"CONFLICT",message:"The selected boxes changed; start again."});
+ }
+ const current=await sheetMetadata(tx,input.targetId);
+ assertRevision(current.revision,original.revision);
+ if(title||number){
+ await writeMetadata(tx,input.targetId,{...current,title:title||current.title,number:number||current.number,revision:current.revision+1});
+ if(title)await tx.update(jobDrawingSheets).set({name:title}).where(eq(jobDrawingSheets.id,input.targetId));
+ await tx.update(jobDrawingSets).set({updatedAt:new Date()}).where(eq(jobDrawingSets.id,access.sheet.setId));
+ await record(tx,input.targetId,access.actor,"metadata_updated",null);
+ }
+ return {id:input.targetId,title,number,warning:!title||!number?"Some text could not be read; existing values were kept.":null};
+ });
+}

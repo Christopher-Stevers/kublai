@@ -2307,6 +2307,7 @@ export const jobDrawingSets = createTable(
     jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
     documentVersionId: d.uuid(),
     name: d.varchar({ length: 255 }).notNull(),
+    labelBoxes: d.jsonb().$type<import("~/lib/super-label").SuperLabelBoxes>(),
     createdByUserId: d.varchar({ length: 255 }),
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
