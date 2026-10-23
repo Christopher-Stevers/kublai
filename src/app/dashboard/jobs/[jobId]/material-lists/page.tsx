@@ -1,4 +1,5 @@
 "use client";
+import { useRememberedScroll } from "~/hooks/use-remembered-scroll";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
 import { notify } from "~/components/ui/app-dialogs";
@@ -105,6 +106,8 @@ export default function JobDetailPage({
       ...serverSendStatusByListId.get(list.id),
     }),
   );
+
+  useRememberedScroll(`material-lists:${jobId}`, materialLists !== undefined);
 
   const listsPending = Boolean(materialLists?.some(list => "pendingSync" in list && list.pendingSync));
   const merge = useCardMerge({
