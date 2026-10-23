@@ -229,6 +229,15 @@ const handwritten: Choice = {
     unclear: "Not legible or not among choices",
   },
 };
+const penWritten: Choice = {
+  type: "choice",
+  instructions: `\`penCell\` enlarges the part of \`row\` around its shipped quantity. Read the HANDWRITTEN quantity there that corrects or replaces the printed shipped quantity, e.g. a number written beside a crossed-out or circled figure, or written into an empty shipped cell. Ignore printed text, ticks and signatures, and marks cut off at the top or bottom edge, which belong to neighbouring lines. ${EVIDENCE}`,
+  criteria: {
+    ...values,
+    none: "No handwritten quantity",
+    unclear: "Not legible or not among choices",
+  },
+};
 /** Whole-page reading of one order item, as a check on the line readings. */
 const pageItem = (item: ReceiptOrderItem): Choice => ({
   type: "choice",
@@ -829,6 +838,19 @@ export async function readSlipImages(input: {
           900,
         );
       };
+      // Pen figures are written over, beside or between the printed ones,
+      // often outside the cell.
+      const penCell = async (c: Edges) => {
+        const w = Math.max(c.right - c.left, 0.05);
+        return prepared(
+          await crop(
+            png,
+            { ...band, left: c.left - w * 1.5, right: c.right + w * 1.5 },
+            band.precise ? 0.006 : 0.01,
+          ),
+          900,
+        );
+      };
       const product = edges(info.answers.product);
       const text = ocrText(rows, band.page, band.top, band.bottom);
       const cells = {
@@ -937,7 +959,11 @@ export async function readSlipImages(input: {
         // can take it in one tap.
         (["blank", "unclear"].includes(choice(main.shipped)?.choice ?? "") &&
           number(choice(cellRead.shipped)) !== null)
-          ? ask({ row, columnHeadings }, { handwritten })
+          ? !columns.shipped
+            ? ask({ row, columnHeadings }, { handwritten })
+            : penCell(columns.shipped).then((penCell) =>
+                ask({ row, penCell }, { handwritten: penWritten }),
+              )
           : Promise.resolve(null),
       ]);
       return decideReading(

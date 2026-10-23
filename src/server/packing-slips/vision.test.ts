@@ -74,7 +74,7 @@ function fakeJev(set: {
   footer?: Answers;
 }) {
   const calls: string[] = [];
-  const ask: VisionAsk = async (_inputs, questions) => {
+  const ask: VisionAsk = async (inputs, questions) => {
     const ids = Object.keys(questions);
     const only = (answers: Answers) =>
       Object.fromEntries(ids.map((id) => [id, answers[id]!]));
@@ -137,6 +137,7 @@ function fakeJev(set: {
     }
     if (ids.includes("handwritten")) {
       calls.push("handwritten");
+      if ("penCell" in inputs) calls.push("pen crop");
       return { handwritten: set.hand ?? pick("none") };
     }
     if (ids.every((id) => /^item\d+$/.test(id))) {
@@ -257,6 +258,8 @@ it("offers a handwritten quantity without prefilling it", async () => {
   });
   const [read] = (await analyze([header, line], jev.ask)).lines;
   expect(read!.handwritten).toBe(5);
+  // Read from an enlarged crop around the shipped cell.
+  expect(jev.calls).toContain("pen crop");
   expect(read!.proposed).toBeNull();
   expect(read!.issues).toContain(
     "Handwriting on this line may change the quantity. Check the slip.",
