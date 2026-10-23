@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { FrequentJobCardsSetting } from "./FrequentJobCards";
 import { JobWorkspaceOptions } from "./JobWorkspaceOptions";
 import {
   rankJobCards,
@@ -33,10 +34,17 @@ it("records a choice without moving cards until the next visit, and restores fix
   view.unmount();
   render(<JobWorkspaceOptions onSelect={select} />);
   expect(firstCard()).toHaveTextContent("Chat");
-  fireEvent.click(
-    screen.getByRole("checkbox", { name: "Frequently used first" }),
-  );
+  expect(screen.queryByRole("checkbox", { name: "Frequently used first" })).toBeNull();
+  cleanup();
+  const settings = render(<FrequentJobCardsSetting />);
+  expect(screen.getByRole("checkbox", { name: "Frequently used first" })).toBeChecked();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Frequently used first" }));
+  settings.unmount();
+  render(<JobWorkspaceOptions onSelect={select} />);
   expect(firstCard()).toHaveTextContent("Material Lists");
+  const stored = JSON.parse(localStorage.getItem("foremanhq:job-card-frequency:org:alice")!) as {frequent:boolean;usage:{chat:{score:number}}};
+  expect(stored.frequent).toBe(false);
+  expect(stored.usage.chat.score).toBe(1);
 });
 it("keeps accounts separate and counts keyboard navigation", () => {
   const view = render(<JobWorkspaceOptions onSelect={vi.fn()} />);

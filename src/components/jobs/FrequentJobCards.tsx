@@ -16,7 +16,7 @@ import {
   type JobCardId,
 } from "~/lib/job-card-frequency";
 
-export function FrequentJobCards({ children }: { children: ReactNode }) {
+function useJobCardPreferences() {
   const account = useDrawingAccount();
   const key = account
     ? `foremanhq:job-card-frequency:${account.accountKey}`
@@ -27,6 +27,39 @@ export function FrequentJobCards({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrefs(key ? readJobCardPreferences(key) : emptyJobCardPreferences());
   }, [key]);
+  return { key, prefs, setPrefs };
+}
+
+export function FrequentJobCardsSetting() {
+  const { key, prefs, setPrefs } = useJobCardPreferences();
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <label className="flex min-h-11 items-center justify-between gap-3 text-sm font-medium">
+        Frequently used first
+        <input
+          type="checkbox"
+          disabled={!key}
+          checked={prefs.frequent}
+          onChange={(event) => {
+            if (!key) return;
+            const next = {
+              ...readJobCardPreferences(key),
+              frequent: event.target.checked,
+            };
+            saveJobCardPreferences(key, next);
+            setPrefs(next);
+          }}
+        />
+      </label>
+      <p className="text-muted-foreground text-sm">
+        Show your most-used job cards first. Turn off to use the fixed order.
+      </p>
+    </div>
+  );
+}
+
+export function FrequentJobCards({ children }: { children: ReactNode }) {
+  const { key, prefs } = useJobCardPreferences();
   const order = rankJobCards(prefs);
   const cards = Children.toArray(children).filter(
     isValidElement<{ "data-job-card": JobCardId }>,
@@ -50,23 +83,6 @@ export function FrequentJobCards({ children }: { children: ReactNode }) {
   };
   return (
     <div className="space-y-3">
-      {key && (
-        <label className="text-muted-foreground flex items-center justify-end gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={prefs.frequent}
-            onChange={(event) => {
-              const next = {
-                ...readJobCardPreferences(key),
-                frequent: event.target.checked,
-              };
-              saveJobCardPreferences(key, next);
-              setPrefs(next);
-            }}
-          />
-          Frequently used first
-        </label>
-      )}
       <div
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         onClickCapture={(event) => record(event.target)}

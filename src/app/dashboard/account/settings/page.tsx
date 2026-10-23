@@ -1,6 +1,7 @@
 "use client";
 
 import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
+import { FrequentJobCardsSetting } from "~/components/jobs/FrequentJobCards";
 import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
 import { useLandingPage } from "~/hooks/use-landing-page";
 import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
@@ -93,6 +94,7 @@ export default function SettingsPage() {
             {landingSource && <Button variant="outline" onClick={() => setLandingPage(null)}>Reset to default</Button>}
           </div>
           <p className="text-muted-foreground text-sm">Browse to the page you want, then tap the checkmark. Saved for your account on this device. The back arrow always goes up one level.</p>
+          <FrequentJobCardsSetting />
         </CardContent>
       </Card>
 
