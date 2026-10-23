@@ -185,7 +185,7 @@ export function JobWorkspaceOptions({
       <Card
         data-job-card="rooms"
         data-tutorial="rooms"
-        aria-label="Rooms, experimental"
+        aria-label="Rooms"
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
@@ -200,9 +200,6 @@ export function JobWorkspaceOptions({
         <CardHeader>
           <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
             <span>Rooms</span>
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-              Experimental
-            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>

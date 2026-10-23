@@ -14,9 +14,8 @@ it("orders the job cards and opens Chat with keyboard or touch", () => {
   fireEvent.click(chat);
   expect(select).toHaveBeenNthCalledWith(1, "chat");
   expect(select).toHaveBeenNthCalledWith(2, "chat");
-  expect(rooms.closest('[role="button"]')).toHaveTextContent(
-    "Experimental",
-  );
+  expect(screen.getByRole("button", { name: "Rooms", exact: true })).toBeInTheDocument();
+  expect(rooms.closest('[role="button"]')).not.toHaveTextContent("Experimental");
   expect(
     screen.getByRole("button", { name: "Models, experimental" }),
   ).toHaveTextContent("Experimental");
