@@ -967,18 +967,19 @@ export function decideReading(
     };
   };
   // Of the two readings take the surer one; an unreadable cell never wins.
-  const pick = (field: string) => {
-    const r = read(field),
-      c = cell(field);
-    return c.choice && c.choice !== "unclear" && c.confidence > r.confidence
-      ? c
-      : r;
-  };
-  const rowShipped = read("shipped"),
-    cellShipped = cell("shipped");
-  const shipped = pick("shipped"),
-    backordered = pick("backordered"),
-    ordered = pick("ordered");
+  const pick = (r: ReturnType<typeof read>, c: ReturnType<typeof cell>) =>
+    c.choice && c.choice !== "unclear" && c.confidence > r.confidence ? c : r;
+  // A line read finding no shipped column, where the page has one and its
+  // cell holds a number, abstains: the column is in question there, not the
+  // number, as when a docket's one quantity column is headed QTY.
+  const cellShipped = cell("shipped"),
+    rowShipped =
+      choice(main.shipped)?.choice === "no_column" && cellShipped.value !== null
+        ? { value: null, confidence: 0, choice: undefined }
+        : read("shipped");
+  const shipped = pick(rowShipped, cellShipped),
+    backordered = pick(read("backordered"), cell("backordered")),
+    ordered = pick(read("ordered"), cell("ordered"));
   let shippedConf = shipped.confidence,
     backorderedConf = backordered.confidence;
   if (

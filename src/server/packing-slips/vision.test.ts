@@ -604,6 +604,23 @@ it("prefers the enlarged cell but blocks when it disagrees with the line", async
   );
 });
 
+it("reads a docket's one quantity column from its cell when the line finds no shipped column", async () => {
+  const docket = { ordered: pick("no_column"), backordered: pick("no_column") };
+  const jev = fakeJev({
+    main: { shipped: pick("no_column", 0.85), ...docket },
+    cells: { shipped: pick("v6", 0.83), ordered: pick("v6", 0.83) },
+  });
+  const [read] = (await analyze([header, line], jev.ask)).lines;
+  expect(read).toMatchObject({ shipped: 6, proposed: 6, issues: [] });
+  // An unreadable cell leaves nothing to read.
+  const unclear = fakeJev({
+    main: { shipped: pick("no_column", 0.85), ...docket },
+    cells: { shipped: pick("unclear", 0.83) },
+  });
+  const [none] = (await analyze([header, line], unclear.ask)).lines;
+  expect(none!.shipped).toBeNull();
+});
+
 it("raises confidence when the line and cell agree and balance", async () => {
   // 78% twice is too unsure alone; read twice and balanced it is not.
   const jev = fakeJev({
