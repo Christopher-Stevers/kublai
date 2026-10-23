@@ -22,6 +22,10 @@ export function orderPriceBookLabel(
   return names.length ? names.sort().join(" / ") : "Not recorded";
 }
 export type SupplierPricingLabelEntry = {
+  supplierName?: string;
+  supplierPriceBookId?: string | null;
+  supplierSku?: string | null;
+  unitCost?: string | null;
   supplierId: string;
   supplierPartId: string;
   partDefinitionId: string;

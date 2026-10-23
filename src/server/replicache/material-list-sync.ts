@@ -1,4 +1,4 @@
-import { jobSupplierDefaultsSchema } from "~/lib/job-supplier-defaults";
+import { jobSupplierDefaultsSchema, supplierVersionSchema } from "~/lib/job-supplier-defaults";
 import { resolveDefaultSupplier, supplierVersionPrice, validateJobSupplierDefaults } from "~/server/job-supplier-defaults";
 import { getJobPriceBook } from "~/server/job-pricing";
 import { jobPriceStatus } from "~/lib/job-price-status";
@@ -133,6 +133,7 @@ function isUuid(value: string | null | undefined) {
 }
 
 const addItemArgs = z.object({
+  supplierVersionSnapshot: supplierVersionSchema.nullable().optional(),
   useJobDefaults: z.boolean().optional(),
   roomId: z.string().uuid().nullable().optional(),
   materialListId: z.string().uuid(),
@@ -146,6 +147,7 @@ const addItemArgs = z.object({
 });
 
 const updateItemSupplierPartArgs = z.object({
+  supplierVersionSnapshot: supplierVersionSchema.nullable().optional(),
   itemId: z.string().uuid(),
   materialListId: z.string().uuid().optional(),
   supplierPartId: uuidOrOfflineSupplierPartId.nullable(),
@@ -584,8 +586,11 @@ async function applyReplicacheMutation(
       if (serverSupplierPartId) {
         unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
       }
-      const version = args.useJobDefaults && !isTool && args.partDefinitionId
-        ? await resolveDefaultSupplier(tx,input.organizationId,materialList.jobId,args.partDefinitionId) : null;
+      const version = !isTool && args.partDefinitionId
+        ? args.useJobDefaults
+          ? await resolveDefaultSupplier(tx,input.organizationId,materialList.jobId,args.partDefinitionId)
+          : args.supplierVersionSnapshot ?? null
+        : null;
       if(version && args.partDefinitionId){
         const selected=await supplierVersionPrice(tx,input.organizationId,version,args.partDefinitionId,serverSupplierPartId);
         resolvedSupplierId=version.supplierId;serverSupplierPartId=selected.listing?.id??null;unitCost=Number(selected.unitCost??0);
@@ -633,6 +638,7 @@ async function applyReplicacheMutation(
           quoteId: quoteItems.quoteId,
           quantity: quoteItems.quantity,
           supplierPartId: quoteItems.supplierPartId,
+          partDefinitionId: quoteItems.partDefinitionId,
           supplierVersion: quoteItems.supplierVersion,
           supplierId: quoteItems.supplierId,
           unitCost: quoteItems.unitCost,
@@ -662,19 +668,27 @@ async function applyReplicacheMutation(
       const offlineSupplierPart = parseOfflineSupplierPartId(
         args.supplierPartId,
       );
-      const serverSupplierPartId = isUuid(args.supplierPartId)
+      let serverSupplierPartId = isUuid(args.supplierPartId)
         ? args.supplierPartId
         : null;
-      const resolvedSupplierId =
+      let resolvedSupplierId =
         args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
 
       let unitCost = args.unitCost ?? 0;
       if (serverSupplierPartId) {
         unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
       }
+      const version = args.supplierVersionSnapshot ?? null;
+      if (version) {
+        if (!item.partDefinitionId) throw new Error("A supplier version requires a catalogue part.");
+        const selected = await supplierVersionPrice(tx, input.organizationId, version, item.partDefinitionId, serverSupplierPartId);
+        resolvedSupplierId = version.supplierId;
+        serverSupplierPartId = selected.listing?.id ?? null;
+        unitCost = Number(selected.unitCost ?? 0);
+      }
       if (!Number.isFinite(unitCost)) unitCost = 0;
 
-      if (!item.supplierVersion && item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
+      if (JSON.stringify(item.supplierVersion ?? null) === JSON.stringify(version) && item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
       const quantity = parseFloat(String(item.quantity));
       const extendedPrice =
         (Number.isFinite(quantity) ? quantity : 0) * unitCost;
@@ -683,7 +697,7 @@ async function applyReplicacheMutation(
         .update(quoteItems)
         .set({
           supplierPartId: serverSupplierPartId,
-          supplierVersion: null,
+          supplierVersion: version,
           supplierId: resolvedSupplierId,
           unitCost: unitCost.toString(),
           extendedPrice: extendedPrice.toString(),
@@ -1286,6 +1300,7 @@ export async function handleMaterialListReplicachePull(
         .select({
           id: suppliers.id,
           name: suppliers.name,
+          kind: suppliers.kind,
           contactName: suppliers.contactName,
           contactEmail: suppliers.contactEmail,
           contactPhone: suppliers.contactPhone,

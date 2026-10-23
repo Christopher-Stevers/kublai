@@ -1,19 +1,22 @@
 "use client";
 import {
-  SupplierLabel,
+  buildSupplierChoices,
+  type SupplierChoice,
+} from "~/lib/supplier-choices";
+import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
+import {
+  SupplierLabelContext,
   useSupplierLabel,
 } from "~/components/suppliers/SupplierLabel";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { ChevronDownIcon } from "lucide-react";
-import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
@@ -48,6 +51,7 @@ export function SupplierSelector({
   compact = false,
 }: SupplierSelectorProps) {
   const supplierLabel = useSupplierLabel();
+  const { entries } = useContext(SupplierLabelContext);
   const sandbox = useTutorialSandbox();
   const {
     getReplicache: getMaterialListReplicache,
@@ -67,12 +71,13 @@ export function SupplierSelector({
     OfflineSupplierPartOption[]
   >([]);
   // A job's quoted price must never overwrite another job's cached price.
-  const cacheKey = `${partDefinitionId}:${materialListId}`;
+  const cacheKey = `${partDefinitionId}:${materialListId}:standard`;
 
   useEffect(() => {
     setOptimisticSupplierPartId(currentSupplierPartId ?? null);
     setOptimisticSupplierId(currentSupplierId ?? null);
-  }, [currentSupplierPartId, currentSupplierId]);
+    setOptimisticDisplayLabel(null);
+  }, [currentSupplierPartId, currentSupplierId, currentVersion?.bookId, currentVersion?.label]);
 
   const subscribedSuppliers = useReplicacheSuppliers({ enabled: !suppliers });
   const allSuppliers = suppliers ?? subscribedSuppliers;
@@ -85,7 +90,7 @@ export function SupplierSelector({
 
   const online = useOnlineStatus();
   const freshParts = api.supplier.getSupplierPartsByPart.useQuery(
-    { partDefinitionId, materialListId },
+    { partDefinitionId, materialListId, pricingMode: "standard" },
     { enabled: !sandbox && online && isDropdownOpen, staleTime: 0 },
   );
   useEffect(() => {
@@ -110,64 +115,26 @@ export function SupplierSelector({
       ? currentSupplierPart.supplier.name
       : (currentSupplier?.name ?? "No supplier"));
 
-  const supplierIdsWithParts = new Set(
-    supplierParts.map((sp) => sp.supplierId),
+  const groups = buildSupplierChoices(
+    partDefinitionId,
+    allSuppliers,
+    supplierParts,
+    entries,
   );
-  const suppliersWithoutParts = allSuppliers.filter(
-    (supplier) => !supplierIdsWithParts.has(supplier.id),
-  );
-
-  const handleSupplierPartSelect = (supplierPartId: string) => {
-    const selectedSupplierPart =
-      supplierPartId === "none"
-        ? null
-        : (supplierParts.find(
-            (supplierPart) => supplierPart.id === supplierPartId,
-          ) ?? null);
-    const nextSupplierPartId =
-      supplierPartId === "none" ? null : supplierPartId;
-
-    setOptimisticSupplierPartId(nextSupplierPartId);
-    setOptimisticSupplierId(selectedSupplierPart?.supplierId ?? null);
-    setOptimisticDisplayLabel(
-      selectedSupplierPart ? selectedSupplierPart.supplier.name : "No supplier",
-    );
+  const handleSelect = (choice: SupplierChoice) => {
+    setOptimisticSupplierPartId(choice.listing.id);
+    setOptimisticSupplierId(choice.listing.supplierId);
+    setOptimisticDisplayLabel(choice.label);
     setIsDropdownOpen(false);
-
-    const unitCost = selectedSupplierPart?.lastKnownUnitCost
-      ? parseFloat(selectedSupplierPart.lastKnownUnitCost)
-      : 0;
-
     void mutateMaterialListAndSync(
       getMaterialListReplicache().mutate.updateItemSupplierPart({
         materialListId,
         itemId,
-        supplierPartId: nextSupplierPartId,
-        supplierId: selectedSupplierPart?.supplierId ?? null,
-        supplierPartSnapshot: selectedSupplierPart,
-        unitCost,
-      }),
-    );
-  };
-
-  const handleSupplierSelect = (supplierId: string) => {
-    const selectedSupplier = allSuppliers?.find(
-      (supplier) => supplier.id === supplierId,
-    );
-    if (!selectedSupplier) return;
-
-    setOptimisticSupplierPartId(null);
-    setOptimisticSupplierId(selectedSupplier.id);
-    setOptimisticDisplayLabel(selectedSupplier.name);
-    setIsDropdownOpen(false);
-
-    void mutateMaterialListAndSync(
-      getMaterialListReplicache().mutate.updateItemSupplierPart({
-        materialListId,
-        itemId,
-        supplierPartId: null,
-        supplierId: selectedSupplier.id,
-        unitCost: 0,
+        supplierPartId: choice.listing.id,
+        supplierId: choice.listing.supplierId,
+        supplierPartSnapshot: choice.listing,
+        supplierVersionSnapshot: choice.version,
+        unitCost: Number(choice.listing.lastKnownUnitCost ?? 0),
       }),
     );
   };
@@ -182,16 +149,17 @@ export function SupplierSelector({
             style={compact ? { touchAction: "auto" } : undefined}
           >
             <span className="min-w-0 text-left whitespace-normal">
-              {currentVersion && !optimisticDisplayLabel
-                ? currentVersion.label
-                : optimisticSupplierId
-                  ? supplierLabel(
-                      displayValue,
-                      optimisticSupplierId,
-                      partDefinitionId,
-                      optimisticSupplierPartId,
-                    )
-                  : displayValue}
+              {optimisticDisplayLabel ??
+                (currentVersion
+                  ? currentVersion.label
+                  : optimisticSupplierId
+                    ? supplierLabel(
+                        displayValue,
+                        optimisticSupplierId,
+                        partDefinitionId,
+                        optimisticSupplierPartId,
+                      )
+                    : displayValue)}
             </span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
@@ -206,60 +174,11 @@ export function SupplierSelector({
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <div className="max-h-[min(320px,60vh)] overflow-y-auto">
-            {supplierParts.map((sp) => (
-              <DropdownMenuItem
-                key={sp.id}
-                onClick={() => handleSupplierPartSelect(sp.id)}
-                className="cursor-pointer justify-between gap-4 py-3"
-              >
-                <span className="min-w-0">
-                  <SupplierLabel
-                    name={sp.supplier.name}
-                    supplierId={sp.supplierId}
-                    partId={partDefinitionId}
-                    listingId={sp.id}
-                    bookName={sp.priceBookName}
-                  />
-                  {sp.isPreferred && " ⭐"}
-                </span>
-                <FinancialOnly>
-                  <span className="shrink-0 tabular-nums">
-                    {sp.lastKnownUnitCost !== null &&
-                    Number.isFinite(Number(sp.lastKnownUnitCost))
-                      ? Number(sp.lastKnownUnitCost).toLocaleString("en-CA", {
-                          style: "currency",
-                          currency: "CAD",
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })
-                      : "Not priced"}
-                  </span>
-                </FinancialOnly>
-              </DropdownMenuItem>
-            ))}
-            {suppliersWithoutParts.map((supplier) => (
-              <DropdownMenuItem
-                key={supplier.id}
-                onClick={() => handleSupplierSelect(supplier.id)}
-                className="cursor-pointer justify-between gap-4 py-3"
-              >
-                <SupplierLabel
-                  name={supplier.name}
-                  supplierId={supplier.id}
-                  partId={partDefinitionId}
-                />
-                <FinancialOnly>
-                  <span className="text-muted-foreground shrink-0">
-                    Not priced
-                  </span>
-                </FinancialOnly>
-              </DropdownMenuItem>
-            ))}
-            {!supplierParts.length && !suppliersWithoutParts.length && (
-              <div className="text-muted-foreground px-2 py-3 text-sm">
-                No suppliers available
-              </div>
-            )}
+            <SupplierChoiceItems
+              groups={groups}
+              onSelect={handleSelect}
+              showPrices
+            />
             {freshParts.isError && (
               <div
                 role="status"

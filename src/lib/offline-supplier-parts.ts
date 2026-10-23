@@ -9,6 +9,7 @@ export interface OfflineSupplierPartOption {
   supplier: {
     id: string;
     name: string;
+    kind?: string | null;
   };
 }
 

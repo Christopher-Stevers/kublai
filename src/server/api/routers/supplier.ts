@@ -636,6 +636,7 @@ export const supplierRouter = createTRPCRouter({
       z.object({
         partDefinitionId: z.string().uuid(),
         materialListId: z.string().uuid().optional(),
+        pricingMode: z.enum(["effective", "standard"]).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -657,6 +658,7 @@ export const supplierRouter = createTRPCRouter({
           supplier: {
             id: suppliers.id,
             name: suppliers.name,
+            kind: suppliers.kind,
           },
         })
         .from(supplierParts)
@@ -686,6 +688,8 @@ export const supplierRouter = createTRPCRouter({
           code: "NOT_FOUND",
           message: "Material list not found.",
         });
+      if (input.pricingMode === "standard")
+        return parts.map(part => ({ ...part, priceBookName: "Standard" }));
       const book = list
         ? await getJobPriceBook(ctx.db, ctx.user.organizationId, list.jobId)
         : null;

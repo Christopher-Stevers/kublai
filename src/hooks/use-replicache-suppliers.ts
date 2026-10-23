@@ -8,6 +8,7 @@ import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-conte
 export interface ReplicacheSupplier {
   id: string;
   name: string;
+  kind?: string | null;
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;

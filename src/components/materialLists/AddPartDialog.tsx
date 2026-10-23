@@ -350,16 +350,6 @@ export function AddPartDialog({
           isPreferred: false,
           supplier: { id: wanted.supplierId, name: wanted.label },
         };
-        setSupplierPartsData((prev) => {
-          const next = new Map(prev);
-          next.set(pendingPart.partId, [
-            ...(prev.get(pendingPart.partId) ?? []).filter(
-              (item) => item.id !== option.id,
-            ),
-            option,
-          ]);
-          return next;
-        });
         setPendingParts((prev) =>
           prev.map((item) =>
             item.partId === pendingPart.partId && !item.manualSupplier
@@ -382,21 +372,12 @@ export function AddPartDialog({
               if (!result) return;
               const resolved = {
                 ...option,
+                supplier: { id: wanted.supplierId, name: result.supplierName },
                 id: result.listing?.id ?? option.id,
                 lastKnownUnitCost: result.unitCost,
                 supplierSku: result.listing?.supplierSku ?? null,
                 packSize: result.listing?.packSize ?? null,
               };
-              setSupplierPartsData((prev) => {
-                const next = new Map(prev);
-                next.set(pendingPart.partId, [
-                  ...(prev.get(pendingPart.partId) ?? []).filter(
-                    (item) => item.id !== option.id && item.id !== resolved.id,
-                  ),
-                  resolved,
-                ]);
-                return next;
-              });
               setPendingParts((prev) =>
                 prev.map((item) =>
                   item.partId === pendingPart.partId && !item.manualSupplier
@@ -705,6 +686,7 @@ export function AddPartDialog({
     partId: string,
     supplierPartId: string,
     supplierPartSnapshot?: PendingSupplierPartSnapshot | null,
+    supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null,
   ) => {
     setPendingParts((prev) =>
       prev.map((p) => {
@@ -712,7 +694,7 @@ export function AddPartDialog({
           return {
             ...p,
             manualSupplier: true,
-            supplierVersion: null,
+            supplierVersion: supplierVersion ?? null,
             supplierPartId,
             supplierPartSnapshot: supplierPartSnapshot ?? null,
           };

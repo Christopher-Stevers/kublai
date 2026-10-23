@@ -1,4 +1,5 @@
 // @vitest-environment node
+import type { ReadonlyJSONValue } from "replicache";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -129,7 +130,7 @@ function setup(reads: Row[][]) {
   };
 }
 
-function push(name: string, args: Record<string, string | number | boolean | null>) {
+function push(name: string, args: Record<string, ReadonlyJSONValue>) {
   return handleMaterialListReplicachePush(
     {
       pushVersion: 1,
@@ -480,6 +481,36 @@ describe("job supplier defaults on new material lines", () => {
     await push("addItem", {...addArgs(), useJobDefaults: false, supplierId: otherRoomId, unitCost: 9});
     expect(state.resolveDefaultSupplier).not.toHaveBeenCalled();
     expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion: null, supplierId: otherRoomId, unitCost: "9"});
+    test.assertConsumed();
+  });
+});
+
+describe("explicit supplier pricing selections", () => {
+  it.each([null, jobId])("preserves a manually selected supplier book %s when adding a part", async bookId => {
+    const version = { supplierId: organizationId, bookId, label: bookId ? "Next - Alma" : "Next" };
+    state.supplierVersionPrice.mockResolvedValue({ listing: { id: quoteId }, unitCost: bookId ? "3.25" : "8" });
+    const test = setup([[client], [{lastMutationId:0}], [{...list,roomId:null}], [], [{cvrVersion:0}]]);
+    await push("addItem", {...addArgs(),useJobDefaults:false,supplierVersionSnapshot:version,unitCost:99});
+    expect(state.resolveDefaultSupplier).not.toHaveBeenCalled();
+    expect(state.supplierVersionPrice).toHaveBeenCalledWith(test.tx,organizationId,version,partId,null);
+    expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion:version,supplierId:organizationId,supplierPartId:quoteId,unitCost:bookId?"3.25":"8"});
+    test.assertConsumed();
+  });
+  it("keeps automatic job defaults authoritative over an old browser snapshot", async () => {
+    const version={supplierId:organizationId,bookId:jobId,label:"Next - Alma"};
+    state.resolveDefaultSupplier.mockResolvedValue(version);
+    state.supplierVersionPrice.mockResolvedValue({listing:{id:quoteId},unitCost:"3.25"});
+    const test=setup([[client],[{lastMutationId:0}],[{...list,roomId:null}],[],[{cvrVersion:0}]]);
+    await push("addItem",{...addArgs(),useJobDefaults:true,supplierVersionSnapshot:{...version,bookId:null,label:"Next"}});
+    expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion:version,unitCost:"3.25"});
+    test.assertConsumed();
+  });
+  it.each([null, jobId])("preserves an explicit supplier book %s when changing an existing part", async bookId => {
+    const version={supplierId:organizationId,bookId,label:bookId?"Next - Alma":"Next"};
+    state.supplierVersionPrice.mockResolvedValue({listing:{id:quoteId},unitCost:bookId?"3.25":"8"});
+    const test=setup([[client],[{lastMutationId:0}],[{sentOrderItemId:null}],[{id:itemId,quoteId,materialListId:listId,partDefinitionId:partId,quantity:"2",supplierVersion:null,supplierId:otherRoomId,unitCost:"99"}],[],[{cvrVersion:0}]]);
+    await push("updateItemSupplierPart",{itemId,materialListId:listId,supplierId:organizationId,supplierPartId:null,supplierVersionSnapshot:version,unitCost:99});
+    expect(test.writes.find(w=>w.table===quoteItems)?.data).toMatchObject({supplierVersion:version,supplierId:organizationId,supplierPartId:quoteId,unitCost:bookId?"3.25":"8"});
     test.assertConsumed();
   });
 });

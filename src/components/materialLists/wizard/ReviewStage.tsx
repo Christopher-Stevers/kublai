@@ -1,9 +1,15 @@
-import { SupplierLabel, useSupplierLabel } from "~/components/suppliers/SupplierLabel";
+import { buildSupplierChoices } from "~/lib/supplier-choices";
+import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
+import {
+  SupplierLabelContext,
+  useSupplierLabel,
+} from "~/components/suppliers/SupplierLabel";
 import { PackQuantityControls } from "../PackQuantityControls";
 import { packContents } from "~/lib/pack-quantity";
 import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -33,7 +39,6 @@ import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropd
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { Card, CardContent } from "~/components/ui/card";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import { makeOfflineSupplierPartId } from "~/lib/offline-suppliers";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 
 const MATERIAL_LIST_TABLE_COLUMNS =
@@ -68,6 +73,7 @@ export interface ReviewStageProps {
     partId: string,
     supplierPartId: string,
     supplierPartSnapshot?: PendingSupplierPartSnapshot | null,
+    version?: SupplierVersion | null,
   ) => void;
   onCacheSupplierPart: (
     partId: string,
@@ -133,7 +139,17 @@ function ReviewQuantityControls({
   onUpdateQuantity: (partId: string, delta: number) => void;
   onSetQuantity: (partId: string, quantity: number) => void;
 }) {
-  if (packContents(piecesPerPack) > 1) return <PackQuantityControls orderMultiple={orderMultiple} quantity={quantity} piecesPerPack={piecesPerPack!} bulkUnit={bulkUnit} individualUnit={individualUnit} onChange={value => onSetQuantity(partId, value)} />;
+  if (packContents(piecesPerPack) > 1)
+    return (
+      <PackQuantityControls
+        orderMultiple={orderMultiple}
+        quantity={quantity}
+        piecesPerPack={piecesPerPack!}
+        bulkUnit={bulkUnit}
+        individualUnit={individualUnit}
+        onChange={(value) => onSetQuantity(partId, value)}
+      />
+    );
   return (
     <div
       data-tutorial="wizard-review-quantity"
@@ -180,7 +196,6 @@ export function ReviewStage({
   onUpdateQuantity,
   onSetQuantity,
   onUpdateSupplier,
-  onCacheSupplierPart,
   onRemovePendingPart,
   allPartsHaveSuppliers,
   isToolRequest = false,
@@ -195,6 +210,7 @@ export function ReviewStage({
     useState<Record<string, OptimisticSupplierSelection>>({});
 
   const supplierLabel = useSupplierLabel();
+  const { entries: jobEntries } = useContext(SupplierLabelContext);
   const utils = api.useUtils();
   const isOnline = useOnlineStatus();
   const allSuppliers = useReplicacheSuppliers();
@@ -282,7 +298,14 @@ export function ReviewStage({
       label:
         optimisticSelection?.label ??
         pendingPart.supplierVersion?.label ??
-        (selectedSupplierPart ? supplierLabel(selectedSupplierPart.supplier.name, selectedSupplierPart.supplier.id, pendingPart.partId, selectedSupplierPart.id) : undefined) ??
+        (selectedSupplierPart
+          ? supplierLabel(
+              selectedSupplierPart.supplier.name,
+              selectedSupplierPart.supplier.id,
+              pendingPart.partId,
+              selectedSupplierPart.id,
+            )
+          : undefined) ??
         "Select supplier",
       lastKnownUnitCost:
         optimisticSelection?.lastKnownUnitCost ??
@@ -297,7 +320,13 @@ export function ReviewStage({
     isMissingSupplier: boolean,
   ) => {
     const { partsData, label } = getSupplierSelection(pendingPart);
-    const hasAvailableSuppliers = partsData.length > 0;
+    const groups = buildSupplierChoices(
+      pendingPart.partId,
+      allSuppliers,
+      partsData,
+      jobEntries,
+    );
+    const hasAvailableSuppliers = groups.standard.length > 0;
 
     return (
       <DropdownMenu>
@@ -309,81 +338,33 @@ export function ReviewStage({
             }`}
             style={{ touchAction: "auto" }}
           >
-            <span className="min-w-0 whitespace-normal text-left">{label}</span>
+            <span className="min-w-0 text-left whitespace-normal">{label}</span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-(--radix-dropdown-menu-trigger-width) p-2"
+          className="max-h-[min(24rem,60dvh)] w-[min(22rem,calc(100vw-2rem))] min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto p-2"
           align="start"
         >
-          {partsData.map((sp) => (
-            <DropdownMenuItem
-              key={sp.id}
-              onClick={() => {
-                setOptimisticSupplierSelections((prev) => ({
-                  ...prev,
-                  [pendingPart.partId]: {
-                    supplierPartId: sp.id,
-                    label: supplierLabel(sp.supplier.name, sp.supplierId, pendingPart.partId, sp.id),
-                    lastKnownUnitCost: sp.lastKnownUnitCost,
-                  },
-                }));
-                onUpdateSupplier(pendingPart.partId, sp.id, {
-                  id: sp.id,
-                  supplierId: sp.supplierId,
-                  supplierSku: sp.supplierSku,
-                  lastKnownUnitCost: sp.lastKnownUnitCost,
-                  packSize: sp.packSize,
-                  supplier: sp.supplier,
-                });
-              }}
-            >
-              <SupplierLabel name={sp.supplier.name} supplierId={sp.supplierId} partId={pendingPart.partId} listingId={sp.id} />
-              {sp.isPreferred && " ⭐"}
-            </DropdownMenuItem>
-          ))}
-          {allSuppliers
-            ?.filter(
-              (supplier) =>
-                !partsData.some((sp) => sp.supplierId === supplier.id),
-            )
-            .map((supplier) => (
-              <DropdownMenuItem
-                key={supplier.id}
-                onClick={() => {
-                  const localSupplierPart: SupplierPartOption = {
-                    id: makeOfflineSupplierPartId(
-                      pendingPart.partId,
-                      supplier.id,
-                    ),
-                    supplierId: supplier.id,
-                    supplierSku: null,
-                    lastKnownUnitCost: null,
-                    isPreferred: false,
-                    supplier,
-                  };
-                  onCacheSupplierPart(pendingPart.partId, localSupplierPart);
-                  setOptimisticSupplierSelections((prev) => ({
-                    ...prev,
-                    [pendingPart.partId]: {
-                      supplierPartId: localSupplierPart.id,
-                      label: supplierLabel(supplier.name, supplier.id, pendingPart.partId),
-                      lastKnownUnitCost: null,
-                    },
-                  }));
-                  onUpdateSupplier(pendingPart.partId, localSupplierPart.id, {
-                    id: localSupplierPart.id,
-                    supplierId: localSupplierPart.supplierId,
-                    supplierSku: localSupplierPart.supplierSku,
-                    lastKnownUnitCost: localSupplierPart.lastKnownUnitCost,
-                    supplier: localSupplierPart.supplier,
-                  });
-                }}
-              >
-                <SupplierLabel name={supplier.name} supplierId={supplier.id} partId={pendingPart.partId} />
-              </DropdownMenuItem>
-            ))}
+          <SupplierChoiceItems
+            groups={groups}
+            onSelect={(choice) => {
+              setOptimisticSupplierSelections((prev) => ({
+                ...prev,
+                [pendingPart.partId]: {
+                  supplierPartId: choice.listing.id,
+                  label: choice.label,
+                  lastKnownUnitCost: choice.listing.lastKnownUnitCost,
+                },
+              }));
+              onUpdateSupplier(
+                pendingPart.partId,
+                choice.listing.id,
+                choice.listing,
+                choice.version,
+              );
+            }}
+          />
           {!hasAvailableSuppliers && !isOnline && allSuppliers.length === 0 && (
             <DropdownMenuItem disabled>
               No cached suppliers available
@@ -510,7 +491,11 @@ export function ReviewStage({
                       <ReviewQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
-                        piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
+                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
+                        bulkUnit={pendingPart.partDefinition.bulkUnit}
+                        individualUnit={
+                          pendingPart.partDefinition.individualUnit
+                        }
                         orderMultiple={
                           isToolLine
                             ? null
@@ -556,7 +541,7 @@ export function ReviewStage({
 
             {pendingParts.map((pendingPart) => {
               const isToolLine = isToolRequest || pendingPart.isTool;
-            const supplierSelection = getSupplierSelection(pendingPart);
+              const supplierSelection = getSupplierSelection(pendingPart);
               const unitCost = supplierSelection.lastKnownUnitCost
                 ? parseFloat(supplierSelection.lastKnownUnitCost)
                 : 0;
@@ -564,7 +549,7 @@ export function ReviewStage({
                 pendingPart.quantity,
                 unitCost,
                 supplierSelection.selectedSupplierPart?.packSize,
-              pendingPart.partDefinition.piecesPerPack,
+                pendingPart.partDefinition.piecesPerPack,
               );
               const isMissingSupplier =
                 !isToolLine && !supplierSelection.hasSupplier;
@@ -584,7 +569,9 @@ export function ReviewStage({
                     <ReviewQuantityControls
                       partId={pendingPart.partId}
                       quantity={pendingPart.quantity}
-                        piecesPerPack={pendingPart.partDefinition.piecesPerPack} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit}
+                      piecesPerPack={pendingPart.partDefinition.piecesPerPack}
+                      bulkUnit={pendingPart.partDefinition.bulkUnit}
+                      individualUnit={pendingPart.partDefinition.individualUnit}
                       orderMultiple={
                         isToolLine
                           ? null

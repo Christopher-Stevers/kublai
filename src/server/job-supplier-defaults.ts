@@ -75,7 +75,7 @@ export async function supplierVersionPrice(
   listingId?: string | null,
 ) {
   const [supplier] = await database.execute<{ name: string }>(
-    sql`select name from kublai_supplier where id=${version.supplierId} and "organizationId"=${org}`,
+    sql`select name from kublai_supplier where id=${version.supplierId} and "organizationId"=${org} and coalesce(kind,'external') <> 'tool_room'`,
   );
   if (!supplier)
     throw new TRPCError({

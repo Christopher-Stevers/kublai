@@ -77,6 +77,7 @@ export type MaterialListReplicacheMutators = {
       supplierPartId: string | null;
       supplierId: string | null;
       unitCost?: number | null;
+      supplierVersionSnapshot?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
       supplierPartSnapshot?: { id: string; supplierId: string; supplierSku: string | null; lastKnownUnitCost: string | null; packSize?: string | null; supplier: { id: string; name: string } | null } | null;
     },
   ): Promise<void>;
@@ -279,7 +280,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
           supplierPart: args.supplierPartSnapshot ?? null,
           unitCost: String(unitCost),
           extendedPrice: String(extendedPrice),
-          supplierVersion: null,
+          supplierVersion: args.supplierVersionSnapshot ?? null,
           pendingSync: true,
         });
       },

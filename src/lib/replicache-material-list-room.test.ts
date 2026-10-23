@@ -211,3 +211,13 @@ it("keeps offline job defaults and material version snapshots, then clears a man
   await mutators().updateItemSupplierPart(tx, {itemId: "item", supplierPartId: "manual", supplierId: "manual-supplier"});
   expect(rows.get("materialListItem/item")).toMatchObject({supplierVersion: null});
 });
+
+it("retains the selected price source through optimistic supplier changes", async () => {
+  await mutators().createMaterialList(tx, listArgs);
+  const quoted={supplierId:"supplier",bookId:"book",label:"Next - Alma"};
+  await mutators().addItem(tx,{...addArgs,supplierVersionSnapshot:quoted});
+  expect(rows.get("materialListItem/item")).toMatchObject({supplierVersion:quoted});
+  const standard={...quoted,bookId:null,label:"Next"};
+  await mutators().updateItemSupplierPart(tx,{materialListId:"list",itemId:"item",supplierId:"supplier",supplierPartId:"listing",supplierVersionSnapshot:standard,unitCost:8});
+  expect(rows.get("materialListItem/item")).toMatchObject({supplierVersion:standard,unitCost:"8"});
+});

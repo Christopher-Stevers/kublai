@@ -53,6 +53,7 @@ export async function getJobPriceBook(
         .select({
           id: jobPriceEntries.id,
           supplierPriceBookEntryId: jobPriceEntries.supplierPriceBookEntryId,
+          supplierPriceBookId: supplierPriceBooks.id,
           supplierPartId: supplierParts.id,
           partDefinitionId: supplierParts.partDefinitionId,
           supplierId: supplierParts.supplierId,
