@@ -275,6 +275,38 @@ const heading = (name: string): BoxQuestion => ({
   instructions: `Locate the column heading of the ${name} column in the item table of \`page\`. Include all lines of that heading text only, not neighbouring headings. ${EVIDENCE}`,
 });
 const TOTAL = `Below the item table, find the printed TOTAL SHIPPED quantity (the sum of all shipped quantities, e.g. 'Total Shipped 144.00'), ignoring decimals. Read only what is printed; do not count or add up rows yourself. ${EVIDENCE}`;
+const LINES = Object.fromEntries(
+  Array.from({ length: 61 }, (_, i) => [`n${i}`, String(i)]),
+);
+/** The exact total, once its hundreds are known. */
+const exactTotal = (lo: number, instructions: string): Choice => ({
+  type: "choice",
+  instructions: `${instructions} What is it exactly?`,
+  criteria: {
+    ...Object.fromEntries(
+      Array.from({ length: 100 }, (_, k) => [`v${lo + k}`, String(lo + k)]),
+    ),
+    other: `Not between ${lo} and ${lo + 99}`,
+  },
+});
+const FOOTER = `Locate the slip's printed totals below the item table in \`page\`: the total quantity shipped and the number of lines. Include all of them and nothing else. ${EVIDENCE}`;
+const CROPPED =
+  "`totals` is an enlarged crop of a packing slip's printed totals. A printer may draw a zero with a slash or a dot inside it; it is still 0.";
+function footerQuestions(lo: number | null) {
+  const q: Record<string, VisionQuestion> = {
+    lines: {
+      type: "choice",
+      instructions: `${CROPPED} Find the printed total NUMBER OF LINES (e.g. '12 Lines Total'). Read only what is printed. ${EVIDENCE}`,
+      criteria: { ...LINES, not_printed: "No printed line count" },
+    },
+  };
+  if (lo !== null)
+    q.total = exactTotal(
+      lo,
+      `${CROPPED} Find the printed TOTAL SHIPPED quantity (the sum of all shipped quantities, e.g. 'Total Shipped 144.00'), ignoring decimals. Read only what is printed. ${EVIDENCE}`,
+    );
+  return q;
+}
 function pageQuestions(last: boolean) {
   const q: Record<string, VisionQuestion> = {
     header: {
@@ -307,12 +339,7 @@ function pageQuestions(last: boolean) {
     q.lines = {
       type: "choice",
       instructions: `Below the item table, find the printed total NUMBER OF LINES (e.g. '12 Lines Total'). Read only what is printed; do not count or add up rows yourself. ${EVIDENCE}`,
-      criteria: {
-        ...Object.fromEntries(
-          Array.from({ length: 61 }, (_, i) => [`n${i}`, String(i)]),
-        ),
-        not_printed: "No printed line count",
-      },
+      criteria: { ...LINES, not_printed: "No printed line count" },
     };
     // A choice holds at most 255 options: the range first, then the exact value.
     q.range = {
@@ -530,36 +557,37 @@ export async function readSlipImages(input: {
       );
       let total: { value: number | null; confidence: number } | null = null;
       const range = choice(a.range);
-      if (range && /^r\d$/.test(range.choice)) {
-        const lo = Number(range.choice.slice(1)) * 100;
-        const exact = choice(
-          (
-            await ask(
-              { page: image },
-              {
-                total: {
-                  type: "choice",
-                  instructions: `${TOTAL} What is it exactly?`,
-                  criteria: {
-                    ...Object.fromEntries(
-                      Array.from({ length: 100 }, (_, k) => [
-                        `v${lo + k}`,
-                        String(lo + k),
-                      ]),
-                    ),
-                    other: `Not between ${lo} and ${lo + 99}`,
-                  },
-                },
-              },
-            )
-          ).total,
-        );
+      const lo =
+        range && /^r\d$/.test(range.choice)
+          ? Number(range.choice.slice(1)) * 100
+          : null;
+      // The totals print small. Across a whole page a dot-matrix 6 reads as
+      // an 8 and a 1 as a 3, surely; enlarged they read true.
+      const near =
+        page === pages.length &&
+        [a.lines, a.range].some((x) => {
+          const c = choice(x);
+          return c && c.choice !== "not_printed";
+        })
+          ? await readFooter(png, image, lo, ask)
+          : {};
+      if (lo !== null) {
+        const exact =
+          near.total ??
+          choice(
+            (await ask({ page: image }, { total: exactTotal(lo, TOTAL) }))
+              .total,
+          );
         total = {
           value: number(exact),
-          confidence: range.confidence * (exact?.confidence ?? 0),
+          confidence: range!.confidence * (exact?.confidence ?? 0),
         };
       }
-      return { page, answers: a, total };
+      return {
+        page,
+        answers: near.lines ? { ...a, lines: near.lines } : a,
+        total,
+      };
     }),
     4,
   );
@@ -967,6 +995,43 @@ export async function readSlipImages(input: {
     layout: { footer },
     model: `${VISION_MODEL} (images)`,
   };
+}
+
+/** The slip's totals read again from an enlarged crop of them. Only sure
+ * readings come back; the page's readings stand for the rest. */
+async function readFooter(
+  png: Buffer,
+  image: Buffer,
+  lo: number | null,
+  ask: VisionAsk,
+): Promise<{ lines?: ChoiceAnswer; total?: ChoiceAnswer }> {
+  const at = edges(
+    (
+      await ask(
+        { page: image },
+        { totals: { type: "box", instructions: FOOTER } },
+      )
+    ).totals,
+  );
+  if (!at) return {};
+  // Jev's boxes are coarse; the margins keep the figures and lines at their
+  // ends.
+  const margin = Math.max(0.05, (at.right - at.left) * 0.2);
+  const totals = await prepared(
+    await crop(
+      png,
+      { ...at, left: at.left - margin, right: at.right + margin },
+      0.03,
+    ),
+  );
+  const a = await ask({ totals }, footerQuestions(lo));
+  const sure = (x: VisionAnswer | undefined, pattern: RegExp) => {
+    const c = choice(x);
+    return c && pattern.test(c.choice) && c.confidence >= TOTAL_MIN
+      ? c
+      : undefined;
+  };
+  return { lines: sure(a.lines, /^n\d+$/), total: sure(a.total, /^v\d+$/) };
 }
 
 function ocrText(rows: SlipRow[], page: number, top: number, bottom: number) {
@@ -1468,8 +1533,34 @@ function totalsProblems(
         `the slip's total shipped is ${total.value} but the lines add up to ${sum}`,
       );
     }
+  } else if (
+    total?.value != null &&
+    total.confidence >= TOTAL_MIN &&
+    readings.every((r) => r.shipped !== null || r.shippedOptions.length) &&
+    reaches(
+      readings.map((r) =>
+        r.shipped !== null ? [r.shipped] : r.shippedOptions,
+      ),
+      total.value,
+    ) === false
+  ) {
+    shipped = total.value;
+    problems.push(
+      `the slip's total shipped is ${total.value} but the lines read cannot add up to it`,
+    );
   }
   return { problems, countOff, shipped };
+}
+
+/** Whether some choice of one figure from each list sums to the total; null
+ * when there are too many sums to tell. */
+function reaches(figures: number[][], total: number) {
+  let sums = new Set([0]);
+  for (const options of figures) {
+    sums = new Set([...sums].flatMap((s) => options.map((o) => s + o)));
+    if (sums.size > 10000) return null;
+  }
+  return [...sums].some((s) => Math.abs(s - total) < 1e-6);
 }
 
 /** Whether the lines left for review, read as Jev also thought they might
@@ -1479,17 +1570,17 @@ export function squaredByReview(
   readings: Reading[],
   total: number,
 ) {
-  const sure = readings
-    .filter((_, k) => lines[k]!.proposed !== null)
-    .reduce((s, r) => s + r.shipped!, 0);
-  let sums = new Set([sure]);
-  for (const [k, r] of readings.entries()) {
-    if (lines[k]!.proposed !== null) continue;
-    const options = new Set([r.shipped!, ...r.shippedOptions]);
-    sums = new Set([...sums].flatMap((s) => [...options].map((o) => s + o)));
-    if (sums.size > 10000) return false;
-  }
-  return [...sums].some((s) => Math.abs(s - total) < 1e-6);
+  const figures = readings.map((r, k) =>
+    lines[k]!.proposed !== null
+      ? [r.shipped!]
+      : [
+          ...new Set([
+            ...(r.shipped !== null ? [r.shipped] : []),
+            ...r.shippedOptions,
+          ]),
+        ],
+  );
+  return reaches(figures, total) === true;
 }
 
 /** An order item's shipped total read from the whole page, beside what its

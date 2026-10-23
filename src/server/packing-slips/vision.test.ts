@@ -71,6 +71,7 @@ function fakeJev(set: {
   views?: VisionAnswer;
   pageItems?: Answers;
   hand?: VisionAnswer;
+  footer?: Answers;
 }) {
   const calls: string[] = [];
   const ask: VisionAsk = async (_inputs, questions) => {
@@ -89,6 +90,19 @@ function fakeJev(set: {
         range: pick("r0", 0.99),
         count: pick("n0", 0.95),
         ...set.page,
+      });
+    }
+    if (ids.includes("totals")) {
+      calls.push("footer");
+      return { totals: set.footer?.totals ?? box(0.5, 0.8, 0.6, 0.64) };
+    }
+    // The enlarged totals read as the page's unless set otherwise.
+    if (ids.includes("lines")) {
+      calls.push("footer read");
+      return only({
+        lines: set.page?.lines ?? pick("n1", 0.95),
+        total: set.total ?? pick("v6", 0.99),
+        ...set.footer,
       });
     }
     if (ids.includes("total")) {
@@ -168,9 +182,11 @@ it("prefills a line when every reading is confident and fits the order", async (
   expect(result.lines[0]!.notes).toContain(
     "Matched by the order's SKU ABC123.",
   );
-  // Page, exact total, then the line and its cells. The printed SKU settles
-  // the product, so no extra product views.
-  expect(jev.calls.sort()).toEqual(["cells", "main", "page", "total"].sort());
+  // Page, the totals found and read enlarged, then the line and its cells.
+  // The printed SKU settles the product, so no extra product views.
+  expect(jev.calls.sort()).toEqual(
+    ["cells", "footer", "footer read", "main", "page"].sort(),
+  );
   // Without a code, a sure first answer also skips the extra views...
   const sure = fakeJev({});
   await analyze([header, line], sure.ask, [uncoded]);
@@ -677,7 +693,10 @@ it("keeps the sure lines when a line in review may square the printed total", as
     ...pick("v3", 0.6),
     probabilities: { v3: 0.6, v8: 0.35 },
   };
-  const read = async (set: Parameters<typeof fakeJev>[0]) => {
+  const read = async (
+    set: Parameters<typeof fakeJev>[0],
+    shipped: ChoiceAnswer = unsure,
+  ) => {
     const jev = fakeJev(set);
     const ask: VisionAsk = async (inputs, questions) => {
       const answers = await jev.ask(inputs, questions);
@@ -685,11 +704,11 @@ it("keeps the sure lines when a line in review may square the printed total", as
         return {
           ...answers,
           part: { ...pick("item1", 0.95), probabilities: { item1: 0.95 } },
-          shipped: unsure,
+          shipped,
           backordered: pick("v2"),
         };
       if ("shippedCell" in inputs && (await isOther(inputs.shippedCell)))
-        return { ...answers, shipped: unsure, backordered: pick("v2") };
+        return { ...answers, shipped, backordered: pick("v2") };
       return answers;
     };
     return (await analyze([header, line, other], ask, [item, elbow], [tinted]))
@@ -711,6 +730,26 @@ it("keeps the sure lines when a line in review may square the printed total", as
     total: pick("v14"),
   });
   expect(missing[0]!.proposed).toBeNull();
+  // A line Jev could not read may still ship only what it thought likely,
+  // or what its ordered and backordered figures leave: 3 or 8.
+  const unread = {
+    ...pick("unclear", 0.6),
+    probabilities: { unclear: 0.6, v3: 0.3 },
+  };
+  const fits = await read({ page: two, total: pick("v14") }, unread);
+  expect(fits.map((l) => [l.shipped, l.proposed])).toEqual([
+    [6, 6],
+    [null, null],
+  ]);
+  expect(fits[0]!.issues).toEqual([]);
+  // Taking it as 0 would square a total of 6.
+  for (const total of ["v13", "v6"]) {
+    const off = await read({ page: two, total: pick(total) }, unread);
+    expect(off.map((l) => l.proposed)).toEqual([null, null]);
+    expect(off[0]!.issues).toEqual([
+      "The slip's printed totals do not match the lines read.",
+    ]);
+  }
 });
 
 it("prefers the enlarged cell but blocks when it disagrees with the line", async () => {
