@@ -32,6 +32,9 @@ const PRODUCT_MIN = 0.6,
   CHECK_MIN = 0.8,
   /** A reading Jev gives this much of its belief is worth considering. */
   OPTION_MIN = 0.05,
+  /** An amount Jev gives this much of its belief may be taken from the
+   * other columns. */
+  SEEN_MIN = 0.1,
   /** Column headings are at least this tall, as a share of the page. */
   HEADING_HEIGHT = 0.008;
 
@@ -454,6 +457,14 @@ type Reading = {
   /** The confidences should the order's earlier deliveries account for
    * `earlier`; null unless the line and its cell read shipped alike. */
   ifEarlier: { shippedConf: number; backorderedConf: number } | null;
+  /** With shipped unclear, the amount Jev most saw in its column, and the
+   * ordered and backordered figures read alike on the line and in the cell. */
+  hidden: {
+    amount: number;
+    ordered: number;
+    backordered: number;
+    confidence: number;
+  } | null;
   unit: string | null;
   handwritten: number | null;
   /** Pen marks on the line: whether a confident read of them agrees with
@@ -895,6 +906,7 @@ export async function readSlipImages(input: {
     3,
   );
 
+  for (const [k, r] of readings.entries()) readings[k] = settleHidden(r, items);
   const lines = checkAgainstOrder(readings, items);
   let checks = await itemChecks;
   const { problems, countOff, shipped } = last
@@ -1022,12 +1034,11 @@ export function decideReading(
         }
       : r;
   };
-  const shipped = pick(rowShipped, cellShipped),
-    backordered = pick(
-      none(read("backordered"), main.backordered),
-      none(cell("backordered"), cellRead.backordered),
-    ),
+  const rowBackordered = none(read("backordered"), main.backordered),
+    cellBackordered = none(cell("backordered"), cellRead.backordered),
+    backordered = pick(rowBackordered, cellBackordered),
     ordered = pick(read("ordered"), cell("ordered"));
+  const shipped = pick(rowShipped, cellShipped);
   let shippedConf = shipped.confidence,
     backorderedConf = backordered.confidence;
   if (
@@ -1138,9 +1149,101 @@ export function decideReading(
     ordered: ordered.value,
     earlier,
     ifEarlier: agreed(earlier !== null),
+    hidden: hiddenShipped(
+      shippedConf,
+      [read("ordered"), cell("ordered")],
+      [rowBackordered, cellBackordered],
+      [main.shipped, cellRead.shipped],
+    ),
     unit: unit && !["blank", "other", "unclear"].includes(unit) ? unit : null,
     flags,
     notes,
+  };
+}
+
+/** What a line whose shipped figure is unclear still shows: the amount
+ * Jev most saw in the shipped column, and ordered and backordered figures
+ * read alike on the line and in the cell. */
+function hiddenShipped(
+  shippedConf: number,
+  ordered: Array<{ value: number | null; confidence: number }>,
+  backordered: Array<{
+    value: number | null;
+    confidence: number;
+    choice?: string;
+  }>,
+  answers: Array<VisionAnswer | undefined>,
+): Reading["hidden"] {
+  if (shippedConf >= QUANTITY_MIN) return null;
+  const amount = (r: { value: number | null; choice?: string }) =>
+    r.choice && NONE.includes(r.choice) ? 0 : r.value;
+  const settled = (reads: typeof backordered) => {
+    const [a, b] = reads.map(amount);
+    const confidence = Math.max(...reads.map((r) => r.confidence));
+    return a !== null &&
+      a !== undefined &&
+      a === b &&
+      confidence >= QUANTITY_MIN
+      ? { value: a, confidence }
+      : null;
+  };
+  const o = settled(ordered),
+    b = settled(backordered);
+  if (!o || !b) return null;
+  const seen = new Map<number, number>();
+  for (const a of answers) {
+    const c = choice(a);
+    if (!c) continue;
+    for (const [k, p] of Object.entries(
+      c.probabilities ?? { [c.choice]: c.confidence },
+    )) {
+      const n =
+        k === "blank" ? 0 : /^v\d+$/.test(k) ? Number(k.slice(1)) : null;
+      if (n !== null) seen.set(n, (seen.get(n) ?? 0) + p / answers.length);
+    }
+  }
+  const [top, p] = [...seen].sort((x, y) => y[1] - x[1])[0] ?? [0, 0];
+  return p >= SEEN_MIN
+    ? {
+        amount: top,
+        ordered: o.value,
+        backordered: b.value,
+        confidence: Math.min(0.95, o.confidence, b.confidence),
+      }
+    : null;
+}
+
+/** A tick or correction over a line's shipped figure can hide it, while the
+ * ordered and backordered figures beside it read clearly. Where they leave
+ * exactly the amount Jev most saw there, that amount stands. The slip's
+ * ordered may be what is still due, or the whole order with earlier
+ * deliveries counted in it. */
+export function settleHidden(r: Reading, items: ReceiptOrderItem[]): Reading {
+  const h = r.hidden,
+    item = typeof r.part === "number" ? items[r.part] : undefined;
+  if (!h || !item) return r;
+  const remaining = item.ordered - item.received;
+  if (
+    ![remaining, item.ordered].includes(h.ordered) ||
+    remaining - h.backordered !== h.amount
+  )
+    return r;
+  const earlier = h.ordered - h.amount - h.backordered;
+  return {
+    ...r,
+    shipped: h.amount,
+    shippedConf: Math.max(r.shippedConf, h.confidence),
+    backordered: h.backordered,
+    ordered: h.ordered,
+    earlier: earlier ? earlier : null,
+    ifEarlier: earlier
+      ? { shippedConf: h.confidence, backorderedConf: h.confidence }
+      : null,
+    pen: r.pen && (r.handwritten === h.amount ? "agrees" : "differs"),
+    notes: [
+      ...r.notes,
+      "The shipped figure is marked over; read from the ordered and backordered figures.",
+    ],
   };
 }
 

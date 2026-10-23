@@ -771,6 +771,71 @@ it("raises confidence when the line and cell agree and balance", async () => {
   );
 });
 
+it("reads a shipped figure hidden under a mark from the ordered and backordered figures", async () => {
+  // A tick over the 6: Jev cannot say, but 6 is what it most saw there.
+  const hidden = {
+    main: {
+      shipped: {
+        ...pick("unclear", 0.45),
+        probabilities: { unclear: 0.45, v6: 0.35, v8: 0.1 },
+      },
+    },
+    cells: {
+      shipped: {
+        ...pick("v6", 0.5),
+        probabilities: { v6: 0.5, unclear: 0.3, v5: 0.1 },
+      },
+    },
+  };
+  const fresh = { ...item, received: 0 };
+  const [read] = (await analyze([header, line], fakeJev(hidden).ask, [fresh]))
+    .lines;
+  expect(read).toMatchObject({ shipped: 6, proposed: 6, issues: [] });
+  expect(read!.notes).toContain(
+    "The shipped figure is marked over; read from the ordered and backordered figures.",
+  );
+  // With 2 received earlier, the slip's 10 ordered and 4 backordered leave
+  // 4 for this delivery, not the 6 Jev saw.
+  const [earlier] = (await analyze([header, line], fakeJev(hidden).ask)).lines;
+  expect(earlier!.proposed).toBeNull();
+  // And where Jev saw a 4, it stands.
+  const sawFour = {
+    shipped: {
+      ...pick("unclear", 0.45),
+      probabilities: { unclear: 0.45, v4: 0.35, v6: 0.1 },
+    },
+  };
+  const four = fakeJev({
+    main: sawFour,
+    cells: sawFour,
+    total: pick("v4", 0.99),
+  });
+  const [counted] = (await analyze([header, line], four.ask)).lines;
+  expect(counted).toMatchObject({ shipped: 4, proposed: 4, issues: [] });
+  expect(counted!.notes).toContain(
+    "The slip's ordered quantity includes the 2 ea received earlier.",
+  );
+  // Jev saw a 5 there more than a 6.
+  const five = fakeJev({
+    ...hidden,
+    cells: {
+      shipped: {
+        ...pick("v5", 0.6),
+        probabilities: { v5: 0.6, unclear: 0.3, v6: 0.05 },
+      },
+    },
+  });
+  const [other] = (await analyze([header, line], five.ask, [fresh])).lines;
+  expect(other!.proposed).toBeNull();
+  // Backordered read differently in the cell settles nothing.
+  const unsure = fakeJev({
+    ...hidden,
+    cells: { ...hidden.cells, backordered: pick("v3", 0.5) },
+  });
+  const [torn] = (await analyze([header, line], unsure.ask, [fresh])).lines;
+  expect(torn!.proposed).toBeNull();
+});
+
 it("counts a 0, a blank and no column alike as nothing backordered", async () => {
   // Jev's doubt is over how the empty cell looks, not over the amount.
   const empty = (choice: string, other: string) => ({
