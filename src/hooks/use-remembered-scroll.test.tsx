@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useRememberedScroll } from "./use-remembered-scroll";
+import { useRememberedScroll, useScrollToTop } from "./use-remembered-scroll";
 let y = 0;
 let height = 6000;
 let resized: () => void;
@@ -57,4 +57,23 @@ it("restores on remount from session storage once data is ready", () => {
   hook.rerender({ ready: true });
   act(() => vi.advanceTimersByTime(30));
   expect(y).toBe(1400);
+});
+
+it("starts the job menu at the top without losing the material list position", () => {
+  const hook = renderHook(({ menu }) => {
+    useRememberedScroll(menu ? null : "material-only");
+    useScrollToTop(menu ? "job-menu" : null);
+  }, { initialProps: { menu: false } });
+  act(() => vi.advanceTimersByTime(20));
+  act(() => { y = 1800; window.dispatchEvent(new Event("scroll")); });
+  hook.rerender({ menu: true });
+  act(() => vi.advanceTimersByTime(20));
+  expect(y).toBe(0);
+  act(() => { y = 300; window.dispatchEvent(new Event("scroll")); });
+  hook.rerender({ menu: false });
+  act(() => vi.advanceTimersByTime(20));
+  expect(y).toBe(1800);
+  hook.rerender({ menu: true });
+  act(() => vi.advanceTimersByTime(20));
+  expect(y).toBe(0);
 });

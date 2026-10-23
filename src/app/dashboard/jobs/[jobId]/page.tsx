@@ -1,4 +1,5 @@
 "use client";
+import { useScrollToTop } from "~/hooks/use-remembered-scroll";
 
 import { use } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -56,6 +57,7 @@ export default function JobOptionsPage({
   const pathname = usePathname();
   const jobId =
     pathname.match(/^\/dashboard\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
+  useScrollToTop(jobId);
   const router = useRouter();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const isBrowserOnline = useOnlineStatus();

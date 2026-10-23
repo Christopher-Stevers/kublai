@@ -1,5 +1,5 @@
 "use client";
-import { useRememberedScroll } from "~/hooks/use-remembered-scroll";
+import { useRememberedScroll, useScrollToTop } from "~/hooks/use-remembered-scroll";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
@@ -182,6 +182,10 @@ export function DashboardClient({
       ? `material-lists:${offlineJobId}`
       : null,
     offlineJobDetail !== null && offlineJobDetail !== undefined,
+  );
+  useScrollToTop(
+    sandbox ? null : !offlineJobId ? "jobs"
+      : offlineJobView === "options" && !offlineMaterialListId ? `job:${offlineJobId}` : null,
   );
   const offlineMaterialListDetail = useReplicacheMaterialList(
     offlineMaterialListId ?? "",

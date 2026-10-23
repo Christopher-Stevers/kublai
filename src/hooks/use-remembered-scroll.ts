@@ -69,3 +69,13 @@ export function useRememberedScroll(key: string | null, ready = true) {
     };
   }, [key, ready]);
 }
+
+/** Menus deliberately start at the top instead of inheriting a child view's offset. */
+export function useScrollToTop(key: string | null) {
+  useLayoutEffect(() => {
+    if (!key) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
+    const frame = requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    return () => cancelAnimationFrame(frame);
+  }, [key]);
+}
