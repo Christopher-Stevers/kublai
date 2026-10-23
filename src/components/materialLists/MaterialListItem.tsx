@@ -174,7 +174,7 @@ function InitialsSyncBadge({
     >
       <div
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-xs font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 backdrop-blur dark:bg-card/95 dark:text-foreground",
+          "relative flex h-[27px] w-[27px] items-center justify-center rounded-full bg-white/95 text-[9px] font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 backdrop-blur dark:bg-card/95 dark:text-foreground",
           statusClasses,
         )}
       >
@@ -663,12 +663,12 @@ function MaterialListItemComponent({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="bg-card/90 ring-border text-muted-foreground hover:text-foreground absolute top-2 right-2 z-20 h-9 w-9 rounded-full p-0 shadow-sm ring-1"
+                  className="bg-card/90 ring-border text-muted-foreground hover:text-foreground absolute top-2 right-2 z-20 h-[27px] w-[27px] rounded-full p-0 shadow-sm ring-1 after:absolute after:-inset-2 after:rounded-full"
                   aria-label={`More for ${partName}`}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <MoreVerticalIcon className="h-4 w-4" />
+                  <MoreVerticalIcon className="size-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
