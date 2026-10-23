@@ -529,6 +529,38 @@ it("blocks every line when the printed totals disagree", async () => {
   );
 });
 
+it("keeps the lines the whole page confirms when a missed line may explain the totals", async () => {
+  // The slip lists a line that was not read.
+  const missed = { lines: pick("n2", 0.95) };
+  const confirmed = fakeJev({
+    page: missed,
+    pageItems: { item0: pick("v6", 0.9) },
+  });
+  const result = await analyze([header, line], confirmed.ask);
+  expect(result.warnings).toEqual([
+    "Check every line: the slip lists 2 lines but 1 were read.",
+  ]);
+  expect(result.lines[0]).toMatchObject({ proposed: 6, issues: [] });
+  // An unsure whole-page reading confirms nothing.
+  const unsure = fakeJev({
+    page: missed,
+    pageItems: { item0: pick("v6", 0.6) },
+  });
+  expect(
+    (await analyze([header, line], unsure.ask)).lines[0]!.proposed,
+  ).toBeNull();
+  // With every line read and sure, a wrong total means one of them is wrong,
+  // and the whole page cannot say which.
+  const sure = fakeJev({
+    total: pick("v7"),
+    pageItems: { item0: pick("v6", 0.9) },
+  });
+  expect(
+    (await analyze([header, line], sure.ask)).lines[0]!.proposed,
+  ).toBeNull();
+  expect(sure.calls).not.toContain("items");
+});
+
 it("prefers the enlarged cell but blocks when it disagrees with the line", async () => {
   const jev = fakeJev({ cells: { shipped: pick("v8", 0.95) } });
   const [read] = (await analyze([header, line], jev.ask)).lines;

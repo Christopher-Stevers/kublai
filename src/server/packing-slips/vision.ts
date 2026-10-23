@@ -552,30 +552,31 @@ export async function readSlipImages(input: {
     !!last &&
     (printed(choice(last.answers.lines)) ||
       printed(choice(last.answers.range)));
-  // Without printed totals, each page read whole, per order item, checks the
-  // line readings instead. With totals it found nothing more and cost a third
-  // more output tokens in testing, so it is skipped there.
-  const itemChecks = footer
-    ? Promise.resolve(null)
-    : Promise.all(
-        pages.map(async (png) => {
-          const image = await prepared(png);
-          const answers: Record<number, ChoiceAnswer | undefined> = {};
-          for (let start = 0; start < items.length; start += 30) {
-            const chunk = items.slice(start, start + 30);
-            const a = await ask(
-              { page: image },
-              Object.fromEntries(
-                chunk.map((item, k) => [`item${start + k}`, pageItem(item)]),
-              ),
-            );
-            chunk.forEach((_, k) => {
-              answers[start + k] = choice(a[`item${start + k}`]);
-            });
-          }
-          return answers;
-        }),
-      ).catch(() => null);
+  // Each page read whole, per order item, checks the line readings.
+  const readItems = () =>
+    Promise.all(
+      pages.map(async (png) => {
+        const image = await prepared(png);
+        const answers: Record<number, ChoiceAnswer | undefined> = {};
+        for (let start = 0; start < items.length; start += 30) {
+          const chunk = items.slice(start, start + 30);
+          const a = await ask(
+            { page: image },
+            Object.fromEntries(
+              chunk.map((item, k) => [`item${start + k}`, pageItem(item)]),
+            ),
+          );
+          chunk.forEach((_, k) => {
+            answers[start + k] = choice(a[`item${start + k}`]);
+          });
+        }
+        return answers;
+      }),
+    ).catch(() => null);
+  // Without printed totals it checks every slip. With totals it found nothing
+  // more and cost a third more output tokens in testing, so there it only
+  // stands in when the totals cannot be squared.
+  const itemChecks = footer ? Promise.resolve(null) : readItems();
   // Photos often defeat the table reader, which then finds only some lines.
   // Where Jev counts more lines starting on a page, Jev finds them all. A
   // count it is unsure of only stands in when there is no table at all.
@@ -858,8 +859,30 @@ export async function readSlipImages(input: {
   );
 
   const lines = checkAgainstOrder(readings, items);
-  if (last) checkTotals(lines, readings, last.answers, last.total, warnings);
-  const checks = await itemChecks;
+  let checks = await itemChecks;
+  const { problems, countOff } = last
+    ? totalsProblems(lines, readings, last.answers, last.total)
+    : { problems: [], countOff: false };
+  if (problems.length) {
+    warnings.push(`Check every line: ${problems.join(", and ")}.`);
+    // Lines left for review, or missed, may account for the difference.
+    // Then a line keeps its quantity where reading each page whole finds the
+    // same for its item; otherwise no line can be trusted.
+    const doubt = countOff || lines.some((l) => l.proposed === null);
+    if (doubt) checks ??= await readItems();
+    for (const line of lines) {
+      if (doubt && line.proposed !== null && checks) {
+        const i = items.findIndex((item) => item.id === line.orderItemId);
+        if (i >= 0 && pageAgreement(lines, items[i]!, i, checks)?.agrees)
+          continue;
+      }
+      line.issues.push(
+        "The slip's printed totals do not match the lines read.",
+      );
+      line.proposed = null;
+      line.quantityClear = false;
+    }
+  }
   if (checks) checkItems(lines, items, checks, warnings);
   if (input.expectFooter && !footer)
     warnings.push(
@@ -1228,19 +1251,21 @@ export function checkAgainstOrder(
   });
 }
 
-/** The slip's printed line count and shipped total must match what was read. */
-function checkTotals(
+/** Where the slip's printed line count and shipped total differ from what
+ * was read, and whether the count does. */
+function totalsProblems(
   lines: SlipLine[],
   readings: Reading[],
   answers: Record<string, VisionAnswer>,
   total: { value: number | null; confidence: number } | null,
-  warnings: string[],
 ) {
   const problems: string[] = [];
+  let countOff = false;
   const count = choice(answers.lines);
   if (count && /^n\d+$/.test(count.choice) && count.confidence >= TOTAL_MIN) {
     const printed = Number(count.choice.slice(1));
-    if (printed !== lines.length)
+    countOff = printed !== lines.length;
+    if (countOff)
       problems.push(
         `the slip lists ${printed} lines but ${lines.length} were read`,
       );
@@ -1256,13 +1281,25 @@ function checkTotals(
         `the slip's total shipped is ${total.value} but the lines add up to ${sum}`,
       );
   }
-  if (!problems.length) return;
-  warnings.push(`Check every line: ${problems.join(", and ")}.`);
-  for (const line of lines) {
-    line.issues.push("The slip's printed totals do not match the lines read.");
-    line.proposed = null;
-    line.quantityClear = false;
-  }
+  return { problems, countOff };
+}
+
+/** An order item's shipped total read from the whole page, beside what its
+ * lines read; null when either is unsure. */
+function pageAgreement(
+  lines: SlipLine[],
+  item: ReceiptOrderItem,
+  i: number,
+  pages: Array<Record<number, ChoiceAnswer | undefined>>,
+) {
+  const answers = pages.map((p) => p[i]);
+  if (answers.some((a) => !a || a.confidence < CHECK_MIN || number(a) === null))
+    return null;
+  const onPage = answers.reduce((s, a) => s + number(a)!, 0);
+  const matched = lines.filter((l) => l.orderItemId === item.id);
+  if (matched.some((l) => l.shipped === null)) return null;
+  const read = matched.reduce((s, l) => s + l.shipped!, 0);
+  return { onPage, read, matched, agrees: Math.abs(onPage - read) < 1e-6 };
 }
 
 /** Each order item's shipped total, read from the whole page, must agree with
@@ -1274,16 +1311,9 @@ function checkItems(
   warnings: string[],
 ) {
   items.forEach((item, i) => {
-    const answers = pages.map((p) => p[i]);
-    if (
-      answers.some((a) => !a || a.confidence < CHECK_MIN || number(a) === null)
-    )
-      return;
-    const onPage = answers.reduce((s, a) => s + number(a)!, 0);
-    const matched = lines.filter((l) => l.orderItemId === item.id);
-    if (matched.some((l) => l.shipped === null)) return;
-    const read = matched.reduce((s, l) => s + l.shipped!, 0);
-    if (Math.abs(onPage - read) < 1e-6) return;
+    const found = pageAgreement(lines, item, i, pages);
+    if (!found || found.agrees) return;
+    const { onPage, read, matched } = found;
     if (!matched.length) {
       warnings.push(
         `Reading the whole slip finds ${onPage} shipped of “${item.description}”, but no line was matched to it. Check for a missed line.`,
