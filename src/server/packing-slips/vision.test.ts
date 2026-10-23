@@ -396,6 +396,42 @@ it("widens the headings to take in every quantity column found", async () => {
   expect(channels[1]!.min).toBeLessThan(64);
 });
 
+it("reads a continuation page's lines under the headings of the page that has them", async () => {
+  // Page 2 is taller, and repeats no headings.
+  const second = await sharp({
+    create: { width: 1000, height: 1600, channels: 3, background: "white" },
+  })
+    .png()
+    .toBuffer();
+  const unsure = { ...box(0, 1), confidence: 0.2 };
+  const jev = fakeJev({});
+  const cells: string[][] = [];
+  const ask: VisionAsk = async (inputs, questions) => {
+    if (inputs.shippedCell) cells.push(Object.keys(inputs));
+    if (inputs.page && "header" in questions) {
+      const { width, height } = await sharp(inputs.page as Buffer).metadata();
+      if (height / width > 1.5) {
+        const answers = await jev.ask(inputs, questions);
+        return {
+          ...answers,
+          shipped: unsure,
+          ordered: unsure,
+          backordered: unsure,
+        };
+      }
+    }
+    return jev.ask(inputs, questions);
+  };
+  const result = await analyze(
+    [header, { ...line, page: 2 }],
+    ask,
+    [item],
+    [page, second],
+  );
+  expect(result.lines[0]).toMatchObject({ shipped: 6, proposed: 6 });
+  expect(cells).toHaveLength(1);
+});
+
 it("shows each quantity cell under its column's heading", async () => {
   const jev = fakeJev({});
   let shippedCell: Buffer | undefined;

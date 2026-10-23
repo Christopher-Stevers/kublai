@@ -668,12 +668,27 @@ export async function readSlipImages(input: {
   }
   bands.sort((a, b) => a.page - b.page || a.top - b.top);
 
+  // A page that does not repeat the column headings, as a continuation page
+  // often does not, shows its lines under the nearest page's: one printer
+  // sets out every page's columns alike.
+  const headed = pageInfo.filter(
+    (info) => Object.keys(quantityColumns(info.answers)).length,
+  );
+  const headingsFor = (info: (typeof pageInfo)[number]) =>
+    headed.includes(info)
+      ? info
+      : ([...headed].sort(
+          (a, b) => Math.abs(a.page - info.page) - Math.abs(b.page - info.page),
+        )[0] ?? info);
+
   const readings = await limited(
     bands.map((band) => async (): Promise<Reading> => {
       const info = pageInfo[band.page - 1]!;
       const png = pages[band.page - 1]!;
-      const columns = quantityColumns(info.answers);
-      const boxed = edges(info.answers.header);
+      const titled = headingsFor(info),
+        titles = pages[titled.page - 1]!;
+      const columns = quantityColumns(titled.answers);
+      const boxed = edges(titled.answers.header);
       // Jev's box for the headings may stop short of quantity columns it
       // found on the page; then it is widened to take them in.
       const outside = boxed
@@ -698,7 +713,7 @@ export async function readSlipImages(input: {
       const below = header
         ? bands.find(
             (b) =>
-              b.page === band.page &&
+              b.page === titled.page &&
               b.precise &&
               b.top > header.top + HEADING_HEIGHT,
           )
@@ -706,7 +721,7 @@ export async function readSlipImages(input: {
       const columnHeadings = await prepared(
         header
           ? await stacked([
-              await crop(png, {
+              await crop(titles, {
                 ...header,
                 // Less the margin the crop adds, to end just above the line.
                 bottom: Math.min(header.bottom, (below?.top ?? 1) - 0.011),
@@ -729,11 +744,13 @@ export async function readSlipImages(input: {
         // the cell alone empty.
         const under = bands.find(
           (b) =>
-            b.page === band.page && b.precise && b.top > c.top + HEADING_HEIGHT,
+            b.page === titled.page &&
+            b.precise &&
+            b.top > c.top + HEADING_HEIGHT,
         );
         return prepared(
           await stacked([
-            await crop(png, {
+            await crop(titles, {
               ...across,
               top: c.top,
               bottom: Math.min(c.bottom, (under?.top ?? 1) - 0.011),
