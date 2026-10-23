@@ -649,3 +649,14 @@ it("shows a renamed drawing instead of stale extracted numbering in grid and tab
   fireEvent.click(screen.getByRole("button", { name: "Table view" }));
   expect(screen.getByRole("button", { name: "Open Level 2 North" })).toHaveTextContent("Level 2 North");
 });
+
+it("shows the extracted number when the cached card still has a Sheet placeholder", () => {
+  state.sheets = state.sheets.map(sheet => sheet.id === "s1" ? { ...sheet, name: "Sheet 32" } : sheet);
+  state.summaries = [{ sheetId: "s1", favorite: false, metadata: { number: "3112-L01-U13 BR-02", title: "Bathroom plan", discipline: "", tags: [], status: "" } }];
+  render(<JobDrawingsView jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+  expect(screen.getByRole("button", { name: "Open 3112-L01-U13 BR-02" })).toHaveTextContent("Bathroom plan");
+  expect(screen.queryByText("Sheet 32", {exact:true})).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Table view" }));
+  expect(screen.getByRole("button", { name: "Open 3112-L01-U13 BR-02" })).toHaveTextContent("3112-L01-U13 BR-02");
+});

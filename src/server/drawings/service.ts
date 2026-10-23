@@ -1746,7 +1746,7 @@ export async function applySuperLabel(ctx:DrawingContext,input:{sheetId:string;t
  assertRevision(current.revision,original.revision);
  if(title||number){
  await writeMetadata(tx,input.targetId,{...current,title:title||current.title,number:number||current.number,revision:current.revision+1});
- if(title)await tx.update(jobDrawingSheets).set({name:title}).where(eq(jobDrawingSheets.id,input.targetId));
+ if(number||title)await tx.update(jobDrawingSheets).set({name:number||title}).where(eq(jobDrawingSheets.id,input.targetId));
  await tx.update(jobDrawingSets).set({updatedAt:new Date()}).where(eq(jobDrawingSets.id,access.sheet.setId));
  await record(tx,input.targetId,access.actor,"metadata_updated",null);
  }

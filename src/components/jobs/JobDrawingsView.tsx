@@ -79,7 +79,9 @@ import { useDrawingSnapshot } from "./useDrawingSnapshot";
 import { useDrawingFullscreen } from "./useDrawingFullscreen";
 
 const nonempty = (value: string | undefined, fallback: string) =>
-  value?.trim() ? value : fallback;
+  /^sheet\s+\d+$/i.test(value?.trim() ?? "") && fallback.trim()
+    ? fallback.trim()
+    : value?.trim() ? value : fallback;
 
 type NameDialog =
   | { kind: "new-set" }
@@ -727,7 +729,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 data-tutorial="drawing-sheet"
                 role="button"
                 tabIndex={0}
-                aria-label={`Open ${item.name}`}
+                aria-label={`Open ${nonempty(item.name, bySheet.get(item.id)?.metadata.number ?? "")}`}
                 className={
                   listView
                     ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"

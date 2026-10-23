@@ -18,7 +18,7 @@ export function SuperLabelDialog({
 }: {
   source: DrawingJobSheet;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const settings = api.drawingsWorkspace.superLabelSettings.useQuery({
     sheetId: source.id,
@@ -77,7 +77,7 @@ export function SuperLabelDialog({
           ]);
         }
       }
-      onSaved();
+      await onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save boxes");
     } finally {
