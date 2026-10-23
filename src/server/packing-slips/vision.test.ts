@@ -351,6 +351,36 @@ it("shows each line under the column headings, and no other line", async () => {
   for (const [headings, row] of seen) expect(headings).toBe(row);
 });
 
+it("widens the headings to take in every quantity column found", async () => {
+  // Jev's box for the headings stops short of the Shipped heading, in red.
+  const jev = fakeJev({ page: { header: box(0, 0.5) } });
+  let headings: Buffer | undefined;
+  const ask: VisionAsk = async (inputs, questions) => {
+    if (inputs.columnHeadings) headings = inputs.columnHeadings as Buffer;
+    return jev.ask(inputs, questions);
+  };
+  const printed = await sharp(page)
+    .composite([
+      {
+        input: {
+          create: {
+            width: 40,
+            height: 14,
+            channels: 3,
+            background: { r: 255, g: 0, b: 0 },
+          },
+        },
+        left: 690,
+        top: 136,
+      },
+    ])
+    .png()
+    .toBuffer();
+  await analyze([header, line], ask, [item], [printed]);
+  const { channels } = await sharp(headings).stats();
+  expect(channels[1]!.min).toBeLessThan(64);
+});
+
 it("shows each quantity cell under its column's heading", async () => {
   const jev = fakeJev({});
   let shippedCell: Buffer | undefined;

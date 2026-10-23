@@ -671,7 +671,21 @@ export async function readSlipImages(input: {
     bands.map((band) => async (): Promise<Reading> => {
       const info = pageInfo[band.page - 1]!;
       const png = pages[band.page - 1]!;
-      const header = edges(info.answers.header);
+      const columns = quantityColumns(info.answers);
+      const boxed = edges(info.answers.header);
+      // Jev's box for the headings may stop short of quantity columns it
+      // found on the page; then it is widened to take them in.
+      const outside = boxed
+        ? Object.values(columns).filter((c) => {
+            const middle = (c.left + c.right) / 2;
+            return middle < boxed.left || middle > boxed.right;
+          })
+        : [];
+      const header = boxed && {
+        ...boxed,
+        left: Math.min(boxed.left, ...outside.map((c) => c.left)),
+        right: Math.max(boxed.right, ...outside.map((c) => c.right)),
+      };
       // Where the line's text starts is known, little margin is needed; more
       // would show the neighbouring lines on a dense slip.
       const rowPad = band.precise ? 0.003 : 0.008;
@@ -704,7 +718,6 @@ export async function readSlipImages(input: {
             ])
           : await crop(png, { top: 0, bottom: 0.1 }),
       );
-      const columns = quantityColumns(info.answers);
       const cell = async (field: keyof typeof columns) => {
         const c = columns[field];
         if (!c) return null;
