@@ -354,6 +354,18 @@ describe.skipIf(!socket)(
       });
       expect(await material.listQuotes()).toMatchObject([{ id: quote }]);
     });
+    it("shows applicable supplier prices without changing the catalogue or crossing company boundaries", async () => {
+      expect((await suppliers.getSupplierPartsByPart({partDefinitionId:part, materialListId:list}))[0]).toMatchObject({id:sp,lastKnownUnitCost:"2.0000",priceBookName:"Standard"});
+      const book=await priceBooks.create({supplierId:supplier,name:"Alma"});
+      await priceBooks.saveEntry({bookId:book.id,revision:1,supplierPartId:sp,included:true,unitCost:3,priceStatus:"estimated"});
+      await priceBooks.assign({supplierId:supplier,bookId:book.id,jobId:job});
+      expect((await suppliers.getSupplierPartsByPart({partDefinitionId:part,materialListId:list}))[0]).toMatchObject({id:sp,lastKnownUnitCost:"3.0000",priceBookName:"Alma"});
+      expect((await suppliers.getSupplierPartsByPart({partDefinitionId:part}))[0]!.lastKnownUnitCost).toBe("2.0000");
+      await priceBooks.setPreference({supplierId:supplier,preferJobPricing:false});
+      expect((await suppliers.getSupplierPartsByPart({partDefinitionId:part,materialListId:list}))[0]).toMatchObject({lastKnownUnitCost:"2.0000",priceBookName:"Standard"});
+      const foreign = supplierRouter.createCaller({...context,user:{...context.user,organizationId:id(999)}} as never);
+      await expect(foreign.getSupplierPartsByPart({partDefinitionId:part,materialListId:list})).rejects.toThrow("Material list not found");
+    });
     it("shares one supplier across books, restricts membership, and restores standard prices", async () => {
       const alma=await priceBooks.create({supplierId:supplier,name:"Alma"});
       const other=await priceBooks.create({supplierId:supplier,name:"Other job"});

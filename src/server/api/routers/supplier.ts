@@ -1,3 +1,6 @@
+import { getJobPriceBook } from "~/server/job-pricing";
+import { findPreferredJobPrice } from "~/lib/job-pricing";
+import { pricingMaterialLists as materialLists } from "~/server/job-pricing-schema";
 import { publishOrganizationCatalogueEvent, publishOrganizationReplicachePoke } from "~/server/material-list-events";
 import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
@@ -629,7 +632,12 @@ export const supplierRouter = createTRPCRouter({
    * Get all supplier parts for a specific part definition
    */
   getSupplierPartsByPart: hasDashboardAccess
-    .input(z.object({ partDefinitionId: z.string().uuid() }))
+    .input(
+      z.object({
+        partDefinitionId: z.string().uuid(),
+        materialListId: z.string().uuid().optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -653,9 +661,62 @@ export const supplierRouter = createTRPCRouter({
         })
         .from(supplierParts)
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId), eq(supplierParts.organizationId, ctx.user.organizationId)))
+        .where(
+          and(
+            eq(supplierParts.partDefinitionId, input.partDefinitionId),
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+          ),
+        )
         .orderBy(desc(supplierParts.isPreferred), asc(suppliers.name));
 
-      return parts;
+      const [list] = input.materialListId
+        ? await ctx.db
+            .select({ jobId: materialLists.jobId })
+            .from(materialLists)
+            .where(
+              and(
+                eq(materialLists.id, input.materialListId),
+                eq(materialLists.organizationId, ctx.user.organizationId),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (input.materialListId && !list)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found.",
+        });
+      const book = list
+        ? await getJobPriceBook(ctx.db, ctx.user.organizationId, list.jobId)
+        : null;
+      // Match the same job-price preference used when preparing an order.
+      // Deduplicate generic listings that resolve to the same quoted listing.
+      return [
+        ...new Map(
+          parts.map((part) => {
+            const entry =
+              book &&
+              findPreferredJobPrice(
+                book.entries,
+                input.partDefinitionId,
+                part.supplierId,
+                part.id,
+              );
+            const listing =
+              (entry && parts.find((p) => p.id === entry.supplierPartId)) ||
+              part;
+            return [
+              listing.id,
+              {
+                ...listing,
+                lastKnownUnitCost: entry
+                  ? entry.unitCost
+                  : listing.lastKnownUnitCost,
+                priceBookName: entry ? entry.priceBookName : "Standard",
+              },
+            ];
+          }),
+        ).values(),
+      ];
     }),
 });
