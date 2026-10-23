@@ -226,9 +226,7 @@ export function MaterialListCard({
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <MaterialListOrderNumbers orders={list.orderStatuses} numbers={list.orderNumbers} />
-          </div>
+          <MaterialListOrderNumbers orders={list.orderStatuses} numbers={list.orderNumbers} />
           <div className="mt-auto flex items-end justify-between gap-3 pt-1">
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4" />

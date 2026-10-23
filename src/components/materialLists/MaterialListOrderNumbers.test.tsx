@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MaterialListOrderNumbers } from "./MaterialListOrderNumbers";
 import { materialProgressStyle } from "~/lib/material-progress-style";
 afterEach(cleanup);
-it("shows orange, half-green and full-green tags with a distinct symbol in each state", () => {
+it("keeps status colors and accessible labels with one shared order icon", () => {
   render(
     <MaterialListOrderNumbers
       orders={[
@@ -31,19 +31,28 @@ it("shows orange, half-green and full-green tags with a distinct symbol in each 
       ]}
     />,
   );
-  for (const [name, percent, icon] of [
-    ["Supplier: not sent", 0, "lucide-clock-3"],
-    ["ORDER-1: sent, awaiting full verification", 50, "lucide-send"],
-    ["ORDER-2: fully verified", 100, "lucide-circle-check"],
+  for (const [name, percent] of [
+    ["Supplier: not sent", 0],
+    ["ORDER-1: sent, awaiting full verification", 50],
+    ["ORDER-2: fully verified", 100],
   ] as const) {
     const tag = screen.getByLabelText(name);
     expect(tag).toHaveStyle(materialProgressStyle(percent));
-    expect(tag.querySelector("svg")).toHaveClass(icon);
+    expect(tag.querySelector("svg")).toBeNull();
   }
+  const group = screen.getByRole("group", { name: "Orders" });
+  expect(group.querySelectorAll("svg")).toHaveLength(1);
+  expect(group.firstElementChild).toHaveClass("lucide-shopping-cart");
 });
 it("keeps cached order numbers at sent until full verification is known", () => {
   render(<MaterialListOrderNumbers numbers={["ORDER-3"]} />);
   expect(
     screen.getByLabelText("ORDER-3: sent, awaiting full verification"),
   ).toHaveAttribute("data-order-state", "sent");
+});
+
+it("omits the order icon when there are no pills", () => {
+  const { container } = render(<MaterialListOrderNumbers orders={[]} />);
+  expect(screen.queryByRole("group", { name: "Orders" })).toBeNull();
+  expect(container.querySelector("svg")).toBeNull();
 });
