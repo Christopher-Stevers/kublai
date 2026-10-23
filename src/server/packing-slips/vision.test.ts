@@ -863,6 +863,36 @@ it("counts a 0, a blank and no column alike as nothing backordered", async () =>
   ]);
 });
 
+it("trusts a backordered figure that balances sure shipped and ordered figures", async () => {
+  // The line read is unsure of shipped, so the two reads do not agree; the
+  // cell reads it surely.
+  const read = async (backordered: ChoiceAnswer, ordered = pick("v10")) => {
+    const jev = fakeJev({
+      main: { shipped: pick("unclear", 0.45), backordered, ordered },
+      cells: { shipped: pick("v6", 0.95), backordered, ordered },
+    });
+    return (await analyze([header, line], jev.ask)).lines[0];
+  };
+  expect(await read(pick("v4", 0.7))).toMatchObject({
+    shipped: 6,
+    backordered: 4,
+    proposed: 6,
+    issues: [],
+  });
+  // An unsure ordered figure fixes nothing.
+  const unsure = await read(pick("v4", 0.7), pick("v10", 0.7));
+  expect(unsure!.proposed).toBeNull();
+  expect(unsure!.issues).toContain(
+    "Check backordered quantity against the slip.",
+  );
+  // Nor does an unreadable backordered cell.
+  const unclear = await read(pick("unclear", 0.7));
+  expect(unclear!.proposed).toBeNull();
+  expect(unclear!.issues).toContain(
+    "Check backordered quantity against the slip.",
+  );
+});
+
 it("averages the three product views", async () => {
   // The row view leans to the item, short of sure; the other two doubt it.
   const doubt = {

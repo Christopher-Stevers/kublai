@@ -1078,6 +1078,18 @@ export function decideReading(
   };
   const sure = agreed(balanced);
   if (sure) ({ shippedConf, backorderedConf } = sure);
+  // Sure shipped and ordered figures that balance fix the backordered one,
+  // so a backordered figure read as that amount is as sure as they are.
+  else if (
+    balanced &&
+    backordered.choice !== "unclear" &&
+    shippedConf >= QUANTITY_MIN &&
+    ordered.confidence >= QUANTITY_MIN
+  )
+    backorderedConf = Math.max(
+      backorderedConf,
+      Math.min(0.95, ordered.confidence, shippedConf),
+    );
   const shippedOptions = new Set<number>();
   for (const a of [main.shipped, cellRead.shipped])
     for (const [k, p] of Object.entries(choice(a)?.probabilities ?? {}))
