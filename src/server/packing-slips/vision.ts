@@ -29,7 +29,9 @@ const PRODUCT_MIN = 0.6,
   TOTAL_MIN = 0.6,
   /** A first product answer this sure was never changed by the other views. */
   VIEWS_SKIP = 0.9,
-  CHECK_MIN = 0.8;
+  CHECK_MIN = 0.8,
+  /** Column headings are at least this tall, as a share of the page. */
+  HEADING_HEIGHT = 0.008;
 
 type Choice = {
   type: "choice";
@@ -151,6 +153,28 @@ async function crop(page: Buffer, box: Partial<Edges>, padY = 0.008) {
       width: Math.max(1, right - left),
       height: Math.max(1, bottom - top),
     })
+    .png()
+    .toBuffer();
+}
+
+/** Images one above the other, as wide as the widest. */
+async function stacked(images: Buffer[]) {
+  const sizes = await Promise.all(images.map((i) => sharp(i).metadata()));
+  let height = 0;
+  const layers = images.map((input, k) => {
+    const layer = { input, top: height, left: 0 };
+    height += sizes[k]!.height ?? 0;
+    return layer;
+  });
+  return sharp({
+    create: {
+      width: Math.max(...sizes.map((s) => s.width ?? 1)),
+      height: Math.max(1, height),
+      channels: 3,
+      background: "white",
+    },
+  })
+    .composite(layers)
     .png()
     .toBuffer();
 }
@@ -644,13 +668,37 @@ export async function readSlipImages(input: {
       const info = pageInfo[band.page - 1]!;
       const png = pages[band.page - 1]!;
       const header = edges(info.answers.header);
-      const columnHeadings = await prepared(
-        await crop(png, header ?? { top: 0, bottom: 0.1 }),
-      );
       // Where the line's text starts is known, little margin is needed; more
       // would show the neighbouring lines on a dense slip.
-      const row = await prepared(
-        await crop(png, band, band.precise ? 0.003 : 0.008),
+      const rowPad = band.precise ? 0.003 : 0.008;
+      const row = await prepared(await crop(png, band, rowPad));
+      // The headings with this line under them, as on the page: a line under
+      // the headings shows which column each of its numbers is in. Jev's box
+      // for the headings often runs into the first line, so they stop short
+      // of the page's first placed line below them.
+      const below = header
+        ? bands.find(
+            (b) =>
+              b.page === band.page &&
+              b.precise &&
+              b.top > header.top + HEADING_HEIGHT,
+          )
+        : undefined;
+      const columnHeadings = await prepared(
+        header
+          ? await stacked([
+              await crop(png, {
+                ...header,
+                // Less the margin the crop adds, to end just above the line.
+                bottom: Math.min(header.bottom, (below?.top ?? 1) - 0.011),
+              }),
+              await crop(
+                png,
+                { ...band, left: header.left, right: header.right },
+                rowPad,
+              ),
+            ])
+          : await crop(png, { top: 0, bottom: 0.1 }),
       );
       const columns = quantityColumns(info.answers);
       const cell = async (field: keyof typeof columns) => {

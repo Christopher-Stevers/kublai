@@ -316,6 +316,41 @@ it("reads only the quantity cells under headings Jev is sure of", async () => {
   expect(read!.proposed).toBe(6);
 });
 
+it("shows each line under the column headings, and no other line", async () => {
+  // Jev's box for the headings runs on into the first line's type.
+  const jev = fakeJev({ page: { header: box(0, 1, 0.09, 0.25) } });
+  // Whether an image shows the first line's black type.
+  const black = async (image: Buffer | string | undefined) =>
+    (await sharp(image as Buffer).stats()).channels[0]!.min < 64;
+  const seen: Array<[boolean, boolean]> = [];
+  const ask: VisionAsk = async (inputs, questions) => {
+    if (inputs.columnHeadings)
+      seen.push([await black(inputs.columnHeadings), await black(inputs.row)]);
+    return jev.ask(inputs, questions);
+  };
+  // The first line's type is black, the second's grey.
+  const bar = (top: number, shade: number) => ({
+    input: {
+      create: {
+        width: 900,
+        height: 20,
+        channels: 3 as const,
+        background: { r: shade, g: shade, b: shade },
+      },
+    },
+    left: 50,
+    top,
+  });
+  const printed = await sharp(page)
+    .composite([bar(280, 0), bar(420, 128)])
+    .png()
+    .toBuffer();
+  const second = row(["DEF456", "Steel pipe", "5", "5", "0", "ea"], 0.3);
+  await analyze([header, line, second], ask, [item], [printed]);
+  expect(seen.map(([, row]) => row).sort()).toEqual([false, true]);
+  for (const [headings, row] of seen) expect(headings).toBe(row);
+});
+
 it("checks each item's shipped total read from the whole page when no totals are printed", async () => {
   const noTotals = {
     lines: pick("not_printed", 0.95),
