@@ -931,7 +931,12 @@ export async function readSlipImages(input: {
               ),
             )
           : Promise.resolve(null),
-        ["yes", "unclear"].includes(choice(main.handwriting)?.choice ?? "")
+        ["yes", "unclear"].includes(choice(main.handwriting)?.choice ?? "") ||
+        // A shipped figure written into an empty printed cell reads as
+        // blank on the line but shows in the cell; read the pen so review
+        // can take it in one tap.
+        (["blank", "unclear"].includes(choice(main.shipped)?.choice ?? "") &&
+          number(choice(cellRead.shipped)) !== null)
           ? ask({ row, columnHeadings }, { handwritten })
           : Promise.resolve(null),
       ]);
@@ -1197,9 +1202,13 @@ export function decideReading(
     );
   const handwriting = choice(main.handwriting),
     handwritten = hand && hand.confidence >= PRODUCT_MIN ? number(hand) : null;
+  // A pen figure read off another figure conflicts even where Jev saw no
+  // correction.
   const pen =
     !handwriting || handwriting.choice === "no"
-      ? null
+      ? handwritten !== null && handwritten !== shipped.value
+        ? "differs"
+        : null
       : handwritten !== null && handwritten === shipped.value
         ? "agrees"
         : "differs";
@@ -1664,6 +1673,8 @@ export function settledByTotal(
     const only = squaring[k]!;
     if (lines[k]!.proposed !== null || only.length !== 1 || r.pen) continue;
     const v = only[0]!;
+    // A figure written in pen on the line stands against any other.
+    if (r.handwritten !== null && r.handwritten !== v) continue;
     // A misread elsewhere, or in the total, may square it too: the figure
     // must also be what Jev leaned to, or what ordered less backordered
     // leaves.

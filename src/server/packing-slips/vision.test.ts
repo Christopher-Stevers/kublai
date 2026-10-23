@@ -265,6 +265,36 @@ it("offers a handwritten quantity without prefilling it", async () => {
   const plain = fakeJev({});
   await analyze([header, line], plain.ask);
   expect(plain.calls).not.toContain("handwritten");
+  // A shipped figure written into the empty printed cell: the line reads
+  // blank and the cell the figure, so the pen is read too.
+  const filled = fakeJev({
+    main: { shipped: pick("blank") },
+    cells: { shipped: pick("v5") },
+    hand: pick("v5", 0.9),
+  });
+  const [pen] = (await analyze([header, line], filled.ask)).lines;
+  expect(filled.calls).toContain("handwritten");
+  // The printed total and ordered less backordered both make it 6, but the
+  // pen says 5.
+  expect(pen).toMatchObject({ handwritten: 5, proposed: null });
+  expect(pen!.issues).toContain(
+    "Handwriting on this line may change the quantity. Check the slip.",
+  );
+  // The pen agreeing with the cell's 5 keeps the total from settling 6.
+  const agreed = fakeJev({
+    main: { shipped: pick("unclear", 0.4) },
+    cells: { shipped: pick("v5") },
+    hand: pick("v5", 0.9),
+  });
+  const [held] = (await analyze([header, line], agreed.ask)).lines;
+  expect(held).toMatchObject({ shipped: 5, handwritten: 5, proposed: null });
+  // An empty cell: nothing to read.
+  const empty = fakeJev({
+    main: { shipped: pick("blank") },
+    cells: { shipped: pick("blank") },
+  });
+  await analyze([header, line], empty.ask);
+  expect(empty.calls).not.toContain("handwritten");
 });
 
 it("accepts pen marks that agree with a printed count that adds up", async () => {
