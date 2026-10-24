@@ -3,10 +3,10 @@ export const JOB_CARD_ORDER = [
   "drawings",
   "chat",
   "documents",
-  "systems",
   "tools",
   "rooms",
   "models",
+  "systems",
 ] as const;
 export type JobCardId = (typeof JOB_CARD_ORDER)[number];
 type Usage = { score: number; at: number };
@@ -47,11 +47,13 @@ export function rankJobCards(
   prefs: JobCardPreferences,
   now = Date.now(),
 ): JobCardId[] {
-  return [...JOB_CARD_ORDER].sort((a, b) =>
-    prefs.frequent
+  return [...JOB_CARD_ORDER].sort((a, b) => {
+    if (a === "systems" || b === "systems")
+      return Number(a === "systems") - Number(b === "systems");
+    return prefs.frequent
       ? score(prefs.usage[b], now) - score(prefs.usage[a], now)
-      : 0,
-  );
+      : 0;
+  });
 }
 export function recordJobCard(
   prefs: JobCardPreferences,

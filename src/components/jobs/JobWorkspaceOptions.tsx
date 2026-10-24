@@ -152,37 +152,6 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>
       <Card
-        data-job-card="systems"
-        role="button"
-        aria-label="Systems"
-        tabIndex={0}
-        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
-        onClick={() => onSelect("systems")}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelect("systems");
-          }
-        }}
-      >
-        <CardHeader>
-          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
-            <span>Systems</span>
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-              Experimental
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <NetworkIcon className="h-4 w-4" />
-            <span>
-              Job specifications, material rules &amp; catalogue choices
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-      <Card
         data-job-card="rooms"
         data-tutorial="rooms"
         aria-label="Rooms"
@@ -248,6 +217,37 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
+      <Card
+        data-job-card="systems"
+        role="button"
+        aria-label="Systems"
+        tabIndex={0}
+        className="focus-visible:ring-ring cursor-pointer transition-shadow hover:shadow-md focus-visible:ring-2"
+        onClick={() => onSelect("systems")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect("systems");
+          }
+        }}
+      >
+        <CardHeader>
+          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
+            <span>Systems</span>
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              Experimental
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <NetworkIcon className="h-4 w-4" />
+            <span>
+              Job specifications, material rules &amp; catalogue choices
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </FrequentJobCards>
   );
 }

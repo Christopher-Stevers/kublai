@@ -65,9 +65,11 @@ it("lets recent choices outrank older habits with stable default ties", () => {
   for (let i = 0; i < 4; i++) prefs = recordJobCard(prefs, "rooms", 0);
   const now = 120 * 86400000;
   prefs = recordJobCard(prefs, "chat", now);
+  prefs = recordJobCard(recordJobCard(prefs, "systems", now), "systems", now);
   expect(rankJobCards(prefs, now).slice(0, 3)).toEqual([
     "chat",
     "rooms",
     "material-lists",
   ]);
+  expect(rankJobCards(prefs, now).at(-1)).toBe("systems");
 });
