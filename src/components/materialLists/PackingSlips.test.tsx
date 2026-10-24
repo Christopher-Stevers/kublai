@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { PackingSlips } from "./PackingSlips";
+vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn(async () => true) }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("next/dynamic", async () => {
   const { useState } = await import("react");
@@ -148,7 +149,7 @@ it("shows the slip list with Upload instead of the scanner on a computer without
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ canUpload: true, documents: [] })));
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
-  await screen.findByRole("button", { name: "Upload photo or PDF" });
+  await screen.findByRole("button", { name: "Upload" });
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
 });
 
@@ -189,11 +190,31 @@ it("sends per-slip clear and rerun actions for the current detection without con
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" onVerified={verified}/>);
   fireEvent.click(screen.getByRole("button",{name:"Packing slips"}));
   fireEvent.click(await screen.findByRole("button",{name:"Clear detection"}));
-  await screen.findByText("Detection cleared. The file and confirmed receipts were kept.");
+  await screen.findByText("Detection cleared. The file is still saved.");
   expect(actions[0]).toMatchObject({action:"clear",jobId:"job",documentId:"doc",runId:"old-run"});
   fireEvent.click(screen.getByRole("button",{name:"Rerun detection"}));
   await waitFor(()=>expect(actions).toHaveLength(2));
   expect(actions[1]).toMatchObject({action:"analyze",documentId:"doc",runId:"cleared-run"});
   expect(verified).not.toHaveBeenCalled();
   expect(actions.some(action=>action.action==="confirm")).toBe(false);
+});
+
+it("takes back a confirmed slip's receipt when it is read again and refreshes the order", async () => {
+  let analysis:Record<string,unknown>={runId:"old-run",versionId:"version",status:"ready",startedAt:"2026-10-22",items:[],lines:[],warnings:[],applied:{at:"2026-10-22",by:"u",quantities:{item:6}}};
+  const actions:Record<string,unknown>[]=[];
+  const verified=vi.fn();
+  vi.stubGlobal("fetch",vi.fn(async (_url:string,options?:RequestInit)=>{
+    if(options?.method==="POST"){
+      const body=JSON.parse(options.body as string) as Record<string, unknown>;actions.push(body);
+      analysis={runId:"new-run",versionId:"version",status:"processing",startedAt:"2026-10-24",items:[],lines:[],warnings:[]};
+      return Response.json({success:true});
+    }
+    return Response.json({canUpload:true,documents:[{id:"doc",name:"Packing slip - PO-123.pdf",createdAt:"2026-10-22",currentVersionId:"version",packingSlip:{orderId:"order",materialListId:"list",orderNumber:"PO-123"},packingSlipAnalysis:analysis}]});
+  }));
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" onVerified={verified}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Packing slips"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Rerun detection"}));
+  await screen.findByText("This slip's received quantities were taken back. Reading it again now.");
+  expect(actions[0]).toMatchObject({action:"analyze",runId:"old-run"});
+  expect(verified).toHaveBeenCalledTimes(1);
 });

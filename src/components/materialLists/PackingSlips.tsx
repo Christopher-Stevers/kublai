@@ -9,7 +9,12 @@ import dynamic from "next/dynamic";
 const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
   ssr: false,
 });
-import { CameraIcon, FileTextIcon, UploadIcon } from "lucide-react";
+import {
+  CameraIcon,
+  FileTextIcon,
+  InfoIcon,
+  UploadIcon,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -204,8 +209,23 @@ export function PackingSlips({
       if (!res.ok)
         throw Error(result.error ?? "Could not update this receipt.");
       await load();
-      if (action === "clear") setNotice("Detection cleared. The file and confirmed receipts were kept.");
-      if (action === "analyze") setNotice("Detection started. Received quantities stay unchanged.");
+      const tookBack =
+        (action === "clear" || action === "analyze") &&
+        Object.keys(slip.packingSlipAnalysis?.applied?.quantities ?? {})
+          .length > 0;
+      if (action === "clear")
+        setNotice(
+          tookBack
+            ? "Detection cleared and this slip's received quantities taken back. The file is still saved."
+            : "Detection cleared. The file is still saved.",
+        );
+      if (action === "analyze")
+        setNotice(
+          tookBack
+            ? "This slip's received quantities were taken back. Reading it again now."
+            : "Reading the slip again now.",
+        );
+      if (tookBack) onVerified?.();
       if (action === "confirm") {
         setNotice(
           "Received quantities updated. Differences are flagged on the order.",
@@ -260,12 +280,16 @@ export function PackingSlips({
               {scanning || openingScanner
                 ? "Keep the whole page in view. Captured pages are saved together as a PDF."
                 : orderId
-                  ? "Photograph or upload this delivery’s packing slip. It is saved in Documents → Packing Slips and linked to this material list. Receiving quantities stay unchanged."
+                  ? "Add each delivery’s slip. It’s read and checked against the order, then you confirm what arrived."
                   : "Packing slips attached to orders from this material list."}
             </DialogDescription>
           </DialogHeader>
           {notice && (
-            <p role="status" className="text-sm">
+            <p
+              role="status"
+              className="bg-muted/60 flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
+            >
+              <InfoIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
               {notice}
             </p>
           )}
@@ -305,18 +329,23 @@ export function PackingSlips({
           ) : (
             <>
               {orderId && canUpload && (
-                <div className="flex flex-wrap gap-2">
-                  <Button disabled={busy} onClick={() => setScanning(true)}>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <Button
+                    className="h-11"
+                    disabled={busy}
+                    onClick={() => setScanning(true)}
+                  >
                     <CameraIcon className="mr-2 size-4" />
                     Take photo
                   </Button>
                   <Button
                     variant="outline"
+                    className="h-11"
                     disabled={busy}
                     onClick={() => files.current?.click()}
                   >
                     <UploadIcon className="mr-2 size-4" />
-                    Upload photo or PDF
+                    Upload
                   </Button>
                 </div>
               )}
@@ -360,25 +389,36 @@ export function PackingSlips({
               {orderItems && orderItems.length > 0 && (
                 <DeliveryTracker items={orderItems} slips={slips} />
               )}
+              {slips.length > 0 && (
+                <h3 className="text-muted-foreground pt-1 text-xs font-medium tracking-wide uppercase">
+                  {slips.length === 1 ? "Slip" : `Slips · ${slips.length}`}
+                </h3>
+              )}
               <div className="space-y-3">
                 {slips.map((slip) => (
-                  <div key={slip.id} className="space-y-3 rounded border p-3">
-                    <Link
-                      href={`/dashboard/jobs/${jobId}/documents?document=${slip.id}`}
-                      className="hover:bg-accent block rounded-lg border p-3 text-sm"
-                      onClick={() => setOpen(false)}
-                    >
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="min-w-0">
-                          <span className="block font-medium">{slip.name}</span>
-                          <span className="text-muted-foreground">
-                            {slip.packingSlip.orderNumber} ·{" "}
-                            {new Date(slip.createdAt).toLocaleDateString()}
-                          </span>
-                        </span>
-                        <SlipState analysis={slip.packingSlipAnalysis} />
+                  <div
+                    key={slip.id}
+                    className="bg-card space-y-3 rounded-xl border p-3 sm:p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg">
+                        <FileTextIcon className="text-muted-foreground size-5" />
                       </span>
-                    </Link>
+                      <span className="min-w-0 flex-1 text-sm">
+                        <Link
+                          href={`/dashboard/jobs/${jobId}/documents?document=${slip.id}`}
+                          className="block font-medium break-words hover:underline"
+                          onClick={() => setOpen(false)}
+                        >
+                          {slip.name}
+                        </Link>
+                        <span className="text-muted-foreground block text-xs">
+                          {slip.packingSlip.orderNumber} ·{" "}
+                          {new Date(slip.createdAt).toLocaleDateString()}
+                        </span>
+                      </span>
+                      <SlipState analysis={slip.packingSlipAnalysis} />
+                    </div>
                     {slip.currentVersionId && (
                       <PackingSlipTestReview
                         key={`${jobId}:${slip.currentVersionId}`}

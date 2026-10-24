@@ -393,36 +393,56 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6});
     expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
   });
-  it("keeps a confirmed delivery protected through clearing and repeated detection", async () => {
+  const item = async () => (await db.select().from(schema.orderItems))[0]!;
+  it("takes back a confirmed delivery when detection is cleared, so the slip can be confirmed afresh", async () => {
     const {access,doc,analysis}=await ready();
     await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
-    const applied=(await workspace()).documents[0]!.packingSlipAnalysis!.applied!;
+    expect(Number((await item()).receivedQuantity)).toBe(8);
     const cleared=await clearSlipAnalysis(access,doc.documentId,analysis.runId);
-    expect(cleared.applied).toEqual(applied);
-    expect(cleared.confirmedItems).toEqual(analysis.items);
+    expect(cleared.applied).toBeUndefined();
+    expect(cleared.confirmedItems).toBeUndefined();
     expect(cleared.lines).toEqual([]);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    expect((await item()).verificationStatus).toBe("partial");
+    const state=await workspace();
+    expect(state.versions).toHaveLength(1);
+    expect(state.activity.at(-1)!.detail).toContain("took back its confirmed receipt");
     await startSlipAnalysis(access,doc.documentId,true,cleared.runId);
     const rerun=await waitForReady();
-    expect(rerun.runId).not.toBe(analysis.runId);
-    expect(rerun.applied).toEqual(applied);
-    expect(rerun.confirmedItems).toEqual(analysis.items);
-    expect(rerun.lines).toHaveLength(1);
-    expect(await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6})).toMatchObject({alreadyApplied:true});
-    const again=await clearSlipAnalysis(access,doc.documentId,rerun.runId);
-    await startSlipAnalysis(access,doc.documentId,true,again.runId);
-    const latest=await waitForReady();
-    await confirmSlipReceipt(access,doc.documentId,latest.runId,{[id(6)]:6});
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
-    expect((await db.select().from(schema.packingSlipReviewHistory)).filter(row=>row.kind==="confirmation")).toHaveLength(1);
+    expect(rerun.applied).toBeUndefined();
+    expect(rerun.items[0]!.received).toBe(2);
+    expect(await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6})).toMatchObject({alreadyApplied:false});
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+    expect((await db.select().from(schema.packingSlipReviewHistory)).filter(row=>row.kind==="confirmation")).toHaveLength(2);
   });
-  it("allows rerunning a confirmed slip directly without changing quantities", async () => {
+  it("starts a confirmed slip over when detection is rerun", async () => {
     const {access,doc,analysis}=await ready();
-    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
+    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:10});
+    expect((await item()).verificationStatus).toBe("problem");
     await startSlipAnalysis(access,doc.documentId,true,analysis.runId);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    expect((await item()).verificationStatus).toBe("partial");
     const rerun=await waitForReady();
     expect(rerun.runId).not.toBe(analysis.runId);
-    expect(rerun.applied?.quantities).toEqual({[id(6)]:6});
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
+    expect(rerun.applied).toBeUndefined();
+    expect(rerun.warnings).toContain("Previous receipts exist. Check that this is a new delivery before adding quantities.");
+    await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:5});
+    expect(Number((await item()).receivedQuantity)).toBe(7);
+  });
+  it("only takes off the slip's own quantity when the item changed after confirming", async () => {
+    const {access,doc,analysis}=await ready();
+    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
+    await db.update(schema.orderItems).set({receivedQuantity:"10",verificationStatus:"complete"}).where(eq(schema.orderItems.id,id(6)));
+    await clearSlipAnalysis(access,doc.documentId,analysis.runId);
+    expect(Number((await item()).receivedQuantity)).toBe(4);
+    expect((await item()).verificationStatus).toBe("partial");
+  });
+  it("does nothing to quantities when an unconfirmed slip is rerun", async () => {
+    const {access,doc,analysis}=await ready();
+    await startSlipAnalysis(access,doc.documentId,true,analysis.runId);
+    await waitForReady();
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    expect((await workspace()).activity.some(a=>a.action==="undoPackingSlipReceipt")).toBe(false);
   });
   it("requires receiving permission and a current run for detection controls", async () => {
     const {access,doc,analysis}=await ready();

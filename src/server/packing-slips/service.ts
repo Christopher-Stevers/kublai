@@ -200,6 +200,57 @@ export function orderFingerprint(
       ]),
   );
 }
+/** Take back what a confirmed slip added, so clearing or rerunning detection
+ * starts clean. Items untouched since get their earlier total and status
+ * back; items changed since only lose this slip's quantity. */
+async function undoSlipReceipt(
+  tx: Tx,
+  orderId: string,
+  analysis: SlipAnalysis,
+) {
+  if (!analysis.applied) return false;
+  const rows = await tx
+    .select({
+      id: orderItems.id,
+      ordered: orderItems.quantity,
+      received: orderItems.receivedQuantity,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId))
+    .for("update");
+  const before = new Map(
+    (analysis.confirmedItems ?? analysis.items).map((i) => [i.id, i]),
+  );
+  const round = (n: number) => Math.round(n * 1e6) / 1e6;
+  for (const [itemId, added] of Object.entries(analysis.applied.quantities)) {
+    const row = rows.find((r) => r.id === itemId);
+    if (!row) continue;
+    const received = Number(row.received),
+      ordered = Number(row.ordered),
+      prior = before.get(itemId);
+    const untouched =
+      prior && Math.abs(round(prior.received + added) - received) < 1e-6;
+    const total = untouched
+      ? prior.received
+      : Math.max(0, round(received - added));
+    await tx
+      .update(orderItems)
+      .set({
+        receivedQuantity: String(total),
+        verificationStatus: untouched
+          ? prior.verificationStatus
+          : total > ordered + 1e-6
+            ? "problem"
+            : total >= ordered
+              ? "complete"
+              : total > 0
+                ? "partial"
+                : "pending",
+      })
+      .where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
+  }
+  return true;
+}
 const inflight = new Map<string, Promise<void>>();
 let tail: Promise<void> = Promise.resolve();
 /** Persist first, then run bounded background work. Interrupted runs can be retried after the lease expires. */
@@ -252,6 +303,9 @@ export async function startSlipAnalysis(
           message: "Packing slip file unavailable.",
         });
       const previous = doc.packingSlipAnalysis;
+      // Reading a confirmed slip again is a clean start: its receipt comes off.
+      const undone =
+        force && previous ? await undoSlipReceipt(tx, order.id, previous) : false;
       if (previous && previous.status !== "cleared") {
         const previousVersion = state.versions.find(
           (v) => v.id === previous.versionId,
@@ -280,6 +334,7 @@ export async function startSlipAnalysis(
               : null,
             archivedBeforeRetry: true,
             originalReleaseUnknown: true,
+            ...(undone ? { receiptUndone: previous.applied } : {}),
           },
         );
       }
@@ -291,17 +346,34 @@ export async function startSlipAnalysis(
         items: await orderSnapshot(tx, fresh, order.id),
         lines: [],
         warnings: [],
-        ...(previous?.applied ? {
-          applied: previous.applied,
-          confirmedItems: previous.confirmedItems ?? previous.items,
-        } : {}),
       };
       doc.packingSlipAnalysis = analysis;
+      if (undone)
+        state.activity.push({
+          id: randomUUID(),
+          documentId: doc.id,
+          folderId: doc.folderId,
+          action: "undoPackingSlipReceipt",
+          detail: `Reran packing slip detection and took back its confirmed receipt for ${order.orderNumber ?? order.id}`,
+          createdBy: fresh.user.id,
+          createdAt: analysis.startedAt,
+        });
       assertStateBounds(state);
-      return { analysis, version, orderId: order.id };
+      return {
+        analysis,
+        version,
+        orderId: order.id,
+        materialListId: undone ? order.materialListId : null,
+      };
     },
   );
   if (!task) return;
+  if (task.materialListId)
+    publishMaterialListEvent(
+      task.materialListId,
+      "updated",
+      access.job.organizationId,
+    );
   const work = tail
     .catch(() => undefined)
     .then(async () => {
@@ -410,13 +482,14 @@ export async function startSlipAnalysis(
   tail = work;
   void work.finally(() => inflight.delete(task.analysis.runId));
 }
-/** Clear only the current detection. Keep the file, audit history, and receipt guard. */
+/** Clear the current detection and take back its confirmed receipt. Keep the
+ * file and audit history. */
 export async function clearSlipAnalysis(
   access: DocumentAccess,
   documentId: string,
   runId: string,
 ) {
-  return mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
+  const result = await mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
     const doc = accessibleDocument(state, actor, documentId);
     if (!doc.packingSlip)
       throw new TRPCError({ code: "BAD_REQUEST", message: "Not a packing slip." });
@@ -426,13 +499,16 @@ export async function clearSlipAnalysis(
     const previous = doc.packingSlipAnalysis;
     if (previous?.runId !== runId)
       throw new TRPCError({ code: "CONFLICT", message: "Detection changed. Reopen this packing slip." });
-    if (previous.status === "cleared") return previous;
-    await recordReviewHistory(tx, fresh, doc, previous,
+    if (previous.status === "cleared" && !previous.applied)
+      return { analysis: previous, materialListId: null };
+    const undone = await undoSlipReceipt(tx, order.id, previous);
+    if (previous.status !== "cleared") await recordReviewHistory(tx, fresh, doc, previous,
       previous.status === "ready" ? "analysis" : "failure", {
         analysis: previous.status === "processing"
           ? { ...previous, status: "failed", error: "Detection was cleared by the user." }
           : previous,
         archivedBeforeClear: true,
+        ...(undone ? { receiptUndone: previous.applied } : {}),
       });
     doc.packingSlipAnalysis = {
       runId: randomUUID(),
@@ -440,20 +516,28 @@ export async function clearSlipAnalysis(
       status: "cleared",
       startedAt: new Date().toISOString(),
       items: [], lines: [], warnings: [],
-      ...(previous.applied ? {
-        applied: previous.applied,
-        confirmedItems: previous.confirmedItems ?? previous.items,
-      } : {}),
     };
     state.activity.push({
       id: randomUUID(), documentId: doc.id, folderId: doc.folderId,
       action: "clearPackingSlipDetection",
-      detail: "Cleared packing slip detection. File and confirmed receipts kept.",
+      detail: undone
+        ? `Cleared packing slip detection and took back its confirmed receipt for ${order.orderNumber ?? order.id}. File kept.`
+        : "Cleared packing slip detection. File kept.",
       createdBy: fresh.user.id, createdAt: new Date().toISOString(),
     });
     assertStateBounds(state);
-    return doc.packingSlipAnalysis;
+    return {
+      analysis: doc.packingSlipAnalysis,
+      materialListId: undone ? order.materialListId : null,
+    };
   });
+  if (result.materialListId)
+    publishMaterialListEvent(
+      result.materialListId,
+      "updated",
+      access.job.organizationId,
+    );
+  return result.analysis;
 }
 export async function refreshSlipReview(
   access: DocumentAccess,

@@ -1,5 +1,6 @@
 "use client";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
+import { ChevronDownIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
 
@@ -43,15 +44,21 @@ export function DeliveryTracker({
     .map((s) => ({ name: s.name, ...s.packingSlipAnalysis!.applied! }))
     .sort((a, b) => a.at.localeCompare(b.at));
   return (
-    <details className="rounded-lg border p-3 text-sm">
-      <summary className="cursor-pointer list-none">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="font-medium">Order receiving</span>
-          <span className="text-muted-foreground text-xs">
-            {complete} of {items.length} items fully received ·{" "}
-            {deliveries.length}{" "}
-            {deliveries.length === 1 ? "delivery" : "deliveries"} confirmed
+    <details className="group bg-card rounded-xl border text-sm">
+      <summary className="cursor-pointer list-none space-y-2 p-3 sm:p-4">
+        <span className="flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Order receiving</span>
+            <span className="text-muted-foreground block text-xs">
+              {complete} of {items.length} items fully received ·{" "}
+              {deliveries.length}{" "}
+              {deliveries.length === 1 ? "delivery" : "deliveries"} confirmed
+            </span>
           </span>
+          <span className="text-lg font-semibold tabular-nums">
+            {Math.round(progress * 100)}%
+          </span>
+          <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
         </span>
         <span
           role="progressbar"
@@ -59,15 +66,15 @@ export function DeliveryTracker({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(progress * 100)}
-          className="bg-muted mt-2 block h-2 overflow-hidden rounded-full"
+          className="bg-muted block h-1.5 overflow-hidden rounded-full"
         >
           <span
-            className="block h-full bg-emerald-500"
+            className="block h-full rounded-full bg-emerald-500"
             style={{ width: `${progress * 100}%` }}
           />
         </span>
       </summary>
-      <ul className="mt-3 divide-y">
+      <ul className="divide-y border-t px-3 sm:px-4">
         {items.map((item) => {
           const left = round(item.ordered - item.received);
           const back = backordered.get(item.id);
@@ -107,7 +114,7 @@ export function DeliveryTracker({
         })}
       </ul>
       {deliveries.length > 0 && (
-        <div className="mt-3 space-y-1">
+        <div className="space-y-1 border-t p-3 sm:px-4">
           <p className="text-xs font-medium">Deliveries</p>
           <ol className="text-muted-foreground space-y-0.5 text-xs">
             {deliveries.map((d) => (

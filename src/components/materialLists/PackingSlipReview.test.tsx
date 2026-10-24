@@ -7,6 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { PackingSlipReview } from "./PackingSlipReview";
+import { confirmAction } from "~/components/ui/app-dialogs";
+vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn() }));
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 afterEach(cleanup);
 const analysis: SlipAnalysis = {
@@ -77,9 +79,8 @@ it("shows confirmation without allowing a second application", () => {
       onAction={vi.fn()}
     />,
   );
-  expect(screen.getByRole("status")).toHaveTextContent(
-    "will not be counted again",
-  );
+  expect(screen.getByRole("status")).toHaveTextContent("Receipt confirmed");
+  expect(screen.getByRole("status")).toHaveTextContent("1 item received");
   expect(
     screen.queryByText("Confirm received quantities"),
   ).not.toBeInTheDocument();
@@ -225,8 +226,9 @@ it("offers a handwritten quantity without prefilling it", () => {
   expect(input).toHaveValue(5);
 });
 
-it("offers clear and rerun detection on a confirmed slip without another receipt action", () => {
+it("asks before a confirmed slip's receipt is taken back by clearing or rerunning", async () => {
   const action = vi.fn().mockResolvedValue(undefined);
+  const ask = vi.mocked(confirmAction);
   render(
     <PackingSlipReview
       analysis={{
@@ -238,33 +240,58 @@ it("offers clear and rerun detection on a confirmed slip without another receipt
       onAction={action}
     />,
   );
+  ask.mockResolvedValueOnce(false);
   fireEvent.click(screen.getByRole("button", { name: "Clear detection" }));
-  expect(action).toHaveBeenLastCalledWith("clear");
+  await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
+  expect(ask.mock.calls[0]![0].description).toContain(
+    "takes back the received quantities this slip confirmed for 1 item",
+  );
+  expect(action).not.toHaveBeenCalled();
+  ask.mockResolvedValueOnce(true);
+  fireEvent.click(screen.getByRole("button", { name: "Clear detection" }));
+  await waitFor(() => expect(action).toHaveBeenLastCalledWith("clear"));
+  ask.mockResolvedValueOnce(true);
   fireEvent.click(screen.getByRole("button", { name: "Rerun detection" }));
-  expect(action).toHaveBeenLastCalledWith("analyze");
+  await waitFor(() => expect(action).toHaveBeenLastCalledWith("analyze"));
+  expect(ask.mock.calls[2]![0].title).toBe("Read this slip again?");
   expect(screen.queryByText("Confirm received quantities")).toBeNull();
+  ask.mockReset();
 });
-it("keeps a confirmed receipt visible after clearing and displays new detection separately", () => {
+it("reruns an unconfirmed slip without asking", async () => {
+  const action = vi.fn().mockResolvedValue(undefined);
+  render(
+    <PackingSlipReview
+      analysis={analysis}
+      versionId="v"
+      busy={false}
+      onAction={action}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Rerun detection" }));
+  await waitFor(() => expect(action).toHaveBeenLastCalledWith("analyze"));
+  expect(confirmAction).not.toHaveBeenCalled();
+});
+it("shows only the confirmed receipt for slips confirmed before a rerun", () => {
   const applied = { at: "2026-10-17", by: "u", quantities: { a: 6 } };
-  const cleared = {
-    ...analysis,
-    status: "cleared" as const,
-    items: [],
-    lines: [],
-    confirmedItems: analysis.items,
-    applied,
-  };
   const view = render(
     <PackingSlipReview
-      analysis={cleared}
+      analysis={{
+        ...analysis,
+        status: "cleared",
+        items: [],
+        lines: [],
+        confirmedItems: analysis.items,
+        applied,
+      }}
       versionId="v"
       busy={false}
       onAction={vi.fn()}
     />,
   );
-  expect(screen.getByText(/Receipt confirmed/)).toBeInTheDocument();
-  expect(screen.getByText(/Detection cleared/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Clear detection" })).toBeNull();
+  expect(screen.getByText("Receipt confirmed")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Clear detection" }),
+  ).toBeInTheDocument();
   view.rerender(
     <PackingSlipReview
       analysis={{ ...analysis, confirmedItems: analysis.items, applied }}
@@ -273,12 +300,10 @@ it("keeps a confirmed receipt visible after clearing and displays new detection 
       onAction={vi.fn()}
     />,
   );
-  expect(
-    screen.getByRole("region", { name: "New detection results" }),
-  ).toHaveTextContent("Detected 6 ea");
-  expect(screen.getByText(/Comparison only/)).toBeInTheDocument();
+  expect(screen.getByText("Valve")).toBeInTheDocument();
+  expect(screen.getByText("6 ea")).toBeInTheDocument();
+  expect(screen.queryByText(/Comparison only/)).toBeNull();
   expect(screen.queryByText("Confirm received quantities")).toBeNull();
-  expect(screen.queryByText(/Delivery differs from the slip/)).toBeNull();
 });
 it("disables detection actions while saving and hides them from read-only viewers", () => {
   const props = {

@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
+  ChevronDownIcon,
   InfoIcon,
   Loader2Icon,
   EraserIcon,
   RotateCcwIcon,
 } from "lucide-react";
+import { confirmAction } from "~/components/ui/app-dialogs";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
@@ -133,80 +135,53 @@ export function PackingSlipReview(
   props: Parameters<typeof PackingSlipComparison>[0] & { canManage?: boolean },
 ) {
   const { analysis, busy, onAction, canManage = true } = props;
+  const received = analysis?.applied
+    ? Object.keys(analysis.applied.quantities).length
+    : 0;
+  /** A confirmed slip starts over: its received quantities come off first. */
+  const startOver = async (action: "analyze" | "clear") => {
+    if (
+      received &&
+      !(await confirmAction({
+        title:
+          action === "analyze" ? "Read this slip again?" : "Clear this slip?",
+        description: `This takes back the received quantities this slip confirmed for ${received} ${received === 1 ? "item" : "items"}${action === "analyze" ? ", then reads it again so you can review and confirm it fresh." : ". The file stays saved, and you can read it again later."}`,
+        confirmLabel:
+          action === "analyze" ? "Take back and reread" : "Take back and clear",
+        destructive: true,
+      }))
+    )
+      return;
+    await onAction(action);
+  };
   return (
     <div className="space-y-3">
       {analysis && canManage && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            disabled={busy || analysis.status === "processing"}
+            onClick={() => void startOver("analyze")}
+          >
+            <RotateCcwIcon className="size-4" /> Rerun detection
+          </Button>
+          {(analysis.status !== "cleared" || analysis.applied) && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="min-h-10 flex-1"
-              disabled={busy || analysis.status === "processing"}
-              onClick={() => void onAction("analyze")}
+              className="text-muted-foreground"
+              disabled={busy}
+              onClick={() => void startOver("clear")}
             >
-              <RotateCcwIcon className="size-4" /> Rerun detection
+              <EraserIcon className="size-4" /> Clear detection
             </Button>
-            {analysis.status !== "cleared" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-10 flex-1"
-                disabled={busy}
-                onClick={() => void onAction("clear")}
-              >
-                <EraserIcon className="size-4" /> Clear detection
-              </Button>
-            )}
-          </div>
-          <p className="text-muted-foreground text-xs">
-            Clearing or rerunning detection keeps the file and confirmed
-            received quantities.
-          </p>
+          )}
         </div>
       )}
       <PackingSlipComparison {...props} />
     </div>
-  );
-}
-
-function RerunResults({ analysis }: { analysis: SlipAnalysis }) {
-  return (
-    <section
-      aria-label="New detection results"
-      className="space-y-2 rounded-lg border p-3 text-sm"
-    >
-      <h4 className="font-medium">New detection results</h4>
-      <p className="text-muted-foreground text-xs">
-        Comparison only. This delivery was already confirmed; these results do
-        not add received quantities.
-      </p>
-      {!analysis.lines.length && <p>No item lines detected.</p>}
-      <ul className="divide-y">
-        {analysis.lines.map((line, i) => (
-          <li key={i} className="space-y-1 py-2">
-            <p className="break-words whitespace-pre-wrap">{line.evidence}</p>
-            <p className="text-muted-foreground text-xs">
-              {analysis.items.find((item) => item.id === line.orderItemId)
-                ?.description ?? "No order item matched"}
-              {line.shipped !== null
-                ? ` · Detected ${line.shipped} ${line.unit ?? ""}`
-                : " · Quantity unclear"}
-            </p>
-            {line.issues.map((issue, j) => (
-              <p key={j} className="text-xs text-amber-800 dark:text-amber-300">
-                {issue}
-              </p>
-            ))}
-          </li>
-        ))}
-      </ul>
-      {analysis.warnings.map((warning, i) => (
-        <p key={i} className="text-xs text-amber-800 dark:text-amber-300">
-          {warning}
-        </p>
-      ))}
-    </section>
   );
 }
 
@@ -255,35 +230,14 @@ function PackingSlipComparison({
     [error, setError] = useState(""),
     [filter, setFilter] = useState<Filter>("all");
 
-  if (analysis?.applied)
-    return (
-      <div className="space-y-3">
-        <Applied analysis={analysis} />
-        {analysis.status === "cleared" && (
-          <p role="status" className="text-muted-foreground text-sm">
-            Detection cleared. You can rerun it at any time.
-          </p>
-        )}
-        {analysis.status === "processing" && (
-          <p role="status" className="flex items-center gap-2 text-sm">
-            <Loader2Icon className="size-4 animate-spin" />
-            Rerunning detection. Confirmed received quantities stay unchanged.
-          </p>
-        )}
-        {analysis.status === "failed" && (
-          <p role="alert" className="text-destructive text-sm">
-            {analysis.error ?? "Detection failed. You can rerun it."}
-          </p>
-        )}
-        {analysis.status === "ready" && analysis.confirmedItems && (
-          <RerunResults analysis={analysis} />
-        )}
-      </div>
-    );
+  if (analysis?.applied) return <Applied analysis={analysis} />;
   if (analysis?.status === "cleared")
     return (
-      <p role="status" className="text-muted-foreground text-sm">
-        Detection cleared. You can rerun it at any time.
+      <p
+        role="status"
+        className="bg-muted/40 text-muted-foreground rounded-lg p-3 text-sm"
+      >
+        Detection cleared. Rerun it to read the slip again.
       </p>
     );
   if (!analysis || analysis.status === "failed")
@@ -841,52 +795,50 @@ function Applied({ analysis }: { analysis: SlipAnalysis }) {
         ),
       );
   const linked = Object.keys(applied.links ?? {}).length;
+  const items = (analysis.confirmedItems ?? analysis.items).filter(
+    (item) => applied.quantities[item.id] !== undefined,
+  );
   return (
-    <details className="space-y-2" open={!analysis.confirmedItems}>
+    <details className="group rounded-lg border border-emerald-200 bg-emerald-50/60 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
       <summary
-        className="flex cursor-pointer items-start gap-2 rounded-lg bg-emerald-50 p-2 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
         role="status"
+        className="flex cursor-pointer list-none items-center gap-2 p-3 text-emerald-900 dark:text-emerald-200"
       >
-        <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
-        <span>
-          Receipt confirmed {new Date(applied.at).toLocaleString()}. This slip
-          will not be counted again.
-          {linked
-            ? ` ${linked} slip ${linked === 1 ? "line was" : "lines were"} matched by hand.`
-            : ""}
+        <CheckCircle2Icon className="size-4 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">Receipt confirmed</span>
+          <span className="block text-xs opacity-80">
+            {new Date(applied.at).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}{" "}
+            · {items.length} {items.length === 1 ? "item" : "items"} received
+            {linked
+              ? ` · ${linked} ${linked === 1 ? "line" : "lines"} matched by hand`
+              : ""}
+          </span>
         </span>
+        <ChevronDownIcon className="size-4 shrink-0 opacity-70 transition-transform group-open:rotate-180" />
       </summary>
-      <ul className="divide-y rounded-lg border text-sm">
-        {(analysis.confirmedItems ?? analysis.items).map((item) => {
-          const confirmed = applied.quantities[item.id];
+      <ul className="divide-y divide-emerald-200/70 border-t border-emerald-200/70 dark:divide-emerald-900 dark:border-emerald-900">
+        {items.map((item) => {
+          const confirmed = applied.quantities[item.id]!;
           const slip = proposed[item.id];
           const differs =
-            confirmed !== undefined &&
-            slip !== undefined &&
-            Math.abs(confirmed - slip) > 1e-6;
+            slip !== undefined && Math.abs(confirmed - slip) > 1e-6;
           return (
             <li
               key={item.id}
-              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 p-2"
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-3 py-2"
             >
-              <span className="min-w-0 flex-1 font-medium">
-                {item.description}
-              </span>
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {!analysis.confirmedItems && (
-                  <>
-                    Slip {slip === undefined ? "unclear" : fmt(slip, item.unit)}{" "}
-                    ·{" "}
-                  </>
-                )}
-                Confirmed{" "}
-                {confirmed === undefined
-                  ? "not changed"
-                  : fmt(confirmed, item.unit)}
+              <span className="min-w-0 flex-1">{item.description}</span>
+              <span className="font-medium tabular-nums">
+                {fmt(confirmed, item.unit)}
               </span>
               {differs && (
-                <span className="w-full text-xs text-amber-800 dark:text-amber-300">
-                  ⚠ Delivery differs from the slip.
+                <span className="flex w-full items-center gap-1 text-xs text-amber-800 dark:text-amber-300">
+                  <AlertTriangleIcon className="size-3 shrink-0" />
+                  Slip said {fmt(slip, item.unit)}.
                 </span>
               )}
             </li>
