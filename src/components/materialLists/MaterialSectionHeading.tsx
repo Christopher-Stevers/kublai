@@ -52,8 +52,8 @@ export type MaterialSection<T> = {
   items: T[];
 };
 
-/** One group per order, in the order they first appear, then the parts not
- * ordered yet; one unlabelled group when nothing is ordered. */
+/** The parts not ordered yet, then one group per order in the order they
+ * first appear; one unlabelled group when nothing is ordered. */
 export function materialSections<T extends SectionItem>(
   items: T[],
   materialListId: string,
@@ -91,7 +91,6 @@ export function materialSections<T extends SectionItem>(
     section.items.push(item);
   }
   return [
-    ...orders.values(),
     ...(notOrdered.length
       ? [
           {
@@ -102,5 +101,6 @@ export function materialSections<T extends SectionItem>(
           },
         ]
       : []),
+    ...orders.values(),
   ];
 }

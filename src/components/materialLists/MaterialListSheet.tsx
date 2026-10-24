@@ -36,7 +36,8 @@ export function MaterialListSheet({
   const syncing = useReplicacheSyncing();
   const supplierLabel = isToolRequest ? "From" : "Supplier";
   const money = showMoney ? [isToolRequest ? " " : "Each", isToolRequest ? "  " : "Total"] : [];
-  // Each order comes first, under its own receiving columns.
+  // Parts not ordered yet come first; each order follows under its own
+  // receiving columns.
   const sections = materialSections(items, materialListId).map((section) =>
     section.ordered
       ? {
