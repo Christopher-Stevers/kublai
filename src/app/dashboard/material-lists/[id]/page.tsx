@@ -2,7 +2,11 @@
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { SlipBadge, SlipPartSheet, SlipVerifyBar } from "~/components/materialLists/SlipOnList";
-import { useSlipDraft } from "~/components/materialLists/use-slip-draft";
+import { useSlipDrafts } from "~/components/materialLists/use-slip-draft";
+import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
+import { notify } from "~/components/ui/app-dialogs";
+import Link from "next/link";
+import { LockKeyholeIcon } from "lucide-react";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
@@ -111,7 +115,9 @@ export default function MaterialListDetailPage({
     },
   });
   const updateOrderItemVerification =
-    api.materialList.updateOrderItemVerification.useMutation();
+    api.materialList.updateOrderItemVerification.useMutation({
+      onError: (error) => notify(error.message, "error"),
+    });
   const markAllReceived = api.materialList.markAllOrderItemsReceived.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -121,19 +127,21 @@ export default function MaterialListDetailPage({
       ]);
     },
   });
-  // A read packing slip fills in the parts here; it is confirmed in one go.
-  const slipDraft = useSlipDraft({
+  const canReceive = !!userData?.permissions.can["orders.receive"];
+  // Read packing slips fill in the parts here; each is confirmed in one go.
+  const slipDrafts = useSlipDrafts({
     jobId: mlHeader?.jobId,
     materialListId: id,
     orderId: verifyOrderId,
-    enabled: isBrowserOnline && !!userData?.permissions.can["orders.receive"] && verifyOrder?.materialListId === id,
+    enabled: isBrowserOnline && canReceive && (!verifyOrderId || verifyOrder?.materialListId === id),
     onConfirmed: async (problems) => {
       await Promise.all(Object.entries(problems).map(([orderItemId, total]) =>
         updateOrderItemVerification.mutateAsync({ orderItemId, receivedQuantity: total, verificationStatus: "problem" })));
       await utils.materialList.invalidate();
     },
   });
-  const [slipPart, setSlipPart] = useState<{ id: string; name: string } | null>(null);
+  const [slipPart, setSlipPart] = useState<{ orderId: string; id: string; name: string } | null>(null);
+  const slipPartDraft = slipDrafts.drafts.find((draft) => draft.orderId === slipPart?.orderId);
   const canQuote = userData?.permissions.can["quotes.create"] ?? true;
   const canOrder =
     isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? true);
@@ -156,6 +164,10 @@ export default function MaterialListDetailPage({
     return sum + (Number.isFinite(quantity) ? quantity : 0) * unitCost;
   }, 0);
   const footerMaterialTotal = verifyOrderId ? visibleMaterialTotal : materialTotal;
+  // Ordered parts are received right on the list, as on an order's verify view.
+  const receivableOrder = (item: (typeof items)[number]) =>
+    !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
+  const hasReceivableOrder = items.some((item) => receivableOrder(item));
 
   useEffect(() => {
     if (!verifyOrderId) {
@@ -321,7 +333,9 @@ export default function MaterialListDetailPage({
               )}
             </div>
           )}
-          {verifyOrderId && mlHeader?.jobId && <SlipVerifyBar draft={slipDraft} jobId={mlHeader.jobId} />}
+          {mlHeader?.jobId && slipDrafts.drafts.map((draft) => (
+            <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId} showOrder={!verifyOrderId} />
+          ))}
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">
@@ -348,8 +362,15 @@ export default function MaterialListDetailPage({
                   {visibleItems.map((item) => {
                     const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
                       matchesMaterialOrderLine(item, orderItem, verifySupplierId));
+                    const listOrder = receivableOrder(item);
+                    const orderLine = verifyOrderItem
+                      ? { id: verifyOrderItem.id, quantity: verifyOrderItem.quantity, received: verifyOrderItem.receivedQuantity, status: verifyOrderItem.verificationStatus }
+                      : listOrder
+                        ? { id: item.sentOrderItemId!, quantity: listOrder.quantity, received: listOrder.receivedQuantity, status: listOrder.verificationStatus }
+                        : null;
                     // While a read slip is being checked, changes stay on the slip until it is confirmed.
-                    const slipEntry = verifyOrderItem ? slipDraft.item(verifyOrderItem.id) : null;
+                    const slipFound = slipDrafts.find(orderLine?.id);
+                    const slipEntry = slipFound?.entry ?? null;
                     const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
 
                     return (
@@ -376,30 +397,43 @@ export default function MaterialListDetailPage({
                         }}
                         materialListId={id}
                         suppliers={suppliers}
-                        verifyMode={!!verifyOrderId}
+                        verifyMode={!!verifyOrderId || !!listOrder}
+                        verifyReadOnly={!!listOrder && (!canReceive || !isBrowserOnline)}
                         isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
-                        verifyOrderedQuantity={verifyOrderItem?.quantity}
+                        verifyOrderedQuantity={orderLine?.quantity}
                         verifyInitialReceivedQuantity={
-                          slipEntry ? slipEntry.total : verifyOrderItem?.receivedQuantity
+                          slipEntry ? slipEntry.total : orderLine?.received
                         }
                         verifyInitialStatus={
                           slipEntry
                             ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
-                            : verifyOrderItem?.verificationStatus
+                            : orderLine?.status
                         }
-                        verifyBadge={slipEntry ? (
-                          <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ id: slipEntry.item.id, name: partName })} />
+                        verifyBadge={slipFound && slipEntry ? (
+                          <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
+                        ) : undefined}
+                        verifyCaption={listOrder ? (
+                          <Link
+                            href={`/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`}
+                            className="text-muted-foreground mt-1 flex items-center justify-center gap-1 text-xs underline underline-offset-2"
+                            onClick={(event) => event.stopPropagation()}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onTouchStart={(event) => event.stopPropagation()}
+                          >
+                            <LockKeyholeIcon className="h-3 w-3 shrink-0" />
+                            {listOrder.number ?? "View order"}
+                          </Link>
                         ) : undefined}
                         onVerifyStateChange={
-                          verifyOrderItem
+                          orderLine
                             ? (state) => {
-                                if (slipEntry) {
+                                if (slipFound && slipEntry) {
                                   // The card reports from inside its own state update.
-                                  queueMicrotask(() => slipDraft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
+                                  queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
                                   return;
                                 }
                                 updateOrderItemVerification.mutate({
-                                  orderItemId: verifyOrderItem.id,
+                                  orderItemId: orderLine.id,
                                   receivedQuantity: state.receivedQuantity,
                                   verificationStatus: state.verificationStatus,
                                 });
@@ -437,8 +471,14 @@ export default function MaterialListDetailPage({
               openOnMount={searchParams.get("slips") === "1"}
               onOpened={() => router.replace(`${pathname}?orderId=${encodeURIComponent(verifyOrderId)}`, { scroll: false })}
               onVerified={() => { void utils.materialList.invalidate(); }}
-              onChanged={() => { void slipDraft.reload(); }}
-              onReviewOnList={slipDraft.choose} />
+              onChanged={() => { void slipDrafts.reload(); }}
+              onReviewOnList={slipDrafts.choose} />
+          ) : !verifyOrderId && hasReceivableOrder && canReceive && mlHeader.jobId ? (
+            <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
+              onLinked={(listId) => {
+                if (listId === id) void slipDrafts.reload();
+                else router.push(`/dashboard/material-lists/${listId}`);
+              }} />
           ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
@@ -451,8 +491,8 @@ export default function MaterialListDetailPage({
       {markAllReceived.error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{markAllReceived.error.message}</p>}
 
       {/* Modals and Sheets */}
-      {mlHeader?.jobId && (
-        <SlipPartSheet draft={slipDraft} orderItemId={slipPart?.id ?? null} name={slipPart?.name ?? ""}
+      {mlHeader?.jobId && slipPartDraft && (
+        <SlipPartSheet draft={slipPartDraft} orderItemId={slipPart?.id ?? null} name={slipPart?.name ?? ""}
           jobId={mlHeader.jobId} onClose={() => setSlipPart(null)} />
       )}
       <Dialog

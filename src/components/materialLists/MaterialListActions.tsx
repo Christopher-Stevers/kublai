@@ -77,7 +77,7 @@ export function MaterialListActions({
           </span>
         </div></FinancialOnly>
       )}
-      <div className={`grid gap-1.5 ${onNotes && packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
         {onNotes ? (
           <>
             <Button variant="outline" className={style} onClick={onMarkAllReceived} disabled={!onMarkAllReceived || receiveDisabled || receivingAll || !isOnline}>
@@ -131,6 +131,7 @@ export function MaterialListActions({
               <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Order
             </Button>
+            {packingSlips}
             <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
               <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               Add Part

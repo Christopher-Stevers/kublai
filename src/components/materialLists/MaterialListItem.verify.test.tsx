@@ -1,0 +1,74 @@
+import { afterEach, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import { MaterialListItem } from "./MaterialListItem";
+vi.mock("~/hooks/use-workspace-mutations", () => ({
+  useWorkspaceMutations: () => ({}),
+}));
+vi.mock("~/hooks/use-replicache-material-list", () => ({
+  resolveReplicacheSyncStatus: () => "synced",
+  useReplicacheSyncing: () => false,
+}));
+vi.mock("./QuantityControls", () => ({ QuantityControls: () => null }));
+vi.mock("./SupplierSelector", () => ({ SupplierSelector: () => null }));
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+const item = {
+  id: "i",
+  sentOrderItemId: "oi",
+  quantity: "10",
+  unitCost: null,
+  extendedPrice: null,
+  descriptionSnapshot: "Valve",
+  partDefinition: null,
+  supplierPart: null,
+};
+
+it("shows an ordered part as a verify card that takes a tap", () => {
+  vi.useFakeTimers();
+  const onVerifyStateChange = vi.fn();
+  render(
+    <MaterialListItem
+      item={item}
+      materialListId="m"
+      verifyMode
+      verifyOrderedQuantity="10"
+      verifyInitialReceivedQuantity="4"
+      verifyCaption={<a href="/order">PO-1</a>}
+      onVerifyStateChange={onVerifyStateChange}
+    />,
+  );
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("6");
+  expect(screen.getByRole("link", { name: "PO-1" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Verify part" }));
+  act(() => {
+    vi.advanceTimersByTime(300);
+  });
+  expect(onVerifyStateChange).toHaveBeenCalledWith({
+    receivedQuantity: 10,
+    verificationStatus: "complete",
+  });
+});
+
+it("shows the verify card without taps for members who cannot receive", () => {
+  render(
+    <MaterialListItem
+      item={item}
+      materialListId="m"
+      verifyMode
+      verifyReadOnly
+      verifyOrderedQuantity="10"
+      verifyInitialReceivedQuantity="4"
+    />,
+  );
+  expect(screen.getByText("Received")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Verify part" })).toBeNull();
+});

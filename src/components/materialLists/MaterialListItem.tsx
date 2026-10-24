@@ -99,6 +99,10 @@ interface MaterialListItemProps {
   }) => void;
   /** Shown on the photo in verify mode, e.g. what a packing slip says. */
   verifyBadge?: ReactNode;
+  /** Shown under the part name in verify mode, e.g. a link to its order. */
+  verifyCaption?: ReactNode;
+  /** Show the verify card without letting taps change it. */
+  verifyReadOnly?: boolean;
 }
 
 function formatQuantityDisplay(value: string | number | null | undefined) {
@@ -198,6 +202,8 @@ function MaterialListItemComponent({
   verifyInitialStatus,
   onVerifyStateChange,
   verifyBadge,
+  verifyCaption,
+  verifyReadOnly = false,
 }: MaterialListItemProps) {
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
@@ -593,11 +599,12 @@ function MaterialListItemComponent({
     }, 260);
   };
 
+  const verifyTappable = verifyMode && !verifyReadOnly;
   return (
     <Card
       className={cn(
         "group relative h-full w-full gap-0 overflow-hidden rounded-2xl py-0 shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:20rem] hover:shadow-md",
-        verifyMode && "cursor-pointer select-none",
+        verifyTappable && "cursor-pointer select-none",
         verifyMode &&
           isVerifyComplete &&
           "border-emerald-300 bg-emerald-50/50 ring-2 ring-emerald-400/60",
@@ -619,10 +626,10 @@ function MaterialListItemComponent({
             }
           : undefined
       }
-      onContextMenu={verifyMode ? (event) => event.preventDefault() : undefined}
-      onClick={verifyMode ? handleVerifyClick : undefined}
+      onContextMenu={verifyTappable ? (event) => event.preventDefault() : undefined}
+      onClick={verifyTappable ? handleVerifyClick : undefined}
       onKeyDown={
-        verifyMode
+        verifyTappable
           ? (event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -631,11 +638,11 @@ function MaterialListItemComponent({
             }
           : undefined
       }
-      role={verifyMode ? "button" : undefined}
-      tabIndex={verifyMode ? 0 : undefined}
-      aria-pressed={verifyMode ? isVerifyComplete : undefined}
+      role={verifyTappable ? "button" : undefined}
+      tabIndex={verifyTappable ? 0 : undefined}
+      aria-pressed={verifyTappable ? isVerifyComplete : undefined}
       aria-label={
-        verifyMode
+        verifyTappable
           ? isVerifyProblem
             ? "Part has a problem"
             : isVerifyComplete
@@ -643,12 +650,12 @@ function MaterialListItemComponent({
               : "Verify part"
           : undefined
       }
-      onPointerDown={verifyMode ? handleVerifyPointerDown : undefined}
-      onPointerUp={verifyMode ? handleVerifyPointerUp : undefined}
-      onPointerCancel={verifyMode ? handleVerifyPointerCancel : undefined}
-      onTouchStart={verifyMode ? handleVerifyTouchStart : undefined}
+      onPointerDown={verifyTappable ? handleVerifyPointerDown : undefined}
+      onPointerUp={verifyTappable ? handleVerifyPointerUp : undefined}
+      onPointerCancel={verifyTappable ? handleVerifyPointerCancel : undefined}
+      onTouchStart={verifyTappable ? handleVerifyTouchStart : undefined}
       onPointerLeave={
-        verifyMode
+        verifyTappable
           ? () => {
               if (verifyLongPressTriggeredRef.current) return;
               clearVerifyLongPressTimer();
@@ -786,6 +793,7 @@ function MaterialListItemComponent({
               Room: {item.roomName}
             </p>
           )}
+          {verifyMode && verifyCaption}
 
           {!verifyMode && item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
           {!verifyMode && !item.sentOrderItemId && (

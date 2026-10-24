@@ -427,10 +427,15 @@ function Figure({ label, children }: { label: string; children: string }) {
 export function SlipVerifyBar({
   draft,
   jobId,
+  showOrder = false,
 }: {
   draft: SlipDraft;
   jobId: string;
+  /** Name the order, for lists with more than one. */
+  showOrder?: boolean;
 }) {
+  const order =
+    showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
   if (!draft.slip) {
     if (!draft.reading) return null;
     return (
@@ -439,7 +444,7 @@ export function SlipVerifyBar({
         className="bg-card mb-3 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm"
       >
         <Loader2Icon className="text-muted-foreground size-4 shrink-0 animate-spin" />
-        Reading the packing slip. The parts fill in when it is done.
+        Reading the packing slip{order}. The parts fill in when it is done.
       </div>
     );
   }
@@ -472,7 +477,7 @@ export function SlipVerifyBar({
           <FileTextIcon className="size-4" />
         </span>
         <div className="min-w-0 flex-1 text-sm">
-          <p className="font-medium">Packing slip read</p>
+          <p className="font-medium">Packing slip read{order}</p>
           <p className="text-muted-foreground text-xs">
             {filled} {filled === 1 ? "part" : "parts"} filled in from the slip
             {checks ? (

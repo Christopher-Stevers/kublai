@@ -6,11 +6,12 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import { SlipBadge, SlipPartSheet, SlipVerifyBar } from "./SlipOnList";
-import { useSlipDraft } from "./use-slip-draft";
+import { useSlipDrafts } from "./use-slip-draft";
 vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn(async () => true),
   notify: vi.fn(),
@@ -124,7 +125,7 @@ function List({
 }: {
   onConfirmed?: (p: Record<string, number>) => void;
 }) {
-  const draft = useSlipDraft({
+  const drafts = useSlipDrafts({
     jobId: "j",
     materialListId: "m",
     orderId: "o",
@@ -132,6 +133,8 @@ function List({
     onConfirmed,
   });
   const [open, setOpen] = useState<string | null>(null);
+  const draft = drafts.drafts[0];
+  if (!draft) return null;
   return (
     <>
       <SlipVerifyBar draft={draft} jobId="j" />
@@ -281,4 +284,93 @@ it("offers Refresh totals when the order changed since the slip was read", async
   );
   await waitFor(() => expect(posts).toHaveLength(2));
   expect(posts[1]).toMatchObject({ action: "refresh", runId: "r" });
+});
+
+function WholeList() {
+  const drafts = useSlipDrafts({
+    jobId: "j",
+    materialListId: "m",
+    enabled: true,
+  });
+  return (
+    <>
+      {drafts.drafts.map((draft) => (
+        <SlipVerifyBar key={draft.orderId} draft={draft} jobId="j" showOrder />
+      ))}
+      {["a", "c"].map((id) => {
+        const found = drafts.find(id);
+        return (
+          <div key={id} data-testid={`card-${id}`}>
+            {found && (
+              <SlipBadge entry={found.entry} onOpen={() => undefined} />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+it("checks slips for every order on the whole list, each confirmed on its own", async () => {
+  const urls: string[] = [];
+  const posts: Record<string, unknown>[] = [];
+  const second: SlipAnalysis = {
+    ...analysis,
+    runId: "r2",
+    items: [{ ...valve, id: "c", description: "Clamp" }],
+    lines: [{ ...analysis.lines[0]!, orderItemId: "c", proposed: 4 }],
+  };
+  const doc = (
+    id: string,
+    orderId: string,
+    orderNumber: string,
+    a: SlipAnalysis,
+  ) => ({
+    id,
+    name: `Packing slip - ${orderNumber}.pdf`,
+    createdAt: "2026-10-24",
+    currentVersionId: "v",
+    packingSlip: { orderId, materialListId: "m", orderNumber },
+    packingSlipAnalysis: a,
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, options?: RequestInit) => {
+      if (options?.method === "POST") {
+        posts.push(
+          JSON.parse(options.body as string) as Record<string, unknown>,
+        );
+        return Response.json({ success: true });
+      }
+      urls.push(url);
+      return Response.json({
+        canUpload: true,
+        documents: [
+          doc("doc", "o", "PO-1", analysis),
+          doc("doc2", "o2", "PO-2", second),
+        ],
+      });
+    }),
+  );
+  render(<WholeList />);
+  await screen.findByText("Packing slip read for PO-2");
+  expect(screen.getByText("Packing slip read for PO-1")).toBeInTheDocument();
+  expect(urls[0]).not.toContain("orderId");
+  expect(card("a")).toHaveTextContent("Slip +6");
+  expect(card("c")).toHaveTextContent("Slip +4");
+  const bars = screen.getAllByRole("region", { name: "Packing slip" });
+  fireEvent.click(
+    within(bars.find((bar) => bar.textContent?.includes("PO-2"))!).getByRole(
+      "button",
+      {
+        name: /Confirm delivery/,
+      },
+    ),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    documentId: "doc2",
+    runId: "r2",
+    quantities: { c: 4 },
+  });
 });

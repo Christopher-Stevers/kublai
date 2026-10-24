@@ -55,7 +55,7 @@ const linked = (orderId: string) =>
     materialListId: `list-${orderId}`,
   });
 
-it("scans a slip, finds its order and opens that order's slip reading", async () => {
+it("scans a slip, finds its order and opens its material list to check it", async () => {
   const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
     if (options?.body instanceof FormData) {
       expect(url).toBe("/api/job-documents/packing-slips/find?jobId=job");
@@ -83,9 +83,7 @@ it("scans a slip, finds its order and opens that order's slip reading", async ()
   expect(screen.getByText("174-Fastening House")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Read slip now/ }));
   await waitFor(() =>
-    expect(push).toHaveBeenCalledWith(
-      "/dashboard/material-lists/list-o1?orderId=o1&slips=1",
-    ),
+    expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o1"),
   );
 });
 
@@ -114,9 +112,7 @@ it("lets the member choose the order when the slip is not a clear match", async 
   fireEvent.click(screen.getByRole("button", { name: "Show all 3 orders" }));
   fireEvent.click(screen.getByRole("button", { name: /163-Next/ }));
   await waitFor(() =>
-    expect(push).toHaveBeenCalledWith(
-      "/dashboard/material-lists/list-o3?orderId=o3&slips=1",
-    ),
+    expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o3"),
   );
 });
 
@@ -175,7 +171,28 @@ it("opens a saved slip that already has an order, and matches one that does not"
     await screen.findByRole("button", { name: "Choose a saved slip instead" }),
   );
   fireEvent.click(await screen.findByRole("button", { name: /175-Next\.pdf/ }));
-  expect(push).toHaveBeenCalledWith(
-    "/dashboard/material-lists/list-o2?orderId=o2&slips=1",
+  expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o2");
+});
+
+it("hands the linked slip back when scanned from a material list", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, options?: RequestInit) =>
+      options?.body instanceof FormData
+        ? Response.json({
+            documentId: "doc",
+            match: "o1",
+            candidates: ["o1"],
+            orders,
+          })
+        : linked("o1"),
+    ),
   );
+  const onLinked = vi.fn();
+  render(<ScanSlipButton jobId="job" onLinked={onLinked} />);
+  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Done" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Read slip now/ }));
+  await waitFor(() => expect(onLinked).toHaveBeenCalledWith("list-o1", "o1"));
+  expect(push).not.toHaveBeenCalled();
 });

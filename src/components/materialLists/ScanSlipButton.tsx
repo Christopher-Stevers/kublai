@@ -73,9 +73,15 @@ async function json<T>(response: Response, fallback: string) {
 export function ScanSlipButton({
   jobId,
   className,
+  compact = false,
+  onLinked,
 }: {
   jobId: string;
   className?: string;
+  /** Small icon, for the material list footer. */
+  compact?: boolean;
+  /** Called with the slip's list and order instead of opening that list. */
+  onLinked?: (materialListId: string, orderId: string) => void;
 }) {
   const router = useRouter();
   const online = useOnlineStatus();
@@ -86,6 +92,11 @@ export function ScanSlipButton({
   const files = useRef<HTMLInputElement>(null);
   const run = useRef(0);
 
+  // The slip is checked on the list's parts, so open the list itself.
+  const openList = (materialListId: string, orderId: string) =>
+    onLinked
+      ? onLinked(materialListId, orderId)
+      : router.push(`/dashboard/material-lists/${materialListId}`);
   const begin = async () => {
     const id = ++run.current;
     setError(null);
@@ -167,9 +178,7 @@ export function ScanSlipButton({
       if (run.current !== id) return;
       setOpen(false);
       if (result.analysisError) notify(result.analysisError, "error");
-      router.push(
-        `/dashboard/material-lists/${result.materialListId}?orderId=${result.orderId}&slips=1`,
-      );
+      openList(result.materialListId, result.orderId);
     } catch (e) {
       if (run.current === id)
         setError(e instanceof Error ? e.message : "Could not attach the slip.");
@@ -221,7 +230,9 @@ export function ScanSlipButton({
         disabled={!online}
         onClick={() => void begin()}
       >
-        <CameraIcon className="mr-2 h-5 w-5" />
+        <CameraIcon
+          className={compact ? "mr-1 h-3.5 w-3.5 shrink-0" : "mr-2 h-5 w-5"}
+        />
         Scan slip
       </Button>
       <Dialog
@@ -313,9 +324,12 @@ export function ScanSlipButton({
                     const linked = slip.packingSlip;
                     if (!linked) return void identify({ documentId: slip.id });
                     close();
-                    router.push(
-                      `/dashboard/material-lists/${linked.materialListId}?orderId=${linked.orderId}&slips=1`,
-                    );
+                    // A received slip has nothing left to check on the list.
+                    if (slip.status === "applied")
+                      router.push(
+                        `/dashboard/material-lists/${linked.materialListId}?orderId=${linked.orderId}&slips=1`,
+                      );
+                    else openList(linked.materialListId, linked.orderId);
                   }}
                 >
                   <span className="block font-medium">{slip.name}</span>
