@@ -2,6 +2,12 @@ import { materialProgressStyle } from "~/lib/material-progress-style";
 import { ShoppingCartIcon } from "lucide-react";
 import type { MaterialListOrderStatus } from "~/lib/material-list-order-status";
 
+/** Ordered pills are blue and fill green as items are verified. Full green is
+ * kept for fully verified orders, so a sent order stops just short of it. */
+function sentFill(deliveredPercent: number) {
+  return Math.min(90, Math.max(0, deliveredPercent));
+}
+
 export function MaterialListOrderNumbers({
   orders,
   numbers,
@@ -40,10 +46,21 @@ export function MaterialListOrderNumbers({
               key={order.id}
               data-order-state={state}
               aria-label={`${order.number}: ${label}`}
-              title={`${order.number} · ${label}`}
-              style={materialProgressStyle(
-                state === "verified" ? 100 : state === "sent" ? 50 : 0,
-              )}
+              title={`${order.number} · ${label}${
+                state === "sent" && order.deliveredPercent > 0
+                  ? ` · ${Math.min(99, Math.round(order.deliveredPercent))}% received`
+                  : ""
+              }`}
+              style={
+                state === "verified"
+                  ? materialProgressStyle(100)
+                  : state === "sent"
+                    ? materialProgressStyle(
+                        sentFill(order.deliveredPercent),
+                        "blue",
+                      )
+                    : materialProgressStyle(0)
+              }
               className="border-border text-foreground inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium"
             >
               {Array.from(order.number).length > 12

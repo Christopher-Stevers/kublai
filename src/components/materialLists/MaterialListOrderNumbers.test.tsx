@@ -31,13 +31,16 @@ it("keeps status colors and accessible labels with one shared order icon", () =>
       ]}
     />,
   );
-  for (const [name, percent] of [
-    ["Supplier: not sent", 0],
-    ["ORDER-1: sent, awaiting full verification", 50],
-    ["ORDER-2: fully verified", 100],
+  for (const [name, style] of [
+    ["Supplier: not sent", materialProgressStyle(0)],
+    [
+      "ORDER-1: sent, awaiting full verification",
+      materialProgressStyle(90, "blue"),
+    ],
+    ["ORDER-2: fully verified", materialProgressStyle(100)],
   ] as const) {
     const tag = screen.getByLabelText(name);
-    expect(tag).toHaveStyle(materialProgressStyle(percent));
+    expect(tag).toHaveStyle(style);
     expect(tag.querySelector("svg")).toBeNull();
   }
   const group = screen.getByRole("group", { name: "Orders" });
@@ -55,4 +58,35 @@ it("omits the order icon when there are no pills", () => {
   const { container } = render(<MaterialListOrderNumbers orders={[]} />);
   expect(screen.queryByRole("group", { name: "Orders" })).toBeNull();
   expect(container.querySelector("svg")).toBeNull();
+});
+
+it("fills a sent order's blue pill with green as its items are verified", () => {
+  render(
+    <MaterialListOrderNumbers
+      orders={[
+        {
+          id: "a",
+          number: "175-Next",
+          complete: false,
+          deliveredPercent: 0,
+          state: "sent",
+        },
+        {
+          id: "b",
+          number: "176-Next",
+          complete: false,
+          deliveredPercent: 40,
+          state: "sent",
+        },
+      ]}
+    />,
+  );
+  expect(
+    screen.getByTitle("175-Next · sent, awaiting full verification"),
+  ).toHaveStyle(materialProgressStyle(0, "blue"));
+  expect(
+    screen.getByTitle(
+      "176-Next · sent, awaiting full verification · 40% received",
+    ),
+  ).toHaveStyle(materialProgressStyle(40, "blue"));
 });

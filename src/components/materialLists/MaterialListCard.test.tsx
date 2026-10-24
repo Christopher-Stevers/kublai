@@ -72,7 +72,7 @@ it("shows all linked orders and status in the shared card and opens on click", (
     screen
       .getByLabelText("ORDER-156: sent, awaiting full verification")
       .getAttribute("title"),
-  ).toBe("ORDER-156 · sent, awaiting full verification");
+  ).toBe("ORDER-156 · sent, awaiting full verification · 25% received");
   expect(screen.queryByText(/\d+\/\d+ sent/)).toBeNull();
   expect(screen.queryByRole("progressbar")).toBeNull();
   fireEvent.click(screen.getByText("October 14"));
