@@ -44,28 +44,28 @@ const analysis: SlipAnalysis = {
     },
   ],
 };
-it("prefills this delivery, requires physical confirmation, and sends corrected delta only", async () => {
-  const action = vi.fn(async () => {});
+it("summarises a read slip and sends the member to the list to check it", () => {
+  const onShowList = vi.fn();
   render(
     <PackingSlipReview
       analysis={analysis}
       versionId="v"
       busy={false}
-      onAction={action}
+      onAction={vi.fn()}
+      onShowList={onShowList}
     />,
   );
-  expect(screen.getByLabelText("Received this delivery: Valve")).toHaveValue(6);
-  expect(screen.getByText("New received total: 8 ea")).toBeInTheDocument();
-  const submit = screen.getByText("Confirm received quantities");
-  expect(submit).toBeDisabled();
-  expect(action).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Received this delivery: Valve"), {
-    target: { value: "5" },
-  });
-  expect(screen.getByText(/Actual receipt differs/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("checkbox"));
-  fireEvent.click(submit);
-  await waitFor(() => expect(action).toHaveBeenCalledWith("confirm", { a: 5 }));
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Read and filled in on the list",
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "1 part from the slip · 1 to check",
+  );
+  expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: /Check parts on the list/ }),
+  );
+  expect(onShowList).toHaveBeenCalledTimes(1);
 });
 it("shows confirmation without allowing a second application", () => {
   render(
@@ -113,37 +113,7 @@ const withExtra: SlipAnalysis = {
     },
   ],
 };
-it("links an unmatched slip line to an order item and sends the link", async () => {
-  const action = vi.fn(async () => {});
-  render(
-    <PackingSlipReview
-      analysis={withExtra}
-      versionId="v"
-      busy={false}
-      onAction={action}
-    />,
-  );
-  expect(screen.getByLabelText("Received this delivery: Pipe")).toHaveValue(
-    null,
-  );
-  expect(
-    screen.getByText(/On the slip but not matched \(1\)/),
-  ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("Order item for slip line 2"), {
-    target: { value: "b" },
-  });
-  expect(screen.getByLabelText("Received this delivery: Pipe")).toHaveValue(3);
-  expect(
-    screen.queryByText(/On the slip but not matched/),
-  ).not.toBeInTheDocument();
-  expect(screen.getByText(/matched by you/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("checkbox"));
-  fireEvent.click(screen.getByText("Confirm received quantities"));
-  await waitFor(() =>
-    expect(action).toHaveBeenCalledWith("confirm", { a: 6, b: 3 }, { 1: "b" }),
-  );
-});
-it("filters order items by delivery status", () => {
+it("counts slip lines that were not matched to a part", () => {
   render(
     <PackingSlipReview
       analysis={withExtra}
@@ -152,78 +122,9 @@ it("filters order items by delivery status", () => {
       onAction={vi.fn()}
     />,
   );
-  expect(screen.getByText("2 ea outstanding")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /Not on slip/ }));
-  expect(
-    screen.getByLabelText("Received this delivery: Pipe"),
-  ).toBeInTheDocument();
-  expect(
-    screen.queryByLabelText("Received this delivery: Valve"),
-  ).not.toBeInTheDocument();
-});
-it("puts items needing a decision first and keeps them in place while typing", () => {
-  const sure = { ...analysis.items[0]!, id: "s", description: "Sure valve" };
-  const doubtful = { ...analysis.items[0]!, id: "d", description: "Doubtful" };
-  const line = analysis.lines[0]!;
-  render(
-    <PackingSlipReview
-      analysis={{
-        ...analysis,
-        items: [sure, doubtful],
-        lines: [
-          { ...line, orderItemId: "s", issues: [] },
-          {
-            ...line,
-            orderItemId: "d",
-            proposed: null,
-            quantityClear: false,
-            issues: ["Check shipped quantity against the slip."],
-          },
-        ],
-      }}
-      versionId="v"
-      busy={false}
-      onAction={vi.fn()}
-    />,
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "1 slip line not matched",
   );
-  const order = () =>
-    screen
-      .getAllByLabelText(/^Received this delivery: /)
-      .map((e) => e.getAttribute("aria-label"));
-  expect(order()).toEqual([
-    "Received this delivery: Doubtful",
-    "Received this delivery: Sure valve",
-  ]);
-  fireEvent.change(screen.getByLabelText("Received this delivery: Doubtful"), {
-    target: { value: "6" },
-  });
-  expect(order()[0]).toBe("Received this delivery: Doubtful");
-});
-it("offers a handwritten quantity without prefilling it", () => {
-  render(
-    <PackingSlipReview
-      analysis={{
-        ...analysis,
-        lines: [
-          {
-            ...analysis.lines[0]!,
-            proposed: null,
-            handwritten: 5,
-            issues: [
-              "Handwriting on this line may change the quantity. Check the slip.",
-            ],
-          },
-        ],
-      }}
-      versionId="v"
-      busy={false}
-      onAction={vi.fn()}
-    />,
-  );
-  const input = screen.getByLabelText("Received this delivery: Valve");
-  expect(input).toHaveValue(null);
-  fireEvent.click(screen.getByRole("button", { name: "Use handwritten 5" }));
-  expect(input).toHaveValue(5);
 });
 
 it("asks before a confirmed slip's receipt is taken back by clearing or rerunning", async () => {

@@ -75,7 +75,7 @@ it("saves a scan with its order and returns to the slip list to watch it being r
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
-  await screen.findByText(/Reading packing slip and comparing it/);
+  await screen.findByText(/Reading the packing slip/);
   expect(screen.getByText("Reading…")).toBeInTheDocument();
   expect(screen.getByText(/It's being read now/)).toBeInTheDocument();
   expect(
@@ -85,6 +85,17 @@ it("saves a scan with its order and returns to the slip list to watch it being r
   expect(
     fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),
   ).toHaveLength(1);
+});
+it("closes after saving a scan when read slips are checked on the list", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, options?: RequestInit) =>
+    Response.json(options?.method === "POST" ? { success: true } : { canUpload: true, documents: [] })));
+  const changed = vi.fn();
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" onChanged={changed} onReviewOnList={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
+  await screen.findByRole("region", { name: "Packing slip camera" });
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(changed).toHaveBeenCalledTimes(1);
 });
 it("retains a failed scan for retry and offers read-only slips from a normal material list", async () => {
   let fail = true;
@@ -153,7 +164,7 @@ it("shows the slip list with Upload instead of the scanner on a computer without
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
 });
 
-it("opens a saved slip's comparison instead of restarting the camera", async () => {
+it("opens a saved slip's summary instead of restarting the camera, and sends it to the list", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({
     canUpload: true,
     documents: [{
@@ -164,15 +175,17 @@ it("opens a saved slip's comparison instead of restarting the camera", async () 
         startedAt: new Date().toISOString(), items: [], lines: [], warnings: [] },
     }],
   })));
-  render(<PackingSlips jobId="job" materialListId="list" orderId="order" />);
+  const onList = vi.fn();
+  render(<PackingSlips jobId="job" materialListId="list" orderId="order" onReviewOnList={onList} />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
-  await screen.findByRole("region", { name: "Review delivery" });
+  await screen.findByText("Read and filled in on the list");
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Take photo" }));
   await screen.findByRole("region", { name: "Packing slip camera" });
   fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
-  await screen.findByRole("region", { name: "Review delivery" });
-  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: /Check parts on the list/ }));
+  expect(onList).toHaveBeenCalledWith("doc");
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 });
 
 it("sends per-slip clear and rerun actions for the current detection without confirming a receipt", async () => {

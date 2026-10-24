@@ -42,6 +42,8 @@ export function PackingSlips({
   buttonVariant = "outline",
   openOnMount = false,
   onOpened,
+  onChanged,
+  onReviewOnList,
 }: {
   jobId: string;
   materialListId: string;
@@ -52,6 +54,10 @@ export function PackingSlips({
   /** Open the list at once, e.g. to watch a slip just matched to this order. */
   openOnMount?: boolean;
   onOpened?: () => void;
+  /** A slip was added, read again or cleared. */
+  onChanged?: () => void;
+  /** Read slips are checked on the material list's parts, not here. */
+  onReviewOnList?: (documentId: string) => void;
 }) {
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false),
@@ -154,15 +160,18 @@ export function PackingSlips({
           result.error ?? "Could not save packing slip. Please retry.",
         );
       setRetryFile(null);
+      onChanged?.();
       setNotice(
         result.analysisError ??
-          "Packing slip saved. It's being read now; the comparison with the order appears below.",
+          "Packing slip saved. It's being read now.",
       );
       await load().catch(() =>
         setError("Packing slip saved. Reopen this window to refresh the list."),
       );
       // Back to the list so the analysis can be watched as it runs.
       setScanning(false);
+      // Or straight to the parts, which fill in once the slip is read.
+      if (onReviewOnList) setOpen(false);
       return true;
     } catch (e) {
       setRetryFile(file);
@@ -186,9 +195,7 @@ export function PackingSlips({
   }, [open, online, slips, load]);
   const analysisAction = async (
     slip: Slip,
-    action: "analyze" | "refresh" | "confirm" | "clear",
-    quantities?: Record<string, number>,
-    links?: Record<string, string | null>,
+    action: "analyze" | "clear",
   ) => {
     setBusy(true);
     setError(null);
@@ -201,8 +208,6 @@ export function PackingSlips({
           jobId,
           documentId: slip.id,
           runId: slip.packingSlipAnalysis?.runId,
-          quantities,
-          links,
         }),
       });
       const result = (await res.json()) as { error?: string };
@@ -226,12 +231,7 @@ export function PackingSlips({
             : "Reading the slip again now.",
         );
       if (tookBack) onVerified?.();
-      if (action === "confirm") {
-        setNotice(
-          "Received quantities updated. Differences are flagged on the order.",
-        );
-        onVerified?.();
-      }
+      onChanged?.();
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Could not update this receipt.",
@@ -280,7 +280,7 @@ export function PackingSlips({
               {scanning || openingScanner
                 ? "Keep the whole page in view. Captured pages are saved together as a PDF."
                 : orderId
-                  ? "Add each delivery’s slip. It’s read and checked against the order, then you confirm what arrived."
+                  ? "Add each delivery’s slip. It’s read and filled in on the parts, then you confirm what arrived."
                   : "Packing slips attached to orders from this material list."}
             </DialogDescription>
           </DialogHeader>
@@ -430,13 +430,18 @@ export function PackingSlips({
                       Boolean(slip.packingSlipAnalysis?.applied)) && (
                       <PackingSlipReview
                         key={`${slip.packingSlipAnalysis?.runId ?? slip.id}:${slip.packingSlipAnalysis?.status ?? "none"}`}
-                        analysis={slip.packingSlipAnalysis ? { ...slip.packingSlipAnalysis, items: slip.packingSlipAnalysis.items.map(item => ({ ...item, jobPriceStatus: orderItems ? orderItems.find(current => current.id === item.id)?.jobPriceStatus : item.jobPriceStatus })) } : undefined}
+                        analysis={slip.packingSlipAnalysis}
                         versionId={slip.currentVersionId}
-                        jobId={jobId}
                         busy={busy || !online}
                         canManage={canUpload}
-                        onAction={(action, quantities, links) =>
-                          analysisAction(slip, action, quantities, links)
+                        onAction={(action) => analysisAction(slip, action)}
+                        onShowList={
+                          onReviewOnList
+                            ? () => {
+                                onReviewOnList(slip.id);
+                                setOpen(false);
+                              }
+                            : undefined
                         }
                       />
                     )}
@@ -472,7 +477,7 @@ const SLIP_STATE = {
     "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
   ],
   ready: [
-    "To review",
+    "To check",
     "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   ],
   failed: [

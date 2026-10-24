@@ -3,7 +3,7 @@ import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 import { packContents } from "~/lib/pack-quantity";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent } from "~/components/ui/card";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
@@ -97,6 +97,8 @@ interface MaterialListItemProps {
     receivedQuantity: number;
     verificationStatus: VerifyStatus;
   }) => void;
+  /** Shown on the photo in verify mode, e.g. what a packing slip says. */
+  verifyBadge?: ReactNode;
 }
 
 function formatQuantityDisplay(value: string | number | null | undefined) {
@@ -195,6 +197,7 @@ function MaterialListItemComponent({
   verifyInitialReceivedQuantity,
   verifyInitialStatus,
   onVerifyStateChange,
+  verifyBadge,
 }: MaterialListItemProps) {
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
@@ -732,6 +735,9 @@ function MaterialListItemComponent({
               </div>
             )}
             <QuotedBadge status={item.jobPriceStatus} onPhoto />
+            {verifyMode && verifyBadge && (
+              <div className="absolute top-2 right-2 z-20">{verifyBadge}</div>
+            )}
             {verifyMode && isVerifyComplete && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/10">
                 <CheckCircle2Icon
