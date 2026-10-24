@@ -67,6 +67,7 @@ export function MaterialListSheet({
         )}
         <table
           aria-label={section.label ? `${section.label} parts` : "Material list"}
+          data-order-id={section.orderId}
           className={`parts-sheet block w-full ${section.width} ${section.label ? "border-t" : ""}`}
         >
           <thead className="sticky top-0 z-10 block">

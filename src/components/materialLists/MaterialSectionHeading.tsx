@@ -47,6 +47,8 @@ export type MaterialSection<T> = {
   detail?: string | null;
   href?: string;
   ordered: boolean;
+  /** The order these parts were sent on, when it is still open. */
+  orderId?: string;
   items: T[];
 };
 
@@ -81,6 +83,7 @@ export function materialSections<T extends SectionItem>(
           ? `/dashboard/material-lists/${materialListId}?orderId=${encodeURIComponent(order.id)}`
           : undefined,
         ordered: true,
+        orderId: order && order.status !== "cancelled" ? order.id : undefined,
         items: [],
       };
       orders.set(key, section);

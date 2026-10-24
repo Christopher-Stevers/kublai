@@ -98,6 +98,9 @@ it("puts ordered parts first under their own receiving columns", () => {
   );
   const [first, second] = screen.getAllByRole("table");
   expect(first).toHaveAccessibleName("PO-7 parts");
+  // The page brings up this order's receiving bar while the table shows.
+  expect(first).toHaveAttribute("data-order-id", "ord");
+  expect(second).not.toHaveAttribute("data-order-id");
   expect(screen.getByRole("link", { name: "PO-7" })).toHaveAttribute(
     "href",
     "/dashboard/material-lists/m?orderId=ord",
@@ -184,12 +187,13 @@ it("gives each order its own group, then the parts not ordered", () => {
     materialSections(items, "m").map((s) => [
       s.label,
       s.detail ?? null,
+      s.orderId ?? null,
       s.items.map((i) => i.id),
     ]),
   ).toEqual([
-    ["PO-1", "Acme", ["b", "d"]],
-    ["Order", "Cancelled", ["c"]],
-    ["Not ordered", null, ["a", "e"]],
+    ["PO-1", "Acme", "o1", ["b", "d"]],
+    ["Order", "Cancelled", null, ["c"]],
+    ["Not ordered", null, null, ["a", "e"]],
   ]);
   expect(materialSections(items, "m")[1]!.href).toBe(
     "/dashboard/material-lists/m?orderId=o2",

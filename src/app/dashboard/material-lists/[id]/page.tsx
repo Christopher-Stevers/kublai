@@ -11,14 +11,15 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
-import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS } from "~/components/materialLists/MaterialListActions";
+import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS, OrderReceiveActions } from "~/components/materialLists/MaterialListActions";
+import { useOrderInView } from "~/components/materialLists/use-order-in-view";
 import { MaterialSectionHeading, materialSections } from "~/components/materialLists/MaterialSectionHeading";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
 
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -71,6 +72,9 @@ export default function MaterialListDetailPage({
     useState(false);
   const [showVerifyNotesDialog, setShowVerifyNotesDialog] = useState(false);
   const [verifyOrderNotes, setVerifyOrderNotes] = useState("");
+  // Notes opened from the material list are for the order on screen.
+  const [listNotesOrderId, setListNotesOrderId] = useState<string | null>(null);
+  const notesOrderId = verifyOrderId ?? listNotesOrderId;
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const isBrowserOnline = useOnlineStatus();
@@ -81,6 +85,11 @@ export default function MaterialListDetailPage({
     api.materialList.getOrderById.useQuery(
       { orderId: verifyOrderId ?? "" },
       { enabled: isBrowserOnline && !!verifyOrderId },
+    );
+  const { data: notesOrder, isLoading: isLoadingNotesOrder } =
+    api.materialList.getOrderById.useQuery(
+      { orderId: notesOrderId ?? "" },
+      { enabled: isBrowserOnline && !!notesOrderId },
     );
   useHeaderBackOverride(mlHeader?.jobId ? () => {
     router.replace(`/dashboard/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
@@ -103,13 +112,9 @@ export default function MaterialListDetailPage({
   });
   const utils = api.useUtils();
   const updateOrderNotes = api.materialList.updateOrderNotes.useMutation({
-    onSuccess: (updatedOrder) => {
+    onSuccess: (updatedOrder, { orderId }) => {
       setVerifyOrderNotes(updatedOrder.notes ?? "");
-      if (verifyOrderId) {
-        void utils.materialList.getOrderById.invalidate({
-          orderId: verifyOrderId,
-        });
-      }
+      void utils.materialList.getOrderById.invalidate({ orderId });
       setShowVerifyNotesDialog(false);
     },
   });
@@ -169,15 +174,28 @@ export default function MaterialListDetailPage({
   const hasReceivableOrder = items.some((item) => receivableOrder(item));
 
   useEffect(() => {
-    if (!verifyOrderId) {
+    if (!notesOrderId) {
       setVerifyOrderNotes("");
       return;
     }
 
-    if (verifyOrder) {
-      setVerifyOrderNotes(verifyOrder.notes ?? "");
+    if (notesOrder) {
+      setVerifyOrderNotes(notesOrder.notes ?? "");
     }
-  }, [verifyOrderId, verifyOrder]);
+  }, [notesOrderId, notesOrder]);
+
+  // Each order's parts sit under their own heading; while one is on screen
+  // its receiving bar joins the list's own actions.
+  const sections = verifyOrderId
+    ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, items: visibleItems }]
+    : materialSections(visibleItems, id);
+  const listRef = useRef<HTMLDivElement>(null);
+  const orderInView = useOrderInView(
+    listRef,
+    [isLoading, !!mlHeader, viewMode, ...sections.map((section) => section.key)].join("|"),
+    !verifyOrderId && canReceive && !!mlHeader?.jobId,
+  );
+  const orderInViewSection = sections.find((section) => section.orderId && section.orderId === orderInView);
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });
@@ -312,7 +330,7 @@ export default function MaterialListDetailPage({
       </div>
 
       {/* Main Area - Parts List */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           {verifyOrderId && (
             <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-950">
@@ -358,8 +376,8 @@ export default function MaterialListDetailPage({
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
                 <div className="space-y-4">
-                  {(verifyOrderId ? [{ key: "all", label: null, ordered: false, items: visibleItems }] : materialSections(visibleItems, id)).map((section) => (
-                  <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} className="space-y-3">
+                  {sections.map((section) => (
+                  <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
                     {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
@@ -510,7 +528,29 @@ export default function MaterialListDetailPage({
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
           receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
-
+          orderActions={orderInView && orderInViewSection && mlHeader.jobId ? (
+            <OrderReceiveActions
+              label={<>
+                <span className="font-semibold">Receiving {orderInViewSection.label}</span>
+                {orderInViewSection.detail && <span className="text-muted-foreground">{orderInViewSection.detail}</span>}
+              </>}
+              onNotes={() => {
+                setListNotesOrderId(orderInView);
+                setShowVerifyNotesDialog(true);
+              }}
+              packingSlips={
+                <PackingSlips key={orderInView} jobId={mlHeader.jobId} materialListId={id} orderId={orderInView}
+                  buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
+                  onVerified={() => { void utils.materialList.invalidate(); }}
+                  onChanged={() => { void slipDrafts.reload(); }}
+                  onReviewOnList={slipDrafts.choose} />
+              }
+              onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderInView })}
+              onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderInView, allReceived: false })}
+              receivingAll={markAllReceived.isPending}
+              receiveDisabled={updateOrderItemVerification.isPending}
+            />
+          ) : undefined}
           isToolRequest={isToolRequest} materialListId={id} />
       </div>
 
@@ -535,6 +575,7 @@ export default function MaterialListDetailPage({
           <Textarea
             id="verify-order-notes"
             value={verifyOrderNotes}
+            disabled={isLoadingNotesOrder && isBrowserOnline}
             onChange={(event) => setVerifyOrderNotes(event.target.value)}
             placeholder="Type order verification notes..."
             className="min-h-[10rem]"
@@ -543,7 +584,7 @@ export default function MaterialListDetailPage({
             <Button
               variant="outline"
               onClick={() => {
-                setVerifyOrderNotes(verifyOrder?.notes ?? "");
+                setVerifyOrderNotes(notesOrder?.notes ?? "");
                 setShowVerifyNotesDialog(false);
               }}
             >
@@ -551,14 +592,14 @@ export default function MaterialListDetailPage({
             </Button>
             <Button
               onClick={() => {
-                if (!verifyOrderId) return;
+                if (!notesOrderId) return;
                 updateOrderNotes.mutate({
-                  orderId: verifyOrderId,
+                  orderId: notesOrderId,
                   notes: verifyOrderNotes,
                 });
               }}
               disabled={
-                !isBrowserOnline || !verifyOrderId || updateOrderNotes.isPending
+                !isBrowserOnline || !notesOrderId || updateOrderNotes.isPending
               }
               title={
                 !isBrowserOnline
