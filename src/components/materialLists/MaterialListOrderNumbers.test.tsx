@@ -37,7 +37,7 @@ it("keeps status colors and accessible labels with one shared order icon", () =>
       "ORDER-1: sent, awaiting full verification",
       {
         ...materialProgressStyle(100, "blue"),
-        boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+        boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
       },
     ],
     ["ORDER-2: fully verified", materialProgressStyle(100)],
@@ -100,9 +100,9 @@ it("fills a sent order's blue pill with green as its items are verified", () => 
     ),
   ).toHaveStyle({
     ...materialProgressStyle(40, "blue"),
-    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+    boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   });
   expect(screen.getByLabelText("177-Next: fully verified")).not.toHaveStyle({
-    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+    boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   });
 });

@@ -8,7 +8,7 @@ import type { MaterialListOrderStatus } from "~/lib/material-list-order-status";
 function sentStyle(deliveredPercent: number) {
   return {
     ...materialProgressStyle(deliveredPercent, "blue"),
-    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+    boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   };
 }
 
