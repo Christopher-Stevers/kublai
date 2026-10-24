@@ -14,6 +14,8 @@ const state = vi.hoisted(() => ({
   kind: "tools",
   itemMode: vi.fn(),
   quotedStatus: vi.fn(),
+  materialListId: "list" as string | null,
+  can: { "orders.send": false, "quotes.create": false } as Record<string, boolean>,
   priceBook: undefined as undefined | { policy: { active: boolean }; entries: Array<{id: string; partDefinitionId: string; supplierId: string; supplierPartId: string; supplierSku: null; unitCost: string; priceStatus: string}> },
 }));
 vi.mock("next/navigation", () => ({
@@ -21,7 +23,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("~/hooks/use-job-workspace-navigation", () => ({
   useJobWorkspaceNavigation: () => ({
-    location: { jobId: "job", view: "material-lists", materialListId: "list" },
+    location: { jobId: "job", view: "material-lists", materialListId: state.materialListId },
     navigate: vi.fn(),
     back: vi.fn(),
   }),
@@ -76,6 +78,9 @@ vi.mock("~/components/materialLists/MaterialListItem", () => ({
 vi.mock("~/components/materialLists/MaterialListSheet", () => ({
   MaterialListSheet: () => null,
 }));
+vi.mock("~/components/materialLists/ScanSlipButton", () => ({
+  ScanSlipButton: () => <button>Scan slip</button>,
+}));
 vi.mock("~/components/materialLists/VerifyOrderButton", () => ({
   MaterialListOrderPickerDialog: () => null,
 }));
@@ -126,7 +131,7 @@ vi.mock("~/trpc/react", () => ({
           data: {
             organizationId: "org",
             permissions: {
-              can: { "orders.send": false, "quotes.create": false },
+              can: state.can,
             },
           },
         }),
@@ -203,4 +208,18 @@ it("passes the current job's quoted status into dashboard material cards", () =>
   state.priceBook = { policy: { active: true }, entries: [{ id: "entry", partDefinitionId: "part", supplierId: "supplier", supplierPartId: "listing", supplierSku: null, unitCost: "10", priceStatus: "confirmed" }] };
   render(<DashboardClient initialJobs={[]} />);
   expect(state.quotedStatus).toHaveBeenLastCalledWith("confirmed");
+});
+
+it("offers Scan slip beside New List on the job's material lists for members who receive orders", () => {
+  state.materialListId = null;
+  state.can = { "orders.receive": true };
+  render(<DashboardClient initialJobs={[]} />);
+  expect(screen.getAllByRole("button", { name: "Scan slip" }).length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: "New List" })).toBeTruthy();
+  cleanup();
+  state.can = { "orders.receive": false };
+  render(<DashboardClient initialJobs={[]} />);
+  expect(screen.queryByRole("button", { name: "Scan slip" })).toBeNull();
+  state.materialListId = "list";
+  state.can = { "orders.send": false, "quotes.create": false };
 });

@@ -11,6 +11,7 @@ import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
+import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 import { useRouter } from "next/navigation";
@@ -160,6 +161,7 @@ export function DashboardClient({
   const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
   const canEditLists = !sandbox && (can?.["lists.edit"] ?? false);
   const canDeleteLists = !sandbox && (can?.["lists.delete"] ?? true);
+  const canReceive = !sandbox && isBrowserOnline && (can?.["orders.receive"] ?? false);
 
   // Redirect to onboarding if user has no organizationId
   useEffect(() => {
@@ -567,6 +569,7 @@ export function DashboardClient({
                 title="Material Lists"
                 actions={
                   <div className="hidden gap-2 sm:flex">
+                    {canReceive && <ScanSlipButton jobId={offlineJob.id} className="h-11" />}
                     <Button
                       data-tutorial="create-list"
                       onClick={() => handleCreateMaterialList(offlineJob.id)}
@@ -619,6 +622,8 @@ export function DashboardClient({
               )}
 
               <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+                <div className={canReceive ? "grid grid-cols-2 gap-2" : undefined}>
+                {canReceive && <ScanSlipButton jobId={offlineJob.id} className="h-12 w-full" />}
                 <Button
                   data-tutorial="create-list"
                   onClick={() => handleCreateMaterialList(offlineJob.id)}
@@ -626,8 +631,9 @@ export function DashboardClient({
                   className="h-12 w-full"
                 >
                   <PlusIcon className="mr-2 h-5 w-5" />
-                  New Material List
+                  {canReceive ? "New List" : "New Material List"}
                 </Button>
+                </div>
                 </div>
                 </>
               )}
