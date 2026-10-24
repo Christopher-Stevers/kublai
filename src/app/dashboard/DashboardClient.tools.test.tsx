@@ -15,11 +15,14 @@ const state = vi.hoisted(() => ({
   itemMode: vi.fn(),
   quotedStatus: vi.fn(),
   materialListId: "list" as string | null,
+  items: null as null | Array<Record<string, unknown>>,
   can: { "orders.send": false, "quotes.create": false } as Record<string, boolean>,
   priceBook: undefined as undefined | { policy: { active: boolean }; entries: Array<{id: string; partDefinitionId: string; supplierId: string; supplierPartId: string; supplierSku: null; unitCost: string; priceStatus: string}> },
 }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ prefetch: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ prefetch: vi.fn(), replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => "/dashboard",
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("~/hooks/use-job-workspace-navigation", () => ({
   useJobWorkspaceNavigation: () => ({
@@ -33,6 +36,7 @@ vi.mock("~/hooks/use-workspace-mutations", () => ({
 }));
 vi.mock("~/hooks/use-replicache-jobs", () => ({
   useReplicacheJobsList: () => [],
+  useReplicacheJob: () => ({ id: "job", name: "Job" }),
   useReplicacheJobDetail: () => ({
     job: { id: "job", name: "Job" },
     materialLists: [],
@@ -41,9 +45,13 @@ vi.mock("~/hooks/use-replicache-jobs", () => ({
 vi.mock("~/hooks/use-replicache-material-list", () => ({
   useReplicacheMaterialList: () => ({
     materialList: { id: "list", name: "Tool request", kind: state.kind },
-    items: [{ id: "item", quantity: "2", partDefinition: { id: "part" }, supplierId: "supplier" }],
+    items: state.items ?? [{ id: "item", quantity: "2", partDefinition: { id: "part" }, supplierId: "supplier" }],
     materialTotal: 0,
   }),
+  useReplicacheSyncing: () => false,
+}));
+vi.mock("~/components/materialLists/use-slip-draft", () => ({
+  useSlipDrafts: () => ({ drafts: [], find: () => null, reload: vi.fn(), choose: vi.fn() }),
 }));
 vi.mock("~/hooks/use-replicache-suppliers", () => ({
   useReplicacheSuppliers: () => [],
@@ -74,6 +82,9 @@ vi.mock("~/components/materialLists/MaterialListItem", () => ({
     state.quotedStatus(props.item.jobPriceStatus);
     return <div>Drill</div>;
   },
+}));
+vi.mock("~/components/materialLists/JobInfoModal", () => ({
+  JobInfoModal: () => null,
 }));
 vi.mock("~/components/materialLists/MaterialListSheet", () => ({
   MaterialListSheet: () => null,
@@ -137,6 +148,10 @@ vi.mock("~/trpc/react", () => ({
     chat: { getOverview: { useQuery: () => ({}) } },
     materialList: {
       duplicate: { useMutation: () => ({ isPending: false }) },
+      getOrderById: { useQuery: () => ({}) },
+      updateOrderNotes: { useMutation: () => ({}) },
+      updateOrderItemVerification: { useMutation: () => ({}) },
+      markAllOrderItemsReceived: { useMutation: () => ({}) },
       sendGeneratedOrder: { useMutation: () => ({ mutateAsync: state.send }) },
     },
     jobPricing: { get: { useQuery: () => ({data: state.priceBook}) }, requestApproval: { useMutation: () => ({}) } },
@@ -146,6 +161,7 @@ vi.mock("~/trpc/react", () => ({
 import { DashboardClient } from "./DashboardClient";
 afterEach(() => {
   cleanup();
+  state.items = null;
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -219,4 +235,21 @@ it("offers Scan slip beside New List on the job's material lists for members who
   expect(screen.queryByRole("button", { name: "Scan slip" })).toBeNull();
   state.materialListId = "list";
   state.can = { "orders.send": false, "quotes.create": false };
+});
+
+it("opens lists in the job workspace on the same screen as their own page", () => {
+  state.kind = "materials";
+  state.materialListId = "list";
+  state.items = [
+    { id: "a", quantity: "1", partDefinition: { id: "part" } },
+    {
+      id: "b",
+      quantity: "1",
+      partDefinition: { id: "part" },
+      sentOrderItemId: "oi",
+      sentOrder: { id: "order", number: "PO-9", status: "sent", quantity: "1", receivedQuantity: "0", verificationStatus: "pending" },
+    },
+  ];
+  render(<DashboardClient initialJobs={[]} />);
+  expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Not ordered", "PO-9"]);
 });

@@ -28,6 +28,7 @@ import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
 import { MaterialListSheet } from "~/components/materialLists/MaterialListSheet";
 import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
+import { MaterialListScreen } from "~/components/materialLists/MaterialListScreen";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
 import { useJobRoomCount } from "~/hooks/use-job-room-count";
@@ -243,6 +244,12 @@ export function DashboardClient({
 
   if (offlineJobId && !offlineMaterialListId && offlineJobView === "chat") {
     return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
+  }
+
+  // The same list screen as its own page; the tutorial keeps the simple one
+  // below, which its steps point at.
+  if (offlineMaterialListId && !sandbox) {
+    return <MaterialListScreen key={offlineMaterialListId} id={offlineMaterialListId} embedded />;
   }
 
   if (offlineJobId) {
