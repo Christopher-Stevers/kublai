@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MaterialListSheet } from "./MaterialListSheet";
+import { materialSections } from "./MaterialSectionHeading";
 import type { MaterialListTableRowProps } from "./MaterialListTableRow";
 
 vi.mock("next/link", () => ({
@@ -94,12 +95,16 @@ it("puts ordered parts first under their own receiving columns", () => {
       }
     />,
   );
+  const headings = screen.getAllByRole("heading");
+  expect(headings.map((heading) => heading.parentElement?.textContent)).toEqual(
+    ["Ordered1 part", "Not ordered1 part"],
+  );
   const [first, second] = screen.getAllByRole("table");
   expect(first).toHaveAccessibleName("Ordered parts");
   expect(second).toHaveAccessibleName("Not ordered parts");
   expect(headers(first!)).toEqual([
     "Photo",
-    "Ordered: part description",
+    "Part description",
     "Ordered",
     "Received",
     "Back ordered",
@@ -111,7 +116,7 @@ it("puts ordered parts first under their own receiving columns", () => {
     "Actions",
   ]);
   expect(headers(second!).slice(1, 5)).toEqual([
-    "Not ordered: part description",
+    "Part description",
     "Room",
     "Qty",
     "Supplier",
@@ -133,7 +138,8 @@ it("shows ordered counts read only without receive controls", () => {
     <MaterialListSheet items={[ordered]} materialListId="m" suppliers={[]} />,
   );
   const table = screen.getByRole("table");
-  expect(table).toHaveAccessibleName("Material list");
+  expect(table).toHaveAccessibleName("Ordered parts");
+  expect(screen.getByRole("heading", { name: "Ordered" })).toBeInTheDocument();
   expect(within(table).getAllByRole("cell")[3]).toHaveTextContent("3");
   expect(
     within(table).queryByLabelText("Received: Valve"),
@@ -144,7 +150,23 @@ it("shows ordered counts read only without receive controls", () => {
 it("keeps one plain table when nothing is ordered", () => {
   render(<MaterialListSheet items={[]} materialListId="m" suppliers={[]} />);
   expect(screen.getByRole("table")).toHaveAccessibleName("Material list");
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   expect(screen.getAllByRole("columnheader")[1]).toHaveTextContent(
     "Part description",
   );
+});
+
+it("orders sections with ordered parts first", () => {
+  const items = [{ id: "a" }, { id: "b", sentOrderItemId: "x" }, { id: "c" }];
+  expect(
+    materialSections(items).map((s) => [s.label, s.items.map((i) => i.id)]),
+  ).toEqual([
+    ["Ordered", ["b"]],
+    ["Not ordered", ["a", "c"]],
+  ]);
+  const plain: { id: string; sentOrderItemId?: string }[] = [{ id: "a" }];
+  expect(materialSections(plain)).toEqual([
+    { key: "all", label: null, items: plain },
+  ]);
+  expect(materialSections([{ id: "b", sentOrderItemId: "x" }])).toHaveLength(1);
 });

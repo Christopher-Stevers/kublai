@@ -1,4 +1,6 @@
 "use client";
+import { Fragment } from "react";
+import { MaterialSectionHeading, materialSections } from "./MaterialSectionHeading";
 import { useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 import {
   MaterialListTableRow,
@@ -35,42 +37,43 @@ export function MaterialListSheet({
   const supplierLabel = isToolRequest ? "From" : "Supplier";
   const money = showMoney ? [isToolRequest ? " " : "Each", isToolRequest ? "  " : "Total"] : [];
   // Ordered parts come first, under their own receiving columns.
-  const ordered = items.filter((item) => item.sentOrderItemId);
-  const notOrdered = items.filter((item) => !item.sentOrderItemId);
-  const sections = [
-    {
-      key: "ordered",
-      label: "Ordered",
-      items: ordered,
-      columns: showMoney ? MATERIAL_LIST_ORDERED_COLUMNS : MATERIAL_LIST_ORDERED_COLUMNS_NO_MONEY,
-      width: showMoney ? "min-w-[82rem]" : "min-w-[69rem]",
-      headers: ["Photo", "Part description", "Ordered", "Received", "Back ordered", "Room", supplierLabel, ...money, "Sync", "Actions"],
-    },
-    {
-      key: "not-ordered",
-      label: "Not ordered",
-      items: notOrdered,
-      columns: showMoney ? MATERIAL_LIST_SHEET_COLUMNS : MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY,
-      width: showMoney ? "min-w-[70rem]" : "min-w-[58rem]",
-      headers: ["Photo", "Part description", "Room", "Qty", supplierLabel, ...money, "Sync", "Actions"],
-    },
-  ].filter((section) => section.items.length || (section.key === "not-ordered" && !ordered.length));
-  const split = sections.length > 1;
+  const sections = materialSections(items).map((section) =>
+    section.key === "ordered"
+      ? {
+          ...section,
+          columns: showMoney ? MATERIAL_LIST_ORDERED_COLUMNS : MATERIAL_LIST_ORDERED_COLUMNS_NO_MONEY,
+          width: showMoney ? "min-w-[82rem]" : "min-w-[69rem]",
+          headers: ["Photo", "Part description", "Ordered", "Received", "Back ordered", "Room", supplierLabel, ...money, "Sync", "Actions"],
+        }
+      : {
+          ...section,
+          columns: showMoney ? MATERIAL_LIST_SHEET_COLUMNS : MATERIAL_LIST_SHEET_COLUMNS_NO_MONEY,
+          width: showMoney ? "min-w-[70rem]" : "min-w-[58rem]",
+          headers: ["Photo", "Part description", "Room", "Qty", supplierLabel, ...money, "Sync", "Actions"],
+        },
+  );
   return (
     <div data-tutorial={items.length ? "material-items" : undefined} className={`parts-sheet-scroll ${className}`}>
-      {sections.map((section) => (
+      {sections.map((section, index) => (
+        <Fragment key={section.key}>
+        {section.label && (
+          <MaterialSectionHeading
+            label={section.label}
+            count={section.items.length}
+            className={`sticky left-0 px-3 pb-2 ${index ? "pt-5" : "pt-3"}`}
+          />
+        )}
         <table
-          key={section.key}
-          aria-label={split ? `${section.label} parts` : "Material list"}
-          className={`parts-sheet block w-full ${section.width} ${split && section.key === "not-ordered" ? "mt-4 border-t" : ""}`}
+          aria-label={section.label ? `${section.label} parts` : "Material list"}
+          className={`parts-sheet block w-full ${section.width} ${section.label ? "border-t" : ""}`}
         >
           <thead className="sticky top-0 z-10 block">
             <tr
               className={`grid ${section.columns} parts-sheet-header`}
             >
-              {section.headers.map((label, index) => (
+              {section.headers.map((label) => (
                 <th key={label} className="text-left font-semibold">
-                  {index === 1 && split ? `${section.label}: ${label.toLowerCase()}` : label}
+                  {label}
                 </th>
               ))}
             </tr>
@@ -89,6 +92,7 @@ export function MaterialListSheet({
             ))}
           </tbody>
         </table>
+        </Fragment>
       ))}
     </div>
   );

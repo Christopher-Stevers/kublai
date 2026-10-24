@@ -14,6 +14,7 @@ import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
 import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS } from "~/components/materialLists/MaterialListActions";
+import { MaterialSectionHeading, materialSections } from "~/components/materialLists/MaterialSectionHeading";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
 
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -358,91 +359,98 @@ export default function MaterialListDetailPage({
             <>
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
-                <div className="grid items-stretch grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-                  {visibleItems.map((item) => {
-                    const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
-                      matchesMaterialOrderLine(item, orderItem, verifySupplierId));
-                    const listOrder = receivableOrder(item);
-                    const orderLine = verifyOrderItem
-                      ? { id: verifyOrderItem.id, quantity: verifyOrderItem.quantity, received: verifyOrderItem.receivedQuantity, status: verifyOrderItem.verificationStatus }
-                      : listOrder
-                        ? { id: item.sentOrderItemId!, quantity: listOrder.quantity, received: listOrder.receivedQuantity, status: listOrder.verificationStatus }
-                        : null;
-                    // While a read slip is being checked, changes stay on the slip until it is confirmed.
-                    const slipFound = slipDrafts.find(orderLine?.id);
-                    const slipEntry = slipFound?.entry ?? null;
-                    const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
-
-                    return (
-                      <MaterialListItem
-                        key={item.id}
-                        item={{
-                          jobPriceStatus:item.jobPriceStatus,
-                          id: item.id,
-                          sentOrderItemId: item.sentOrderItemId,
-                          sentOrder: item.sentOrder,
-                          quantity: item.quantity,
-                          unitCost: item.unitCost,
-                          extendedPrice: item.extendedPrice,
-                          descriptionSnapshot: item.descriptionSnapshot,
-                          roomId: item.roomId,
-                          roomName: item.roomName,
-                          createdAt: item.createdAt,
-                          updatedAt: item.updatedAt,
-                          pendingSync: item.pendingSync,
-                          partDefinition: item.partDefinition ?? null,
-                          selectedSupplierId: item.supplierId,
-                          supplierPart: item.supplierPart ?? null,
-                          addedBy: item.addedBy ?? null,
-                        }}
-                        materialListId={id}
-                        suppliers={suppliers}
-                        verifyMode={!!verifyOrderId || !!listOrder}
-                        verifyReadOnly={!!listOrder && (!canReceive || !isBrowserOnline)}
-                        isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
-                        verifyOrderedQuantity={orderLine?.quantity}
-                        verifyInitialReceivedQuantity={
-                          slipEntry ? slipEntry.total : orderLine?.received
-                        }
-                        verifyInitialStatus={
-                          slipEntry
-                            ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
-                            : orderLine?.status
-                        }
-                        verifyBadge={slipFound && slipEntry ? (
-                          <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
-                        ) : undefined}
-                        verifyCaption={listOrder ? (
-                          <Link
-                            href={`/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`}
-                            className="text-muted-foreground mt-1 flex items-center justify-center gap-1 text-xs underline underline-offset-2"
-                            onClick={(event) => event.stopPropagation()}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onTouchStart={(event) => event.stopPropagation()}
-                          >
-                            <LockKeyholeIcon className="h-3 w-3 shrink-0" />
-                            {listOrder.number ?? "View order"}
-                          </Link>
-                        ) : undefined}
-                        onVerifyStateChange={
-                          orderLine
-                            ? (state) => {
-                                if (slipFound && slipEntry) {
-                                  // The card reports from inside its own state update.
-                                  queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
-                                  return;
-                                }
-                                updateOrderItemVerification.mutate({
-                                  orderItemId: orderLine.id,
-                                  receivedQuantity: state.receivedQuantity,
-                                  verificationStatus: state.verificationStatus,
-                                });
-                              }
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
+                <div className="space-y-4">
+                  {(verifyOrderId ? [{ key: "all", label: null, items: visibleItems }] : materialSections(visibleItems)).map((section) => (
+                  <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} className="space-y-3">
+                    {section.label && <MaterialSectionHeading label={section.label} count={section.items.length} />}
+                    <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
+                      {section.items.map((item) => {
+                        const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
+                          matchesMaterialOrderLine(item, orderItem, verifySupplierId));
+                        const listOrder = receivableOrder(item);
+                        const orderLine = verifyOrderItem
+                          ? { id: verifyOrderItem.id, quantity: verifyOrderItem.quantity, received: verifyOrderItem.receivedQuantity, status: verifyOrderItem.verificationStatus }
+                          : listOrder
+                            ? { id: item.sentOrderItemId!, quantity: listOrder.quantity, received: listOrder.receivedQuantity, status: listOrder.verificationStatus }
+                            : null;
+                        // While a read slip is being checked, changes stay on the slip until it is confirmed.
+                        const slipFound = slipDrafts.find(orderLine?.id);
+                        const slipEntry = slipFound?.entry ?? null;
+                        const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
+    
+                        return (
+                          <MaterialListItem
+                            key={item.id}
+                            item={{
+                              jobPriceStatus:item.jobPriceStatus,
+                              id: item.id,
+                              sentOrderItemId: item.sentOrderItemId,
+                              sentOrder: item.sentOrder,
+                              quantity: item.quantity,
+                              unitCost: item.unitCost,
+                              extendedPrice: item.extendedPrice,
+                              descriptionSnapshot: item.descriptionSnapshot,
+                              roomId: item.roomId,
+                              roomName: item.roomName,
+                              createdAt: item.createdAt,
+                              updatedAt: item.updatedAt,
+                              pendingSync: item.pendingSync,
+                              partDefinition: item.partDefinition ?? null,
+                              selectedSupplierId: item.supplierId,
+                              supplierPart: item.supplierPart ?? null,
+                              addedBy: item.addedBy ?? null,
+                            }}
+                            materialListId={id}
+                            suppliers={suppliers}
+                            verifyMode={!!verifyOrderId || !!listOrder}
+                            verifyReadOnly={!!listOrder && (!canReceive || !isBrowserOnline)}
+                            isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
+                            verifyOrderedQuantity={orderLine?.quantity}
+                            verifyInitialReceivedQuantity={
+                              slipEntry ? slipEntry.total : orderLine?.received
+                            }
+                            verifyInitialStatus={
+                              slipEntry
+                                ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
+                                : orderLine?.status
+                            }
+                            verifyBadge={slipFound && slipEntry ? (
+                              <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
+                            ) : undefined}
+                            verifyCaption={listOrder ? (
+                              <Link
+                                href={`/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`}
+                                className="text-muted-foreground mt-1 flex items-center justify-center gap-1 text-xs underline underline-offset-2"
+                                onClick={(event) => event.stopPropagation()}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onTouchStart={(event) => event.stopPropagation()}
+                              >
+                                <LockKeyholeIcon className="h-3 w-3 shrink-0" />
+                                {listOrder.number ?? "View order"}
+                              </Link>
+                            ) : undefined}
+                            onVerifyStateChange={
+                              orderLine
+                                ? (state) => {
+                                    if (slipFound && slipEntry) {
+                                      // The card reports from inside its own state update.
+                                      queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
+                                      return;
+                                    }
+                                    updateOrderItemVerification.mutate({
+                                      orderItemId: orderLine.id,
+                                      receivedQuantity: state.receivedQuantity,
+                                      verificationStatus: state.verificationStatus,
+                                    });
+                                  }
+                                : undefined
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                  ))}
                 </div>
               )}
               {/* Table View */}
