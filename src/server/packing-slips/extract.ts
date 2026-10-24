@@ -24,11 +24,37 @@ const result = z.object({
     .max(500),
   warnings: z.array(z.string()).max(30),
 });
+type Extracted = Awaited<ReturnType<typeof readSlip>>;
+/** Recent readings by file, so matching a slip to its order and then reading
+ * it in full runs the OCR once. */
+const recent = new Map<string, { at: number; value: Extracted }>();
+const KEEP_MS = 15 * 60_000;
 export async function extractSlip(
   organizationId: string,
   sha256: string,
   mime: string,
-) {
+): Promise<Extracted> {
+  const key = `${organizationId}:${sha256}:${mime}`;
+  for (const [k, v] of recent) if (Date.now() - v.at > KEEP_MS) recent.delete(k);
+  let kept = recent.get(key)?.value;
+  if (!kept) {
+    kept = await readSlip(organizationId, sha256, mime);
+    // Small: a few phone photos, not long PDFs.
+    if (kept.pages.reduce((n, p) => n + p.length, 0) < 16 * 1024 * 1024) {
+      recent.set(key, { at: Date.now(), value: kept });
+      while (recent.size > 4) recent.delete(recent.keys().next().value!);
+    }
+  }
+  // Copies: the analysis must not change what a later caller reads.
+  return {
+    ...(structuredClone({ rows: kept.rows, warnings: kept.warnings }) as Omit<
+      Extracted,
+      "pages"
+    >),
+    pages: kept.pages.map((p) => Buffer.from(p)),
+  };
+}
+async function readSlip(organizationId: string, sha256: string, mime: string) {
   const directory = await mkdtemp(path.join(tmpdir(), "foreman-slip-"));
   try {
     const target = path.join(directory, "text.json");

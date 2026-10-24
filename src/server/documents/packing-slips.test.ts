@@ -1,9 +1,14 @@
 // @vitest-environment node
 import { expect, it } from "vitest";
-import { appendPackingSlip } from "./packing-slips";
+import {
+  appendPackingSlip,
+  appendUnmatchedSlip,
+  linkSavedSlip,
+} from "./packing-slips";
 import {
   emptyDocumentState,
   applyDocumentAction,
+  appendVersion,
   type DocumentActor,
 } from "./domain";
 const actor: DocumentActor = {
@@ -86,4 +91,73 @@ it("does not bypass a restricted Packing Slips folder", () => {
   );
   expect(() => appendPackingSlip(state, actor, input, link)).toThrow();
   expect(state.documents).toHaveLength(0);
+});
+it("keeps an unmatched scan in Packing Slips and links it in place to the chosen order", () => {
+  const state = emptyDocumentState();
+  const saved = appendUnmatchedSlip(state, actor, input);
+  const doc = state.documents[0]!;
+  expect(doc.name).toMatch(/^Packing slip - unmatched \d{4}-\d{2}-\d{2}\.jpg$/);
+  expect(doc.packingSlip).toBeUndefined();
+  expect(appendUnmatchedSlip(state, actor, input)).toEqual(saved);
+  // A receiver without document editing may still link the slip they saved.
+  const receiver = { ...actor, canWrite: false };
+  expect(linkSavedSlip(state, receiver, saved.documentId, link)).toEqual({
+    documentId: saved.documentId,
+  });
+  expect(state.documents).toHaveLength(1);
+  expect(doc.packingSlip).toEqual(link);
+  expect(doc.name).not.toContain("unmatched");
+  expect(doc.tags).toEqual(["Packing slip"]);
+  expect(linkSavedSlip(state, receiver, saved.documentId, link)).toEqual({
+    documentId: saved.documentId,
+  });
+  expect(() =>
+    linkSavedSlip(state, receiver, saved.documentId, {
+      ...link,
+      orderId: "other",
+      orderNumber: "PO-9",
+    }),
+  ).toThrow("already attached to PO-123");
+});
+it("links a read-only slip from another folder as a copy and reuses an earlier copy", () => {
+  const state = emptyDocumentState();
+  const other = applyDocumentAction(
+    state,
+    { ...actor, canManage: true },
+    { action: "createFolder", name: "Site photos" },
+  );
+  const original = appendVersion(
+    state,
+    { ...actor, canManage: true },
+    { ...input, name: "slip.jpg", folderId: other.id },
+  );
+  const viewer = { ...actor, canWrite: false };
+  const copy = linkSavedSlip(state, viewer, original.documentId, link);
+  expect(copy.documentId).not.toBe(original.documentId);
+  expect(state.documents).toHaveLength(2);
+  expect(
+    state.documents.find((d) => d.id === original.documentId)?.packingSlip,
+  ).toBeUndefined();
+  expect(
+    state.documents.find((d) => d.id === copy.documentId)?.packingSlip,
+  ).toEqual(link);
+  expect(linkSavedSlip(state, viewer, original.documentId, link)).toEqual({
+    documentId: copy.documentId,
+  });
+  expect(state.documents).toHaveLength(2);
+});
+it("does not link in place in a Packing Slips folder restricted to viewing", () => {
+  const state = emptyDocumentState();
+  const saved = appendUnmatchedSlip(state, actor, input);
+  applyDocumentAction(
+    state,
+    { ...actor, canManage: true },
+    {
+      action: "setFolderPermissions",
+      folderId: state.folders[0]!.id,
+      permissions: [{ userId: "receiver", role: "viewer" }],
+    },
+  );
+  expect(() => linkSavedSlip(state, actor, saved.documentId, link)).toThrow();
+  expect(state.documents[0]?.packingSlip).toBeUndefined();
 });

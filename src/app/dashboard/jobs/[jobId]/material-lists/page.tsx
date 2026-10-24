@@ -10,6 +10,7 @@ import { PageHeader } from "~/components/ui/page-header";
 import { use, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
+import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { api } from "~/trpc/react";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -64,6 +65,7 @@ export default function JobDetailPage({
   });
   const canEditLists = userData?.permissions.can["lists.edit"] ?? false;
   const canDeleteCoreRecords = userData?.permissions.can["lists.delete"] ?? true;
+  const canReceive = (userData?.permissions.can["orders.receive"] ?? false) && isBrowserOnline;
 
   const jobDetail = useReplicacheJobDetail(jobId);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
@@ -203,6 +205,7 @@ export default function JobDetailPage({
           title="Material Lists"
           actions={
             <div className="hidden flex-wrap items-center gap-2 sm:flex sm:justify-end">
+              {canReceive && <ScanSlipButton jobId={jobId} className="h-11" />}
               <Button
                 onClick={handleCreateNew}
                 size="lg"
@@ -251,10 +254,13 @@ export default function JobDetailPage({
         )}
 
         <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+          <div className={canReceive ? "grid grid-cols-2 gap-2" : undefined}>
+            {canReceive && <ScanSlipButton jobId={jobId} className="h-12 w-full" />}
             <Button onClick={handleCreateNew} size="lg" className="h-12 w-full">
               <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
+              {canReceive ? "New List" : "New Material List"}
             </Button>
+          </div>
         </div>
 
         <Dialog

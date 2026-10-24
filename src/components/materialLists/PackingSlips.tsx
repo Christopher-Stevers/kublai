@@ -35,6 +35,8 @@ export function PackingSlips({
   onVerified,
   buttonClassName,
   buttonVariant = "outline",
+  openOnMount = false,
+  onOpened,
 }: {
   jobId: string;
   materialListId: string;
@@ -42,6 +44,9 @@ export function PackingSlips({
   onVerified?: () => void;
   buttonClassName?: string;
   buttonVariant?: "default" | "outline";
+  /** Open the list at once, e.g. to watch a slip just matched to this order. */
+  openOnMount?: boolean;
+  onOpened?: () => void;
 }) {
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false),
@@ -57,6 +62,13 @@ export function PackingSlips({
   const [scanning, setScanning] = useState(false);
   const [openingScanner, setOpeningScanner] = useState(false);
   const scanOnLoad = useRef(false);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!openOnMount || opened.current) return;
+    opened.current = true;
+    setOpen(true);
+    onOpened?.();
+  }, [openOnMount, onOpened]);
   const files = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -400,7 +412,7 @@ export function PackingSlips({
 }
 
 /** False only when the browser can tell there is no camera at all. */
-async function hasCamera() {
+export async function hasCamera() {
   try {
     const devices = await navigator.mediaDevices?.enumerateDevices?.();
     return !devices || devices.some((device) => device.kind === "videoinput");

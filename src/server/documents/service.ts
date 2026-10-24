@@ -1,5 +1,9 @@
 import { userCan } from "~/server/auth/permissions";
-import { appendPackingSlip } from "./packing-slips";
+import {
+  appendPackingSlip,
+  appendUnmatchedSlip,
+  linkSavedSlip,
+} from "./packing-slips";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
@@ -23,24 +27,58 @@ import {
   type DocumentActor,
 } from "./domain";
 import { validateOfficeUrl } from "./office";
-import type { DocumentAction, DocumentOverview, DocumentState } from "./types";
+import type {
+  DocumentAction,
+  DocumentOverview,
+  DocumentState,
+  PackingSlipLink,
+} from "./types";
 import { folderRole } from "./domain";
 
 /** Receipt polling needs only matching slips and the folder ACL tree, not every
  * document version, activity entry, comment and organization member. */
-export async function packingSlipDocuments(access: DocumentAccess, materialListId: string, orderId?: string, reader: Pick<typeof db, "select"> = db) {
-  const [row] = await reader.select({
-    folders: sql<DocumentState["folders"]>`${jobDocumentWorkspaces.state}->'folders'`,
-    documents: sql<DocumentState["documents"]>`coalesce((select jsonb_agg(doc) from jsonb_array_elements(${jobDocumentWorkspaces.state}->'documents') doc
+export async function packingSlipDocuments(
+  access: DocumentAccess,
+  materialListId: string,
+  orderId?: string,
+  reader: Pick<typeof db, "select"> = db,
+) {
+  const [row] = await reader
+    .select({
+      folders: sql<
+        DocumentState["folders"]
+      >`${jobDocumentWorkspaces.state}->'folders'`,
+      documents: sql<
+        DocumentState["documents"]
+      >`coalesce((select jsonb_agg(doc) from jsonb_array_elements(${jobDocumentWorkspaces.state}->'documents') doc
       where doc->'packingSlip'->>'materialListId' = ${materialListId}
       and (${orderId ?? null}::text is null or doc->'packingSlip'->>'orderId' = ${orderId ?? null}::text)), '[]'::jsonb)`,
-  }).from(jobDocumentWorkspaces).where(and(eq(jobDocumentWorkspaces.jobId, access.job.id), eq(jobDocumentWorkspaces.organizationId, access.job.organizationId))).limit(1);
+    })
+    .from(jobDocumentWorkspaces)
+    .where(
+      and(
+        eq(jobDocumentWorkspaces.jobId, access.job.id),
+        eq(jobDocumentWorkspaces.organizationId, access.job.organizationId),
+      ),
+    )
+    .limit(1);
   const state = { ...emptyDocumentState(), ...row };
   const actor = documentActor(access, []);
-  return state.documents.filter(doc => doc.jobId === actor.jobId && !doc.deletedAt && folderRole(state, actor, doc.folderId)).map(d => ({
-    id: d.id, name: d.name, createdAt: d.createdAt, packingSlip: d.packingSlip,
-    packingSlipAnalysis: d.packingSlipAnalysis, currentVersionId: d.currentVersionId,
-  }));
+  return state.documents
+    .filter(
+      (doc) =>
+        doc.jobId === actor.jobId &&
+        !doc.deletedAt &&
+        folderRole(state, actor, doc.folderId),
+    )
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      createdAt: d.createdAt,
+      packingSlip: d.packingSlip,
+      packingSlipAnalysis: d.packingSlipAnalysis,
+      currentVersionId: d.currentVersionId,
+    }));
 }
 
 export async function readWorkspace(
@@ -160,6 +198,71 @@ export async function changeDocuments(
     applyDocumentAction(state, actor, action),
   );
 }
+/** A sent, active order of this job that the member may receive, as a slip link. */
+async function receivableOrder(
+  tx: Pick<typeof db, "select">,
+  fresh: DocumentAccess,
+  orderId: string,
+): Promise<PackingSlipLink> {
+  if (!userCan(fresh.user, "orders.receive"))
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Order receiving permission is required.",
+    });
+  const [order] = await tx
+    .select({
+      id: orders.id,
+      status: orders.status,
+      fulfillmentStatus: orders.fulfillmentStatus,
+      materialListId: orders.materialListId,
+      orderNumber: orders.orderNumber,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.jobId, fresh.job.id),
+        eq(orders.organizationId, fresh.job.organizationId),
+      ),
+    )
+    .for("share");
+  if (!order?.materialListId)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This order has no available material list.",
+    });
+  if (
+    order.status === "draft" ||
+    order.status === "cancelled" ||
+    order.fulfillmentStatus === "cancelled"
+  )
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Choose a sent order to attach a packing slip.",
+    });
+  const [list] = await tx
+    .select({ name: materialLists.name })
+    .from(materialLists)
+    .where(
+      and(
+        eq(materialLists.id, order.materialListId),
+        eq(materialLists.jobId, fresh.job.id),
+        eq(materialLists.organizationId, fresh.job.organizationId),
+      ),
+    )
+    .for("share");
+  if (!list)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Material list not found.",
+    });
+  return {
+    orderId: order.id,
+    materialListId: order.materialListId,
+    orderNumber: order.orderNumber ?? `Order ${order.id.slice(0, 8)}`,
+    materialListName: list.name ?? "Material list",
+  };
+}
 export async function saveDocumentVersion(
   access: DocumentAccess,
   input: Parameters<typeof appendVersion>[2] & { packingSlipOrderId?: string },
@@ -171,71 +274,95 @@ export async function saveDocumentVersion(
     async (state, actor, fresh, tx) => {
       let result;
       if (input.packingSlipOrderId) {
-        if (!userCan(fresh.user, "orders.receive"))
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Order receiving permission is required.",
-          });
-        const [order] = await tx
-          .select({
-            id: orders.id,
-            status: orders.status,
-            fulfillmentStatus: orders.fulfillmentStatus,
-            materialListId: orders.materialListId,
-            orderNumber: orders.orderNumber,
-          })
-          .from(orders)
-          .where(
-            and(
-              eq(orders.id, input.packingSlipOrderId),
-              eq(orders.jobId, fresh.job.id),
-              eq(orders.organizationId, fresh.job.organizationId),
-            ),
-          )
-          .for("share");
-        if (!order?.materialListId)
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "This order has no available material list.",
-          });
-        if (
-          order.status === "draft" ||
-          order.status === "cancelled" ||
-          order.fulfillmentStatus === "cancelled"
-        )
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Choose a sent order to attach a packing slip.",
-          });
-        const [list] = await tx
-          .select({ name: materialLists.name })
-          .from(materialLists)
-          .where(
-            and(
-              eq(materialLists.id, order.materialListId),
-              eq(materialLists.jobId, fresh.job.id),
-              eq(materialLists.organizationId, fresh.job.organizationId),
-            ),
-          )
-          .for("share");
-        if (!list)
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Material list not found.",
-          });
+        const link = await receivableOrder(tx, fresh, input.packingSlipOrderId);
         // Receiving grants only this validated attachment, not general document editing.
-        result = appendPackingSlip(state, { ...actor, canWrite: true }, input, {
-          orderId: order.id,
-          materialListId: order.materialListId,
-          orderNumber: order.orderNumber ?? `Order ${order.id.slice(0, 8)}`,
-          materialListName: list.name ?? "Material list",
-        });
+        result = appendPackingSlip(
+          state,
+          { ...actor, canWrite: true },
+          input,
+          link,
+        );
       } else result = appendVersion(state, actor, input);
       // Validate all conflicts and bounds before creating a blob; publish metadata only after bytes exist.
       await persistBlob();
       return result;
     },
   );
+}
+/** Saves a scanned slip in Packing Slips before its order is chosen. */
+export async function saveUnmatchedSlip(
+  access: DocumentAccess,
+  input: Parameters<typeof appendVersion>[2],
+  persistBlob: () => Promise<unknown>,
+) {
+  return mutateWorkspace(
+    access.user.id,
+    access.job.id,
+    async (state, actor, fresh) => {
+      if (!userCan(fresh.user, "orders.receive"))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Order receiving permission is required.",
+        });
+      // As with linked slips, receiving grants only this new attachment.
+      const result = appendUnmatchedSlip(
+        state,
+        { ...actor, canWrite: true },
+        input,
+      );
+      await persistBlob();
+      return result;
+    },
+  );
+}
+/** Links a saved slip to one of the job's sent orders. */
+export async function attachSavedSlip(
+  access: DocumentAccess,
+  documentId: string,
+  orderId: string,
+) {
+  return mutateWorkspace(
+    access.user.id,
+    access.job.id,
+    async (state, actor, fresh, tx) => {
+      const link = await receivableOrder(tx, fresh, orderId);
+      return { ...linkSavedSlip(state, actor, documentId, link), ...link };
+    },
+  );
+}
+/** Slips the member can open: linked ones and anything in Packing Slips. */
+export async function savedPackingSlips(access: DocumentAccess) {
+  const state = await readWorkspace(access);
+  const actor = documentActor(access, []);
+  const folder = state.folders.find(
+    (f) =>
+      f.parentId === null && f.name.trim().toLowerCase() === "packing slips",
+  );
+  return state.documents
+    .filter((d) => {
+      if (d.deletedAt || d.jobId !== actor.jobId) return false;
+      if (!d.packingSlip && d.folderId !== folder?.id) return false;
+      const version = state.versions.find((v) => v.id === d.currentVersionId);
+      if (!version || !/^(image\/|application\/pdf$)/.test(version.mimeType))
+        return false;
+      try {
+        return Boolean(folderRole(state, actor, d.folderId));
+      } catch {
+        return false;
+      }
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 100)
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      createdAt: d.createdAt,
+      currentVersionId: d.currentVersionId,
+      packingSlip: d.packingSlip ?? null,
+      status: d.packingSlipAnalysis?.applied
+        ? "applied"
+        : (d.packingSlipAnalysis?.status ?? null),
+    }));
 }
 export async function readableVersion(
   access: DocumentAccess,

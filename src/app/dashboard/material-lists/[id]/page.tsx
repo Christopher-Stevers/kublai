@@ -403,6 +403,8 @@ export default function MaterialListDetailPage({
           packingSlips={verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId ? (
             <PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId}
               buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
+              openOnMount={searchParams.get("slips") === "1"}
+              onOpened={() => router.replace(`${pathname}?orderId=${encodeURIComponent(verifyOrderId)}`, { scroll: false })}
               onVerified={() => { void utils.materialList.invalidate(); }} />
           ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}

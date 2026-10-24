@@ -293,10 +293,9 @@ export type Match = {
   candidates: string[];
   ambiguous: boolean;
 };
-export function matchLines(
-  items: ReceiptOrderItem[],
-  lines: Array<{ code: string; text: string }>,
-): Match[] {
+/** Scores slip lines against these order items, weighting words that tell
+ * the items apart. */
+export function lineScorer(items: ReceiptOrderItem[]) {
   const itemTokens = new Map(
     items.map((i) => [
       i.id,
@@ -315,7 +314,14 @@ export function matchLines(
         ? 1.2
         : 1) *
     (1 + Math.log(n / (df.get(t) ?? 1)) / Math.log(n + 1));
-  const scored = lines.map((l) => scoreLine(items, l, weights, itemTokens));
+  return (line: { code: string; text: string }) =>
+    scoreLine(items, line, weights, itemTokens);
+}
+export function matchLines(
+  items: ReceiptOrderItem[],
+  lines: Array<{ code: string; text: string }>,
+): Match[] {
+  const scored = lines.map(lineScorer(items));
   const result: Match[] = scored.map((s) => ({
     itemId: null,
     confidence: "low",
