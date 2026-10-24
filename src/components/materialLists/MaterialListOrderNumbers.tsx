@@ -2,10 +2,14 @@ import { materialProgressStyle } from "~/lib/material-progress-style";
 import { ShoppingCartIcon } from "lucide-react";
 import type { MaterialListOrderStatus } from "~/lib/material-list-order-status";
 
-/** Ordered pills are blue and fill green as items are verified. Full green is
- * kept for fully verified orders, so a sent order stops just short of it. */
-function sentFill(deliveredPercent: number) {
-  return Math.min(90, Math.max(0, deliveredPercent));
+/** Ordered pills are blue and fill green as items are verified. Until the
+ * order is fully verified a thin blue ring stays inside the edge, so even a
+ * nearly full pill reads as not done. */
+function sentStyle(deliveredPercent: number) {
+  return {
+    ...materialProgressStyle(deliveredPercent, "blue"),
+    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+  };
 }
 
 export function MaterialListOrderNumbers({
@@ -55,10 +59,7 @@ export function MaterialListOrderNumbers({
                 state === "verified"
                   ? materialProgressStyle(100)
                   : state === "sent"
-                    ? materialProgressStyle(
-                        sentFill(order.deliveredPercent),
-                        "blue",
-                      )
+                    ? sentStyle(order.deliveredPercent)
                     : materialProgressStyle(0)
               }
               className="border-border text-foreground inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium"

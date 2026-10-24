@@ -35,7 +35,10 @@ it("keeps status colors and accessible labels with one shared order icon", () =>
     ["Supplier: not sent", materialProgressStyle(0)],
     [
       "ORDER-1: sent, awaiting full verification",
-      materialProgressStyle(90, "blue"),
+      {
+        ...materialProgressStyle(100, "blue"),
+        boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+      },
     ],
     ["ORDER-2: fully verified", materialProgressStyle(100)],
   ] as const) {
@@ -78,6 +81,13 @@ it("fills a sent order's blue pill with green as its items are verified", () => 
           deliveredPercent: 40,
           state: "sent",
         },
+        {
+          id: "c",
+          number: "177-Next",
+          complete: true,
+          deliveredPercent: 100,
+          state: "verified",
+        },
       ]}
     />,
   );
@@ -88,5 +98,11 @@ it("fills a sent order's blue pill with green as its items are verified", () => 
     screen.getByTitle(
       "176-Next · sent, awaiting full verification · 40% received",
     ),
-  ).toHaveStyle(materialProgressStyle(40, "blue"));
+  ).toHaveStyle({
+    ...materialProgressStyle(40, "blue"),
+    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+  });
+  expect(screen.getByLabelText("177-Next: fully verified")).not.toHaveStyle({
+    boxShadow: "inset 0 0 0 2px rgb(59 130 246 / 0.85)",
+  });
 });
