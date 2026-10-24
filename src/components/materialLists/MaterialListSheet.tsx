@@ -36,9 +36,9 @@ export function MaterialListSheet({
   const syncing = useReplicacheSyncing();
   const supplierLabel = isToolRequest ? "From" : "Supplier";
   const money = showMoney ? [isToolRequest ? " " : "Each", isToolRequest ? "  " : "Total"] : [];
-  // Ordered parts come first, under their own receiving columns.
-  const sections = materialSections(items).map((section) =>
-    section.key === "ordered"
+  // Each order comes first, under its own receiving columns.
+  const sections = materialSections(items, materialListId).map((section) =>
+    section.ordered
       ? {
           ...section,
           columns: showMoney ? MATERIAL_LIST_ORDERED_COLUMNS : MATERIAL_LIST_ORDERED_COLUMNS_NO_MONEY,
@@ -59,6 +59,8 @@ export function MaterialListSheet({
         {section.label && (
           <MaterialSectionHeading
             label={section.label}
+            detail={section.detail}
+            href={section.href}
             count={section.items.length}
             className={`sticky left-0 px-3 pb-2 ${index ? "pt-5" : "pt-3"}`}
           />

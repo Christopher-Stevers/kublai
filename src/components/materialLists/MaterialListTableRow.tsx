@@ -263,9 +263,6 @@ function OrderedRow({
   const order = item.sentOrder;
   // Without receive controls the row shows where the order stands.
   const shown: TableReceive = receive ?? {
-    orderId: order?.id ?? "",
-    orderNumber: order?.number ?? null,
-    orderHref: `/dashboard/material-lists/${materialListId}${order ? `?orderId=${encodeURIComponent(order.id)}` : ""}`,
     ordered: order?.quantity ?? item.quantity,
     received: order?.receivedQuantity ?? 0,
     status: order?.verificationStatus,

@@ -1,10 +1,8 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangleIcon,
   CheckIcon,
-  LockKeyholeIcon,
   MinusIcon,
   PlusIcon,
 } from "lucide-react";
@@ -13,9 +11,6 @@ import { cn } from "~/lib/utils";
 
 export type ReceiveStatus = "pending" | "partial" | "complete" | "problem";
 export type TableReceive = {
-  orderId: string;
-  orderNumber: string | null;
-  orderHref: string;
   ordered: string | number;
   received: string | number | null | undefined;
   status: string | null | undefined;
@@ -130,7 +125,7 @@ export const receiveTint = (status: ReceiveStatus) =>
     status === "problem" && "bg-red-50/70 dark:bg-red-950/30",
   );
 
-/** Order link, status, slip badge, All and Problem, under the part name. */
+/** Status, slip badge, All and Problem, under the part name. */
 export function ReceiveSummary({
   receive,
   state,
@@ -141,13 +136,6 @@ export function ReceiveSummary({
   const { status } = state;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-      <Link
-        className="text-muted-foreground flex items-center gap-1 underline underline-offset-2"
-        href={receive.orderHref}
-      >
-        <LockKeyholeIcon className="h-3 w-3 shrink-0" />
-        {receive.orderNumber ?? "View order"}
-      </Link>
       <span
         className={cn(
           "font-medium",

@@ -5,8 +5,6 @@ import { SlipBadge, SlipPartSheet, SlipVerifyBar } from "~/components/materialLi
 import { useSlipDrafts } from "~/components/materialLists/use-slip-draft";
 import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { notify } from "~/components/ui/app-dialogs";
-import Link from "next/link";
-import { LockKeyholeIcon } from "lucide-react";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
@@ -360,9 +358,9 @@ export default function MaterialListDetailPage({
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
                 <div className="space-y-4">
-                  {(verifyOrderId ? [{ key: "all", label: null, items: visibleItems }] : materialSections(visibleItems)).map((section) => (
+                  {(verifyOrderId ? [{ key: "all", label: null, ordered: false, items: visibleItems }] : materialSections(visibleItems, id)).map((section) => (
                   <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} className="space-y-3">
-                    {section.label && <MaterialSectionHeading label={section.label} count={section.items.length} />}
+                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
@@ -417,18 +415,6 @@ export default function MaterialListDetailPage({
                             verifyBadge={slipFound && slipEntry ? (
                               <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
                             ) : undefined}
-                            verifyCaption={listOrder ? (
-                              <Link
-                                href={`/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`}
-                                className="text-muted-foreground mt-1 flex items-center justify-center gap-1 text-xs underline underline-offset-2"
-                                onClick={(event) => event.stopPropagation()}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onTouchStart={(event) => event.stopPropagation()}
-                              >
-                                <LockKeyholeIcon className="h-3 w-3 shrink-0" />
-                                {listOrder.number ?? "View order"}
-                              </Link>
-                            ) : undefined}
                             onVerifyStateChange={
                               orderLine
                                 ? (state) => {
@@ -469,9 +455,6 @@ export default function MaterialListDetailPage({
                     const slipEntry = slipFound?.entry ?? null;
                     const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
                     return {
-                      orderId: listOrder.id,
-                      orderNumber: listOrder.number ?? null,
-                      orderHref: `/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`,
                       ordered: listOrder.quantity,
                       received: slipEntry ? slipEntry.total : listOrder.receivedQuantity,
                       status: slipEntry

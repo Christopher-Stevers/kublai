@@ -53,9 +53,6 @@ afterEach(() => {
 });
 
 const base: TableReceive = {
-  orderId: "o",
-  orderNumber: "PO-7",
-  orderHref: "/dashboard/material-lists/m?orderId=o",
   ordered: 10,
   received: 2,
   status: "partial",
@@ -76,10 +73,6 @@ it("saves stepper taps once after a pause", () => {
   vi.useFakeTimers();
   const { onChange } = show();
   expect(screen.getByText("Part received")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /PO-7/ })).toHaveAttribute(
-    "href",
-    base.orderHref,
-  );
   const more = screen.getByRole("button", { name: "One more received: Valve" });
   fireEvent.click(more);
   fireEvent.click(more);

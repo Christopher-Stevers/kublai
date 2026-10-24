@@ -82,9 +82,6 @@ it("puts ordered parts first under their own receiving columns", () => {
       receiveFor={(item) =>
         item.sentOrder
           ? {
-              orderId: item.sentOrder.id,
-              orderNumber: item.sentOrder.number,
-              orderHref: "/x",
               ordered: item.sentOrder.quantity,
               received: item.sentOrder.receivedQuantity,
               status: item.sentOrder.verificationStatus,
@@ -97,10 +94,14 @@ it("puts ordered parts first under their own receiving columns", () => {
   );
   const headings = screen.getAllByRole("heading");
   expect(headings.map((heading) => heading.parentElement?.textContent)).toEqual(
-    ["Ordered1 part", "Not ordered1 part"],
+    ["PO-7Acme1 part", "Not ordered1 part"],
   );
   const [first, second] = screen.getAllByRole("table");
-  expect(first).toHaveAccessibleName("Ordered parts");
+  expect(first).toHaveAccessibleName("PO-7 parts");
+  expect(screen.getByRole("link", { name: "PO-7" })).toHaveAttribute(
+    "href",
+    "/dashboard/material-lists/m?orderId=ord",
+  );
   expect(second).toHaveAccessibleName("Not ordered parts");
   expect(headers(first!)).toEqual([
     "Photo",
@@ -124,7 +125,7 @@ it("puts ordered parts first under their own receiving columns", () => {
   const [row] = within(first!).getAllByRole("row").slice(1);
   const values = cells(row!);
   expect(values[1]).toContain("Valve");
-  expect(values[1]).toContain("PO-7");
+  expect(values[1]).toContain("Part received");
   expect(values[2]).toBe("10 ea");
   expect(within(row!).getByLabelText("Received: Valve")).toHaveValue(3);
   expect(values[4]).toBe("7 ea");
@@ -138,8 +139,8 @@ it("shows ordered counts read only without receive controls", () => {
     <MaterialListSheet items={[ordered]} materialListId="m" suppliers={[]} />,
   );
   const table = screen.getByRole("table");
-  expect(table).toHaveAccessibleName("Ordered parts");
-  expect(screen.getByRole("heading", { name: "Ordered" })).toBeInTheDocument();
+  expect(table).toHaveAccessibleName("PO-7 parts");
+  expect(screen.getByRole("heading", { name: "PO-7" })).toBeInTheDocument();
   expect(within(table).getAllByRole("cell")[3]).toHaveTextContent("3");
   expect(
     within(table).queryByLabelText("Received: Valve"),
@@ -156,17 +157,45 @@ it("keeps one plain table when nothing is ordered", () => {
   );
 });
 
-it("orders sections with ordered parts first", () => {
-  const items = [{ id: "a" }, { id: "b", sentOrderItemId: "x" }, { id: "c" }];
+it("gives each order its own group, then the parts not ordered", () => {
+  const order = (id: string, number: string | null, status = "sent") => ({
+    id,
+    number,
+    status,
+  });
+  const acme = { supplier: { name: "Acme" } };
+  const items = [
+    { id: "a" },
+    {
+      id: "b",
+      sentOrderItemId: "x",
+      sentOrder: order("o1", "PO-1"),
+      supplierPart: acme,
+    },
+    {
+      id: "c",
+      sentOrderItemId: "y",
+      sentOrder: order("o2", null, "cancelled"),
+    },
+    { id: "d", sentOrderItemId: "z", sentOrder: order("o1", "PO-1") },
+    { id: "e" },
+  ];
   expect(
-    materialSections(items).map((s) => [s.label, s.items.map((i) => i.id)]),
+    materialSections(items, "m").map((s) => [
+      s.label,
+      s.detail ?? null,
+      s.items.map((i) => i.id),
+    ]),
   ).toEqual([
-    ["Ordered", ["b"]],
-    ["Not ordered", ["a", "c"]],
+    ["PO-1", "Acme", ["b", "d"]],
+    ["Order", "Cancelled", ["c"]],
+    ["Not ordered", null, ["a", "e"]],
   ]);
+  expect(materialSections(items, "m")[1]!.href).toBe(
+    "/dashboard/material-lists/m?orderId=o2",
+  );
   const plain: { id: string; sentOrderItemId?: string }[] = [{ id: "a" }];
-  expect(materialSections(plain)).toEqual([
-    { key: "all", label: null, items: plain },
+  expect(materialSections(plain, "m")).toEqual([
+    { key: "all", label: null, ordered: false, items: plain },
   ]);
-  expect(materialSections([{ id: "b", sentOrderItemId: "x" }])).toHaveLength(1);
 });
