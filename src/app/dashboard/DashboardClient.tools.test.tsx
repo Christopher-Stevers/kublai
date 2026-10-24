@@ -81,9 +81,6 @@ vi.mock("~/components/materialLists/MaterialListSheet", () => ({
 vi.mock("~/components/materialLists/ScanSlipButton", () => ({
   ScanSlipButton: () => <button>Scan slip</button>,
 }));
-vi.mock("~/components/materialLists/VerifyOrderButton", () => ({
-  MaterialListOrderPickerDialog: () => null,
-}));
 vi.mock("~/components/materialLists/MaterialListNameModal", () => ({
   MaterialListNameModal: () => null,
 }));

@@ -52,7 +52,6 @@ function props(): ComponentProps<typeof MaterialListCard> {
     canDelete: true,
     actionsBusy: false,
     onOpen: vi.fn(),
-    onOrders: vi.fn(),
     onDuplicate: vi.fn(),
     onDelete: vi.fn(),
   };
@@ -78,21 +77,18 @@ it("shows all linked orders and status in the shared card and opens on click", (
   fireEvent.click(screen.getByText("October 14"));
   expect(p.onOpen).toHaveBeenCalledOnce();
 });
-it("opens orders on long press, suppresses navigation, and cancels when scrolling", () => {
+it("opens the list after a long press; the old order picker is gone", () => {
   vi.useFakeTimers();
   vi.stubGlobal("PointerEvent", MouseEvent);
   const p = props();
   render(<MaterialListCard {...p} />);
   const card = screen.getByText("October 14").closest('[data-slot="card"]')!;
   fireEvent.pointerDown(card, { button: 0, clientX: 10, clientY: 10 });
-  vi.advanceTimersByTime(550);
-  expect(p.onOrders).toHaveBeenCalledOnce();
+  vi.advanceTimersByTime(800);
+  fireEvent.pointerUp(card);
   fireEvent.click(card);
-  expect(p.onOpen).not.toHaveBeenCalled();
-  fireEvent.pointerDown(card, { button: 0, clientX: 10, clientY: 10 });
-  fireEvent.pointerMove(card, { clientX: 10, clientY: 50 });
-  vi.advanceTimersByTime(600);
-  expect(p.onOrders).toHaveBeenCalledOnce();
+  expect(p.onOpen).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 it("routes clicks to merge selection instead of opening the list", () => {
   const p = props();
@@ -105,20 +101,6 @@ it("routes clicks to merge selection instead of opening the list", () => {
     screen.queryByRole("button", { name: "More actions for October 14" }),
   ).toBeNull();
 });
-it("does not start order selection from the actions button", () => {
-  vi.useFakeTimers();
-  vi.stubGlobal("PointerEvent", MouseEvent);
-  const p = props();
-  render(<MaterialListCard {...p} />);
-  fireEvent.pointerDown(
-    screen.getByRole("button", { name: "More actions for October 14" }),
-    { button: 0 },
-  );
-  vi.advanceTimersByTime(600);
-  expect(p.onOrders).not.toHaveBeenCalled();
-  expect(p.onOpen).not.toHaveBeenCalled();
-});
-
 it("shows each department row in icon, department pill, contributor name order", () => {
  const p=props();
  p.list.contributors=[

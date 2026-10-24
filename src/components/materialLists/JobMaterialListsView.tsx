@@ -1,11 +1,9 @@
 "use client";
 import { useState, type ComponentProps } from "react";
-import { useRouter } from "next/navigation";
 import { PlusIcon } from "lucide-react";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
 import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
-import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { notify } from "~/components/ui/app-dialogs";
 import { Button } from "~/components/ui/button";
@@ -42,7 +40,6 @@ export function JobMaterialListsView({
   lists: List[] | undefined;
   onOpen: (materialListId: string) => void;
 }) {
-  const router = useRouter();
   const sandbox = useTutorialSandbox();
   const online = useOnlineStatus();
   const { getReplicache, mutateAndSync, requestSync } = useWorkspaceMutations();
@@ -58,10 +55,6 @@ export function JobMaterialListsView({
     id: string;
     name: string;
     itemCount?: number | null;
-  } | null>(null);
-  const [forOrders, setForOrders] = useState<{
-    id: string;
-    name: string;
   } | null>(null);
 
   useRememberedScroll(
@@ -160,7 +153,6 @@ export function JobMaterialListsView({
               canDelete={canDelete}
               actionsBusy={busy}
               onOpen={() => onOpen(list.id)}
-              onOrders={() => setForOrders({ id: list.id, name: list.name })}
               onDuplicate={() => duplicate.mutate({ materialListId: list.id })}
               onDelete={() =>
                 setToDelete({
@@ -230,20 +222,6 @@ export function JobMaterialListsView({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <MaterialListOrderPickerDialog
-        materialList={forOrders}
-        open={!!forOrders}
-        onOpenChange={(open) => {
-          if (!open) setForOrders(null);
-        }}
-        onVerifyOrder={(orderId) => {
-          if (forOrders)
-            router.push(
-              `/dashboard/material-lists/${forOrders.id}?orderId=${orderId}`,
-            );
-        }}
-      />
     </>
   );
 }

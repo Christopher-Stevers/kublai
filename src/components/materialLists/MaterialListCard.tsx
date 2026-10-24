@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import {
   CopyIcon,
@@ -48,7 +47,6 @@ type Props = {
   canDelete: boolean;
   actionsBusy: boolean;
   onOpen: () => void;
-  onOrders: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
 };
@@ -60,27 +58,9 @@ export function MaterialListCard({
   canDelete,
   actionsBusy,
   onOpen,
-  onOrders,
   onDuplicate,
   onDelete,
 }: Props) {
-  const materialListPressTimer = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const materialListPressHandled = useRef(false);
-  const materialListPressOrigin = useRef<{ x: number; y: number } | null>(null);
-  const clearMaterialListPress = () => {
-    if (materialListPressTimer.current)
-      clearTimeout(materialListPressTimer.current);
-    materialListPressTimer.current = null;
-  };
-  useEffect(
-    () => () => {
-      if (materialListPressTimer.current)
-        clearTimeout(materialListPressTimer.current);
-    },
-    [],
-  );
   return (
     <Card
       {...merge.cardProps(list)}
@@ -88,47 +68,9 @@ export function MaterialListCard({
         "card-lift relative cursor-pointer overflow-hidden select-none" +
         merge.cardClassName(list)
       }
-      onPointerDown={(event) => {
-        if (merge.active || event.button !== 0) return;
-        clearMaterialListPress();
-        materialListPressHandled.current = false;
-        materialListPressOrigin.current = {
-          x: event.clientX,
-          y: event.clientY,
-        };
-        materialListPressTimer.current = setTimeout(() => {
-          materialListPressHandled.current = true;
-          materialListPressTimer.current = null;
-          onOrders();
-        }, 550);
-      }}
-      onPointerMove={(event) => {
-        const origin = materialListPressOrigin.current;
-        if (
-          origin &&
-          Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10
-        )
-          clearMaterialListPress();
-      }}
-      onPointerUp={clearMaterialListPress}
-      onPointerLeave={clearMaterialListPress}
-      onPointerCancel={clearMaterialListPress}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        clearMaterialListPress();
-        if (merge.active) return;
-        materialListPressHandled.current = true;
-        onOrders();
-      }}
-      onClick={(event) => {
-        clearMaterialListPress();
+      onClick={() => {
         if (merge.active) {
           merge.pick(list);
-          return;
-        }
-        if (materialListPressHandled.current) {
-          event.preventDefault();
-          materialListPressHandled.current = false;
           return;
         }
         onOpen();
@@ -153,8 +95,6 @@ export function MaterialListCard({
                   size="icon"
                   className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
                   aria-label={`More actions for ${list.name}`}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onContextMenu={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
                   <MoreVerticalIcon className="h-4 w-4" />
