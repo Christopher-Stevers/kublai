@@ -1,17 +1,13 @@
 "use client";
-import { useRememberedScroll, useScrollToTop } from "~/hooks/use-remembered-scroll";
+import { useScrollToTop } from "~/hooks/use-remembered-scroll";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
-import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
-import { useCardMerge } from "~/components/materialLists/use-card-merge";
-import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
 
-import { MaterialListOrderPickerDialog } from "~/components/materialLists/VerifyOrderButton";
-import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
+import { JobMaterialListsView } from "~/components/materialLists/JobMaterialListsView";
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 import { useRouter } from "next/navigation";
@@ -41,7 +37,6 @@ import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
-import { getNextMaterialListNameFromNames } from "~/lib/material-list-names";
 import { HEADER_BACK_REQUEST_EVENT, setHeaderBackVisible,  } from "~/lib/header-back-events";
 import { Skeleton } from "~/components/ui/skeleton";
 
@@ -100,7 +95,7 @@ export function DashboardClient({
 }: {
   initialJobs: DashboardJob[];
 }) {
-  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync, requestSync } = useWorkspaceMutations();
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
@@ -126,12 +121,6 @@ export function DashboardClient({
     name: string;
     materialListCount?: number | null;
   } | null>(null);
-  const [materialListToDelete, setMaterialListToDelete] = useState<{
-    id: string;
-    name: string;
-    itemCount?: number | null;
-  } | null>(null);
-  const [materialListForOrders, setMaterialListForOrders] = useState<{ id: string; name: string } | null>(null);
   const {
     location: workspaceLocation,
     navigate: navigateWorkspace,
@@ -159,9 +148,6 @@ export function DashboardClient({
     });
   const can = userData?.permissions.can;
   const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
-  const canEditLists = !sandbox && (can?.["lists.edit"] ?? false);
-  const canDeleteLists = !sandbox && (can?.["lists.delete"] ?? true);
-  const canReceive = !sandbox && isBrowserOnline && (can?.["orders.receive"] ?? false);
 
   // Redirect to onboarding if user has no organizationId
   useEffect(() => {
@@ -179,12 +165,6 @@ export function DashboardClient({
 
   const replicacheJobs = useReplicacheJobsList();
   const offlineJobDetail = useReplicacheJobDetail(offlineJobId ?? "");
-  useRememberedScroll(
-    !sandbox && offlineJobId && offlineJobView === "material-lists" && !offlineMaterialListId
-      ? `material-lists:${offlineJobId}`
-      : null,
-    offlineJobDetail !== null && offlineJobDetail !== undefined,
-  );
   useScrollToTop(
     sandbox ? null : !offlineJobId ? "jobs"
       : offlineJobView === "options" && !offlineMaterialListId ? `job:${offlineJobId}` : null,
@@ -193,22 +173,6 @@ export function DashboardClient({
     offlineMaterialListId ?? "",
   );
   const { data: jobPriceBook } = useJobPricing(offlineMaterialListDetail.materialList?.kind === "tools" ? null : offlineJobId);
-  const utils = api.useUtils();
-  const refreshMaterialLists = () => {
-    requestSync();
-    if (offlineJobId) void utils.job.getJob.invalidate({ jobId: offlineJobId });
-  };
-  const duplicate = api.materialList.duplicate.useMutation({
-    onSuccess: () => {
-      refreshMaterialLists();
-      notify("Editable copy created.", "success");
-    },
-    onError: error => notify(error.message, "error"),
-  });
-
-  const listsPending = offlineJobDetail?.materialLists.some(list => list.pendingSync) ?? false;
-  const merge = useCardMerge({ disabled: !isBrowserOnline || listsPending || duplicate.isPending, onMerged: refreshMaterialLists });
-  const listActionsBusy = !isBrowserOnline || listsPending || duplicate.isPending || merge.isPending;
   const suppliers = useReplicacheSuppliers();
   const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
   const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
@@ -243,40 +207,12 @@ export function DashboardClient({
     }
   };
 
-  const handleCreateMaterialList = (jobId: string) => {
-    const materialListId = crypto.randomUUID();
-    const existingNames =
-      offlineJobDetail?.job?.id === jobId
-        ? offlineJobDetail.materialLists.map((list) => list.name)
-        : [];
-    void mutateMaterialListAndSync(
-      getMaterialListReplicache().mutate.createMaterialList({
-        materialListId,
-        jobId,
-        name: getNextMaterialListNameFromNames(existingNames),
-      }),
-    );
-
-    navigateWorkspace({ jobId, view: "material-lists", materialListId });
-  };
-
   const handleConfirmDeleteJob = () => {
     if (!jobToDelete || !canDeleteJobs) return;
     const { id } = jobToDelete;
     setJobToDelete(null);
     void mutateMaterialListAndSync(
       getMaterialListReplicache().mutate.deleteJob({ jobId: id }),
-    );
-  };
-
-  const handleConfirmDeleteMaterialList = () => {
-    if (!materialListToDelete || !canDeleteLists) return;
-    const { id } = materialListToDelete;
-    setMaterialListToDelete(null);
-    void mutateMaterialListAndSync(
-      getMaterialListReplicache().mutate.deleteMaterialList({
-        materialListId: id,
-      }),
     );
   };
 
@@ -312,7 +248,6 @@ export function DashboardClient({
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
-    const offlineMaterialLists = offlineJobDetail?.materialLists ?? [];
     const selectedMaterialList = offlineMaterialListDetail.materialList;
     const selectedItems = sortedItems.map(item => ({ ...item, jobPriceStatus: jobPriceBook ? jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierId ?? item.supplierPart?.supplierId, item.supplierPart?.id) : item.jobPriceStatus }));
     const isToolRequest = selectedMaterialList?.kind === "tools";
@@ -536,7 +471,7 @@ export function DashboardClient({
 
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
-                  materialListCount={offlineMaterialLists.length}
+                  materialListCount={offlineJobDetail?.materialLists.length ?? 0}
                   roomCount={roomCount.count}
                   roomCountLoading={roomCount.loading}
                   chatUnreadCount={chatOverview?.unreadCount}
@@ -563,79 +498,13 @@ export function DashboardClient({
                   navigateWorkspace({ jobId: offlineJob.id, view: "drawings", materialListId: null })
                 } />
               ) : (
-                <>
-              <PageHeader
-                level="section"
-                title="Material Lists"
-                actions={
-                  <div className="hidden gap-2 sm:flex">
-                    {canReceive && <ScanSlipButton jobId={offlineJob.id} className="h-11" />}
-                    <Button
-                      data-tutorial="create-list"
-                      onClick={() => handleCreateMaterialList(offlineJob.id)}
-                      size="lg"
-                      className="hidden h-11 sm:inline-flex sm:w-auto"
-                    >
-                      <PlusIcon className="mr-2 h-5 w-5" />
-                      New Material List
-                    </Button>
-                  </div>
-                }
-              />
-
-              {merge.banner}
-              {offlineMaterialLists.length === 0 ? (
-                <Card>
-                  <CardContent className="p-0">
-                    <EmptyState
-                      art="clipboard"
-                      title="No material lists yet. New lists sync when you’re online."
-                      action={
-                        <Button
-                          data-tutorial="create-list"
-                          onClick={() => handleCreateMaterialList(offlineJob.id)}
-                        >
-                          <PlusIcon className="mr-2 h-4 w-4" />
-                          New Material List
-                        </Button>
-                      }
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {offlineMaterialLists.map((list) => (
-                    <MaterialListCard
-                      key={list.id}
-                      list={list}
-                      merge={merge}
-                      canEdit={canEditLists}
-                      canDelete={canDeleteLists}
-                      actionsBusy={listActionsBusy}
-                      onOpen={() => navigateWorkspace({ jobId: offlineJobId, view: "material-lists", materialListId: list.id })}
-                      onOrders={() => setMaterialListForOrders({ id: list.id, name: list.name })}
-                      onDuplicate={() => duplicate.mutate({ materialListId: list.id })}
-                      onDelete={() => setMaterialListToDelete({ id: list.id, name: list.name, itemCount: list.itemCount })}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-                <div className={canReceive ? "grid grid-cols-2 gap-2" : undefined}>
-                {canReceive && <ScanSlipButton jobId={offlineJob.id} className="h-12 w-full" />}
-                <Button
-                  data-tutorial="create-list"
-                  onClick={() => handleCreateMaterialList(offlineJob.id)}
-                  size="lg"
-                  className="h-12 w-full"
-                >
-                  <PlusIcon className="mr-2 h-5 w-5" />
-                  {canReceive ? "New List" : "New Material List"}
-                </Button>
-                </div>
-                </div>
-                </>
+                <JobMaterialListsView
+                  jobId={offlineJob.id}
+                  lists={offlineJobDetail?.materialLists}
+                  onOpen={(materialListId) =>
+                    navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })
+                  }
+                />
               )}
             </>
           ) : (
@@ -664,14 +533,6 @@ export function DashboardClient({
 
 
 
-          <MaterialListOrderPickerDialog
-            materialList={materialListForOrders}
-            open={!!materialListForOrders}
-            onOpenChange={(open) => { if (!open) setMaterialListForOrders(null); }}
-            onVerifyOrder={(orderId) => {
-              if (materialListForOrders) router.push(`/dashboard/material-lists/${materialListForOrders.id}?orderId=${orderId}`);
-            }}
-          />
           {selectedMaterialList && (
             <MaterialListNameModal
               open={showOfflineMaterialListNameModal}
@@ -681,47 +542,6 @@ export function DashboardClient({
             />
           )}
 
-          <Dialog
-            open={!!materialListToDelete}
-            onOpenChange={(open) => {
-              if (!open) setMaterialListToDelete(null);
-            }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete material list?</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete{" "}
-                  {materialListToDelete
-                    ? `"${materialListToDelete.name}"`
-                    : "this material list"}
-                  {materialListToDelete?.itemCount
-                    ? ` and ${materialListToDelete.itemCount} ${
-                        materialListToDelete.itemCount === 1 ? "item" : "items"
-                      }`
-                    : ""}
-                  . This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setMaterialListToDelete(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={!materialListToDelete}
-                  onClick={handleConfirmDeleteMaterialList}
-                >
-                  Delete Material List
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     );
@@ -981,47 +801,6 @@ export function DashboardClient({
           </DialogContent>
         </Dialog>
 
-        <Dialog
-          open={!!materialListToDelete}
-          onOpenChange={(open) => {
-            if (!open) setMaterialListToDelete(null);
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete material list?</DialogTitle>
-              <DialogDescription>
-                This will permanently delete{" "}
-                {materialListToDelete
-                  ? `"${materialListToDelete.name}"`
-                  : "this material list"}
-                {materialListToDelete?.itemCount
-                  ? ` and ${materialListToDelete.itemCount} ${
-                      materialListToDelete.itemCount === 1 ? "item" : "items"
-                    }`
-                  : ""}
-                . This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setMaterialListToDelete(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={!materialListToDelete}
-                onClick={handleConfirmDeleteMaterialList}
-              >
-                Delete Material List
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
