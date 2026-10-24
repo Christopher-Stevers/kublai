@@ -54,3 +54,9 @@ Extraction batches and validated model answers are saved atomically under `uploa
 A restart resumes processing runs automatically. Retrying a failed assessment reuses checkpoints if selected source versions and the provider connection match. Completed runs start fresh when reassessed. Changed sources or provider settings create a new run. Ownership checks prevent superseded workers from publishing. Progress shows page ranges and relevant-passage counts; closing the browser does not stop work.
 
 Validation on October 21 read all 575 pages of Alma's combined specification without extraction warnings, then reused those checkpoints in 5 ms. This validates extraction coverage and resumption, not subsequent AI accuracy.
+
+## Super Spec Material (2026-10-24)
+
+Drawings → More → Super Spec Material opens a job-scoped summary. Assess all specifications always reads the accessible current documents under Specifications, including nested folders; it does not reuse a prior custom document/drawing selection. It shares the existing durable assessment, company provider configuration, permission checks and reviewed Systems rules. Opening the tool does not start inference. Folder assessments accept up to 500 documents and fail explicitly beyond that bound; custom Systems selections retain their existing 20-document limit.
+
+The summary currently covers pipe, fittings, valves and joining. It displays source evidence, unresolved issues, stale/failed assessment warnings and catalogue candidates for each alternative. Candidates are filtered by mapped catalogue facets, required text terms, component terms and nominal size limits, with unknown sizes excluded from bounded ranges. Previews consider at most 200 candidates and show ten; this limit is visible. Joining, certification and all other product details still require human review. No catalogue suggestions are automatically approved or ordered.

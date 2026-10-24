@@ -424,13 +424,13 @@ export async function startAssessment(
         "Choose at least one document or drawing set with sheets before assessing.",
     });
   if (
-    selectedSources.filter((s) => !s.drawing).length > 20 ||
+    selectedSources.filter((s) => !s.drawing).length > (selection ? 20 : 500) ||
     selectedSources.filter((s) => s.drawing).length > 500
   )
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Choose up to 20 documents and 500 drawing sheets per assessment.",
+        selection ? "Choose up to 20 documents and 500 drawing sheets per assessment." : "The Specifications folder exceeds the 500-document assessment limit. No documents were silently omitted.",
     });
   if (tasks.size + admissions >= 4)
     throw new TRPCError({

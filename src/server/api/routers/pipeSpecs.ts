@@ -118,6 +118,15 @@ export const pipeSpecsRouter = createTRPCRouter({
         });
       }
     }),
+  assessSpecMaterials: hasDashboardAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const context = await getSpecificationContext(userIdOf(ctx), input.jobId);
+      if (!context.folderId || !context.sources.length)
+        throw new TRPCError({code: "BAD_REQUEST", message: "Add documents to this job’s Specifications folder first."});
+      // No client source selection: include every accessible specification and no drawings.
+      return startAssessment(userIdOf(ctx), input.jobId);
+    }),
   assessment: hasDashboardAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => getAssessment(userIdOf(ctx), input.jobId)),
