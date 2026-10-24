@@ -6,7 +6,32 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { TableReceiveControls, type TableReceive } from "./TableReceive";
+import {
+  ReceiveCounter,
+  ReceiveSummary,
+  useTableReceive,
+  type TableReceive,
+} from "./TableReceive";
+
+function TableReceiveControls({
+  receive,
+  name,
+}: {
+  receive: TableReceive;
+  name: string;
+}) {
+  const state = useTableReceive(receive);
+  return (
+    <>
+      <ReceiveSummary receive={receive} state={state} />
+      <ReceiveCounter state={state} name={name} />
+      <span>
+        Back ordered {state.ordered - state.received}
+        {state.unit}
+      </span>
+    </>
+  );
+}
 
 vi.mock("next/link", () => ({
   default: ({
@@ -147,4 +172,10 @@ it("only shows the count when the member cannot receive", () => {
   expect(screen.getByText("Slip +4")).toBeInTheDocument();
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Received: Valve")).not.toBeInTheDocument();
+});
+
+it("shows a cancelled order without controls", () => {
+  show({ cancelled: true });
+  expect(screen.getByText("Cancelled")).toBeInTheDocument();
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });

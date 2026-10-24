@@ -22,6 +22,8 @@ export type TableReceive = {
   unit?: string | null;
   /** Shown without controls, for members who cannot receive or offline. */
   readOnly?: boolean;
+  /** The order was cancelled; nothing is coming. */
+  cancelled?: boolean;
   /** What a packing slip says about this part. */
   badge?: ReactNode;
   onChange?: (state: {
@@ -34,14 +36,9 @@ const whole = (value: string | number | null | undefined) =>
   Math.max(0, Math.round(Number(value) || 0));
 const SAVE_DELAY = 500;
 
-/** The verify controls for an ordered part, on a material list table row. */
-export function TableReceiveControls({
-  receive,
-  name,
-}: {
-  receive: TableReceive;
-  name: string;
-}) {
+/** Received count and status for an ordered part on a material list table
+ * row. Stepper taps save after a pause; All and Problem save at once. */
+export function useTableReceive(receive: TableReceive) {
   const ordered = whole(receive.ordered);
   const initial = Math.min(ordered, whole(receive.received));
   const initialProblem = receive.status === "problem";
@@ -101,137 +98,161 @@ export function TableReceiveControls({
     if (text.trim() && Number.isFinite(Number(text))) setCount(Number(text), 0);
   };
 
-  const status = statusOf(received, problem);
-  const locked = !!receive.readOnly;
-  const unit = receive.unit ? ` ${receive.unit}` : "";
+  return {
+    ordered,
+    received,
+    problem,
+    status: statusOf(received, problem),
+    locked: !!receive.readOnly || !!receive.cancelled,
+    unit: receive.unit ? ` ${receive.unit}` : "",
+    text,
+    setText,
+    commitText,
+    step: (delta: number) => setCount(received + delta),
+    toggleAll: () => {
+      const next = received >= ordered ? 0 : ordered;
+      setProblem(false);
+      setReceived(next);
+      save(next, false);
+    },
+    toggleProblem: () => {
+      setProblem(!problem);
+      save(received, !problem);
+    },
+  };
+}
+export type TableReceiveState = ReturnType<typeof useTableReceive>;
+
+export const receiveTint = (status: ReceiveStatus) =>
+  cn(
+    status === "complete" && "bg-emerald-50/70 dark:bg-emerald-950/30",
+    status === "partial" && "bg-orange-50/70 dark:bg-orange-950/30",
+    status === "problem" && "bg-red-50/70 dark:bg-red-950/30",
+  );
+
+/** Order link, status, slip badge, All and Problem, under the part name. */
+export function ReceiveSummary({
+  receive,
+  state,
+}: {
+  receive: TableReceive;
+  state: TableReceiveState;
+}) {
+  const { status } = state;
   return (
-    <div
-      className={cn(
-        "mt-2 space-y-2 rounded-lg border p-2 text-xs",
-        status === "complete" &&
-          "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30",
-        status === "partial" &&
-          "border-orange-300 bg-orange-50/60 dark:border-orange-800 dark:bg-orange-950/30",
-        status === "problem" &&
-          "border-red-300 bg-red-50/60 dark:border-red-800 dark:bg-red-950/30",
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Link
-          className="text-muted-foreground flex items-center gap-1 underline underline-offset-2"
-          href={receive.orderHref}
-        >
-          <LockKeyholeIcon className="h-3 w-3 shrink-0" />
-          {receive.orderNumber ?? "View order"}
-        </Link>
-        <span
-          className={cn(
-            "font-medium",
-            status === "complete" && "text-emerald-700 dark:text-emerald-400",
-            status === "partial" && "text-orange-700 dark:text-orange-400",
-            status === "problem" && "text-red-700 dark:text-red-400",
-            status === "pending" && "text-muted-foreground",
-          )}
-        >
-          {status === "complete"
+    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <Link
+        className="text-muted-foreground flex items-center gap-1 underline underline-offset-2"
+        href={receive.orderHref}
+      >
+        <LockKeyholeIcon className="h-3 w-3 shrink-0" />
+        {receive.orderNumber ?? "View order"}
+      </Link>
+      <span
+        className={cn(
+          "font-medium",
+          status === "complete" && "text-emerald-700 dark:text-emerald-400",
+          status === "partial" && "text-orange-700 dark:text-orange-400",
+          status === "problem" && "text-red-700 dark:text-red-400",
+          (status === "pending" || receive.cancelled) &&
+            "text-muted-foreground",
+        )}
+      >
+        {receive.cancelled
+          ? "Cancelled"
+          : status === "complete"
             ? "All received"
             : status === "partial"
               ? "Part received"
               : status === "problem"
                 ? "Problem"
                 : "Not received"}
-        </span>
-        <span className="text-muted-foreground">
-          Back ordered {ordered - received}
-          {unit}
-        </span>
-        {receive.badge}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground mr-0.5">Received</span>
-        {!locked && (
+      </span>
+      {receive.badge}
+      {!state.locked && (
+        <span className="ml-auto flex gap-1.5">
           <Button
             variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            aria-label={`One less received: ${name}`}
-            disabled={received <= 0}
-            onClick={() => setCount(received - 1)}
+            size="sm"
+            className="h-7 px-2 text-xs"
+            aria-pressed={status === "complete"}
+            onClick={state.toggleAll}
           >
-            <MinusIcon className="h-3.5 w-3.5" />
+            <CheckIcon className="h-3.5 w-3.5" />
+            All
           </Button>
-        )}
-        {locked ? (
-          <span className="font-semibold tabular-nums">{received}</span>
-        ) : (
-          <input
-            aria-label={`Received: ${name}`}
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={ordered}
-            className="border-input bg-card h-7 w-14 rounded-md border px-1.5 text-center text-sm font-semibold tabular-nums"
-            value={text ?? String(received)}
-            onChange={(event) => setText(event.target.value)}
-            onBlur={commitText}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") commitText();
-              if (event.key === "Escape") setText(null);
-            }}
-          />
-        )}
-        {!locked && (
           <Button
             variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            aria-label={`One more received: ${name}`}
-            disabled={received >= ordered}
-            onClick={() => setCount(received + 1)}
+            size="sm"
+            className={cn(
+              "h-7 px-2 text-xs",
+              state.problem && "border-red-400 text-red-700 dark:text-red-400",
+            )}
+            aria-pressed={state.problem}
+            onClick={state.toggleProblem}
           >
-            <PlusIcon className="h-3.5 w-3.5" />
+            <AlertTriangleIcon className="h-3.5 w-3.5" />
+            Problem
           </Button>
-        )}
-        <span className="text-muted-foreground">
-          of {ordered}
-          {unit}
         </span>
-        {!locked && (
-          <span className="ml-auto flex gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              aria-pressed={status === "complete"}
-              onClick={() => {
-                const next = received >= ordered ? 0 : ordered;
-                setProblem(false);
-                setReceived(next);
-                save(next, false);
-              }}
-            >
-              <CheckIcon className="h-3.5 w-3.5" />
-              All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-7 px-2 text-xs",
-                problem && "border-red-400 text-red-700 dark:text-red-400",
-              )}
-              aria-pressed={problem}
-              onClick={() => {
-                setProblem(!problem);
-                save(received, !problem);
-              }}
-            >
-              <AlertTriangleIcon className="h-3.5 w-3.5" />
-              Problem
-            </Button>
-          </span>
-        )}
-      </div>
+      )}
+    </div>
+  );
+}
+
+/** The received count, with a stepper when it can be changed. */
+export function ReceiveCounter({
+  state,
+  name,
+}: {
+  state: TableReceiveState;
+  name: string;
+}) {
+  const { received, ordered } = state;
+  if (state.locked)
+    return (
+      <span className="text-sm font-semibold">
+        {received}
+        {state.unit}
+      </span>
+    );
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-7 w-7"
+        aria-label={`One less received: ${name}`}
+        disabled={received <= 0}
+        onClick={() => state.step(-1)}
+      >
+        <MinusIcon className="h-3.5 w-3.5" />
+      </Button>
+      <input
+        aria-label={`Received: ${name}`}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={ordered}
+        className="border-input bg-card h-7 w-12 rounded-md border px-1 text-center text-sm font-semibold"
+        value={state.text ?? String(received)}
+        onChange={(event) => state.setText(event.target.value)}
+        onBlur={state.commitText}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") state.commitText();
+          if (event.key === "Escape") state.setText(null);
+        }}
+      />
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-7 w-7"
+        aria-label={`One more received: ${name}`}
+        disabled={received >= ordered}
+        onClick={() => state.step(1)}
+      >
+        <PlusIcon className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
