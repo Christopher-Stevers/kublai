@@ -1,4 +1,6 @@
 "use client";
+import { DrawingThumbnail } from "./DrawingThumbnail";
+import { ViewToggle } from "~/components/ui/view-toggle";
 import { SheetOfflineButton } from "./SheetOfflineButton";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
 import { useDrawingAccount } from "./DrawingAccountProvider";
@@ -24,7 +26,7 @@ import { useDrawingCapabilities } from "~/components/permissions/DrawingsAccess"
 import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
@@ -84,6 +86,10 @@ export function JobRoomsView({
   onOpenMaterialList?: (id: string) => void;
   onOpenDrawings?: () => void;
 }) {
+  const [listView, setListView] = usePageViewState(
+    `rooms:${jobId}:listView`,
+    false,
+  );
   const router = useRouter();
   const sandbox = useTutorialSandbox();
   const [notesDrafts, setNotesDrafts] = useState<
@@ -590,16 +596,9 @@ export function JobRoomsView({
 
   if (roomsQuery.isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[0, 1].map((index) => (
-          <Card key={index}>
-            <CardHeader>
-              <Skeleton className="h-6 w-2/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-4 w-1/2" />
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
+          <Skeleton key={index} className="aspect-[4/3] rounded-xl" />
         ))}
       </div>
     );
@@ -658,6 +657,11 @@ export function JobRoomsView({
               description="Rooms found on each floor plan"
               className="mb-0"
               titleProps={{ "data-tutorial": "rooms-root" }}
+            />
+            <ViewToggle
+              view={listView ? "table" : "grid"}
+              onViewChange={(view) => setListView(view === "table")}
+              showOnMobile
             />
             {canUpload ? (
               <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
@@ -731,13 +735,35 @@ export function JobRoomsView({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              className={
+                listView
+                  ? "overflow-hidden rounded border"
+                  : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+              }
+            >
               {floors.map((floor) => (
                 <Card
                   key={floor.id}
                   data-tutorial="floor-card"
                   data-tutorial-floor-id={floor.id}
-                  className="card-lift cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${floor.name}`}
+                  className={
+                    listView
+                      ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
+                      : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
+                  }
+                  onKeyDown={(event) => {
+                    if (
+                      event.target === event.currentTarget &&
+                      (event.key === "Enter" || event.key === " ")
+                    ) {
+                      event.preventDefault();
+                      event.currentTarget.click();
+                    }
+                  }}
                   onClick={() => {
                     setSelectedFloorId(floor.id);
                     setSelectedRoomId(null);
@@ -747,68 +773,38 @@ export function JobRoomsView({
                     setEditMode(false);
                   }}
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">
+                  <DrawingThumbnail
+                    src={floor.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    className={
+                      listView
+                        ? "bg-muted h-16 w-20 shrink-0 border-r object-contain"
+                        : "bg-muted aspect-[4/3] w-full border-b object-contain"
+                    }
+                  />
+                  <div
+                    className={`flex min-w-0 flex-1 items-center gap-0 py-2 ${listView ? "pr-14 pl-3" : "pr-1.5 pl-3"}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
                         {floor.name}
-                      </CardTitle>
-                      {canManage || canDelete ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground -mt-3 -mr-3 h-10 w-10 shrink-0"
-                              aria-label={`More actions for ${floor.name}`}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <MoreVerticalIcon className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {canUpload && (
-                              <>
-                                <DropdownMenuItem
-                                  disabled={
-                                    copyFloor.isPending ||
-                                    detectionBusy(floor.detection)
-                                  }
-                                  onSelect={() =>
-                                    copyFloor.mutate({ floorId: floor.id })
-                                  }
-                                >
-                                  <CopyIcon className="h-4 w-4" />
-                                  Copy floor
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            {canDelete && (
-                              <DropdownMenuItem
-                                variant="destructive"
-                                disabled={detectionBusy(floor.detection)}
-                                onSelect={() =>
-                                  setFloorToDelete({
-                                    id: floor.id,
-                                    name: floor.name,
-                                    roomCount: floor.rooms.length,
-                                  })
-                                }
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                                Delete floor
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      </span>
+                      <span className="text-muted-foreground block min-h-4 truncate text-xs">
+                        {floor.rooms.length}{" "}
+                        {floor.rooms.length === 1 ? "room" : "rooms"}
+                      </span>
+                      {detectionMessage(floor.detection) ? (
+                        <span
+                          role="status"
+                          className="text-muted-foreground block text-xs"
+                        >
+                          {detectionMessage(floor.detection)}
+                        </span>
                       ) : null}
                     </div>
-                  </CardHeader>
-                  <div className="px-6 pb-2">
                     <SheetOfflineButton
+                      iconOnly
                       sheet={floor}
                       prepare={async () => {
                         if (data)
@@ -818,19 +814,60 @@ export function JobRoomsView({
                           );
                       }}
                     />
+                    {canManage || canDelete ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="bg-background/75 text-foreground hover:bg-background absolute top-2 right-2 z-10 size-8 shrink-0 rounded-full shadow-sm backdrop-blur-sm"
+                            aria-label={`More actions for ${floor.name}`}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreVerticalIcon className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {canUpload && (
+                            <>
+                              <DropdownMenuItem
+                                disabled={
+                                  copyFloor.isPending ||
+                                  detectionBusy(floor.detection)
+                                }
+                                onSelect={() =>
+                                  copyFloor.mutate({ floorId: floor.id })
+                                }
+                              >
+                                <CopyIcon className="h-4 w-4" />
+                                Copy floor
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {canDelete && (
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={detectionBusy(floor.detection)}
+                              onSelect={() =>
+                                setFloorToDelete({
+                                  id: floor.id,
+                                  name: floor.name,
+                                  roomCount: floor.rooms.length,
+                                })
+                              }
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              Delete floor
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
                   </div>
-                  <CardContent>
-                    <div className="text-muted-foreground space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <DoorOpenIcon className="h-4 w-4" />
-                        <span>
-                          {floor.rooms.length}{" "}
-                          {floor.rooms.length === 1 ? "room" : "rooms"}
-                        </span>
-                      </div>
-                      <div>{detectionMessage(floor.detection) ?? "Ready"}</div>
-                    </div>
-                  </CardContent>
                 </Card>
               ))}
             </div>
