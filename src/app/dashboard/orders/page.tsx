@@ -28,8 +28,15 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   SearchIcon,
-  XIcon,
+  CalendarDaysIcon,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useOfflineOrders } from "~/hooks/use-offline-documents";
 import {
@@ -131,6 +138,8 @@ export default function OrdersPage() {
   const [jobFilter, setJobFilter] = usePageViewState<string | null>("orders:jobFilter", null);
   const [supplierFilter, setSupplierFilter] = usePageViewState<string | null>("orders:supplierFilter", null);
   const [dateFilter, setDateFilter] = usePageViewState<DateFilter>("orders:dateFilter", "all");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
     onSuccess: () => {
@@ -342,7 +351,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
+    <div className="px-4 pt-6 pb-28 sm:px-6 sm:pt-8">
       <div className="mx-auto max-w-2xl">
         <PageHeader
           title="Orders"
@@ -355,10 +364,6 @@ export default function OrdersPage() {
           )}
         </PageHeader>
 
-        {canSendOrders && <DeliveryCalendarSettings online={isOnline} onSaved={() => {
-          setEmailDrafts(new Map());
-          setExpandedOrders(new Set());
-        }} />}
         {syncError && (
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {syncError}
@@ -367,29 +372,6 @@ export default function OrdersPage() {
 
         {orders && orders.length > 0 && (
           <div className="mb-4 space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <SearchIcon className="text-muted-foreground/70 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                <Input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search items, jobs, suppliers..."
-                  className="h-11 pl-10"
-                />
-              </div>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  onClick={clearFilters}
-                  className="h-11 shrink-0"
-                >
-                  <XIcon className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Clear</span>
-                </Button>
-              )}
-            </div>
-
             {hasActiveFilters && (
               <div className="flex flex-wrap gap-2">
                 {searchQuery.trim() && (
@@ -420,6 +402,9 @@ export default function OrdersPage() {
                     onRemove={() => setDateFilter("all")}
                   />
                 )}
+                <Button variant="ghost" size="sm" className="h-7" onClick={clearFilters}>
+                  Clear all
+                </Button>
               </div>
             )}
 
@@ -725,6 +710,64 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Pinned to the bottom of the window on every screen size. */}
+      <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+        <div className="mx-auto flex max-w-2xl gap-2">
+          {searchOpen ? (
+            <>
+              <div className="relative flex-1">
+                <SearchIcon className="text-muted-foreground/70 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  type="search"
+                  autoFocus
+                  aria-label="Search orders"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === "Escape") setSearchOpen(false);
+                  }}
+                  placeholder="Search items, jobs, suppliers..."
+                  className="h-12 pl-10"
+                />
+              </div>
+              <Button variant="outline" size="lg" className="h-12 shrink-0" onClick={() => setSearchOpen(false)}>
+                Done
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setSearchOpen(true)}>
+                <SearchIcon className="h-5 w-5" />
+                <span className="truncate">{searchQuery.trim() ? `“${searchQuery.trim()}”` : "Search"}</span>
+              </Button>
+              {canSendOrders && (
+                <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
+                  <CalendarDaysIcon className="text-primary h-5 w-5" />
+                  <span className="truncate">Delivery calendar</span>
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {canSendOrders && (
+        <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delivery calendar</DialogTitle>
+              <DialogDescription>
+                Weekdays and holidays to skip when order emails give a delivery date.
+              </DialogDescription>
+            </DialogHeader>
+            <DeliveryCalendarSettings embedded online={isOnline} onSaved={() => {
+              setEmailDrafts(new Map());
+              setExpandedOrders(new Set());
+            }} />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
