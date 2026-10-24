@@ -422,6 +422,143 @@ export function quantityColumns(answers: Record<string, VisionAnswer>) {
   return columns;
 }
 
+const HEADING_WORDS = [
+  "QTY",
+  "QUANTITY",
+  "ORD",
+  "ORDER",
+  "ORDERED",
+  "SHP",
+  "SHIP",
+  "SHIPPED",
+  "B/O",
+  "BO",
+  "BACK",
+  "BACKORDER",
+  "BACKORDERED",
+  "BAL",
+  "BALANCE",
+  "REMAINING",
+  "OUTSTANDING",
+  "FOLLOW",
+  "PREV",
+  "PREVIOUS",
+  "PRIOR",
+];
+const headingWord = (text: string) => {
+  const t = text
+    .toUpperCase()
+    .replace(/0/g, "O")
+    .replace(/[^A-Z/]/g, "");
+  if (HEADING_WORDS.includes(t)) return t;
+  // The OCR misreads a letter of a long heading now and then: SMIPPED.
+  if (t.length < 5) return null;
+  return (
+    HEADING_WORDS.find(
+      (w) =>
+        w.length === t.length &&
+        [...w].filter((ch, i) => ch !== t[i]).length === 1,
+    ) ?? null
+  );
+};
+/** The column a stack of heading words names, if just one. */
+function headingField(words: string[]) {
+  const has = (...w: string[]) => words.some((x) => w.includes(x));
+  if (has("PREV", "PREVIOUS", "PRIOR")) return null;
+  const named = [
+    has("B/O", "BO", "BACK", "BACKORDER", "BACKORDERED", "BAL", "BALANCE") ||
+    has("REMAINING", "OUTSTANDING", "FOLLOW")
+      ? "backordered"
+      : null,
+    has("SHP", "SHIP", "SHIPPED") ? "shipped" : null,
+    // BACK ORDER names the backordered column alone.
+    has("ORD", "ORDERED") || (has("ORDER") && !has("BACK")) ? "ordered" : null,
+  ].filter((f) => f !== null);
+  return named.length === 1 ? named[0]! : null;
+}
+
+type Column = Edges & {
+  /** How far the cell may run either side before the next column's. */
+  room?: { left: number; right: number };
+};
+
+/** Jev's boxes for the headings come in hundredths and may sit a little to
+ * one side, so a cell crop can cut off its figure or show the next column's.
+ * Where the OCR read the heading's words over the box, the column is set
+ * to them. Only a heading naming that column moves it: a Prev Ship over
+ * the box, or words of two columns, leave it as Jev found it. */
+export function snapColumns(
+  columns: QuantityColumns,
+  words: SlipRow["words"],
+): Partial<Record<keyof QuantityColumns, Column>> {
+  // The OCR's box for a word sometimes takes in a rule or the next row too;
+  // such a word is cut back to the usual height about its middle.
+  const heights = words.map((w) => w.height).sort((a, b) => a - b);
+  const usual = heights[Math.floor(heights.length / 2)] ?? 1;
+  const fitted = words.map((w) =>
+    w.height > usual * 1.6
+      ? { ...w, y: w.y + (w.height - usual) / 2, height: usual }
+      : w,
+  );
+  const heads = fitted.flatMap((w) => {
+    const word = headingWord(w.text);
+    return word ? [{ ...w, word, right: w.x + w.width }] : [];
+  });
+  const snapped: Partial<Record<keyof QuantityColumns, Column>> = {};
+  for (const [field, c] of Object.entries(columns) as Array<
+    [keyof QuantityColumns, Edges]
+  >) {
+    snapped[field] = c;
+    const near = heads.filter((w) => {
+      const middle = w.y + w.height / 2;
+      return middle >= c.top - 0.01 && middle <= c.bottom + 0.01;
+    });
+    const over = near.filter((w) => w.right > c.left && w.x < c.right);
+    // With the words stacked over them or a space beside them; the next
+    // column's heading sits further off.
+    const stack = near.filter((w) =>
+      over.some((o) => w.right > o.x - 0.01 && w.x < o.right + 0.01),
+    );
+    if (!over.length || headingField(stack.map((w) => w.word)) !== field)
+      continue;
+    const left = Math.min(...stack.map((w) => w.x)),
+      right = Math.max(...stack.map((w) => w.right));
+    if (
+      right - left > 0.15 ||
+      Math.abs((left + right - c.left - c.right) / 2) > 0.025
+    )
+      continue;
+    const top = Math.min(...stack.map((w) => w.y)),
+      bottom = Math.max(...stack.map((w) => w.y + w.height));
+    // The words of the next columns' headings, level with this one.
+    const beside = fitted.filter((w) => {
+      const middle = w.y + w.height / 2;
+      return middle > top && middle < bottom && w.text.trim().length > 1;
+    });
+    const before = Math.max(
+      0,
+      ...beside.filter((w) => w.x + w.width <= left).map((w) => w.x + w.width),
+    );
+    const after = Math.min(
+      1,
+      ...beside.filter((w) => w.x >= right).map((w) => w.x),
+    );
+    const room = { left: (before + left) / 2, right: (right + after) / 2 };
+    // A short heading over wider figures still needs a cell around them.
+    const pad = Math.max(0, 0.03 - (right - left)) / 2;
+    snapped[field] = {
+      // Jev's box often runs into the first line, whose figure then shows
+      // under the heading of every cell crop.
+      top,
+      bottom,
+      left: Math.max(left - pad, room.left),
+      right: Math.min(right + pad, room.right),
+      room,
+    };
+  }
+  return snapped;
+}
+
 /** The quantity columns other than shipped that a slip lacks: Jev found
  * their headings on another column's, as on a docket's one QTY column. */
 export function lackedColumns(answers: Record<string, VisionAnswer>) {
@@ -753,7 +890,10 @@ export async function readSlipImages(input: {
       const png = pages[band.page - 1]!;
       const titled = headingsFor(info),
         titles = pages[titled.page - 1]!;
-      const columns = quantityColumns(titled.answers),
+      const columns = snapColumns(
+          quantityColumns(titled.answers),
+          rows.filter((r) => r.page === titled.page).flatMap((r) => r.words),
+        ),
         lacked: string[] = lackedColumns(titled.answers);
       const boxed = edges(titled.answers.header);
       // Jev's box for the headings may stop short of quantity columns it
@@ -805,7 +945,10 @@ export async function readSlipImages(input: {
         const c = columns[field];
         if (!c) return null;
         const w = c.right - c.left;
-        const across = { left: c.left - w * 0.35, right: c.right + w * 0.35 };
+        const across = {
+          left: Math.max(c.left - w * 0.35, c.room?.left ?? 0),
+          right: Math.min(c.right + w * 0.35, c.room?.right ?? 1),
+        };
         // The cell under its column's heading: a table may set its numbers
         // to the left or right under a wide heading, leaving the middle of
         // the cell alone empty.

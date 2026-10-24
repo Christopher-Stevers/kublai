@@ -2,7 +2,12 @@
 import sharp from "sharp";
 import { beforeAll, expect, it, vi } from "vitest";
 import { analyzeSlip, type Evaluator } from "./analyze";
-import { bandsFromTable, type VisionAnswer, type VisionAsk } from "./vision";
+import {
+  bandsFromTable,
+  snapColumns,
+  type VisionAnswer,
+  type VisionAsk,
+} from "./vision";
 import type { ReceiptOrderItem, SlipLine } from "~/lib/packing-slip-review";
 import type { SlipRow } from "./ocr-rows";
 
@@ -1206,4 +1211,54 @@ it("joins table lines split mid-item back together", () => {
     evidence: "| 1 ABC123 Brass valve 10 6 / with handle",
   });
   expect(bands[1]!.bottom).toBeCloseTo(0.31);
+});
+
+it("sets a quantity column under the OCR's words for its heading", () => {
+  const word = (text: string, x: number, right: number, y: number) => ({
+    text,
+    x,
+    y,
+    width: right - x,
+    height: 0.01,
+    confidence: 90,
+  });
+  const heading = { top: 0.26, bottom: 0.3 };
+  const words = [
+    word("QTY", 0.085, 0.111, 0.258),
+    word("QTY", 0.141, 0.167, 0.258),
+    word("ORD", 0.08, 0.112, 0.274),
+    word("SHP", 0.138, 0.169, 0.274),
+    word("B/O", 0.202, 0.224, 0.276),
+    { ...word("PRODUCT", 0.232, 0.29, 0.271), height: 0.02 },
+    word("Prev", 0.63, 0.664, 0.27),
+    word("Ship", 0.632, 0.662, 0.285),
+  ];
+  const snapped = snapColumns(
+    {
+      ordered: { ...heading, left: 0.07, right: 0.12 },
+      shipped: { ...heading, left: 0.12, right: 0.15 },
+      backordered: { ...heading, left: 0.17, right: 0.22 },
+    },
+    words,
+  );
+  // Up to the words' foot, short of the first line Jev's box runs into.
+  expect(snapped.ordered).toMatchObject({
+    top: 0.258,
+    left: 0.08,
+    right: 0.112,
+  });
+  expect(snapped.ordered!.bottom).toBeCloseTo(0.284);
+  expect(snapped.shipped).toMatchObject({ left: 0.138, right: 0.169 });
+  // A short heading still leaves a cell wide enough for its figures, though
+  // not reaching halfway to the next heading, here one boxed with the rule.
+  expect(snapped.backordered!.left).toBeCloseTo(0.198);
+  expect(snapped.backordered!.right).toBeCloseTo(0.228);
+  expect(snapped.backordered!.room!.left).toBeCloseTo(0.1855);
+  expect(snapped.backordered!.room!.right).toBeCloseTo(0.228);
+  // A shipped box over a Prev Ship heading is not moved onto it.
+  const prev = { ...heading, left: 0.64, right: 0.68 };
+  expect(snapColumns({ shipped: prev }, words).shipped).toBe(prev);
+  // Nor is a box with no heading words over it.
+  const bare = { ...heading, left: 0.4, right: 0.45 };
+  expect(snapColumns({ ordered: bare }, words).ordered).toBe(bare);
 });
