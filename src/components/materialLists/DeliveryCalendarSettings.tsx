@@ -14,11 +14,15 @@ import {
 export function DeliveryCalendarSettings({
   online,
   onSaved,
+  embedded = false,
 }: {
   online: boolean;
   onSaved: () => void;
+  /** Always open, without its own toggle (inside a dialog). */
+  embedded?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [expanded, setOpen] = useState(false);
+  const open = embedded || expanded;
   const [year, setYear] = useState(new Date().getFullYear());
   const [draft, setDraft] = useState<{
     calendar: DeliveryCalendar;
@@ -67,8 +71,8 @@ export function DeliveryCalendarSettings({
   const selectClass =
     "bg-background h-10 w-full rounded-md border px-3 text-sm disabled:opacity-50";
   return (
-    <section className="mb-6 rounded-xl border">
-      <button
+    <section className={embedded ? undefined : "mb-6 rounded-xl border"}>
+      {!embedded && <button
         type="button"
         aria-expanded={open}
         aria-controls="delivery-calendar-settings"
@@ -81,11 +85,11 @@ export function DeliveryCalendarSettings({
           aria-hidden="true"
           className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
         />
-      </button>
+      </button>}
       {open && (
         <div
           id="delivery-calendar-settings"
-          className="space-y-5 border-t px-4 py-4"
+          className={embedded ? "space-y-5" : "space-y-5 border-t px-4 py-4"}
         >
           {!online ? (
             <p role="status" className="text-muted-foreground text-sm">

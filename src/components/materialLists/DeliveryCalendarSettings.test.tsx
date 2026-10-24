@@ -64,3 +64,8 @@ it("discards a previous account's draft and does not save while offline", () => 
   expect(screen.getByRole("status")).toHaveTextContent("Reconnect");
   expect(mocks.mutate).not.toHaveBeenCalled();
 });
+it("shows the settings straight away when embedded in a dialog", () => {
+  render(<DeliveryCalendarSettings embedded online onSaved={vi.fn()} />);
+  expect(screen.queryByRole("button", { name: "Delivery calendar" })).toBeNull();
+  expect(screen.getByRole("switch", { name: "Skip Saturday" })).toBeVisible();
+});
