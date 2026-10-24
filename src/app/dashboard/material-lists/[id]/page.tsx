@@ -165,7 +165,7 @@ export default function MaterialListDetailPage({
   }, 0);
   const footerMaterialTotal = verifyOrderId ? visibleMaterialTotal : materialTotal;
   // Ordered parts are received right on the list, as on an order's verify view.
-  const receivableOrder = (item: (typeof items)[number]) =>
+  const receivableOrder = (item: Pick<(typeof items)[number], "sentOrderItemId" | "sentOrder">) =>
     !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
   const hasReceivableOrder = items.some((item) => receivableOrder(item));
 
@@ -453,6 +453,41 @@ export default function MaterialListDetailPage({
                   suppliers={suppliers}
                   isReplicacheSyncing={isReplicacheSyncing}
                   isToolRequest={isToolRequest}
+                  receiveFor={(item) => {
+                    const listOrder = receivableOrder(item);
+                    if (!listOrder || !item.sentOrderItemId) return null;
+                    const orderItemId = item.sentOrderItemId;
+                    const slipFound = slipDrafts.find(orderItemId);
+                    const slipEntry = slipFound?.entry ?? null;
+                    const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
+                    return {
+                      orderId: listOrder.id,
+                      orderNumber: listOrder.number ?? null,
+                      orderHref: `/dashboard/material-lists/${id}?orderId=${encodeURIComponent(listOrder.id)}`,
+                      ordered: listOrder.quantity,
+                      received: slipEntry ? slipEntry.total : listOrder.receivedQuantity,
+                      status: slipEntry
+                        ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
+                        : listOrder.verificationStatus,
+                      unit: item.partDefinition?.bulkUnit ?? item.uom?.code,
+                      readOnly: !canReceive || !isBrowserOnline,
+                      badge: slipFound && slipEntry ? (
+                        <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
+                      ) : undefined,
+                      onChange: (state) => {
+                        // While a read slip is being checked, changes stay on the slip until it is confirmed.
+                        if (slipFound && slipEntry) {
+                          slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem");
+                          return;
+                        }
+                        updateOrderItemVerification.mutate({
+                          orderItemId,
+                          receivedQuantity: state.receivedQuantity,
+                          verificationStatus: state.verificationStatus,
+                        });
+                      },
+                    };
+                  }}
                 />
               )}
             </>

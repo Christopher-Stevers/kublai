@@ -3,6 +3,7 @@ import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
+import { TableReceiveControls, type TableReceive } from "./TableReceive";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
@@ -77,6 +78,8 @@ export interface MaterialListTableRowProps {
   isReplicacheSyncing?: boolean;
   /** Tool request lines go to the tool room: no supplier, no prices. */
   isToolRequest?: boolean;
+  /** Receive this ordered part right on the row. */
+  receive?: TableReceive | null;
 }
 
 export const MATERIAL_LIST_SHEET_COLUMNS =
@@ -91,6 +94,7 @@ function MaterialListTableRowComponent({
   suppliers,
   isReplicacheSyncing = false,
   isToolRequest = false,
+  receive,
 }: MaterialListTableRowProps) {
   const showMoney = useFinancialVisibility();
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
@@ -107,6 +111,11 @@ function MaterialListTableRowComponent({
     );
   };
 
+  const partName =
+    item.oneOff?.displayName ||
+    item.partDefinition?.displayName ||
+    item.descriptionSnapshot ||
+    "Unknown Part";
   const quantity = parseFloat(item.quantity);
   const unitCost = item.unitCost ? parseFloat(item.unitCost) : 0;
   const lineTotal = item.sentOrderItemId ? Number(item.extendedPrice ?? 0) : purchaseLineTotal(quantity, unitCost, isToolRequest ? null : item.supplierPart?.packSize, isToolRequest ? null : item.partDefinition?.piecesPerPack);
@@ -132,10 +141,7 @@ function MaterialListTableRowComponent({
       </td>
       <td className="content-center">
         <div className="text-sm leading-snug font-medium">
-          {item.oneOff?.displayName ||
-            item.partDefinition?.displayName ||
-            item.descriptionSnapshot ||
-            "Unknown Part"}
+          {partName}
           {item.oneOff && (
             <span className="text-muted-foreground ml-2 text-xs">
               (One-off)
@@ -143,7 +149,9 @@ function MaterialListTableRowComponent({
           )}
         </div>
         <QuotedBadge status={item.jobPriceStatus} />
-        {item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
+        {receive ? (
+          <TableReceiveControls receive={receive} name={partName} />
+        ) : item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
         {item.oneOff?.sizeNominal && (
           <div className="text-muted-foreground text-xs">
             Size: {item.oneOff.sizeNominal}
@@ -229,6 +237,9 @@ function MaterialListTableRowComponent({
 export const MaterialListTableRow = memo(
   MaterialListTableRowComponent,
   (previous, next) =>
+    // Receive controls carry callbacks and slip state, so they always render.
+    !previous.receive &&
+    !next.receive &&
     previous.materialListId === next.materialListId &&
     previous.suppliers === next.suppliers &&
     previous.isReplicacheSyncing === next.isReplicacheSyncing &&

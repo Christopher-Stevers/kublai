@@ -15,6 +15,7 @@ export function MaterialListSheet({
   isReplicacheSyncing,
   className = "",
   isToolRequest = false,
+  receiveFor,
 }: {
   items: MaterialListTableRowProps["item"][];
   materialListId: string;
@@ -22,6 +23,10 @@ export function MaterialListSheet({
   isReplicacheSyncing?: boolean;
   className?: string;
   isToolRequest?: boolean;
+  /** Receive controls for ordered parts, when the list is used to receive. */
+  receiveFor?: (
+    item: MaterialListTableRowProps["item"],
+  ) => MaterialListTableRowProps["receive"];
 }) {
   const showMoney = useFinancialVisibility();
   const syncing = useReplicacheSyncing();
@@ -60,6 +65,7 @@ export function MaterialListSheet({
               suppliers={suppliers}
               isReplicacheSyncing={isReplicacheSyncing ?? syncing}
               isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
+              receive={receiveFor?.(item)}
             />
           ))}
         </tbody>
