@@ -1,8 +1,8 @@
 // Expanded steel laid over the (shaded) checker plate, which shows through the holes.
 export const EXPANDED_METAL = {
   backgroundImage:
-    "url(/images/chat-expanded-metal.webp?v=4), linear-gradient(rgba(8,8,9,0.42), rgba(8,8,9,0.42)), url(/images/chat-checker-plate.webp?v=5)",
-  backgroundSize: "56px 28px, auto, 384px 384px",
+    "url(/images/chat-expanded-metal.webp?v=4), linear-gradient(rgba(8,8,9,0.42), rgba(8,8,9,0.42)), url(/images/chat-checker-plate-realistic.webp)",
+  backgroundSize: "56px 28px, auto, 512px 512px",
   backgroundColor: "#3f4143",
 };
 /** Riveted steel angle along the join between expanded steel and checker plate. */
@@ -34,9 +34,9 @@ export const OAK_PLANKS = {
   backgroundColor: "#2e1d0f",
 };
 export const CHECKER_PLATE = {
-  // Soft overhead light falling off toward the edges.
+  // Photographic relief and grain, gently shaded beneath opaque message bubbles.
   backgroundImage:
-    "radial-gradient(ellipse 130% 90% at 50% 0%, rgba(255,255,255,0.07), rgba(0,0,0,0) 55%, rgba(0,0,0,0.2)), url(/images/chat-checker-plate.webp?v=5)",
-  backgroundSize: "auto, 384px 384px",
+    "linear-gradient(rgba(12,15,18,0.16), rgba(12,15,18,0.16)), url(/images/chat-checker-plate-realistic.webp)",
+  backgroundSize: "auto, 512px 512px",
   backgroundColor: "#6b6d70",
 };
