@@ -24,6 +24,18 @@ for (let y = 0; y < N; y++) {
     acc += row[(x + r + 1) % N] - row[(x - r + N) % N];
   }
 }
+// Shorter, finer streaks layered over the long ones.
+const fine = new Float32Array(N * N);
+for (let y = 0; y < N; y++) {
+  const row = Array.from({ length: N }, () => rand());
+  const r = 3 * SS;
+  let acc = 0;
+  for (let k = -r; k <= r; k++) acc += row[(k + N) % N];
+  for (let x = 0; x < N; x++) {
+    fine[y * N + x] = (acc / (2 * r + 1) - 0.5) * 0.09;
+    acc += row[(x + r + 1) % N] - row[(x - r + N) % N];
+  }
+}
 // Normalise streak contrast.
 let mean = 0;
 for (const v of brushed) mean += v;
@@ -67,6 +79,36 @@ for (let k = 0; k < 200; k++) {
     scratch[y * N + x] = v * fade;
   }
 }
+// Broad sheen bands across the grain, like a brushed sheet catching a long light.
+const sheenG = Array.from({ length: 6 }, () => rand() * 2 - 1);
+const sheen = new Float32Array(N);
+for (let x = 0; x < N; x++) {
+  const f = (x / N) * 6, i0 = Math.floor(f), t = f - i0, u = t * t * (3 - 2 * t);
+  sheen[x] = (sheenG[i0 % 6] + (sheenG[(i0 + 1) % 6] - sheenG[i0 % 6]) * u) * 0.045;
+}
+// Pits and water spots.
+const spots = new Float32Array(N * N);
+const stamp = (cx, cy, r, fn) => {
+  const R = Math.ceil(r + 2);
+  for (let dy = -R; dy <= R; dy++)
+    for (let dx = -R; dx <= R; dx++) {
+      const v = fn(Math.hypot(dx, dy));
+      if (!v) continue;
+      const x = (((Math.round(cx) + dx) % N) + N) % N;
+      const y = (((Math.round(cy) + dy) % N) + N) % N;
+      spots[y * N + x] += v;
+    }
+};
+for (let k = 0; k < 500; k++) {
+  const r = (0.4 + rand() * 1.1) * SS;
+  const a = -(0.08 + rand() * 0.14);
+  stamp(rand() * N, rand() * N, r, (d) => (d < r ? a * (1 - (d / r) ** 2) : 0));
+}
+for (let k = 0; k < 18; k++) {
+  const r = (5 + rand() * 16) * SS;
+  const a = (rand() < 0.5 ? -1 : 1) * (0.02 + rand() * 0.025);
+  stamp(rand() * N, rand() * N, r, (d) => (d < r ? a * (0.25 + 0.75 * Math.exp(-(((d - r * 0.92) / (0.9 * SS)) ** 2))) : 0));
+}
 // Each lozenge wears a little differently.
 const wear = Array.from({ length: (N / S) ** 2 }, () => (rand() - 0.5) * 0.12);
 const lozenge = new Int32Array(N * N).fill(-1);
@@ -100,6 +142,30 @@ for (let gy = 0; gy < cells; gy++)
       }
   }
 
+// Ambient occlusion: grime and shadow settle around the base of each tread.
+function boxBlur(src, r) {
+  const tmp = new Float32Array(N * N), out = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) {
+    let acc = 0;
+    for (let k = -r; k <= r; k++) acc += src[y * N + ((k + N) % N)];
+    for (let x = 0; x < N; x++) {
+      tmp[y * N + x] = acc / (2 * r + 1);
+      acc += src[y * N + ((x + r + 1) % N)] - src[y * N + ((x - r + N) % N)];
+    }
+  }
+  for (let x = 0; x < N; x++) {
+    let acc = 0;
+    for (let k = -r; k <= r; k++) acc += tmp[((k + N) % N) * N + x];
+    for (let y = 0; y < N; y++) {
+      out[y * N + x] = acc / (2 * r + 1);
+      acc += tmp[((y + r + 1) % N) * N + x] - tmp[((y - r + N) % N) * N + x];
+    }
+  }
+  return out;
+}
+const blurH = boxBlur(boxBlur(height, 3 * SS), 3 * SS);
+const grime = valueNoise(7, 0.5).map((v) => 0.6 + v);
+
 // Light from the top-left.
 const light = [-0.5, -0.6, 0.62];
 const ln = Math.hypot(...light);
@@ -127,10 +193,19 @@ for (let y = 0; y < N; y++)
     const hl = Math.hypot(lx, ly, hz);
     const spec = Math.max(0, (nx * lx + ny * ly + nz * hz) / hl) ** 40 * (height[i] > 0 ? 0.35 : 0.08);
     const worn = lozenge[i] >= 0 ? wear[lozenge[i]] * height[i] : 0;
-    const base = 0.8 + brushed[i] * 0.06 + height[i] * 0.04 + mottle[i] + mottleFine[i] + worn + scratch[i] * (1 - height[i]);
-    const shade = base * (0.55 + 0.6 * diffuse) + spec * (1 - 0.6 * Math.min(1, smudge[i])) - smudge[i] * 0.04;
+    // Tread tops are polished smooth by foot traffic; the flat keeps its grain.
+    const polish = Math.min(1, height[i] * 1.4);
+    const grain = (brushed[i] * 0.06 + fine[i]) * (1 - 0.7 * polish);
+    const occ = Math.max(0, blurH[i] - height[i]) * grime[i];
+    const base =
+      0.8 + grain + height[i] * 0.04 + mottle[i] + mottleFine[i] + worn + sheen[x] +
+      (scratch[i] + spots[i]) * (1 - height[i]) - occ * 0.55;
+    const gloss = Math.max(0, (nx * lx + ny * ly + nz * hz) / hl) ** 90 * 0.5 * polish * polish;
+    const shade = base * (0.55 + 0.6 * diffuse) + (spec + gloss) * (1 - 0.6 * Math.min(1, smudge[i])) - smudge[i] * 0.04;
+    // Grime is a touch warm.
+    const warm = [occ * 0.04, occ * 0.01, -occ * 0.03];
     for (let c = 0; c < 3; c++) {
-      const metal = shade * 255 * tint[c];
+      const metal = (shade + warm[c]) * 255 * tint[c];
       const v = metal * DIM;
       raw[i * 3 + c] = Math.max(0, Math.min(255, Math.round(v)));
     }
