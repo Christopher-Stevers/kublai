@@ -16,7 +16,7 @@ const ln = Math.hypot(...light);
 const [lx, ly, lz] = light.map((c) => c / ln);
 // Stainless steel: near-neutral, the faintest cool cast; DIM is the low light.
 const tint = [0.97, 0.985, 1.0];
-const DIM = 0.66;
+const DIM = 0.76;
 
 /** Distance (lattice units) to the nearest strand, and which strand family. */
 function strand(x, y) {

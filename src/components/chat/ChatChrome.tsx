@@ -1,8 +1,8 @@
 // Expanded steel laid over the (shaded) checker plate, which shows through the holes.
 export const EXPANDED_METAL = {
   backgroundImage:
-    "url(/images/chat-expanded-metal.webp?v=3), linear-gradient(rgba(8,8,9,0.42), rgba(8,8,9,0.42)), url(/images/chat-checker-plate.webp?v=3)",
-  backgroundSize: "56px 28px, auto, 96px 96px",
+    "url(/images/chat-expanded-metal.webp?v=4), linear-gradient(rgba(8,8,9,0.42), rgba(8,8,9,0.42)), url(/images/chat-checker-plate.webp?v=4)",
+  backgroundSize: "56px 28px, auto, 384px 384px",
   backgroundColor: "#3f4143",
 };
 /** Riveted steel angle along the join between expanded steel and checker plate. */
@@ -12,7 +12,7 @@ export function AngleTrim({ edge }: { edge: "top" | "bottom" }) {
       aria-hidden="true"
       className="relative z-10 h-4 shrink-0"
       style={{
-        backgroundImage: "url(/images/chat-angle-trim.webp?v=2)",
+        backgroundImage: "url(/images/chat-angle-trim.webp?v=3)",
         backgroundSize: "96px 16px",
         backgroundRepeat: "repeat-x",
         boxShadow:
@@ -34,7 +34,7 @@ export const OAK_PLANKS = {
   backgroundColor: "#2e1d0f",
 };
 export const CHECKER_PLATE = {
-  backgroundImage: "url(/images/chat-checker-plate.webp?v=3)",
-  backgroundSize: "96px 96px",
+  backgroundImage: "url(/images/chat-checker-plate.webp?v=4)",
+  backgroundSize: "384px 384px",
   backgroundColor: "#6b6d70",
 };
