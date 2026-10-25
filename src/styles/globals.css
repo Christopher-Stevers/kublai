@@ -441,6 +441,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
   .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary {
     @apply border-input bg-input/30;
+    --tw-shadow-color: oklch(0 0 0 / 35%);
   }
   .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary:hover {
     @apply bg-input/50;
