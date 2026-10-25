@@ -432,11 +432,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 @layer utilities {
-  /* Bottom menus use neutral actions; primary styling elsewhere keeps its theme. */
-  :where(.pin-viewport-bottom, [data-bottom-menu]) {
-    --primary: var(--muted-foreground);
-    --primary-foreground: var(--background);
-    --ring: var(--muted-foreground);
+  /* Filled bottom actions match their neighboring outline buttons. */
+  :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary {
+    @apply border border-input bg-card text-foreground shadow-sm;
+  }
+  :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary:hover {
+    @apply bg-accent text-accent-foreground;
+  }
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary {
+    @apply border-input bg-input/30;
+  }
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary:hover {
+    @apply bg-input/50;
   }
 
   /* Fixed bottom bars: see src/lib/viewport-bottom.ts. */
