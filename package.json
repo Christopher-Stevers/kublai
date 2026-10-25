@@ -26,7 +26,8 @@
     "typecheck": "tsc --noEmit",
     "lint:strict": "eslint src",
     "test": "vitest run",
-    "test:reliability": "tsx --test src/server/rooms/upload-session.node-test.ts src/server/rooms/bounded-cache.node-test.ts scripts/service-worker.node-test.mjs"
+    "test:reliability": "tsx --test src/server/rooms/upload-session.node-test.ts src/server/rooms/bounded-cache.node-test.ts scripts/service-worker.node-test.mjs",
+    "build:background": "node scripts/build-background.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
@@ -88,6 +89,7 @@
     "@types/web-push": "^3.6.4",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
+    "esbuild": "0.25.12",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "eslint-plugin-drizzle": "^0.2.3",

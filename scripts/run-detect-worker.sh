@@ -16,7 +16,11 @@ case "$worker_seconds" in
   *) echo "Invalid worker time budget" >&2; exit 64 ;;
 esac
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_root=${FOREMANHQ_APP_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
+worker_entry=(--import tsx "$repo_root/src/server/rooms/detect-worker.ts")
+if [ -n "${FOREMANHQ_WORKER_BUNDLE:-}" ]; then
+  worker_entry=("$FOREMANHQ_WORKER_BUNDLE/server/rooms/detect-worker.mjs")
+fi
 node_binary=${FOREMANHQ_NODE_BINARY:-$(command -v node || true)}
 if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
   echo "Node runtime unavailable" >&2
@@ -70,8 +74,7 @@ trap cleanup EXIT HUP INT TERM
     /usr/bin/nice -n 10 \
     "$node_binary" --max-old-space-size=768 --expose-gc \
     --import dotenv/config \
-    --import tsx \
-    "$repo_root/src/server/rooms/detect-worker.ts" \
+    "${worker_entry[@]}" \
     "$floor_id" "$method" "$upload_id"
 ) &
 worker_pid=$!

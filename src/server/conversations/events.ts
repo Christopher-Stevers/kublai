@@ -1,3 +1,4 @@
+import { onBackgroundHint, publishBackgroundHint } from "../background/hints";
 import { EventEmitter } from "node:events";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
@@ -19,6 +20,10 @@ emitter.setMaxListeners(1000);
 /** Post-commit hints only. The authorized database snapshot remains authoritative. */
 export function publishConversationEvent(event: ConversationEvent) {
   emitter.emit("change", event);
+  publishBackgroundHint({
+    topic: "conversation",
+    conversationId: event.conversationId,
+  });
 }
 export function subscribeConversationEvents(
   listener: (event: ConversationEvent) => void,
@@ -48,3 +53,8 @@ export async function conversationEventSnapshot(userId: string) {
     .where(eq(conversations.organizationId, user.organizationId));
   return new Map(rows.map((row) => [row.id, `${row.updated}:${row.read}`]));
 }
+
+onBackgroundHint((hint) => {
+  if (hint.topic === "conversation")
+    emitter.emit("change", { conversationId: hint.conversationId });
+});

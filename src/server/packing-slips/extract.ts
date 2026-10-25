@@ -1,3 +1,4 @@
+import { workerCommand } from "~/server/background/command";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -35,7 +36,8 @@ export async function extractSlip(
   mime: string,
 ): Promise<Extracted> {
   const key = `${organizationId}:${sha256}:${mime}`;
-  for (const [k, v] of recent) if (Date.now() - v.at > KEEP_MS) recent.delete(k);
+  for (const [k, v] of recent)
+    if (Date.now() - v.at > KEEP_MS) recent.delete(k);
   let kept = recent.get(key)?.value;
   if (!kept) {
     kept = await readSlip(organizationId, sha256, mime);
@@ -63,12 +65,7 @@ async function readSlip(organizationId: string, sha256: string, mime: string) {
         process.execPath,
         [
           "--max-old-space-size=512",
-          "--import",
-          "tsx",
-          path.join(
-            process.cwd(),
-            "src/server/packing-slips/extract-worker.ts",
-          ),
+          ...workerCommand("src/server/packing-slips/extract-worker.ts"),
           documentBlobPath(organizationId, sha256),
           target,
           mime,

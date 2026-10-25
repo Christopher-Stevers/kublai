@@ -1,10 +1,14 @@
+import {
+  canDispatchBackground,
+  separateBackground,
+} from "~/server/background/mode";
 import { checkpoint, checkpointRoot, checkpointEvaluator } from "./checkpoint";
 import { extractedSourceSchema } from "./types";
 import { readAssessmentAi, storeAssessmentAi } from "./ai-settings";
 import { createEvaluator, hostedBase, hostedModel } from "./ai-evaluator";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   defaultPipeSpec,
   pipeSpecSchema,
@@ -400,6 +404,7 @@ export async function startAssessment(
   jobId: string,
   selection?: AssessmentSelection,
   recoverRunId?: string,
+  waitForCompletion = false,
 ) {
   const context = await getSpecificationContext(userId, jobId);
   assertAssessPermission(context.access.user);
@@ -429,8 +434,9 @@ export async function startAssessment(
   )
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message:
-        selection ? "Choose up to 20 documents and 500 drawing sheets per assessment." : "The Specifications folder exceeds the 500-document assessment limit. No documents were silently omitted.",
+      message: selection
+        ? "Choose up to 20 documents and 500 drawing sheets per assessment."
+        : "The Specifications folder exceeds the 500-document assessment limit. No documents were silently omitted.",
     });
   if (tasks.size + admissions >= 4)
     throw new TRPCError({
@@ -460,6 +466,7 @@ export async function startAssessment(
       if (
         prior.success &&
         prior.data.status === "processing" &&
+        (prior.data.workerId || !recoverRunId) &&
         Date.now() - new Date(existing!.updatedAt).getTime() < LEASE_MS
       )
         return { assessment: prior.data, started: false };
@@ -497,7 +504,8 @@ export async function startAssessment(
       const assessment: SystemsAssessment = {
         runId: resumable && prior.success ? prior.data.runId : randomUUID(),
         checkpointVersion: 1,
-        workerId: randomUUID(),
+        workerId:
+          separateBackground() && !recoverRunId ? undefined : randomUUID(),
         status: "processing",
         startedAt: new Date().toISOString(),
         stage: resumable ? "Queued to resume saved progress" : "Queued",
@@ -537,6 +545,8 @@ export async function startAssessment(
       return { assessment, started: true };
     });
     if (!task.started) return { runId: task.assessment.runId };
+    if (separateBackground() && !recoverRunId)
+      return { runId: task.assessment.runId };
     const assessment = task.assessment;
     const savedProvider = await readAssessmentAi(
       organizationId,
@@ -816,6 +826,7 @@ export async function startAssessment(
       clearInterval(heartbeat);
       tasks.delete(assessment.runId);
     });
+    if (waitForCompletion) await work;
     return { runId: assessment.runId };
   } finally {
     admissions--;
@@ -824,7 +835,8 @@ export async function startAssessment(
 
 let dispatching = false;
 /** Recover abandoned processing rows after a server restart; never rerun completed assessments. */
-export async function dispatchSystemAssessments() {
+export async function dispatchSystemAssessments(waitForCompletion = false) {
+  if (!canDispatchBackground()) return;
   if (dispatching || tasks.size + admissions >= 4) return;
   dispatching = true;
   try {
@@ -834,10 +846,11 @@ export async function dispatchSystemAssessments() {
       .where(
         and(
           eq(jobSystemAssessments.status, "processing"),
-          sql`${jobSystemAssessments.updatedAt} < now() - interval '90 seconds'`,
+          sql`(${jobSystemAssessments.data}->>'workerId' is null or ${jobSystemAssessments.updatedAt} < now() - interval '90 seconds')`,
         ),
       )
-      .limit(4);
+      .orderBy(asc(jobSystemAssessments.createdAt))
+      .limit(waitForCompletion ? 1 : 4);
     for (const row of rows) {
       if (tasks.has(row.id) || tasks.size + admissions >= 4) continue;
       const parsed = assessmentSchema.safeParse(row.data);
@@ -855,6 +868,7 @@ export async function dispatchSystemAssessments() {
           row.jobId,
           parsed.data.selection,
           row.id,
+          waitForCompletion,
         );
       } catch (error) {
         if (parsed.success)

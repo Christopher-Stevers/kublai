@@ -1,0 +1,20 @@
+[Unit]
+Description=ForemanHQ durable background processing
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+WorkingDirectory=/home/tim/.openclaw/workspace/kublai
+ExecStart=/bin/bash /home/tim/.openclaw/workspace/kublai/scripts/start-background.sh
+Environment=PATH=/home/tim/.local/share/mise/installs/node/26.8.2/bin:/usr/local/bin:/usr/bin
+Environment=NODE_OPTIONS=--dns-result-order=ipv4first
+Environment=UV_THREADPOOL_SIZE=2
+Environment=OMP_THREAD_LIMIT=1
+Slice=foremanhq-background.slice
+Nice=10
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillMode=control-group
+[Install]
+WantedBy=default.target

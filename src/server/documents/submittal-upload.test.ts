@@ -28,6 +28,9 @@ vi.mock("./service", () => ({
   readWorkspace: mock.read,
   saveDocumentVersion: mock.save,
 }));
+vi.mock("~/server/packing-slips/service", () => ({
+  startSlipAnalysis: vi.fn(),
+}));
 const temporaryRoot = await vi.hoisted(async () => {
   const { mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");

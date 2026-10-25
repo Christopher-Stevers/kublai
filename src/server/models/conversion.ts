@@ -1,3 +1,4 @@
+import { canDispatchBackground } from "~/server/background/mode";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
@@ -67,6 +68,7 @@ export async function refreshRevitModel(a: ModelAccess, id: string) {
 let running = false;
 /** Durable queue: DB leases survive request disconnects and expired leases resume after a restart. */
 export async function dispatchModelConversions() {
+  if (!canDispatchBackground()) return;
   if (running || process.env.BIM_WORKER_DISABLED === "1") return;
   running = true;
   try {
@@ -84,14 +86,15 @@ export async function dispatchModelConversions() {
         .for("update", { skipLocked: true });
       const row = rows[0];
       if (!row) return null;
+      const leaseUntil = new Date(Date.now() + 60 * 60 * 1000);
       await tx
         .update(bimModels)
         .set({
-          conversionLease: new Date(Date.now() + 60 * 60 * 1000),
+          conversionLease: leaseUntil,
           conversionCheckedAt: new Date(),
         })
         .where(eq(bimModels.id, row.id));
-      return row;
+      return { ...row, conversionLease: leaseUntil };
     });
     if (!leased) return;
     try {
@@ -104,7 +107,13 @@ export async function dispatchModelConversions() {
         .set({
           data: sql`${bimModels.data} || ${JSON.stringify({ conversionEngine: "native", conversionMessage: "Reading Revit geometry locally" })}::jsonb`,
         })
-        .where(and(modelScope(a), eq(bimModels.id, leased.id)))
+        .where(
+          and(
+            modelScope(a),
+            eq(bimModels.id, leased.id),
+            eq(bimModels.conversionLease, leased.conversionLease),
+          ),
+        )
         .returning({ id: bimModels.id });
       if (!started) return;
       const result = await convertNativeRevit(
@@ -136,7 +145,13 @@ export async function dispatchModelConversions() {
             conversionLease: null,
             conversionCheckedAt: new Date(),
           })
-          .where(and(modelScope(fresh), eq(bimModels.id, leased.id)))
+          .where(
+            and(
+              modelScope(fresh),
+              eq(bimModels.id, leased.id),
+              eq(bimModels.conversionLease, leased.conversionLease),
+            ),
+          )
           .returning({ id: bimModels.id });
         if (!updated) return;
         await tx.insert(bimActivity).values({
@@ -159,7 +174,13 @@ export async function dispatchModelConversions() {
           conversionLease: null,
           data: sql`${bimModels.data} || ${JSON.stringify({ status: "failed", conversionMessage: message })}::jsonb`,
         })
-        .where(and(modelIsActive, eq(bimModels.id, leased.id)));
+        .where(
+          and(
+            modelIsActive,
+            eq(bimModels.id, leased.id),
+            eq(bimModels.conversionLease, leased.conversionLease),
+          ),
+        );
     }
   } finally {
     running = false;

@@ -62,6 +62,7 @@ yarn-error.log*
 /.openclaw/
 /.wrangler/
 /.tmp/
+/.background/
 /tmp/
 /.trash/
 /generated/

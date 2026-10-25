@@ -1,3 +1,9 @@
+import { roomDetectionJobs } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  canDispatchBackground,
+  separateBackground,
+} from "~/server/background/mode";
 import { spawn } from "node:child_process";
 import path from "node:path";
 
@@ -14,11 +20,18 @@ export async function startDetectWorker(
   runId: string,
 ) {
   const child = spawn(
-    path.join(process.cwd(), "scripts/run-detect-worker.sh"),
+    path.join(
+      process.env.FOREMANHQ_WORKER_BUNDLE ?? process.cwd(),
+      "scripts/run-detect-worker.sh",
+    ),
     [floorId, method, runId],
     {
       cwd: process.cwd(),
-      env: { ...process.env, FOREMANHQ_NODE_BINARY: process.execPath },
+      env: {
+        ...process.env,
+        FOREMANHQ_NODE_BINARY: process.execPath,
+        FOREMANHQ_APP_ROOT: process.cwd(),
+      },
       detached: true,
       stdio: ["ignore", "inherit", "inherit"],
     },
@@ -39,7 +52,7 @@ export async function startDetectWorker(
       `Room detection worker stopped (${detail})`,
       runId,
     )
-      .then(() => dispatchDetectQueue())
+      .then(() => (separateBackground() ? undefined : dispatchDetectQueue()))
       .catch((error) => console.error("[detect-worker-exit]", error));
   });
   try {
@@ -60,6 +73,7 @@ let dispatching: Promise<void> | null = null;
 
 /** Called at application startup, periodically, and after each worker exits. */
 export function dispatchDetectQueue(): Promise<void> {
+  if (!canDispatchBackground()) return Promise.resolve();
   if (dispatching) return dispatching;
   dispatching = dispatch().finally(() => {
     dispatching = null;
@@ -84,5 +98,20 @@ async function dispatch() {
         next.runId,
       );
     }
+  }
+}
+
+/** Keep a shared background slot reserved until the durable detector is idle. */
+export async function dispatchAndWaitForDetection() {
+  const { db } = await import("~/server/db");
+  await dispatchDetectQueue();
+  for (;;) {
+    const [row] = await db
+      .select({ id: roomDetectionJobs.floorId })
+      .from(roomDetectionJobs)
+      .where(eq(roomDetectionJobs.status, "running"))
+      .limit(1);
+    if (!row) return;
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }

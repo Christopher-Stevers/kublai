@@ -14,11 +14,20 @@ import { getTableName, getTableColumns, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 const test = vi.hoisted(() => ({
   transaction: vi.fn(),
+  select: vi.fn(),
+  update: vi.fn(),
   receive: true,
   extractionFails: false,
+  extractionStarted: false,
   extractionGate: null as Promise<void> | null,
 }));
-vi.mock("~/server/db", () => ({ db: { transaction: test.transaction } }));
+vi.mock("~/server/db", () => ({
+  db: {
+    transaction: test.transaction,
+    select: test.select,
+    update: test.update,
+  },
+}));
 vi.mock("~/server/auth/permissions", () => ({
   userCan: (_: unknown, key: string) =>
     key === "orders.receive" ? test.receive : key !== "documents.manage",
@@ -29,12 +38,14 @@ import { saveDocumentVersion } from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
   startSlipAnalysis,
+  dispatchPackingSlips,
   clearSlipAnalysis,
   confirmSlipReceipt,
   refreshSlipReview,
 } from "./service";
 vi.mock("./extract", () => ({
   extractSlip: async () => {
+    test.extractionStarted = true;
     await test.extractionGate;
     if (test.extractionFails) throw Error("Fixture reading failure");
     return { rows: [], pages: [], warnings: [] };
@@ -77,6 +88,7 @@ const org = id(1),
   list = id(3),
   order = id(4);
 const tables = [
+  schema.packingSlipJobs,
   schema.packingSlipReviewHistory,
   schema.jobPriceLists,
   schema.users,
@@ -114,10 +126,17 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       `CREATE UNIQUE INDEX packing_slip_history_test_unique ON kublai_packing_slip_review_history ("organizationId", "runId", kind)`,
     );
     test.transaction.mockImplementation(db.transaction.bind(db));
+    test.select.mockImplementation(db.select.bind(db));
+    test.update.mockImplementation(db.update.bind(db));
+    await conn.unsafe(
+      'ALTER TABLE kublai_packing_slip_job ALTER COLUMN status SET DEFAULT \'queued\', ALTER COLUMN attempts SET DEFAULT 0, ALTER COLUMN "createdAt" SET DEFAULT now(), ALTER COLUMN "updatedAt" SET DEFAULT now()',
+    );
   });
   beforeEach(async () => {
+    vi.unstubAllEnvs();
     test.receive = true;
     test.extractionFails = false;
+    test.extractionStarted = false;
     test.extractionGate = null;
     for (const table of [...tables].reverse())
       await conn.unsafe(`TRUNCATE "${getTableName(table)}"`);
@@ -178,6 +197,139 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     }
     throw Error("Analysis did not finish");
   }
+  it("persists queued analysis without inline reading and a worker commits it once", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "processing",
+    );
+    expect(
+      await db.select().from(schema.packingSlipReviewHistory),
+    ).toHaveLength(0);
+    expect((await db.select().from(schema.packingSlipJobs))[0]!.status).toBe(
+      "queued",
+    );
+    await Promise.all([dispatchPackingSlips(), dispatchPackingSlips()]);
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "ready",
+    );
+    expect(
+      await db.select().from(schema.packingSlipReviewHistory),
+    ).toHaveLength(1);
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
+  });
+  it("recovers an expired claim and rejects writes from the previous owner", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    const { claimPackingSlip, ownsPackingSlip, finishPackingSlip } =
+      await import("../background/packing-queue");
+    const previous = (await claimPackingSlip())!;
+    await db
+      .update(schema.packingSlipJobs)
+      .set({ leaseUntil: new Date(0) })
+      .where(eq(schema.packingSlipJobs.id, previous.id));
+    await dispatchPackingSlips();
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "ready",
+    );
+    expect(await db.transaction((tx) => ownsPackingSlip(tx, previous))).toBe(
+      false,
+    );
+    await finishPackingSlip(previous, true);
+    expect((await db.select().from(schema.packingSlipJobs))[0]!.status).toBe(
+      "done",
+    );
+    expect(
+      await db.select().from(schema.packingSlipReviewHistory),
+    ).toHaveLength(1);
+  });
+  it("leaves failed result persistence recoverable after a database outage", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    let release!: () => void;
+    test.extractionGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = dispatchPackingSlips();
+    for (let i = 0; i < 100; i++) {
+      if (test.extractionStarted) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(test.extractionStarted).toBe(true);
+    for (let i = 0; i < 3; i++)
+      test.transaction.mockRejectedValueOnce(Error("database unavailable"));
+    const rejected = expect(running).rejects.toThrow("database unavailable");
+    release();
+    await rejected;
+    expect((await db.select().from(schema.packingSlipJobs))[0]!.status).toBe(
+      "running",
+    );
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "processing",
+    );
+    await db
+      .update(schema.packingSlipJobs)
+      .set({ leaseUntil: new Date(0) })
+      .where(eq(schema.packingSlipJobs.documentId, doc.documentId));
+    await dispatchPackingSlips();
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "ready",
+    );
+    expect((await db.select().from(schema.packingSlipJobs))[0]!.status).toBe(
+      "done",
+    );
+  });
+  it("records an extraction failure as a failed queue run", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    test.extractionFails = true;
+    await dispatchPackingSlips();
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "failed",
+    );
+    expect((await db.select().from(schema.packingSlipJobs))[0]!.status).toBe(
+      "failed",
+    );
+  });
+  it("does not read or receive a queued slip after receiving permission is revoked", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    test.receive = false;
+    await dispatchPackingSlips();
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "failed",
+    );
+    expect(
+      await db.select().from(schema.packingSlipReviewHistory),
+    ).toHaveLength(0);
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
+  });
+  it("does not restore analysis cleared after it was queued", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    const runId = (await workspace()).documents[0]!.packingSlipAnalysis!.runId;
+    await clearSlipAnalysis(access, doc.documentId, runId);
+    await dispatchPackingSlips();
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.status).toBe(
+      "cleared",
+    );
+  });
   it("does not receive anything during analysis and applies a confirmed delivery only once", async () => {
     const { access, doc, analysis } = await ready();
     expect(
@@ -372,105 +524,179 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     for (let i = 0; i < 100; i++) {
       const analysis = (await workspace()).documents[0]!.packingSlipAnalysis;
       if (analysis?.status === "ready") return analysis;
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
     }
     throw Error("Detection did not finish");
   }
   it("clears unconfirmed detection while retaining the file and rejecting an old review", async () => {
-    const {access,doc,analysis}=await ready();
-    const cleared=await clearSlipAnalysis(access,doc.documentId,analysis.runId);
-    expect(cleared).toMatchObject({status:"cleared",items:[],lines:[],warnings:[]});
+    const { access, doc, analysis } = await ready();
+    const cleared = await clearSlipAnalysis(
+      access,
+      doc.documentId,
+      analysis.runId,
+    );
+    expect(cleared).toMatchObject({
+      status: "cleared",
+      items: [],
+      lines: [],
+      warnings: [],
+    });
     expect(cleared.runId).not.toBe(analysis.runId);
-    const state=await workspace();
+    const state = await workspace();
     expect(state.documents[0]!.currentVersionId).toBe(analysis.versionId);
     expect(state.versions).toHaveLength(1);
-    await expect(confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6})).rejects.toMatchObject({code:"CONFLICT"});
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
-    await startSlipAnalysis(access,doc.documentId,true,cleared.runId);
-    const rerun=await waitForReady();
+    await expect(
+      confirmSlipReceipt(access, doc.documentId, analysis.runId, {
+        [id(6)]: 6,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
+    await startSlipAnalysis(access, doc.documentId, true, cleared.runId);
+    const rerun = await waitForReady();
     expect(rerun.lines).toHaveLength(1);
     expect(rerun.applied).toBeUndefined();
-    await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6});
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(8);
+    await confirmSlipReceipt(access, doc.documentId, rerun.runId, {
+      [id(6)]: 6,
+    });
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(8);
   });
   const item = async () => (await db.select().from(schema.orderItems))[0]!;
   it("takes back a confirmed delivery when detection is cleared, so the slip can be confirmed afresh", async () => {
-    const {access,doc,analysis}=await ready();
-    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
+    const { access, doc, analysis } = await ready();
+    await confirmSlipReceipt(access, doc.documentId, analysis.runId, {
+      [id(6)]: 6,
+    });
     expect(Number((await item()).receivedQuantity)).toBe(8);
-    const cleared=await clearSlipAnalysis(access,doc.documentId,analysis.runId);
+    const cleared = await clearSlipAnalysis(
+      access,
+      doc.documentId,
+      analysis.runId,
+    );
     expect(cleared.applied).toBeUndefined();
     expect(cleared.confirmedItems).toBeUndefined();
     expect(cleared.lines).toEqual([]);
     expect(Number((await item()).receivedQuantity)).toBe(2);
     expect((await item()).verificationStatus).toBe("partial");
-    const state=await workspace();
+    const state = await workspace();
     expect(state.versions).toHaveLength(1);
-    expect(state.activity.at(-1)!.detail).toContain("took back its confirmed receipt");
-    await startSlipAnalysis(access,doc.documentId,true,cleared.runId);
-    const rerun=await waitForReady();
+    expect(state.activity.at(-1)!.detail).toContain(
+      "took back its confirmed receipt",
+    );
+    await startSlipAnalysis(access, doc.documentId, true, cleared.runId);
+    const rerun = await waitForReady();
     expect(rerun.applied).toBeUndefined();
     expect(rerun.items[0]!.received).toBe(2);
-    expect(await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:6})).toMatchObject({alreadyApplied:false});
+    expect(
+      await confirmSlipReceipt(access, doc.documentId, rerun.runId, {
+        [id(6)]: 6,
+      }),
+    ).toMatchObject({ alreadyApplied: false });
     expect(Number((await item()).receivedQuantity)).toBe(8);
-    expect((await db.select().from(schema.packingSlipReviewHistory)).filter(row=>row.kind==="confirmation")).toHaveLength(2);
+    expect(
+      (await db.select().from(schema.packingSlipReviewHistory)).filter(
+        (row) => row.kind === "confirmation",
+      ),
+    ).toHaveLength(2);
   });
   it("starts a confirmed slip over when detection is rerun", async () => {
-    const {access,doc,analysis}=await ready();
-    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:10});
+    const { access, doc, analysis } = await ready();
+    await confirmSlipReceipt(access, doc.documentId, analysis.runId, {
+      [id(6)]: 10,
+    });
     expect((await item()).verificationStatus).toBe("problem");
-    await startSlipAnalysis(access,doc.documentId,true,analysis.runId);
+    await startSlipAnalysis(access, doc.documentId, true, analysis.runId);
     expect(Number((await item()).receivedQuantity)).toBe(2);
     expect((await item()).verificationStatus).toBe("partial");
-    const rerun=await waitForReady();
+    const rerun = await waitForReady();
     expect(rerun.runId).not.toBe(analysis.runId);
     expect(rerun.applied).toBeUndefined();
-    expect(rerun.warnings).toContain("Previous receipts exist. Check that this is a new delivery before adding quantities.");
-    await confirmSlipReceipt(access,doc.documentId,rerun.runId,{[id(6)]:5});
+    expect(rerun.warnings).toContain(
+      "Previous receipts exist. Check that this is a new delivery before adding quantities.",
+    );
+    await confirmSlipReceipt(access, doc.documentId, rerun.runId, {
+      [id(6)]: 5,
+    });
     expect(Number((await item()).receivedQuantity)).toBe(7);
   });
   it("only takes off the slip's own quantity when the item changed after confirming", async () => {
-    const {access,doc,analysis}=await ready();
-    await confirmSlipReceipt(access,doc.documentId,analysis.runId,{[id(6)]:6});
-    await db.update(schema.orderItems).set({receivedQuantity:"10",verificationStatus:"complete"}).where(eq(schema.orderItems.id,id(6)));
-    await clearSlipAnalysis(access,doc.documentId,analysis.runId);
+    const { access, doc, analysis } = await ready();
+    await confirmSlipReceipt(access, doc.documentId, analysis.runId, {
+      [id(6)]: 6,
+    });
+    await db
+      .update(schema.orderItems)
+      .set({ receivedQuantity: "10", verificationStatus: "complete" })
+      .where(eq(schema.orderItems.id, id(6)));
+    await clearSlipAnalysis(access, doc.documentId, analysis.runId);
     expect(Number((await item()).receivedQuantity)).toBe(4);
     expect((await item()).verificationStatus).toBe("partial");
   });
   it("does nothing to quantities when an unconfirmed slip is rerun", async () => {
-    const {access,doc,analysis}=await ready();
-    await startSlipAnalysis(access,doc.documentId,true,analysis.runId);
+    const { access, doc, analysis } = await ready();
+    await startSlipAnalysis(access, doc.documentId, true, analysis.runId);
     await waitForReady();
     expect(Number((await item()).receivedQuantity)).toBe(2);
-    expect((await workspace()).activity.some(a=>a.action==="undoPackingSlipReceipt")).toBe(false);
+    expect(
+      (await workspace()).activity.some(
+        (a) => a.action === "undoPackingSlipReceipt",
+      ),
+    ).toBe(false);
   });
   it("requires receiving permission and a current run for detection controls", async () => {
-    const {access,doc,analysis}=await ready();
-    test.receive=false;
-    await expect(clearSlipAnalysis(access,doc.documentId,analysis.runId)).rejects.toMatchObject({code:"FORBIDDEN"});
-    test.receive=true;
-    await expect(clearSlipAnalysis(access,doc.documentId,id(90))).rejects.toMatchObject({code:"CONFLICT"});
-    await expect(startSlipAnalysis(access,doc.documentId,true,id(90))).rejects.toMatchObject({code:"CONFLICT"});
-    expect((await workspace()).documents[0]!.packingSlipAnalysis!.runId).toBe(analysis.runId);
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+    const { access, doc, analysis } = await ready();
+    test.receive = false;
+    await expect(
+      clearSlipAnalysis(access, doc.documentId, analysis.runId),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    test.receive = true;
+    await expect(
+      clearSlipAnalysis(access, doc.documentId, id(90)),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      startSlipAnalysis(access, doc.documentId, true, id(90)),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await workspace()).documents[0]!.packingSlipAnalysis!.runId).toBe(
+      analysis.runId,
+    );
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
   });
 
   it("discards an in-flight result after detection is cleared", async () => {
     let release!: () => void;
-    test.extractionGate=new Promise<void>(resolve=>{release=resolve;});
-    const access=await assertDocumentAccess("receiver",job,db);
-    const doc=await saveDocumentVersion(access,file,async()=>undefined);
-    await startSlipAnalysis(access,doc.documentId);
-    const processing=(await workspace()).documents[0]!.packingSlipAnalysis!;
+    test.extractionGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const access = await assertDocumentAccess("receiver", job, db);
+    const doc = await saveDocumentVersion(access, file, async () => undefined);
+    await startSlipAnalysis(access, doc.documentId);
+    const processing = (await workspace()).documents[0]!.packingSlipAnalysis!;
     expect(processing.status).toBe("processing");
-    const cleared=await clearSlipAnalysis(access,doc.documentId,processing.runId);
-    const transactions=test.transaction.mock.calls.length;
+    const cleared = await clearSlipAnalysis(
+      access,
+      doc.documentId,
+      processing.runId,
+    );
+    const transactions = test.transaction.mock.calls.length;
     release();
-    for(let i=0;i<100 && test.transaction.mock.calls.length===transactions;i++)await new Promise(r=>setTimeout(r,10));
+    for (
+      let i = 0;
+      i < 100 && test.transaction.mock.calls.length === transactions;
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 10));
     expect(test.transaction.mock.calls.length).toBeGreaterThan(transactions);
     await test.transaction.mock.results.at(-1)!.value;
-    expect((await workspace()).documents[0]!.packingSlipAnalysis).toEqual(cleared);
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+    expect((await workspace()).documents[0]!.packingSlipAnalysis).toEqual(
+      cleared,
+    );
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
   });
-
 });

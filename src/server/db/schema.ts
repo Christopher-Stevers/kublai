@@ -2703,3 +2703,5 @@ export const packingSlipReviewHistory = createTable("packing_slip_review_history
   index("packing_slip_history_job_idx").on(t.organizationId, t.jobId, t.createdAt),
   check("packing_slip_history_kind_check", sql`${t.kind} in ('analysis', 'failure', 'confirmation')`),
 ]);
+
+export { packingSlipJobs } from "../background/packing-schema";

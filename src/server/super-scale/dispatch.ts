@@ -1,3 +1,5 @@
+import { workerCommand } from "~/server/background/command";
+import { canDispatchBackground } from "~/server/background/mode";
 import { conversationMessages } from "~/server/db/conversation-schema";
 import { publishConversationEvent } from "~/server/conversations/events";
 import { execFile } from "node:child_process";
@@ -8,6 +10,7 @@ import { db } from "~/server/db";
 import { superScaleJobs } from "~/server/db/super-scale-schema";
 let running = false;
 export async function dispatchSuperScale() {
+  if (!canDispatchBackground()) return;
   if (running) return;
   running = true;
   try {
@@ -22,9 +25,7 @@ export async function dispatchSuperScale() {
       process.execPath,
       [
         "--max-old-space-size=768",
-        "--import",
-        "tsx",
-        path.join(process.cwd(), "src/server/super-scale/worker.ts"),
+        ...workerCommand("src/server/super-scale/worker.ts"),
       ],
       {
         timeout: 15 * 60 * 1000,

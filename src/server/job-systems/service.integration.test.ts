@@ -178,6 +178,7 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
       mocked.db[method] = db[method].bind(db);
   });
   beforeEach(async () => {
+    vi.unstubAllEnvs();
     mocked.wait = null;
     mocked.extract.mockReset().mockResolvedValue({
       pages: [{ page: 1, text: "HEATING WATER PIPING\nCopper pipe." }],
@@ -440,6 +441,25 @@ describe.skipIf(!socket)("job system assessment transactions", () => {
     );
     await startAssessment("editor", job);
     expect((await done())?.status).toBe("ready");
+  });
+  it("queues an assessment outside web memory and claims it immediately in the worker", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    vi.stubEnv("FOREMANHQ_PROCESS_ROLE", "web");
+    const first = await startAssessment("editor", job);
+    expect(mocked.extract).not.toHaveBeenCalled();
+    await dispatchSystemAssessments(true);
+    expect(mocked.extract).not.toHaveBeenCalled();
+    const queued = (await db.select().from(schema.jobSystemAssessments))[0]!;
+    expect((queued.data as Record<string, unknown>).workerId).toBeUndefined();
+    vi.stubEnv("FOREMANHQ_PROCESS_ROLE", "worker");
+    await Promise.all([
+      dispatchSystemAssessments(true),
+      dispatchSystemAssessments(true),
+    ]);
+    const completed = await done();
+    expect(completed?.status).toBe("ready");
+    expect(completed?.id).toBe(first.runId);
+    expect(mocked.extract).toHaveBeenCalledOnce();
   });
   it("resumes an abandoned checkpointed run with a new worker lease", async () => {
     const first = await startAssessment("editor", job);

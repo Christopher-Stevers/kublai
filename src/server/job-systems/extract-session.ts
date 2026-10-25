@@ -1,3 +1,4 @@
+import { workerCommand } from "~/server/background/command";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,7 +12,8 @@ export function extractionSession(
   source: AssessmentSource,
 ) {
   let child: ChildProcess | undefined, directory: string | undefined;
-  let starts = 0, peakRss = 0;
+  let starts = 0,
+    peakRss = 0;
   let batches = 0,
     recycle = false;
   const stop = async () => {
@@ -72,7 +74,7 @@ export function extractionSession(
     });
   return {
     close: stop,
-    stats: () => ({starts, peakRss}),
+    stats: () => ({ starts, peakRss }),
     async read(start: number) {
       try {
         if (recycle) await stop();
@@ -83,12 +85,7 @@ export function extractionSession(
             process.execPath,
             [
               "--max-old-space-size=768",
-              "--import",
-              "tsx",
-              path.join(
-                process.cwd(),
-                "src/server/job-systems/extract-worker.ts",
-              ),
+              ...workerCommand("src/server/job-systems/extract-worker.ts"),
               documentBlobPath(organizationId, source.sha256),
               path.join(directory, "text.json"),
               source.mimeType,

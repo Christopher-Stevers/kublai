@@ -45,7 +45,12 @@ vi.mock("./storage", () => ({
 vi.mock("~/server/utils/get-request-identity", () => ({
   getRequestIdentity: vi.fn(async () => ({ userId: "owner" })),
 }));
-import { readDesign, readDesignStatus, saveDesign, createCadModel } from "./design";
+import {
+  readDesign,
+  readDesignStatus,
+  saveDesign,
+  createCadModel,
+} from "./design";
 import { createSketch } from "~/lib/bim/cad-geometry";
 import { makeComponent } from "~/lib/bim/cad-components";
 import { bindDimension } from "~/lib/bim/cad-dimensions";
@@ -187,7 +192,9 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
       const saved = await saveDesign(a, model.id, 0, design);
       expect(saved.revision).toBe(1);
       expect(await readDesignStatus(a, model.id)).toEqual({ revision: 1 });
-      await expect(readDesignStatus({ ...a, job: { ...a.job, id: otherJob } }, model.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        readDesignStatus({ ...a, job: { ...a.job, id: otherJob } }, model.id),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect(
         (await readDesign(a, model.id)).design.elements[0]?.position,
       ).toEqual([1, 2, 3]);
@@ -360,56 +367,71 @@ describe.skipIf(!process.env.MODELS_TEST_SOCKET)(
         organizationId: org,
       });
     });
-    it("cannot resurrect a model when an in-flight conversion completes", async () => {
-      const a = await modelAccess(user.id, jobId);
-      const model = await registerModel(a, randomUUID(), input("rvt"));
-      await convertRevitModel(a, model.id);
-      let complete!: (
-        result: Awaited<ReturnType<typeof convertNativeRevit>>,
-      ) => void;
-      vi.mocked(convertNativeRevit).mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            complete = resolve;
-          }),
-      );
-      const running = dispatchModelConversions();
-      await vi.waitFor(() => expect(convertNativeRevit).toHaveBeenCalledOnce());
-      await removeModel(a, model.id);
-      complete({
-        status: "ready",
-        bytes: Buffer.from("fixture"),
-        report: {
-          schemaVersion: 1,
-          engine: "foreman-native-revit",
-          engineVersion: "test",
-          readerRevision: "a".repeat(40),
-          revitVersion: 2024,
-          outcome: "preview",
-          coordinates: "revit-internal",
-          measurementsAllowed: false,
-          decodedElements: 1,
-          displayedElements: 1,
-          omittedBoxElements: 0,
-          savedMeshElements: 1,
-          levels: 1,
-          categories: {},
-          warnings: [],
-        },
-      });
-      await running;
-      await expect(readModel(a, model.id)).rejects.toMatchObject({
-        code: "NOT_FOUND",
-      });
-      expect(storeConvertedModel).not.toHaveBeenCalled();
-      await dispatchModelConversions();
-      expect(convertNativeRevit).toHaveBeenCalledOnce();
-      const [row] = await db
-        .select()
-        .from(bimModels)
-        .where(eq(bimModels.id, model.id));
-      expect(row?.data.deletedAt).toBeTruthy();
-      expect(row?.conversionRequestedBy).toBeNull();
-    });
+    it.each(["deleted", "lease changed"])(
+      "rejects an in-flight model result after its record is %s",
+      async (change) => {
+        const a = await modelAccess(user.id, jobId);
+        const model = await registerModel(a, randomUUID(), input("rvt"));
+        await convertRevitModel(a, model.id);
+        let complete!: (
+          result: Awaited<ReturnType<typeof convertNativeRevit>>,
+        ) => void;
+        vi.mocked(convertNativeRevit).mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              complete = resolve;
+            }),
+        );
+        const running = dispatchModelConversions();
+        await vi.waitFor(() =>
+          expect(convertNativeRevit).toHaveBeenCalledOnce(),
+        );
+        if (change === "deleted") await removeModel(a, model.id);
+        else
+          await db
+            .update(bimModels)
+            .set({ conversionLease: new Date(Date.now() + 7200000) })
+            .where(eq(bimModels.id, model.id));
+        complete({
+          status: "ready",
+          bytes: Buffer.from("fixture"),
+          report: {
+            schemaVersion: 1,
+            engine: "foreman-native-revit",
+            engineVersion: "test",
+            readerRevision: "a".repeat(40),
+            revitVersion: 2024,
+            outcome: "preview",
+            coordinates: "revit-internal",
+            measurementsAllowed: false,
+            decodedElements: 1,
+            displayedElements: 1,
+            omittedBoxElements: 0,
+            savedMeshElements: 1,
+            levels: 1,
+            categories: {},
+            warnings: [],
+          },
+        });
+        await running;
+        if (change === "deleted") {
+          await expect(readModel(a, model.id)).rejects.toMatchObject({
+            code: "NOT_FOUND",
+          });
+          expect(storeConvertedModel).not.toHaveBeenCalled();
+        } else
+          expect((await readModel(a, model.id)).data.status).toBe("processing");
+        await dispatchModelConversions();
+        expect(convertNativeRevit).toHaveBeenCalledOnce();
+        const [row] = await db
+          .select()
+          .from(bimModels)
+          .where(eq(bimModels.id, model.id));
+        if (change === "deleted") {
+          expect(row?.data.deletedAt).toBeTruthy();
+          expect(row?.conversionRequestedBy).toBeNull();
+        } else expect(row?.viewSha).toBeNull();
+      },
+    );
   },
 );

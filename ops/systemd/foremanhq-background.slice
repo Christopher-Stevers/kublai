@@ -1,0 +1,9 @@
+[Unit]
+Description=ForemanHQ background processing resource budget
+[Slice]
+CPUWeight=25
+CPUQuota=400%
+MemoryHigh=8G
+MemoryMax=10G
+MemorySwapMax=0
+TasksMax=256

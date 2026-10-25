@@ -1,3 +1,4 @@
+import { onBackgroundHint, publishBackgroundHint } from "./background/hints";
 import { EventEmitter } from "events";
 
 export type MaterialListRealtimeEvent = {
@@ -45,6 +46,7 @@ export function publishMaterialListEvent(
   materialListId: string,
   type: MaterialListRealtimeEvent["type"] = "updated",
   organizationId?: string | null,
+  broadcast = true,
 ) {
   state.version += 1;
   const event: MaterialListRealtimeEvent = {
@@ -58,12 +60,20 @@ export function publishMaterialListEvent(
   state.emitter.emit(materialListId, event);
   if (organizationId)
     state.emitter.emit(`organization:${organizationId}`, event);
+  if (broadcast)
+    publishBackgroundHint({
+      topic: "material",
+      materialListId,
+      organizationId,
+      kind: type,
+    });
   return event;
 }
 
 export function publishOrganizationReplicachePoke(
   organizationId: string,
   input: { sourceClientGroupId?: string | null; mutationCount?: number } = {},
+  broadcast = true,
 ) {
   state.version += 1;
   const event: ReplicacheRealtimePokeEvent = {
@@ -75,10 +85,14 @@ export function publishOrganizationReplicachePoke(
   };
 
   state.emitter.emit(`replicache:${organizationId}`, event);
+  if (broadcast) publishBackgroundHint({ topic: "poke", organizationId });
   return event;
 }
 
-export function publishOrganizationCatalogueEvent(organizationId: string) {
+export function publishOrganizationCatalogueEvent(
+  organizationId: string,
+  broadcast = true,
+) {
   state.version += 1;
   const event: CatalogueRealtimeEvent = {
     organizationId,
@@ -87,6 +101,7 @@ export function publishOrganizationCatalogueEvent(organizationId: string) {
   };
 
   state.emitter.emit(`catalogue:${organizationId}`, event);
+  if (broadcast) publishBackgroundHint({ topic: "catalogue", organizationId });
   return event;
 }
 
@@ -124,3 +139,17 @@ export function subscribeToOrganizationCatalogueEvents(
   state.emitter.on(key, listener);
   return () => state.emitter.off(key, listener);
 }
+
+onBackgroundHint((hint) => {
+  if (hint.topic === "material")
+    publishMaterialListEvent(
+      hint.materialListId,
+      hint.kind,
+      hint.organizationId,
+      false,
+    );
+  if (hint.topic === "poke")
+    publishOrganizationReplicachePoke(hint.organizationId, {}, false);
+  if (hint.topic === "catalogue")
+    publishOrganizationCatalogueEvent(hint.organizationId, false);
+});
