@@ -3227,6 +3227,7 @@ export function DrawingWorkspace({
       {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div
         data-drawing-chrome
+        data-bottom-menu
         className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
       >
         {markupOpen && (

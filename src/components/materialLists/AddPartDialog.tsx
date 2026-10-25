@@ -1407,7 +1407,7 @@ export function AddPartDialog({
           )}
 
           {/* Bottom bar, laid out like the material list's */}
-          <div className={`shrink-0 border-t bg-card px-4 pt-1.5 sm:px-6 sm:pt-2 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
+          <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-1.5 sm:px-6 sm:pt-2 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div className="space-y-1.5">
               {prefabView ? null : wizardStage === "review" ? (
                 <FinancialOnly><div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>

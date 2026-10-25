@@ -47,7 +47,7 @@ export function OrderReceiveActions({
   const isOnline = useOnlineStatus();
   const style = MATERIAL_LIST_ACTION_CLASS;
   const row = (
-    <div className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
+    <div data-bottom-menu className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
       <Button variant="outline" className={style} onClick={onMarkAllReceived} disabled={!onMarkAllReceived || receiveDisabled || receivingAll || !isOnline}>
         <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
         Mark all received
@@ -130,7 +130,7 @@ export function MaterialListActions({
       </div>
     );
   return (
-    <div className="mx-auto max-w-6xl space-y-1.5">
+    <div data-bottom-menu className="mx-auto max-w-6xl space-y-1.5">
       {orderActions}
       <FinancialOnly><div className="flex items-baseline gap-1.5">
         <span className="text-base text-muted-foreground sm:text-lg">
@@ -140,7 +140,7 @@ export function MaterialListActions({
           ${total.toFixed(2)}
         </span>
       </div></FinancialOnly>
-      <div className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div data-bottom-menu className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className={style}>
