@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import type { ReadTransaction } from "replicache";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
@@ -220,48 +221,49 @@ export function useReplicacheJobsList() {
   const sandbox = useTutorialSandbox();
   return useJobs(sandbox?.material ?? tryGetMaterialListReplicache());
 }
-export function useReplicacheJobDetail(jobId: string) {
+/** Header/menu readers subscribe to lists, but never to their potentially thousands of lines. */
+export async function readJobDetail(
+  tx: ReadTransaction,
+  jobId: string,
+  includeItems = true,
+) {
+  if (!jobId) return null;
+  const [job, lists] = await Promise.all([
+    tx.get(`job/${jobId}`) as unknown as Promise<ReplicacheJob | undefined>,
+    tx
+      .scan({ indexName: "listsByJob", prefix: jobId })
+      .values()
+      .toArray() as unknown as Promise<ReplicacheMaterialListSummary[]>,
+  ]);
+  if (!job) return null;
+  if (!includeItems) return { job, materialLists: lists };
+  const groups = await Promise.all(
+    lists.map(async (list) => {
+      const byList = (await tx
+        .scan({ indexName: "itemsByList", prefix: list.id })
+        .values()
+        .toArray()) as unknown as ReplicacheMaterialListItem[];
+      const byQuote = list.quoteId
+        ? ((await tx
+            .scan({ indexName: "itemsByQuote", prefix: list.quoteId })
+            .values()
+            .toArray()) as unknown as ReplicacheMaterialListItem[])
+        : [];
+      return [...byList, ...byQuote.filter((item) => !item.materialListId)];
+    }),
+  );
+  return indexWorkspaceRecords([job], lists, groups.flat()).details[jobId] ?? null;
+}
+
+export function useReplicacheJobDetail(jobId: string, includeItems = true) {
   const sandbox = useTutorialSandbox();
   const useReader = useMemo(
     () =>
       createSharedReplicacheReader(
-        async (tx) => {
-          const [job, lists] = await Promise.all([
-            tx.get(`job/${jobId}`) as unknown as Promise<
-              ReplicacheJob | undefined
-            >,
-            tx
-              .scan({ indexName: "listsByJob", prefix: jobId })
-              .values()
-              .toArray() as unknown as Promise<ReplicacheMaterialListSummary[]>,
-          ]);
-          if (!job) return null;
-          const groups = await Promise.all(
-            lists.map(async (list) => {
-              const byList = (await tx
-                .scan({ indexName: "itemsByList", prefix: list.id })
-                .values()
-                .toArray()) as unknown as ReplicacheMaterialListItem[];
-              const byQuote = list.quoteId
-                ? ((await tx
-                    .scan({ indexName: "itemsByQuote", prefix: list.quoteId })
-                    .values()
-                    .toArray()) as unknown as ReplicacheMaterialListItem[])
-                : [];
-              return [
-                ...byList,
-                ...byQuote.filter((item) => !item.materialListId),
-              ];
-            }),
-          );
-          return (
-            indexWorkspaceRecords([job], lists, groups.flat()).details[jobId] ??
-            null
-          );
-        },
+        (tx) => readJobDetail(tx, jobId, includeItems),
         null as WorkspaceIndex["details"][string] | null,
       ),
-    [jobId],
+    [jobId, includeItems],
   );
   return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }

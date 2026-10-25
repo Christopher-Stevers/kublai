@@ -58,6 +58,16 @@ export function createSandboxHandler(sandbox: TutorialSandbox) {
           canCreateParts: false, canEditParts: false, canDeleteParts: false, canManageAssets: false, canGenerateDocuments: false, canDeleteCoreRecords: false,
         },
       };
+      case "rooms.getJobRoomCount":
+        jobInput.parse(input);
+        return {
+          count: rooms.floors.reduce(
+            (count, floor) => count + floor.rooms.filter(
+              room => room.reviewStatus !== "rejected" && room.reviewStatus !== "superseded",
+            ).length,
+            0,
+          ),
+        };
       case "rooms.getJobRooms": jobInput.parse(input); return structuredClone(rooms);
       case "rooms.updateNotes": {
         const args = z.object({ roomId: z.string(), notes: z.string().max(10000), expectedNotesRevision: z.number() }).parse(input);

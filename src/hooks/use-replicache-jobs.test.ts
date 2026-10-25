@@ -1,8 +1,9 @@
 import { expect, it, vi } from "vitest";
+import type { ReadTransaction } from "replicache";
 vi.mock("~/lib/replicache-material-list", () => ({
   tryGetMaterialListReplicache: () => null,
 }));
-import { indexWorkspaceRecords } from "./use-replicache-jobs";
+import { indexWorkspaceRecords, readJobDetail } from "./use-replicache-jobs";
 
 it("indexes lists once without mixing jobs, including pending and quote-linked items", () => {
   const author = { id: "person", name: "Tim", email: null };
@@ -79,4 +80,79 @@ it("uses an item contributor's department when the cached creator is missing it"
  const author={id:"person",name:"Luca",email:null};
  const result=indexWorkspaceRecords([{id:"job",name:"Job"}],[{id:"list",jobId:"job",createdBy:author}],[{id:"item",materialListId:"list",quantity:"1",addedBy:{...author,department:"Plumbing"}}]);
  expect(result.details.job?.materialLists[0]?.contributors).toEqual([{...author,department:"Plumbing"}]);
+});
+
+it("menu readers never scan material items, and inactive readers do no database work", async () => {
+  const lists = Array.from({ length: 67 }, (_, n) => ({
+    id: `list-${n}`,
+    jobId: "job",
+    quoteId: `quote-${n}`,
+    createdAt: "2026-01-01",
+  }));
+  const get = vi.fn(async () => ({
+    id: "job",
+    name: "Alma",
+    createdAt: "2026-01-01",
+  }));
+  const scan = vi.fn(({ indexName }: { indexName: string }) => ({
+    values: () => ({
+      toArray: async () => (indexName === "listsByJob" ? lists : []),
+    }),
+  }));
+  const tx = { get, scan } as unknown as ReadTransaction;
+  const menu = await readJobDetail(tx, "job", false);
+  expect(menu?.materialLists).toHaveLength(67);
+  expect(scan.mock.calls.map(([query]) => query.indexName)).toEqual([
+    "listsByJob",
+  ]);
+  scan.mockClear();
+  get.mockClear();
+  expect(await readJobDetail(tx, "", true)).toBeNull();
+  expect(scan).not.toHaveBeenCalled();
+  expect(get).not.toHaveBeenCalled();
+  await readJobDetail(tx, "job", true);
+  expect(scan).toHaveBeenCalledTimes(135); // one list index + two legacy-compatible indexes per list
+});
+
+it("full list reads retain legacy quote-linked items while excluding items already assigned to another list", async () => {
+  const items = [
+    {
+      id: "explicit",
+      materialListId: "l",
+      quoteId: "q",
+      quantity: "1",
+      extendedPrice: "5",
+    },
+    {
+      id: "legacy",
+      materialListId: null,
+      quoteId: "q",
+      quantity: "2",
+      extendedPrice: "10",
+    },
+    {
+      id: "other",
+      materialListId: "other",
+      quoteId: "q",
+      quantity: "3",
+      extendedPrice: "100",
+    },
+  ];
+  const tx = {
+    get: async () => ({ id: "job", name: "Job" }),
+    scan: ({ indexName }: { indexName: string }) => ({
+      values: () => ({
+        toArray: async () =>
+          indexName === "listsByJob"
+            ? [{ id: "l", jobId: "job", quoteId: "q" }]
+            : indexName === "itemsByList"
+              ? [items[0]]
+              : items,
+      }),
+    }),
+  } as unknown as ReadTransaction;
+  expect((await readJobDetail(tx, "job"))?.materialLists[0]).toMatchObject({
+    itemCount: 2,
+    materialTotal: 15,
+  });
 });

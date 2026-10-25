@@ -56,6 +56,7 @@ function setup(reads: Row[][] = [[{ floorId }], [floor], [room]]) {
     if (!rows) throw new Error("Unexpected database read");
     const query = Object.assign(Promise.resolve(rows), {
       from: (_table: unknown) => query,
+      innerJoin: (_table: unknown, predicate: SQL) => { predicates.push(predicate); return query; },
       where: (predicate: SQL) => {
         predicates.push(predicate);
         return query;
@@ -334,5 +335,41 @@ describe("room visibility without the retired approval workflow", () => {
     expect(result.floors.map((value) => value.id)).toEqual([floorId]);
     expect(result.floors[0]?.rooms).toEqual([active]);
     expect(test.writes).toEqual([]);
+  });
+});
+
+describe("lightweight job room count", () => {
+  it("returns only a count scoped to the same job, plan, organization and visible rooms", async () => {
+    const test = setup([
+      [{ id: jobId, organizationId }],
+      [{ id: "plan" }],
+      [{ count: 2364 }],
+    ]);
+    expect(await test.caller.getJobRoomCount({ jobId })).toEqual({
+      count: 2364,
+    });
+    const predicates = test.predicates.map((predicate) =>
+      new PgDialect().sqlToQuery(predicate),
+    );
+    const count = predicates.at(-1)!;
+    expect(count.params).toContain(jobId);
+    expect(count.params).toContain(organizationId);
+    expect(count.params).toContain("plan");
+    expect(count.sql).toContain("pending_review");
+    expect(count.sql).toContain("pending_upload");
+    expect(count.sql).toContain("rejected");
+    expect(count.sql).toContain("superseded");
+  });
+  it("does not query rooms when there is no plan", async () => {
+    const test = setup([[{ id: jobId, organizationId }], []]);
+    expect(await test.caller.getJobRoomCount({ jobId })).toEqual({ count: 0 });
+    expect(test.db.select).toHaveBeenCalledTimes(2);
+  });
+  it("rejects a foreign job before reading its count", async () => {
+    const test = setup([[{ id: jobId, organizationId: otherOrganizationId }]]);
+    await expect(test.caller.getJobRoomCount({ jobId })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect(test.db.select).toHaveBeenCalledTimes(1);
   });
 });

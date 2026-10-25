@@ -17,7 +17,7 @@ export default function JobDetailPage({
   const jobId =
     pathname.match(/^\/jobs\/([^/?#]+)/)?.[1] ?? paramJobId;
   const router = useRouter();
-  const { isBrowserOnline, jobDetail, serverJob, hasFetchedServerJob, job } = useJobPageData(jobId);
+  const { isBrowserOnline, jobDetail, serverJob, hasFetchedServerJob, job } = useJobPageData(jobId, true);
 
   useEffect(() => {
     setLastJobWorkspaceLocation({

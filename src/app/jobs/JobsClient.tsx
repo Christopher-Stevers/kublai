@@ -115,7 +115,10 @@ export function JobsClient({
   }, [hasFetchedUser, hasRedirectedRef, userData, sandbox]);
 
   const replicacheJobs = useReplicacheJobsList();
-  const offlineJobDetail = useReplicacheJobDetail(offlineJobId ?? "");
+  const offlineJobDetail = useReplicacheJobDetail(
+    offlineMaterialListId ? "" : offlineJobId ?? "",
+    offlineJobView === "material-lists",
+  );
   useScrollToTop(
     sandbox ? null : !offlineJobId ? "jobs"
       : offlineJobView === "options" && !offlineMaterialListId ? `job:${offlineJobId}` : null,

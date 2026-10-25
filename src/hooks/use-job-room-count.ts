@@ -3,10 +3,10 @@
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 
-/** Share the room screen's permission-filtered data and mutation invalidations. */
+/** The menu needs only the permission-filtered count, not every room polygon. */
 export function useJobRoomCount(jobId: string | null, enabled = true) {
   const isOnline = useOnlineStatus();
-  const query = api.rooms.getJobRooms.useQuery(
+  const query = api.rooms.getJobRoomCount.useQuery(
     { jobId: jobId ?? "" },
     {
       enabled: isOnline && Boolean(jobId) && enabled,
@@ -15,18 +15,7 @@ export function useJobRoomCount(jobId: string | null, enabled = true) {
       refetchOnWindowFocus: true,
     },
   );
-  const count =
-    jobId && query.data
-      ? query.data.floors.reduce(
-          (total, floor) =>
-            total +
-            floor.rooms.filter(
-              (room) =>
-                room.reviewStatus !== "rejected" &&
-                room.reviewStatus !== "superseded",
-            ).length,
-          0,
-        )
-      : undefined;
+  const count = jobId ? query.data?.count : undefined;
+
   return { count, loading: count === undefined && query.isFetching };
 }

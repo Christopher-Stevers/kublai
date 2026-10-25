@@ -129,6 +129,52 @@ function editFeedback(input: Parameters<typeof roomEditFeedback>[0]) {
 }
 
 export const roomsRouter = createTRPCRouter({
+  getJobRoomCount: hasAppAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      const [job] = await ctx.db
+        .select({ id: jobs.id, organizationId: jobs.organizationId })
+        .from(jobs)
+        .where(
+          and(eq(jobs.id, input.jobId), eq(jobs.organizationId, organizationId)),
+        )
+        .limit(1);
+      assertJobOrg(job, organizationId);
+      // Match the same plan and visible-floor scope as getJobRooms, without loading geometry or notes.
+      const [plan] = await ctx.db
+        .select({ id: jobFloorPlans.id })
+        .from(jobFloorPlans)
+        .where(
+          and(
+            eq(jobFloorPlans.jobId, input.jobId),
+            eq(jobFloorPlans.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+      if (!plan) return { count: 0 };
+      const [result] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(jobRooms)
+        .innerJoin(
+          jobFloors,
+          and(
+            eq(jobRooms.floorId, jobFloors.id),
+            eq(jobFloors.organizationId, organizationId),
+          ),
+        )
+        .where(
+          and(
+            eq(jobRooms.jobId, input.jobId),
+            eq(jobRooms.organizationId, organizationId),
+            eq(jobFloors.floorPlanId, plan.id),
+            sql`${jobFloors.status} not in ('pending_review', 'pending_upload')`,
+            sql`${jobRooms.reviewStatus} not in ('rejected', 'superseded')`,
+          ),
+        );
+      return { count: result?.count ?? 0 };
+    }),
+
   getJobRooms: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
@@ -188,6 +234,11 @@ export const roomsRouter = createTRPCRouter({
               and(
                 eq(jobRooms.jobId, input.jobId),
                 eq(jobRooms.organizationId, organizationId),
+                inArray(
+                  jobRooms.floorId,
+                  visibleFloors.map((floor) => floor.id),
+                ),
+                sql`${jobRooms.reviewStatus} not in ('rejected', 'superseded')`,
               ),
             )
             .orderBy(asc(jobRooms.sortOrder), asc(jobRooms.createdAt))

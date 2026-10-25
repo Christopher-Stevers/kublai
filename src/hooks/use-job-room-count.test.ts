@@ -6,7 +6,7 @@ const mock = vi.hoisted(() => ({
   online: true,
   fetching: false,
   data: undefined as
-    | { floors: { rooms: { reviewStatus: string }[] }[] }
+    | { count: number }
     | undefined,
   query: vi.fn(),
 }));
@@ -16,7 +16,7 @@ vi.mock("~/hooks/use-online-status", () => ({
 vi.mock("~/trpc/react", () => ({
   api: {
     rooms: {
-      getJobRooms: {
+      getJobRoomCount: {
         useQuery: (input: unknown, options: unknown) => {
           mock.query(input, options);
           return { data: mock.data, isFetching: mock.fetching };
@@ -34,27 +34,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("job room count", () => {
-  it("counts visible rooms across floors while excluding rejected and superseded detections", () => {
-    mock.data = {
-      floors: [
-        {
-          rooms: [
-            { reviewStatus: "approved" },
-            { reviewStatus: "pending" },
-            { reviewStatus: "rejected" },
-          ],
-        },
-        {
-          rooms: [{ reviewStatus: "approved" }, { reviewStatus: "superseded" }],
-        },
-      ],
-    };
-    expect(renderHook(() => useJobRoomCount("job-one")).result.current).toEqual(
-      { count: 3, loading: false },
-    );
+  it("reads only the compact count instead of downloading room geometry", () => {
+    mock.data = { count: 2364 };
+    expect(renderHook(() => useJobRoomCount("job-one")).result.current).toEqual({ count: 2364, loading: false });
   });
   it("reports an actual empty job as zero", () => {
-    mock.data = { floors: [] };
+    mock.data = { count: 0 };
     expect(
       renderHook(() => useJobRoomCount("job-one")).result.current.count,
     ).toBe(0);
@@ -67,9 +52,9 @@ describe("job room count", () => {
     view.rerender();
     expect(view.result.current).toEqual({ count: undefined, loading: false });
   });
-  it("uses cached rooms offline without sending a request", () => {
+  it("uses the cached count offline without sending a request", () => {
     mock.online = false;
-    mock.data = { floors: [{ rooms: [{ reviewStatus: "approved" }] }] };
+    mock.data = { count: 1 };
     expect(
       renderHook(() => useJobRoomCount("job-one")).result.current.count,
     ).toBe(1);
@@ -91,7 +76,7 @@ describe("job room count", () => {
       expect.objectContaining({ enabled: false }),
     );
   });
-  it("refreshes the shared room query on return to the job and window focus", () => {
+  it("refreshes the count on return to the job and window focus", () => {
     renderHook(() => useJobRoomCount("job-one"));
     expect(mock.query).toHaveBeenCalledWith(
       { jobId: "job-one" },

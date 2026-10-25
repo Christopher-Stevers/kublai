@@ -4,9 +4,9 @@ import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 
 /** Local data remains available offline while the server refreshes online. */
-export function useJobPageData(jobId: string) {
+export function useJobPageData(jobId: string, includeItems = false) {
   const isBrowserOnline = useOnlineStatus();
-  const jobDetail = useReplicacheJobDetail(jobId);
+  const jobDetail = useReplicacheJobDetail(jobId, includeItems);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
     api.job.getJob.useQuery(
       { jobId },
