@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { MaterialListOrderNumbers } from "./MaterialListOrderNumbers";
+import { MaterialListOrderNumbers, PILL_CAP } from "./MaterialListOrderNumbers";
 import { materialProgressStyle } from "~/lib/material-progress-style";
 afterEach(cleanup);
 it("keeps status colors and accessible labels with one shared order icon", () => {
@@ -36,7 +36,7 @@ it("keeps status colors and accessible labels with one shared order icon", () =>
     [
       "ORDER-1: sent, awaiting full verification",
       {
-        ...materialProgressStyle(100, "blue"),
+        ...materialProgressStyle(100, "blue", PILL_CAP),
         boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
       },
     ],
@@ -93,16 +93,25 @@ it("fills a sent order's blue pill with green as its items are verified", () => 
   );
   expect(
     screen.getByTitle("175-Next · sent, awaiting full verification"),
-  ).toHaveStyle(materialProgressStyle(0, "blue"));
+  ).toHaveStyle(materialProgressStyle(0, "blue", PILL_CAP));
   expect(
     screen.getByTitle(
       "176-Next · sent, awaiting full verification · 40% received",
     ),
   ).toHaveStyle({
-    ...materialProgressStyle(40, "blue"),
+    ...materialProgressStyle(40, "blue", PILL_CAP),
     boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   });
   expect(screen.getByLabelText("177-Next: fully verified")).not.toHaveStyle({
     boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   });
+});
+
+it("keeps both rounded ends of a sent pill blue, filling only the middle", () => {
+  const blue = "rgb(37 99 235 / 0.3)", green = "rgb(22 163 74 / 0.35)";
+  expect(materialProgressStyle(40, "blue", PILL_CAP).background).toBe(
+    `linear-gradient(to right, ${blue} 0%, ${blue} 0.75rem, ${green} 0.75rem, ${green} calc(0.75rem + (100% - 2 * 0.75rem) * 0.4), ${blue} calc(0.75rem + (100% - 2 * 0.75rem) * 0.4), ${blue} 100%)`,
+  );
+  expect(materialProgressStyle(100, "blue", PILL_CAP).background).toContain(`${blue} 100%)`);
+  expect(materialProgressStyle(100).background).not.toContain(blue);
 });

@@ -2,12 +2,16 @@ import { materialProgressStyle } from "~/lib/material-progress-style";
 import { ShoppingCartIcon } from "lucide-react";
 import type { MaterialListOrderStatus } from "~/lib/material-list-order-status";
 
-/** Ordered pills are blue and fill green as items are verified. Until the
- * order is fully verified a thin blue ring stays inside the edge, so even a
- * nearly full pill reads as not done. */
+/** Half the pill's height: its rounded ends. */
+export const PILL_CAP = "0.75rem";
+
+/** Ordered pills are blue and fill green as items are verified, across the
+ * straight middle only. Until the order is fully verified the rounded ends
+ * and a thin ring inside the edge stay blue, so even a nearly full pill reads
+ * as not done. */
 function sentStyle(deliveredPercent: number) {
   return {
-    ...materialProgressStyle(deliveredPercent, "blue"),
+    ...materialProgressStyle(deliveredPercent, "blue", PILL_CAP),
     boxShadow: "inset 0 0 0 1px rgb(59 130 246 / 0.45)",
   };
 }
