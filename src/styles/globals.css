@@ -433,16 +433,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 @layer utilities {
   /* Filled bottom actions match their neighboring outline buttons. */
-  :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary {
+  :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary {
     @apply border border-input bg-card text-foreground shadow-sm;
   }
-  :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary:hover {
+  :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary:hover {
     @apply bg-accent text-accent-foreground;
   }
-  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary {
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary {
     @apply border-input bg-input/30;
   }
-  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) [data-slot="button"].bg-primary:hover {
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary:hover {
     @apply bg-input/50;
   }
 
