@@ -24,7 +24,7 @@ function isDrawingQuery(query: Query) {
   const path = query.queryKey[0];
   return (
     Array.isArray(path) &&
-    (path[0] === "drawings" || path[0] === "drawingsWorkspace")
+    (path[0] === "drawings" || path[0] === "drawingsWorkspace" || path[0] === "rooms")
   );
 }
 

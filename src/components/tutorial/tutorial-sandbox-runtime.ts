@@ -68,7 +68,18 @@ export function createSandboxHandler(sandbox: TutorialSandbox) {
             0,
           ),
         };
-      case "rooms.getJobRooms": jobInput.parse(input); return structuredClone(rooms);
+      case "rooms.getJobRooms":
+        jobInput.parse(input);
+        return { ...structuredClone(rooms), floors: rooms.floors.map(floor => ({
+          ...structuredClone(floor), roomCount: floor.rooms.length,
+          rooms: input.includeRooms === false ? [] : structuredClone(floor.rooms),
+        })) };
+      case "rooms.getFloorRooms": {
+        jobInput.parse(input);
+        const floor = rooms.floors.find(floor => floor.id === input.floorId);
+        if (!floor) throw new Error("Practice drawing not found");
+        return structuredClone(floor);
+      }
       case "rooms.updateNotes": {
         const args = z.object({ roomId: z.string(), notes: z.string().max(10000), expectedNotesRevision: z.number() }).parse(input);
         const room = rooms.floors.flatMap(floor => floor.rooms).find(room => room.id === args.roomId);

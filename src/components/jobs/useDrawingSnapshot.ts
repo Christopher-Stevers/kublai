@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useDrawingAccount } from "./DrawingAccountProvider";
+import type { DrawingOfflineStore } from "~/lib/drawing-offline";
 /** Cached metadata is a fallback only while the browser is actually offline. */
-export function useDrawingSnapshot<T>(key: string, live: T | undefined) {
+export function useDrawingSnapshot<T>(
+  key: string,
+  live: T | undefined,
+  readCached?: (store: DrawingOfflineStore, key: string) => Promise<T | null>,
+) {
   const account = useDrawingAccount();
   const [online, setOnline] = useState(true);
   const [cached, setCached] = useState<{
@@ -10,6 +15,9 @@ export function useDrawingSnapshot<T>(key: string, live: T | undefined) {
     account: string;
     value: T;
   } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; account: string } | null>(
+    null,
+  );
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -22,18 +30,30 @@ export function useDrawingSnapshot<T>(key: string, live: T | undefined) {
   }, []);
   useEffect(() => {
     let stopped = false;
-    if (account?.store)
-      void account.store
-        .readSnapshot<T>(key)
+    // Custom readers may recover a legacy snapshot. Defer those potentially
+    // large reads until offline; the live query supplies current online data.
+    if (account?.store && (!readCached || !online))
+      void (
+        readCached
+          ? readCached(account.store, key)
+          : account.store.readSnapshot<T>(key)
+      )
         .then((value) => {
-          if (!stopped && value !== null)
-            setCached({ key, account: account.accountKey, value });
+          if (!stopped)
+            setCached(
+              value === null
+                ? null
+                : { key, account: account.accountKey, value },
+            );
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => {
+          if (!stopped) setLoaded({ key, account: account.accountKey });
+        });
     return () => {
       stopped = true;
     };
-  }, [account, key]);
+  }, [account, key, readCached, online]);
   useEffect(() => {
     if (account?.store && live !== undefined && online)
       void account.store.saveSnapshot(key, live).catch(() => undefined);
@@ -45,5 +65,10 @@ export function useDrawingSnapshot<T>(key: string, live: T | undefined) {
         ? cached.value
         : undefined),
     online,
+    loading:
+      !online &&
+      live === undefined &&
+      Boolean(account?.store) &&
+      (loaded?.key !== key || loaded.account !== account?.accountKey),
   };
 }

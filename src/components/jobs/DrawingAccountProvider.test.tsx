@@ -100,6 +100,7 @@ describe("drawing account boundary", () => {
       [["drawingsWorkspace", "get"], { input: { sheetId: "one" } }],
       { private: "Alice" },
     );
+    client.setQueryData([["rooms", "getFloorRooms"], {input: {jobId: "job", floorId: "one"}}], {rooms: ["Private outline"]});
     client.setQueryData(["unrelated"], "keep");
     await act(() =>
       window.dispatchEvent(new Event("foremanhq-drawing-account-invalidated")),
@@ -114,6 +115,7 @@ describe("drawing account boundary", () => {
         { input: { sheetId: "one" } },
       ]),
     ).toBeUndefined();
+    expect(client.getQueryData([["rooms", "getFloorRooms"], {input: {jobId: "job", floorId: "one"}}])).toBeUndefined();
     expect(client.getQueryData(["unrelated"])).toBe("keep");
     expect(clearPdfDocuments).toHaveBeenCalled();
     expect(clearDrawingTextIndexes).toHaveBeenCalled();

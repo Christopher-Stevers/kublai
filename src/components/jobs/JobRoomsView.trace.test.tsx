@@ -11,12 +11,17 @@ import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const harness = vi.hoisted(() => ({
   sandbox: false,
+  detailLoading: false,
+  detailError: false,
+  queries: [] as Array<{name: string; input: unknown; enabled?: boolean}>,
+  invalidations: [] as Array<{name: string; input: unknown}>,
   data: {} as Record<string, unknown>,
   detectStatus: undefined as Record<string, unknown> | undefined,
   choices: { sets: [] } as { sets: unknown[] },
   queryOptions: {} as Record<
     string,
     {
+      enabled?: boolean;
       refetchInterval?: (query: { state: { data: unknown } }) => number | false;
     }
   >,
@@ -35,6 +40,7 @@ vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
 }));
 vi.mock("~/trpc/react", async () => {
   const { useState } = await import("react");
+  const floorData = (input: { floorId?: string }) => (harness.data.floors as Array<Record<string, unknown>>).find(floor => floor.id === input.floorId);
   const query = {
     invalidate: async () => undefined,
     getData: () => harness.data,
@@ -47,7 +53,13 @@ vi.mock("~/trpc/react", async () => {
     api: {
       useUtils: () => ({
         rooms: {
-          getJobRooms: query,
+          getJobRooms: { ...query, invalidate: async (input: unknown) => { harness.invalidations.push({name: "getJobRooms", input}); } },
+          getJobRoomCount: query,
+          getFloorRooms: {
+            getData: floorData,
+            fetch: async (input: { floorId?: string }) => floorData(input),
+            invalidate: async (input: unknown) => { harness.invalidations.push({name: "getFloorRooms", input}); },
+          },
           detectRoomsStatus: query,
           drawingChoices: query,
         },
@@ -57,18 +69,23 @@ vi.mock("~/trpc/react", async () => {
         {
           get: (_target, name: string) => ({
             useQuery: (
-              _input: unknown,
+              input: {floorId?: string; includeRooms?: boolean},
               options?: (typeof harness.queryOptions)[string],
             ) => {
               if (options) harness.queryOptions[name] = options;
+              harness.queries.push({name, input, enabled: options?.enabled});
               return {
                 data:
                   name === "getJobRooms"
-                    ? harness.data
+                    ? { ...harness.data, floors: (harness.data.floors as Array<{rooms: unknown[]}>).map(floor => ({...floor, roomCount: floor.rooms.length, rooms: input.includeRooms === false ? [] : floor.rooms})) }
+                    : name === "getFloorRooms"
+                      ? harness.detailLoading || harness.detailError ? undefined : floorData(input)
                     : name === "drawingChoices"
                       ? harness.choices
                       : harness.detectStatus,
-                isLoading: false,
+                isLoading: name === "getFloorRooms" && harness.detailLoading,
+                isError: name === "getFloorRooms" && harness.detailError,
+                refetch: vi.fn(),
               };
             },
             useMutation: (global: Callbacks = {}) => {
@@ -135,6 +152,10 @@ const nextShape = { ...shape, w: 0.6 };
 const saved = { id: "room-added", name: "New room", updatedAt: new Date(2000) };
 beforeEach(() => {
   harness.sandbox = false;
+  harness.detailLoading = false;
+  harness.detailError = false;
+  harness.queries.length = 0;
+  harness.invalidations.length = 0;
   harness.calls.length = 0;
   harness.detectStatus = undefined;
   harness.choices = { sets: [] };
@@ -240,7 +261,7 @@ describe("trace saves belong to their original editing session", () => {
     }>;
     floors[0]!.rooms[0]!.updatedAt = new Date(2000);
     await act(async () => {
-      saving.resolve({ ok: true, updatedAt: 2000 });
+      saving.resolve({ ok: true, updatedAt: 2000, floorId: "floor-a" });
     });
     expect(screen.getByRole("button", { name: "Save trace" })).toBeEnabled();
     expect(screen.getByTestId("trace-preview")).toHaveTextContent(
@@ -548,5 +569,49 @@ describe("server-managed sheet detection queue", () => {
         }),
       ],
     );
+  });
+});
+
+describe("on-demand room outlines", () => {
+  it("requests count-only overview and enables detail only for the floor being opened", () => {
+    render(<JobRoomsView jobId="job-a" />);
+    expect(harness.queries.filter(q => q.name === "getJobRooms").at(-1)?.input).toEqual({jobId: "job-a", includeRooms: false});
+    expect(harness.queries.filter(q => q.name === "getFloorRooms" && q.enabled)).toEqual([]);
+    openFloor();
+    expect(harness.queries.filter(q => q.name === "getFloorRooms" && q.enabled).at(-1)?.input).toEqual({jobId: "job-a", floorId: "floor-a"});
+    leaveFloor();
+    openFloor("Floor B");
+    expect(harness.queries.filter(q => q.name === "getFloorRooms" && q.enabled).at(-1)?.input).toEqual({jobId: "job-a", floorId: "floor-b"});
+  });
+
+  it("shows loading and a way back rather than an empty editable floor", () => {
+    harness.detailLoading = true;
+    render(<JobRoomsView jobId="job-a" />);
+    click("Open Floor A");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading rooms for this drawing");
+    expect(screen.queryByRole("button", {name: "Edit"})).toBeNull();
+    click("Back to drawings");
+    expect(screen.getByRole("button", {name: "Open Floor B"})).toBeVisible();
+  });
+
+  it("shows an error and retry after a failed detail fetch", () => {
+    harness.detailError = true;
+    render(<JobRoomsView jobId="job-a" />);
+    click("Open Floor A");
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not load this drawing's rooms");
+    expect(screen.getByRole("button", {name: "Retry"})).toBeVisible();
+    expect(screen.queryByRole("button", {name: "Edit"})).toBeNull();
+  });
+
+  it("invalidates floor details as well as counts after a room is added", async () => {
+    render(<JobRoomsView jobId="job-a" />);
+    openFloor();
+    await startNewTrace();
+    click("Save trace");
+    await act(async () => { harness.calls.find(call => call.name === "addRoom")!.resolve(saved); });
+    expect(harness.invalidations).toEqual(expect.arrayContaining([
+      {name: "getJobRooms", input: {jobId: "job-a"}},
+      {name: "getFloorRooms", input: {jobId: "job-a"}},
+    ]));
   });
 });

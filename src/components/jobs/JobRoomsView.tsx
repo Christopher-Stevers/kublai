@@ -4,11 +4,17 @@ import { ViewToggle } from "~/components/ui/view-toggle";
 import { SheetOfflineButton } from "./SheetOfflineButton";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
 import { useDrawingAccount } from "./DrawingAccountProvider";
+import {
+  roomOverviewKey,
+  roomFloorKey,
+  readRoomOverviewSnapshot,
+  readRoomFloorSnapshot,
+} from "~/lib/room-snapshots";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import {
   CopyIcon,
-  DoorOpenIcon,
   ListIcon,
   Loader2Icon,
   MoreVerticalIcon,
@@ -18,7 +24,7 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { RoomDetails, type RoomNotesDraft } from "./RoomDetails";
 
@@ -141,9 +147,11 @@ export function JobRoomsView({
     roomCount: number;
   } | null>(null);
   const utils = api.useUtils();
+  const online = useOnlineStatus();
   const roomsQuery = api.rooms.getJobRooms.useQuery(
-    { jobId },
+    { jobId, includeRooms: false },
     {
+      enabled: online,
       refetchInterval: (query) =>
         !sandbox &&
         query.state.data?.floors.some((floor) => detectionBusy(floor.detection))
@@ -152,20 +160,34 @@ export function JobRoomsView({
       refetchIntervalInBackground: false,
     },
   );
+  const floorQuery = api.rooms.getFloorRooms.useQuery(
+    {
+      jobId,
+      floorId: selectedFloorId ?? "00000000-0000-0000-0000-000000000000",
+    },
+    { enabled: online && Boolean(selectedFloorId), refetchOnMount: "always" },
+  );
+  const refreshRooms = useCallback(async () => {
+    await Promise.all([
+      utils.rooms.getJobRooms.invalidate({ jobId }),
+      utils.rooms.getFloorRooms.invalidate({ jobId }),
+      utils.rooms.getJobRoomCount.invalidate({ jobId }),
+    ]);
+  }, [utils, jobId]);
   const renameFloor = api.rooms.renameFloor.useMutation({
-    onSuccess: () => void utils.rooms.getJobRooms.invalidate({ jobId }),
+    onSuccess: () => void refreshRooms(),
     onError: (error, variables) => {
       lastFloorRename.current = "";
       notify(`The floor name was not saved: ${error.message}`, "error");
       const input = floorNameInput.current;
       const saved = utils.rooms.getJobRooms
-        .getData({ jobId })
+        .getData({ jobId, includeRooms: false })
         ?.floors.find((floor) => floor.id === variables.floorId)?.name;
       if (input && saved) input.value = saved;
     },
   });
   const addRoom = api.rooms.addRoom.useMutation({
-    onSuccess: () => utils.rooms.getJobRooms.invalidate({ jobId }),
+    onSuccess: () => refreshRooms(),
   });
   const [failedRoomUpdate, setFailedRoomUpdate] = useState<
     Parameters<typeof utils.client.rooms.updateRoom.mutate>[0] | null
@@ -178,11 +200,12 @@ export function JobRoomsView({
       setFailedRoomUpdate(null);
       setRoomUpdateConflict(false);
       setDetectError(null);
-      await utils.rooms.getJobRooms.invalidate({ jobId });
-      const room = utils.rooms.getJobRooms
-        .getData({ jobId })
-        ?.floors.flatMap((floor) => floor.rooms)
-        .find((room) => room.id === variables.roomId);
+      await refreshRooms();
+      const detail = await utils.rooms.getFloorRooms.fetch({
+        jobId,
+        floorId: result.floorId,
+      });
+      const room = detail.rooms.find((room) => room.id === variables.roomId);
       if (room?.updatedAt.getTime() !== result.updatedAt) {
         setFailedRoomUpdate(variables);
         setRoomUpdateConflict(true);
@@ -211,7 +234,7 @@ export function JobRoomsView({
       setSelectedRoomId(null);
       setEditingRoomId(null);
       setVertexMode(null);
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
     },
     onError: (error) =>
       notify(`The room was not deleted: ${error.message}`, "error"),
@@ -223,7 +246,7 @@ export function JobRoomsView({
       setEditingRoomId(null);
       setVertexMode(null);
       setCreateMode(false);
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
     },
     onError: (error) =>
       notify(`The rooms were not deleted: ${error.message}`, "error"),
@@ -233,7 +256,7 @@ export function JobRoomsView({
       setFloorToDelete(null);
       setSelectedFloorId(null);
       setSelectedRoomId(null);
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
     },
     onError: (error) =>
       notify(`The floor was not deleted: ${error.message}`, "error"),
@@ -245,7 +268,7 @@ export function JobRoomsView({
         `Floor copied with ${result.roomCount} ${result.roomCount === 1 ? "room" : "rooms"}. Open it to rename it.`,
         "success",
       );
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
     },
     onError: (error) => notify(error.message, "error"),
   });
@@ -253,7 +276,7 @@ export function JobRoomsView({
     onSuccess: () => {
       setDetectError(null);
       void utils.rooms.detectRoomsStatus.invalidate();
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
     },
     onError: (error) => {
       const message = error.message || "";
@@ -278,7 +301,9 @@ export function JobRoomsView({
       // A completed cached run can clear local launch state before the new
       // worker responds. Status belongs to the selected floor, not that state.
       enabled:
-        !sandbox && Boolean(selectedFloorId && roomsQuery.data?.canManage),
+        online &&
+        !sandbox &&
+        Boolean(selectedFloorId && roomsQuery.data?.canManage),
       refetchInterval: (query) =>
         detectionBusy(query.state.data) ||
         detectRooms.isPending ||
@@ -302,21 +327,22 @@ export function JobRoomsView({
     setDetectingRoomId(null);
     if (job.status === "done") {
       setDetectError(null);
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void refreshRooms();
       return;
     }
     setDetectError(job.error || "Room detection failed");
-  }, [
-    detectStatus.data,
-    detectRooms.isPending,
-    jobId,
-    utils.rooms.getJobRooms,
-  ]);
+  }, [detectStatus.data, detectRooms.isPending, jobId, refreshRooms]);
 
   const account = useDrawingAccount();
   const roomSnapshot = useDrawingSnapshot(
-    `room-sheets:${jobId}`,
+    roomOverviewKey(jobId),
     roomsQuery.data,
+    readRoomOverviewSnapshot,
+  );
+  const floorSnapshot = useDrawingSnapshot(
+    roomFloorKey(jobId, selectedFloorId ?? ""),
+    floorQuery.data,
+    readRoomFloorSnapshot,
   );
   const data = roomSnapshot.data;
   const canManage =
@@ -336,15 +362,29 @@ export function JobRoomsView({
       data?.canDelete ??
       data?.canManage ??
       false);
-  const floors = (data?.floors ?? []).map((floor) => ({
-    ...floor,
-    rooms: floor.rooms.filter(
-      (room) =>
-        room.reviewStatus !== "superseded" && room.reviewStatus !== "rejected",
-    ),
-  }));
+  const floors = data?.floors ?? [];
+  const selectedSummary = floors.find((floor) => floor.id === selectedFloorId);
+  const detail = floorSnapshot.data;
   const selectedFloor =
-    floors.find((floor) => floor.id === selectedFloorId) ?? null;
+    selectedSummary && detail?.id === selectedFloorId
+      ? { ...detail, ...selectedSummary, rooms: detail.rooms }
+      : null;
+  const prepareFloorOffline = async (floorId: string, signal: AbortSignal) => {
+    const store = account?.store;
+    if (!store || !data)
+      throw new Error("Drawing data is not ready. Please try again.");
+    const floor = online
+      ? await utils.client.rooms.getFloorRooms.query(
+          { jobId, floorId },
+          { signal },
+        )
+      : await readRoomFloorSnapshot(store, roomFloorKey(jobId, floorId));
+    signal.throwIfAborted();
+    if (!floor)
+      throw new Error("This drawing's rooms have not been saved offline.");
+    await store.saveSnapshot(roomFloorKey(jobId, floorId), floor);
+    await store.saveSnapshot(roomOverviewKey(jobId), data);
+  };
   const queuedFloors = floors.filter(
     (floor) => floor.detection?.status === "queued",
   ).length;
@@ -431,7 +471,7 @@ export function JobRoomsView({
   useHeaderBackOverride(
     selectedRoom
       ? () => setSelectedRoomId(null)
-      : selectedFloor
+      : selectedFloorId
         ? closeFloorViewer
         : null,
   );
@@ -594,12 +634,49 @@ export function JobRoomsView({
     setEditMode(true);
   };
 
-  if (roomsQuery.isLoading) {
+  if (!data && ((online && roomsQuery.isLoading) || roomSnapshot.loading)) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
           <Skeleton key={index} className="aspect-[4/3] rounded-xl" />
         ))}
+      </div>
+    );
+  }
+
+  if (
+    !data ||
+    (selectedFloorId && (!selectedFloor || (online && floorQuery.isError)))
+  ) {
+    const loading =
+      Boolean(selectedFloorId) &&
+      !selectedFloor &&
+      ((online && (floorQuery.isLoading || roomsQuery.isFetching)) ||
+        floorSnapshot.loading);
+    return (
+      <div className="space-y-3 p-4" role={loading ? "status" : "alert"}>
+        <p>
+          {loading
+            ? "Loading rooms for this drawing…"
+            : !online
+              ? "This drawing's rooms are not saved on this device. Connect to the internet to open it."
+              : "Could not load this drawing's rooms. It may have been removed or your connection was interrupted."}
+        </p>
+        {online && !loading && (
+          <Button
+            onClick={() => {
+              void roomsQuery.refetch();
+              if (selectedFloorId) void floorQuery.refetch();
+            }}
+          >
+            Retry
+          </Button>
+        )}
+        {selectedFloorId && (
+          <Button variant="outline" onClick={closeFloorViewer}>
+            Back to drawings
+          </Button>
+        )}
       </div>
     );
   }
@@ -628,7 +705,8 @@ export function JobRoomsView({
           key={selectedRoom.id}
           room={selectedRoom}
           jobId={jobId}
-          canEditNotes={roomsQuery.data?.canEditNotes ?? false}
+          floorId={selectedFloor.id}
+          canEditNotes={online && (roomsQuery.data?.canEditNotes ?? false)}
           canRequestMaterial={roomsQuery.data?.canRequestMaterial ?? false}
           draft={notesDrafts[selectedRoom.id]}
           onDraftChange={(draft) =>
@@ -688,8 +766,7 @@ export function JobRoomsView({
               onOpenChange={setPickerOpen}
               onAdded={floorsAdded}
               onOpenDrawings={
-                onOpenDrawings ??
-                (() => router.push(`/jobs/${jobId}/drawings`))
+                onOpenDrawings ?? (() => router.push(`/jobs/${jobId}/drawings`))
               }
             />
           ) : null}
@@ -791,8 +868,8 @@ export function JobRoomsView({
                         {floor.name}
                       </span>
                       <span className="text-muted-foreground block min-h-4 truncate text-xs">
-                        {floor.rooms.length}{" "}
-                        {floor.rooms.length === 1 ? "room" : "rooms"}
+                        {floor.roomCount}{" "}
+                        {floor.roomCount === 1 ? "room" : "rooms"}
                       </span>
                       {detectionMessage(floor.detection) ? (
                         <span
@@ -806,13 +883,9 @@ export function JobRoomsView({
                     <SheetOfflineButton
                       iconOnly
                       sheet={floor}
-                      prepare={async () => {
-                        if (data)
-                          await account?.store?.saveSnapshot(
-                            `room-sheets:${jobId}`,
-                            data,
-                          );
-                      }}
+                      prepare={(signal) =>
+                        prepareFloorOffline(floor.id, signal)
+                      }
                     />
                     {canManage || canDelete ? (
                       <DropdownMenu>
@@ -856,7 +929,7 @@ export function JobRoomsView({
                                 setFloorToDelete({
                                   id: floor.id,
                                   name: floor.name,
-                                  roomCount: floor.rooms.length,
+                                  roomCount: floor.roomCount,
                                 })
                               }
                             >
@@ -1046,7 +1119,7 @@ export function JobRoomsView({
                           updateRoom.mutate(failedRoomUpdate);
                           return;
                         }
-                        await utils.rooms.getJobRooms.invalidate({ jobId });
+                        await refreshRooms();
                         roomEditVersions.current.delete(
                           failedRoomUpdate.roomId,
                         );
@@ -1236,9 +1309,7 @@ export function JobRoomsView({
                       onClick={() => {
                         setEditingRoomId(null);
                         setVertexMode(null);
-                        void utils.rooms.getJobRooms.invalidate({
-                          jobId,
-                        });
+                        void refreshRooms();
                       }}
                     >
                       Done
@@ -1394,13 +1465,9 @@ export function JobRoomsView({
               </Button>
               <SheetOfflineButton
                 sheet={selectedFloor}
-                prepare={async () => {
-                  if (data)
-                    await account?.store?.saveSnapshot(
-                      `room-sheets:${jobId}`,
-                      data,
-                    );
-                }}
+                prepare={(signal) =>
+                  prepareFloorOffline(selectedFloor.id, signal)
+                }
               />
             </div>
           </div>

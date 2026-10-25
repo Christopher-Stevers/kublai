@@ -13,6 +13,7 @@ export type RoomNotesDraft = { notes: string; notesRevision: number };
 export function RoomDetails({
   room,
   jobId,
+  floorId,
   canEditNotes,
   canRequestMaterial,
   draft,
@@ -21,6 +22,7 @@ export function RoomDetails({
 }: {
   room: { id: string; name: string; notes: string; notesRevision: number };
   jobId: string;
+  floorId: string;
   canEditNotes: boolean;
   canRequestMaterial: boolean;
   draft?: RoomNotesDraft;
@@ -49,9 +51,8 @@ export function RoomDetails({
   const loadLatestNotes = async () => {
     setLoadingLatest(true);
     try {
-      const data = await utils.rooms.getJobRooms.fetch({ jobId });
-      const current = data.floors
-        .flatMap((floor) => floor.rooms)
+      const data = await utils.rooms.getFloorRooms.fetch({ jobId, floorId });
+      const current = data.rooms
         .find((item) => item.id === room.id);
       if (!current) throw new Error("This room is no longer available.");
       setLatest({ notes: current.notes, notesRevision: current.notesRevision });
@@ -79,7 +80,7 @@ export function RoomDetails({
       onDraftChange(undefined);
       setSavedMessage(true);
       setLatest(null);
-      void utils.rooms.getJobRooms.invalidate({ jobId });
+      void utils.rooms.getFloorRooms.invalidate({ jobId, floorId });
       return true;
     } catch (error) {
       setNoteError(

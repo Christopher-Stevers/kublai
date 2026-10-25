@@ -29,7 +29,7 @@ vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
       rooms: {
-        getJobRooms: { invalidate: mocks.invalidate, fetch: mocks.fetch },
+        getFloorRooms: { invalidate: mocks.invalidate, fetch: mocks.fetch },
       },
     }),
     rooms: {
@@ -55,6 +55,7 @@ function Harness({
     <RoomDetails
       room={{ id: "room-a", name, notes: "Existing note", notesRevision: 3 }}
       jobId="job-a"
+      floorId="floor-a"
       draft={draft}
       onDraftChange={setDraft}
       canEditNotes={canEditNotes}
@@ -171,11 +172,7 @@ describe("room notes and materials", () => {
       new Error("Notes changed. Review latest notes."),
     );
     mocks.fetch.mockResolvedValue({
-      floors: [
-        {
-          rooms: [{ id: "room-a", notes: "Colleague note", notesRevision: 4 }],
-        },
-      ],
+      rooms: [{ id: "room-a", notes: "Colleague note", notesRevision: 4 }],
     });
     render(<Harness />);
     fireEvent.change(screen.getByLabelText("Room notes"), {

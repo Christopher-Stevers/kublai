@@ -67,6 +67,7 @@ function setup(reads: Row[][] = [[{ floorId }], [floor], [room]]) {
       },
       limit: (_count: number) => query,
       orderBy: (..._order: unknown[]) => query,
+      groupBy: (..._fields: unknown[]) => query,
     });
     return query;
   });
@@ -370,6 +371,56 @@ describe("lightweight job room count", () => {
     await expect(test.caller.getJobRoomCount({ jobId })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+    expect(test.db.select).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("room overview and on-demand floor data", () => {
+  it("returns counts without selecting any room text or geometry for the overview", async () => {
+    const test = setup([
+      [{ id: jobId, organizationId }], [{ id: "plan", status: "ready" }],
+      [{ ...floor, jobId }, { ...floor, id: "hidden", status: "pending_upload" }],
+      [{ floorId, count: 124 }],
+    ]);
+    const result = await test.caller.getJobRooms({ jobId, includeRooms: false });
+    expect(result.floors).toHaveLength(1);
+    expect(result.floors[0]).toMatchObject({ roomCount: 124, rooms: [] });
+    // A count-only select is essential: dropping geometry after loading it is not enough.
+    const selected = test.db.select.mock.calls as unknown as Array<[Record<string, unknown>?]>;
+    expect(Object.keys(selected[3]![0]!)).toEqual(["floorId", "count"]);
+    const predicate = new PgDialect().sqlToQuery(test.predicates.at(-1)!);
+    expect(predicate.params).toEqual(expect.arrayContaining([jobId, organizationId, floorId]));
+    expect(predicate.params).not.toContain("hidden");
+    expect(predicate.sql).toContain("superseded");
+  });
+
+  it("loads only the requested floor and its active room geometry", async () => {
+    const test = setup([[{ id: jobId, organizationId }], [{ ...floor, jobId }], [room]]);
+    const result = await test.caller.getFloorRooms({ jobId, floorId });
+    expect(result.rooms).toEqual([room]);
+    const predicates = test.predicates.map(predicate => new PgDialect().sqlToQuery(predicate));
+    expect(predicates[1]!.params).toEqual(expect.arrayContaining([floorId, jobId, organizationId]));
+    expect(predicates[2]!.params).toEqual(expect.arrayContaining([floorId, jobId, organizationId]));
+    expect(predicates[2]!.sql).toContain("rejected");
+    expect(predicates[2]!.sql).toContain("superseded");
+    expect(test.writes).toEqual([]);
+  });
+
+  it.each([
+    undefined,
+    { ...floor, jobId, status: "pending_upload" },
+    { ...floor, jobId, status: "pending_review" },
+    { ...floor, jobId, organizationId: otherOrganizationId },
+    { ...floor, jobId: otherOrganizationId },
+  ])("rejects unavailable or out-of-scope floor %j before reading rooms", async value => {
+    const test = setup([[{ id: jobId, organizationId }], value ? [value] : []]);
+    await expect(test.caller.getFloorRooms({ jobId, floorId })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(test.db.select).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a foreign job before even looking up the floor", async () => {
+    const test = setup([[{ id: jobId, organizationId: otherOrganizationId }]]);
+    await expect(test.caller.getFloorRooms({ jobId, floorId })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(test.db.select).toHaveBeenCalledTimes(1);
   });
 });

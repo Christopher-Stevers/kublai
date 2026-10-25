@@ -176,7 +176,11 @@ export const roomsRouter = createTRPCRouter({
     }),
 
   getJobRooms: hasAppAccess
-    .input(z.object({ jobId: z.string().uuid() }))
+    // Keep the full response for older clients; current overviews request counts only.
+    .input(z.object({
+      jobId: z.string().uuid(),
+      includeRooms: z.boolean().default(true),
+    }))
     .query(async ({ ctx, input }) => {
       const organizationId = (ctx.user as { organizationId: string })
         .organizationId;
@@ -226,7 +230,7 @@ export const roomsRouter = createTRPCRouter({
           floor.status !== "pending_upload",
       );
 
-      const rooms = visibleFloors.length
+      const rooms = input.includeRooms && visibleFloors.length
         ? await ctx.db
             .select()
             .from(jobRooms)
@@ -243,6 +247,21 @@ export const roomsRouter = createTRPCRouter({
             )
             .orderBy(asc(jobRooms.sortOrder), asc(jobRooms.createdAt))
         : [];
+
+      const counts =
+        !input.includeRooms && visibleFloors.length
+          ? await ctx.db
+              .select({ floorId: jobRooms.floorId, count: sql<number>`count(*)::int` })
+              .from(jobRooms)
+              .where(and(
+                eq(jobRooms.jobId, input.jobId),
+                eq(jobRooms.organizationId, organizationId),
+                inArray(jobRooms.floorId, visibleFloors.map(floor => floor.id)),
+                sql`${jobRooms.reviewStatus} not in ('rejected', 'superseded')`,
+              ))
+              .groupBy(jobRooms.floorId)
+          : [];
+      const countsByFloor = new Map(counts.map(row => [row.floorId, row.count]));
 
       // One lightweight query for the whole overview; queued work keeps running
       // on the server even when no floor is open in the browser.
@@ -314,9 +333,58 @@ export const roomsRouter = createTRPCRouter({
         floors: visibleFloors.map((floor) => ({
           ...floor,
           detection: detectionByFloor.get(floor.id) ?? null,
+          roomCount: input.includeRooms
+            ? (roomsByFloor.get(floor.id)?.length ?? 0)
+            : (countsByFloor.get(floor.id) ?? 0),
           rooms: roomsByFloor.get(floor.id) ?? [],
         })),
       };
+    }),
+
+  getFloorRooms: hasAppAccess
+    .input(z.object({ jobId: z.string().uuid(), floorId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const organizationId = ctx.user.organizationId;
+      const [job] = await ctx.db
+        .select({ id: jobs.id, organizationId: jobs.organizationId })
+        .from(jobs)
+        .where(
+          and(eq(jobs.id, input.jobId), eq(jobs.organizationId, organizationId)),
+        )
+        .limit(1);
+      assertJobOrg(job, organizationId);
+      const [floor] = await ctx.db
+        .select()
+        .from(jobFloors)
+        .where(
+          and(
+            eq(jobFloors.id, input.floorId),
+            eq(jobFloors.jobId, input.jobId),
+            eq(jobFloors.organizationId, organizationId),
+          ),
+        )
+        .limit(1);
+      if (
+        !floor ||
+        floor.jobId !== input.jobId ||
+        floor.organizationId !== organizationId ||
+        floor.status === "pending_review" ||
+        floor.status === "pending_upload"
+      )
+        throw new TRPCError({ code: "NOT_FOUND", message: "Drawing not found" });
+      const rooms = await ctx.db
+        .select()
+        .from(jobRooms)
+        .where(
+          and(
+            eq(jobRooms.floorId, floor.id),
+            eq(jobRooms.jobId, input.jobId),
+            eq(jobRooms.organizationId, organizationId),
+            sql`${jobRooms.reviewStatus} not in ('rejected', 'superseded')`,
+          ),
+        )
+        .orderBy(asc(jobRooms.sortOrder), asc(jobRooms.createdAt));
+      return { ...floor, rooms };
     }),
 
   updateNotes: hasAppAccess
@@ -785,7 +853,7 @@ export const roomsRouter = createTRPCRouter({
           .where(eq(jobFloors.id, floor.id));
         return updatedAt.getTime();
       });
-      return { ok: true, updatedAt };
+      return { ok: true, updatedAt, floorId: room.floorId };
     }),
 
   deleteRoom: hasAppAccess
