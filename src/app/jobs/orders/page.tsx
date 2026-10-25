@@ -2,7 +2,7 @@
 import { supplierLabel } from "~/lib/supplier-label";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
-import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
+import { OrderEmailFields } from "~/components/materialLists/OrderEmailFields";
 import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "~/components/materialLists/UndoOrderButton";
 import { usePageViewState } from "~/hooks/use-page-view-state";
@@ -14,7 +14,6 @@ import { Card, CardContent } from "~/components/ui/card";
 import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -630,67 +629,10 @@ export default function OrdersPage() {
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <label
-                              htmlFor={`order-subject-${order.id}`}
-                              className="text-sm font-medium"
-                            >
-                              Subject
-                            </label>
-                            <Input
-                              id={`order-subject-${order.id}`}
-                              value={draft.subject}
-                              onChange={(event) => {
-                                const next = new Map(emailDrafts);
-                                next.set(order.id, {
-                                  ...draft,
-                                  subject: event.target.value,
-                                });
-                                setEmailDrafts(next);
-                              }}
-                              disabled
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label
-                              htmlFor={`order-body-${order.id}`}
-                              className="text-sm font-medium"
-                            >
-                              Email
-                            </label>
-                          <OrderEmailSkuOption supplierId={order.supplier?.id} body={draft.body} lines={draft.supplierSkuLines} onChange={body => setEmailDrafts(previous => new Map(previous).set(order.id, { ...draft, body }))} />
-                            <Textarea
-                              id={`order-body-${order.id}`}
-                              value={draft.body}
-                              onChange={(event) => {
-                                const next = new Map(emailDrafts);
-                                next.set(order.id, {
-                                  ...draft,
-                                  body: event.target.value,
-                                });
-                                setEmailDrafts(next);
-                              }}
-                              className="min-h-[20rem] font-mono text-sm"
-                              disabled
-                            />
-                          </div>
-
-                          <div className="space-y-2 border-t pt-4">
-                            <label
-                              htmlFor={`order-notes-${order.id}`}
-                              className="text-sm font-medium"
-                            >
-                              Internal Notes
-                            </label>
-                            <Textarea
-                              id={`order-notes-${order.id}`}
-                              value={order.notes ?? ""}
-                              placeholder="Notes saved on the sent order"
-                              className="min-h-[80px]"
-                              disabled
-                            />
-                          </div>
+                          <OrderEmailFields id={order.id} supplierId={order.supplier?.id} draft={draft}
+ disabled={true} notes={order.notes ?? ""}
+ onDraftChange={next=>setEmailDrafts(previous=>new Map(previous).set(order.id,next))}
+  />
                         </>
                       )}
                     </div>

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Upload, ExternalLink, LoaderCircle } from "lucide-react";
+import { Upload, LoaderCircle } from "lucide-react";
 import { uploadModel } from "~/lib/bim/client";
 import {
   disciplines,
@@ -200,137 +200,6 @@ export function UploadModelDialog({
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-export function AutodeskDialog({
-  workspace,
-  onClose,
-  onConnected,
-}: {
-  workspace: BimWorkspace;
-  onClose: () => void;
-  onConnected: () => void;
-}) {
-  const [id, setId] = useState(""),
-    [secret, setSecret] = useState("");
-  const connect = api.models.connectAutodesk.useMutation({
-    onSuccess: () => {
-      setSecret("");
-      onConnected();
-      onClose();
-    },
-  });
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Connect Autodesk</DialogTitle>
-          <DialogDescription>
-            One connection for your company. Your crew keeps using its FormanHQ
-            sign-in.
-          </DialogDescription>
-        </DialogHeader>
-        <p className="text-sm leading-relaxed">
-          Autodesk Platform Services (APS) prepares native Revit files for this
-          viewer. The <strong>client ID</strong> identifies your company’s app;
-          the <strong>client secret</strong> is its private access key.
-        </p>
-        <ol className="list-decimal space-y-2 pl-5 text-sm">
-          <li>
-            Open the Autodesk developer portal and set up your company’s
-            developer hub and APS access.
-          </li>
-          <li>
-            Create a server-to-server app for FormanHQ with Data Management and
-            Model Derivative API access.
-          </li>
-          <li>Copy its client ID and client secret into the fields below.</li>
-        </ol>
-        <a
-          className="text-primary inline-flex items-center gap-2 text-sm underline"
-          href="https://aps.autodesk.com/myapps"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open Autodesk developer portal
-          <ExternalLink className="size-4" />
-        </a>
-        <p className="text-muted-foreground text-sm">
-          When you choose Convert, the model is sent to Autodesk. Its service
-          has separate{" "}
-          <a
-            className="underline"
-            target="_blank"
-            rel="noreferrer"
-            href="https://aps.autodesk.com/pricing"
-          >
-            usage pricing
-          </a>
-          . IFC files open directly without this connection.
-        </p>
-        {workspace.canConfigureAutodesk ? (
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              connect.mutate({
-                jobId: workspace.job.id,
-                credentials: { clientId: id, clientSecret: secret },
-              });
-            }}
-          >
-            <label className="block space-y-1 text-sm">
-              Client ID
-              <input
-                className={inputClass}
-                autoComplete="off"
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                required
-                minLength={8}
-                maxLength={200}
-              />
-            </label>
-            <label className="block space-y-1 text-sm">
-              Client secret
-              <input
-                className={inputClass}
-                type="password"
-                autoComplete="new-password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                required
-                minLength={8}
-                maxLength={500}
-              />
-            </label>
-            <p className="text-muted-foreground text-xs">
-              Stored encrypted on the server. Never shown to other members.
-            </p>
-            {connect.error && (
-              <p role="alert" className="text-destructive text-sm">
-                {connect.error.message}
-              </p>
-            )}
-            <Button className="w-full" disabled={connect.isPending}>
-              {connect.isPending
-                ? "Checking connection…"
-                : "Verify and save connection"}
-            </Button>
-          </form>
-        ) : (
-          <p className="bg-muted rounded-md p-3 text-sm">
-            A company administrator with model upload permission can complete
-            this setup.
-          </p>
-        )}
       </DialogContent>
     </Dialog>
   );

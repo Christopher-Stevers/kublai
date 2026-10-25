@@ -1,3 +1,4 @@
+import { safeAttachmentResponse } from "~/server/http/attachment-response";
 import { z } from "zod";
 import {
   deletePendingAttachment,
@@ -17,18 +18,7 @@ export async function GET(
   try {
     const { userId } = await getRequestIdentity(request.headers, { request });
     const file = await readChatAttachment(userId, id);
-    const disposition =
-      file.mimeType === "application/pdf" ? "attachment" : "inline";
-    return new Response(new Uint8Array(file.data), {
-      headers: {
-        "Content-Type": file.mimeType,
-        "Content-Length": String(file.data.length),
-        "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(file.name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16)}`)}`,
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'none'; sandbox",
-      },
-    });
+    return safeAttachmentResponse(file);
   } catch (error) {
     return chatHttpError(error);
   }

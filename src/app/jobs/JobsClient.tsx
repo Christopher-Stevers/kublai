@@ -1,14 +1,13 @@
 "use client";
+import { JobOfflineNotice } from "~/components/jobs/JobOfflineNotice";
+import { formatLocationAddress, type JobLocationDisplay } from "~/lib/location-address";
 import { useScrollToTop } from "~/hooks/use-remembered-scroll";
-import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { PageHeader } from "~/components/ui/page-header";
-import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
-import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
+import { JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
 
 import { JobMaterialListsView } from "~/components/materialLists/JobMaterialListsView";
-import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -18,57 +17,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,  } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
-import { BriefcaseIcon, UserIcon, MapPinIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, WifiOffIcon,  } from "lucide-react";
+import { BriefcaseIcon, UserIcon, MapPinIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Badge } from "~/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,  } from "~/components/ui/dropdown-menu";
 import { useReplicacheJobDetail, useReplicacheJobsList,  } from "~/hooks/use-replicache-jobs";
-import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
-import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
-import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
-import { MaterialListSheet } from "~/components/materialLists/MaterialListSheet";
-import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
 import { MaterialListScreen } from "~/components/materialLists/MaterialListScreen";
 import { JobEditDialog } from "~/components/jobs/JobEditDialog";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
 import { useJobRoomCount } from "~/hooks/use-job-room-count";
 import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
-import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
-import { ViewToggle } from "~/components/ui/view-toggle";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { HEADER_BACK_REQUEST_EVENT, setHeaderBackVisible,  } from "~/lib/header-back-events";
 import { Skeleton } from "~/components/ui/skeleton";
 
-type JobLocationDisplay = {
-  name?: string | null;
-  address1?: string | null;
-  address2?: string | null;
-  city?: string | null;
-  region?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-};
 
-function formatLocationAddress(
-  location: JobLocationDisplay | null | undefined,
-) {
-  if (!location) return null;
-
-  const addressLine = [location.address1, location.address2]
-    .filter(Boolean)
-    .join(" ");
-  const cityLine = [location.city, location.region, location.postalCode]
-    .filter(Boolean)
-    .join(", ");
-
-  return (
-    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
-    location.name ||
-    null
-  );
-}
 
 export type JobsJob = {
   id: string;
@@ -104,19 +69,6 @@ export function JobsClient({
   const [newJobName, setNewJobName] = useState("");
   const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] =
     useState(false);
-  const [
-    showOfflineMaterialListNameModal,
-    setShowOfflineMaterialListNameModal,
-  ] = useState(false);
-  const [offlineMaterialListViewMode, setOfflineMaterialListViewMode] =
-    usePageViewState<"grid" | "table">("dashboard:offlineMaterialListViewMode", "grid");
-  const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = usePageViewState("dashboard:showOfflineQuoteSheet", false);
-  const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = usePageViewState("dashboard:showOfflineOrdersSheet", false);
-  const [showOfflineExistingQuotesDialog, setShowOfflineExistingQuotesDialog] =
-    useState(false);
-  const [selectedOfflineQuoteId, setSelectedOfflineQuoteId] = useState<
-    string | undefined
-  >();
   const [jobToDelete, setJobToDelete] = useState<{
     id: string;
     name: string;
@@ -130,8 +82,6 @@ export function JobsClient({
   const offlineJobId = workspaceLocation?.jobId ?? null;
   const offlineMaterialListId = workspaceLocation?.materialListId ?? null;
   const offlineJobView = workspaceLocation?.view ?? "options";
-  const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
-    usePageViewState("dashboard:addParts", false);
   const isBrowserOnline = useOnlineStatus();
   const roomCount = useJobRoomCount(offlineJobId, offlineJobView === "options");
 
@@ -170,12 +120,6 @@ export function JobsClient({
     sandbox ? null : !offlineJobId ? "jobs"
       : offlineJobView === "options" && !offlineMaterialListId ? `job:${offlineJobId}` : null,
   );
-  const offlineMaterialListDetail = useReplicacheMaterialList(
-    offlineMaterialListId ?? "",
-  );
-  const { data: jobPriceBook } = useJobPricing(offlineMaterialListDetail.materialList?.kind === "tools" ? null : offlineJobId);
-  const suppliers = useReplicacheSuppliers();
-  const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
   const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
   const isWaitingForJobs = false;
 
@@ -246,195 +190,22 @@ export function JobsClient({
     return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
   }
 
-  // The same list screen as its own page; the tutorial keeps the simple one
-  // below, which its steps point at.
-  if (offlineMaterialListId && !sandbox) {
+  // Tutorial and live lists share rendering; the sandbox supplies isolated data.
+  if (offlineMaterialListId) {
     return <MaterialListScreen key={offlineMaterialListId} id={offlineMaterialListId} embedded />;
   }
 
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
-    const selectedMaterialList = offlineMaterialListDetail.materialList;
-    const selectedItems = sortedItems.map(item => ({ ...item, jobPriceStatus: jobPriceBook ? jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierId ?? item.supplierPart?.supplierId, item.supplierPart?.id) : item.jobPriceStatus }));
-    const isToolRequest = selectedMaterialList?.kind === "tools";
-    const hasToolItems = selectedItems.some(item => !!item.partDefinition?.assetTracking);
-    const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
-    const selectedMaterialListHasPendingSync =
-      Boolean(selectedMaterialList?.pendingSync) ||
-      selectedItems.some((item) => Boolean(item.pendingSync));
     const jobLocationAddress = formatLocationAddress(offlineJob?.location);
-    const canQuote = can?.["quotes.create"] ?? true;
-    const canOrder = isToolRequest || hasToolItems || (can?.["orders.send"] ?? true);
-    const offlineGenerationBlockReason = sandbox
-      ? "Quotes and orders are not sent during the tutorial."
-      : !isBrowserOnline
-      ? "Reconnect before generating quotes or orders."
-      : !canQuote && !canOrder
-        ? "You don't have permission to request quotes or send orders."
-        : selectedMaterialListHasPendingSync
-          ? "Finish syncing this material list before generating a quote or order."
-          : selectedItems.length === 0
-            ? "Add parts before generating a quote or order."
-            : null;
-    const canGenerateOfflineQuoteOrOrder = !offlineGenerationBlockReason;
-
-    const handleOfflineGenerateQuote = () => {
-      if (!canGenerateOfflineQuoteOrOrder) return;
-      setShowOfflineExistingQuotesDialog(true);
-    };
-
-    const handleOfflineGenerateOrder = () => {
-      if (!canGenerateOfflineQuoteOrOrder) return;
-      setShowOfflineOrdersSheet(true);
-    };
-
-    const handleOfflineGenerateNewQuote = () => {
-      if (sandbox) return;
-      setSelectedOfflineQuoteId(undefined);
-      setShowOfflineQuoteSheet(true);
-    };
 
     return (
       <div className="px-4 pt-6 pb-24 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
-          {!isBrowserOnline && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
-                <WifiOffIcon className="h-4 w-4" />
-                Offline mode
-              </div>
-            </div>
-          )}
+          {!isBrowserOnline && <JobOfflineNotice />}
 
-          {offlineMaterialListId ? (
-            selectedMaterialList ? (
-              <>
-                <div className="mb-6 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex min-h-10 min-w-0 items-center gap-2">
-                      <h1 data-tutorial="material-list" className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
-                        {selectedMaterialList.name}
-                      </h1>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setShowOfflineMaterialListNameModal(true)
-                        }
-                        className="h-8 w-8 shrink-0"
-                        aria-label="Edit material list"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <ViewToggle
-                    view={offlineMaterialListViewMode}
-                    onViewChange={setOfflineMaterialListViewMode}
-                    showOnMobile
-                  />
-                </div>
-
-                {selectedItems.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-0">
-                      <EmptyState
-                        art="clipboard"
-                        title={isToolRequest ? "No tools yet. Add them, then send the request." : "No parts yet. They’ll sync when you’re online."}
-                        action={
-                          <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
-                            <PlusIcon className="mr-2 h-4 w-4" />
-                            {isToolRequest ? "Add Tool" : "Add Part"}
-                          </Button>
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    {offlineMaterialListViewMode === "grid" ? (
-                      <div data-tutorial="material-items" className="grid grid-cols-2 gap-3 pb-24 sm:grid-cols-3 lg:grid-cols-4">
-                        {selectedItems.map((item) => (
-                          <MaterialListItem
-                            key={item.id}
-                            materialListId={selectedMaterialList.id}
-                            suppliers={suppliers}
-                            isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
-                            item={{
-                              ...item,
-                              selectedSupplierId: item.supplierId,
-                              partDefinition: item.partDefinition ?? null,
-                              supplierPart: item.supplierPart ?? null,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <MaterialListSheet className="mb-24" items={selectedItems} materialListId={selectedMaterialList.id} suppliers={suppliers} isToolRequest={isToolRequest} />
-                    )}
-                  </>
-                )}
-
-                {/* Pinned to the bottom of the window on every screen size (sticky left
-                    it floating under a short list on desktop). */}
-                <div className="fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-                  <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
-                    onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} isToolRequest={isToolRequest} />
-                </div>
-
-                <AddPartDialog
-                  open={showOfflineAddPartDialog}
-                  onOpenChange={setShowOfflineAddPartDialog}
-                  materialListId={selectedMaterialList.id}
-                />
-                {showOfflineQuoteSheet && (
-                  <QuotePreviewSheet
-                    open={showOfflineQuoteSheet}
-                    onOpenChange={(open) => {
-                      setShowOfflineQuoteSheet(open);
-                      if (!open) setSelectedOfflineQuoteId(undefined);
-                    }}
-                    materialListId={selectedMaterialList.id}
-                    jobName={offlineJob?.name ?? ""}
-                    quoteId={selectedOfflineQuoteId}
-                  />
-                )}
-                {showOfflineOrdersSheet && (
-                  <OrdersPreviewSheet
-                    open={showOfflineOrdersSheet}
-                    onOpenChange={setShowOfflineOrdersSheet}
-                    isToolRequest={isToolRequest} hasToolItems={hasToolItems}
-                    materialListId={selectedMaterialList.id}
-                    orderedItemIds={sortedItems.map(item => item.id)}
-                  />
-                )}
-                <ExistingQuotesOrdersDialog
-                  open={showOfflineExistingQuotesDialog}
-                  onOpenChange={setShowOfflineExistingQuotesDialog}
-                  materialListId={selectedMaterialList.id}
-                  type="quote"
-                  onGenerateNew={handleOfflineGenerateNewQuote}
-                  onOpenExisting={(quoteId) => {
-                    setSelectedOfflineQuoteId(quoteId);
-                    setShowOfflineQuoteSheet(true);
-                  }}
-                />
-              </>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
-                  <h3 className="mb-2 text-lg font-semibold">
-                    Material list not cached
-                  </h3>
-                  <p className="text-muted-foreground text-center">
-                    Reconnect once to cache this material list on this device.
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          ) : offlineJob ? (
+          {offlineJob ? (
             <>
               {/* Job details only on the job overview, not inside Rooms or Material Lists. */}
               {offlineJobView === "options" && (
@@ -540,14 +311,7 @@ export function JobsClient({
 
 
 
-          {selectedMaterialList && (
-            <MaterialListNameModal
-              open={showOfflineMaterialListNameModal}
-              onOpenChange={setShowOfflineMaterialListNameModal}
-              materialListId={selectedMaterialList.id}
-              initialName={selectedMaterialList.name ?? null}
-            />
-          )}
+
 
         </div>
       </div>
@@ -557,14 +321,7 @@ export function JobsClient({
   return (
     <div className="px-4 py-6 pb-24 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        {!isBrowserOnline && (
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
-              <WifiOffIcon className="h-4 w-4" />
-              Offline mode
-            </div>
-          </div>
-        )}
+        {!isBrowserOnline && <JobOfflineNotice />}
         <PageHeader
           title="Jobs"
           description="Select a job to open it"

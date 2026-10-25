@@ -1,8 +1,9 @@
+import { pushSettler, deliverAuthorizedPush, startPushWorker } from "~/server/push/worker";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type { db as database } from "~/server/db";
 import type { PushRecipient } from "~/server/chat/push-policy";
-import { MAX_PUSH_ATTEMPTS, pushFailure } from "~/server/chat/push-policy";
+import { MAX_PUSH_ATTEMPTS } from "~/server/chat/push-policy";
 import { sendPushPayload } from "~/server/chat/push-transport";
 import { materialPushPayload, eligibleMaterialRecipient } from "./materials";
 type Configuration = { publicKey: string; privateKey: string; subject: string };
@@ -68,10 +69,7 @@ export async function drainMaterialPush(options?: Dependencies) {
       from picked where o.id=picked.id returning o.*)
     select c.*,s.endpoint,s.p256dh,s.auth,n."recipientId" from claimed c
     join kublai_chat_push_subscription s on s.id=c."subscriptionId" join kublai_material_notification n on n.id=c."notificationId"`);
-  async function settle(delivery: Delivery, outcome: string, retryMs?: number) {
-    await db.execute(sql`update kublai_material_push_outbox set "completedAt"=${retryMs === undefined ? sql`now()` : sql`null`},outcome=${outcome},
-      "availableAt"=now()+(${retryMs ?? 0}*interval '1 millisecond'),"leaseToken"=null,"leasedUntil"=null where id=${delivery.id} and "leaseToken"=${delivery.leaseToken}`);
-  }
+  const settle = pushSettler(db, "kublai_material_push_outbox");
   await Promise.allSettled(
     deliveries.map(async (delivery) => {
       const [current] = await db.execute<Candidate>(sql`
@@ -99,7 +97,7 @@ export async function drainMaterialPush(options?: Dependencies) {
         await settle(delivery, "skipped");
         return;
       }
-      try {
+      await deliverAuthorizedPush(db, delivery, settle, async () => {
         await send(
           delivery,
           configuration,
@@ -111,43 +109,10 @@ export async function drainMaterialPush(options?: Dependencies) {
               : undefined,
           ),
         );
-        await settle(delivery, "sent");
-      } catch (error) {
-        const failure = pushFailure(error, delivery.attempts);
-        if (failure.outcome === "expired")
-          await db.execute(
-            sql`delete from kublai_chat_push_subscription where id=${delivery.subscriptionId} and "userId"=${delivery.recipientId} and endpoint=${delivery.endpoint}`,
-          );
-        else
-          await settle(
-            delivery,
-            failure.outcome,
-            failure.permanent ? undefined : failure.retryMs,
-          );
-      }
+      });
     }),
   );
 }
-const state = globalThis as typeof globalThis & {
-  materialPushTimer?: NodeJS.Timeout;
-  materialPushRunning?: boolean;
-};
 export function startMaterialPushWorker() {
-  if (state.materialPushTimer) return;
-  const run = async () => {
-    if (state.materialPushRunning) return;
-    state.materialPushRunning = true;
-    try {
-      await drainMaterialPush();
-    } catch {
-      console.warn(
-        "Material notification delivery paused; pending deliveries will retry.",
-      );
-    } finally {
-      state.materialPushRunning = false;
-    }
-  };
-  state.materialPushTimer = setInterval(() => void run(), 15000);
-  state.materialPushTimer.unref();
-  void run();
+  startPushWorker("material", drainMaterialPush, "Material notification delivery paused; pending deliveries will retry.");
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { SlipBadge, SlipPartSheet, SlipVerifyBar } from "~/components/materialLists/SlipOnList";
@@ -59,6 +60,7 @@ export function MaterialListScreen({
   id: string;
   embedded?: boolean;
 }) {
+  const sandbox = useTutorialSandbox();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const verifyOrderId = embedded ? null : searchParams.get("orderId");
@@ -132,7 +134,7 @@ export function MaterialListScreen({
       ]);
     },
   });
-  const canReceive = !!userData?.permissions.can["orders.receive"];
+  const canReceive = !sandbox && !!userData?.permissions.can["orders.receive"];
   // Read packing slips fill in the parts here; each is confirmed in one go.
   const slipDrafts = useSlipDrafts({
     jobId: mlHeader?.jobId,
@@ -203,7 +205,7 @@ export function MaterialListScreen({
     setShowAddPartDialog(true);
   };
 
-  const generationBlockReason = !isBrowserOnline
+  const generationBlockReason = sandbox ? "Quotes and orders are not sent during the tutorial." : !isBrowserOnline
     ? "Reconnect before generating quotes or orders."
     : !canQuote && !canOrder
       ? "You don't have permission to request quotes or send orders."
@@ -309,7 +311,7 @@ export function MaterialListScreen({
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-h-10 min-w-0 items-center gap-2">
-                <h1 className="min-w-0 text-lg leading-tight font-bold break-words text-foreground sm:text-xl">
+                <h1 data-tutorial="material-list" className="min-w-0 text-lg leading-tight font-bold break-words text-foreground sm:text-xl">
                   {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
                 </h1>
                 <Button
@@ -376,7 +378,7 @@ export function MaterialListScreen({
             <>
               {/* Grid View */}
               {(verifyOrderId || viewMode === "grid") && (
-                <div className="space-y-4">
+                <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
                   <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
                     {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} />}

@@ -3,8 +3,8 @@ import { resolveDefaultSupplier, supplierVersionPrice, validateJobSupplierDefaul
 import { getJobPriceBook } from "~/server/job-pricing";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { indexJobPrices } from "~/lib/job-pricing";
-import { materialListProgress } from "~/lib/material-list-progress";
-import { materialListOrderStatuses } from "~/lib/material-list-order-status";
+import { createMaterialListSummaries } from "~/lib/material-list-summary";
+import { loadOrderVerification } from "~/server/material-lists/order-verification";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import { recalculatePurchaseTotals } from "~/server/purchasing";
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
@@ -1340,20 +1340,6 @@ export async function handleMaterialListReplicachePull(
         contributorUserRows.map((user) => [user.id, user]),
       );
 
-      const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
-      // Tool request lines have no supplier; they all go to the tool room.
-      const quoteIdsWithItems = new Set<string>();
-      for (const item of itemRows) {
-        if (item.quoteId) quoteIdsWithItems.add(item.quoteId);
-        const supplierId = item.supplierId;
-        if (!item.quoteId || !supplierId) continue;
-
-        const supplierIds =
-          totalSupplierIdsByQuoteId.get(item.quoteId) ?? new Set<string>();
-        supplierIds.add(supplierId);
-        totalSupplierIdsByQuoteId.set(item.quoteId, supplierIds);
-      }
-
       const supplierNamesById = new Map(supplierRows.map(supplier => [supplier.id, supplier.name]));
       const materialListIds = materialListRows.map(
         (materialList) => materialList.id,
@@ -1372,58 +1358,8 @@ export async function handleMaterialListReplicachePull(
             .where(inArray(orders.materialListId, materialListIds))
         : [];
 
-      const orderIds = orderRows.map((order) => order.id);
-      const orderVerificationRows = orderIds.length
-        ? await tx
-            .select({
-              orderId: orderItems.orderId,
-              itemCount: sql<number>`count(*)::int`,
-              orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}, 0)), 0)::float8`,
-              receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}, 0))), 0)::float8`,
-              completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
-              verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
-            })
-            .from(orderItems)
-            .where(inArray(orderItems.orderId, orderIds))
-            .groupBy(orderItems.orderId)
-        : [];
-
-      const verificationByOrderId = new Map(
-        orderVerificationRows.map((row) => [row.orderId, row]),
-      );
-
-      const sentSupplierIdsByListId = new Map<string, Set<string>>();
-      const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
-      for (const order of orderRows) {
-        if (!order.materialListId || !order.supplierId) continue;
-
-        const hasBeenSent =
-          !!order.sentAt ||
-          ["sent", "confirmed", "received"].includes(order.status);
-        if (!hasBeenSent) continue;
-
-        const sentSupplierIds =
-          sentSupplierIdsByListId.get(order.materialListId) ??
-          new Set<string>();
-        sentSupplierIds.add(order.supplierId);
-        sentSupplierIdsByListId.set(order.materialListId, sentSupplierIds);
-
-        const verificationCounts = verificationByOrderId.get(order.id);
-        const isVerified =
-          !!verificationCounts &&
-          verificationCounts.itemCount > 0 &&
-          verificationCounts.verifiedItemCount === verificationCounts.itemCount;
-        if (!isVerified) continue;
-
-        const verifiedSupplierIds =
-          verifiedSupplierIdsByListId.get(order.materialListId) ??
-          new Set<string>();
-        verifiedSupplierIds.add(order.supplierId);
-        verifiedSupplierIdsByListId.set(
-          order.materialListId,
-          verifiedSupplierIds,
-        );
-      }
+      const verificationByOrderId = await loadOrderVerification(tx, orderRows.map(row=>row.id));
+      const summarizeList = createMaterialListSummaries(itemRows.map(row=>({...row, supplierId:row.supplierId ?? row.supplierPartSupplierId, supplierName:supplierNamesById.get(row.supplierId ?? row.supplierPartSupplierId ?? "")})), orderRows, verificationByOrderId);
 
       // Build a consistent full view; pullSnapshot diffs the client's exact base.
       const patch: PatchOperation[] = [{ op: "clear" }];
@@ -1462,34 +1398,7 @@ export async function handleMaterialListReplicachePull(
           key: `materialList/${materialList.id}`,
           value: {
             ...materialList,
-          overallProgress: materialListProgress(itemRows.filter(row => row.quoteId === materialList.quoteId)),
-          orderStatuses: materialListOrderStatuses(materialList.id, orderRows, verificationByOrderId,
-            itemRows.filter(row => row.quoteId === materialList.quoteId && row.partDefinitionId && Number(row.quantity) > 0).map(row => ({
-              sentOrderId: row.sentOrderId,
-              supplierId: materialList.kind === "tools" ? "tool-room" : row.supplierId ?? row.supplierPartSupplierId,
-              supplierName: materialList.kind === "tools" ? "Tool Room" : supplierNamesById.get(row.supplierId ?? row.supplierPartSupplierId ?? ""),
-            }))),
-            orderNumbers: [
-              ...new Set(
-                orderRows
-                  .filter(
-                    (order) =>
-                      order.materialListId === materialList.id &&
-                      order.status !== "cancelled",
-                  )
-                  .map((order) => order.orderNumber?.trim())
-                  .filter((number): number is string => Boolean(number)),
-              ),
-            ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-            totalSupplierCount: !materialList.quoteId
-              ? 0
-              : materialList.kind === "tools"
-                ? Number(quoteIdsWithItems.has(materialList.quoteId))
-                : (totalSupplierIdsByQuoteId.get(materialList.quoteId)?.size ?? 0),
-            sentSupplierCount:
-              sentSupplierIdsByListId.get(materialList.id)?.size ?? 0,
-            verifiedSupplierCount:
-              verifiedSupplierIdsByListId.get(materialList.id)?.size ?? 0,
+          ...summarizeList(materialList),
             createdBy: materialList.createdByUserId
               ? (() => {
                   const createdByUser = contributorUserMap.get(

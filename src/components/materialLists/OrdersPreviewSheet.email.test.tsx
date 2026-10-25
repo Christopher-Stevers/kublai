@@ -144,7 +144,7 @@ describe("supplier email handoff", () => {
         }),
     );
     const send = await show();
-    fireEvent.click(screen.getByRole("button", { name: "Pipe Supply (Standard)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pipe Supply" }));
     fireEvent.change(screen.getByLabelText("To"), {
       target: { value: "one@example.com, two@example.com" },
     });
@@ -181,7 +181,7 @@ describe("supplier email handoff", () => {
     "does not open email or save an invalid recipient %s",
     async (value) => {
       const send = await show();
-      fireEvent.click(screen.getByRole("button", { name: "Pipe Supply (Standard)" }));
+      fireEvent.click(screen.getByRole("button", { name: "Pipe Supply" }));
       fireEvent.change(screen.getByLabelText("To"), {
         target: { value },
       });

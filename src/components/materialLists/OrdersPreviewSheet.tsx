@@ -2,7 +2,7 @@
 import { orderPriceBookLabel } from "~/lib/supplier-label";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
-import { OrderEmailSkuOption } from "~/components/materialLists/OrderEmailSkuOption";
+import { OrderEmailFields } from "~/components/materialLists/OrderEmailFields";
 import type { SupplierSkuLine } from "~/lib/order-email-lines";
 import { UndoOrderButton } from "./UndoOrderButton";
 import { requestMaterialListReplicacheSync } from "~/lib/replicache-material-list";
@@ -642,72 +642,10 @@ export function OrdersPreviewSheet({
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor={`order-subject-${order.id}`}
-                    className="text-sm font-medium"
-                  >
-                    Subject
-                  </label>
-                  <Input
-                    id={`order-subject-${order.id}`}
-                    value={draft.subject}
-                    onChange={(event) => {
-                      const next = new Map(emailDrafts);
-                      next.set(order.id, {
-                        ...draft,
-                        subject: event.target.value,
-                      });
-                      setEmailDrafts(next);
-                    }}
-                    disabled={isSent}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    htmlFor={`order-body-${order.id}`}
-                    className="text-sm font-medium"
-                  >
-                    Email
-                  </label>
-                  <OrderEmailSkuOption supplierId={order.supplier?.id} body={draft.body} lines={draft.supplierSkuLines} onChange={body => setEmailDrafts(previous => new Map(previous).set(order.id, { ...draft, body }))} />
-                  <Textarea
-                    id={`order-body-${order.id}`}
-                    value={draft.body}
-                    onChange={(event) => {
-                      const next = new Map(emailDrafts);
-                      next.set(order.id, {
-                        ...draft,
-                        body: event.target.value,
-                      });
-                      setEmailDrafts(next);
-                    }}
-                    className="min-h-[20rem] font-mono text-sm"
-                    disabled={isSent}
-                  />
-                </div>
-
-                <div className="space-y-2 border-t pt-4">
-                  <label
-                    htmlFor={`order-notes-${order.id}`}
-                    className="text-sm font-medium"
-                  >
-                    Internal Notes
-                  </label>
-                  <Textarea
-                    id={`order-notes-${order.id}`}
-                    value={orderNotes.get(order.id) ?? ""}
-                    onChange={(event) => {
-                      const next = new Map(orderNotes);
-                      next.set(order.id, event.target.value);
-                      setOrderNotes(next);
-                    }}
-                    placeholder="Notes saved on the sent order"
-                    className="min-h-[80px]"
-                    disabled={isSent}
-                  />
-                </div>
+                <OrderEmailFields id={order.id} supplierId={order.supplier?.id} draft={draft}
+ disabled={isSent} notes={orderNotes.get(order.id) ?? ""}
+ onDraftChange={next=>setEmailDrafts(previous=>new Map(previous).set(order.id,next))}
+ onNotesChange={notes=>setOrderNotes(previous=>new Map(previous).set(order.id,notes))} />
               </>
             )}
           </div>

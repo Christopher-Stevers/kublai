@@ -1,3 +1,4 @@
+import { pushSettler, deliverAuthorizedPush, startPushWorker } from "~/server/push/worker";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import webpush from "web-push";
@@ -11,7 +12,6 @@ import {
   type ChatPushPreview,
   eligibleForChatPush,
   MAX_PUSH_ATTEMPTS,
-  pushFailure,
   type PushRecipient,
 } from "./push-policy";
 
@@ -99,12 +99,7 @@ async function sendToProvider(
   );
 }
 
-async function settle(delivery: Delivery, outcome: string, retryMs?: number) {
-  await db.execute(sql`UPDATE kublai_chat_push_outbox SET
-    "completedAt"=${retryMs === undefined ? sql`now()` : sql`NULL`}, outcome=${outcome},
-    "availableAt"=now()+(${retryMs ?? 0} * interval '1 millisecond'), "leasedUntil"=NULL, "leaseToken"=NULL
-    WHERE id=${delivery.id} AND "leaseToken"=${delivery.leaseToken}`);
-}
+const settle = pushSettler(db, "kublai_chat_push_outbox");
 
 async function deliver(
   delivery: Delivery,
@@ -126,22 +121,9 @@ async function deliver(
     await settle(delivery, "skipped");
     return;
   }
-  try {
-    await sendToProvider(delivery, configuration, current);
-    await settle(delivery, "sent");
-  } catch (error) {
-    const failure = pushFailure(error, delivery.attempts);
-    if (failure.outcome === "expired") {
-      await db.execute(
-        sql`DELETE FROM kublai_chat_push_subscription WHERE id=${delivery.subscriptionId} AND "userId"=${delivery.recipientId} AND endpoint=${delivery.endpoint}`,
-      );
-    } else
-      await settle(
-        delivery,
-        failure.outcome,
-        failure.permanent ? undefined : failure.retryMs,
-      );
-  }
+  await deliverAuthorizedPush(db, delivery, settle, async () => {
+        await sendToProvider(delivery, configuration, current);
+      });
 }
 
 /** Multiple Node processes can drain safely; leases recover work after process termination. */
@@ -171,26 +153,7 @@ export async function drainChatPush() {
   );
 }
 
-const processState = globalThis as typeof globalThis & {
-  chatPushDrainTimer?: NodeJS.Timeout;
-  chatPushDraining?: boolean;
-};
 export function startChatPushWorker() {
-  if (processState.chatPushDrainTimer || !getPushConfiguration()) return;
-  const tick = async () => {
-    if (processState.chatPushDraining) return;
-    processState.chatPushDraining = true;
-    try {
-      await drainChatPush();
-    } catch {
-      console.warn(
-        "Chat notification delivery paused; pending deliveries will retry.",
-      );
-    } finally {
-      processState.chatPushDraining = false;
-    }
-  };
-  processState.chatPushDrainTimer = setInterval(() => void tick(), 15000);
-  processState.chatPushDrainTimer.unref();
-  void tick();
+  if (!getPushConfiguration()) return;
+  startPushWorker("chat", drainChatPush, "Chat notification delivery paused; pending deliveries will retry.");
 }

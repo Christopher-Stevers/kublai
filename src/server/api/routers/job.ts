@@ -3,8 +3,8 @@ import {
   resolveDefaultSupplier,
   supplierVersionPrice,
 } from "~/server/job-supplier-defaults";
-import { materialListProgress } from "~/lib/material-list-progress";
-import { materialListOrderStatuses } from "~/lib/material-list-order-status";
+import { createMaterialListSummaries } from "~/lib/material-list-summary";
+import { loadOrderVerification } from "~/server/material-lists/order-verification";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -213,122 +213,15 @@ export const jobRouter = createTRPCRouter({
           : Promise.resolve([]),
       ]);
 
-      const totalSupplierIdsByQuoteId = new Map<string, Set<string>>();
-      // Tool request lines have no supplier; they all go to the tool room.
-      const quoteIdsWithItems = new Set<string>();
-      for (const row of supplierRows) {
-        if (!row.partDefinitionId) continue;
-        quoteIdsWithItems.add(row.quoteId);
-
-        const supplierId = row.selectedSupplierId ?? row.supplierPartSupplierId;
-        if (!supplierId) continue;
-
-        const supplierIds =
-          totalSupplierIdsByQuoteId.get(row.quoteId) ?? new Set<string>();
-        supplierIds.add(supplierId);
-        totalSupplierIdsByQuoteId.set(row.quoteId, supplierIds);
-      }
-
-      const orderIds = orderRows.map((row) => row.id);
-      const orderVerificationRows = orderIds.length
-        ? await ctx.db
-            .select({
-              orderId: orderItems.orderId,
-              itemCount: sql<number>`count(*)::int`,
-              orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}, 0)), 0)::float8`,
-              receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}, 0))), 0)::float8`,
-              completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
-              verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
-            })
-            .from(orderItems)
-            .where(inArray(orderItems.orderId, orderIds))
-            .groupBy(orderItems.orderId)
-        : [];
-
-      const verificationByOrderId = new Map(
-        orderVerificationRows.map((row) => [row.orderId, row]),
-      );
-
-      const sentSupplierIdsByListId = new Map<string, Set<string>>();
-      const verifiedSupplierIdsByListId = new Map<string, Set<string>>();
-      for (const row of orderRows) {
-        if (!row.materialListId || !row.supplierId) continue;
-
-        const hasBeenSent =
-          !!row.sentAt ||
-          ["sent", "confirmed", "received"].includes(row.status);
-        if (!hasBeenSent) continue;
-
-        const supplierIds =
-          sentSupplierIdsByListId.get(row.materialListId) ?? new Set<string>();
-        supplierIds.add(row.supplierId);
-        sentSupplierIdsByListId.set(row.materialListId, supplierIds);
-
-        const verificationCounts = verificationByOrderId.get(row.id);
-        const isVerified =
-          !!verificationCounts &&
-          verificationCounts.itemCount > 0 &&
-          verificationCounts.verifiedItemCount === verificationCounts.itemCount;
-        if (!isVerified) continue;
-
-        const verifiedSupplierIds =
-          verifiedSupplierIdsByListId.get(row.materialListId) ??
-          new Set<string>();
-        verifiedSupplierIds.add(row.supplierId);
-        verifiedSupplierIdsByListId.set(
-          row.materialListId,
-          verifiedSupplierIds,
-        );
-      }
+      const verificationByOrderId = await loadOrderVerification(ctx.db, orderRows.map(row=>row.id));
+      const summarizeList = createMaterialListSummaries(supplierRows.map(row=>({...row, supplierId:row.selectedSupplierId ?? row.supplierPartSupplierId})), orderRows, verificationByOrderId);
 
       return {
         ...job,
         materialLists: lists.map((list) => ({
           ...list,
-          overallProgress: materialListProgress(
-            supplierRows.filter((row) => row.quoteId === list.quoteId),
-          ),
-          orderStatuses: materialListOrderStatuses(
-            list.id,
-            orderRows,
-            verificationByOrderId,
-            supplierRows
-              .filter(
-                (row) =>
-                  row.quoteId === list.quoteId &&
-                  row.partDefinitionId &&
-                  Number(row.quantity) > 0,
-              )
-              .map((row) => ({
-                sentOrderId: row.sentOrderId,
-                supplierId:
-                  list.kind === "tools"
-                    ? "tool-room"
-                    : (row.selectedSupplierId ?? row.supplierPartSupplierId),
-                supplierName:
-                  list.kind === "tools" ? "Tool Room" : row.supplierName,
-              })),
-          ),
-          orderNumbers: [
-            ...new Set(
-              orderRows
-                .filter(
-                  (order) =>
-                    order.materialListId === list.id &&
-                    order.status !== "cancelled",
-                )
-                .map((order) => order.orderNumber?.trim())
-                .filter((number): number is string => Boolean(number)),
-            ),
-          ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-          totalSupplierCount: !list.quoteId
-            ? 0
-            : list.kind === "tools"
-              ? Number(quoteIdsWithItems.has(list.quoteId))
-              : (totalSupplierIdsByQuoteId.get(list.quoteId)?.size ?? 0),
-          sentSupplierCount: sentSupplierIdsByListId.get(list.id)?.size ?? 0,
-          verifiedSupplierCount:
-            verifiedSupplierIdsByListId.get(list.id)?.size ?? 0,
+          ...summarizeList(list),
+
         })),
       };
     }),
