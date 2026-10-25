@@ -1,4 +1,4 @@
-// Renders a seamless aluminium tread (checker) plate tile with a ForemanHQ blue tinge.
+// Renders a seamless aluminium tread (checker) plate tile as stainless steel under low light.
 import sharp from "sharp";
 
 const OUT = process.argv[2] ?? "checker-plate.webp";
@@ -62,8 +62,9 @@ for (let gy = 0; gy < cells; gy++)
 const light = [-0.5, -0.6, 0.62];
 const ln = Math.hypot(...light);
 const [lx, ly, lz] = light.map((c) => c / ln);
-const tint = [0.8, 0.9, 1.06]; // cool, slightly blue aluminium
-const brand = [76, 107, 140]; // ~ oklch(0.5 0.075 250)
+// Stainless steel: near-neutral, the faintest cool cast; DIM is the low light.
+const tint = [0.97, 0.985, 1.0];
+const DIM = 0.66;
 const raw = Buffer.alloc(N * N * 3);
 const H = 5 * SS; // bump strength
 for (let y = 0; y < N; y++)
@@ -87,7 +88,7 @@ for (let y = 0; y < N; y++)
     const shade = base * (0.55 + 0.6 * diffuse) + spec;
     for (let c = 0; c < 3; c++) {
       const metal = shade * 255 * tint[c];
-      const v = metal * 0.8 + brand[c] * 0.2 * (shade + 0.2);
+      const v = metal * DIM;
       raw[i * 3 + c] = Math.max(0, Math.min(255, Math.round(v)));
     }
   }

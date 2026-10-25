@@ -1,4 +1,4 @@
-// Renders a horizontally seamless strip of riveted steel angle with a ForemanHQ blue tinge.
+// Renders a horizontally seamless strip of riveted steel angle as stainless steel under low light.
 // It trims the joins between the expanded-steel bars and the checker-plate chat.
 // Usage: node scripts/render-angle-trim.mjs public/images/chat-angle-trim.webp
 import sharp from "sharp";
@@ -15,8 +15,9 @@ const RIVET_Y = 0.42 * h;
 const light = [-0.35, -0.75, 0.56];
 const ln = Math.hypot(...light);
 const [lx, ly, lz] = light.map((c) => c / ln);
-const tint = [0.8, 0.9, 1.06];
-const brand = [76, 107, 140];
+// Stainless steel: near-neutral, the faintest cool cast; DIM is the low light.
+const tint = [0.97, 0.985, 1.0];
+const DIM = 0.66;
 
 let seed = 5;
 const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
@@ -74,7 +75,7 @@ for (let y = 0; y < h; y++)
     const shade = ((0.42 + 0.62 * diffuse) * (1 + streak) + spec) * ring;
     for (let c = 0; c < 3; c++) {
       const metal = shade * 230 * tint[c];
-      const v = metal * 0.8 + brand[c] * 0.2 * (shade + 0.2);
+      const v = metal * DIM;
       raw[(y * w + x) * 3 + c] = Math.max(0, Math.min(255, Math.round(v)));
     }
   }

@@ -1,4 +1,4 @@
-// Renders a seamless expanded-steel (diamond mesh) tile with a ForemanHQ blue tinge.
+// Renders a seamless expanded-steel (diamond mesh) tile as stainless steel under low light.
 // Openings are transparent (with a soft cast shadow) so a background shows through.
 // Usage: node scripts/render-expanded-metal.mjs public/images/chat-expanded-metal.webp
 import sharp from "sharp";
@@ -14,8 +14,9 @@ const STRAND = 0.11; // strand half-width, in lattice units
 const light = [-0.45, -0.7, 0.55];
 const ln = Math.hypot(...light);
 const [lx, ly, lz] = light.map((c) => c / ln);
-const brand = [76, 107, 140];
-const tint = [0.8, 0.9, 1.06];
+// Stainless steel: near-neutral, the faintest cool cast; DIM is the low light.
+const tint = [0.97, 0.985, 1.0];
+const DIM = 0.66;
 
 /** Distance (lattice units) to the nearest strand, and which strand family. */
 function strand(x, y) {
@@ -65,13 +66,13 @@ for (let y = 0; y < h; y++)
         (0.5 + 0.55 * diffuse) * facing * (0.92 + 0.08 * z) + spec + (rand() - 0.5) * 0.03;
       rgb = tint.map((t, c) => {
         const metal = shade * 225 * t;
-        return metal * 0.8 + brand[c] * 0.2 * (shade + 0.2);
+        return metal * DIM;
       });
     } else {
       // Openings: transparent, except for the strands' soft shadow.
       const behind = strand((x - SHADOW_X + w) % w, (y - SHADOW_Y + h) % h).d;
       const shadow = Math.max(0, Math.min(1, (STRAND + 0.03 - behind) / 0.06));
-      rgb = [8, 14, 24];
+      rgb = [8, 8, 9];
       alpha = Math.round(255 * 0.5 * shadow);
     }
     for (let c = 0; c < 3; c++) raw[i + c] = Math.max(0, Math.min(255, Math.round(rgb[c])));
