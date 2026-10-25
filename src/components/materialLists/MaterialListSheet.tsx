@@ -44,7 +44,7 @@ export function MaterialListSheet({
           ...section,
           columns: showMoney ? MATERIAL_LIST_ORDERED_COLUMNS : MATERIAL_LIST_ORDERED_COLUMNS_NO_MONEY,
           width: showMoney ? "min-w-[82rem]" : "min-w-[69rem]",
-          headers: ["Photo", "Part description", "Ordered", "Received", "Back ordered", "Room", supplierLabel, ...money, "Sync", "Actions"],
+          headers: ["Photo", "Part description", "Ordered", "Received", section.hasReceivedItems ? "Back ordered" : "Awaiting delivery", "Room", supplierLabel, ...money, "Sync", "Actions"],
         }
       : {
           ...section,

@@ -160,6 +160,23 @@ it("keeps one plain table when nothing is ordered", () => {
   );
 });
 
+it("only starts back orders for the order that has received parts, and resets when receipts are cleared", () => {
+  const pending = (id: string, orderId: string, received = "0"): Item => ({
+    ...ordered, id, sentOrderItemId: `line-${id}`,
+    sentOrder: { ...ordered.sentOrder!, id: orderId, number: orderId, receivedQuantity: received },
+  });
+  const { rerender } = render(<MaterialListSheet items={[pending("a", "first"), pending("b", "first", "1"), pending("c", "second")]} materialListId="m" suppliers={[]} />);
+  const first = screen.getByRole("table", { name: "first parts" });
+  const second = screen.getByRole("table", { name: "second parts" });
+  expect(within(first).getByRole("columnheader", { name: "Back ordered" })).toBeInTheDocument();
+  expect(cells(within(first).getAllByRole("row")[1]!)[4]).toBe("10");
+  expect(within(second).queryByRole("columnheader", { name: "Back ordered" })).not.toBeInTheDocument();
+  expect(within(second).getByRole("columnheader", { name: "Awaiting delivery" })).toBeInTheDocument();
+  rerender(<MaterialListSheet items={[pending("a", "first"), pending("b", "first"), pending("c", "second")]} materialListId="m" suppliers={[]} />);
+  expect(screen.queryByRole("columnheader", { name: "Back ordered" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("columnheader", { name: "Awaiting delivery" })).toHaveLength(2);
+});
+
 it("puts the parts not ordered first, then a group per order", () => {
   const order = (id: string, number: string | null, status = "sent") => ({
     id,

@@ -190,7 +190,7 @@ export function MaterialListScreen({
   // Each order's parts sit under their own heading; once one scrolls up its
   // receiving bar takes the place of the list's own actions.
   const sections = verifyOrderId
-    ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, items: visibleItems }]
+    ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, hasReceivedItems: verifyOrder?.items.some((item) => Number(item.receivedQuantity) > 0) ?? false, items: visibleItems }]
     : materialSections(visibleItems, id);
   const listRef = useRef<HTMLDivElement>(null);
   const orderInView = useOrderInView(
@@ -428,6 +428,7 @@ export function MaterialListScreen({
                             materialListId={id}
                             suppliers={suppliers}
                             verifyMode={!!verifyOrderId || !!listOrder}
+                            orderHasReceipts={section.hasReceivedItems}
                             verifyReadOnly={!!listOrder && (!canReceive || !isBrowserOnline)}
                             isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
                             verifyOrderedQuantity={orderLine?.quantity}

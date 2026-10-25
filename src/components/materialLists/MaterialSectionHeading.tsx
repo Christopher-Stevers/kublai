@@ -45,7 +45,7 @@ export function MaterialSectionHeading({
 
 type SectionItem = {
   sentOrderItemId?: string | null;
-  sentOrder?: { id: string; number: string | null; status: string } | null;
+  sentOrder?: { id: string; number: string | null; status: string; receivedQuantity?: string | number | null } | null;
   supplierPart?: { supplier?: { name: string } | null } | null;
 };
 export type MaterialSection<T> = {
@@ -54,6 +54,8 @@ export type MaterialSection<T> = {
   detail?: string | null;
   href?: string;
   ordered: boolean;
+  /** Outstanding quantities are only back ordered after receiving has begun. */
+  hasReceivedItems?: boolean;
   /** The order these parts were sent on, when it is still open. */
   orderId?: string;
   items: T[];
@@ -96,6 +98,9 @@ export function materialSections<T extends SectionItem>(
       orders.set(key, section);
     }
     section.items.push(item);
+    if (order?.status !== "cancelled" && Number(order?.receivedQuantity) > 0) {
+      section.hasReceivedItems = true;
+    }
   }
   return [
     ...(notOrdered.length

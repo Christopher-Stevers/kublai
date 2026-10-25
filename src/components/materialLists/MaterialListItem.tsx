@@ -103,6 +103,8 @@ interface MaterialListItemProps {
   verifyCaption?: ReactNode;
   /** Show the verify card without letting taps change it. */
   verifyReadOnly?: boolean;
+  /** At least one line on this same order has been received. */
+  orderHasReceipts?: boolean;
 }
 
 function formatQuantityDisplay(value: string | number | null | undefined) {
@@ -204,6 +206,7 @@ function MaterialListItemComponent({
   verifyBadge,
   verifyCaption,
   verifyReadOnly = false,
+  orderHasReceipts = false,
 }: MaterialListItemProps) {
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const removeInFlightRef = useRef(false);
@@ -777,7 +780,7 @@ function MaterialListItemComponent({
               <VerifyQuantityColumn label="Ordered" value={orderedQuantity} />
               <VerifyQuantityColumn label="Received" value={receivedQuantity} />
               <VerifyQuantityColumn
-                label="Back Ordered"
+                label={orderHasReceipts || receivedQuantity > 0 ? "Back Ordered" : "Awaiting delivery"}
                 value={backOrderedQuantity}
               />
             </div>

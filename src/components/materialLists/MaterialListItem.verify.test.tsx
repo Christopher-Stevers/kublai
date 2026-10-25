@@ -72,3 +72,18 @@ it("shows the verify card without taps for members who cannot receive", () => {
   expect(screen.getByText("Received")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Verify part" })).toBeNull();
 });
+
+it("keeps an untouched order awaiting delivery", () => {
+  render(<MaterialListItem item={item} materialListId="m" verifyMode verifyInitialReceivedQuantity="0" />);
+  expect(screen.queryByText("Back Ordered")).not.toBeInTheDocument();
+  expect(screen.getByText("Awaiting delivery").nextSibling).toHaveTextContent("10");
+});
+
+it("marks an unreceived line back ordered once another line on its order is received", () => {
+  const { rerender } = render(<MaterialListItem item={item} materialListId="m" verifyMode verifyInitialReceivedQuantity="0" />);
+  rerender(<MaterialListItem item={item} materialListId="m" verifyMode verifyInitialReceivedQuantity="0" orderHasReceipts />);
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("10");
+  rerender(<MaterialListItem item={item} materialListId="m" verifyMode verifyInitialReceivedQuantity="0" orderHasReceipts={false} />);
+  expect(screen.queryByText("Back Ordered")).not.toBeInTheDocument();
+  expect(screen.getByText("Awaiting delivery")).toBeInTheDocument();
+});
