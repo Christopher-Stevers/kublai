@@ -20,10 +20,10 @@ it("settles only the matching lease and deletes only the owned expired endpoint"
   const database = { execute } as unknown as Pick<typeof db, "execute">;
   const settle = pushSettler(database, "kublai_material_push_outbox");
   await deliverAuthorizedPush(database, delivery, settle, async () => {
-    throw { statusCode: 410 };
+    throw Object.assign(new Error("Expired endpoint"), { statusCode: 410 });
   });
   const dialect = new PgDialect();
-  const deleted = dialect.sqlToQuery(execute.mock.calls[0]![0]!);
+  const deleted = dialect.sqlToQuery(execute.mock.calls[0]![0]);
   expect(deleted.sql).toContain('"userId"=');
   expect(deleted.sql).toContain("endpoint=");
   expect(deleted.params).toEqual([
@@ -38,7 +38,7 @@ it("settles only the matching lease and deletes only the owned expired endpoint"
     settle,
     async () => undefined,
   );
-  const update = dialect.sqlToQuery(execute.mock.calls[0]![0]!);
+  const update = dialect.sqlToQuery(execute.mock.calls[0]![0]);
   expect(update.sql).toContain("where id=");
   expect(update.sql).toContain('and "leaseToken"=');
   expect(update.params).toContain("lease");

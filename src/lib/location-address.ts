@@ -20,9 +20,12 @@ export function formatLocationAddress(
     .filter(Boolean)
     .join(", ");
 
-  return (
-    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
-    location.name ||
-    null
-  );
+  const address = [addressLine, cityLine, location.country]
+    .filter(Boolean)
+    .join(" • ");
+  return address.length > 0
+    ? address
+    : location.name?.length
+      ? location.name
+      : null;
 }
