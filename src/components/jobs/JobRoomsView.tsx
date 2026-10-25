@@ -112,8 +112,21 @@ export function JobRoomsView({
     null,
   );
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
-  // Counts the detection status box was closed at; it comes back when they change.
-  const [queueClosedAt, setQueueClosedAt] = useState<string | null>(null);
+  // Counts the detection status box was closed at, remembered on this device;
+  // it comes back only when they change.
+  const queueClosedKey = `rooms-queue-closed:${jobId}`;
+  const [queueClosedAt, setQueueClosedAtState] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setQueueClosedAtState(localStorage.getItem(queueClosedKey));
+    } catch {}
+  }, [queueClosedKey]);
+  const setQueueClosedAt = (counts: string) => {
+    setQueueClosedAtState(counts);
+    try {
+      localStorage.setItem(queueClosedKey, counts);
+    } catch {}
+  };
   const [editMode, setEditMode] = useState(false);
   const [createMode, setCreateMode] = useState(false);
   const [detectMode, setDetectMode] = useState(false);

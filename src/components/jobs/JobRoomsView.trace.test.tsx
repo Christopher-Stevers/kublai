@@ -151,6 +151,7 @@ const shape = { type: "bbox", x: 0.1, y: 0.1, w: 0.3, h: 0.3 };
 const nextShape = { ...shape, w: 0.6 };
 const saved = { id: "room-added", name: "New room", updatedAt: new Date(2000) };
 beforeEach(() => {
+  localStorage.clear();
   harness.sandbox = false;
   harness.detailLoading = false;
   harness.detailError = false;
@@ -547,14 +548,20 @@ describe("server-managed sheet detection queue", () => {
 
   it("closes the detection status box until the counts change", () => {
     setFloorDetection(0, { status: "error", error: "Worker stopped" });
-    const { rerender } = render(<JobRoomsView jobId="job-a" />);
+    const { unmount } = render(<JobRoomsView jobId="job-a" />);
     const box = screen.getByRole("status", { name: "Room detection queue" });
     fireEvent.click(within(box).getByRole("button", { name: "Close" }));
     expect(
       screen.queryByRole("status", { name: "Room detection queue" }),
     ).not.toBeInTheDocument();
+    // Still closed after leaving and coming back.
+    unmount();
+    const again = render(<JobRoomsView jobId="job-a" />);
+    expect(
+      screen.queryByRole("status", { name: "Room detection queue" }),
+    ).not.toBeInTheDocument();
     setFloorDetection(1, { status: "queued", queuePosition: 1 });
-    rerender(<JobRoomsView jobId="job-a" />);
+    again.rerender(<JobRoomsView jobId="job-a" />);
     expect(
       screen.getByRole("status", { name: "Room detection queue" }),
     ).toHaveTextContent("0 processing · 1 queued · 1 failed");
