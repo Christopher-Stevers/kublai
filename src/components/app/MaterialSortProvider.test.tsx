@@ -173,3 +173,10 @@ it("loads only the current account's offline cache", async () => {
   await act(async () => vi.advanceTimersByTimeAsync(500));
   expect(mocks.mutate).not.toHaveBeenCalled();
 });
+
+it("does not replace an executive's existing device settings with defaults from a fresh browser", async () => {
+  mocks.data!.initialized = false;
+  mocks.data!.canEditExecutive = true;
+  await act(async () => { mount("executive-user"); });
+  expect(mocks.mutate).not.toHaveBeenCalled();
+});

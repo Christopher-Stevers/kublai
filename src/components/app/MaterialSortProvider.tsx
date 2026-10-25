@@ -89,13 +89,14 @@ function usePreferenceState(userId: string, organizationId: string) {
       const groups = JSON.parse(
         localStorage.getItem(NAME_KEYWORDS_KEY) ?? "null",
       ) as unknown;
+      if (!isMaterialListSort(mode) && groups === null) return;
       settings =
         materialSortSettingsSchema.safeParse({
           sortMode: isMaterialListSort(mode) ? mode : "material",
           keywordGroups: groups ?? settings.keywordGroups,
         }).data ?? settings;
     } catch {
-      /* Use shared fallback. */
+      return; // A fresh or inaccessible browser must not claim the executive default.
     }
     void mutation
       .mutateAsync({
