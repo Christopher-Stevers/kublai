@@ -77,7 +77,7 @@ it("scans a slip, finds its order and opens its material list to check it", asyn
   });
   vi.stubGlobal("fetch", fetcher);
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   expect(await screen.findByText("Matched to")).toBeTruthy();
   expect(screen.getByText("174-Fastening House")).toBeTruthy();
@@ -103,7 +103,7 @@ it("lets the member choose the order when the slip is not a clear match", async 
     }),
   );
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   expect(await screen.findByText("Which order is this slip for?")).toBeTruthy();
   expect(
@@ -156,7 +156,7 @@ it("opens a saved slip that already has an order, and matches one that does not"
   });
   vi.stubGlobal("fetch", fetcher);
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Choose a saved slip instead" }),
   );
@@ -166,7 +166,7 @@ it("opens a saved slip that already has an order, and matches one that does not"
   expect(screen.getByText("Which order is this slip for?")).toBeTruthy();
   // Back to the list: a slip with an order opens straight away.
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
-  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Choose a saved slip instead" }),
   );
@@ -190,7 +190,7 @@ it("hands the linked slip back when scanned from a material list", async () => {
   );
   const onLinked = vi.fn();
   render(<ScanSlipButton jobId="job" onLinked={onLinked} />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   fireEvent.click(await screen.findByRole("button", { name: /Read slip now/ }));
   await waitFor(() => expect(onLinked).toHaveBeenCalledWith("list-o1", "o1"));

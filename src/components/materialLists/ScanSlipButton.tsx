@@ -233,7 +233,7 @@ export function ScanSlipButton({
         <CameraIcon
           className={compact ? "mr-1 h-3.5 w-3.5 shrink-0" : "mr-2 h-5 w-5"}
         />
-        Scan slip
+        Scan Slip
       </Button>
       <Dialog
         open={open}
