@@ -6,16 +6,23 @@ export function MaterialSectionHeading({
   detail,
   href,
   count,
+  orderId,
   className = "",
 }: {
   label: string;
   detail?: string | null;
   href?: string;
   count: number;
+  /** The open order under this heading; the list swaps in its receiving bar
+   * once the heading scrolls up. */
+  orderId?: string;
   className?: string;
 }) {
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div
+      data-section-heading={orderId ?? ""}
+      className={`flex items-center gap-3 ${className}`}
+    >
       <h2 className="text-sm font-semibold">
         {href ? (
           <Link href={href} className="underline-offset-2 hover:underline">

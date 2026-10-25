@@ -187,8 +187,8 @@ export function MaterialListScreen({
     }
   }, [notesOrderId, notesOrder]);
 
-  // Each order's parts sit under their own heading; while one is on screen
-  // its receiving bar joins the list's own actions.
+  // Each order's parts sit under their own heading; once one scrolls up its
+  // receiving bar takes the place of the list's own actions.
   const sections = verifyOrderId
     ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, items: visibleItems }]
     : materialSections(visibleItems, id);
@@ -198,7 +198,13 @@ export function MaterialListScreen({
     [isLoading, !!mlHeader, viewMode, ...sections.map((section) => section.key)].join("|"),
     !verifyOrderId && canReceive && !!mlHeader?.jobId,
   );
-  const orderInViewSection = sections.find((section) => section.orderId && section.orderId === orderInView);
+  // The last order shown stays in the bar while it slides away.
+  const [lastOrderInView, setLastOrderInView] = useState<string | null>(null);
+  if (orderInView && orderInView !== lastOrderInView) setLastOrderInView(orderInView);
+  const barOrderId = orderInView ?? lastOrderInView;
+  const orderBarSection = sections.find((section) => section.orderId && section.orderId === barOrderId)
+    ?? sections.find((section) => section.orderId);
+  const orderBarId = orderBarSection?.orderId;
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });
@@ -381,7 +387,7 @@ export function MaterialListScreen({
                 <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
                   <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
-                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} />}
+                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
@@ -531,25 +537,26 @@ export function MaterialListScreen({
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
           receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
-          orderActions={orderInView && orderInViewSection && mlHeader.jobId ? (
+          orderActive={!!orderInView && orderInView === orderBarId}
+          orderActions={!verifyOrderId && canReceive && orderBarSection && orderBarId && mlHeader.jobId ? (
             <OrderReceiveActions
               label={<>
-                <span className="font-semibold">Receiving {orderInViewSection.label}</span>
-                {orderInViewSection.detail && <span className="text-muted-foreground">{orderInViewSection.detail}</span>}
+                <span className="font-semibold">Receiving {orderBarSection.label}</span>
+                {orderBarSection.detail && <span className="text-muted-foreground">{orderBarSection.detail}</span>}
               </>}
               onNotes={() => {
-                setListNotesOrderId(orderInView);
+                setListNotesOrderId(orderBarId);
                 setShowVerifyNotesDialog(true);
               }}
               packingSlips={
-                <PackingSlips key={orderInView} jobId={mlHeader.jobId} materialListId={id} orderId={orderInView}
+                <PackingSlips key={orderBarId} jobId={mlHeader.jobId} materialListId={id} orderId={orderBarId}
                   buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
                   onVerified={() => { void utils.materialList.invalidate(); }}
                   onChanged={() => { void slipDrafts.reload(); }}
                   onReviewOnList={slipDrafts.choose} />
               }
-              onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderInView })}
-              onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderInView, allReceived: false })}
+              onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderBarId })}
+              onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderBarId, allReceived: false })}
               receivingAll={markAllReceived.isPending}
               receiveDisabled={updateOrderItemVerification.isPending}
             />

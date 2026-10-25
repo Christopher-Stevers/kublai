@@ -65,9 +65,23 @@ export function OrderReceiveActions({
   );
   if (!label) return row;
   return (
-    <div role="group" aria-label="Receive order" className="space-y-1 border-b pb-1.5">
-      <div className="flex items-baseline gap-1.5 text-xs">{label}</div>
+    <div role="group" aria-label="Receive order" className="space-y-1.5">
+      <div className="flex items-baseline gap-1.5 text-sm sm:text-base">{label}</div>
       {row}
+    </div>
+  );
+}
+
+function FooterLayer({ shown, children }: { shown: boolean; children: ReactNode }) {
+  return (
+    <div
+      aria-hidden={!shown || undefined}
+      inert={!shown}
+      className={`col-start-1 row-start-1 self-end transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+        shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
+      }`}
+    >
+      {children}
     </div>
   );
 }
@@ -89,6 +103,7 @@ export function MaterialListActions({
   receiveDisabled = false,
   materialListId,
   orderActions,
+  orderActive = false,
 }: {
   total: number;
   canGenerate: boolean;
@@ -109,8 +124,10 @@ export function MaterialListActions({
   isToolRequest?: boolean;
   /** The list, for "Save as Prefab" in the More menu. */
   materialListId?: string;
-  /** Receiving for the order on screen, above the list's own actions. */
+  /** Receiving for an order on the list, swapped in for the list's own
+   * actions while `orderActive`. */
   orderActions?: ReactNode;
+  orderActive?: boolean;
 }) {
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
@@ -129,9 +146,8 @@ export function MaterialListActions({
         />
       </div>
     );
-  return (
-    <div data-bottom-menu className="mx-auto max-w-6xl space-y-1.5">
-      {orderActions}
+  const listActions = (
+    <div className="space-y-1.5">
       <FinancialOnly><div className="flex items-baseline gap-1.5">
         <span className="text-base text-muted-foreground sm:text-lg">
           Material Total
@@ -182,6 +198,20 @@ export function MaterialListActions({
           Add Part
         </Button>
       </div>
+    </div>
+  );
+  return (
+    <div data-bottom-menu className="mx-auto max-w-6xl">
+      {orderActions ? (
+        // Both bars share one cell, so the footer keeps its height while
+        // one slides away and the other comes up.
+        <div className="grid">
+          <FooterLayer shown={!orderActive}>{listActions}</FooterLayer>
+          <FooterLayer shown={orderActive}>{orderActions}</FooterLayer>
+        </div>
+      ) : (
+        listActions
+      )}
       {materialListId && savingPrefab && (
         <SaveAsPrefabDialog
           open={savingPrefab}

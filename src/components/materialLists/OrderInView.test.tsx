@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useRef } from "react";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useOrderInView } from "./use-order-in-view";
 import {
   MaterialListActions,
@@ -26,8 +20,8 @@ beforeEach(() => {
   vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     function (this: HTMLElement) {
-      const id = this.dataset.orderId;
-      const { top, bottom } = (id ? spans[id] : undefined) ?? {
+      const id = this.dataset.sectionHeading;
+      const { top, bottom } = (id === undefined ? undefined : spans[id]) ?? {
         top: 0,
         bottom: 800,
       };
@@ -50,17 +44,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function Harness({ orders }: { orders: string[] }) {
+function Harness({ headings }: { headings: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const active = useOrderInView(ref, orders.join("|"));
+  const active = useOrderInView(ref, headings.join("|"));
   return (
     <>
       <div ref={ref} data-testid="list">
         <div>
-          {orders.map((id) => (
-            <section key={id} data-order-id={id}>
-              {id}
-            </section>
+          {headings.map((id) => (
+            <div key={id} data-section-heading={id}>
+              {id || "Not ordered"}
+            </div>
           ))}
         </div>
       </div>
@@ -69,74 +63,98 @@ function Harness({ orders }: { orders: string[] }) {
   );
 }
 
+// Heading tops; the list shows 0 to 800, so the line sits at 240.
+const at = (top: number) => ({ top, bottom: top + 20 });
 const scrollTo = (next: Record<string, Span>) => {
   spans = next;
   fireEvent.scroll(screen.getByTestId("list"));
 };
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
-it("follows the order taking up most of the screen", async () => {
-  spans = { a: { top: 0, bottom: 500 }, b: { top: 500, bottom: 1200 } };
-  render(<Harness orders={["a", "b"]} />);
+it("swaps to an order once its heading scrolls up past the line", async () => {
+  spans = { "": at(0), a: at(500), b: at(1400) };
+  render(<Harness headings={["", "a", "b"]} />);
+  await frame();
+  expect(screen.getByText("On screen: none")).toBeInTheDocument();
+
+  // In view but still below the line: the list's own bar stays.
+  scrollTo({ "": at(-200), a: at(300), b: at(1200) });
+  await frame();
+  expect(screen.getByText("On screen: none")).toBeInTheDocument();
+
+  scrollTo({ "": at(-300), a: at(200), b: at(1100) });
   await screen.findByText("On screen: a");
 
-  scrollTo({ a: { top: -400, bottom: 100 }, b: { top: 100, bottom: 800 } });
-  await screen.findByText("On screen: b");
-
-  scrollTo({ a: { top: -1400, bottom: -900 }, b: { top: -900, bottom: -200 } });
-  await screen.findByText("On screen: none");
-});
-
-it("needs a fair bit on screen to show and only goes once fully off", async () => {
-  spans = { a: { top: 760, bottom: 1200 } };
-  render(<Harness orders={["a"]} />);
-  await waitFor(() =>
-    expect(screen.getByText("On screen: none")).toBeInTheDocument(),
-  );
-
-  scrollTo({ a: { top: 300, bottom: 740 } });
-  await screen.findByText("On screen: a");
-
-  // The bar it brings up covers most of it; it stays.
-  scrollTo({ a: { top: 760, bottom: 1200 } });
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  // Long after its heading has gone off the top, it is still that order.
+  scrollTo({ "": at(-1000), a: at(-500), b: at(400) });
+  await frame();
   expect(screen.getByText("On screen: a")).toBeInTheDocument();
 
-  scrollTo({ a: { top: 800, bottom: 1240 } });
+  scrollTo({ "": at(-1300), a: at(-800), b: at(100) });
+  await screen.findByText("On screen: b");
+
+  scrollTo({ "": at(-100), a: at(400), b: at(1300) });
   await screen.findByText("On screen: none");
 });
 
-it("adds the order's receiving bar above the list's own actions", () => {
-  const onNotes = vi.fn();
-  const onMarkAllReceived = vi.fn();
-  const onMarkNoneReceived = vi.fn();
-  render(
-    <MaterialListActions
-      total={12}
-      canGenerate
-      onQuote={vi.fn()}
-      onOrder={vi.fn()}
-      onAdd={vi.fn()}
-      orderActions={
-        <OrderReceiveActions
-          label={<span>Receiving PO-7</span>}
-          onNotes={onNotes}
-          packingSlips={<button>Packing slips</button>}
-          onMarkAllReceived={onMarkAllReceived}
-          onMarkNoneReceived={onMarkNoneReceived}
-        />
-      }
-    />,
-  );
+it("lets a short last order take over at the end of the list", async () => {
+  spans = { "": at(-900), a: at(600) };
+  render(<Harness headings={["", "a"]} />);
+  const list = screen.getByTestId("list");
+  Object.defineProperties(list, {
+    scrollTop: { configurable: true, value: 900 },
+    clientHeight: { configurable: true, value: 800 },
+    scrollHeight: { configurable: true, value: 1700 },
+  });
+  scrollTo({ "": at(-900), a: at(600) });
+  await screen.findByText("On screen: a");
+});
+
+const listBar = (orderActive: boolean) => (
+  <MaterialListActions
+    total={12}
+    canGenerate
+    onQuote={vi.fn()}
+    onOrder={vi.fn()}
+    onAdd={vi.fn()}
+    orderActive={orderActive}
+    orderActions={
+      <OrderReceiveActions
+        label={<span>Receiving PO-7</span>}
+        onNotes={onNotes}
+        packingSlips={<button>Packing slips</button>}
+        onMarkAllReceived={onMarkAllReceived}
+        onMarkNoneReceived={onMarkNoneReceived}
+      />
+    }
+  />
+);
+const onNotes = vi.fn();
+const onMarkAllReceived = vi.fn();
+const onMarkNoneReceived = vi.fn();
+
+it("shows one bar at a time, the order's in place of the list's", () => {
+  const { rerender } = render(listBar(false));
+  expect(screen.getByRole("button", { name: /Add Part/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Order/ })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("group", { name: "Receive order" }),
+  ).not.toBeInTheDocument();
+
+  rerender(listBar(true));
   const bar = screen.getByRole("group", { name: "Receive order" });
   expect(bar).toHaveTextContent("Receiving PO-7");
+  expect(
+    screen.queryByRole("button", { name: /Add Part/ }),
+  ).not.toBeInTheDocument();
+  // The list's bar is still there, sliding away, but cannot be used.
+  expect(screen.getByText("Add Part").closest("[inert]")).not.toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /Mark all received/ }));
   fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark none received/ }));
   expect(onMarkAllReceived).toHaveBeenCalledTimes(1);
   expect(onNotes).toHaveBeenCalledTimes(1);
   expect(onMarkNoneReceived).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole("button", { name: /Add Part/ })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Order/ })).toBeInTheDocument();
 });
 
 it("keeps the verify page's bar on its own", () => {

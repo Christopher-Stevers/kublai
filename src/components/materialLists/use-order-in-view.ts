@@ -1,29 +1,36 @@
 "use client";
 import { useEffect, useState, type RefObject } from "react";
 
-/** How much of an order must show before its receiving bar comes up. */
-const SHOW_AT = 60;
+/** How far down the list, as a share of its height, a heading must scroll
+ * up past before its section counts as the one being looked at. */
+const LINE = 0.3;
 
-/** The height of an element still on screen once every scrolling box
- * around it, up to the root, has clipped it. */
-function visibleHeight(element: Element, root: Element) {
-  const rect = element.getBoundingClientRect();
-  let top = Math.max(rect.top, 0);
-  let bottom = Math.min(rect.bottom, window.innerHeight);
+/** The part of the screen the element can show in once every scrolling box
+ * around it, up to the root, has clipped it; and whether all of them are
+ * scrolled to the end. */
+function clipOf(element: Element, root: Element) {
+  let top = 0;
+  let bottom = window.innerHeight;
+  let atEnd = true;
+  let scrolled = false;
   for (let box = element.parentElement; box; box = box.parentElement) {
     if (box === root || getComputedStyle(box).overflowY !== "visible") {
-      const clip = box.getBoundingClientRect();
-      top = Math.max(top, clip.top);
-      bottom = Math.min(bottom, clip.bottom);
+      const rect = box.getBoundingClientRect();
+      top = Math.max(top, rect.top);
+      bottom = Math.min(bottom, rect.bottom);
+      if (box.scrollTop > 0) scrolled = true;
+      if (box.scrollTop + box.clientHeight < box.scrollHeight - 2)
+        atEnd = false;
     }
     if (box === root) break;
   }
-  return Math.max(0, bottom - top);
+  return { top, bottom, atEnd: atEnd && scrolled };
 }
 
-/** The order taking up most of the list on screen, from the elements marked
- * with `data-order-id` inside the root. It stays until it scrolls right off,
- * so the bar it brings up cannot push it away again. */
+/** The order whose section is being looked at, from the headings marked with
+ * `data-section-heading` (holding the order id, or nothing) inside the root.
+ * A section takes over once its heading's divider scrolls up past a line
+ * near the top of the list, or comes into view at the end of the list. */
 export function useOrderInView(
   root: RefObject<HTMLElement | null>,
   key: string,
@@ -36,28 +43,18 @@ export function useOrderInView(
     let frame = 0;
     const measure = () => {
       frame = 0;
-      const heights = new Map<string, number>();
-      box
-        .querySelectorAll<HTMLElement>("[data-order-id]")
-        .forEach((element) => {
-          const id = element.dataset.orderId;
-          if (id)
-            heights.set(
-              id,
-              (heights.get(id) ?? 0) + visibleHeight(element, box),
-            );
-        });
-      setActive((current) => {
-        let best: string | null = null;
-        let most = 0;
-        for (const [id, height] of heights)
-          if (height > most) {
-            best = id;
-            most = height;
-          }
-        if (best && most >= SHOW_AT) return best;
-        return current && (heights.get(current) ?? 0) > 0 ? current : null;
-      });
+      let next = "";
+      for (const heading of box.querySelectorAll<HTMLElement>(
+        "[data-section-heading]",
+      )) {
+        const clip = clipOf(heading, box);
+        const line = clip.atEnd
+          ? clip.bottom
+          : clip.top + (clip.bottom - clip.top) * LINE;
+        if (heading.getBoundingClientRect().top <= line)
+          next = heading.dataset.sectionHeading ?? "";
+      }
+      setActive(next || null);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
