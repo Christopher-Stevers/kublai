@@ -597,6 +597,7 @@ export function ModelWorkspace({
                   />
                 ))}
               <div
+                data-bottom-menu
                 className={cn(
                   "absolute right-3 bottom-3 left-3 flex flex-col items-center gap-2",
                   isEditing && "hidden",
