@@ -545,6 +545,21 @@ describe("server-managed sheet detection queue", () => {
     expect(poll({ state: { data: { status: "queued" } } })).toBe(1000);
   });
 
+  it("closes the detection status box until the counts change", () => {
+    setFloorDetection(0, { status: "error", error: "Worker stopped" });
+    const { rerender } = render(<JobRoomsView jobId="job-a" />);
+    const box = screen.getByRole("status", { name: "Room detection queue" });
+    fireEvent.click(within(box).getByRole("button", { name: "Close" }));
+    expect(
+      screen.queryByRole("status", { name: "Room detection queue" }),
+    ).not.toBeInTheDocument();
+    setFloorDetection(1, { status: "queued", queuePosition: 1 });
+    rerender(<JobRoomsView jobId="job-a" />);
+    expect(
+      screen.getByRole("status", { name: "Room detection queue" }),
+    ).toHaveTextContent("0 processing · 1 queued · 1 failed");
+  });
+
   it("reports a failed sheet separately and allows retrying just that sheet", () => {
     setFloorDetection(0, { status: "error", error: "Worker stopped" });
     setFloorDetection(1, { status: "done" });

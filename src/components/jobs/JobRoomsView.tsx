@@ -22,6 +22,7 @@ import {
   SparklesIcon,
   PlusIcon,
   TrashIcon,
+  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -111,6 +112,8 @@ export function JobRoomsView({
     null,
   );
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  // Counts the detection status box was closed at; it comes back when they change.
+  const [queueClosedAt, setQueueClosedAt] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [createMode, setCreateMode] = useState(false);
   const [detectMode, setDetectMode] = useState(false);
@@ -394,6 +397,7 @@ export function JobRoomsView({
   const failedFloors = floors.filter(
     (floor) => floor.detection?.status === "error",
   ).length;
+  const queueCounts = `${runningFloors}/${queuedFloors}/${failedFloors}`;
   // Short instructions only while an edit tool needs them.
   const toolHint = createMode
     ? "Drag on the plan to draw a new room."
@@ -728,14 +732,14 @@ export function JobRoomsView({
     <>
       {!selectedFloor ? (
         <div className={canUpload ? "sm:pb-20" : undefined}>
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <PageHeader
               level="section"
               title="Rooms"
-              description="Rooms found on each floor plan"
-              className="mb-0"
+              className="mb-0 min-w-0"
               titleProps={{ "data-tutorial": "rooms-root" }}
             />
+            {/* Same grid/list switch, in the same place, as drawings and material lists. */}
             <ViewToggle
               view={listView ? "table" : "grid"}
               onViewChange={(view) => setListView(view === "table")}
@@ -774,12 +778,23 @@ export function JobRoomsView({
             <p className="mb-4 text-sm text-red-600">{data.plan.error}</p>
           ) : null}
 
-          {queuedFloors + runningFloors + failedFloors > 0 ? (
+          {queuedFloors + runningFloors + failedFloors > 0 &&
+          queueClosedAt !== queueCounts ? (
             <div
               role="status"
               aria-label="Room detection queue"
-              className="bg-card mb-4 space-y-1 rounded-lg border p-3 text-sm"
+              className="bg-card relative mb-4 space-y-1 rounded-lg border p-3 pr-10 text-sm"
             >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close"
+                className="absolute top-1.5 right-1.5 h-7 w-7"
+                onClick={() => setQueueClosedAt(queueCounts)}
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
               <p className="font-medium">
                 {runningFloors} processing · {queuedFloors} queued
                 {failedFloors > 0 ? ` · ${failedFloors} failed` : ""}
