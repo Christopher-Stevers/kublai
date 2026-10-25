@@ -2,7 +2,7 @@
 export const EXPANDED_METAL = {
   backgroundImage:
     "url(/images/chat-expanded-metal.webp?v=4), linear-gradient(rgba(8,8,9,0.42), rgba(8,8,9,0.42)), url(/images/chat-checker-plate-realistic.webp)",
-  backgroundSize: "56px 28px, auto, 512px 512px",
+  backgroundSize: "56px 28px, auto, cover",
   backgroundColor: "#3f4143",
 };
 /** Riveted steel angle along the join between expanded steel and checker plate. */
@@ -37,6 +37,8 @@ export const CHECKER_PLATE = {
   // Photographic relief and grain, gently shaded beneath opaque message bubbles.
   backgroundImage:
     "linear-gradient(rgba(12,15,18,0.16), rgba(12,15,18,0.16)), url(/images/chat-checker-plate-realistic.webp)",
-  backgroundSize: "auto, 512px 512px",
+  backgroundSize: "auto, cover",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center",
   backgroundColor: "#6b6d70",
 };
