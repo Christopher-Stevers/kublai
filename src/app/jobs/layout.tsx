@@ -1,3 +1,4 @@
+import { MaterialSortProvider } from "~/components/app/MaterialSortProvider";
 import { AutomaticDiagnostics } from "~/components/app/AutomaticDiagnostics";
 import { SupplierLabelProvider } from "~/components/suppliers/SupplierLabelProvider";
 import { snapshotSourceSchema } from "~/lib/snapshot-source";
@@ -74,36 +75,61 @@ export default async function JobsLayout({
           <FinancialVisibilityProvider
             initialVisible={userCan(user, "financial.view")}
           >
-            <DrawingsAccessProvider initialAllowed={userCan(user, "drawings.view")} initialCanUpload={userCan(user, "drawings.upload")} initialCanDelete={userCan(user, "drawings.delete")}>
-            <DrawingAccountProvider
-              userId={effectiveUserId}
-              organizationId={organizationId}
-              simulationId={identity.simulation?.id}
+            <DrawingsAccessProvider
+              initialAllowed={userCan(user, "drawings.view")}
+              initialCanUpload={userCan(user, "drawings.upload")}
+              initialCanDelete={userCan(user, "drawings.delete")}
             >
-              <SnapshotProvider>
-                <DrawingDestinationProvider>
-                  <LandingPageProvider key={effectiveUserId} userId={effectiveUserId} initial={snapshotSourceSchema.safeParse(user.defaultLandingPage).data ?? null}>
-                  <div data-app-shell className="bg-canvas flex min-h-screen flex-col">
-                    <AppKeyboardNavigation />
-                    <ViewportBottomSync />
-                    <AppTouchGestures />
-                    <AutomaticDiagnostics />
-                    <ReplicacheSyncBootstrap
+              <DrawingAccountProvider
+                userId={effectiveUserId}
+                organizationId={organizationId}
+                simulationId={identity.simulation?.id}
+              >
+                <SnapshotProvider>
+                  <DrawingDestinationProvider>
+                    <LandingPageProvider
+                      key={effectiveUserId}
                       userId={effectiveUserId}
-                      organizationId={organizationId}
-                    />
-                    <Header />
-                    <TabAccessGate />
-                    <main className="flex-1">
-                      <ChatViewProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`} scope={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
-                        <SupplierLabelProvider>{children}</SupplierLabelProvider>
-                      </ChatViewProvider>
-                    </main>
-                  </div>
-                </LandingPageProvider>
-                </DrawingDestinationProvider>
-              </SnapshotProvider>
-            </DrawingAccountProvider>
+                      initial={
+                        snapshotSourceSchema.safeParse(user.defaultLandingPage)
+                          .data ?? null
+                      }
+                    >
+                      <div
+                        data-app-shell
+                        className="bg-canvas flex min-h-screen flex-col"
+                      >
+                        <AppKeyboardNavigation />
+                        <ViewportBottomSync />
+                        <AppTouchGestures />
+                        <AutomaticDiagnostics />
+                        <ReplicacheSyncBootstrap
+                          userId={effectiveUserId}
+                          organizationId={organizationId}
+                        />
+                        <Header />
+                        <TabAccessGate />
+                        <main className="flex-1">
+                          <ChatViewProvider
+                            key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}
+                            scope={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}
+                          >
+                            <MaterialSortProvider
+                              key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}
+                              userId={effectiveUserId}
+                              organizationId={organizationId}
+                            >
+                              <SupplierLabelProvider>
+                                {children}
+                              </SupplierLabelProvider>
+                            </MaterialSortProvider>
+                          </ChatViewProvider>
+                        </main>
+                      </div>
+                    </LandingPageProvider>
+                  </DrawingDestinationProvider>
+                </SnapshotProvider>
+              </DrawingAccountProvider>
             </DrawingsAccessProvider>
           </FinancialVisibilityProvider>
         </TutorialGate>

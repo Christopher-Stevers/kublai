@@ -55,8 +55,19 @@ export default function SettingsPage() {
     if (!isInstalled) await install();
   };
   const { theme, setTheme } = useThemePreference();
-  const { sortMode, setSortMode, keywordGroups, setKeywordGroups } =
-    useMaterialListSortPreference();
+  const {
+    editorSettings: { sortMode, keywordGroups },
+    setSortMode,
+    setKeywordGroups,
+    custom,
+    setCustom,
+    editingExecutive,
+    setEditingExecutive,
+    canEditExecutive,
+    editable,
+    saving,
+    error: sortingError,
+  } = useMaterialListSortPreference();
   const [emailClient, setEmailClient] =
     useState<EmailClientPreference>("default");
   const [message, setMessage] = useState("");
@@ -85,15 +96,31 @@ export default function SettingsPage() {
       />
 
       <Card>
-        <CardHeader><CardTitle>Navigation</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Navigation</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm font-medium">Logo destination</p>
-          <p className="text-muted-foreground text-sm">{landingSource?.title ?? "Jobs"}</p>
+          <p className="text-muted-foreground text-sm">
+            {landingSource?.title ?? "Jobs"}
+          </p>
           <div className="flex flex-wrap gap-2">
-            <Button disabled={!me?.id || !landingPicker || landingPicker.active} onClick={() => landingPicker?.start()}>Choose destination</Button>
-            {landingSource && <Button variant="outline" onClick={() => setLandingPage(null)}>Reset to default</Button>}
+            <Button
+              disabled={!me?.id || !landingPicker || landingPicker.active}
+              onClick={() => landingPicker?.start()}
+            >
+              Choose destination
+            </Button>
+            {landingSource && (
+              <Button variant="outline" onClick={() => setLandingPage(null)}>
+                Reset to default
+              </Button>
+            )}
           </div>
-          <p className="text-muted-foreground text-sm">Browse to the page you want, then tap the checkmark. Saved for your account on this device. The back arrow always goes up one level.</p>
+          <p className="text-muted-foreground text-sm">
+            Browse to the page you want, then tap the checkmark. Saved for your
+            account on this device. The back arrow always goes up one level.
+          </p>
           <FrequentJobCardsSetting />
         </CardContent>
       </Card>
@@ -182,157 +209,205 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <label
-            htmlFor="settings-list-sort"
-            className="block text-sm font-medium"
-          >
-            Preferred sort order
-          </label>
-          <select
-            id="settings-list-sort"
-            value={sortMode}
-            onChange={(e) => {
-              if (isMaterialListSort(e.target.value)) {
-                setSortMode(e.target.value);
-                setMessage("Material-list sorting saved.");
-              }
-            }}
-            className="bg-background text-foreground h-11 w-full rounded-md border px-3 text-sm"
-          >
-            {MATERIAL_LIST_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <p className="text-muted-foreground text-sm">
-            Applies to grid and table views, including offline lists.
+          <p className="text-sm font-medium">
+            {editingExecutive
+              ? "Editing executive sorting"
+              : custom
+                ? "Using your own sorting"
+                : "Following executive sorting"}
           </p>
-          <div className="mt-4 space-y-3 border-t pt-4">
-            <h3 className="text-sm font-semibold">Name keyword priority</h3>
-            <p className="text-muted-foreground text-sm">
-              Within each catalog, material, size, and category, groups higher
-              in this list come first. Separate related keywords with commas.
-              The first matching group wins; unmatched parts go last. Names sort
-              alphabetically within each group.
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Matches whole words or phrases, ignoring capitalization. Add
-              alternate names such as “adapter, adaptor” to the same group. A
-              part must match an Includes keyword and none of that group’s
-              Excludes keywords. For example, include “90” and exclude
-              “reducing” to keep reducing 90s out of that group. Excluded parts
-              can match a later group and stay visible in the list. Applies to
-              material lists and the Add menu.
-            </p>
-            {keywordGroups.length === 0 && (
-              <p className="text-muted-foreground text-sm">
-                No keyword groups yet. Names currently sort alphabetically.
-              </p>
-            )}
-            <ol className="space-y-3" aria-label="Keyword priority groups">
-              {keywordGroups.map((group, index) => (
-                <li key={index} className="space-y-2 rounded-md border p-3">
-                  <h4 className="text-sm font-medium">Group {index + 1}</h4>
-                  <label
-                    htmlFor={`keyword-group-${index}-includes`}
-                    className="block text-sm"
-                  >
-                    Includes
-                  </label>
-                  <Input
-                    id={`keyword-group-${index}-includes`}
-                    aria-label={`Group ${index + 1} includes`}
-                    value={group.includes}
-                    placeholder="e.g. 90, elbow"
-                    onChange={(event) =>
-                      updateKeywords(
-                        keywordGroups.map((value, i) =>
-                          i === index
-                            ? { ...value, includes: event.target.value }
-                            : value,
-                        ),
-                      )
-                    }
-                  />
-                  <label
-                    htmlFor={`keyword-group-${index}-excludes`}
-                    className="block text-sm"
-                  >
-                    Excludes
-                  </label>
-                  <Input
-                    id={`keyword-group-${index}-excludes`}
-                    aria-label={`Group ${index + 1} excludes`}
-                    value={group.excludes}
-                    placeholder="e.g. reducing"
-                    onChange={(event) =>
-                      updateKeywords(
-                        keywordGroups.map((value, i) =>
-                          i === index
-                            ? { ...value, excludes: event.target.value }
-                            : value,
-                        ),
-                      )
-                    }
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={index === 0}
-                      aria-label={`Move group ${index + 1} up`}
-                      onClick={() => moveKeywordGroup(index, -1)}
-                    >
-                      Move up
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={index === keywordGroups.length - 1}
-                      aria-label={`Move group ${index + 1} down`}
-                      onClick={() => moveKeywordGroup(index, 1)}
-                    >
-                      Move down
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove group ${index + 1}`}
-                      onClick={() =>
-                        updateKeywords(
-                          keywordGroups.filter((_, i) => i !== index),
-                        )
-                      }
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <div className="flex flex-wrap gap-2">
+          <p className="text-muted-foreground text-sm">
+            {editingExecutive
+              ? "Changes apply to everyone following executive sorting."
+              : custom
+                ? "Your choices apply only to your account."
+                : "Sort order and keyword priorities stay in sync with your executive’s settings."}
+          </p>
+          <div className="flex flex-wrap gap-2 py-2">
+            <Button
+              variant="outline"
+              disabled={!editable || saving}
+              onClick={() => setCustom(!custom)}
+            >
+              {custom ? "Use executive sorting" : "Set my own sorting"}
+            </Button>
+            {canEditExecutive && (
               <Button
                 variant="outline"
-                onClick={() =>
-                  updateKeywords([
-                    ...keywordGroups,
-                    { includes: "", excludes: "" },
-                  ])
-                }
+                disabled={!editable || saving}
+                onClick={() => setEditingExecutive(!editingExecutive)}
               >
-                Add keyword group
+                {editingExecutive
+                  ? "Close executive settings"
+                  : "Edit executive sorting"}
               </Button>
-              {keywordGroups.length === 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => updateKeywords(EXAMPLE_NAME_KEYWORD_GROUPS)}
-                >
-                  Use example groups
-                </Button>
-              )}
-            </div>
+            )}
           </div>
+          <p role="status" className="text-muted-foreground text-sm">
+            {sortingError ||
+              (saving
+                ? "Saving sorting…"
+                : !editable
+                  ? "Connect to change sorting settings."
+                  : "Sorting is saved to your account and available for offline lists.")}
+          </p>
+          {(custom || editingExecutive) && (
+            <fieldset disabled={!editable} className="space-y-2">
+              <label
+                htmlFor="settings-list-sort"
+                className="block text-sm font-medium"
+              >
+                Preferred sort order
+              </label>
+              <select
+                id="settings-list-sort"
+                value={sortMode}
+                onChange={(e) => {
+                  if (isMaterialListSort(e.target.value)) {
+                    setSortMode(e.target.value);
+                    setMessage("");
+                  }
+                }}
+                className="bg-background text-foreground h-11 w-full rounded-md border px-3 text-sm"
+              >
+                {MATERIAL_LIST_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-muted-foreground text-sm">
+                Applies to grid and table views, including offline lists.
+              </p>
+              <div className="mt-4 space-y-3 border-t pt-4">
+                <h3 className="text-sm font-semibold">Name keyword priority</h3>
+                <p className="text-muted-foreground text-sm">
+                  Within each catalog, material, size, and category, groups
+                  higher in this list come first. Separate related keywords with
+                  commas. The first matching group wins; unmatched parts go
+                  last. Names sort alphabetically within each group.
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Matches whole words or phrases, ignoring capitalization. Add
+                  alternate names such as “adapter, adaptor” to the same group.
+                  A part must match an Includes keyword and none of that group’s
+                  Excludes keywords. For example, include “90” and exclude
+                  “reducing” to keep reducing 90s out of that group. Excluded
+                  parts can match a later group and stay visible in the list.
+                  Applies to material lists and the Add menu.
+                </p>
+                {keywordGroups.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    No keyword groups yet. Names currently sort alphabetically.
+                  </p>
+                )}
+                <ol className="space-y-3" aria-label="Keyword priority groups">
+                  {keywordGroups.map((group, index) => (
+                    <li key={index} className="space-y-2 rounded-md border p-3">
+                      <h4 className="text-sm font-medium">Group {index + 1}</h4>
+                      <label
+                        htmlFor={`keyword-group-${index}-includes`}
+                        className="block text-sm"
+                      >
+                        Includes
+                      </label>
+                      <Input
+                        id={`keyword-group-${index}-includes`}
+                        aria-label={`Group ${index + 1} includes`}
+                        value={group.includes}
+                        placeholder="e.g. 90, elbow"
+                        onChange={(event) =>
+                          updateKeywords(
+                            keywordGroups.map((value, i) =>
+                              i === index
+                                ? { ...value, includes: event.target.value }
+                                : value,
+                            ),
+                          )
+                        }
+                      />
+                      <label
+                        htmlFor={`keyword-group-${index}-excludes`}
+                        className="block text-sm"
+                      >
+                        Excludes
+                      </label>
+                      <Input
+                        id={`keyword-group-${index}-excludes`}
+                        aria-label={`Group ${index + 1} excludes`}
+                        value={group.excludes}
+                        placeholder="e.g. reducing"
+                        onChange={(event) =>
+                          updateKeywords(
+                            keywordGroups.map((value, i) =>
+                              i === index
+                                ? { ...value, excludes: event.target.value }
+                                : value,
+                            ),
+                          )
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={index === 0}
+                          aria-label={`Move group ${index + 1} up`}
+                          onClick={() => moveKeywordGroup(index, -1)}
+                        >
+                          Move up
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={index === keywordGroups.length - 1}
+                          aria-label={`Move group ${index + 1} down`}
+                          onClick={() => moveKeywordGroup(index, 1)}
+                        >
+                          Move down
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Remove group ${index + 1}`}
+                          onClick={() =>
+                            updateKeywords(
+                              keywordGroups.filter((_, i) => i !== index),
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      updateKeywords([
+                        ...keywordGroups,
+                        { includes: "", excludes: "" },
+                      ])
+                    }
+                  >
+                    Add keyword group
+                  </Button>
+                  {keywordGroups.length === 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        updateKeywords(EXAMPLE_NAME_KEYWORD_GROUPS)
+                      }
+                    >
+                      Use example groups
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </fieldset>
+          )}
         </CardContent>
       </Card>
 
@@ -390,7 +465,10 @@ export default function SettingsPage() {
         </Link>
         .
       </p>
-      <Link href="/licenses" className="text-muted-foreground text-sm underline underline-offset-4">
+      <Link
+        href="/licenses"
+        className="text-muted-foreground text-sm underline underline-offset-4"
+      >
         Open-source notices
       </Link>
     </div>

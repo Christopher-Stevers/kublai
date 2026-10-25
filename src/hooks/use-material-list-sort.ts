@@ -1,72 +1,39 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useMaterialSortContext } from "~/components/app/MaterialSortProvider";
 import { useReplicacheCatalogue } from "~/hooks/use-replicache-catalogue";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import type { ReplicacheMaterialListItem } from "~/hooks/use-replicache-material-list";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
-import {
-  type NameKeywordGroup,
-  isMaterialListSort,
-  sortMaterialListItems,
-  type MaterialListSort,
-} from "~/lib/material-list-sort";
-import {
-  NAME_KEYWORDS_KEY as KEYWORDS_KEY,
-  SHARED_NAME_KEYWORD_GROUPS,
-  loadNameKeywordGroups,
-} from "~/lib/name-keyword-defaults";
-const PREFERENCE_EVENT = "foremenhq-sort-preferences-changed";
-const STORAGE_KEY = "foremenhq.material-list-sort";
+import { sortMaterialListItems } from "~/lib/material-list-sort";
+import { defaultMaterialSortSettings } from "~/lib/material-sort-preferences";
 export function useMaterialListSortPreference() {
-  // The tutorial reads the user's preferences but never writes them.
+  const context = useMaterialSortContext();
   const readOnly = !!useTutorialSandbox();
-  const [sortMode, setMode] = useState<MaterialListSort>("material");
-  const [keywordGroups, setGroups] = useState<readonly NameKeywordGroup[]>(
-    SHARED_NAME_KEYWORD_GROUPS,
-  );
-  useEffect(() => {
-    const readPreferences = () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        setMode(isMaterialListSort(saved) ? saved : "material");
-        setGroups(
-          loadNameKeywordGroups(
-            readOnly
-              ? { getItem: (key) => localStorage.getItem(key), setItem: () => undefined }
-              : localStorage,
-          ),
-        );
-      } catch {
-        /* Sorting still works when browser storage is unavailable. */
+  const fallback = {
+    ...defaultMaterialSortSettings,
+    editorSettings: defaultMaterialSortSettings,
+    custom: false,
+    editingExecutive: false,
+    canEditExecutive: false,
+    editable: false,
+    saving: false,
+    error: "",
+    setEditingExecutive: () => {},
+    setCustom: () => {},
+    setSortMode: () => {},
+    setKeywordGroups: () => {},
+  };
+  const value = context ?? fallback;
+  return readOnly
+    ? {
+        ...value,
+        editable: false,
+        setCustom: fallback.setCustom,
+        setSortMode: fallback.setSortMode,
+        setKeywordGroups: fallback.setKeywordGroups,
       }
-    };
-    readPreferences();
-    window.addEventListener("storage", readPreferences);
-    window.addEventListener(PREFERENCE_EVENT, readPreferences);
-    return () => {
-      window.removeEventListener("storage", readPreferences);
-      window.removeEventListener(PREFERENCE_EVENT, readPreferences);
-    };
-  }, [readOnly]);
-  const setSortMode = (mode: MaterialListSort) => {
-    setMode(mode);
-    try {
-      localStorage.setItem(STORAGE_KEY, mode);
-      window.dispatchEvent(new Event(PREFERENCE_EVENT));
-    } catch {
-      /* Keep session choice. */
-    }
-  };
-  const setKeywordGroups = (groups: readonly NameKeywordGroup[]) => {
-    setGroups(groups);
-    try {
-      localStorage.setItem(KEYWORDS_KEY, JSON.stringify(groups));
-      window.dispatchEvent(new Event(PREFERENCE_EVENT));
-    } catch {
-      /* Keep session choice when storage is unavailable. */
-    }
-  };
-  return { sortMode, setSortMode, keywordGroups, setKeywordGroups };
+    : value;
 }
 
 export function useMaterialListSort(

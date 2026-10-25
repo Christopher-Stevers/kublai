@@ -2705,3 +2705,11 @@ export const packingSlipReviewHistory = createTable("packing_slip_review_history
 ]);
 
 export { packingSlipJobs } from "../background/packing-schema";
+
+/** Shared executive default and explicit per-account sorting overrides. */
+export const materialSortPreferences = createTable("material_sort_preference", (d) => ({
+  organizationId: d.uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  scope: d.varchar({ length: 255 }).notNull(),
+  settings: d.jsonb().notNull(),
+  custom: d.boolean().notNull().default(false),
+}), (t) => [primaryKey({ columns: [t.organizationId, t.scope] })]);
