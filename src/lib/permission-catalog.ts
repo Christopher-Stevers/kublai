@@ -42,11 +42,13 @@ export const PERMISSION_GROUPS = [
   {
     id: "lists",
     label: "Material lists",
-    description: "Building lists of parts for a job.",
+    description: "Creating material lists, ordering parts and verifying deliveries.",
     icon: "list",
     permissions: [
-      { key: "lists.edit", label: "Create & edit lists", description: "Make material lists and tool requests, add and change parts." },
-      { key: "lists.delete", label: "Delete lists", description: "Permanently delete a material list." },
+      { key: "lists.edit", label: "Create material lists", description: "Create and edit material lists and tool requests, including their parts." },
+      { key: "lists.delete", label: "Delete material lists", description: "Permanently delete a material list." },
+      { key: "orders.send", label: "Make orders", description: "Generate and send purchase orders to suppliers." },
+      { key: "orders.receive", label: "Verify orders", description: "Verify delivered quantities and add delivery notes." },
     ],
   },
   {
@@ -60,15 +62,13 @@ export const PERMISSION_GROUPS = [
   },
   {
     id: "purchasing",
-    label: "Quotes & orders",
-    description: "Spending money with suppliers.",
+    label: "Quotes & job pricing",
+    description: "Requesting quotes and managing job pricing approvals.",
     icon: "cart",
     permissions: [
       { key: "quotes.create", label: "Request quotes", description: "Generate and email quote requests to suppliers." },
-      { key: "orders.send", label: "Send orders", description: "Generate and email purchase orders to suppliers." },
       { key: "jobPricing.manage", label: "Manage job pricing", description: "Maintain job supplier lists and replace estimated prices with confirmed prices." },
       { key: "jobPricing.approve", label: "Approve unlisted orders", description: "Review requests to order parts outside a job pricing list." },
-      { key: "orders.receive", label: "Check in deliveries", description: "Verify delivered quantities and add delivery notes." },
     ],
   },
   {

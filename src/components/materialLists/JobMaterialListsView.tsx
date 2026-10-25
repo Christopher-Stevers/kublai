@@ -49,7 +49,8 @@ export function JobMaterialListsView({
   });
   const can = userData?.permissions.can;
   const canEdit = !sandbox && (can?.["lists.edit"] ?? false);
-  const canDelete = !sandbox && (can?.["lists.delete"] ?? true);
+  const canCreate = !!sandbox || canEdit;
+  const canDelete = !sandbox && (can?.["lists.delete"] ?? false);
   const canReceive = !sandbox && online && (can?.["orders.receive"] ?? false);
   const [toDelete, setToDelete] = useState<{
     id: string;
@@ -74,12 +75,14 @@ export function JobMaterialListsView({
   });
   const pending = lists?.some((list) => list.pendingSync) ?? false;
   const merge = useCardMerge({
-    disabled: !online || pending || duplicate.isPending,
+    disabled:
+      !canEdit || !canDelete || !online || pending || duplicate.isPending,
     onMerged: refresh,
   });
   const busy = !online || pending || duplicate.isPending || merge.isPending;
 
   const create = () => {
+    if (!canCreate) return;
     const materialListId = crypto.randomUUID();
     void mutateAndSync(
       getReplicache().mutate.createMaterialList({
@@ -109,15 +112,17 @@ export function JobMaterialListsView({
         actions={
           <div className="hidden flex-wrap items-center gap-2 sm:flex sm:justify-end">
             {canReceive && <ScanSlipButton jobId={jobId} className="h-11" />}
-            <Button
-              data-tutorial="create-list"
-              onClick={create}
-              size="lg"
-              className="hidden h-11 sm:inline-flex sm:w-auto"
-            >
-              <PlusIcon className="mr-2 h-5 w-5" />
-              New Material List
-            </Button>
+            {canCreate && (
+              <Button
+                data-tutorial="create-list"
+                onClick={create}
+                size="lg"
+                className="hidden h-11 sm:inline-flex sm:w-auto"
+              >
+                <PlusIcon className="mr-2 h-5 w-5" />
+                New Material List
+              </Button>
+            )}
           </div>
         }
       />
@@ -129,15 +134,19 @@ export function JobMaterialListsView({
             <EmptyState
               art="clipboard"
               title={
-                online
-                  ? "No material lists yet. Start one for this job."
-                  : "No material lists yet. New lists sync when you’re online."
+                !canCreate
+                  ? "No material lists yet."
+                  : online
+                    ? "No material lists yet. Start one for this job."
+                    : "No material lists yet. New lists sync when you’re online."
               }
               action={
-                <Button data-tutorial="create-list" onClick={create}>
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  New Material List
-                </Button>
+                canCreate && (
+                  <Button data-tutorial="create-list" onClick={create}>
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    New Material List
+                  </Button>
+                )
               }
             />
           </CardContent>
@@ -166,22 +175,30 @@ export function JobMaterialListsView({
         </div>
       )}
 
-      <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-        <div className={canReceive ? "grid grid-cols-2 gap-2" : undefined}>
-          {canReceive && (
-            <ScanSlipButton jobId={jobId} className="h-12 w-full" />
-          )}
-          <Button
-            data-tutorial="create-list"
-            onClick={create}
-            size="lg"
-            className="h-12 w-full"
+      {(canCreate || canReceive) && (
+        <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+          <div
+            className={
+              canReceive && canCreate ? "grid grid-cols-2 gap-2" : undefined
+            }
           >
-            <PlusIcon className="mr-2 h-5 w-5" />
-            {canReceive ? "New List" : "New Material List"}
-          </Button>
+            {canReceive && (
+              <ScanSlipButton jobId={jobId} className="h-12 w-full" />
+            )}
+            {canCreate && (
+              <Button
+                data-tutorial="create-list"
+                onClick={create}
+                size="lg"
+                className="h-12 w-full"
+              >
+                <PlusIcon className="mr-2 h-5 w-5" />
+                {canReceive ? "New List" : "New Material List"}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <Dialog
         open={!!toDelete}

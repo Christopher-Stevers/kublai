@@ -228,7 +228,7 @@ it("passes the current job's quoted status into dashboard material cards", () =>
 
 it("offers Scan Slip beside New List on the job's material lists for members who receive orders", () => {
   state.materialListId = null;
-  state.can = { "orders.receive": true };
+  state.can = { "orders.receive": true, "lists.edit": true };
   render(<JobsClient initialJobs={[]} />);
   expect(screen.getAllByRole("button", { name: "Scan Slip" }).length).toBeGreaterThan(0);
   expect(screen.getByRole("button", { name: "New List" })).toBeTruthy();
@@ -255,4 +255,17 @@ it("opens lists in the job workspace on the same screen as their own page", () =
   ];
   render(<JobsClient initialJobs={[]} />);
   expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Not ordered", "PO-9"]);
+});
+
+it("withholds list creation from verification-only members and while permissions are unavailable", () => {
+  state.materialListId = null;
+  for (const can of [{ "orders.receive": true, "lists.edit": false }, {}]) {
+    state.can = can;
+    render(<JobsClient initialJobs={[]} />);
+    expect(screen.queryByRole("button", { name: /New (Material )?List/ })).toBeNull();
+    expect(screen.queryByText(/Start one for this job/)).toBeNull();
+    cleanup();
+  }
+  state.materialListId = "list";
+  state.can = { "orders.send": false, "quotes.create": false };
 });

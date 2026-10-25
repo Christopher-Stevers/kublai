@@ -113,7 +113,7 @@ export function MaterialListCard({
                       <CopyIcon className="h-4 w-4" />
                       Duplicate
                     </DropdownMenuItem>
-                    {list.kind !== "tools" && (
+                    {canDelete && list.kind !== "tools" && (
                       <DropdownMenuItem
                         disabled={actionsBusy}
                         onSelect={() => {

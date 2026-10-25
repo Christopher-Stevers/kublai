@@ -157,3 +157,13 @@ describe("separate drawing permissions", () => {
     }
   });
 });
+
+describe("material list permissions", () => {
+  const keys = ["lists.edit", "lists.delete", "orders.send", "orders.receive"] as const;
+  it.each(keys)("persists %s independently of the other three permissions", (selected) => {
+    const permissions = Object.fromEntries(keys.map((key) => [key, key === selected]));
+    const stored = toStoredConfig(permissions);
+    const resolved = resolvePermissions({ role: "user", permissionConfig: stored });
+    keys.forEach((key) => expect(resolved[key]).toBe(key === selected));
+  });
+});

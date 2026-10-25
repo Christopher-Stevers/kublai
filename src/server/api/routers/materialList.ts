@@ -279,6 +279,8 @@ export const materialListRouter = createTRPCRouter({
     .input(z.object({ sourceId: z.string().uuid(), targetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "lists.edit");
+      // Merging can permanently remove the source list.
+      assertCan(ctx.user, "lists.delete");
       const organizationId = ctx.user.organizationId;
       if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
       if (input.sourceId === input.targetId) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose another material list." });
