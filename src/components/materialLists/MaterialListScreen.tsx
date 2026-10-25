@@ -540,10 +540,7 @@ export function MaterialListScreen({
           orderActive={!!orderInView && orderInView === orderBarId}
           orderActions={!verifyOrderId && canReceive && orderBarSection && orderBarId && mlHeader.jobId ? (
             <OrderReceiveActions
-              label={<>
-                <span className="font-semibold">Receiving {orderBarSection.label}</span>
-                {orderBarSection.detail && <span className="text-muted-foreground">{orderBarSection.detail}</span>}
-              </>}
+              label={<span className="font-semibold">Receiving {orderBarSection.label}</span>}
               onNotes={() => {
                 setListNotesOrderId(orderBarId);
                 setShowVerifyNotesDialog(true);
