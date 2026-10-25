@@ -103,7 +103,7 @@ it("puts parts not ordered orderTable, then each order under receiving columns",
   expect(plainTable).not.toHaveAttribute("data-order-id");
   expect(screen.getByRole("link", { name: "PO-7" })).toHaveAttribute(
     "href",
-    "/dashboard/material-lists/m?orderId=ord",
+    "/jobs/material-lists/m?orderId=ord",
   );
   expect(plainTable).toHaveAccessibleName("Not ordered parts");
   expect(headers(orderTable!)).toEqual([
@@ -196,7 +196,7 @@ it("puts the parts not ordered first, then a group per order", () => {
     ["Order", "Cancelled", null, ["c"]],
   ]);
   expect(materialSections(items, "m")[2]!.href).toBe(
-    "/dashboard/material-lists/m?orderId=o2",
+    "/jobs/material-lists/m?orderId=o2",
   );
   const plain: { id: string; sentOrderItemId?: string }[] = [{ id: "a" }];
   expect(materialSections(plain, "m")).toEqual([

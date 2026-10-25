@@ -561,8 +561,8 @@ export function DocumentDetails({
                   <>
                     {document.packingSlip && <div className="rounded-lg border p-3 text-sm space-y-2">
                       <p className="font-medium">Packing slip · {document.packingSlip.orderNumber}</p>
-                      <Link className="block underline" href={`/dashboard/material-lists/${document.packingSlip.materialListId}`}>{document.packingSlip.materialListName}</Link>
-                      <Link className="block underline" href={`/dashboard/material-lists/${document.packingSlip.materialListId}?orderId=${document.packingSlip.orderId}`}>View order receiving</Link>
+                      <Link className="block underline" href={`/jobs/material-lists/${document.packingSlip.materialListId}`}>{document.packingSlip.materialListName}</Link>
+                      <Link className="block underline" href={`/jobs/material-lists/${document.packingSlip.materialListId}?orderId=${document.packingSlip.orderId}`}>View order receiving</Link>
                     </div>}
                     <dl className="space-y-4 text-sm">
                       <div>

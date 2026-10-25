@@ -164,7 +164,7 @@ it("keeps snapshot source links without edit or delete controls in chat", () => 
   mocks.own = true;
   mocks.image = true;
   mocks.source = {
-    href: "/dashboard/jobs/job/drawings?drawingSheet=sheet#snapshot=recorded",
+    href: "/jobs/job/drawings?drawingSheet=sheet#snapshot=recorded",
     title: "Drawing",
     capturedAt: "2026-10-09T22:00:00Z",
   };
@@ -190,7 +190,7 @@ it("keeps snapshot source links without edit or delete controls in chat", () => 
 });
 it("opens a snapshot's recorded local view and hides the link when the message is deleted", () => {
   mocks.source = {
-    href: "/dashboard/jobs/test/drawings#snapshot=recorded-view",
+    href: "/jobs/test/drawings#snapshot=recorded-view",
     title: "Mechanical drawing",
     capturedAt: "2026-10-09T18:00:00Z",
   };
@@ -243,7 +243,7 @@ it("opens direct chats and job chats in the same workspace", () => {
   fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   fireEvent.click(screen.getByRole("button", { name: /Alex/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
-    "/dashboard/chat?conversation=direct-other",
+    "/jobs/chat?conversation=direct-other",
     { scroll: false },
   );
   mocks.params = "job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -270,7 +270,7 @@ it("opens direct chats and job chats in the same workspace", () => {
   fireEvent.click(screen.getByRole("button", { name: "Chat" }));
   fireEvent.click(screen.getByRole("button", { name: /Review group/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
-    "/dashboard/chat?conversation=room",
+    "/jobs/chat?conversation=room",
     { scroll: false },
   );
 });
@@ -286,7 +286,7 @@ it("opens the available chats from the main Chat button, then searches and selec
   ).not.toBeInTheDocument();
   fireEvent.click(switcher.getByRole("button", { name: /Site A/ }));
   expect(mocks.push).toHaveBeenLastCalledWith(
-    "/dashboard/chat?job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "/jobs/chat?job=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     { scroll: false },
   );
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -526,7 +526,7 @@ it("leaves a deleted job, removes its navigation entry and forgets it on returni
   );
   const view = render(page(true));
   fireEvent.click(screen.getByRole("button", { name: "Job unavailable" }));
-  expect(mocks.replace).toHaveBeenCalledWith("/dashboard/chat", {
+  expect(mocks.replace).toHaveBeenCalledWith("/jobs/chat", {
     scroll: false,
   });
   expect(screen.queryByTestId("job-thread")).not.toBeInTheDocument();

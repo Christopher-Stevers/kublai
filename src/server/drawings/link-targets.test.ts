@@ -112,7 +112,7 @@ describe("accessible drawing link resource picker", () => {
       "photo",
     ]);
     expect(result.targets[0]?.url).toBe(
-      "/dashboard/jobs/job/documents?document=public",
+      "/jobs/job/documents?document=public",
     );
     expect(query(2).params).toEqual(["job", "org"]);
   });
@@ -153,7 +153,7 @@ describe("accessible drawing link resource picker", () => {
       jobId: "other",
     });
     expect(other.targets[0]).toMatchObject({
-      url: "/dashboard/jobs/other/drawings?drawingSet=set&drawingSheet=target",
+      url: "/jobs/other/drawings?drawingSet=set&drawingSheet=target",
     });
   });
   it("returns material lists and tool requests with their actual destinations", async () => {
@@ -164,7 +164,7 @@ describe("accessible drawing link resource picker", () => {
     });
     expect(result.targets[0]).toMatchObject({
       description: "Tool request",
-      url: "/dashboard/material-lists/list",
+      url: "/jobs/material-lists/list",
     });
     expect(query(2).params).toEqual(["job", "org"]);
   });

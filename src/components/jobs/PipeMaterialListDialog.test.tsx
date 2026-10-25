@@ -251,7 +251,7 @@ it("lists sized pipe in sticks with waste and the drawn fittings, then creates a
   expect(mock.sync).toHaveBeenCalledWith(0, "push-pull");
   expect(
     screen.getByRole("link", { name: "Open list" }).getAttribute("href"),
-  ).toBe(`/dashboard/material-lists/${listId}`);
+  ).toBe(`/jobs/material-lists/${listId}`);
 });
 
 it("adds untagged pipe to a chosen size and leaves out unticked lines", async () => {

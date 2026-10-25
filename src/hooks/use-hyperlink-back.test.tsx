@@ -27,25 +27,25 @@ it("returns through chained hyperlink sources, restores drawing state, then rele
   window.addEventListener(DRAWING_DESTINATION_EVENT, event);
   renderHook(() => useHeaderBackOverride(up));
   const hook = renderHook(({ path }) => useHyperlinkBack(path, "account"), {
-    initialProps: { path: "/dashboard/jobs/a/drawings" },
+    initialProps: { path: "/jobs/a/drawings" },
   });
   const source =
-    "/dashboard/jobs/a/drawings?drawingSheet=a#snapshot=saved-position";
-  act(() => rememberHyperlinkSource(source, "/dashboard/jobs/b/drawings"));
-  hook.rerender({ path: "/dashboard/jobs/b/drawings" });
+    "/jobs/a/drawings?drawingSheet=a#snapshot=saved-position";
+  act(() => rememberHyperlinkSource(source, "/jobs/b/drawings"));
+  hook.rerender({ path: "/jobs/b/drawings" });
   act(() =>
     rememberHyperlinkSource(
-      "/dashboard/jobs/b/drawings#snapshot=b",
-      "/dashboard/jobs/b/documents",
+      "/jobs/b/drawings#snapshot=b",
+      "/jobs/b/documents",
     ),
   );
-  hook.rerender({ path: "/dashboard/jobs/b/documents" });
+  hook.rerender({ path: "/jobs/b/documents" });
   act(() => runHeaderBackOverride());
   expect(replace).toHaveBeenLastCalledWith(
-    "/dashboard/jobs/b/drawings#snapshot=b",
+    "/jobs/b/drawings#snapshot=b",
     { scroll: false },
   );
-  hook.rerender({ path: "/dashboard/jobs/b/drawings" });
+  hook.rerender({ path: "/jobs/b/drawings" });
   act(() => runHeaderBackOverride());
   expect(replace).toHaveBeenLastCalledWith(source, { scroll: false });
   expect(event).toHaveBeenLastCalledWith(
@@ -56,11 +56,11 @@ it("returns through chained hyperlink sources, restores drawing state, then rele
   window.removeEventListener(DRAWING_DESTINATION_EVENT, event);
 });
 it("phone/browser Back consumes a hyperlink parent through the shared hierarchy guard", async () => {
-  renderHook(() => useHyperlinkBack("/dashboard/jobs/a/drawings", "account"));
+  renderHook(() => useHyperlinkBack("/jobs/a/drawings", "account"));
   act(() =>
     rememberHyperlinkSource(
-      "/dashboard/jobs/a/drawings#source",
-      "/dashboard/jobs/a/drawings#target",
+      "/jobs/a/drawings#source",
+      "/jobs/a/drawings#target",
     ),
   );
   await tick();
@@ -69,33 +69,33 @@ it("phone/browser Back consumes a hyperlink parent through the shared hierarchy 
     window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
   });
   expect(replace).toHaveBeenCalledExactlyOnceWith(
-    "/dashboard/jobs/a/drawings#source",
+    "/jobs/a/drawings#source",
     { scroll: false },
   );
 });
 it("clears temporary parents when leaving the visit or changing accounts and ignores external links", () => {
   const hook = renderHook(
     ({ path, account }) => useHyperlinkBack(path, account),
-    { initialProps: { path: "/dashboard/jobs/a/drawings", account: "one" } },
+    { initialProps: { path: "/jobs/a/drawings", account: "one" } },
   );
   act(() =>
     rememberHyperlinkSource(
-      "/dashboard/jobs/a/drawings",
+      "/jobs/a/drawings",
       "https://example.com",
     ),
   );
   expect(hook.result.current).toBe(false);
   act(() =>
     rememberHyperlinkSource(
-      "/dashboard/jobs/a/drawings",
-      "/dashboard/jobs/a/documents",
+      "/jobs/a/drawings",
+      "/jobs/a/documents",
     ),
   );
-  hook.rerender({ path: "/dashboard/orders", account: "one" });
+  hook.rerender({ path: "/jobs/orders", account: "one" });
   expect(hook.result.current).toBe(false);
   act(() =>
-    rememberHyperlinkSource("/dashboard/orders", "/dashboard/jobs/a/documents"),
+    rememberHyperlinkSource("/jobs/orders", "/jobs/a/documents"),
   );
-  hook.rerender({ path: "/dashboard/jobs/a/documents", account: "two" });
+  hook.rerender({ path: "/jobs/a/documents", account: "two" });
   expect(hook.result.current).toBe(false);
 });

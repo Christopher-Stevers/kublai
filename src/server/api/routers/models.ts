@@ -16,7 +16,7 @@ import {
 } from "~/server/models/translation";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { modelAccess } from "~/server/models/access";
 import {
   modelWorkspace,
@@ -35,7 +35,7 @@ import { viewStateSchema, issueSchema } from "~/lib/bim/types";
 const job = z.object({ jobId: z.string().uuid() });
 const entity = job.extend({ id: z.string().uuid() });
 export const modelsRouter = createTRPCRouter({
-  createCad: hasDashboardAccess
+  createCad: hasAppAccess
     .input(entity.extend({ name: z.string().trim().min(1).max(160) }))
     .mutation(async ({ ctx, input }) =>
       createCadModel(
@@ -44,17 +44,17 @@ export const modelsRouter = createTRPCRouter({
         input.name,
       ),
     ),
-  design: hasDashboardAccess
+  design: hasAppAccess
     .input(entity)
     .query(async ({ ctx, input }) =>
       readDesign(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
-  designStatus: hasDashboardAccess
+  designStatus: hasAppAccess
     .input(entity)
     .query(async ({ ctx, input }) =>
       readDesignStatus(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
-  saveDesign: hasDashboardAccess
+  saveDesign: hasAppAccess
     .input(
       entity.extend({
         expectedRevision: z.number().int().min(0),
@@ -70,7 +70,7 @@ export const modelsRouter = createTRPCRouter({
       ),
     ),
 
-  connectAutodesk: hasDashboardAccess
+  connectAutodesk: hasAppAccess
     .input(job.extend({ credentials: apsCredentialsSchema }))
     .mutation(async ({ ctx, input }) => {
       const access = await modelAccess(ctx.user.id, input.jobId);
@@ -91,17 +91,17 @@ export const modelsRouter = createTRPCRouter({
       clearApsToken(access.job.organizationId);
       return result;
     }),
-  workspace: hasDashboardAccess
+  workspace: hasAppAccess
     .input(job)
     .query(async ({ ctx, input }) =>
       modelWorkspace(await modelAccess(ctx.user.id, input.jobId)),
     ),
-  remove: hasDashboardAccess
+  remove: hasAppAccess
     .input(entity)
     .mutation(async ({ ctx, input }) =>
       removeModel(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
-  saveView: hasDashboardAccess
+  saveView: hasAppAccess
     .input(
       job.extend({
         name: z.string().trim().min(1).max(200),
@@ -115,12 +115,12 @@ export const modelsRouter = createTRPCRouter({
         input.view,
       ),
     ),
-  removeView: hasDashboardAccess
+  removeView: hasAppAccess
     .input(entity)
     .mutation(async ({ ctx, input }) =>
       removeModelView(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
-  saveIssue: hasDashboardAccess
+  saveIssue: hasAppAccess
     .input(
       entity.extend({
         expectedRevision: z.number().int().min(0),
@@ -135,7 +135,7 @@ export const modelsRouter = createTRPCRouter({
         input.data,
       ),
     ),
-  comment: hasDashboardAccess
+  comment: hasAppAccess
     .input(entity.extend({ text: z.string().trim().min(1).max(5000) }))
     .mutation(async ({ ctx, input }) =>
       commentModelIssue(
@@ -144,7 +144,7 @@ export const modelsRouter = createTRPCRouter({
         input.text,
       ),
     ),
-  publication: hasDashboardAccess
+  publication: hasAppAccess
     .input(
       entity.extend({
         publication: z.enum(["coordination", "construction", "archived"]),
@@ -157,12 +157,12 @@ export const modelsRouter = createTRPCRouter({
         input.publication,
       ),
     ),
-  convert: hasDashboardAccess
+  convert: hasAppAccess
     .input(entity)
     .mutation(async ({ ctx, input }) =>
       convertRevitModel(await modelAccess(ctx.user.id, input.jobId), input.id),
     ),
-  conversionStatus: hasDashboardAccess
+  conversionStatus: hasAppAccess
     .input(entity)
     .mutation(async ({ ctx, input }) =>
       refreshRevitModel(await modelAccess(ctx.user.id, input.jobId), input.id),

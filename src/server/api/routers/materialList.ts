@@ -227,7 +227,7 @@ async function loadOrderableQuoteItems(
     .where(and(eq(quoteItems.quoteId, quoteId), isNull(quoteItems.sentOrderItemId))) as Promise<OrderableQuoteItem[]>;
 }
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { ensureToolRoomSupplier } from "~/server/assets/service";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import {
@@ -250,7 +250,7 @@ import {
 } from "~/server/db/schema";
 
 export const materialListRouter = createTRPCRouter({
-  undoOrder: hasDashboardAccess
+  undoOrder: hasAppAccess
     .input(z.object({ orderId: z.string().uuid() }))
     .mutation(async ({ctx, input}) => {
       assertCan(ctx.user, "orders.send");
@@ -275,7 +275,7 @@ export const materialListRouter = createTRPCRouter({
       return result;
     }),
 
-  merge: hasDashboardAccess
+  merge: hasAppAccess
     .input(z.object({ sourceId: z.string().uuid(), targetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "lists.edit");
@@ -329,7 +329,7 @@ export const materialListRouter = createTRPCRouter({
       return result;
     }),
 
-  duplicate: hasDashboardAccess
+  duplicate: hasAppAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "lists.edit");
@@ -365,7 +365,7 @@ export const materialListRouter = createTRPCRouter({
   /**
    * Get a material list with all items
    */
-  getMaterialList: hasDashboardAccess
+  getMaterialList: hasAppAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -639,7 +639,7 @@ export const materialListRouter = createTRPCRouter({
       };
     }),
 
-  pullMaterialListSyncChanges: hasDashboardAccess
+  pullMaterialListSyncChanges: hasAppAccess
     .input(
       z.object({
         since: z.string().datetime().optional(),
@@ -757,7 +757,7 @@ export const materialListRouter = createTRPCRouter({
   /**
    * Generate quote from material list
    */
-  generateQuote: hasDashboardAccess
+  generateQuote: hasAppAccess
     .input(
       z.object({
         materialListId: z.string().uuid(),
@@ -915,7 +915,7 @@ export const materialListRouter = createTRPCRouter({
   /**
    * Get quote email content
    */
-  getQuoteEmailContent: hasDashboardAccess
+  getQuoteEmailContent: hasAppAccess
     .input(
       z.object({
         quoteId: z.string().uuid(),
@@ -1041,7 +1041,7 @@ ${foremanName}`;
    * Preview possible supplier orders plus already-sent orders.
    * Does not persist draft orders.
    */
-  previewOrders: hasDashboardAccess
+  previewOrders: hasAppAccess
     .input(z.object({ materialListId: z.string().uuid(), orderedItemIds: z.array(z.string().uuid()).max(10000).optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -1346,7 +1346,7 @@ ${foremanName}`;
   /**
    * Persist a possible order as sent. No draft records are created.
    */
-  sendGeneratedOrder: hasDashboardAccess
+  sendGeneratedOrder: hasAppAccess
     .input(
       z.object({
         materialListId: z.string().uuid(),
@@ -1518,7 +1518,7 @@ ${foremanName}`;
   /**
    * Get order email content
    */
-  getOrderEmailContent: hasDashboardAccess
+  getOrderEmailContent: hasAppAccess
     .input(z.object({ orderId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -1651,7 +1651,7 @@ ${foremanName}`;
   /**
    * Mark order as sent
    */
-  markOrderSent: hasDashboardAccess
+  markOrderSent: hasAppAccess
     .input(
       z.object({
         orderId: z.string().uuid(),
@@ -1722,7 +1722,7 @@ ${foremanName}`;
   /**
    * Get all quotes for a material list
    */
-  getQuotesForMaterialList: hasDashboardAccess
+  getQuotesForMaterialList: hasAppAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -1775,7 +1775,7 @@ ${foremanName}`;
   /**
    * Get all orders for a material list (via job)
    */
-  getOrdersForMaterialList: hasDashboardAccess
+  getOrdersForMaterialList: hasAppAccess
     .input(z.object({ materialListId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -1847,7 +1847,7 @@ ${foremanName}`;
   /**
    * Get a specific quote by ID
    */
-  getQuoteById: hasDashboardAccess
+  getQuoteById: hasAppAccess
     .input(z.object({ quoteId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -1891,7 +1891,7 @@ ${foremanName}`;
   /**
    * List all quotes for the organization
    */
-  listQuotes: hasDashboardAccess.query(async ({ ctx }) => {
+  listQuotes: hasAppAccess.query(async ({ ctx }) => {
     if (!ctx.user.organizationId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -1925,7 +1925,7 @@ ${foremanName}`;
   /**
    * Get a specific order by ID with items
    */
-  getOrderById: hasDashboardAccess
+  getOrderById: hasAppAccess
     .input(z.object({ orderId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -2032,7 +2032,7 @@ ${foremanName}`;
       };
     }),
 
-  markAllOrderItemsReceived: hasDashboardAccess
+  markAllOrderItemsReceived: hasAppAccess
     .input(z.object({ orderId: z.string().uuid(), allReceived: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "orders.receive");
@@ -2058,7 +2058,7 @@ ${foremanName}`;
   /**
    * Update verification state for a single order item.
    */
-  updateOrderItemVerification: hasDashboardAccess
+  updateOrderItemVerification: hasAppAccess
     .input(
       z.object({
         orderItemId: z.string().uuid(),
@@ -2119,7 +2119,7 @@ ${foremanName}`;
   /**
    * Update internal notes for an order.
    */
-  updateOrderNotes: hasDashboardAccess
+  updateOrderNotes: hasAppAccess
     .input(
       z.object({
         orderId: z.string().uuid(),
@@ -2162,7 +2162,7 @@ ${foremanName}`;
   /**
    * List all orders for the organization with material lists
    */
-  listOrders: hasDashboardAccess
+  listOrders: hasAppAccess
     .input(z.object({ summary: z.boolean() }).optional())
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {

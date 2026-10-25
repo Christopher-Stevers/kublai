@@ -11,7 +11,7 @@ it("keeps page, version and focus within the existing PDF snapshot contract",()=
  expect(legacyEquipmentDocumentLink({label:"HEX-2 — Submittal",url:link.href},id(1))).toBeNull();
 });
 it("recognizes only older internal equipment document links",()=>{
- const url=`/dashboard/jobs/${id(1)}/documents?document=${id(2)}`;
+ const url=`/jobs/${id(1)}/documents?document=${id(2)}`;
  expect(legacyEquipmentDocumentLink({label:"HEX-2 — Submittal",url},id(1))).toEqual({tag:"HEX-2",documentId:id(2)});
  expect(legacyEquipmentDocumentLink({label:"Manual",url},id(1))).toBeNull();
  expect(legacyEquipmentDocumentLink({label:"HEX-2 — Submittal",url:"https://foreign.example"+url},id(1))).toBeNull();

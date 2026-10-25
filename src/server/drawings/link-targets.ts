@@ -60,7 +60,7 @@ export async function drawingLinkTargets(
     throw new TRPCError({ code: "NOT_FOUND", message: "Job not found." });
   const jobChoices = choices as { id: string; name: string }[];
   if (!jobChoices.some((item) => item.id === job.id)) jobChoices.push(job);
-  const prefix = `/dashboard/jobs/${jobId}`;
+  const prefix = `/jobs/${jobId}`;
   const query = input.query.trim().toLowerCase();
   const pattern = `%${query}%`;
   const targets: DrawingLinkTarget[] = [];
@@ -182,7 +182,7 @@ export async function drawingLinkTargets(
         key: list.id,
         label: list.name,
         description: list.kind === "tools" ? "Tool request" : "Material list",
-        url: `/dashboard/material-lists/${list.id}`,
+        url: `/jobs/material-lists/${list.id}`,
       });
   }
   if (input.kind === "chat")

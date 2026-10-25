@@ -1002,7 +1002,7 @@ function ChatLobby({
               <div className="flex gap-1">
                 {!embedded && (
                   <a
-                    href="/dashboard/chat"
+                    href="/jobs/chat"
                     className="inline-flex items-center rounded-md px-2 text-xs text-white hover:bg-white/15"
                   >
                     All chats

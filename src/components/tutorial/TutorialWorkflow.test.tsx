@@ -8,7 +8,7 @@ import type { TutorialSandbox } from "./tutorial-sandbox-context";
 const guards = vi.hoisted(() => ({ liveMaterial: vi.fn(), liveCatalogue: vi.fn(), fetch: vi.fn(), eventSource: vi.fn(), routerPush: vi.fn(), routerPrefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: guards.routerPush, replace: guards.routerPush, prefetch: guards.routerPrefetch }),
-  usePathname: () => "/dashboard", useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/jobs", useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@clerk/nextjs", () => ({ useAuth: () => ({ userId: "practice-user", isLoaded: true }), useUser: () => ({ user: null, isLoaded: true }) }));
 vi.mock("~/server/api/root", () => ({}));
@@ -32,7 +32,7 @@ vi.mock("~/components/jobs/DrawingWorkspace", () => ({
   DrawingWorkspace: () => <div aria-label="Practice drawing sheet" />,
 }));
 
-import { DashboardClient } from "~/app/dashboard/DashboardClient";
+import { JobsClient } from "~/app/jobs/JobsClient";
 import { TutorialSandboxProvider } from "./TutorialSandboxProvider";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { Header } from "~/app/_components/Header";
@@ -56,7 +56,7 @@ const clickTarget = async (name: string) => {
   fireEvent.click(target(name));
 };
 function GuidedWorkspace({ onFinish }: { onFinish: (outcome: "completed" | "skipped") => void }) {
-  return <TutorialSandboxProvider userId="practice-user"><Capture><Header /><DashboardClient initialJobs={[]} /><TutorialOverlay onFinish={onFinish} /></Capture></TutorialSandboxProvider>;
+  return <TutorialSandboxProvider userId="practice-user"><Capture><Header /><JobsClient initialJobs={[]} /><TutorialOverlay onFinish={onFinish} /></Capture></TutorialSandboxProvider>;
 }
 async function guide(title: string) {
   await waitFor(() => expect(within(screen.getByLabelText("Tutorial guidance")).getByText(title, { exact: true })).toBeInTheDocument());
@@ -102,11 +102,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("tutorial on the real ForemanHQ workflow", () => {
   it("uses actual job, list, add-parts, room notes, material request, and chat screens without production effects", async () => {
     const storageWrites = vi.spyOn(Storage.prototype, "setItem");
-    render(<TutorialSandboxProvider userId="practice-user"><Capture><DashboardClient initialJobs={[]} /></Capture></TutorialSandboxProvider>);
+    render(<TutorialSandboxProvider userId="practice-user"><Capture><JobsClient initialJobs={[]} /></Capture></TutorialSandboxProvider>);
     fireEvent.click(await screen.findByText("Riverside Community Centre"));
     await clickTarget("material-lists");
     await clickTarget("create-list");
-    await waitFor(() => expect(target("material-list")).toHaveTextContent(/\d{4}/));
+    await waitFor(() => expect(target("material-list")).toHaveTextContent(/\d{2}\/\d{2}\/\d{2}/));
     await clickTarget("add-part");
     await screen.findByRole("heading", { name: "Select Catalog" });
     fireEvent.click(await screen.findByText("Plumbing", { exact: true }));

@@ -92,20 +92,20 @@ export function AssetsOverview() {
           <TagScanner onTag={(tag) => router.push(toolScanPath(tag))} />
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-            <Stat label="Tools" value={data.tools.total - data.tools.retired} href="/dashboard/assets/tools" />
-            <Stat label="Available" value={data.tools.available} href="/dashboard/assets/tools?status=available" tone="text-emerald-700" />
-            <Stat label="In use" value={data.tools.inUse} href="/dashboard/assets/tools?status=in_use" tone="text-sky-700" />
-            <Stat label="Damaged" value={data.tools.damaged} href="/dashboard/assets/tools?status=damaged" tone={data.tools.damaged ? "text-amber-700" : ""} />
-            <Stat label="Missing" value={data.tools.missing} href="/dashboard/assets/tools?status=missing" tone={data.tools.missing ? "text-red-700" : ""} />
-            <Stat label="Open requests" value={data.openRequests} href="/dashboard/assets/requests" />
-            <Stat label="Returns to receive" value={data.openReturns} href="/dashboard/assets/requests?kind=tool_return" />
-            <Stat label="Counts in progress" value={data.openCounts} href="/dashboard/assets/counts" />
+            <Stat label="Tools" value={data.tools.total - data.tools.retired} href="/jobs/assets/tools" />
+            <Stat label="Available" value={data.tools.available} href="/jobs/assets/tools?status=available" tone="text-emerald-700" />
+            <Stat label="In use" value={data.tools.inUse} href="/jobs/assets/tools?status=in_use" tone="text-sky-700" />
+            <Stat label="Damaged" value={data.tools.damaged} href="/jobs/assets/tools?status=damaged" tone={data.tools.damaged ? "text-amber-700" : ""} />
+            <Stat label="Missing" value={data.tools.missing} href="/jobs/assets/tools?status=missing" tone={data.tools.missing ? "text-red-700" : ""} />
+            <Stat label="Open requests" value={data.openRequests} href="/jobs/assets/requests" />
+            <Stat label="Returns to receive" value={data.openReturns} href="/jobs/assets/requests?kind=tool_return" />
+            <Stat label="Counts in progress" value={data.openCounts} href="/jobs/assets/counts" />
           </div>
 
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Waiting on the tool room</h3>
-              <Link href="/dashboard/assets/requests" className="text-primary text-sm hover:underline">
+              <Link href="/jobs/assets/requests" className="text-primary text-sm hover:underline">
                 All requests
               </Link>
             </div>
@@ -117,7 +117,7 @@ export function AssetsOverview() {
             ) : (
               <div className="bg-card divide-y rounded-lg border">
                 {(requests.data ?? []).slice(0, 6).map((r) => (
-                  <Link key={r.id} href={`/dashboard/assets/requests/${r.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
+                  <Link key={r.id} href={`/jobs/assets/requests/${r.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{r.orderNumber}</span>
@@ -142,7 +142,7 @@ export function AssetsOverview() {
               </h3>
               <div className="bg-card divide-y rounded-lg border">
                 {problems.map((tool) => (
-                  <Link key={tool.id} href={`/dashboard/assets/tools/${tool.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
+                  <Link key={tool.id} href={`/jobs/assets/tools/${tool.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{tool.name}</span>

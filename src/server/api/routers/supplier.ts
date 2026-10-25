@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import {
   suppliers,
@@ -22,7 +22,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Get all suppliers for the user's organization
    */
-  list: hasDashboardAccess.query(async ({ ctx }) => {
+  list: hasAppAccess.query(async ({ ctx }) => {
     if (!ctx.user.organizationId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -61,7 +61,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Get a single supplier by ID with related supplierParts
    */
-  getById: hasDashboardAccess
+  getById: hasAppAccess
     .input(z.object({ id: z.string().uuid(), partDefinitionIds: z.array(z.string().uuid()).min(1).max(201).optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
@@ -158,7 +158,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Add a part to a supplier
    */
-  addSupplierPart: hasDashboardAccess
+  addSupplierPart: hasAppAccess
     .input(
       z.object({
         supplierId: z.string().uuid(),
@@ -391,7 +391,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Update supplier part details
    */
-  updateSupplierPart: hasDashboardAccess
+  updateSupplierPart: hasAppAccess
     .input(
       z.object({
         id: z.string().uuid(),
@@ -498,7 +498,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Remove a part from a supplier
    */
-  removeSupplierPart: hasDashboardAccess
+  removeSupplierPart: hasAppAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
@@ -533,7 +533,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Set preferred supplier for a part
    */
-  setPreferredSupplier: hasDashboardAccess
+  setPreferredSupplier: hasAppAccess
     .input(
       z.object({
         partDefinitionId: z.string().uuid(),
@@ -631,7 +631,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Get all supplier parts for a specific part definition
    */
-  getSupplierPartsByPart: hasDashboardAccess
+  getSupplierPartsByPart: hasAppAccess
     .input(
       z.object({
         partDefinitionId: z.string().uuid(),

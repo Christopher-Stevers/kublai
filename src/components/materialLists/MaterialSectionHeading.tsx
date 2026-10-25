@@ -80,7 +80,7 @@ export function materialSections<T extends SectionItem>(
             .filter(Boolean)
             .join(" · ") || null,
         href: order
-          ? `/dashboard/material-lists/${materialListId}?orderId=${encodeURIComponent(order.id)}`
+          ? `/jobs/material-lists/${materialListId}?orderId=${encodeURIComponent(order.id)}`
           : undefined,
         ordered: true,
         orderId: order && order.status !== "cancelled" ? order.id : undefined,

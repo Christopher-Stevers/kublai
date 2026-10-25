@@ -83,7 +83,7 @@ it("scans a slip, finds its order and opens its material list to check it", asyn
   expect(screen.getByText("174-Fastening House")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Read slip now/ }));
   await waitFor(() =>
-    expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o1"),
+    expect(push).toHaveBeenCalledWith("/jobs/material-lists/list-o1"),
   );
 });
 
@@ -112,7 +112,7 @@ it("lets the member choose the order when the slip is not a clear match", async 
   fireEvent.click(screen.getByRole("button", { name: "Show all 3 orders" }));
   fireEvent.click(screen.getByRole("button", { name: /163-Next/ }));
   await waitFor(() =>
-    expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o3"),
+    expect(push).toHaveBeenCalledWith("/jobs/material-lists/list-o3"),
   );
 });
 
@@ -171,7 +171,7 @@ it("opens a saved slip that already has an order, and matches one that does not"
     await screen.findByRole("button", { name: "Choose a saved slip instead" }),
   );
   fireEvent.click(await screen.findByRole("button", { name: /175-Next\.pdf/ }));
-  expect(push).toHaveBeenCalledWith("/dashboard/material-lists/list-o2");
+  expect(push).toHaveBeenCalledWith("/jobs/material-lists/list-o2");
 });
 
 it("hands the linked slip back when scanned from a material list", async () => {

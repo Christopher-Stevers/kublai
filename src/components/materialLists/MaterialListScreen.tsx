@@ -51,7 +51,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import { markUserAction } from "~/lib/performance-marks";
 
 /** A material list: its parts, ordering, and receiving what was ordered.
- * The dashboard shows it in place, where its own back button leads out. */
+ * The Jobs shows it in place, where its own back button leads out. */
 export function MaterialListScreen({
   id,
   embedded = false,
@@ -93,7 +93,7 @@ export function MaterialListScreen({
       { enabled: isBrowserOnline && !!notesOrderId },
     );
   useHeaderBackOverride(!embedded && mlHeader?.jobId ? () => {
-    router.replace(`/dashboard/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
+    router.replace(`/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
   } : null, { priority: -50 });
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
@@ -285,7 +285,7 @@ export function MaterialListScreen({
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Material list not found</p>
-          <Button onClick={() => router.push("/dashboard")}>
+          <Button onClick={() => router.push("/jobs")}>
             Back to Jobs
           </Button>
         </div>
@@ -522,7 +522,7 @@ export function MaterialListScreen({
             <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
               onLinked={(listId) => {
                 if (listId === id) void slipDrafts.reload();
-                else router.push(`/dashboard/material-lists/${listId}`);
+                else router.push(`/jobs/material-lists/${listId}`);
               }} />
           ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}

@@ -160,7 +160,7 @@ function JobDrawsViewContent({ jobId }: { jobId: string }) {
 
   const backLink = (
     <Link
-      href="/dashboard/draws"
+      href="/jobs/draws"
       className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
     >
       <ArrowLeftIcon className="h-4 w-4" /> All draws

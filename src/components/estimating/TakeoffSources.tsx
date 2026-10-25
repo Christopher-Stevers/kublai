@@ -207,7 +207,7 @@ export function TakeoffSources({
                           </span>
                         )}
                         <Link
-                          href={`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheet.id}${sheet.setId ? `&drawingSet=${sheet.setId}` : ""}`}
+                          href={`/jobs/${jobId}/drawings?drawingSheet=${sheet.id}${sheet.setId ? `&drawingSet=${sheet.setId}` : ""}`}
                           aria-label={`Open drawing ${sheet.number || sheet.title}`}
                           onClick={(event) => event.stopPropagation()}
                           className="hover:bg-muted col-start-3 row-span-3 row-start-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded sm:h-8 sm:w-8"

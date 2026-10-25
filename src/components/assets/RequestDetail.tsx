@@ -28,7 +28,7 @@ export function RequestDetail({ orderId }: { orderId: string }) {
   const query = api.assets.getRequest.useQuery({ orderId }, { enabled: isOnline });
   const cancel = api.assets.cancelRequest.useMutation({ onSuccess: () => utils.assets.invalidate() });
   const remove = api.assets.deleteRequest.useMutation({ onSuccess: async () => {
-    router.replace("/dashboard/assets/requests");
+    router.replace("/jobs/assets/requests");
     await Promise.all([utils.assets.invalidate(), utils.materialList.invalidate()]);
     notify("Request deleted. Its list items are unlocked.", "success");
   }});
@@ -49,7 +49,7 @@ export function RequestDetail({ orderId }: { orderId: string }) {
             <RequestStatusBadge status={request.fulfillmentStatus} kind={request.kind} />
             {request.materialListId && (
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/dashboard/material-lists/${request.materialListId}`}>Open list</Link>
+                <Link href={`/jobs/material-lists/${request.materialListId}`}>Open list</Link>
               </Button>
             )}
             {request.canManageAssets && request.kind === "tool_request" && (

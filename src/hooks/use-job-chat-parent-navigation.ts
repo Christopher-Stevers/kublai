@@ -18,7 +18,7 @@ export function useJobChatParentNavigation(jobId: string) {
         view: "options",
         materialListId: null,
       });
-      router.push(`/dashboard/jobs/${encodeURIComponent(jobId)}`);
+      router.push(`/jobs/${encodeURIComponent(jobId)}`);
     };
     setHeaderBackVisible(true);
     window.addEventListener(HEADER_BACK_REQUEST_EVENT, backToJob);

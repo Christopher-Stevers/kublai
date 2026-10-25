@@ -50,7 +50,7 @@ test.describe('offline job → material list → order workflow', () => {
 
     await installAgentAuthCookie(page);
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     if (page.url().includes('/sign-in')) {
       test.skip(true, 'Dashboard auth/dev bypass is not available for this Playwright run.');
     }
@@ -60,11 +60,11 @@ test.describe('offline job → material list → order workflow', () => {
     await page.getByRole('button', { name: 'Add Job' }).click();
     await page.getByLabel('Job Name *').fill(warmJobName);
     await page.getByRole('button', { name: 'Create Job' }).click();
-    await page.waitForURL(/\/dashboard\/jobs\//);
+    await page.waitForURL(/\/jobs\//);
     const warmJobUrl = page.url();
     await expect(page.getByRole('heading', { name: warmJobName })).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: 'New Material List' }).first().click();
-    await page.waitForURL(/\/dashboard\/material-lists\//, { timeout: 20_000 });
+    await page.waitForURL(/\/jobs\/material-lists\//, { timeout: 20_000 });
     const warmMaterialListUrl = page.url();
     await expect(page.getByText(`Job: ${warmJobName}`)).toBeVisible({ timeout: 20_000 });
 
@@ -87,7 +87,7 @@ test.describe('offline job → material list → order workflow', () => {
     await page.goto(warmMaterialListUrl);
     await expect(page.getByText(`Job: ${warmJobName}`)).toBeVisible({ timeout: 20_000 });
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 
     offlineMode = true;
@@ -104,11 +104,11 @@ test.describe('offline job → material list → order workflow', () => {
     await page.getByRole('button', { name: 'Add Job' }).click();
     await page.getByLabel('Job Name *').fill(jobName);
     await page.getByRole('button', { name: 'Create Job' }).click();
-    await page.waitForURL(/\/dashboard\/jobs\/offline-job-/);
+    await page.waitForURL(/\/jobs\/offline-job-/);
     await expect(page.getByRole('heading', { name: jobName })).toBeVisible({ timeout: 20_000 });
 
     await page.getByRole('button', { name: 'New Material List' }).first().click();
-    await page.waitForURL(/\/dashboard\/material-lists\/offline-list-/);
+    await page.waitForURL(/\/jobs\/material-lists\/offline-list-/);
     const materialListUrl = page.url();
     const materialListId = materialListUrl.split('/').pop();
     if (!materialListId) throw new Error(`Could not read material list id from ${materialListUrl}`);
@@ -173,10 +173,10 @@ test.describe('offline job → material list → order workflow', () => {
     await expect(page.getByText(/Pending sync|Syncing material list/).first()).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole('button', { name: `Job: ${jobName}` }).click();
-    await page.waitForURL(/\/dashboard\/jobs\//);
+    await page.waitForURL(/\/jobs\//);
     await expect(page.getByText('internet disconnected', { exact: false })).toHaveCount(0);
     await page.goBack();
-    await page.waitForURL(/\/dashboard\/material-lists\//);
+    await page.waitForURL(/\/jobs\/material-lists\//);
     await expect(page.getByText(/3 in ABS 22\.5 Elbow/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/3 in ABS 45 Elbow/)).toBeVisible();
 
@@ -211,7 +211,7 @@ test.describe('offline job → material list → order workflow', () => {
       window.dispatchEvent(new Event('online'));
     });
     await expect(page.getByText(/Synced/).first()).toBeVisible({ timeout: 45_000 });
-    await page.waitForURL((url) => /\/dashboard\/material-lists\//.test(url.pathname) && !url.pathname.includes('offline-list-'), { timeout: 20_000 });
+    await page.waitForURL((url) => /\/jobs\/material-lists\//.test(url.pathname) && !url.pathname.includes('offline-list-'), { timeout: 20_000 });
     await page.reload();
     await expect(page.getByText(/3 in ABS 22\.5 Elbow/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/3 in ABS 45 Elbow/)).toBeVisible({ timeout: 20_000 });

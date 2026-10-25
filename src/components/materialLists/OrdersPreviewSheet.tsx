@@ -466,7 +466,7 @@ export function OrdersPreviewSheet({
             </button>
             {isSent ? (
               <a
-                href={`/dashboard/assets/requests/${order.id}`}
+                href={`/jobs/assets/requests/${order.id}`}
                 className="text-primary text-sm font-medium hover:underline"
               >
                 {TOOL_REQUEST_STATUS[order.fulfillmentStatus ?? "open"] ??
@@ -592,7 +592,7 @@ export function OrdersPreviewSheet({
           {order.approval.reviewNote&&<p>Review: {order.approval.reviewNote}</p>}
           {!order.approval.allowed && order.approval.status!=="pending" && <><Textarea aria-label="Reason for unlisted parts" placeholder="Why are these unlisted parts needed?" value={orderNotes.get(order.id)??""} onChange={event=>setOrderNotes(new Map(orderNotes).set(order.id,event.target.value))}/><Button size="sm" variant="outline" disabled={requestApproval.isPending||(orderNotes.get(order.id)??"").trim().length<3||!isOnline} onClick={()=>order.supplierId&&requestApproval.mutate({materialListId,supplierId:order.supplierId,note:orderNotes.get(order.id)??""})}>Request approval</Button></>}
           {!order.approval.allowed&&<Button size="sm" variant="outline" className="ml-2" onClick={()=>void loadPreview().catch(e=>setSyncError(String(e)))}>Check approval</Button>}
-          {order.jobId&&<a className="ml-2 underline" href={`/dashboard/jobs/${order.jobId}/pricing`}>Job pricing & reviews</a>}
+          {order.jobId&&<a className="ml-2 underline" href={`/jobs/${order.jobId}/pricing`}>Job pricing & reviews</a>}
         </div>}
         {isExpanded && (
           <div className="mt-4 space-y-4 pl-6">

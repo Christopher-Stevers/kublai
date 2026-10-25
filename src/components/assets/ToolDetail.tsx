@@ -144,7 +144,7 @@ export function ToolDetail({ id, tag }: { id?: string; tag?: string }) {
               </Button>
             )}
             <Button variant="outline" className="w-full justify-start" asChild>
-              <a href={`/dashboard/assets/labels?ids=${tool.id}`} target="_blank" rel="noreferrer">
+              <a href={`/jobs/assets/labels?ids=${tool.id}`} target="_blank" rel="noreferrer">
                 <PrinterIcon className="mr-2 h-4 w-4" /> Print QR label
               </a>
             </Button>

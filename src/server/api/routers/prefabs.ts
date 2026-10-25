@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
 import {
@@ -149,7 +149,7 @@ async function touch(ctx: Ctx, prefabId: string) {
 
 export const prefabsRouter = createTRPCRouter({
   /** Every prefab in the company with its parts, ready to add offline. */
-  list: hasDashboardAccess.input(z.object({ kind: prefabKind }).optional()).query(async ({ ctx, input }) => {
+  list: hasAppAccess.input(z.object({ kind: prefabKind }).optional()).query(async ({ ctx, input }) => {
     const organizationId = organizationOf(ctx);
     const prefabs = await ctx.db
       .select()
@@ -215,7 +215,7 @@ export const prefabsRouter = createTRPCRouter({
   }),
 
   /** New prefab, empty or (for "Save as prefab") with a list's parts. */
-  create: hasDashboardAccess
+  create: hasAppAccess
     .input(z.object({ name, kind: prefabKind.default("materials"), items: z.array(itemInput).max(500).default([]) }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
@@ -230,7 +230,7 @@ export const prefabsRouter = createTRPCRouter({
       });
     }),
 
-  rename: hasDashboardAccess
+  rename: hasAppAccess
     .input(z.object({ prefabId: z.string().uuid(), name }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
@@ -241,7 +241,7 @@ export const prefabsRouter = createTRPCRouter({
         .where(eq(materialPrefabs.id, input.prefabId));
     }),
 
-  delete: hasDashboardAccess
+  delete: hasAppAccess
     .input(z.object({ prefabId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
@@ -249,7 +249,7 @@ export const prefabsRouter = createTRPCRouter({
       await ctx.db.delete(materialPrefabs).where(eq(materialPrefabs.id, input.prefabId));
     }),
 
-  addItems: hasDashboardAccess
+  addItems: hasAppAccess
     .input(z.object({ prefabId: z.string().uuid(), items: z.array(itemInput).min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
@@ -260,7 +260,7 @@ export const prefabsRouter = createTRPCRouter({
       await touch(ctx, input.prefabId);
     }),
 
-  setItemQuantity: hasDashboardAccess
+  setItemQuantity: hasAppAccess
     .input(z.object({ prefabId: z.string().uuid(), itemId: z.string().uuid(), quantity }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);
@@ -277,7 +277,7 @@ export const prefabsRouter = createTRPCRouter({
       await touch(ctx, input.prefabId);
     }),
 
-  removeItem: hasDashboardAccess
+  removeItem: hasAppAccess
     .input(z.object({ prefabId: z.string().uuid(), itemId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCanEdit(ctx);

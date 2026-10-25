@@ -55,7 +55,7 @@ export function ToolsView() {
     if (value) next.set(key, value);
     else next.delete(key);
     setSelected(new Set());
-    router.replace(`/dashboard/assets/tools${next.size ? `?${next}` : ""}`);
+    router.replace(`/jobs/assets/tools${next.size ? `?${next}` : ""}`);
   };
 
   const rows = tools.data ?? [];
@@ -87,7 +87,7 @@ export function ToolsView() {
       ) : !types.data?.length ? (
         <EmptyState icon={<WrenchIcon />} title="No tool types yet">
           Start by adding tool types (e.g. &ldquo;Hilti TE 30 hammer drill&rdquo;) on the{" "}
-          <Link href="/dashboard/assets/types" className="text-primary hover:underline">
+          <Link href="/jobs/assets/types" className="text-primary hover:underline">
             Tool Types
           </Link>{" "}
           page, then add the tools you own.
@@ -180,7 +180,7 @@ export function ToolsView() {
                     <ArrowRightLeftIcon className="mr-1.5 h-4 w-4" /> Move
                   </Button>
                   <Button size="sm" variant="outline" asChild>
-                    <a href={`/dashboard/assets/labels?ids=${[...selected].join(",")}`} target="_blank" rel="noreferrer">
+                    <a href={`/jobs/assets/labels?ids=${[...selected].join(",")}`} target="_blank" rel="noreferrer">
                       <PrinterIcon className="mr-1.5 h-4 w-4" /> Labels
                     </a>
                   </Button>
@@ -218,7 +218,7 @@ export function ToolsView() {
                         aria-label={`Select ${tool.assetTag}`}
                       />
                       <div className="min-w-0 flex-1">
-                        <Link href={`/dashboard/assets/tools/${tool.id}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 hover:underline">
+                        <Link href={`/jobs/assets/tools/${tool.id}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 hover:underline">
                           <span className="font-mono text-xs font-semibold">{tool.assetTag}</span>
                           <span className="font-medium">{tool.name}</span>
                           <ToolStatusBadge status={tool.status} />

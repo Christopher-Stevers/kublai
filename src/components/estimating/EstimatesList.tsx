@@ -91,7 +91,7 @@ export function EstimatesList() {
         jobId: newJobId,
         name: name.trim(),
       });
-      router.push(`/dashboard/estimating/${record.id}`);
+      router.push(`/jobs/estimating/${record.id}`);
     } catch (cause) {
       setError(errorMessage(cause));
     }
@@ -214,7 +214,7 @@ export function EstimatesList() {
           {items.map((estimate) => (
             <li key={estimate.id}>
               <Link
-                href={`/dashboard/estimating/${estimate.id}`}
+                href={`/jobs/estimating/${estimate.id}`}
                 aria-label={`Open ${estimate.name}`}
                 className="bg-card hover:border-primary/40 focus-visible:ring-ring flex min-w-0 items-center gap-3 rounded-xl border p-4 shadow-sm transition-[border-color,box-shadow] hover:shadow-md focus-visible:ring-2 focus-visible:outline-none sm:gap-4"
               >

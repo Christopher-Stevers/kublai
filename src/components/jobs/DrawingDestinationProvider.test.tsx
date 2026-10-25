@@ -70,12 +70,12 @@ const request: DestinationRequest = {
   },
 };
 const origin = makeSnapshotSource(
-  `/dashboard/jobs/${sheetId}/drawings`,
+  `/jobs/${sheetId}/drawings`,
   { version: 1 },
   "Source sheet",
 );
 const destination = makeSnapshotSource(
-  `/dashboard/jobs/${sheetId}/documents?folder=specs`,
+  `/jobs/${sheetId}/documents?folder=specs`,
   {
     version: 1,
     document: {
@@ -182,7 +182,7 @@ it("retains the draft and captured view after a failure, and suppresses rapid du
   expect(await screen.findByRole("alert")).toHaveTextContent("drawing changed");
   expect(mocks.push).not.toHaveBeenCalled();
   mocks.capture.mockReturnValue(
-    makeSnapshotSource("/dashboard/orders", { version: 1 }, "Different page"),
+    makeSnapshotSource("/jobs/orders", { version: 1 }, "Different page"),
   );
   fireEvent.click(check());
   await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));

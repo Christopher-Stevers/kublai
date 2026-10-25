@@ -32,7 +32,7 @@ test.describe('offline material list sync', () => {
       ]);
     }
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     if (page.url().includes('/sign-in')) {
       test.skip(true, 'Dashboard auth/dev bypass is not available for this Playwright run.');
     }
@@ -41,10 +41,10 @@ test.describe('offline material list sync', () => {
     await page.getByRole('button', { name: 'Add Job' }).click();
     await page.getByLabel('Job Name *').fill(jobName);
     await page.getByRole('button', { name: 'Create Job' }).click();
-    await page.waitForURL(/\/dashboard\/jobs\//);
+    await page.waitForURL(/\/jobs\//);
     await expect(page.getByRole('heading', { name: jobName })).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: 'New Material List' }).click();
-    await page.waitForURL(/\/dashboard\/material-lists\//, { timeout: 20_000 });
+    await page.waitForURL(/\/jobs\/material-lists\//, { timeout: 20_000 });
     const materialListUrl = page.url();
     const materialListId = materialListUrl.split('/').pop();
     expect(materialListId).toBeTruthy();
@@ -79,7 +79,7 @@ test.describe('offline material list sync', () => {
     await expect(page.getByText(/Pending sync|Syncing material list/)).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole('button', { name: `Job: ${jobName}` }).click();
-    await page.waitForURL(/\/dashboard\/jobs\//);
+    await page.waitForURL(/\/jobs\//);
     await expect(page.getByText('internet disconnected', { exact: false })).toHaveCount(0);
     await page.goto(materialListUrl);
     await expect(page.getByText(secondPart)).toBeVisible({ timeout: 10_000 });

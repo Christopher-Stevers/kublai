@@ -4,7 +4,7 @@ import { useLayoutEffect } from "react";
 const positions = new Map<string, number>();
 const prefix = "foremanhq.scroll:";
 
-/** Remember a view across route changes and in-place dashboard navigation. */
+/** Remember a view across route changes and in-place Jobs navigation. */
 export function useRememberedScroll(key: string | null, ready = true) {
   useLayoutEffect(() => {
     if (!key || !ready) return;

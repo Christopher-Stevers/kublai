@@ -38,7 +38,7 @@ export function conversationPushPayload(
   const sender = nameOr(preview?.senderName, "Someone");
   return JSON.stringify({
     type: "conversation-chat",
-    url: `/dashboard/chat?conversation=${conversationId}`,
+    url: `/jobs/chat?conversation=${conversationId}`,
     account: createHash("sha256").update(recipientId).digest("hex"),
     tag: `conversation-chat-${conversationId}`,
     // Direct chats read like a text from the sender; groups name the group.

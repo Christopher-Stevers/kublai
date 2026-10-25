@@ -19,7 +19,7 @@ it("reopens nested scrolling areas after a fresh render and excludes picker UI",
   first.getByTestId("scroller").scrollLeft = 25;
   first.getByTestId("picker").scrollTop = 100;
   const source = makeSnapshotSource(
-    "/dashboard/chat?conversation=abc",
+    "/jobs/chat?conversation=abc",
     { version: 1, scrolls: capturePageScrolls() },
     "Chat",
   );

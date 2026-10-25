@@ -374,7 +374,7 @@ export function AddToolsDialog({
                 Done
               </Button>
               <Button asChild>
-                <a href={`/dashboard/assets/labels?ids=${created.map((c) => c.id).join(",")}`} target="_blank" rel="noreferrer">
+                <a href={`/jobs/assets/labels?ids=${created.map((c) => c.id).join(",")}`} target="_blank" rel="noreferrer">
                   Print labels
                 </a>
               </Button>

@@ -639,7 +639,7 @@ export function JobRoomsView({
           }
           onOpenMaterialList={
             onOpenMaterialList ??
-            ((id) => router.push(`/dashboard/material-lists/${id}`))
+            ((id) => router.push(`/jobs/material-lists/${id}`))
           }
         />
       </div>
@@ -689,7 +689,7 @@ export function JobRoomsView({
               onAdded={floorsAdded}
               onOpenDrawings={
                 onOpenDrawings ??
-                (() => router.push(`/dashboard/jobs/${jobId}/drawings`))
+                (() => router.push(`/jobs/${jobId}/drawings`))
               }
             />
           ) : null}

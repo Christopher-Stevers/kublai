@@ -58,7 +58,7 @@ export async function GET(
   }
 
   if (user.organizationId && user.organizationId !== invite.organizationId) {
-    const response = redirectTo(request, "/dashboard");
+    const response = redirectTo(request, "/jobs");
     response.cookies.delete(ORGANIZATION_INVITE_COOKIE);
     return response;
   }
@@ -80,7 +80,7 @@ export async function GET(
     })
     .where(eq(users.id, user.id));
 
-  const response = redirectTo(request, landing.success ? landing.data.href : "/dashboard");
+  const response = redirectTo(request, landing.success ? landing.data.href : "/jobs");
   response.cookies.delete(ORGANIZATION_INVITE_COOKIE);
   return response;
 }

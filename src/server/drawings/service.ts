@@ -356,7 +356,7 @@ async function validateLinks(
         ? input.data.links.map((link) => link.url)
         : [];
   for (const url of urls) {
-    if (/^(https?:|mailto:|tel:)/i.test(url) || url.startsWith("/dashboard"))
+    if (/^(https?:|mailto:|tel:)/i.test(url) || url.startsWith("/jobs"))
       continue;
     if (url.startsWith("/api/job-chat/attachments/")) {
       const [photo] = await reader

@@ -31,7 +31,7 @@ export default function LicensesPage() {
       </ul>
       <Link
         className="inline-block underline"
-        href="/dashboard/account/settings"
+        href="/jobs/account/settings"
       >
         Back to settings
       </Link>

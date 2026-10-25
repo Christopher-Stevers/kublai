@@ -92,7 +92,7 @@ const baseJob = {
 };
 
 describe("job chat access and contracts", () => {
-  it("requires an approved organization member with dashboard access", () => {
+  it("requires an approved organization member with Jobs access", () => {
     expect(() => checkChatAccess(null, baseJob)).toThrow();
     for (const status of [null, "pending", "rejected"])
       expect(() =>

@@ -162,11 +162,11 @@ export function TutorialGate({
   }, [userId]);
 
   useEffect(() => {
-    if (active && pathname !== "/dashboard") router.replace("/dashboard");
+    if (active && pathname !== "/jobs") router.replace("/jobs");
   }, [active, pathname, router]);
 
   useEffect(() => {
-    if (openingJobs && pathname === "/dashboard") {
+    if (openingJobs && pathname === "/jobs") {
       resetJobWorkspaceNavigation();
       setOpeningJobs(false);
     }
@@ -185,7 +185,7 @@ export function TutorialGate({
     setActive(true);
     setRun((value) => value + 1);
     resetJobWorkspaceNavigation();
-    router.replace("/dashboard");
+    router.replace("/jobs");
     sync(record);
   };
   const finish = (outcome: TutorialOutcome) => {
@@ -199,7 +199,7 @@ export function TutorialGate({
     setActive(false);
     setOpeningJobs(true);
     resetJobWorkspaceNavigation();
-    router.replace("/dashboard");
+    router.replace("/jobs");
     sync(record);
   };
 
@@ -224,7 +224,7 @@ export function TutorialGate({
       <div className="mx-auto max-w-md space-y-4 p-6">
         <p role="status">Tutorial ended. Opening your jobs…</p>
         <Button asChild>
-          <a href="/dashboard">Open Jobs</a>
+          <a href="/jobs">Open Jobs</a>
         </Button>
       </div>
     );

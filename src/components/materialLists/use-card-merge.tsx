@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 
 type List = { id: string; name: string; kind?: "materials" | "tools" };
 
-/** Both the dashboard workspace and the dedicated job page use card selection. */
+/** Both the Jobs workspace and the dedicated job page use card selection. */
 export function useCardMerge({ disabled, onMerged }: {
   disabled: boolean;
   onMerged: () => void;

@@ -275,7 +275,7 @@ describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
       expectedRevision: 1,
       data: {
         ...change.data,
-        links: [{ label: "Jobs", url: "/dashboard/jobs" }],
+        links: [{ label: "Jobs", url: "/jobs/jobs" }],
       },
     });
     await saveDrawingEntity(ctx, { ...request(), expectedRevision: 2 });

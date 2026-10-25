@@ -17,7 +17,7 @@ it("focuses the message box once ready and removes the reply flag", () => {
   window.history.replaceState(
     null,
     "",
-    "/dashboard/chat?conversation=c&reply=1",
+    "/jobs/chat?conversation=c&reply=1",
   );
   const view = render(<Composer ready={false} />);
   expect(document.activeElement).not.toBe(view.getByLabelText("Message"));
@@ -26,7 +26,7 @@ it("focuses the message box once ready and removes the reply flag", () => {
   expect(window.location.search).toBe("?conversation=c");
 });
 it("leaves the page alone without the flag", () => {
-  window.history.replaceState(null, "", "/dashboard/jobs/j/chat");
+  window.history.replaceState(null, "", "/jobs/j/chat");
   const view = render(<Composer ready />);
   expect(document.activeElement).not.toBe(view.getByLabelText("Message"));
 });

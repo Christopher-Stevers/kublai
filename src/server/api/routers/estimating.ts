@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import {
   assemblySchema,
   estimateDocumentSchema,
@@ -32,8 +32,8 @@ const revision = z.number().int().min(1).max(2_147_483_646);
 const mutation = z.object({ id, expectedRevision: revision });
 
 export const estimatingRouter = createTRPCRouter({
-  jobs: hasDashboardAccess.query(({ ctx }) => listEstimateJobs(ctx)),
-  list: hasDashboardAccess
+  jobs: hasAppAccess.query(({ ctx }) => listEstimateJobs(ctx)),
+  list: hasAppAccess
     .input(
       z
         .object({
@@ -46,10 +46,10 @@ export const estimatingRouter = createTRPCRouter({
         .optional(),
     )
     .query(({ ctx, input }) => listEstimates(ctx, input)),
-  get: hasDashboardAccess
+  get: hasAppAccess
     .input(z.object({ id }))
     .query(({ ctx, input }) => getEstimate(ctx, input.id)),
-  create: hasDashboardAccess
+  create: hasAppAccess
     .input(
       z.object({
         jobId: id,
@@ -58,7 +58,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => createEstimate(ctx, input)),
-  save: hasDashboardAccess
+  save: hasAppAccess
     .input(
       mutation.extend({
         name: name.optional(),
@@ -66,13 +66,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => saveEstimate(ctx, input)),
-  setStatus: hasDashboardAccess
+  setStatus: hasAppAccess
     .input(mutation.extend({ status: estimateStatusSchema }))
     .mutation(({ ctx, input }) => setEstimateStatus(ctx, input)),
-  duplicate: hasDashboardAccess
+  duplicate: hasAppAccess
     .input(z.object({ id, name: name.optional() }))
     .mutation(({ ctx, input }) => duplicateEstimate(ctx, input)),
-  history: hasDashboardAccess
+  history: hasAppAccess
     .input(
       z.object({
         id,
@@ -81,13 +81,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => estimateHistory(ctx, input)),
-  restore: hasDashboardAccess
+  restore: hasAppAccess
     .input(mutation.extend({ eventId: id }))
     .mutation(({ ctx, input }) => restoreEstimate(ctx, input)),
-  resources: hasDashboardAccess
+  resources: hasAppAccess
     .input(z.object({ jobId: id }))
     .query(({ ctx, input }) => estimateResources(ctx, input.jobId)),
-  catalogue: hasDashboardAccess
+  catalogue: hasAppAccess
     .input(
       z.object({
         search: z.string().max(300),
@@ -95,8 +95,8 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => estimateCatalogue(ctx, input)),
-  pricing: hasDashboardAccess.query(({ ctx }) => getEstimatingPricing(ctx)),
-  savePricing: hasDashboardAccess
+  pricing: hasAppAccess.query(({ ctx }) => getEstimatingPricing(ctx)),
+  savePricing: hasAppAccess
     .input(
       z.object({
         expectedRevision: z.number().int().min(0).max(2_147_483_646),
@@ -105,13 +105,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => saveEstimatingPricing(ctx, input)),
-  applyPricing: hasDashboardAccess
+  applyPricing: hasAppAccess
     .input(mutation)
     .mutation(({ ctx, input }) => applyEstimatePricing(ctx, input)),
-  importMaterialList: hasDashboardAccess
+  importMaterialList: hasAppAccess
     .input(mutation.extend({ materialListId: id }))
     .mutation(({ ctx, input }) => importEstimateMaterialList(ctx, input)),
-  importPrefab: hasDashboardAccess
+  importPrefab: hasAppAccess
     .input(
       mutation.extend({
         prefabId: id,
@@ -119,7 +119,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => importEstimatePrefab(ctx, input)),
-  analyzeDrawings: hasDashboardAccess
+  analyzeDrawings: hasAppAccess
     .input(
       mutation.extend({
         sheetIds: z.array(id).min(1).max(5),
@@ -127,7 +127,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => analyzeEstimateDrawings(ctx, input)),
-  handoffMaterialList: hasDashboardAccess
+  handoffMaterialList: hasAppAccess
     .input(mutation)
     .mutation(({ ctx, input }) => handoffEstimateMaterialList(ctx, input)),
 });

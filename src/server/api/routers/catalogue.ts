@@ -25,7 +25,7 @@ import {
   desc,
 } from "drizzle-orm";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import {
   assertCanAccessTab,
   assertCanCreateParts,
@@ -429,7 +429,7 @@ function publishCatalogueChange(organizationId: string | null | undefined) {
 // Helper function to find or create a size record
 async function findOrCreateSize(
   db: Parameters<
-    Parameters<typeof hasDashboardAccess.query>[0]
+    Parameters<typeof hasAppAccess.query>[0]
   >[0]["ctx"]["db"],
   organizationId: string,
   sizeNominal: number | string | null | undefined,
@@ -508,7 +508,7 @@ type CatalogNode = {
 };
 
 export const catalogueRouter = createTRPCRouter({
-  recentOrderWheelUsage: hasDashboardAccess.query(async ({ ctx }) => {
+  recentOrderWheelUsage: hasAppAccess.query(async ({ ctx }) => {
     const org = ctx.user.organizationId;
     if (!org) return {};
     const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
@@ -540,7 +540,7 @@ export const catalogueRouter = createTRPCRouter({
     return orderWheelUsage(rows as unknown as OrderedFacet[]);
   }),
 
-  getQuantityUnits: hasDashboardAccess.query(async ({ctx}) => {
+  getQuantityUnits: hasAppAccess.query(async ({ctx}) => {
     const org = ctx.user.organizationId;
     if (!org) throw new TRPCError({code:"FORBIDDEN"});
     return ctx.db.execute<{kind:string; name:string}>(sql`
@@ -549,14 +549,14 @@ export const catalogueRouter = createTRPCRouter({
       union select 'individual', "individualUnit" from kublai_part_definition where "organizationId"=${org}::uuid and "individualUnit" is not null
       order by name`);
   }),
-  createQuantityUnit: hasDashboardAccess.input(z.object({kind:z.enum(["bulk","individual"]), name:z.string().trim().min(1).max(32).toLowerCase()})).mutation(async ({ctx,input}) => {
+  createQuantityUnit: hasAppAccess.input(z.object({kind:z.enum(["bulk","individual"]), name:z.string().trim().min(1).max(32).toLowerCase()})).mutation(async ({ctx,input}) => {
     assertCanCreateParts(ctx.user);
     const org=ctx.user.organizationId;
     if (!org) throw new TRPCError({code:"FORBIDDEN"});
     await ctx.db.execute(sql`insert into kublai_quantity_unit ("organizationId",kind,name) values (${org}::uuid,${input.kind},${input.name}) on conflict do nothing`);
     return input;
   }),
-  getCatalogs: hasDashboardAccess.query(async ({ ctx }) => {
+  getCatalogs: hasAppAccess.query(async ({ ctx }) => {
     const organizationId = ctx.user.organizationId;
 
     if (!organizationId) {
@@ -611,7 +611,7 @@ export const catalogueRouter = createTRPCRouter({
     return catalogsWithCounts;
   }),
 
-  createCatalog: hasDashboardAccess
+  createCatalog: hasAppAccess
     .input(
       z.object({
         name: z.string().min(1).max(255),
@@ -664,7 +664,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Get all categories for the user's organization (flat list, all are root categories)
    */
-  getCategoryTree: hasDashboardAccess.query(async ({ ctx }) => {
+  getCategoryTree: hasAppAccess.query(async ({ ctx }) => {
     const organizationId = ctx.user.organizationId;
 
     if (!organizationId) {
@@ -728,7 +728,7 @@ export const catalogueRouter = createTRPCRouter({
    * open. Full part rows include images and descriptions, so those stay behind
    * searchParts and load only once the user searches or reaches part selection.
    */
-  getPartWizardSummary: hasDashboardAccess
+  getPartWizardSummary: hasAppAccess
     .input(z.object({ grouped: z.boolean(), supplierId: z.string().uuid().optional() }).optional())
     .query(async ({ ctx, input }) => {
     const organizationId = ctx.user.organizationId;
@@ -853,7 +853,7 @@ export const catalogueRouter = createTRPCRouter({
    * Faceted search with full filtering support
    * Supports: text search, category, category, material, size (normalized), and attributes
    */
-  searchParts: hasDashboardAccess
+  searchParts: hasAppAccess
     .input(
       z.object({
         // Text search (optional)
@@ -1117,7 +1117,7 @@ export const catalogueRouter = createTRPCRouter({
    * Combines materials from materials table (both org-specific and global)
    * Returns materials with id and name
    */
-  getMaterials: hasDashboardAccess.query(async ({ ctx }) => {
+  getMaterials: hasAppAccess.query(async ({ ctx }) => {
     const organizationId = ctx.user.organizationId;
 
     if (!organizationId) {
@@ -1138,7 +1138,7 @@ export const catalogueRouter = createTRPCRouter({
     return allMaterials;
   }),
 
-  setMaterialGroups: hasDashboardAccess
+  setMaterialGroups: hasAppAccess
     .input(
       z.object({
         assignments: z
@@ -1198,7 +1198,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Create a custom material
    */
-  createMaterial: hasDashboardAccess
+  createMaterial: hasAppAccess
     .input(z.object({ name: z.string().min(1).max(100) }))
     .mutation(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
@@ -1240,7 +1240,7 @@ export const catalogueRouter = createTRPCRouter({
    * Derived from parent categories of parts
    * Can optionally filter by material and size
    */
-  getCategories: hasDashboardAccess
+  getCategories: hasAppAccess
     .input(
       z
         .object({
@@ -1357,7 +1357,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Create a custom size
    */
-  createSize: hasDashboardAccess
+  createSize: hasAppAccess
     .input(
       z.object({
         nominal: z.number(),
@@ -1384,7 +1384,7 @@ export const catalogueRouter = createTRPCRouter({
       return newSize;
     }),
 
-  createCategoryType: hasDashboardAccess
+  createCategoryType: hasAppAccess
     .input(
       z.object({
         name: z.string().min(1).max(100),
@@ -1431,7 +1431,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Get all units
    */
-  getAllUnits: hasDashboardAccess.query(async ({ ctx }) => {
+  getAllUnits: hasAppAccess.query(async ({ ctx }) => {
     const allUnits = await ctx.db
       .select({
         id: units.id,
@@ -1449,7 +1449,7 @@ export const catalogueRouter = createTRPCRouter({
    * Get available sizes (combines sizes table and part definitions)
    * Used for size selection in the wizard
    */
-  getAvailableSizes: hasDashboardAccess
+  getAvailableSizes: hasAppAccess
     .input(
       z.object({
         catalogId: z.string().uuid().optional(),
@@ -1502,7 +1502,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Get a single part by ID with full details
    */
-  getPart: hasDashboardAccess
+  getPart: hasAppAccess
     .input(z.object({ partId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const organizationId = ctx.user.organizationId;
@@ -1586,7 +1586,7 @@ export const catalogueRouter = createTRPCRouter({
       };
     }),
 
-  applyGooglePartImage: hasDashboardAccess
+  applyGooglePartImage: hasAppAccess
     .input(
       z.object({
         partId: z.string().uuid(),
@@ -1669,7 +1669,7 @@ export const catalogueRouter = createTRPCRouter({
       return { imageUrl: localImageUrl };
     }),
 
-  getPartImageFamilySuggestions: hasDashboardAccess
+  getPartImageFamilySuggestions: hasAppAccess
     .input(
       z
         .object({
@@ -1754,7 +1754,7 @@ export const catalogueRouter = createTRPCRouter({
       });
     }),
 
-  getPhotoQueue: hasDashboardAccess
+  getPhotoQueue: hasAppAccess
     .input(
       z.object({
         catalogId: z.string().uuid().optional(),
@@ -1905,7 +1905,7 @@ export const catalogueRouter = createTRPCRouter({
       };
     }),
 
-  storeRemoteCatalogueImage: hasDashboardAccess
+  storeRemoteCatalogueImage: hasAppAccess
     .input(z.object({ imageUrl: z.string().url() }))
     .mutation(async ({ ctx, input }) => {
       assertCanEditParts(ctx.user);
@@ -1939,7 +1939,7 @@ export const catalogueRouter = createTRPCRouter({
       return { imageUrl, assetId: asset?.id ?? null };
     }),
 
-  applyPhotoQueueImage: hasDashboardAccess
+  applyPhotoQueueImage: hasAppAccess
     .input(
       z.object({
         partIds: z.array(z.string().uuid()).min(1).max(250),
@@ -2031,7 +2031,7 @@ export const catalogueRouter = createTRPCRouter({
       return { updatedCount: updated.length };
     }),
 
-  listPhotoAssets: hasDashboardAccess
+  listPhotoAssets: hasAppAccess
     .input(
       z.object({
         query: z.string().max(200).optional(),
@@ -2106,7 +2106,7 @@ export const catalogueRouter = createTRPCRouter({
         });
     }),
 
-  replacePhotoAssetEverywhere: hasDashboardAccess
+  replacePhotoAssetEverywhere: hasAppAccess
     .input(
       z.object({
         sourceAssetId: z.string().uuid(),
@@ -2156,7 +2156,7 @@ export const catalogueRouter = createTRPCRouter({
       return { updatedCount: updated.length };
     }),
 
-  deleteUnusedPhotoAsset: hasDashboardAccess
+  deleteUnusedPhotoAsset: hasAppAccess
     .input(z.object({ assetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCanEditParts(ctx.user);
@@ -2201,7 +2201,7 @@ export const catalogueRouter = createTRPCRouter({
       return { deleted: true };
     }),
 
-  applyPartImageToFamilyCandidate: hasDashboardAccess
+  applyPartImageToFamilyCandidate: hasAppAccess
     .input(
       z.object({
         partId: z.string().uuid(),
@@ -2256,12 +2256,12 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Update a part definition
    */
-  getPartDeletionUsage: hasDashboardAccess.input(z.object({ partId: z.string().uuid() })).query(async ({ctx,input}) => {
+  getPartDeletionUsage: hasAppAccess.input(z.object({ partId: z.string().uuid() })).query(async ({ctx,input}) => {
     assertCanDeleteParts(ctx.user);
     if (!ctx.user.organizationId) throw new TRPCError({code:"FORBIDDEN"});
     return partDeletionUsage(ctx.db, ctx.user.organizationId, input.partId);
   }),
-  deletePart: hasDashboardAccess.input(z.object({ partId: z.string().uuid() })).mutation(async ({ctx,input}) => {
+  deletePart: hasAppAccess.input(z.object({ partId: z.string().uuid() })).mutation(async ({ctx,input}) => {
     assertCanDeleteParts(ctx.user);
     if (!ctx.user.organizationId) throw new TRPCError({code:"FORBIDDEN"});
     const result = await permanentlyDeletePart(ctx.db, ctx.user.organizationId, input.partId);
@@ -2269,7 +2269,7 @@ export const catalogueRouter = createTRPCRouter({
     return result;
   }),
 
-  updatePart: hasDashboardAccess
+  updatePart: hasAppAccess
     .input(
       z.object({
         partId: z.string().uuid(),
@@ -2563,7 +2563,7 @@ export const catalogueRouter = createTRPCRouter({
    * Get preferred suppliers and available suppliers for multiple parts (batch query)
    * Used by catalogue page to display supplier information efficiently
    */
-  getPartsSupplierInfo: hasDashboardAccess
+  getPartsSupplierInfo: hasAppAccess
     .input(
       z.object({
         partIds: z.array(z.string().uuid()),
@@ -2628,7 +2628,7 @@ export const catalogueRouter = createTRPCRouter({
       return result;
     }),
 
-  exportCatalogueRows: hasDashboardAccess
+  exportCatalogueRows: hasAppAccess
     .input(
       z
         .object({
@@ -2722,7 +2722,7 @@ export const catalogueRouter = createTRPCRouter({
       }));
     }),
 
-  importCatalogueRows: hasDashboardAccess
+  importCatalogueRows: hasAppAccess
     .input(
       z.object({
         rows: z.array(
@@ -2950,7 +2950,7 @@ export const catalogueRouter = createTRPCRouter({
   /**
    * Create a new part definition
    */
-  createPart: hasDashboardAccess
+  createPart: hasAppAccess
     .input(
       z.object({
         displayName: z.string().min(1).max(255),

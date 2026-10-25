@@ -72,7 +72,7 @@ test.describe('material list ordering flow', () => {
     });
 
     await recordStep('open dashboard', async () => {
-      await page.goto('/dashboard');
+      await page.goto('/jobs');
       if (page.url().includes('/sign-in')) {
         test.skip(true, 'Dashboard auth/dev bypass is not available for this Playwright run.');
       }
@@ -83,18 +83,18 @@ test.describe('material list ordering flow', () => {
       await page.getByRole('button', { name: 'Add Job' }).click();
       await page.getByLabel('Job Name *').fill(jobName);
       await page.getByRole('button', { name: 'Create Job' }).click();
-      await page.waitForURL(/\/dashboard\/jobs\//);
+      await page.waitForURL(/\/jobs\//);
     });
 
     await recordStep('create exactly one material list', async () => {
       await expect(page.getByRole('heading', { name: jobName })).toBeVisible({ timeout: 20_000 });
       await page.getByRole('button', { name: 'New Material List' }).first().click();
-      await page.waitForURL(/\/dashboard\/material-lists\//, { timeout: 20_000 });
+      await page.waitForURL(/\/jobs\/material-lists\//, { timeout: 20_000 });
       await expect(page.getByText(`Job: ${jobName}`)).toBeVisible({ timeout: 20_000 });
       materialListUrl = page.url();
 
       await page.getByRole('button', { name: `Job: ${jobName}` }).click();
-      await page.waitForURL(/\/dashboard\/jobs\//);
+      await page.waitForURL(/\/jobs\//);
       await expect(page.getByText('0 items')).toHaveCount(1, { timeout: 10_000 });
 
       await page.goto(materialListUrl);

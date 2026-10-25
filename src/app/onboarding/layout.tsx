@@ -62,9 +62,9 @@ export default async function OnboardingLayout({
     redirect(`/join/${inviteToken}`);
   }
 
-  // If user already has an organization, redirect to dashboard
+  // If user already has an organization, redirect to Jobs
   if (user.organizationId) {
-    redirect("/dashboard");
+    redirect("/jobs");
   }
 
   return <>{children}</>;

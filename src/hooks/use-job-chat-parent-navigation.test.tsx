@@ -31,7 +31,7 @@ it("opens the parent job from the header even when Chat had no previous page", a
   const view = renderHook(() => useJobChatParentNavigation("job-one"));
   expect(window.history.length).toBe(length);
   await act(() => window.dispatchEvent(new Event(HEADER_BACK_REQUEST_EVENT)));
-  expect(push).toHaveBeenCalledWith("/dashboard/jobs/job-one");
+  expect(push).toHaveBeenCalledWith("/jobs/job-one");
   expect(getLastJobWorkspaceLocation()).toEqual({
     jobId: "job-one",
     view: "options",
@@ -58,5 +58,5 @@ it("updates the parent destination when a notification selects another job", asy
   view.rerender({ jobId: "job-two" });
   await act(() => window.dispatchEvent(new Event(HEADER_BACK_REQUEST_EVENT)));
   expect(push).toHaveBeenCalledTimes(1);
-  expect(push).toHaveBeenCalledWith("/dashboard/jobs/job-two");
+  expect(push).toHaveBeenCalledWith("/jobs/job-two");
 });

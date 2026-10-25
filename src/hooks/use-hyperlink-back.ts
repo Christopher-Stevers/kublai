@@ -34,8 +34,8 @@ export function useHyperlinkBack(pathname: string | null, sessionKey?: string) {
             (url) =>
               url.origin !== location.origin ||
               !(
-                url.pathname === "/dashboard" ||
-                url.pathname.startsWith("/dashboard/")
+                url.pathname === "/jobs" ||
+                url.pathname.startsWith("/jobs/")
               ),
           )
         )

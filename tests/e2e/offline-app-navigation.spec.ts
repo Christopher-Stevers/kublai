@@ -5,12 +5,12 @@ const agentAuthSecret = process.env.FOREMENHQ_AGENT_AUTH_SECRET;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 
 const routes = [
-  { path: '/dashboard', text: 'Dashboard' },
-  { path: '/dashboard/catalogue', text: 'Catalogue' },
-  { path: '/dashboard/suppliers', text: 'Suppliers' },
-  { path: '/dashboard/quotes', text: 'Quotes' },
-  { path: '/dashboard/orders', text: 'Orders' },
-  { path: '/dashboard/account', text: /Account|Billing|Subscription|Manage/i },
+  { path: '/jobs', text: 'Dashboard' },
+  { path: '/jobs/catalogue', text: 'Catalogue' },
+  { path: '/jobs/suppliers', text: 'Suppliers' },
+  { path: '/jobs/quotes', text: 'Quotes' },
+  { path: '/jobs/orders', text: 'Orders' },
+  { path: '/jobs/account', text: /Account|Billing|Subscription|Manage/i },
 ];
 
 test.describe('authenticated app offline shell', () => {
@@ -28,7 +28,7 @@ test.describe('authenticated app offline shell', () => {
       ]);
     }
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     if (page.url().includes('/sign-in')) {
       test.skip(true, 'Dashboard auth/dev bypass is not available for this Playwright run.');
     }
@@ -39,14 +39,14 @@ test.describe('authenticated app offline shell', () => {
       const cache = await caches.open('foremenhq-offline-shell-v6');
       await Promise.all(
         [
-          '/dashboard',
-          '/dashboard/catalogue',
-          '/dashboard/suppliers',
-          '/dashboard/quotes',
-          '/dashboard/orders',
-          '/dashboard/account',
-          '/dashboard/jobs/__offline-shell__',
-          '/dashboard/material-lists/__offline-shell__',
+          '/jobs',
+          '/jobs/catalogue',
+          '/jobs/suppliers',
+          '/jobs/quotes',
+          '/jobs/orders',
+          '/jobs/account',
+          '/jobs/__offline-shell__',
+          '/jobs/material-lists/__offline-shell__',
           '/manifest.webmanifest',
           '/foremanhq/android-chrome-192x192.png',
           '/foremanhq/android-chrome-512x512.png',

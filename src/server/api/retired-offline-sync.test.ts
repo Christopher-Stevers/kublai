@@ -2,7 +2,7 @@
 import { expect, it, vi } from "vitest";
 vi.mock("./trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
-  return { hasDashboardAccess: initTRPC.create().procedure };
+  return { hasAppAccess: initTRPC.create().procedure };
 });
 import { initTRPC } from "@trpc/server";
 import { retiredOfflineMutation } from "./retired-offline-sync";

@@ -101,9 +101,9 @@ test("private conversation snapshots bypass shared image caching", () => {
 test("material alerts accept only same-origin list deep links", () => {
   const { context } = harness();
   const id = "11111111-1111-4111-8111-111111111111";
-  const good = `/dashboard/material-lists/${id}`;
+  const good = `/jobs/material-lists/${id}`;
   assert.equal(context.safePushUrl({type:"material-list",url:good}),`https://test.local${good}`);
-  for (const url of ["https://evil.example"+good,good+"?redirect=evil",good+"#x","/dashboard/chat",good.replace(id,"invalid")])
+  for (const url of ["https://evil.example"+good,good+"?redirect=evil",good+"#x","/jobs/chat",good.replace(id,"invalid")])
     assert.equal(context.safePushUrl({type:"material-list",url}),null);
 });
 
@@ -114,7 +114,7 @@ test("material push displays the right title, list tag, and account-bound target
   const waitUntil=p=>{pending=p;};
   handlers.get('message')({data:{type:'FOREMANHQ_PUSH_ACCOUNT',account},waitUntil});
   await pending;
-  const data={type:'material-list',url:`/dashboard/material-lists/${id}`,account};
+  const data={type:'material-list',url:`/jobs/material-lists/${id}`,account};
   handlers.get('push')({data:{json:()=>data},waitUntil});
   await pending;
   assert.equal(shown.length,1);

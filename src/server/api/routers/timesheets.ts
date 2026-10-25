@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import {
   assertCan,
   assertCanAccessTab,
@@ -48,7 +48,7 @@ const sheetInput = z.object({
   sheetId: z.string().uuid(),
   expectedRevision: revision,
 });
-const procedure = hasDashboardAccess.use(({ ctx, next }) => {
+const procedure = hasAppAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "timesheets");
   return next({
     ctx: { canManageTime: userCan(ctx.user, "timesheets.manage") },

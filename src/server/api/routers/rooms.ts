@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { userCan } from "~/server/auth/permissions";
 import {
   jobFloorPlans,
@@ -129,7 +129,7 @@ function editFeedback(input: Parameters<typeof roomEditFeedback>[0]) {
 }
 
 export const roomsRouter = createTRPCRouter({
-  getJobRooms: hasDashboardAccess
+  getJobRooms: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const organizationId = (ctx.user as { organizationId: string })
@@ -268,7 +268,7 @@ export const roomsRouter = createTRPCRouter({
       };
     }),
 
-  updateNotes: hasDashboardAccess
+  updateNotes: hasAppAccess
     .input(
       z.object({
         roomId: z.string().uuid(),
@@ -355,7 +355,7 @@ export const roomsRouter = createTRPCRouter({
       });
     }),
 
-  renameFloor: hasDashboardAccess
+  renameFloor: hasAppAccess
     .input(
       z.object({
         floorId: z.string().uuid(),
@@ -390,7 +390,7 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  deleteFloor: hasDashboardAccess
+  deleteFloor: hasAppAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "drawings.delete")) {
@@ -437,7 +437,7 @@ export const roomsRouter = createTRPCRouter({
    * floors. The copy shares the drawing image; room notes start empty because
    * they belong to the real floor.
    */
-  copyFloor: hasDashboardAccess
+  copyFloor: hasAppAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "drawings.upload")) {
@@ -524,7 +524,7 @@ export const roomsRouter = createTRPCRouter({
       });
     }),
 
-  addRoom: hasDashboardAccess
+  addRoom: hasAppAccess
     .input(
       z.object({
         floorId: z.string().uuid(),
@@ -613,7 +613,7 @@ export const roomsRouter = createTRPCRouter({
       });
     }),
 
-  updateRoom: hasDashboardAccess
+  updateRoom: hasAppAccess
     .input(
       z.object({
         roomId: z.string().uuid(),
@@ -737,7 +737,7 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true, updatedAt };
     }),
 
-  deleteRoom: hasDashboardAccess
+  deleteRoom: hasAppAccess
     .input(
       z.object({
         roomId: z.string().uuid(),
@@ -821,7 +821,7 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  deleteAllRooms: hasDashboardAccess
+  deleteAllRooms: hasAppAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "rooms.review")) {
@@ -939,7 +939,7 @@ export const roomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  growRoom: hasDashboardAccess
+  growRoom: hasAppAccess
     .input(
       z.object({
         floorId: z.string().uuid(),
@@ -1003,7 +1003,7 @@ export const roomsRouter = createTRPCRouter({
       return result;
     }),
 
-  detectRooms: hasDashboardAccess
+  detectRooms: hasAppAccess
     .input(
       z.object({
         floorId: z.string().uuid(),
@@ -1051,7 +1051,7 @@ export const roomsRouter = createTRPCRouter({
     }),
 
   /** Drawings-folder sheets that can become Rooms floors. */
-  drawingChoices: hasDashboardAccess
+  drawingChoices: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "drawings.view"))
@@ -1068,7 +1068,7 @@ export const roomsRouter = createTRPCRouter({
 
   /** Adds chosen drawings as floors (sharing their stored pages) and queues
    * room detection for each. */
-  addFloorsFromDrawings: hasDashboardAccess
+  addFloorsFromDrawings: hasAppAccess
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -1096,7 +1096,7 @@ export const roomsRouter = createTRPCRouter({
       return result;
     }),
 
-  confirmDrawingUpload: hasDashboardAccess
+  confirmDrawingUpload: hasAppAccess
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -1175,7 +1175,7 @@ export const roomsRouter = createTRPCRouter({
       return { keptFloorIds };
     }),
 
-  detectRoomsStatus: hasDashboardAccess
+  detectRoomsStatus: hasAppAccess
     .input(z.object({ floorId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (

@@ -38,7 +38,7 @@ function writeHistory(
   sourceHash?: string,
 ) {
   // Keep Next's routing metadata so a browser back never triggers a reload.
-  // The URL stays on the dashboard: these screens also work entirely offline.
+  // The URL stays on the Jobs: these screens also work entirely offline.
   window.history[method](
     {
       ...window.history.state,
@@ -85,7 +85,7 @@ export function useJobWorkspaceNavigation() {
       } : null, sourceHash);
       entry = readHistory();
     }
-    // An existing dashboard history entry (including the jobs screen) wins
+    // An existing Jobs history entry (including the jobs screen) wins
     // over localStorage, which may describe a later screen in the stack.
     restore(entry?.location ?? null);
     const reset = () => restore(null);

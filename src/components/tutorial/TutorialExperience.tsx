@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DashboardClient } from "~/app/dashboard/DashboardClient";
+import { JobsClient } from "~/app/jobs/JobsClient";
 import { Header } from "~/app/_components/Header";
 import { Button } from "~/components/ui/button";
 import { TutorialSandboxProvider } from "./TutorialSandboxProvider";
@@ -32,7 +32,7 @@ export function TutorialExperience({
       <div className="bg-muted/50 flex min-h-screen flex-col">
         <Header />
         <main className="flex-1">
-          <DashboardClient initialJobs={[]} />
+          <JobsClient initialJobs={[]} />
         </main>
       </div>
       {started ? (

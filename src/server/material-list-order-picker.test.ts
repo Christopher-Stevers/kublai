@@ -4,7 +4,7 @@ vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
 });
 import { materialListRouter } from "~/server/api/routers/materialList";
 import { orders } from "~/server/db/schema";

@@ -8,7 +8,7 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
   createTRPCRouter,
-  hasDashboardAccess,
+  hasAppAccess,
   protectedProcedure,
 } from "~/server/api/trpc";
 import {
@@ -161,7 +161,7 @@ function createInviteToken() {
 }
 
 export const organizationRouter = createTRPCRouter({
-  getOrganizationSettings: hasDashboardAccess.query(async ({ ctx }) => {
+  getOrganizationSettings: hasAppAccess.query(async ({ ctx }) => {
     assertCan(ctx.user, "tab.organization");
 
     if (!ctx.user.organizationId) {
@@ -353,7 +353,7 @@ export const organizationRouter = createTRPCRouter({
     };
   }),
 
-  saveDepartment: hasDashboardAccess
+  saveDepartment: hasAppAccess
     .input(
       z
         .object({
@@ -497,7 +497,7 @@ export const organizationRouter = createTRPCRouter({
       });
     }),
 
-  deleteDepartment: hasDashboardAccess
+  deleteDepartment: hasAppAccess
     .input(
       z.object({
         id: z.string().uuid(),
@@ -569,7 +569,7 @@ export const organizationRouter = createTRPCRouter({
       });
     }),
 
-  updateOrganizationMember: hasDashboardAccess
+  updateOrganizationMember: hasAppAccess
     .input(
       z.object({
         userId: z.string().min(1),
@@ -805,7 +805,7 @@ export const organizationRouter = createTRPCRouter({
       });
     }),
 
-  savePermissionPreset: hasDashboardAccess
+  savePermissionPreset: hasAppAccess
     .input(
       z
         .object({
@@ -955,7 +955,7 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
-  deletePermissionPreset: hasDashboardAccess
+  deletePermissionPreset: hasAppAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "org.members");
@@ -998,7 +998,7 @@ export const organizationRouter = createTRPCRouter({
       });
     }),
 
-  createOrganizationInvite: hasDashboardAccess
+  createOrganizationInvite: hasAppAccess
     .input(
       z.object({
         name: z.string().min(1).max(255).trim(),
@@ -1047,7 +1047,7 @@ export const organizationRouter = createTRPCRouter({
       return invite;
     }),
 
-  revokeOrganizationInvite: hasDashboardAccess
+  revokeOrganizationInvite: hasAppAccess
     .input(
       z.object({
         id: z.string().uuid(),
@@ -1084,7 +1084,7 @@ export const organizationRouter = createTRPCRouter({
       return invite;
     }),
 
-  updateOrganization: hasDashboardAccess
+  updateOrganization: hasAppAccess
     .input(
       z.object({
         name: z
@@ -1134,7 +1134,7 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
-  updateLocation: hasDashboardAccess
+  updateLocation: hasAppAccess
     .input(
       z.object({
         id: z.string().uuid(),

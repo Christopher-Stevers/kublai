@@ -244,7 +244,7 @@ export function JobDocumentsView({
     const linked = (event: Event) => {
       const href = event instanceof CustomEvent && typeof event.detail === "string" ? event.detail : window.location.href;
       const url = new URL(href, window.location.origin);
-      if (url.origin === window.location.origin && url.pathname === `/dashboard/jobs/${jobId}/documents`) setDocumentLinkHref(url.href);
+      if (url.origin === window.location.origin && url.pathname === `/jobs/${jobId}/documents`) setDocumentLinkHref(url.href);
     };
     window.addEventListener(DRAWING_DESTINATION_EVENT, linked);
     window.addEventListener("hashchange", linked);

@@ -18,11 +18,11 @@ export default function OnboardingPage() {
     onSuccess: async () => {
       // Invalidate user queries to refresh organizationId
       await utils.user.getMyRole.invalidate();
-      console.log("Created organization, redirecting to dashboard");
+      console.log("Created organization, redirecting to Jobs");
 
       // Use replace instead of push to avoid adding to history
       // This ensures back button doesn't take user back to onboarding
-      router.push("/dashboard");
+      router.push("/jobs");
     },
     onError: (error) => {
       setError(error.message ?? "Failed to create organization");

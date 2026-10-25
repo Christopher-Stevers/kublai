@@ -261,7 +261,7 @@ export async function equipmentTagDestinations(
       url:
         first && version && !office
           ? equipmentDocumentDestination({ jobId, documentId: doc.id, versionId: version.id, name: doc.name, tag, page: first.page, box: first.box }).href
-          : `/dashboard/jobs/${jobId}/documents?document=${doc.id}`,
+          : `/jobs/${jobId}/documents?document=${doc.id}`,
     });
   }
   // The sheet being viewed first, then sets and sheets in drawing order.

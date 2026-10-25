@@ -27,22 +27,22 @@ const markup: DrawingMarkup = {
 describe("drawing hyperlink destinations", () => {
   it("saves and opens a captured view longer than a normal address, including encoded filter punctuation", () => {
     const state = { version: 1 as const, pages: Object.fromEntries(Array.from({ length: 15 }, (_, i) => [`filter${i}`, "a/b..c".repeat(15)])) };
-    const source = makeSnapshotSource("/dashboard/orders?search=pipe%2Fvalve", state, "Orders");
+    const source = makeSnapshotSource("/jobs/orders?search=pipe%2Fvalve", state, "Orders");
     expect(source.href.length).toBeGreaterThan(2048);
     const link = drawingMarkupLinkSchema.parse({ label: source.title, url: source.href });
     const href = drawingLinkHref(link, id, []);
     expect(href).toBe(source.href);
     expect(readSnapshotState(new URL(href!, "https://foremanhq.invalid").hash)).toEqual(state);
     expect(drawingLinkSchema.safeParse(`https://example.com/${"a".repeat(2048)}`).success).toBe(false);
-    expect(drawingLinkSchema.safeParse(`/dashboard#snapshot=${"a".repeat(2200)}`).success).toBe(false);
+    expect(drawingLinkSchema.safeParse(`/jobs#snapshot=${"a".repeat(2200)}`).success).toBe(false);
   });
   it.each([
     "https://example.com/manual",
     "http://example.com",
     "mailto:service@example.com",
     "tel:+14165550123",
-    "/dashboard/jobs/abc/chat",
-    "/dashboard/material-lists/abc",
+    "/jobs/abc/chat",
+    "/jobs/material-lists/abc",
     `/api/job-chat/attachments/${id}`,
   ])("accepts supported address %s", (value) =>
     expect(drawingLinkSchema.safeParse(value).success).toBe(true),
@@ -53,9 +53,9 @@ describe("drawing hyperlink destinations", () => {
     "file:///etc/passwd",
     "//example.com",
     "https://user:pass@example.com",
-    "/dashboard/../api/private",
-    "/dashboard/%2e%2e/private",
-    "/dashboard\\evil",
+    "/jobs/../api/private",
+    "/jobs/%2e%2e/private",
+    "/jobs\\evil",
     "/api/private",
     "https://example.com/\nscript",
   ])("rejects unsafe address %s", (value) =>
@@ -72,7 +72,7 @@ describe("drawing hyperlink destinations", () => {
     expect(drawingMarkupLinks({ ...markup, targetSheetId: id })).toEqual([
       { label: "Drawing sheet", targetSheetId: id },
     ]);
-    const links = [{ label: "Chat", url: "/dashboard/jobs/abc/chat" }];
+    const links = [{ label: "Chat", url: "/jobs/abc/chat" }];
     expect(
       drawingMarkupLinks({ ...markup, href: "https://old.example", links }),
     ).toEqual(links);
@@ -107,7 +107,7 @@ describe("drawing hyperlink destinations", () => {
     const sheets = [{ id, setId: "folder" }] as DrawingJobSheet[];
     expect(
       drawingLinkHref({ label: "Drawing", targetSheetId: id }, "job", sheets),
-    ).toBe(`/dashboard/jobs/job/drawings?drawingSet=folder&drawingSheet=${id}`);
+    ).toBe(`/jobs/job/drawings?drawingSet=folder&drawingSheet=${id}`);
     expect(
       drawingLinkHref({ label: "Drawing", targetSheetId: id }, "job", []),
     ).toBeNull();

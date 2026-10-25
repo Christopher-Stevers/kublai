@@ -151,14 +151,14 @@ export function SuperSpecMaterialDialog({
             {busy ? "Assessing specifications…" : "Assess all specifications"}
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/jobs/${jobId}/systems`}>
+            <Link href={`/jobs/${jobId}/systems`}>
               Review in Systems
             </Link>
           </Button>
           {status.data?.folderId && (
             <Button asChild variant="outline">
               <Link
-                href={`/dashboard/jobs/${jobId}/documents?folder=${status.data.folderId}`}
+                href={`/jobs/${jobId}/documents?folder=${status.data.folderId}`}
               >
                 Specifications folder
               </Link>

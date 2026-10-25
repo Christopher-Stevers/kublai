@@ -194,7 +194,7 @@ it("opens the real Specifications folder without duplicating it", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Specifications" }));
   await waitFor(() =>
     expect(mock.push).toHaveBeenCalledWith(
-      `/dashboard/jobs/${uuid("1")}/documents?folder=${uuid("8")}`,
+      `/jobs/${uuid("1")}/documents?folder=${uuid("8")}`,
     ),
   );
   expect(mock.folder).not.toHaveBeenCalled();
@@ -353,7 +353,7 @@ it("opens drawing evidence at the cited sheet and immutable revision", () => {
     drawing: { setId: uuid("4"), sheetId: uuid("5"), sourceSheetId: uuid("6") },
   });
   const url = new URL(href, "https://app.test");
-  expect(url.pathname).toBe(`/dashboard/jobs/${uuid("1")}/drawings`);
+  expect(url.pathname).toBe(`/jobs/${uuid("1")}/drawings`);
   expect(readSnapshotState(url.hash)?.drawing).toMatchObject({
     sheetId: uuid("5"),
     sourceSheetId: uuid("6"),

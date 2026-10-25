@@ -40,7 +40,7 @@ export function MemberNotifications({
     status.state === "not-enabled"
       ? "No device is registered. They need to enable notifications from the bell on their own phone."
       : status.state === "access-blocked"
-        ? "Push is paused because this member does not have approved dashboard access."
+        ? "Push is paused because this member does not have approved Jobs access."
         : status.state === "server-unavailable"
           ? "Push delivery is unavailable because the server is not configured."
           : "Eligible job chat, private chat and drawing alerts can be sent to these registered devices.";

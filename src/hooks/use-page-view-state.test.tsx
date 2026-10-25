@@ -3,11 +3,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { makeSnapshotSource, type PageViewValue } from "~/lib/snapshot-source";
 import { usePageViewState } from "./use-page-view-state";
-beforeEach(() => window.history.replaceState({}, "", "/dashboard"));
+beforeEach(() => window.history.replaceState({}, "", "/jobs"));
 afterEach(cleanup);
 it("restores filters, validates enum values, and keeps different job states separate", () => {
   const href = makeSnapshotSource(
-    "/dashboard",
+    "/jobs",
     {
       version: 1,
       pages: {

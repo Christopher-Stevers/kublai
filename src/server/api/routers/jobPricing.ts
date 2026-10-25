@@ -8,7 +8,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import {
   supplierPriceBookEntries,
@@ -64,7 +64,7 @@ const lineInput = z
   );
 
 export const jobPricingRouter = createTRPCRouter({
-  summary: hasDashboardAccess.input(jobInput).query(async ({ ctx, input }) => {
+  summary: hasAppAccess.input(jobInput).query(async ({ ctx, input }) => {
     const { org } = await requireJob(
       ctx.db,
       ctx.user.organizationId,
@@ -82,7 +82,7 @@ export const jobPricingRouter = createTRPCRouter({
       );
     return { pendingCount: row?.pendingCount ?? 0 };
   }),
-  get: hasDashboardAccess.input(jobInput).query(async ({ ctx, input }) => {
+  get: hasAppAccess.input(jobInput).query(async ({ ctx, input }) => {
     const { job, org } = await requireJob(
       ctx.db,
       ctx.user.organizationId,
@@ -111,7 +111,7 @@ export const jobPricingRouter = createTRPCRouter({
       canApprove: userCan(ctx.user, "jobPricing.approve"),
     };
   }),
-  savePrices: hasDashboardAccess
+  savePrices: hasAppAccess
     .input(
       jobInput.extend({
         revision: z.number().int(),
@@ -224,7 +224,7 @@ export const jobPricingRouter = createTRPCRouter({
         publishMaterialListEvent(list.id, "updated", org);
       return { saved: input.lines.length };
     }),
-  addListing: hasDashboardAccess
+  addListing: hasAppAccess
     .input(jobInput.extend({ supplierPartId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "jobPricing.manage");
@@ -295,7 +295,7 @@ export const jobPricingRouter = createTRPCRouter({
         return { added: inserted.length };
       });
     }),
-  approvals: hasDashboardAccess
+  approvals: hasAppAccess
     .input(jobInput)
     .query(async ({ ctx, input }) => {
       const { org } = await requireJob(
@@ -340,7 +340,7 @@ export const jobPricingRouter = createTRPCRouter({
         .limit(200);
       return rows;
     }),
-  requestApproval: hasDashboardAccess
+  requestApproval: hasAppAccess
     .input(
       z.object({
         materialListId: z.string().uuid(),
@@ -434,7 +434,7 @@ export const jobPricingRouter = createTRPCRouter({
         };
       });
     }),
-  reviewApproval: hasDashboardAccess
+  reviewApproval: hasAppAccess
     .input(
       z.object({
         approvalId: z.string().uuid(),

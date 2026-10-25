@@ -1,5 +1,5 @@
 /**
- * Tool QR labels encode a URL ending in /dashboard/assets/scan/<tag>, so a
+ * Tool QR labels encode a URL ending in /jobs/assets/scan/<tag>, so a
  * phone's camera app opens the tool directly. In-app scanners and keyboard
  * wedge scanners may hand us that URL or just the bare tag; accept both.
  */
@@ -17,5 +17,5 @@ export function tagFromScan(text: string) {
 }
 
 export function toolScanPath(tag: string) {
-  return `/dashboard/assets/scan/${encodeURIComponent(tag)}`;
+  return `/jobs/assets/scan/${encodeURIComponent(tag)}`;
 }

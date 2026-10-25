@@ -18,6 +18,6 @@ export async function requireEstimatingPage() {
       simulation: identity.simulation,
     });
   } catch {
-    redirect("/dashboard");
+    redirect("/jobs");
   }
 }

@@ -5,7 +5,7 @@ const agentAuthSecret = process.env.FOREMENHQ_AGENT_AUTH_SECRET;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 
 test.describe('offline job navigation', () => {
-  test('opens an existing cached job and its material list from the dashboard while offline', async ({ page }) => {
+  test('opens an existing cached job and its material list from Jobs while offline', async ({ page }) => {
     test.setTimeout(90_000);
 
     if (agentAuthSecret) {
@@ -19,7 +19,7 @@ test.describe('offline job navigation', () => {
       ]);
     }
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     if (page.url().includes('/sign-in')) {
       test.skip(true, 'Dashboard auth/dev bypass is not available for this Playwright run.');
     }
@@ -40,7 +40,7 @@ test.describe('offline job navigation', () => {
       await navigator.serviceWorker?.ready;
       const cache = await caches.open('foremenhq-offline-shell-v6');
       await Promise.all(
-        ['/dashboard', '/dashboard/jobs/__offline-shell__', '/dashboard/material-lists/__offline-shell__'].map(async (url) => {
+        ['/jobs', '/jobs/__offline-shell__', '/jobs/material-lists/__offline-shell__'].map(async (url) => {
           const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
           if (response.ok) await cache.put(url, response.clone());
         }),
@@ -125,7 +125,7 @@ test.describe('offline job navigation', () => {
       timeout: 20_000,
     });
     await page.getByText(materialList.name, { exact: true }).first().click();
-    await page.waitForURL(new RegExp(`/dashboard/material-lists/${materialList.id}`));
+    await page.waitForURL(new RegExp(`/jobs/material-lists/${materialList.id}`));
     await expect(page.getByRole('heading', { name: materialList.name })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText('internet disconnected', { exact: false })).toHaveCount(0);
   });

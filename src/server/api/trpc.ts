@@ -193,11 +193,11 @@ export const protectedProcedure = t.procedure
   });
 
 /**
- * Procedure that requires dashboard access.
- * Standard accounts can use the dashboard; paid Executive Account permissions
+ * Procedure that requires app access.
+ * Standard accounts can use the app; paid Executive Account permissions
  * are enforced by feature-level permission checks.
  */
-export const hasDashboardAccess = t.procedure
+export const hasAppAccess = t.procedure
   .use(timingMiddleware)
   .use(async ({ ctx, next }) => {
     if (!ctx.userId) {
@@ -214,7 +214,7 @@ export const hasDashboardAccess = t.procedure
     if (!ctx.user.organizationId) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Create or join an organization before using the dashboard.",
+        message: "Create or join an organization before using Jobs.",
       });
     }
 

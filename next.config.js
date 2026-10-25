@@ -25,6 +25,12 @@ const config = {
     ignoreBuildErrors: false, // Keep TypeScript checking during build
   },
   serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "node:sqlite"],
+  async redirects() {
+    return [
+      { source: "/dashboard/jobs/:path*", destination: "/jobs/:path*", permanent: true },
+      { source: "/dashboard/:path*", destination: "/jobs/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

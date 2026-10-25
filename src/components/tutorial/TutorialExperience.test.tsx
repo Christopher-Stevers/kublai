@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { TutorialExperience } from "./TutorialExperience";
 
 const calls = vi.hoisted(() => ({ dashboard: vi.fn(), provider: vi.fn() }));
-vi.mock("~/app/dashboard/DashboardClient", () => ({
-  DashboardClient: (props: unknown) => {
+vi.mock("~/app/jobs/JobsClient", () => ({
+  JobsClient: (props: unknown) => {
     calls.dashboard(props);
     return <div>Normal job workflow</div>;
   },

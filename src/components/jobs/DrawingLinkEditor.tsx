@@ -152,7 +152,7 @@ export function DrawingLinkEditor({
             <Input
               value={url}
               maxLength={2048}
-              placeholder="https://… or /dashboard/…"
+              placeholder="https://… or /jobs/…"
               disabled={full}
               onChange={(event) => setUrl(event.target.value)}
               onKeyDown={(event) => {

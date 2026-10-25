@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
-  usePathname: () => "/dashboard",
+  usePathname: () => "/jobs",
   useSearchParams: () => new URLSearchParams(mocks.params),
 }));
 vi.mock("~/lib/snapshot-capture", async (original) => ({
@@ -90,7 +90,7 @@ function setup() {
 beforeEach(() => {
   mocks.params = "";
   mocks.saved = null;
-  window.history.replaceState({}, "", "/dashboard?filter=active");
+  window.history.replaceState({}, "", "/jobs?filter=active");
   vi.clearAllMocks();
   mocks.needsScreen.mockReturnValue(false);
   mocks.capture.mockResolvedValue({
@@ -125,14 +125,14 @@ beforeEach(() => {
 function editSetup() {
   mocks.params =
     "editSnapshot=saved-snapshot&snapshotChat=private-conversation";
-  window.history.replaceState({}, "", `/dashboard?${mocks.params}`);
+  window.history.replaceState({}, "", `/jobs?${mocks.params}`);
   mocks.saved = {
     id: "saved-snapshot",
     conversationId: "private-conversation",
     revision: 1,
     body: "Original caption",
     source: {
-      href: "/dashboard#snapshot=original",
+      href: "/jobs#snapshot=original",
       title: "Saved drawing",
       capturedAt: "2026-10-09T22:00:00Z",
     },
@@ -193,7 +193,7 @@ it("opens the normal capture flow automatically and remakes a snapshot with fres
   fireEvent.click(screen.getByText("Retry send"));
   await waitFor(() =>
     expect(mocks.push).toHaveBeenCalledWith(
-      "/dashboard/chat?conversation=private-conversation",
+      "/jobs/chat?conversation=private-conversation",
     ),
   );
   expect(mocks.create).toHaveBeenCalledOnce();
@@ -232,7 +232,7 @@ it("waits for the saved drawing to load and allows cancellation without capturin
   window.history.replaceState(
     {},
     "",
-    `/dashboard?${mocks.params}#snapshot=${encodeURIComponent(JSON.stringify(state))}`,
+    `/jobs?${mocks.params}#snapshot=${encodeURIComponent(JSON.stringify(state))}`,
   );
   await screen.findByText("Preparing snapshot…");
   expect(mocks.capture).not.toHaveBeenCalled();
@@ -253,7 +253,7 @@ it("keeps the original snapshot if recreating it is cancelled", async () => {
   fireEvent.click(screen.getByLabelText("Cancel snapshot"));
   fireEvent.click(await screen.findByText("Cancel edit"));
   expect(mocks.push).toHaveBeenCalledWith(
-    "/dashboard/chat?conversation=private-conversation",
+    "/jobs/chat?conversation=private-conversation",
   );
   expect(mocks.edit).not.toHaveBeenCalled();
   expect(mocks.upload).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ it("retries the same snapshot, upload and message identity after an uncertain se
   fireEvent.click(screen.getByText("Retry send"));
   await waitFor(() =>
     expect(mocks.push).toHaveBeenCalledWith(
-      "/dashboard/chat?conversation=private-conversation",
+      "/jobs/chat?conversation=private-conversation",
     ),
   );
   expect(mocks.create).toHaveBeenCalledTimes(1);
@@ -319,7 +319,7 @@ it("retries the same snapshot, upload and message identity after an uncertain se
     attachmentIds: ["file"],
     source: {
       href: expect.stringContaining(
-        "/dashboard?filter=active#snapshot=",
+        "/jobs?filter=active#snapshot=",
       ) as string,
     },
   });

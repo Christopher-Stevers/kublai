@@ -28,7 +28,7 @@ type List = ComponentProps<typeof MaterialListCard>["list"] & {
   pendingSync?: boolean;
 };
 
-/** A job's material lists, shared by the dashboard workspace and the job's
+/** A job's material lists, shared by the Jobs workspace and the job's
  * own Material Lists route. `lists` is undefined until the job has loaded;
  * `onOpen` shows a list, including one just created. */
 export function JobMaterialListsView({

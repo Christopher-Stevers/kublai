@@ -62,7 +62,7 @@ describe("middleware provider isolation", () => {
     async (mechanism) => {
       const response = await run(
         request(
-          "/dashboard/jobs",
+          "/jobs/jobs",
           mechanism === "header" ? SECRET : undefined,
           mechanism === "cookie" ? SECRET : undefined,
         ),
@@ -79,7 +79,7 @@ describe("middleware provider isolation", () => {
   it.each(["wrong-secret", "", undefined])(
     "rejects an absent or incorrect token (%s)",
     async (token) => {
-      const response = await run(request("/dashboard/jobs", token));
+      const response = await run(request("/jobs/jobs", token));
       expect(response).toEqual({
         kind: "redirect",
         url: "http://test.invalid/sign-in",
@@ -91,7 +91,7 @@ describe("middleware provider isolation", () => {
 
   it("does not authenticate using an obsolete short secret", async () => {
     vi.stubEnv("FOREMENHQ_AGENT_AUTH_SECRET", "too-short");
-    const response = await run(request("/dashboard/jobs", "too-short"));
+    const response = await run(request("/jobs/jobs", "too-short"));
     expect(response).toEqual({
       kind: "redirect",
       url: "http://test.invalid/sign-in",
@@ -101,7 +101,7 @@ describe("middleware provider isolation", () => {
 
   it("keeps ordinary authenticated protected requests Clerk-gated", async () => {
     mocks.auth.mockResolvedValue({ userId: "test-user" });
-    const response = await run(request("/dashboard/jobs"));
+    const response = await run(request("/jobs/jobs"));
     expect(response).toEqual({ kind: "next" });
     expect(mocks.clerkGate).toHaveBeenCalledTimes(1);
     expect(mocks.auth).toHaveBeenCalledTimes(1);

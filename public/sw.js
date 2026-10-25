@@ -8,7 +8,7 @@ const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
 const PDF_RUNTIME_CACHE = `${VERSION}:pdf-runtime`;
-const OFFLINE_FALLBACK = "/dashboard";
+const OFFLINE_FALLBACK = "/jobs";
 const OFFLINE_PAGE = "/offline.html";
 const CACHE_LIMITS = {
   [PAGE_CACHE]: 60,
@@ -49,7 +49,7 @@ self.addEventListener("install", (event) => {
       .open(PAGE_CACHE)
       .then((cache) =>
         Promise.allSettled(
-          ["/", "/dashboard", OFFLINE_PAGE].map((url) => cache.add(url)),
+          ["/", "/jobs", OFFLINE_PAGE].map((url) => cache.add(url)),
         ).catch(() => {
           // Authenticated routes may not precache during install depending on the
           // browser/session. Runtime navigation caching below is the real source
@@ -207,9 +207,9 @@ async function networkFirstNavigation(request) {
     const response = await fetch(request);
     if (response.ok && response.type === "basic") {
       await safePut(PAGE_CACHE, request, response.clone());
-      // Keep a dashboard shell fallback fresh for deep links.
+      // Keep a Jobs shell fallback fresh for deep links.
       const url = new URL(request.url);
-      if (url.pathname === "/dashboard") {
+      if (url.pathname === "/jobs") {
         await safePut(PAGE_CACHE, OFFLINE_FALLBACK, response.clone());
       }
     }
@@ -353,7 +353,7 @@ self.addEventListener("message", (event) => {
     event.waitUntil(
       (async () => {
         const urls = Array.from(
-          new Set(["/", "/dashboard", OFFLINE_PAGE, ...(data.urls ?? [])]),
+          new Set(["/", "/jobs", OFFLINE_PAGE, ...(data.urls ?? [])]),
         )
           .slice(0, 20)
           .map((value) => {
@@ -472,10 +472,12 @@ function safeChatUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value, self.location.origin);
+    url.pathname = url.pathname.replace(/^\/dashboard\/jobs(?=\/|$)/, "/jobs")
+      .replace(/^\/dashboard(?=\/|$)/, "/jobs");
     return url.origin === self.location.origin &&
       !url.search &&
       !url.hash &&
-      /^\/dashboard\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/chat$/.test(
+      /^\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/chat$/.test(
         url.pathname,
       )
       ? url.href
@@ -488,8 +490,10 @@ function safeConversationUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value, self.location.origin);
+    url.pathname = url.pathname.replace(/^\/dashboard\/jobs(?=\/|$)/, "/jobs")
+      .replace(/^\/dashboard(?=\/|$)/, "/jobs");
     return url.origin === self.location.origin &&
-      url.pathname === "/dashboard/chat" &&
+      url.pathname === "/jobs/chat" &&
       !url.hash &&
       [...url.searchParams.keys()].length === 1 &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
@@ -505,12 +509,14 @@ function safeDrawingUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value, self.location.origin);
+    url.pathname = url.pathname.replace(/^\/dashboard\/jobs(?=\/|$)/, "/jobs")
+      .replace(/^\/dashboard(?=\/|$)/, "/jobs");
     const uuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     if (
       url.origin !== self.location.origin ||
       url.hash ||
-      !/^\/dashboard\/jobs\/[0-9a-f-]{36}\/drawings$/.test(url.pathname) ||
+      !/^\/jobs\/[0-9a-f-]{36}\/drawings$/.test(url.pathname) ||
       !uuid.test(url.pathname.split("/")[3])
     )
       return null;
@@ -531,10 +537,12 @@ function safeMaterialListUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value, self.location.origin);
+    url.pathname = url.pathname.replace(/^\/dashboard\/jobs(?=\/|$)/, "/jobs")
+      .replace(/^\/dashboard(?=\/|$)/, "/jobs");
     return url.origin === self.location.origin &&
       !url.search &&
       !url.hash &&
-      /^\/dashboard\/material-lists\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      /^\/jobs\/material-lists\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
         url.pathname,
       )
       ? url.href

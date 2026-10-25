@@ -37,7 +37,7 @@ beforeEach(() => {
         links: [
           {
             label: "HEX-2 datasheet",
-            url: "/dashboard/jobs/alma/documents?document=doc",
+            url: "/jobs/alma/documents?document=doc",
           },
         ],
         warnings: [],

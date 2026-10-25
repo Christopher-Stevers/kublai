@@ -85,7 +85,7 @@ function sources(ctx: Context) {
       j.name || ' · ' || s.name as context,
       left(coalesce(e.entity->'data'->>'title', e.entity->'data'->>'label', 'New drawing activity'), 240) as description,
       n."createdAt", n."readAt" is null as unread,
-      '/dashboard/jobs/' || s."jobId" || '/drawings?drawingSet=' || s."setId" || '&drawingSheet=' || s.id as url
+      '/jobs/' || s."jobId" || '/drawings?drawingSet=' || s."setId" || '&drawingSheet=' || s.id as url
     from kublai_drawing_notification n
     join kublai_job_drawing_sheet s on s.id=n."sheetId" and s."organizationId"=${user.organizationId}
     join kublai_job j on j.id=s."jobId" and j."organizationId"=s."organizationId"
@@ -105,7 +105,7 @@ function sources(ctx: Context) {
       j.name || ' · ' || l.name,
       case n.action when 'added' then n."itemCount"::text || ' item additions awaiting review. Opens the most recently updated list.' else 'Material in this list was changed.' end,
       n."createdAt", n."readAt" is null,
-      '/dashboard/material-lists/' || l.id
+      '/jobs/material-lists/' || l.id
     from (
       select event.*, count(*) over (partition by "senderId", "recipientId", action,
         case when action='added' and "readAt" is null then null else id end) as "itemCount",
@@ -126,7 +126,7 @@ function sources(ctx: Context) {
       coalesce(a.name, 'Former member') || ' in job chat', j.name,
       left(case when m.body='' then 'Shared an attachment' else m.body end, 240),
       m."createdAt", m.sequence>coalesce(member."lastReadSequence",0),
-      '/dashboard/jobs/' || j.id || '/chat'
+      '/jobs/' || j.id || '/chat'
     from kublai_job_chat_message m
     join kublai_job j on j.id=m."jobId" and j."organizationId"=${user.organizationId}
     left join kublai_job_chat_member member on member."jobId"=j.id and member."userId"=${user.id}
@@ -143,7 +143,7 @@ function sources(ctx: Context) {
         where other."conversationId"=c.id and other."userId"<>${user.id} order by p.id limit 1),'Private chat') end,
       left(case when m.body='' then 'Shared an attachment' else m.body end,240),
       m."createdAt", m.sequence>member."lastReadSequence",
-      '/dashboard/chat?conversation=' || c.id
+      '/jobs/chat?conversation=' || c.id
     from kublai_conversation_message m
     join kublai_conversation c on c.id=m."conversationId" and c."organizationId"=${user.organizationId}
     join kublai_conversation_member member on member."conversationId"=c.id and member."userId"=${user.id}

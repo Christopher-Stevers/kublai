@@ -9,7 +9,7 @@ export function isAppLink(value: string) {
     )
       return false;
     const url = new URL(value, "https://foremanhq.invalid");
-    if (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/"))
+    if (url.pathname === "/jobs" || url.pathname.startsWith("/jobs/"))
       return true;
     return (
       /^\/api\/drawings\/attachments\/[a-f0-9-]{36}\/[a-f0-9-]{36}$/i.test(

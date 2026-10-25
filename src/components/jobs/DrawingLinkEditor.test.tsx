@@ -128,7 +128,7 @@ describe("hyperlink destination editor", () => {
         {
           key: "target",
           label: "Selected resource",
-          url: "/dashboard/jobs/abc/chat",
+          url: "/jobs/abc/chat",
         },
       ];
       render(<Editor />);
@@ -143,7 +143,7 @@ describe("hyperlink destination editor", () => {
         screen.getByRole("button", { name: "Selected resource" }),
       );
       expect(saved()).toEqual([
-        { label: "Selected resource", url: "/dashboard/jobs/abc/chat" },
+        { label: "Selected resource", url: "/jobs/abc/chat" },
       ]);
     },
   );
@@ -152,7 +152,7 @@ describe("hyperlink destination editor", () => {
       {
         key: "hidden",
         label: "Cached photo",
-        url: "/dashboard/jobs/abc/documents",
+        url: "/jobs/abc/documents",
       },
     ];
     render(<Editor offline />);

@@ -101,7 +101,7 @@ const item: AppNotification = {
   description: "Check equipment tag",
   createdAt: "2026-10-09T10:00:00Z",
   unread: true,
-  url: "/dashboard/jobs/job/drawings",
+  url: "/jobs/job/drawings",
   target: { kind: "drawing", id: "11111111-1111-4111-8111-111111111111" },
 };
 beforeEach(() => {

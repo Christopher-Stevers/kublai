@@ -10,7 +10,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { pipeSpecSchema, pipeSystemCode, type PipeSpec } from "~/lib/pipe-spec";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { userCan } from "~/server/auth/permissions";
 import type { db } from "~/server/db";
 import { pipeSystemSpecs } from "~/server/db/schema";
@@ -71,7 +71,7 @@ export type PipeSpecRow = {
 };
 
 export const pipeSpecsRouter = createTRPCRouter({
-  aiConnection: hasDashboardAccess.query(async ({ ctx }) => {
+  aiConnection: hasAppAccess.query(async ({ ctx }) => {
     if (!userCan(ctx.user as never, "org.settings"))
       return { canConfigure: false as const, settings: null };
     const { apiKey, ...settings } = await readAssessmentAi(organizationOf(ctx));
@@ -80,7 +80,7 @@ export const pipeSpecsRouter = createTRPCRouter({
       settings: { ...settings, hasKey: !!apiKey },
     };
   }),
-  saveAiConnection: hasDashboardAccess
+  saveAiConnection: hasAppAccess
     .input(assessmentAiSchema)
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "org.settings"))
@@ -118,7 +118,7 @@ export const pipeSpecsRouter = createTRPCRouter({
         });
       }
     }),
-  assessSpecMaterials: hasDashboardAccess
+  assessSpecMaterials: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const context = await getSpecificationContext(userIdOf(ctx), input.jobId);
@@ -127,10 +127,10 @@ export const pipeSpecsRouter = createTRPCRouter({
       // No client source selection: include every accessible specification and no drawings.
       return startAssessment(userIdOf(ctx), input.jobId);
     }),
-  assessment: hasDashboardAccess
+  assessment: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => getAssessment(userIdOf(ctx), input.jobId)),
-  assess: hasDashboardAccess
+  assess: hasAppAccess
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -140,13 +140,13 @@ export const pipeSpecsRouter = createTRPCRouter({
     .mutation(({ ctx, input }) =>
       startAssessment(userIdOf(ctx), input.jobId, input.selection),
     ),
-  ensureSpecifications: hasDashboardAccess
+  ensureSpecifications: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(({ ctx, input }) =>
       ensureSpecifications(userIdOf(ctx), input.jobId),
     ),
   /** Company standards, and this job's overrides when a job is given. */
-  list: hasDashboardAccess
+  list: hasAppAccess
     .input(z.object({ jobId: z.string().uuid().nullish() }).optional())
     .query(async ({ ctx, input }) => {
       const jobId = input?.jobId ?? null;
@@ -201,7 +201,7 @@ export const pipeSpecsRouter = createTRPCRouter({
     }),
 
   /** Save a standard. `revision` is what the editor started from; a stale save is refused. */
-  save: hasDashboardAccess
+  save: hasAppAccess
     .input(
       z.object({
         system: pipeSystemCode,
@@ -293,7 +293,7 @@ export const pipeSpecsRouter = createTRPCRouter({
     }),
 
   /** Remove a standard; for a job, the system goes back to the company standard. */
-  remove: hasDashboardAccess
+  remove: hasAppAccess
     .input(
       z.object({ system: pipeSystemCode, jobId: z.string().uuid().nullable() }),
     )

@@ -102,7 +102,7 @@ describe("drawing annotation tools in the real viewer", () => {
   });
 
   it("keeps equipment-tag highlights translucent and unlabeled, with a full tap area and keyboard activation", () => {
-    const entity = markup({ type: "link", text: "AHU-1", linkAppearance: "highlight", links: [{ label: "Manual", url: "https://example.com" }, { label: "Chat", url: "/dashboard/jobs/abc/chat" }] });
+    const entity = markup({ type: "link", text: "AHU-1", linkAppearance: "highlight", links: [{ label: "Manual", url: "https://example.com" }, { label: "Chat", url: "/jobs/abc/chat" }] });
     const onActivate = vi.fn(), onSelect = vi.fn();
     const { container, rerender, frame } = open({ annotations: [entity], tool: "pan", onActivate, onSelect });
     const target = container.querySelector('[data-annotation-id="markup"]')!;

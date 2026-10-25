@@ -31,12 +31,12 @@ describe("snapshot source links", () => {
       },
     };
     const source = makeSnapshotSource(
-      "https://app.example/dashboard",
+      "https://app.example/jobs",
       state,
       "Plumbing QA",
     );
     const url = new URL(source.href, "https://app.example");
-    expect(url.pathname).toBe(`/dashboard/jobs/${job}/drawings`);
+    expect(url.pathname).toBe(`/jobs/${job}/drawings`);
     expect(url.searchParams.get("drawingSheet")).toBe(sheet);
     expect(url.searchParams.get("drawingSet")).toBe(set);
     expect(readSnapshotState(url.hash)).toEqual(state);
@@ -55,19 +55,19 @@ describe("snapshot source links", () => {
     };
     const url = new URL(
       makeSnapshotSource(
-        "https://app.example/dashboard",
+        "https://app.example/jobs",
         state,
         "Specification v2",
       ).href,
       "https://app.example",
     );
-    expect(url.pathname).toBe(`/dashboard/jobs/${job}/documents`);
+    expect(url.pathname).toBe(`/jobs/${job}/documents`);
     expect(url.searchParams.get("document")).toBe(sheet);
     expect(readSnapshotState(url.hash)).toEqual(state);
   });
   it("keeps ordinary page filters and scroll, but strips credentials", () => {
     const source = makeSnapshotSource(
-      "https://app.example/dashboard?status=active&access_token=secret&auth=secret",
+      "https://app.example/jobs?status=active&access_token=secret&auth=secret",
       { version: 1, scroll: { x: 0, y: 350 } },
       "Jobs",
     );
@@ -81,12 +81,12 @@ describe("snapshot source links", () => {
   it("rejects external, executable, malformed or oversized source locations", () => {
     for (const href of [
       "javascript:alert(1)",
-      "//evil.example/dashboard",
-      "https://evil.example/dashboard",
-      "/dashboard/../../logout",
-      "/dashboardevil",
-      "/dashboard/\\evil",
-      "/dashboard/%5cevil",
+      "//evil.example/jobs",
+      "https://evil.example/jobs",
+      "/jobs/../../logout",
+      "/jobsevil",
+      "/jobs/\\evil",
+      "/jobs/%5cevil",
     ]) {
       expect(safeSnapshotHref(href)).toBe(false);
       expect(
@@ -105,4 +105,11 @@ describe("snapshot source links", () => {
       ),
     ).toBeNull();
   });
+});
+
+
+it("canonicalizes legacy app links while keeping their state", () => {
+  const result = makeSnapshotSource("/dashboard/jobs/0391aed4-7773-47ec-9141-09df373ec008/rooms?floor=one", { version: 1 }, "Rooms");
+  expect(result.href).toContain("/jobs/0391aed4-7773-47ec-9141-09df373ec008/rooms?floor=one");
+  expect(safeSnapshotHref("/dashboardevil/orders")).toBe(false);
 });

@@ -66,7 +66,7 @@ export function SimulationProvider({
         });
         if (!response.ok) return;
         const state = (await response.json()) as { view: string };
-        if (state.view !== view) window.location.replace("/dashboard");
+        if (state.view !== view) window.location.replace("/jobs");
       } catch {
         /* Retry when the connection returns. */
       }
@@ -127,7 +127,7 @@ export async function changeEmployeeSimulation(
     /* The current window still switches safely. */
   }
   window.location.assign(
-    action === "start" ? "/dashboard" : "/dashboard/organization",
+    action === "start" ? "/jobs" : "/jobs/organization",
   );
 }
 export function EndSimulationButton() {

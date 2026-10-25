@@ -3,7 +3,7 @@
   "short_name": "ForemanHQ",
   "description": "Offline-capable field workflow for trades foremen to manage jobs, material lists, quotes, and supplier orders.",
   "id": "/dashboard",
-  "start_url": "/dashboard",
+  "start_url": "/jobs",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],
@@ -41,7 +41,7 @@
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "url": "/dashboard",
+      "url": "/jobs",
       "icons": [
         { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]
@@ -49,7 +49,7 @@
     {
       "name": "Catalogue",
       "short_name": "Catalogue",
-      "url": "/dashboard/catalogue",
+      "url": "/jobs/catalogue",
       "icons": [
         { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]
@@ -57,7 +57,7 @@
     {
       "name": "Orders",
       "short_name": "Orders",
-      "url": "/dashboard/orders",
+      "url": "/jobs/orders",
       "icons": [
         { "src": "/foremanhq/icon-dark-v2-192.png", "sizes": "192x192" }
       ]

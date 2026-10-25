@@ -2,7 +2,7 @@ import { getJobPriceBook } from "~/server/job-pricing";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import {
   supplierPriceBooks,
@@ -57,7 +57,7 @@ function notify(lists: { id: string }[], org: string) {
 }
 const supplierInput = z.object({ supplierId: z.string().uuid() });
 export const supplierPriceBooksRouter = createTRPCRouter({
-  labelContext: hasDashboardAccess.input(z.object({jobId:z.string().uuid().optional(),materialListId:z.string().uuid().optional()})).query(async ({ctx,input}) => {
+  labelContext: hasAppAccess.input(z.object({jobId:z.string().uuid().optional(),materialListId:z.string().uuid().optional()})).query(async ({ctx,input}) => {
     const org = ctx.user.organizationId;
     if (!org) throw new TRPCError({code:"FORBIDDEN"});
     let jobId = input.jobId;
@@ -72,7 +72,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
     const book = await getJobPriceBook(ctx.db,org,jobId);
     return book.entries.map(e=>({supplierId:e.supplierId,supplierPartId:e.supplierPartId,partDefinitionId:e.partDefinitionId,priceBookName:e.priceBookName,preferJobPricing:e.preferJobPricing}));
   }),
-  preferences: hasDashboardAccess.query(async ({ ctx }) => {
+  preferences: hasAppAccess.query(async ({ ctx }) => {
     const org = ctx.user.organizationId;
     if (!org) throw new TRPCError({ code: "FORBIDDEN" });
     const rows = await ctx.db
@@ -84,7 +84,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
       .where(eq(suppliers.organizationId, org));
     return { rows, canManage: userCan(ctx.user, "jobPricing.manage") };
   }),
-  setPreference: hasDashboardAccess
+  setPreference: hasAppAccess
     .input(supplierInput.extend({ preferJobPricing: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "jobPricing.manage");
@@ -100,7 +100,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
       notify(lists, org);
       return { preferJobPricing: input.preferJobPricing };
     }),
-  assignments: hasDashboardAccess
+  assignments: hasAppAccess
     .input(supplierInput)
     .query(async ({ ctx, input }) => {
       const org = ctx.user.organizationId;
@@ -129,7 +129,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
         canAssign: userCan(ctx.user, "jobPricing.manage"),
       };
     }),
-  list: hasDashboardAccess
+  list: hasAppAccess
     .input(
       supplierInput.extend({ supplierPartId: z.string().uuid().optional() }),
     )
@@ -163,7 +163,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
           userCan(ctx.user, "financial.view"),
       };
     }),
-  get: hasDashboardAccess
+  get: hasAppAccess
     .input(supplierInput.extend({ bookId: z.string().uuid().nullable() }))
     .query(async ({ ctx, input }) => {
       const org = ctx.user.organizationId;
@@ -208,7 +208,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
         showPrices: userCan(ctx.user, "financial.view"),
       };
     }),
-  create: hasDashboardAccess
+  create: hasAppAccess
     .input(
       supplierInput.extend({
         name: z
@@ -235,7 +235,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
         .returning();
       return created!;
     }),
-  saveEntry: hasDashboardAccess
+  saveEntry: hasAppAccess
     .input(
       z
         .object({
@@ -325,7 +325,7 @@ export const supplierPriceBooksRouter = createTRPCRouter({
       notify(lists, org);
       return { saved: true };
     }),
-  assign: hasDashboardAccess
+  assign: hasAppAccess
     .input(
       supplierInput.extend({
         bookId: z.string().uuid().nullable(),

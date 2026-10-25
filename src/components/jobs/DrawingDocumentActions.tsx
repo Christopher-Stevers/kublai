@@ -158,7 +158,7 @@ export function DrawingDocumentActions({
       links.length === 1 ? links[0]?.targetSheetId : entity?.sheetId;
     const target = sheets.find((item) => item.id === targetId);
     if (!target?.setId) return null;
-    const url = new URL(`/dashboard/jobs/${jobId}/drawings`, location.origin);
+    const url = new URL(`/jobs/${jobId}/drawings`, location.origin);
     url.searchParams.set("drawingSet", target.setId);
     url.searchParams.set("drawingSheet", target.id);
     if (links.length > 1 && entity)

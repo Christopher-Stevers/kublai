@@ -11,7 +11,7 @@ test.describe('PWA baseline', () => {
       expect.objectContaining({
         name: 'ForemanHQ',
         short_name: 'ForemanHQ',
-        start_url: '/dashboard',
+        start_url: '/jobs',
         display: 'standalone',
       }),
     );
@@ -26,7 +26,7 @@ test.describe('PWA baseline', () => {
     expect(swResponse.ok()).toBe(true);
     expect(await swResponse.text()).toContain('foremenhq-offline-shell-v6');
 
-    await page.goto('/dashboard');
+    await page.goto('/jobs');
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('/manifest.webmanifest');
   });

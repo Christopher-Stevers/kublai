@@ -406,7 +406,7 @@ export function PackingSlips({
                       </span>
                       <span className="min-w-0 flex-1 text-sm">
                         <Link
-                          href={`/dashboard/jobs/${jobId}/documents?document=${slip.id}`}
+                          href={`/jobs/${jobId}/documents?document=${slip.id}`}
                           className="block font-medium break-words hover:underline"
                           onClick={() => setOpen(false)}
                         >

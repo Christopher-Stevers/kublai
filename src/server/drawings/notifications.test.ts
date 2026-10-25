@@ -118,7 +118,7 @@ describe("drawing notification privacy", () => {
     expect(payload.type).toBe("job-drawing");
     expect(payload.account).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.url).toBe(
-      `/dashboard/jobs/${id}/drawings?drawingSet=${id}&drawingSheet=${id}`,
+      `/jobs/${id}/drawings?drawingSet=${id}&drawingSheet=${id}`,
     );
     expect(JSON.stringify(payload)).not.toContain("Confidential");
     expect(JSON.stringify(payload)).not.toContain("assigned");

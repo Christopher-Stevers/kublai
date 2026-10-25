@@ -10,7 +10,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { retiredOfflineMutation } from "../retired-offline-sync";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import {
   jobRooms,
   jobs,
@@ -25,7 +25,7 @@ import {
 } from "~/server/db/schema";
 
 export const jobRouter = createTRPCRouter({
-  previewSupplierDefault: hasDashboardAccess
+  previewSupplierDefault: hasAppAccess
     .input(z.object({ jobId: z.string().uuid(), partId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const org = ctx.user.organizationId;
@@ -57,7 +57,7 @@ export const jobRouter = createTRPCRouter({
           : undefined,
       };
     }),
-  supplierDefaultOptions: hasDashboardAccess
+  supplierDefaultOptions: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const org = ctx.user.organizationId;
@@ -83,7 +83,7 @@ export const jobRouter = createTRPCRouter({
   /**
    * Get a single job with material lists
    */
-  getJob: hasDashboardAccess
+  getJob: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {

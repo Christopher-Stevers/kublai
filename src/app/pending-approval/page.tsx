@@ -19,7 +19,7 @@ export default async function PendingApprovalPage() {
     !user.organizationAccessStatus ||
     user.organizationAccessStatus === "approved"
   ) {
-    redirect("/dashboard");
+    redirect("/jobs");
   }
 
   return (

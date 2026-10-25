@@ -544,7 +544,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
           }),
           utils.conversations.savedSnapshots.invalidate(),
         ]);
-        router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
+        router.push(`/jobs/chat?conversation=${encodeURIComponent(id)}`);
         return;
       }
       if (!blob) return;
@@ -589,7 +589,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
         utils.conversations.list.invalidate(),
         utils.conversations.savedSnapshots.invalidate(),
       ]);
-      router.push(`/dashboard/chat?conversation=${encodeURIComponent(id)}`);
+      router.push(`/jobs/chat?conversation=${encodeURIComponent(id)}`);
     } catch (reason) {
       if (!attempt.current && !editAttempt.current) setLocked(false);
       setError(
@@ -606,7 +606,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const cancelEdit = () => {
     release();
     router.push(
-      `/dashboard/chat?conversation=${encodeURIComponent(editConversationId ?? "")}`,
+      `/jobs/chat?conversation=${encodeURIComponent(editConversationId ?? "")}`,
     );
   };
   const retake = () => {

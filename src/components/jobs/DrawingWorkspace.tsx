@@ -1188,7 +1188,7 @@ export function DrawingWorkspace({
   const openLinkUrl = useCallback((href: string) => {
     const url = new URL(href, window.location.origin);
     if (url.origin === window.location.origin &&
-        (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/"))) {
+        (url.pathname === "/jobs" || url.pathname.startsWith("/jobs/"))) {
       rememberHyperlinkSource(sourceRegistry?.captureSource().href ?? window.location.href, url.href);
       window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT, {detail:url.href}));
       router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
@@ -2850,7 +2850,7 @@ export function DrawingWorkspace({
                     variant="outline"
                     onClick={() => {
                       const url = new URL(
-                        `/dashboard/jobs/${jobId}/drawings`,
+                        `/jobs/${jobId}/drawings`,
                         location.origin,
                       );
                       url.searchParams.set("drawingSheet", sheet.id);

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { assertCan } from "~/server/auth/permissions";
 import { APP_DEVICE_TYPES } from "~/lib/app-devices";
 import {
@@ -9,7 +9,7 @@ import {
 } from "~/server/app-devices/service";
 
 export const appDevicesRouter = createTRPCRouter({
-  report: hasDashboardAccess
+  report: hasAppAccess
     .input(
       z
         .object({
@@ -34,7 +34,7 @@ export const appDevicesRouter = createTRPCRouter({
       await recordAppDevice(ctx.db, ctx.userId, input);
       return { recorded: true };
     }),
-  organization: hasDashboardAccess
+  organization: hasAppAccess
     .input(z.object({ organizationId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       assertCan(ctx.user, "tab.organization");

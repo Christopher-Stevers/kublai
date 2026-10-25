@@ -18,7 +18,7 @@ const snapshot = {
   body: "Check this pipe",
   source: {
     title: "M-302",
-    href: "/dashboard?drawingSheet=sheet#snapshot=saved",
+    href: "/jobs?drawingSheet=sheet#snapshot=saved",
     capturedAt: "2026-10-09T22:00:00Z",
   },
   conversationName: "Site crew",
@@ -39,7 +39,7 @@ it("opens a saved view for editing directly from the snapshot picker", () => {
   fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   fireEvent.click(screen.getByRole("button", { name: /M-302/ }));
   expect(edit).toHaveBeenCalledWith(
-    "/dashboard?drawingSheet=sheet&editSnapshot=saved&snapshotChat=chat#snapshot=saved",
+    "/jobs?drawingSheet=sheet&editSnapshot=saved&snapshotChat=chat#snapshot=saved",
   );
   expect(screen.queryByText("New snapshot")).toBeNull();
 });

@@ -856,8 +856,8 @@ export function EstimateLines({
                     <Link
                       href={
                         inspect.source.sheetId
-                          ? `/dashboard/jobs/${jobId}/drawings?drawingSheet=${inspect.source.sheetId}${inspectorSheet?.setId ? `&drawingSet=${inspectorSheet.setId}` : ""}`
-                          : `/dashboard/jobs/${jobId}/rooms`
+                          ? `/jobs/${jobId}/drawings?drawingSheet=${inspect.source.sheetId}${inspectorSheet?.setId ? `&drawingSet=${inspectorSheet.setId}` : ""}`
+                          : `/jobs/${jobId}/rooms`
                       }
                     >
                       <ExternalLinkIcon className="mr-2 h-4 w-4" />

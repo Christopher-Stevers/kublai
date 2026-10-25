@@ -85,7 +85,7 @@ export const paymentRouter = createTRPCRouter({
             quantity: 1,
           },
         ],
-        success_url: `${baseUrl}/dashboard?payment=success`,
+        success_url: `${baseUrl}/jobs?payment=success`,
         cancel_url: `${baseUrl}/pricing?canceled=true`,
         metadata: {
           userId: user.id,
@@ -171,7 +171,7 @@ export const paymentRouter = createTRPCRouter({
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const session = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
-        return_url: `${baseUrl}/dashboard/account`,
+        return_url: `${baseUrl}/jobs/account`,
       });
 
       return { url: session.url };

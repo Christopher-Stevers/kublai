@@ -33,7 +33,7 @@ export function RequestsView() {
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
-    router.replace(`/dashboard/assets/requests${next.size ? `?${next}` : ""}`);
+    router.replace(`/jobs/assets/requests${next.size ? `?${next}` : ""}`);
   };
 
   const pill = (active: boolean) =>
@@ -76,7 +76,7 @@ export function RequestsView() {
       ) : (
         <div className="bg-card divide-y rounded-lg border">
           {requests.data.map((r) => (
-            <Link key={r.id} href={`/dashboard/assets/requests/${r.id}`} className="hover:bg-accent flex items-center gap-3 p-3 sm:p-4">
+            <Link key={r.id} href={`/jobs/assets/requests/${r.id}`} className="hover:bg-accent flex items-center gap-3 p-3 sm:p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{r.orderNumber}</span>

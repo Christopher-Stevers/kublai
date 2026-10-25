@@ -4,8 +4,8 @@ import { tagFromScan, toolScanPath } from "./asset-tags";
 
 describe("tagFromScan", () => {
   it("reads the tag from a label URL", () => {
-    expect(tagFromScan("https://foremanhq.stellarator.work/dashboard/assets/scan/T-00042")).toBe("T-00042");
-    expect(tagFromScan("https://x.test/dashboard/assets/scan/t-7?utm=1")).toBe("T-7");
+    expect(tagFromScan("https://foremanhq.stellarator.work/jobs/assets/scan/T-00042")).toBe("T-00042");
+    expect(tagFromScan("https://x.test/jobs/assets/scan/t-7?utm=1")).toBe("T-7");
   });
 
   it("accepts a bare or typed tag", () => {
@@ -15,7 +15,7 @@ describe("tagFromScan", () => {
 
   it("decodes encoded tags and tolerates stray percent signs", () => {
     expect(tagFromScan(`https://x.test${toolScanPath("GEN 2/B")}`)).toBe("GEN 2/B");
-    expect(tagFromScan("https://x.test/dashboard/assets/scan/GEN%202")).toBe("GEN 2");
+    expect(tagFromScan("https://x.test/jobs/assets/scan/GEN%202")).toBe("GEN 2");
     expect(tagFromScan("100%")).toBe("100%");
   });
 

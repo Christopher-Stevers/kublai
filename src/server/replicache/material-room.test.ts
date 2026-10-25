@@ -28,7 +28,7 @@ vi.mock("~/server/auth/permissions", () => ({
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
 });
 vi.mock("~/server/assets/service", () => ({ ensureToolRoomSupplier: vi.fn() }));
 

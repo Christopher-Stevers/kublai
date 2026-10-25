@@ -207,7 +207,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       setUnavailableJob(id);
       setRemembered(null);
       setChatsOpen(true);
-      router.replace("/dashboard/chat", { scroll: false });
+      router.replace("/jobs/chat", { scroll: false });
     },
     [router, setRemembered, setChatsOpen],
   );
@@ -229,7 +229,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     setChatsOpen(false);
     setDrag(null);
     router.push(
-      `/dashboard/chat?${chat.kind === "job" ? "job" : "conversation"}=${encodeURIComponent(chat.id)}`,
+      `/jobs/chat?${chat.kind === "job" ? "job" : "conversation"}=${encodeURIComponent(chat.id)}`,
       { scroll: false },
     );
   };

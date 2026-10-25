@@ -46,7 +46,7 @@ const entity = {
     ],
     links: [
       { label: "M-2", url: link.href },
-      { label: "Manual", url: "/dashboard/jobs" },
+      { label: "Manual", url: "/jobs/jobs" },
     ],
   },
 } as DrawingEntity;

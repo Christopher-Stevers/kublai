@@ -43,7 +43,7 @@ export function checkConversationUser(user: RequestUser | null) {
   )
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Approved organization and dashboard access are required.",
+      message: "Approved organization and Jobs access are required.",
     });
   return { ...user, organizationId: user.organizationId };
 }

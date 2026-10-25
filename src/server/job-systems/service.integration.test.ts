@@ -60,7 +60,7 @@ import { defaultDrawingMetadata } from "../drawings/domain";
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
 });
 import { pipeSpecsRouter } from "../api/routers/pipeSpecs";
 import { emptyDocumentState } from "../documents/domain";

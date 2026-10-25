@@ -508,7 +508,7 @@ describe("Drawings", () => {
     window.history.replaceState(
       {},
       "",
-      `/dashboard/jobs/job/drawings?drawingSet=${folder}&drawingSheet=${sheetId}`,
+      `/jobs/job/drawings?drawingSet=${folder}&drawingSheet=${sheetId}`,
     );
     render(<JobDrawingsView jobId="job" />);
     expect(screen.getByText("Viewing M-101")).toBeInTheDocument();
@@ -622,7 +622,7 @@ it("refocuses an already open drawing for every hyperlink, including repeated sa
   fireEvent.click(screen.getByRole("button",{name:"Open M-101"}));
   const jump=(sheetId:string,x:number)=>{
     const viewport={center:{x,y:.4},zoom:8};
-    const saved=makeSnapshotSource(`/dashboard/jobs/${jobId}/drawings`,{version:1,drawing:{jobId,setId,sheetId,sourceSheetId:sheetId,viewport,appearance:{inverted:false,lineColor:null},layers:{markups:true,issues:true,private:true,published:true},selectedId:null}},"Tag");
+    const saved=makeSnapshotSource(`/jobs/${jobId}/drawings`,{version:1,drawing:{jobId,setId,sheetId,sourceSheetId:sheetId,viewport,appearance:{inverted:false,lineColor:null},layers:{markups:true,issues:true,private:true,published:true},selectedId:null}},"Tag");
     // Next navigation need not have changed location yet when the link is selected.
     act(()=>window.dispatchEvent(new CustomEvent(DRAWING_DESTINATION_EVENT,{detail:new URL(saved.href,location.origin).href})));
     expect(screen.getByTestId("mounted-view")).toHaveTextContent(JSON.stringify(viewport));

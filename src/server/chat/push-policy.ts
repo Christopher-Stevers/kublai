@@ -145,7 +145,7 @@ export function chatPushPayload(
 ) {
   return JSON.stringify({
     type: "job-chat",
-    url: `/dashboard/jobs/${jobId}/chat`,
+    url: `/jobs/${jobId}/chat`,
     account: createHash("sha256").update(recipientId).digest("hex"),
     tag: `job-chat-${jobId}`,
     ...(preview && {

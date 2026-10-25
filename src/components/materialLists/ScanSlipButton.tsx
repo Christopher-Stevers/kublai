@@ -96,7 +96,7 @@ export function ScanSlipButton({
   const openList = (materialListId: string, orderId: string) =>
     onLinked
       ? onLinked(materialListId, orderId)
-      : router.push(`/dashboard/material-lists/${materialListId}`);
+      : router.push(`/jobs/material-lists/${materialListId}`);
   const begin = async () => {
     const id = ++run.current;
     setError(null);
@@ -327,7 +327,7 @@ export function ScanSlipButton({
                     // A received slip has nothing left to check on the list.
                     if (slip.status === "applied")
                       router.push(
-                        `/dashboard/material-lists/${linked.materialListId}?orderId=${linked.orderId}&slips=1`,
+                        `/jobs/material-lists/${linked.materialListId}?orderId=${linked.orderId}&slips=1`,
                       );
                     else openList(linked.materialListId, linked.orderId);
                   }}

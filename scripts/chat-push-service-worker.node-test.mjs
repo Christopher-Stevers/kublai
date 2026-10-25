@@ -8,7 +8,7 @@ const source = await readFile(
 );
 const origin = "https://example.test";
 const job = "11111111-1111-4111-8111-111111111111";
-const url = `${origin}/dashboard/jobs/${job}/chat`;
+const url = `${origin}/jobs/${job}/chat`;
 const account = "a".repeat(64);
 function harness() {
   const listeners = new Map();
@@ -97,7 +97,7 @@ test("malformed, foreign account, signed-out and external URL pushes are ignored
   for (const invalid of [
     { type: "job-chat", account: "b".repeat(64), url },
     { type: "job-chat", account, url: "https://evil.test/" },
-    { type: "job-chat", account, url: "/dashboard?redirect=evil" },
+    { type: "job-chat", account, url: "/jobs?redirect=evil" },
     null,
   ]) {
     await h.emit("push", { data: { json: () => invalid } });
@@ -134,7 +134,7 @@ test("click focuses an existing chat window, navigates another or opens one", as
   assert.equal(h.opened.length, 0);
   h.self.clients.matchAll = async () => [
     {
-      url: `${origin}/dashboard`,
+      url: `${origin}/jobs`,
       navigate: async (target) => {
         assert.equal(target, url);
         navigated++;
@@ -223,7 +223,7 @@ test("private image attachments bypass both image caching and background image w
 });
 test("drawing push is account bound, generic and opens only its exact drawing deep link", async () => {
   const h = harness();
-  const drawingUrl = `${origin}/dashboard/jobs/${job}/drawings?drawingSet=${job}&drawingSheet=${job}`;
+  const drawingUrl = `${origin}/jobs/${job}/drawings?drawingSet=${job}&drawingSheet=${job}`;
   await h.bind(account);
   await h.emit("push", {
     data: {
@@ -292,7 +292,7 @@ test("drawing issue photos cannot enter service worker image caches", async () =
 
 test("private and group chat pushes open the exact conversation without disclosing contents", async () => {
   const h = harness();
-  const conversationUrl = `${origin}/dashboard/chat?conversation=${job}`;
+  const conversationUrl = `${origin}/jobs/chat?conversation=${job}`;
   await h.bind(account);
   await h.emit("push", {
     data: {
@@ -323,8 +323,8 @@ test("private and group chat pushes open the exact conversation without disclosi
     conversationUrl + "#private",
     conversationUrl.replace(origin, "https://evil.test"),
     conversationUrl.replace(job, "not-a-uuid"),
-    `${origin}/dashboard/chat`,
-    `${origin}/dashboard/chat?other=${job}`,
+    `${origin}/jobs/chat`,
+    `${origin}/jobs/chat?other=${job}`,
   ]) {
     await h.emit("push", {
       data: {

@@ -53,7 +53,7 @@ export function drawingLinkHref(
   if (link.targetSheetId) {
     const sheet = sheets.find((item) => item.id === link.targetSheetId);
     return sheet
-      ? `/dashboard/jobs/${jobId}/drawings?drawingSet=${sheet.setId}&drawingSheet=${sheet.id}`
+      ? `/jobs/${jobId}/drawings?drawingSet=${sheet.setId}&drawingSheet=${sheet.id}`
       : null;
   }
   return link.url && isAppLink(link.url) ? link.url : null;

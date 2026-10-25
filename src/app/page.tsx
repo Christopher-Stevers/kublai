@@ -44,7 +44,7 @@ export default function Home() {
                   size="lg"
                   className="h-12 bg-primary px-8 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90"
                 >
-                  <Link href="/dashboard">Start an Order</Link>
+                  <Link href="/jobs">Start an Order</Link>
                 </Button>
                 <Button
                   asChild
@@ -232,7 +232,7 @@ export default function Home() {
               size="lg"
               className="h-12 bg-primary px-8 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90"
             >
-              <Link href="/dashboard">Start an Order</Link>
+              <Link href="/jobs">Start an Order</Link>
             </Button>
           </div>
         </div>

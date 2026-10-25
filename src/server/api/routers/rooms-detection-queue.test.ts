@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
 });
 vi.mock("~/server/auth/permissions", () => ({ userCan: vi.fn(() => true) }));
 vi.mock("~/server/rooms/detect-job", () => ({

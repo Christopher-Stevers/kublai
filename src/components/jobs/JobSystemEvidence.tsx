@@ -9,7 +9,7 @@ import { makeSnapshotSource } from "~/lib/snapshot-source";
 export function systemEvidenceHref(jobId: string, evidence: SystemEvidence) {
   if (evidence.drawing)
     return makeSnapshotSource(
-      `/dashboard/jobs/${jobId}/drawings`,
+      `/jobs/${jobId}/drawings`,
       {
         version: 1,
         drawing: {
@@ -30,7 +30,7 @@ export function systemEvidenceHref(jobId: string, evidence: SystemEvidence) {
       evidence.documentTitle,
     ).href;
   return makeSnapshotSource(
-    `/dashboard/jobs/${jobId}/documents`,
+    `/jobs/${jobId}/documents`,
     {
       version: 1,
       document: {

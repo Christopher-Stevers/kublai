@@ -26,9 +26,9 @@ export default async function SignInLayout({
     // Get user from database (webhook should have created it)
     const user = requestUser;
 
-    // If user exists and has organizationId, redirect to dashboard
+    // If user exists and has organizationId, redirect to Jobs
     if (user?.organizationId) {
-      redirect("/dashboard");
+      redirect("/jobs");
     }
 
     // If user exists but no organizationId, redirect to onboarding

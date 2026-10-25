@@ -33,7 +33,7 @@ describe("Document organization boundary", () => {
     ).toThrow("Approved organization");
     expect(() => checkDocumentAccess(user, null)).toThrow("Job not found");
   });
-  it("requires dashboard access and separates read, write and managing entitlement", () => {
+  it("requires app access and separates read, write and managing entitlement", () => {
     expect(() =>
       checkDocumentAccess(
         {
@@ -45,7 +45,7 @@ describe("Document organization boundary", () => {
         },
         job,
       ),
-    ).toThrow("dashboard access");
+    ).toThrow("Jobs access");
     expect(checkDocumentAccess(user, job)).toMatchObject({
       canWrite: true,
       canManage: false,

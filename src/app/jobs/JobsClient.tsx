@@ -1,0 +1,814 @@
+"use client";
+import { useScrollToTop } from "~/hooks/use-remembered-scroll";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
+import { PageHeader } from "~/components/ui/page-header";
+import { usePageViewState } from "~/hooks/use-page-view-state";
+
+import { DeferredJobModelsView } from "~/components/models/DeferredJobModelsView";
+import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog, JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobChatView } from "~/components/app/DeferredFeatures";
+
+import { JobMaterialListsView } from "~/components/materialLists/JobMaterialListsView";
+import { useMaterialListSort } from "~/hooks/use-material-list-sort";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { api } from "~/trpc/react";
+import { EmptyState } from "~/components/ui/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,  } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { BriefcaseIcon, UserIcon, MapPinIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, WifiOffIcon,  } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { Badge } from "~/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,  } from "~/components/ui/dropdown-menu";
+import { useReplicacheJobDetail, useReplicacheJobsList,  } from "~/hooks/use-replicache-jobs";
+import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
+import { MaterialListItem } from "~/components/materialLists/MaterialListItem";
+import { MaterialListSheet } from "~/components/materialLists/MaterialListSheet";
+import { MaterialListActions } from "~/components/materialLists/MaterialListActions";
+import { MaterialListScreen } from "~/components/materialLists/MaterialListScreen";
+import { JobEditDialog } from "~/components/jobs/JobEditDialog";
+import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
+import { useJobRoomCount } from "~/hooks/use-job-room-count";
+import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
+import { MaterialListNameModal } from "~/components/materialLists/MaterialListNameModal";
+import { ViewToggle } from "~/components/ui/view-toggle";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { HEADER_BACK_REQUEST_EVENT, setHeaderBackVisible,  } from "~/lib/header-back-events";
+import { Skeleton } from "~/components/ui/skeleton";
+
+type JobLocationDisplay = {
+  name?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
+
+function formatLocationAddress(
+  location: JobLocationDisplay | null | undefined,
+) {
+  if (!location) return null;
+
+  const addressLine = [location.address1, location.address2]
+    .filter(Boolean)
+    .join(" ");
+  const cityLine = [location.city, location.region, location.postalCode]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    [addressLine, cityLine, location.country].filter(Boolean).join(" • ") ||
+    location.name ||
+    null
+  );
+}
+
+export type JobsJob = {
+  id: string;
+  name: string;
+  poNumber: string | null;
+  locationId: string | null;
+  foremanName: string | null;
+  status: string;
+  createdAt: string | Date;
+  location: (JobLocationDisplay & { id?: string | null }) | null;
+  foreman: { id: string | null; name: string | null } | null;
+  materialListCount: number;
+  lastActivityAt?: string | null;
+};
+
+// Draft is the default state, so only later stages get a badge.
+const jobStatusLabels: Record<string, string> = {
+  quoted: "Quoted",
+  ordered: "Ordered",
+  completed: "Completed",
+};
+
+export function JobsClient({
+  initialJobs,
+}: {
+  initialJobs: JobsJob[];
+}) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
+  const sandbox = useTutorialSandbox();
+  const router = useRouter();
+  const hasRedirectedRef = useRef(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newJobName, setNewJobName] = useState("");
+  const [showOfflineJobEditDialog, setShowOfflineJobEditDialog] =
+    useState(false);
+  const [
+    showOfflineMaterialListNameModal,
+    setShowOfflineMaterialListNameModal,
+  ] = useState(false);
+  const [offlineMaterialListViewMode, setOfflineMaterialListViewMode] =
+    usePageViewState<"grid" | "table">("dashboard:offlineMaterialListViewMode", "grid");
+  const [showOfflineQuoteSheet, setShowOfflineQuoteSheet] = usePageViewState("dashboard:showOfflineQuoteSheet", false);
+  const [showOfflineOrdersSheet, setShowOfflineOrdersSheet] = usePageViewState("dashboard:showOfflineOrdersSheet", false);
+  const [showOfflineExistingQuotesDialog, setShowOfflineExistingQuotesDialog] =
+    useState(false);
+  const [selectedOfflineQuoteId, setSelectedOfflineQuoteId] = useState<
+    string | undefined
+  >();
+  const [jobToDelete, setJobToDelete] = useState<{
+    id: string;
+    name: string;
+    materialListCount?: number | null;
+  } | null>(null);
+  const {
+    location: workspaceLocation,
+    navigate: navigateWorkspace,
+    back: handleLocalWorkspaceBack,
+  } = useJobWorkspaceNavigation();
+  const offlineJobId = workspaceLocation?.jobId ?? null;
+  const offlineMaterialListId = workspaceLocation?.materialListId ?? null;
+  const offlineJobView = workspaceLocation?.view ?? "options";
+  const [showOfflineAddPartDialog, setShowOfflineAddPartDialog] =
+    usePageViewState("dashboard:addParts", false);
+  const isBrowserOnline = useOnlineStatus();
+  const roomCount = useJobRoomCount(offlineJobId, offlineJobView === "options");
+
+  const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId: offlineJobId ?? "" }, {
+    enabled: isBrowserOnline && Boolean(offlineJobId) && offlineJobView === "options",
+    refetchInterval: 30_000, refetchIntervalInBackground: false,
+  });
+
+  // Check user's organizationId status
+  const { data: userData, isFetched: hasFetchedUser } =
+    api.user.getMyRole.useQuery(undefined, {
+      enabled: isBrowserOnline,
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    });
+  const can = userData?.permissions.can;
+  const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
+
+  // Redirect to onboarding if user has no organizationId
+  useEffect(() => {
+    if (sandbox || hasRedirectedRef.current) {
+      return;
+    }
+
+    if (hasFetchedUser && userData && !userData.organizationId) {
+      if (typeof window !== "undefined") {
+        hasRedirectedRef.current = true;
+        window.location.href = "/onboarding";
+      }
+    }
+  }, [hasFetchedUser, hasRedirectedRef, userData, sandbox]);
+
+  const replicacheJobs = useReplicacheJobsList();
+  const offlineJobDetail = useReplicacheJobDetail(offlineJobId ?? "");
+  useScrollToTop(
+    sandbox ? null : !offlineJobId ? "jobs"
+      : offlineJobView === "options" && !offlineMaterialListId ? `job:${offlineJobId}` : null,
+  );
+  const offlineMaterialListDetail = useReplicacheMaterialList(
+    offlineMaterialListId ?? "",
+  );
+  const { data: jobPriceBook } = useJobPricing(offlineMaterialListDetail.materialList?.kind === "tools" ? null : offlineJobId);
+  const suppliers = useReplicacheSuppliers();
+  const { sortedItems } = useMaterialListSort(offlineMaterialListDetail.items, suppliers);
+  const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
+  const isWaitingForJobs = false;
+
+  useEffect(() => {
+    if (sandbox || !isBrowserOnline || jobs.length === 0) return;
+
+    // Warm the App Router/RSC cache while online so tapping a job can work
+    // after the device loses connectivity.
+    for (const job of jobs.slice(0, 50)) {
+      router.prefetch(`/jobs/${job.id}`);
+    }
+  }, [isBrowserOnline, jobs, router, sandbox]);
+
+  const openJob = (jobId: string) => {
+    navigateWorkspace({ jobId, view: "options", materialListId: null });
+  };
+
+  const handleCreateJob = () => {
+    if (newJobName.trim()) {
+      const jobId = crypto.randomUUID();
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.createJob({
+          jobId,
+          name: newJobName.trim(),
+        }),
+      );
+      setShowCreateDialog(false);
+      setNewJobName("");
+      openJob(jobId);
+    }
+  };
+
+  const handleConfirmDeleteJob = () => {
+    if (!jobToDelete || !canDeleteJobs) return;
+    const { id } = jobToDelete;
+    setJobToDelete(null);
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.deleteJob({ jobId: id }),
+    );
+  };
+
+  useEffect(() => {
+    const showBackButton = Boolean(offlineJobId);
+    setHeaderBackVisible(showBackButton);
+
+    if (!showBackButton) {
+      return () => setHeaderBackVisible(false);
+    }
+
+    const handleHeaderBackRequest = () => {
+      handleLocalWorkspaceBack();
+    };
+
+    window.addEventListener(HEADER_BACK_REQUEST_EVENT, handleHeaderBackRequest);
+
+    return () => {
+      window.removeEventListener(
+        HEADER_BACK_REQUEST_EVENT,
+        handleHeaderBackRequest,
+      );
+      setHeaderBackVisible(false);
+    };
+  }, [handleLocalWorkspaceBack, offlineJobId]);
+
+  if (!sandbox && hasFetchedUser && userData && !userData.organizationId) return null;
+
+  if (offlineJobId && !offlineMaterialListId && offlineJobView === "chat") {
+    return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
+  }
+
+  // The same list screen as its own page; the tutorial keeps the simple one
+  // below, which its steps point at.
+  if (offlineMaterialListId && !sandbox) {
+    return <MaterialListScreen key={offlineMaterialListId} id={offlineMaterialListId} embedded />;
+  }
+
+  if (offlineJobId) {
+    const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
+    const offlineJob = offlineJobDetail?.job ?? fallbackJob;
+    const selectedMaterialList = offlineMaterialListDetail.materialList;
+    const selectedItems = sortedItems.map(item => ({ ...item, jobPriceStatus: jobPriceBook ? jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierId ?? item.supplierPart?.supplierId, item.supplierPart?.id) : item.jobPriceStatus }));
+    const isToolRequest = selectedMaterialList?.kind === "tools";
+    const hasToolItems = selectedItems.some(item => !!item.partDefinition?.assetTracking);
+    const selectedMaterialTotal = offlineMaterialListDetail.materialTotal;
+    const selectedMaterialListHasPendingSync =
+      Boolean(selectedMaterialList?.pendingSync) ||
+      selectedItems.some((item) => Boolean(item.pendingSync));
+    const jobLocationAddress = formatLocationAddress(offlineJob?.location);
+    const canQuote = can?.["quotes.create"] ?? true;
+    const canOrder = isToolRequest || hasToolItems || (can?.["orders.send"] ?? true);
+    const offlineGenerationBlockReason = sandbox
+      ? "Quotes and orders are not sent during the tutorial."
+      : !isBrowserOnline
+      ? "Reconnect before generating quotes or orders."
+      : !canQuote && !canOrder
+        ? "You don't have permission to request quotes or send orders."
+        : selectedMaterialListHasPendingSync
+          ? "Finish syncing this material list before generating a quote or order."
+          : selectedItems.length === 0
+            ? "Add parts before generating a quote or order."
+            : null;
+    const canGenerateOfflineQuoteOrOrder = !offlineGenerationBlockReason;
+
+    const handleOfflineGenerateQuote = () => {
+      if (!canGenerateOfflineQuoteOrOrder) return;
+      setShowOfflineExistingQuotesDialog(true);
+    };
+
+    const handleOfflineGenerateOrder = () => {
+      if (!canGenerateOfflineQuoteOrOrder) return;
+      setShowOfflineOrdersSheet(true);
+    };
+
+    const handleOfflineGenerateNewQuote = () => {
+      if (sandbox) return;
+      setSelectedOfflineQuoteId(undefined);
+      setShowOfflineQuoteSheet(true);
+    };
+
+    return (
+      <div className="px-4 pt-6 pb-24 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl">
+          {!isBrowserOnline && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+                <WifiOffIcon className="h-4 w-4" />
+                Offline mode
+              </div>
+            </div>
+          )}
+
+          {offlineMaterialListId ? (
+            selectedMaterialList ? (
+              <>
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex min-h-10 min-w-0 items-center gap-2">
+                      <h1 data-tutorial="material-list" className="min-w-0 text-2xl font-bold break-words text-foreground sm:text-3xl">
+                        {selectedMaterialList.name}
+                      </h1>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setShowOfflineMaterialListNameModal(true)
+                        }
+                        className="h-8 w-8 shrink-0"
+                        aria-label="Edit material list"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <ViewToggle
+                    view={offlineMaterialListViewMode}
+                    onViewChange={setOfflineMaterialListViewMode}
+                    showOnMobile
+                  />
+                </div>
+
+                {selectedItems.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-0">
+                      <EmptyState
+                        art="clipboard"
+                        title={isToolRequest ? "No tools yet. Add them, then send the request." : "No parts yet. They’ll sync when you’re online."}
+                        action={
+                          <Button data-tutorial="add-part" onClick={() => setShowOfflineAddPartDialog(true)}>
+                            <PlusIcon className="mr-2 h-4 w-4" />
+                            {isToolRequest ? "Add Tool" : "Add Part"}
+                          </Button>
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {offlineMaterialListViewMode === "grid" ? (
+                      <div data-tutorial="material-items" className="grid grid-cols-2 gap-3 pb-24 sm:grid-cols-3 lg:grid-cols-4">
+                        {selectedItems.map((item) => (
+                          <MaterialListItem
+                            key={item.id}
+                            materialListId={selectedMaterialList.id}
+                            suppliers={suppliers}
+                            isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
+                            item={{
+                              ...item,
+                              selectedSupplierId: item.supplierId,
+                              partDefinition: item.partDefinition ?? null,
+                              supplierPart: item.supplierPart ?? null,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <MaterialListSheet className="mb-24" items={selectedItems} materialListId={selectedMaterialList.id} suppliers={suppliers} isToolRequest={isToolRequest} />
+                    )}
+                  </>
+                )}
+
+                {/* Pinned to the bottom of the window on every screen size (sticky left
+                    it floating under a short list on desktop). */}
+                <div className="fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
+                  <MaterialListActions total={selectedMaterialTotal} canGenerate={canGenerateOfflineQuoteOrOrder} blockedReason={offlineGenerationBlockReason} canQuote={canQuote} canOrder={canOrder}
+                    onQuote={handleOfflineGenerateQuote} onOrder={handleOfflineGenerateOrder} onAdd={() => setShowOfflineAddPartDialog(true)} materialListId={offlineMaterialListId ?? undefined} isToolRequest={isToolRequest} />
+                </div>
+
+                <AddPartDialog
+                  open={showOfflineAddPartDialog}
+                  onOpenChange={setShowOfflineAddPartDialog}
+                  materialListId={selectedMaterialList.id}
+                />
+                {showOfflineQuoteSheet && (
+                  <QuotePreviewSheet
+                    open={showOfflineQuoteSheet}
+                    onOpenChange={(open) => {
+                      setShowOfflineQuoteSheet(open);
+                      if (!open) setSelectedOfflineQuoteId(undefined);
+                    }}
+                    materialListId={selectedMaterialList.id}
+                    jobName={offlineJob?.name ?? ""}
+                    quoteId={selectedOfflineQuoteId}
+                  />
+                )}
+                {showOfflineOrdersSheet && (
+                  <OrdersPreviewSheet
+                    open={showOfflineOrdersSheet}
+                    onOpenChange={setShowOfflineOrdersSheet}
+                    isToolRequest={isToolRequest} hasToolItems={hasToolItems}
+                    materialListId={selectedMaterialList.id}
+                    orderedItemIds={sortedItems.map(item => item.id)}
+                  />
+                )}
+                <ExistingQuotesOrdersDialog
+                  open={showOfflineExistingQuotesDialog}
+                  onOpenChange={setShowOfflineExistingQuotesDialog}
+                  materialListId={selectedMaterialList.id}
+                  type="quote"
+                  onGenerateNew={handleOfflineGenerateNewQuote}
+                  onOpenExisting={(quoteId) => {
+                    setSelectedOfflineQuoteId(quoteId);
+                    setShowOfflineQuoteSheet(true);
+                  }}
+                />
+              </>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <PackageIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
+                  <h3 className="mb-2 text-lg font-semibold">
+                    Material list not cached
+                  </h3>
+                  <p className="text-muted-foreground text-center">
+                    Reconnect once to cache this material list on this device.
+                  </p>
+                </CardContent>
+              </Card>
+            )
+          ) : offlineJob ? (
+            <>
+              {/* Job details only on the job overview, not inside Rooms or Material Lists. */}
+              {offlineJobView === "options" && (
+                <div className="mb-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+                      {offlineJob.name}
+                    </h1>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowOfflineJobEditDialog(true)}
+                      className="h-8 w-8 p-0"
+                      aria-label="Edit job"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    {jobLocationAddress && (
+                      <div className="flex items-center gap-2">
+                        <MapPinIcon className="h-4 w-4" />
+                        <span>{jobLocationAddress}</span>
+                      </div>
+                    )}
+                    {offlineJob.foremanName && (
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4" />
+                        <span>{offlineJob.foremanName}</span>
+                      </div>
+                    )}
+                    {offlineJob.poNumber && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">PO#:</span>
+                        <span>{offlineJob.poNumber}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {offlineJobView === "options" ? (
+                <JobWorkspaceOptions
+                  materialListCount={offlineJobDetail?.materialLists.length ?? 0}
+                  roomCount={roomCount.count}
+                  roomCountLoading={roomCount.loading}
+                  chatUnreadCount={chatOverview?.unreadCount}
+                  onSelect={(optionId) => {
+                    navigateWorkspace({
+                      jobId: offlineJobId,
+                      view: optionId,
+                      materialListId: null,
+                    });
+                  }}
+                />
+              ) : offlineJobView === "documents" ? (
+                <JobDocumentsView key={offlineJob.id} jobId={offlineJob.id} />
+              ) : offlineJobView === "systems" ? (
+                <JobSystemsView key={offlineJob.id} jobId={offlineJob.id} />
+              ) : offlineJobView === "models" ? (
+                <DeferredJobModelsView jobId={offlineJob.id} />
+              ) : offlineJobView === "drawings" ? (
+                <JobDrawingsView jobId={offlineJob.id} />
+              ) : offlineJobView === "rooms" ? (
+                <JobRoomsView jobId={offlineJob.id} onOpenMaterialList={(materialListId) =>
+                  navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })
+                } onOpenDrawings={() =>
+                  navigateWorkspace({ jobId: offlineJob.id, view: "drawings", materialListId: null })
+                } />
+              ) : (
+                <JobMaterialListsView
+                  jobId={offlineJob.id}
+                  lists={offlineJobDetail?.materialLists}
+                  onOpen={(materialListId) =>
+                    navigateWorkspace({ jobId: offlineJob.id, view: "material-lists", materialListId })
+                  }
+                />
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <BriefcaseIcon className="mb-4 h-12 w-12 text-muted-foreground/70" />
+                <h3 className="mb-2 text-lg font-semibold">Job not cached</h3>
+                <p className="text-muted-foreground text-center">
+                  Reconnect once to cache this job on this device.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {offlineJob && (
+            <JobEditDialog
+              open={showOfflineJobEditDialog}
+              onOpenChange={setShowOfflineJobEditDialog}
+              jobId={offlineJob.id}
+              initialName={offlineJob.name}
+              initialLocationId={offlineJob.locationId}
+              initialForemanName={offlineJob.foremanName ?? null}
+              initialPoNumber={offlineJob.poNumber ?? null}
+            />
+          )}
+
+
+
+          {selectedMaterialList && (
+            <MaterialListNameModal
+              open={showOfflineMaterialListNameModal}
+              onOpenChange={setShowOfflineMaterialListNameModal}
+              materialListId={selectedMaterialList.id}
+              initialName={selectedMaterialList.name ?? null}
+            />
+          )}
+
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-6 pb-24 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl">
+        {!isBrowserOnline && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900">
+              <WifiOffIcon className="h-4 w-4" />
+              Offline mode
+            </div>
+          </div>
+        )}
+        <PageHeader
+          title="Jobs"
+          description="Select a job to open it"
+          actions={
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              size="lg"
+              className={`h-11 w-full sm:w-auto ${jobs.length > 0 ? "hidden sm:inline-flex" : ""}`}
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              Add Job
+            </Button>
+          }
+        />
+
+        {isWaitingForJobs ? (
+          <div
+            role="status"
+            aria-label="Loading jobs"
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {[0, 1, 2].map((index) => (
+              <Card key={index} className="gap-3 py-4">
+                <CardHeader className="px-4">
+                  <Skeleton className="h-6 w-2/3" />
+                </CardHeader>
+                <CardContent className="space-y-2 px-4">
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="mt-3 h-4 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : jobs.length === 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                art="hardhat"
+                title="No jobs yet. Create your first job to get started."
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {jobs.map((job) => {
+              const lastActivity =
+                "lastActivityAt" in job && job.lastActivityAt
+                  ? job.lastActivityAt
+                  : job.createdAt;
+              const statusLabel = jobStatusLabels[job.status];
+              return (
+                <Card
+                  key={job.id}
+                  data-tutorial="job-card"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openJob(job.id); }
+                  }}
+                  className="group hover:border-primary/40 cursor-pointer gap-3 py-4 transition-[box-shadow,border-color] hover:shadow-md"
+                  onClick={() => openJob(job.id)}
+                >
+                  <CardHeader className="px-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="line-clamp-2 text-base leading-snug sm:text-lg">
+                          {job.name}
+                        </CardTitle>
+                        {statusLabel && (
+                          <Badge variant="secondary" className="mt-1.5">
+                            {statusLabel}
+                          </Badge>
+                        )}
+                      </div>
+                      {canDeleteJobs && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
+                              aria-label={`More actions for ${job.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVerticalIcon className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() =>
+                                setJobToDelete({
+                                  id: job.id,
+                                  name: job.name,
+                                  materialListCount: job.materialListCount,
+                                })
+                              }
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              Delete job
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    <div className="text-muted-foreground space-y-1.5 text-sm">
+                      {job.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPinIcon className="h-4 w-4 shrink-0" />
+                          <span className="line-clamp-1">
+                            {formatLocationAddress(job.location)}
+                          </span>
+                        </div>
+                      )}
+                      {job.foremanName && (
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4 shrink-0" />
+                          <span className="line-clamp-1">{job.foremanName}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 border-t pt-3 text-xs">
+                      <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
+                        <PackageIcon className="text-primary h-4 w-4" />
+                        {job.materialListCount ?? 0}{" "}
+                        {job.materialListCount === 1 ? "list" : "lists"}
+                      </span>
+                      <span title={format(new Date(lastActivity), "PPp")}>
+                        Updated{" "}
+                        {formatDistanceToNow(new Date(lastActivity), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {!isWaitingForJobs && jobs.length > 0 && (
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              size="lg"
+              className="h-12 w-full"
+            >
+              <PlusIcon className="mr-2 h-5 w-5" />
+              Add Job
+            </Button>
+          </div>
+        )}
+
+        {/* Create Job Dialog */}
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Job</DialogTitle>
+              <DialogDescription>
+                Enter a name for your new job.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label htmlFor="job-name" className="text-sm font-medium">
+                  Job Name *
+                </label>
+                <Input
+                  id="job-name"
+                  value={newJobName}
+                  onChange={(e) => setNewJobName(e.target.value)}
+                  placeholder="e.g., Smith Bathroom Reno"
+                  className="mt-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newJobName.trim()) {
+                      handleCreateJob();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreateJob} disabled={!newJobName.trim()}>
+                Create Job
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!jobToDelete}
+          onOpenChange={(open) => {
+            if (!open) setJobToDelete(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete job?</DialogTitle>
+              <DialogDescription>
+                This will permanently delete{" "}
+                {jobToDelete ? `"${jobToDelete.name}"` : "this job"}
+                {jobToDelete?.materialListCount
+                  ? ` and ${jobToDelete.materialListCount} material ${
+                      jobToDelete.materialListCount === 1 ? "list" : "lists"
+                    }`
+                  : ""}
+                . This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setJobToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!jobToDelete}
+                onClick={handleConfirmDeleteJob}
+              >
+                Delete Job
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+      </div>
+    </div>
+  );
+}

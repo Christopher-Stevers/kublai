@@ -152,7 +152,7 @@ export function QuotesList() {
                     asChild
                     className="h-11"
                   >
-                    <Link href={`/dashboard/material-lists/${quote.materialListId}`}>
+                    <Link href={`/jobs/material-lists/${quote.materialListId}`}>
                       <ExternalLinkIcon className="mr-2 h-4 w-4" />
                       View Material List
                     </Link>

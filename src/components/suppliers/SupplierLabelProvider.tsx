@@ -10,10 +10,10 @@ export function SupplierLabelProvider({
 }) {
   const pathname = usePathname();
   const jobId = pathname?.match(
-    /^\/dashboard\/jobs\/([0-9a-f-]{36})(?:\/|$)/i,
+    /^\/jobs\/([0-9a-f-]{36})(?:\/|$)/i,
   )?.[1];
   const materialListId = pathname?.match(
-    /^\/dashboard\/material-lists\/([0-9a-f-]{36})(?:\/|$)/i,
+    /^\/jobs\/material-lists\/([0-9a-f-]{36})(?:\/|$)/i,
   )?.[1];
   const online = useOnlineStatus();
   const active = !!(jobId || materialListId);

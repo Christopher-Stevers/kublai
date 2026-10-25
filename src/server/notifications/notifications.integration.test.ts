@@ -40,7 +40,7 @@ const user = {
 } as RequestUser;
 
 describe("notification account boundaries", () => {
-  it("requires approval, current organization, dashboard access and matching account", () => {
+  it("requires approval, current organization, Jobs access and matching account", () => {
     expect(notificationAccount(null)).toBeNull();
     for (const denied of [
       { ...user, organizationAccessStatus: "pending" },
@@ -177,7 +177,7 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       const item = page.items.find((n) => n.kind === "material-list")!;
       expect(item.title).toBe("Sender added 1 item");
       expect(item.context).toBe("Job site · Room supplies");
-      expect(item.url).toBe(`/dashboard/material-lists/${list}`);
+      expect(item.url).toBe(`/jobs/material-lists/${list}`);
       expect((await notificationOverview(ctx)).unreadCount).toBe(5);
       await readNotifications(ctx, [item.target]);
       expect((await notificationOverview(ctx)).unreadCount).toBe(4);
@@ -208,7 +208,7 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       let grouped = page.items.filter((n) => n.kind === "material-list");
       expect(grouped).toHaveLength(1);
       expect(grouped[0]!.title).toBe("Sender added 2 items");
-      expect(grouped[0]!.url).toBe(`/dashboard/material-lists/${secondList}`);
+      expect(grouped[0]!.url).toBe(`/jobs/material-lists/${secondList}`);
       const sent: string[] = [];
       await drainMaterialPush({
         db: ctx.db as never,
@@ -323,7 +323,7 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       expect(sent).toHaveLength(1);
       expect(JSON.parse(sent[0]!)).toMatchObject({
         type: "material-list",
-        url: `/dashboard/material-lists/${list}`,
+        url: `/jobs/material-lists/${list}`,
       });
       expect(sent[0]).not.toMatch(/Sender|Room supplies|recipient|unitCost/);
     });
@@ -466,7 +466,7 @@ describe.skipIf(!process.env.NOTIFICATIONS_TEST_SOCKET)(
       expect(page.items.some((r) => r.context === "Sender")).toBe(true);
       expect(
         page.items.some(
-          (r) => r.url === `/dashboard/chat?conversation=${groupRoom}`,
+          (r) => r.url === `/jobs/chat?conversation=${groupRoom}`,
         ),
       ).toBe(true);
     });

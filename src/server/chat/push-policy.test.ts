@@ -168,7 +168,7 @@ describe("push transport boundaries", () => {
     const payload: Record<string, unknown> = JSON.parse(
       chatPushPayload("job", "recipient"),
     ) as Record<string, unknown>;
-    expect(payload.url).toBe("/dashboard/jobs/job/chat");
+    expect(payload.url).toBe("/jobs/job/chat");
     expect(payload.account).toMatch(/^[a-f0-9]{64}$/);
     expect(Object.keys(payload).sort()).toEqual([
       "account",

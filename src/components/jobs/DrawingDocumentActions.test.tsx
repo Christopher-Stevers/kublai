@@ -101,7 +101,7 @@ describe("drawing document actions", () => {
     const options = vi.mocked(downloadDrawingPdf).mock.calls[0]![0];
     if (linked.kind !== "markup") throw Error("fixture");
     expect(options.markupLinkUrl?.(linked.data)).toBe(
-      `${location.origin}/dashboard/jobs/job/drawings?drawingSet=folder&drawingSheet=${sheet.id}&drawingLink=hyperlink`,
+      `${location.origin}/jobs/job/drawings?drawingSet=folder&drawingSheet=${sheet.id}&drawingLink=hyperlink`,
     );
   });
   it("exports the original page index and only includes visible annotations when selected", async () => {

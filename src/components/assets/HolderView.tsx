@@ -45,7 +45,7 @@ export function HolderView({ holder }: { holder: HolderRef }) {
   const startCount = api.assets.startCount.useMutation({
     onSuccess: async (count) => {
       await utils.assets.listCounts.invalidate();
-      router.push(`/dashboard/assets/counts/${count.id}`);
+      router.push(`/jobs/assets/counts/${count.id}`);
     },
   });
 
@@ -90,7 +90,7 @@ export function HolderView({ holder }: { holder: HolderRef }) {
         <>
           {holder.type === "job" && (
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/jobs/${holder.id}`}>Open job</Link>
+              <Link href={`/jobs/${holder.id}`}>Open job</Link>
             </Button>
           )}
           {canManage && (
@@ -146,7 +146,7 @@ export function HolderView({ holder }: { holder: HolderRef }) {
                 )}
                 {selectedTools.size > 0 && (
                   <Button size="sm" variant="outline" asChild>
-                    <a href={`/dashboard/assets/labels?ids=${[...selectedTools].join(",")}`} target="_blank" rel="noreferrer">
+                    <a href={`/jobs/assets/labels?ids=${[...selectedTools].join(",")}`} target="_blank" rel="noreferrer">
                       <PrinterIcon className="mr-1.5 h-4 w-4" /> Labels
                     </a>
                   </Button>
@@ -165,7 +165,7 @@ export function HolderView({ holder }: { holder: HolderRef }) {
                   onChange={() => toggle(setSelectedTools, tool.id)}
                   aria-label={`Select ${tool.assetTag}`}
                 />
-                <Link href={`/dashboard/assets/tools/${tool.id}`} className="min-w-0 flex-1">
+                <Link href={`/jobs/assets/tools/${tool.id}`} className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-semibold">{tool.assetTag}</span>
                     <span className="font-medium">{tool.name}</span>
@@ -276,7 +276,7 @@ function ReturnDialog({
       onOpenChange(false);
       onDone();
       notify(`${order.orderNumber} sent to the tool room.`, "success");
-      router.push(`/dashboard/assets/requests/${order.id}`);
+      router.push(`/jobs/assets/requests/${order.id}`);
     },
   });
   useEffect(() => {

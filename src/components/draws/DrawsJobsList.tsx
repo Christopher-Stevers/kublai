@@ -67,7 +67,7 @@ function DrawsJobsListContent() {
           <ReceiptIcon className="text-muted-foreground mx-auto h-12 w-12" />
           <h3 className="mt-4 text-lg font-semibold">No jobs yet</h3>
           <p className="text-muted-foreground mt-2">
-            Create a job from the dashboard, then set up its draws here.
+            Create a job from Jobs, then set up its draws here.
           </p>
         </div>
       </div>
@@ -82,7 +82,7 @@ function DrawsJobsListContent() {
           {jobs.map((job) => (
             <Link
               key={job.id}
-              href={`/dashboard/draws/${job.id}`}
+              href={`/jobs/draws/${job.id}`}
               className="flex items-center gap-3 p-4 hover:bg-accent"
             >
               <div className="min-w-0 flex-1">

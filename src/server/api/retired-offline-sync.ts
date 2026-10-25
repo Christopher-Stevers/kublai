@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { hasDashboardAccess } from "./trpc";
+import { hasAppAccess } from "./trpc";
 
 /** Never acknowledge or permanently reject edits queued by an older client. */
-export const retiredOfflineMutation = hasDashboardAccess
+export const retiredOfflineMutation = hasAppAccess
   .input(z.unknown())
   .mutation(() => {
     throw new TRPCError({

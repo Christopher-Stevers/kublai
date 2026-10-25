@@ -206,8 +206,8 @@ export function indexWorkspaceRecords(
   return result;
 }
 
-// Dashboard job summaries need no item scan. A quantity edit therefore does not
-// rebuild every list just because the dashboard remains mounted underneath it.
+// Jobs job summaries need no item scan. A quantity edit therefore does not
+// rebuild every list just because the Jobs remains mounted underneath it.
 const useJobs = createSharedReplicacheReader(async (tx) => {
   const [jobs, lists] = await Promise.all([
     tx.scan({ prefix: "job/" }).values().toArray(),

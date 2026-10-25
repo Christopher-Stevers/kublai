@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   postMessage: vi.fn(),
 }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/jobs" }));
 const utils = {
   push: {
     device: { fetch: mocks.device },

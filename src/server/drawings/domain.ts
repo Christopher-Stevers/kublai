@@ -35,7 +35,7 @@ export function drawingActor(
   )
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Approved dashboard and drawing access are required.",
+      message: "Approved Jobs and drawing access are required.",
     });
   return {
     id: user.id,

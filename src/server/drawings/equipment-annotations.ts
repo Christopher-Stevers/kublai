@@ -64,7 +64,7 @@ export async function equipmentAnnotationPlan(
     if (!link.url) continue;
     const url = new URL(link.url, "https://snapshot.invalid");
     // Automatic search produces local drawing destinations only.
-    if (!link.url.startsWith(`/dashboard/jobs/${jobId}/drawings`)) continue;
+    if (!link.url.startsWith(`/jobs/${jobId}/drawings`)) continue;
     const drawing = readSnapshotState(url.hash)?.drawing;
     if (
       drawing?.jobId === jobId &&

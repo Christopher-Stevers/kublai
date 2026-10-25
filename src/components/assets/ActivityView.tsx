@@ -40,7 +40,7 @@ export function ActivityView() {
       )}
       <p className="text-muted-foreground text-xs">
         Showing the latest 200. Each tool&apos;s full history is on its{" "}
-        <Link href="/dashboard/assets/tools" className="hover:underline">
+        <Link href="/jobs/assets/tools" className="hover:underline">
           page
         </Link>
         .

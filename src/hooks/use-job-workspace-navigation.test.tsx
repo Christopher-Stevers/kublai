@@ -18,7 +18,7 @@ beforeEach(() => {
     setItem: (key: string, value: string) => stored.set(key, value),
     removeItem: (key: string) => stored.delete(key),
   });
-  window.history.pushState(nextState, "", "/dashboard");
+  window.history.pushState(nextState, "", "/jobs");
 });
 afterEach(async () => { cleanup(); await tick(); vi.unstubAllGlobals(); });
 
@@ -47,7 +47,7 @@ it("takes the Android/browser gesture up the same hierarchy", async () => {
 it("reopens a captured list and goes up even when opened from a link", () => {
   const captured = { ...list, jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", materialListId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
   setLastJobWorkspaceLocation(job);
-  const source = makeSnapshotSource("/dashboard", { version: 1, workspace: captured }, "Captured list");
+  const source = makeSnapshotSource("/jobs", { version: 1, workspace: captured }, "Captured list");
   window.history.replaceState(nextState, "", source.href);
   const { result } = renderHook(useJobWorkspaceNavigation, { wrapper: StrictMode });
   expect(result.current.location).toEqual(captured);

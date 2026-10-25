@@ -29,7 +29,7 @@ export function SessionProviderWrapper({ children }: { children: ReactNode }) {
         pathname?.startsWith("/sign-up") ? SIGN_UP_LOCALIZATION : undefined
       }
       // Redirect to onboarding after sign-in, the onboarding layout will check
-      // if user has organizationId and redirect to dashboard if they do.
+      // if user has organizationId and redirect to Jobs if they do.
       afterSignInUrl="/onboarding"
       afterSignUpUrl="/onboarding"
     >

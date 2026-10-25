@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('catalog inline add selects existing Plumbing and returns to dropdown mode', async ({ page }) => {
-  await page.goto('/dashboard/catalogue');
+  await page.goto('/jobs/catalogue');
 
   await page.getByRole('button', { name: 'Create Part', exact: true }).click();
   await page.getByText('+ Add', { exact: true }).nth(0).click();

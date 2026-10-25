@@ -10,7 +10,7 @@ export function drawingNotificationUrl(
   setId: string,
   sheetId: string,
 ) {
-  return `/dashboard/jobs/${jobId}/drawings?drawingSet=${setId}&drawingSheet=${sheetId}`;
+  return `/jobs/${jobId}/drawings?drawingSet=${setId}&drawingSheet=${sheetId}`;
 }
 export function drawingNotificationReason(
   entity: DrawingEntity,

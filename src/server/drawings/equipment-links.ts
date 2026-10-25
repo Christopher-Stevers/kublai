@@ -279,7 +279,7 @@ export async function equipmentMatchesBatch(
       if (found)
         links.push({
           label: `${input.tag} — ${doc.name}`.slice(0, 255),
-          url: focusedUrl ?? `/dashboard/jobs/${jobId}/documents?document=${doc.id}`,
+          url: focusedUrl ?? `/jobs/${jobId}/documents?document=${doc.id}`,
         });
     }
     results.push({

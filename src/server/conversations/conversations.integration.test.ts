@@ -81,7 +81,7 @@ const base = {
   role: "admin",
 } as RequestUser;
 describe("private chat boundaries", () => {
-  it("requires a signed-in approved person with dashboard access", () => {
+  it("requires a signed-in approved person with Jobs access", () => {
     expect(() => checkConversationUser(null)).toThrow();
     for (const status of ["pending", "rejected", null])
       expect(() =>
@@ -261,7 +261,7 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
       author = await conversationAccess("author", id);
     const original = await imageFile(author);
     const source = {
-      href: "/dashboard?view=original",
+      href: "/jobs?view=original",
       title: "Original drawing",
       capturedAt: "2026-10-09T22:00:00Z",
     };
@@ -624,7 +624,7 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     const { id } = await direct(),
       access = await conversationAccess("author", id);
     const source = {
-      href: "/dashboard/jobs/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/documents?document=cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      href: "/jobs/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/documents?document=cccccccc-cccc-4ccc-8ccc-cccccccccccc",
       title: "Specification · v2 · page 3",
       capturedAt: "2026-10-09T20:00:00Z",
     };
@@ -643,7 +643,7 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     await expect(
       sendConversationMessage(access, {
         ...input,
-        source: { ...source, href: "/dashboard" },
+        source: { ...source, href: "/jobs" },
       }),
     ).rejects.toThrow("different contents");
     await removeConversationMessage(access, sent.id);
@@ -876,7 +876,7 @@ describe.skipIf(!enabled)("private chat against isolated PostgreSQL", () => {
     for (const call of network.send.mock.calls) {
       expect(JSON.parse(call[1] as string) as unknown).toMatchObject({
         type: "conversation-chat",
-        url: `/dashboard/chat?conversation=${id}`,
+        url: `/jobs/chat?conversation=${id}`,
       });
       expect(JSON.parse(call[1] as string) as unknown).toMatchObject({
         title: "Private group",

@@ -668,7 +668,7 @@ export function PipeMaterialListDialog({
                 Back to drawing
               </Button>
               <Button asChild>
-                <Link href={`/dashboard/material-lists/${created.id}`}>
+                <Link href={`/jobs/material-lists/${created.id}`}>
                   Open list
                 </Link>
               </Button>
@@ -723,7 +723,7 @@ export function PipeMaterialListDialog({
               )}
               {system && spec.requirements && (
                 <Button size="sm" variant="outline" asChild>
-                  <Link href={`/dashboard/jobs/${jobId}/systems`}>
+                  <Link href={`/jobs/${jobId}/systems`}>
                     Review system
                   </Link>
                 </Button>

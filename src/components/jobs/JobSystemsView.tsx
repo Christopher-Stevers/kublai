@@ -132,7 +132,7 @@ export function JobSystemsView({ jobId }: { jobId: string }) {
       const folderId =
         status.data?.folderId ?? (await folder.mutateAsync({ jobId })).folderId;
       router.push(
-        `/dashboard/jobs/${jobId}/documents?folder=${encodeURIComponent(folderId)}`,
+        `/jobs/${jobId}/documents?folder=${encodeURIComponent(folderId)}`,
       );
     } catch (cause) {
       setError(

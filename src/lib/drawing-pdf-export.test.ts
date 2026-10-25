@@ -70,11 +70,11 @@ describe("vector drawing export", () => {
       linkAppearance: "highlight",
       links: [
         { label: "Manual", url: "https://example.com/manual" },
-        { label: "Chat", url: "/dashboard/jobs/abc/chat" },
+        { label: "Chat", url: "/jobs/abc/chat" },
       ],
     };
     const chooser =
-      "https://app.test/dashboard/jobs/abc/drawings?drawingSet=folder&drawingSheet=sheet&drawingLink=link";
+      "https://app.test/jobs/abc/drawings?drawingSet=folder&drawingSheet=sheet&drawingLink=link";
     const resolver = vi.fn(() => chooser);
     const result = await PDFDocument.load(
       await buildDrawingPdf({

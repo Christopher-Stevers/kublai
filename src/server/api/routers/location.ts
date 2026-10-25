@@ -2,14 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { and, or, ilike, asc } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { locations } from "~/server/db/schema";
 
 export const locationRouter = createTRPCRouter({
   /**
    * Search locations by name, address, city, region, or postal code
    */
-  searchLocations: hasDashboardAccess
+  searchLocations: hasAppAccess
     .input(
       z.object({
         query: z.string().optional(),
@@ -52,7 +52,7 @@ export const locationRouter = createTRPCRouter({
   /**
    * Create a new location
    */
-  createLocation: hasDashboardAccess
+  createLocation: hasAppAccess
     .input(
       z.object({
         name: z

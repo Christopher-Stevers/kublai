@@ -41,7 +41,7 @@ export function CountsView() {
   const start = api.assets.startCount.useMutation({
     onSuccess: async (count) => {
       await utils.assets.listCounts.invalidate();
-      router.push(`/dashboard/assets/counts/${count.id}`);
+      router.push(`/jobs/assets/counts/${count.id}`);
     },
   });
 
@@ -71,7 +71,7 @@ export function CountsView() {
       ) : (
         <div className="bg-card divide-y rounded-lg border">
           {counts.data.map((c) => (
-            <Link key={c.id} href={`/dashboard/assets/counts/${c.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
+            <Link key={c.id} href={`/jobs/assets/counts/${c.id}`} className="hover:bg-accent flex items-center gap-3 p-3">
               <HolderIcon kind={c.holder.kind} className="text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

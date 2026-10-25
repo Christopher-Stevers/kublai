@@ -112,7 +112,7 @@ function HeaderFrame({
   const { landingPage, source: landingSource } = useLandingPage(sessionKey);
   const openLandingPage = () => {
     if (sandbox) return;
-    if (!landingSource) { navigate("/dashboard"); return; }
+    if (!landingSource) { navigate("/jobs"); return; }
     // Restore the captured nested view even when already on the same route.
     const state = { ...(window.history.state as Record<string, unknown> | null) };
     delete state.foremenhqWorkspace;
@@ -125,38 +125,38 @@ function HeaderFrame({
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
       ? [
-          { href: "/dashboard", label: "Jobs", icon: BriefcaseIcon },
-          { href: "/dashboard/chat", label: "Chat", icon: MessageSquareIcon },
+          { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
+          { href: "/jobs/chat", label: "Chat", icon: MessageSquareIcon },
         ]
       : []),
     ...(tabAccess.catalogue
       ? [
           {
-            href: "/dashboard/catalogue",
+            href: "/jobs/catalogue",
             label: "Catalogue",
             icon: BookOpenIcon,
           },
         ]
       : []),
     ...(tabAccess.suppliers
-      ? [{ href: "/dashboard/suppliers", label: "Suppliers", icon: TruckIcon }]
+      ? [{ href: "/jobs/suppliers", label: "Suppliers", icon: TruckIcon }]
       : []),
     ...(tabAccess.quotes
-      ? [{ href: "/dashboard/quotes", label: "Quotes", icon: FileTextIcon }]
+      ? [{ href: "/jobs/quotes", label: "Quotes", icon: FileTextIcon }]
       : []),
     ...(tabAccess.orders
-      ? [{ href: "/dashboard/orders", label: "Orders", icon: ShoppingCartIcon }]
+      ? [{ href: "/jobs/orders", label: "Orders", icon: ShoppingCartIcon }]
       : []),
     ...(tabAccess.draws
-      ? [{ href: "/dashboard/draws", label: "Draws", icon: ReceiptIcon }]
+      ? [{ href: "/jobs/draws", label: "Draws", icon: ReceiptIcon }]
       : []),
     ...(tabAccess.estimating
-      ? [{ href: "/dashboard/estimating", label: "Estimating", icon: CalculatorIcon }]
+      ? [{ href: "/jobs/estimating", label: "Estimating", icon: CalculatorIcon }]
       : []),
     ...(tabAccess.timesheets
       ? [
           {
-            href: "/dashboard/timesheets",
+            href: "/jobs/timesheets",
             label: "Timesheets",
             icon: ClockIcon,
           },
@@ -165,7 +165,7 @@ function HeaderFrame({
     ...(tabAccess.assets
       ? [
           {
-            href: "/dashboard/assets",
+            href: "/jobs/assets",
             label: "Asset Management",
             icon: WrenchIcon,
           },
@@ -174,7 +174,7 @@ function HeaderFrame({
     ...(tabAccess.organization
       ? [
           {
-            href: "/dashboard/organization",
+            href: "/jobs/organization",
             label: "Organization",
             icon: Building2Icon,
           },
@@ -182,17 +182,17 @@ function HeaderFrame({
       : []),
   ];
   const isActive = (href: string) => {
-    if (href === "/dashboard") {
+    if (href === "/jobs") {
       return (
-        pathname === "/dashboard" ||
-        (pathname?.startsWith("/dashboard/jobs/") ?? false) ||
-        (pathname?.startsWith("/dashboard/material-lists/") ?? false)
+        pathname === "/jobs" ||
+        (/^\/jobs\/[0-9a-f-]{36}(?:\/|$)/i.test(pathname ?? "")) ||
+        (pathname?.startsWith("/jobs/material-lists/") ?? false)
       );
     }
     return pathname?.startsWith(href);
   };
 
-  const showRouteBackButton = Boolean(pathname && pathname !== "/dashboard" && pathname.startsWith("/dashboard/"));
+  const showRouteBackButton = Boolean(pathname && pathname !== "/jobs" && pathname.startsWith("/jobs/"));
   const hasHyperlinkParent = useHyperlinkBack(pathname, sessionKey);
   const showBackButton = showRouteBackButton || showRequestedBackButton || hasHyperlinkParent;
 
@@ -211,7 +211,7 @@ function HeaderFrame({
 
   const navigate = (href: string) => {
     if (sandbox) return;
-    if (href === "/dashboard") resetJobWorkspaceNavigation();
+    if (href === "/jobs") resetJobWorkspaceNavigation();
     if (!isOnline) {
       window.location.href = href;
       return;
@@ -246,14 +246,14 @@ function HeaderFrame({
       return;
     }
     if (sandbox) return;
-    const parent = parentRoute(pathname ?? "/dashboard");
-    if (parent === "/dashboard") resetJobWorkspaceNavigation();
+    const parent = parentRoute(pathname ?? "/jobs");
+    if (parent === "/jobs") resetJobWorkspaceNavigation();
     if (!isOnline) window.location.href = parent;
     else router.replace(parent);
   };
   // Routed screens provide the base level; in-page viewers and wizard steps
   // take precedence even if their effects mount before the header.
-  useHeaderBackOverride(pathname?.startsWith("/dashboard/") ? goUp : null, {
+  useHeaderBackOverride(pathname?.startsWith("/jobs/") ? goUp : null, {
     priority: -100, scope: pathname ?? "",
   });
   const handleBack = () => { runHeaderBackOverride(); };
@@ -348,7 +348,7 @@ function HeaderFrame({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem
-                onClick={() => navigate("/dashboard/account/settings")}
+                onClick={() => navigate("/jobs/account/settings")}
               >
                 <SettingsIcon className="mr-2 h-4 w-4" />
                 Settings
@@ -371,7 +371,7 @@ function HeaderFrame({
                   <DropdownMenuItem
                     asChild
                     className="bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground h-10 min-h-10 w-10 justify-center rounded-full p-0 font-semibold"
-                    onSelect={() => navigate("/dashboard/account")}
+                    onSelect={() => navigate("/jobs/account")}
                   >
                     <button
                       type="button"
@@ -465,7 +465,7 @@ function HeaderFrame({
                     type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
-                      navigate("/dashboard/account/settings");
+                      navigate("/jobs/account/settings");
                     }}
                     className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium"
                   >
@@ -498,7 +498,7 @@ function HeaderFrame({
                         className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
                         onClick={() => {
                           setMobileMenuOpen(false);
-                          navigate("/dashboard/account");
+                          navigate("/jobs/account");
                         }}
                       >
                         {initials}
@@ -609,7 +609,7 @@ function HeaderForPractice() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
     <HeaderFrame
-      pathname="/dashboard"
+      pathname="/jobs"
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
       userName="Practice workspace"

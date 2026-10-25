@@ -326,7 +326,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
         name: `${(name.trim() || record.name).slice(0, 235)} — working copy`,
         document: parsed,
       });
-      router.push(`/dashboard/estimating/${copy.id}`);
+      router.push(`/jobs/estimating/${copy.id}`);
     } catch (cause) {
       reportError(cause);
     } finally {
@@ -542,7 +542,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 destructive: true,
               }))
             )
-              router.push("/dashboard/estimating");
+              router.push("/jobs/estimating");
           }}
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -608,7 +608,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
               onClick={() =>
                 void run("Duplicating", async (latest) => {
                   const copy = await duplicate.mutateAsync({ id: latest.id });
-                  router.push(`/dashboard/estimating/${copy.id}`);
+                  router.push(`/jobs/estimating/${copy.id}`);
                 })
               }
             >
@@ -645,7 +645,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                       const copy = await duplicate.mutateAsync({
                         id: latest.id,
                       });
-                      router.push(`/dashboard/estimating/${copy.id}`);
+                      router.push(`/jobs/estimating/${copy.id}`);
                     })
                   }
                 >
@@ -1115,7 +1115,7 @@ export function EstimateWorkspace({ id }: { id: string }) {
                 {materialsId && (
                   <a
                     className="text-primary mt-2 block text-xs underline"
-                    href={`/dashboard/material-lists/${materialsId}`}
+                    href={`/jobs/material-lists/${materialsId}`}
                   >
                     View material list
                   </a>

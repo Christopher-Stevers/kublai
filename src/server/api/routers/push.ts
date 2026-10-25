@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   createTRPCRouter,
-  hasDashboardAccess,
+  hasAppAccess,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
@@ -67,7 +67,7 @@ export const pushRouter = createTRPCRouter({
         .limit(1);
       return { subscribed: Boolean(subscription) };
     }),
-  subscribe: hasDashboardAccess
+  subscribe: hasAppAccess
     .input(
       z.object({
         endpoint,
@@ -153,7 +153,7 @@ export const pushRouter = createTRPCRouter({
     }),
   // Update only an existing opt-in owned by this account. No new subscription
   // or account reassignment can be performed through device reporting.
-  reportDevice: hasDashboardAccess
+  reportDevice: hasAppAccess
     .input(
       z.object({
         endpoint,

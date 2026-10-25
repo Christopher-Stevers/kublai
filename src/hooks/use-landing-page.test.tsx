@@ -2,8 +2,8 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useLandingPage } from "./use-landing-page";
 import { makeSnapshotSource, readSnapshotState } from "~/lib/snapshot-source";
-const orders = makeSnapshotSource("/dashboard/orders", { version: 1 }, "Orders");
-const alma = makeSnapshotSource("/dashboard/jobs/0391aed4-7773-47ec-9141-09df373ec008", { version: 1 }, "Alma Phase #2");
+const orders = makeSnapshotSource("/jobs/orders", { version: 1 }, "Orders");
+const alma = makeSnapshotSource("/jobs/0391aed4-7773-47ec-9141-09df373ec008", { version: 1 }, "Alma Phase #2");
 beforeEach(() => {
   const values = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -16,7 +16,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 it("defaults to Jobs, shares captured destinations across consumers and persists", () => {
   const settings = renderHook(() => useLandingPage("tim"));
   const header = renderHook(() => useLandingPage("tim"));
-  expect(header.result.current.landingPage).toBe("/dashboard");
+  expect(header.result.current.landingPage).toBe("/jobs");
   act(() => { settings.result.current.setLandingPage(orders); });
   expect(header.result.current.source).toEqual(orders);
   header.unmount();
@@ -28,7 +28,7 @@ it("isolates accounts and rejects external destinations", () => {
   act(() => { view.result.current.setLandingPage({ ...orders, href: "https://example.com" }); });
   expect(view.result.current.source).toEqual(orders);
   view.rerender({ id: "diego" });
-  expect(view.result.current.landingPage).toBe("/dashboard");
+  expect(view.result.current.landingPage).toBe("/jobs");
   view.rerender({ id: "tim" });
   expect(view.result.current.source).toEqual(orders);
 });
@@ -45,7 +45,7 @@ it("opens old account and device job destinations in the current workspace", () 
   const view = renderHook(() => useLandingPage("tim", alma));
   const checkDestination = () => {
     const url = new URL(view.result.current.landingPage, "https://app.test");
-    expect(url.pathname).toBe("/dashboard");
+    expect(url.pathname).toBe("/jobs");
     expect(readSnapshotState(url.hash)?.workspace).toEqual({
       jobId: "0391aed4-7773-47ec-9141-09df373ec008", view: "options", materialListId: null,
     });
@@ -58,7 +58,7 @@ it("opens old account and device job destinations in the current workspace", () 
 
 it("preserves custom drawing, document and other nested destinations", () => {
   const view = renderHook(() => useLandingPage("tim"));
-  for (const href of ["/dashboard/orders", `${alma.href.split("#")[0]}/drawings?drawingSheet=sheet`, `${alma.href.split("#")[0]}/documents?document=doc`]) {
+  for (const href of ["/jobs/orders", `${alma.href.split("#")[0]}/drawings?drawingSheet=sheet`, `${alma.href.split("#")[0]}/documents?document=doc`]) {
     const destination = makeSnapshotSource(href, { version: 1 }, "Custom destination");
     act(() => { view.result.current.setLandingPage(destination); });
     expect(view.result.current.landingPage).toBe(destination.href);

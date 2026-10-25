@@ -21,13 +21,13 @@ export type HolderRef = { type: "location" | "job" | "user"; id: string };
 export type Holders = RouterOutputs["assets"]["holders"];
 
 const SECTIONS = [
-  { href: "/dashboard/assets", label: "Overview", exact: true },
-  { href: "/dashboard/assets/tools", label: "Tools" },
-  { href: "/dashboard/assets/requests", label: "Requests" },
-  { href: "/dashboard/assets/where", label: "Where" },
-  { href: "/dashboard/assets/counts", label: "Counts" },
-  { href: "/dashboard/assets/activity", label: "Activity" },
-  { href: "/dashboard/assets/types", label: "Tool Types" },
+  { href: "/jobs/assets", label: "Overview", exact: true },
+  { href: "/jobs/assets/tools", label: "Tools" },
+  { href: "/jobs/assets/requests", label: "Requests" },
+  { href: "/jobs/assets/where", label: "Where" },
+  { href: "/jobs/assets/counts", label: "Counts" },
+  { href: "/jobs/assets/activity", label: "Activity" },
+  { href: "/jobs/assets/types", label: "Tool Types" },
 ];
 
 /** Sub-navigation shared by every Asset Management screen. */
@@ -147,7 +147,7 @@ export function HolderIcon({ kind, className }: { kind: string; className?: stri
 }
 
 export function holderHref(holder: HolderRef) {
-  return `/dashboard/assets/where/${holder.type}/${holder.id}`;
+  return `/jobs/assets/where/${holder.type}/${holder.id}`;
 }
 
 export function HolderLink({

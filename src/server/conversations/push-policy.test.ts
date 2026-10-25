@@ -56,7 +56,7 @@ describe("private chat push eligibility", () => {
     ) as { account: string; type: string; url: string };
     expect(payload).toMatchObject({
       type: "conversation-chat",
-      url: "/dashboard/chat?conversation=11111111-1111-4111-8111-111111111111",
+      url: "/jobs/chat?conversation=11111111-1111-4111-8111-111111111111",
     });
     expect(payload.account).toMatch(/^[a-f0-9]{64}$/);
     expect(payload).not.toHaveProperty("body");

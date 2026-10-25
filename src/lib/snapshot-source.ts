@@ -185,9 +185,14 @@ export type SnapshotStateKey = Exclude<
   "version" | "scroll"
 >;
 const localBase = "https://snapshot.invalid";
+export function canonicalAppHref(href: string) {
+  return href.replace(/^\/dashboard\/jobs(?=\/|[?#]|$)/, "/jobs")
+    .replace(/^\/dashboard(?=\/|[?#]|$)/, "/jobs");
+}
 export function safeSnapshotHref(href: string) {
+  href = canonicalAppHref(href);
   if (
-    !href.startsWith("/dashboard") ||
+    !href.startsWith("/jobs") ||
     href.startsWith("//") ||
     /[\\\x00-\x20]/.test(href)
   )
@@ -196,8 +201,8 @@ export function safeSnapshotHref(href: string) {
     const url = new URL(href, localBase);
     return (
       url.origin === localBase &&
-      (url.pathname === "/dashboard" ||
-        url.pathname.startsWith("/dashboard/")) &&
+      (url.pathname === "/jobs" ||
+        url.pathname.startsWith("/jobs/")) &&
       !/%(?:2f|5c)/i.test(url.pathname)
     );
   } catch {
@@ -208,7 +213,8 @@ export const snapshotSourceSchema = z.object({
   href: z
     .string()
     .max(16_000)
-    .refine(safeSnapshotHref, "Snapshot links must open a ForemanHQ page."),
+    .refine(safeSnapshotHref, "Snapshot links must open a ForemanHQ page.")
+    .transform(canonicalAppHref),
   title: z.string().trim().min(1).max(200),
   capturedAt: z.iso.datetime(),
 });
@@ -234,7 +240,7 @@ export function makeSnapshotSource(
   state: SnapshotState,
   title: string,
 ): SnapshotSource {
-  const url = new URL(href, localBase);
+  const url = new URL(canonicalAppHref(href), localBase);
   // Session credentials never belong in a share link.
   for (const key of [...url.searchParams.keys()])
     if (
@@ -244,12 +250,12 @@ export function makeSnapshotSource(
     )
       url.searchParams.delete(key);
   if (state.drawing) {
-    url.pathname = `/dashboard/jobs/${state.drawing.jobId}/drawings`;
+    url.pathname = `/jobs/${state.drawing.jobId}/drawings`;
     url.search = "";
     url.searchParams.set("drawingSet", state.drawing.setId);
     url.searchParams.set("drawingSheet", state.drawing.sheetId);
   } else if (state.document) {
-    url.pathname = `/dashboard/jobs/${state.document.jobId}/documents`;
+    url.pathname = `/jobs/${state.document.jobId}/documents`;
     url.search = "";
     url.searchParams.set("document", state.document.documentId);
   }

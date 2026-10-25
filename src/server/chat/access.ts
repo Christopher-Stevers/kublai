@@ -21,7 +21,7 @@ export function checkChatAccess(user: RequestUser | null, job: ChatJob | null) {
   )
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Approved organization and dashboard access are required.",
+      message: "Approved organization and Jobs access are required.",
     });
   if (job?.organizationId !== user.organizationId)
     throw new TRPCError({ code: "NOT_FOUND", message: "Job not found." });

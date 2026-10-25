@@ -72,7 +72,7 @@ vi.mock("~/hooks/use-offline-documents", () => ({
     isOfflineFallback: false,
   }),
 }));
-import OrdersPage from "~/app/dashboard/orders/page";
+import OrdersPage from "~/app/jobs/orders/page";
 import { OrdersPreviewSheet } from "./OrdersPreviewSheet";
 const order = {
   id: "possible-supplier",

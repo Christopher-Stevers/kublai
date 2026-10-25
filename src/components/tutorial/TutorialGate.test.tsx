@@ -19,7 +19,7 @@ import {
 } from "~/lib/job-workspace-last-option";
 
 const mocks = vi.hoisted(() => ({
-  pathname: "/dashboard",
+  pathname: "/jobs",
   replace: vi.fn(),
   finish: vi.fn(),
   restart: vi.fn(),
@@ -75,7 +75,7 @@ const gate = (completed = false, userId = "user-a") => (
 let stored: Map<string, string>;
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.pathname = "/dashboard";
+  mocks.pathname = "/jobs";
   mocks.finish.mockResolvedValue({});
   mocks.restart.mockResolvedValue({});
   mocks.state.mockRejectedValue(new Error("Offline"));
@@ -88,7 +88,7 @@ beforeEach(() => {
   window.history.replaceState(
     { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: {} },
     "",
-    "/dashboard",
+    "/jobs",
   );
 });
 afterEach(() => {
@@ -99,12 +99,12 @@ afterEach(() => {
 
 describe("tutorial isolation and lifecycle", () => {
   it("shows only practice jobs on first entry, including deep links", () => {
-    mocks.pathname = "/dashboard/jobs/real-job/rooms";
+    mocks.pathname = "/jobs/real-job/rooms";
     render(gate());
     expect(screen.getByText("Practice Jobs")).toBeInTheDocument();
     expect(screen.queryByText("Real Jobs")).not.toBeInTheDocument();
     expect(mocks.realMounted).not.toHaveBeenCalled();
-    expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.replace).toHaveBeenCalledWith("/jobs");
   });
 
   it("finishes, clears saved/history job navigation, and stops showing the tour on reload", async () => {
@@ -118,7 +118,7 @@ describe("tutorial isolation and lifecycle", () => {
         __NA: true,
         foremenhqWorkspace: {
           version: 1,
-          pathname: "/dashboard",
+          pathname: "/jobs",
           location: { jobId: "real-job", view: "rooms", materialListId: null },
         },
       },
@@ -185,7 +185,7 @@ describe("tutorial isolation and lifecycle", () => {
   });
 
   it("restarts from settings and keeps live children unmounted until Jobs navigation resolves", async () => {
-    mocks.pathname = "/dashboard/account/settings";
+    mocks.pathname = "/jobs/account/settings";
     const view = render(gate(true));
     fireEvent.click(screen.getByText("Restart tutorial"));
     expect(screen.getByText("Practice Jobs")).toBeInTheDocument();
@@ -193,10 +193,10 @@ describe("tutorial isolation and lifecycle", () => {
     fireEvent.click(screen.getByText("End tutorial"));
     expect(screen.getByRole("link", { name: "Open Jobs" })).toHaveAttribute(
       "href",
-      "/dashboard",
+      "/jobs",
     );
     expect(screen.queryByText("Real Jobs")).not.toBeInTheDocument();
-    mocks.pathname = "/dashboard";
+    mocks.pathname = "/jobs";
     view.rerender(gate(true));
     expect(await screen.findByText("Real Jobs")).toBeInTheDocument();
   });

@@ -71,7 +71,7 @@ export function materialPushPayload(
           itemCount: group.count,
         }
       : {}),
-    url: `/dashboard/material-lists/${materialListId}`,
+    url: `/jobs/material-lists/${materialListId}`,
     account: createHash("sha256").update(recipientId).digest("hex"),
   });
 }

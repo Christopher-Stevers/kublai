@@ -27,7 +27,7 @@ export function MarketingHeader() {
             asChild
             className="h-10 bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus:bg-primary/90 sm:h-11 sm:px-8"
           >
-            <Link href="/dashboard">Start an Order</Link>
+            <Link href="/jobs">Start an Order</Link>
           </Button>
         </div>
       </nav>

@@ -33,7 +33,7 @@ vi.mock("~/server/db", async () => {
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasDashboardAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
 });
 const supplierAccess = vi.hoisted(() => ({ financial: true, orders: true }));
 vi.mock("~/server/auth/permissions", () => ({

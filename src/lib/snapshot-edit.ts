@@ -7,7 +7,7 @@ export function snapshotEditHref(snapshot: {
   conversationId: string;
   source?: SnapshotSource | null;
 }) {
-  const fallback = `/dashboard/chat?conversation=${encodeURIComponent(snapshot.conversationId)}`;
+  const fallback = `/jobs/chat?conversation=${encodeURIComponent(snapshot.conversationId)}`;
   const href =
     snapshot.source && safeSnapshotHref(snapshot.source.href)
       ? snapshot.source.href

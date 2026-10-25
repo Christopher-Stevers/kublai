@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
 import { assertSheetsNotReferenced } from "~/server/drawings/service";
 import { assertCan, userCan } from "~/server/auth/permissions";
 import type { db as database } from "~/server/db";
@@ -75,7 +75,7 @@ async function requireSheet(ctx: Ctx, sheetId: string) {
 
 export const drawingsRouter = createTRPCRouter({
   /** The job's drawing folders with their sheet counts and a cover sheet. */
-  listSets: hasDashboardAccess
+  listSets: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       assertCan(ctx.user, "drawings.view");
@@ -125,7 +125,7 @@ export const drawingsRouter = createTRPCRouter({
     }),
 
   /** One folder and its sheets, in upload order. */
-  getSet: hasDashboardAccess
+  getSet: hasAppAccess
     .input(z.object({ setId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       assertCan(ctx.user, "drawings.view");
@@ -156,7 +156,7 @@ export const drawingsRouter = createTRPCRouter({
       };
     }),
 
-  createSet: hasDashboardAccess
+  createSet: hasAppAccess
     .input(z.object({ jobId: z.string().uuid(), name }))
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
@@ -173,7 +173,7 @@ export const drawingsRouter = createTRPCRouter({
       return { id: set!.id };
     }),
 
-  renameSet: hasDashboardAccess
+  renameSet: hasAppAccess
     .input(z.object({ setId: z.string().uuid(), name }))
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
@@ -186,7 +186,7 @@ export const drawingsRouter = createTRPCRouter({
     }),
 
   /** Deletes the folder and its sheets. */
-  deleteSet: hasDashboardAccess
+  deleteSet: hasAppAccess
     .input(z.object({ setId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "drawings.view");
@@ -201,7 +201,7 @@ export const drawingsRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
-  renameSheet: hasDashboardAccess
+  renameSheet: hasAppAccess
     .input(z.object({ sheetId: z.string().uuid(), name }))
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
@@ -213,7 +213,7 @@ export const drawingsRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
-  deleteSheet: hasDashboardAccess
+  deleteSheet: hasAppAccess
     .input(z.object({ sheetId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "drawings.view");

@@ -605,7 +605,7 @@ describe("drawing workspace workflows", () => {
   it("pins a snapshot to its captured revision when the current drawing changes", () => {
     mocks.data!.metadata.currentSourceSheetId = revisionId;
     const saved = makeSnapshotSource(
-      "/dashboard",
+      "/jobs",
       {
         version: 1,
         drawing: {
@@ -635,7 +635,7 @@ describe("drawing workspace workflows", () => {
   });
   it("explains a missing snapshot revision before offering the current drawing", () => {
     const saved = makeSnapshotSource(
-      "/dashboard",
+      "/jobs",
       {
         version: 1,
         drawing: {
@@ -711,7 +711,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     fireEvent.click(screen.getByRole("button", { name: "Revision drawing" }));
     const target = mocks.data!.jobSheets.find(s=>s.id===revisionId)!;
-    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${revisionId}`,{scroll:false});
+    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${revisionId}`,{scroll:false});
   });
   it("opens single and legacy hyperlinks directly", () => {
     const entity = existingMarkup();
@@ -734,20 +734,20 @@ describe("drawing workspace workflows", () => {
     );
     entity.data = {
       ...entity.data,
-      links: [{ label: "Chat", url: `/dashboard/jobs/${jobId}/chat` }],
+      links: [{ label: "Chat", url: `/jobs/${jobId}/chat` }],
     };
     view.rerender(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
-    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/chat`, { scroll: false });
+    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/chat`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
     const destinationEvent = vi.fn();
     window.addEventListener(DRAWING_DESTINATION_EVENT,destinationEvent);
-    entity.data.links = [{ label: "Drawing", url: `${location.origin}/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail` }];
+    entity.data.links = [{ label: "Drawing", url: `${location.origin}/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail` }];
     view.rerender(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
-    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail`, { scroll: false });
+    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
     expect(destinationEvent).toHaveBeenCalledWith(expect.objectContaining({detail:entity.data.links[0]!.url}));
     window.removeEventListener(DRAWING_DESTINATION_EVENT,destinationEvent);
@@ -773,7 +773,7 @@ describe("drawing workspace workflows", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Add link" }));
     fireEvent.change(screen.getByLabelText("Address"), {
-      target: { value: `/dashboard/jobs/${jobId}/chat` },
+      target: { value: `/jobs/${jobId}/chat` },
     });
     fireEvent.change(screen.getByLabelText("Link name (optional)"), {
       target: { value: "Job discussion" },
@@ -790,7 +790,7 @@ describe("drawing workspace workflows", () => {
         text: "AHU-1",
         links: [
           { label: "Equipment manual", url: "https://example.com/manual" },
-          { label: "Job discussion", url: `/dashboard/jobs/${jobId}/chat` },
+          { label: "Job discussion", url: `/jobs/${jobId}/chat` },
         ],
       },
     });
@@ -834,7 +834,7 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Follow original page link" }),
     );
     const target = mocks.data!.jobSheets[1]!;
-    expect(mocks.push).toHaveBeenLastCalledWith(`/dashboard/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${target.id}`,{scroll:false});
+    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${target.id}`,{scroll:false});
     expect(onOpenSheet).not.toHaveBeenCalled();
     expect(mocks.save).not.toHaveBeenCalled();
   });
@@ -1724,9 +1724,9 @@ it("keeps the scrolling drawing toolbar in the host dock and its controls workin
 it("remembers the captured source drawing view before following an internal hyperlink",()=>{
  const entity=existingMarkup();
  if(entity.kind!=="markup")throw Error("fixture");
- entity.data={...entity.data,type:"link",links:[{label:"Documents",url:`/dashboard/jobs/${jobId}/documents`}]};
+ entity.data={...entity.data,type:"link",links:[{label:"Documents",url:`/jobs/${jobId}/documents`}]};
  mocks.data!.entities=[entity];
- const href=`/dashboard/jobs/${jobId}/drawings?drawingSheet=${sheetId}#snapshot=captured-zoom`;
+ const href=`/jobs/${jobId}/drawings?drawingSheet=${sheetId}#snapshot=captured-zoom`;
  const captureSource=vi.fn(()=>({href,title:"Source",capturedAt:new Date().toISOString()}));
  const visit=vi.fn();window.addEventListener(HYPERLINK_VISIT_EVENT,visit);
  render(<SnapshotSourceContext.Provider value={{captureSource,register:()=>()=>{},registerPage:()=>()=>{}}}>
@@ -1734,7 +1734,7 @@ it("remembers the captured source drawing view before following an internal hype
  </SnapshotSourceContext.Provider>);
  fireEvent.click(screen.getByRole("button",{name:"Tap hyperlink"}));
  expect(captureSource).toHaveBeenCalledOnce();
- expect(visit).toHaveBeenCalledWith(expect.objectContaining({detail:{source:href,target:new URL(`/dashboard/jobs/${jobId}/documents`,location.origin).href}}));
+ expect(visit).toHaveBeenCalledWith(expect.objectContaining({detail:{source:href,target:new URL(`/jobs/${jobId}/documents`,location.origin).href}}));
  window.removeEventListener(HYPERLINK_VISIT_EVENT,visit);
 });
 

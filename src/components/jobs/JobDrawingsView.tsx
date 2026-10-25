@@ -191,7 +191,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       const snapshot = readSnapshotState(url.hash);
       const saved = snapshot?.drawing;
       if (url.origin !== window.location.origin ||
-          (url.pathname !== `/dashboard/jobs/${jobId}/drawings` && !(url.pathname === "/dashboard" && saved?.jobId === jobId))) return;
+          (url.pathname !== `/jobs/${jobId}/drawings` && !(url.pathname === "/jobs" && saved?.jobId === jobId))) return;
       const id = url.searchParams.get("drawingSheet"), folder = url.searchParams.get("drawingSet");
       if (!id || !folder || !/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/i.test(folder)) return;
       const matches = saved?.jobId === jobId && saved.sheetId === id && saved.setId === folder;

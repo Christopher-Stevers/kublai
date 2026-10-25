@@ -355,7 +355,7 @@ describe("drawing workspace authorization and revisions", () => {
         linkAppearance: "highlight",
         links: [
           { label: "Drawing", targetSheetId: source2 },
-          { label: "Chat", url: `/dashboard/jobs/${sheetId}/chat` },
+          { label: "Chat", url: `/jobs/${sheetId}/chat` },
         ],
       },
     });
@@ -363,7 +363,7 @@ describe("drawing workspace authorization and revisions", () => {
     expect(linked.data.linkAppearance).toBe("highlight");
     expect(linked.data.links).toEqual([
       { label: "Drawing", targetSheetId: source2 },
-      { label: "Chat", url: `/dashboard/jobs/${sheetId}/chat` },
+      { label: "Chat", url: `/jobs/${sheetId}/chat` },
     ]);
     expect(() =>
       create({ data: { ...markup, targetSheetId: unknown } }),

@@ -68,7 +68,7 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Dashboard access
+                    Jobs access
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -104,7 +104,7 @@ export default function PricingPage() {
                   </li>
                 </ul>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/dashboard">Use Standard Account</Link>
+                  <Link href="/jobs">Use Standard Account</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -212,8 +212,8 @@ export default function PricingPage() {
           <div className="mt-12 text-center">
             <p className="text-muted-foreground">
               Already have access?{" "}
-              <Link href="/dashboard" className="text-primary hover:underline">
-                Go to Dashboard
+              <Link href="/jobs" className="text-primary hover:underline">
+                Go to Jobs
               </Link>
             </p>
           </div>

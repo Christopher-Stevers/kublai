@@ -241,7 +241,7 @@ describe.skipIf(!socket)(
         expect(payload).not.toContain("Secret job name");
         expect(JSON.parse(payload)).toMatchObject({
           type: "job-chat",
-          url: `/dashboard/jobs/${job}/chat`,
+          url: `/jobs/${job}/chat`,
         });
       }
     });

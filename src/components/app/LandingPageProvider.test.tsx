@@ -4,7 +4,7 @@ import { LandingPageProvider, useLandingPagePicker } from "./LandingPageProvider
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { useLandingPage } from "~/hooks/use-landing-page";
 import { makeSnapshotSource } from "~/lib/snapshot-source";
-const target = makeSnapshotSource("/dashboard/jobs/0391aed4-7773-47ec-9141-09df373ec008/drawings", { version: 1, pages: { "drawings:selection": "sheet-3" } }, "Alma drawing");
+const target = makeSnapshotSource("/jobs/0391aed4-7773-47ec-9141-09df373ec008/drawings", { version: 1, pages: { "drawings:selection": "sheet-3" } }, "Alma drawing");
 const captureSource = vi.fn(() => target);
 function Controls() {
   const picker = useLandingPagePicker();

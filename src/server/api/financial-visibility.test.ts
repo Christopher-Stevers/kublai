@@ -1,14 +1,14 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 vi.mock("~/server/db", () => ({ db: {} }));
-import { createTRPCRouter, hasDashboardAccess, type createTRPCContext } from "./trpc";
+import { createTRPCRouter, hasAppAccess, type createTRPCContext } from "./trpc";
 import { getUserPermissions, toStoredConfig } from "~/server/auth/permissions";
 
 const router = createTRPCRouter({
-  list: hasDashboardAccess.query(() => ({ itemCount: 5, materialTotal: 189.5,
+  list: hasAppAccess.query(() => ({ itemCount: 5, materialTotal: 189.5,
     quote: { total: "189.5", items: [{ unitCost: "37.9", quantity: "5" }] } })),
-  edit: hasDashboardAccess.mutation(() => ({ unitCost: "37.9", quantity: "5" })),
-  role: hasDashboardAccess.query(({ ctx }) => getUserPermissions(ctx.user)),
+  edit: hasAppAccess.mutation(() => ({ unitCost: "37.9", quantity: "5" })),
+  role: hasAppAccess.query(({ ctx }) => getUserPermissions(ctx.user)),
 });
 function caller(visible: boolean, executive = false) {
   const user = { id: "member", organizationId: "company", organizationAccessStatus: "approved",
