@@ -77,8 +77,9 @@ function FooterLayer({ shown, children }: { shown: boolean; children: ReactNode 
     <div
       aria-hidden={!shown || undefined}
       inert={!shown}
-      className={`col-start-1 row-start-1 self-end transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
-        shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
+      // The bar going away drops out first; the new one rises in just after.
+      className={`col-start-1 row-start-1 self-end transition-[opacity,translate,scale] duration-500 ease-in-out motion-reduce:transition-none ${
+        shown ? "translate-y-0 scale-100 opacity-100 delay-150" : "pointer-events-none translate-y-8 scale-95 opacity-0"
       }`}
     >
       {children}
