@@ -440,6 +440,27 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
   });
+  it("floats a Done button while anything is in use that goes back to Viewing or Select, whichever was last", () => {
+    open();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    chooseTool("select");
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    chooseTool("rect");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "select");
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    openMenu("Tools");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(() => props.toolControls?.onMode?.({ measuring: true, pipe: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(next.toolControls?.modeRequest?.mode).toBe("idle");
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+  });
   it("offers Viewing in the quick wheel and clears the selected markup", () => {
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     mocks.data!.entities = [existingMarkup()];

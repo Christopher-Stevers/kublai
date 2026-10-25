@@ -50,6 +50,7 @@ import {
   ActivityIcon,
   BellIcon,
   BookmarkIcon,
+  CheckIcon,
   CircleAlertIcon,
   DownloadIcon,
   FileTextIcon,
@@ -469,6 +470,15 @@ export function DrawingWorkspace({
   const finishTool = () => {
     selectTool("pan");
     setSelectedId(null);
+  };
+  // Done leaves whatever is in use for Viewing or Select, whichever was last.
+  const restTool = useRef<DrawingTool>("pan");
+  useEffect(() => {
+    if (tool === "viewing" || tool === "select") restTool.current = tool;
+  }, [tool]);
+  const finishUsing = () => {
+    setSelectedId(null);
+    selectTool(restTool.current);
   };
   const [legendOpen, setLegendOpen] = useState(false);
   const [autoHyperlinkOpen, setAutoHyperlinkOpen] = useState(false);
@@ -1885,6 +1895,19 @@ export function DrawingWorkspace({
         )}
       </div>
       <div className="relative flex min-h-0 flex-1">
+        {(bottomMode.measuring ||
+          bottomMode.pipe ||
+          (tool !== "pan" && tool !== "viewing" && tool !== "select")) && (
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-background/60 border-border/60 hover:bg-background/80 absolute top-3 left-3 z-20 h-10 rounded-full px-4 shadow-md backdrop-blur-sm"
+            onClick={finishUsing}
+          >
+            <CheckIcon />
+            Done
+          </Button>
+        )}
         {entities.some(
           (e) =>
             e.kind === "issue" &&
