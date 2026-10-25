@@ -19,10 +19,10 @@ export function useMaterialListSortPreference() {
     editable: false,
     saving: false,
     error: "",
-    setEditingExecutive: () => {},
-    setCustom: () => {},
-    setSortMode: () => {},
-    setKeywordGroups: () => {},
+    setEditingExecutive: () => undefined,
+    setCustom: () => undefined,
+    setSortMode: () => undefined,
+    setKeywordGroups: () => undefined,
   };
   const value = context ?? fallback;
   return readOnly

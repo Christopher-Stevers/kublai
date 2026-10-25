@@ -59,6 +59,8 @@ function usePreferenceState(userId: string, organizationId: string) {
         (saved.personal === null ||
           materialSortSettingsSchema.safeParse(saved.personal).success)
       )
+        // Hydrate browser-only storage after the server/client initial render agrees.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCached({ ...saved, canEditExecutive: false });
     } catch {
       /* Storage is optional. */
@@ -98,6 +100,8 @@ function usePreferenceState(userId: string, organizationId: string) {
     } catch {
       return; // A fresh or inaccessible browser must not claim the executive default.
     }
+    // Stock browser defaults are not evidence of an executive customization.
+    if (JSON.stringify(settings) === JSON.stringify(defaultMaterialSortSettings)) return;
     void mutation
       .mutateAsync({
         ...input,
