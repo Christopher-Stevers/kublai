@@ -413,7 +413,9 @@ export async function startSlipAnalysis(
   if (separateBackground()) return;
   const work = tail
     .catch(() => undefined)
-    .then(() => runSlipTask(access, documentId, task));
+    .then(async () => {
+      await runSlipTask(access, documentId, task);
+    });
   inflight.set(task.analysis.runId, work);
   tail = work;
   void work.finally(() => inflight.delete(task.analysis.runId));
