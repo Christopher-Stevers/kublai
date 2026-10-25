@@ -514,3 +514,13 @@ describe("explicit supplier pricing selections", () => {
     test.assertConsumed();
   });
 });
+
+it("metadata-only job reads retain access scoping and skip material/order queries", async () => {
+  const fixture = setup([[{id:jobId,name:"Job",organizationId}]]);
+  const result = await fixture.jobs.getJob({jobId,includeMaterialLists:false});
+  expect(result).toMatchObject({id:jobId,materialLists:[]});
+  fixture.assertConsumed();
+  expect(fixture.tx.select).toHaveBeenCalledTimes(1);
+  expect(fixture.predicates[0]?.params).toContain(organizationId);
+  expect(fixture.predicates[0]?.params).toContain(jobId);
+});

@@ -18,7 +18,11 @@ import {
   partDefinitions,
   quoteItems,
 } from "~/server/db/schema";
-import { findJobPrice, indexJobPrices, type ApprovalSnapshotItem } from "~/lib/job-pricing";
+import {
+  findJobPrice,
+  indexJobPrices,
+  type ApprovalSnapshotItem,
+} from "~/lib/job-pricing";
 
 type Database = Pick<typeof db, "select" | "update" | "execute">;
 
@@ -33,32 +37,35 @@ export async function lockJobPurchasing(
   );
 }
 
-export async function getJobPriceBook(
+export async function getJobPriceBooks(
   database: Pick<typeof db, "select">,
   organizationId: string,
-  jobId: string,
+  jobIds: readonly string[],
 ) {
-  const [policy] = await database
-    .select()
-    .from(jobPriceLists)
-    .where(
-      and(
-        eq(jobPriceLists.organizationId, organizationId),
-        eq(jobPriceLists.jobId, jobId),
-      ),
-    )
-    .limit(1);
-  const entries = policy?.active
+  const policies = jobIds.length
+    ? await database
+        .select()
+        .from(jobPriceLists)
+        .where(
+          and(
+            eq(jobPriceLists.organizationId, organizationId),
+            inArray(jobPriceLists.jobId, [...jobIds]),
+          ),
+        )
+    : [];
+  const active = policies.filter((policy) => policy.active);
+  const entries = active.length
     ? await database
         .select({
           id: jobPriceEntries.id,
+          priceListId: jobPriceEntries.priceListId,
           supplierPriceBookEntryId: jobPriceEntries.supplierPriceBookEntryId,
           supplierPriceBookId: supplierPriceBooks.id,
           supplierPartId: supplierParts.id,
           partDefinitionId: supplierParts.partDefinitionId,
           supplierId: supplierParts.supplierId,
           supplierName: suppliers.name,
-          priceBookName: sql<string>`coalesce(${supplierPriceBooks.name}, ${policy.name}, 'Job pricing')`,
+          priceBookName: sql<string>`coalesce(${supplierPriceBooks.name}, ${jobPriceLists.name}, 'Job pricing')`,
           preferJobPricing: sql<boolean>`coalesce(${suppliers.preferJobPricing},true)`,
           supplierSku: supplierParts.supplierSku,
           unitCost: jobPriceEntries.unitCost,
@@ -75,6 +82,10 @@ export async function getJobPriceBook(
         })
         .from(jobPriceEntries)
         .innerJoin(
+          jobPriceLists,
+          eq(jobPriceEntries.priceListId, jobPriceLists.id),
+        )
+        .innerJoin(
           supplierParts,
           eq(jobPriceEntries.supplierPartId, supplierParts.id),
         )
@@ -83,17 +94,57 @@ export async function getJobPriceBook(
           eq(supplierParts.partDefinitionId, partDefinitions.id),
         )
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .leftJoin(supplierPriceBookEntries, eq(jobPriceEntries.supplierPriceBookEntryId, supplierPriceBookEntries.id))
-        .leftJoin(supplierPriceBooks, eq(supplierPriceBookEntries.bookId, supplierPriceBooks.id))
+        .leftJoin(
+          supplierPriceBookEntries,
+          eq(
+            jobPriceEntries.supplierPriceBookEntryId,
+            supplierPriceBookEntries.id,
+          ),
+        )
+        .leftJoin(
+          supplierPriceBooks,
+          eq(supplierPriceBookEntries.bookId, supplierPriceBooks.id),
+        )
         .where(
           and(
-            eq(jobPriceEntries.priceListId, policy.id),
+            inArray(
+              jobPriceEntries.priceListId,
+              active.map((policy) => policy.id),
+            ),
             eq(supplierParts.organizationId, organizationId),
             eq(jobPriceEntries.active, true),
           ),
         )
     : [];
-  return { policy: policy ?? null, entries };
+  const entriesByPolicy = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    const bucket = entriesByPolicy.get(entry.priceListId) ?? [];
+    bucket.push(entry);
+    entriesByPolicy.set(entry.priceListId, bucket);
+  }
+  const byJob = new Map(policies.map((policy) => [policy.jobId, policy]));
+  return new Map(
+    jobIds.map((jobId) => {
+      const policy = byJob.get(jobId) ?? null;
+      return [
+        jobId,
+        {
+          policy,
+          entries: policy ? (entriesByPolicy.get(policy.id) ?? []) : [],
+        },
+      ] as const;
+    }),
+  );
+}
+
+export async function getJobPriceBook(
+  database: Pick<typeof db, "select">,
+  organizationId: string,
+  jobId: string,
+) {
+  return (await getJobPriceBooks(database, organizationId, [jobId])).get(
+    jobId,
+  )!;
 }
 
 type Priceable = {

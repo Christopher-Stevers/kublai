@@ -155,6 +155,58 @@ export function originalWord(warp: PageWarp, word: SlipWord): SlipWord {
   const y = Math.max(0, Math.min(...ys));
   return { ...word, y, height: Math.min(1, Math.max(...ys)) - y };
 }
+/** Prepare one source row at a time, reusing the two adjacent anchor offsets.
+ * Memory is O(width), and arithmetic order matches sourceY exactly. */
+export function prepareSourceRows(
+  warp: PageWarp,
+  width: number,
+  height: number,
+) {
+  let previous = -2;
+  let lower = new Float64Array(width),
+    upper = new Float64Array(width);
+  const row = new Float64Array(width);
+  const offsets = (index: number) =>
+    Float64Array.from({ length: width }, (_, x) =>
+      lineOffset(warp.anchors[index]!, x / (width - 1)),
+    );
+  return (y: number) => {
+    const yn = y / (height - 1),
+      anchors = warp.anchors;
+    let index = anchors.length - 1;
+    for (let i = 1; i < anchors.length; i++) {
+      if (yn < anchors.at(-1)!.y && yn <= anchors[i]!.y) {
+        index = i - 1;
+        break;
+      }
+    }
+    const interpolate = yn < anchors.at(-1)!.y && anchors.length > 1;
+    if (index !== previous) {
+      lower = index === previous + 1 ? upper : offsets(index);
+      upper = interpolate ? offsets(index + 1) : lower;
+      previous = index;
+    }
+    const t = interpolate
+      ? Math.max(
+          0,
+          (yn - anchors[index]!.y) /
+            (anchors[index + 1]!.y - anchors[index]!.y),
+        )
+      : 0;
+    const fade = Math.min(
+      1,
+      Math.max(0, yn) / 0.04,
+      Math.max(0, 1 - yn) / 0.04,
+    );
+    for (let x = 0; x < width; x++) {
+      const offset = interpolate
+        ? lower[x]! * (1 - t) + upper[x]! * t
+        : lower[x]!;
+      row[x] = yn + offset * fade;
+    }
+    return row;
+  };
+}
 export async function dewarpPage(png: Buffer, warp: PageWarp): Promise<Buffer> {
   const { data, info } = await sharp(png, { limitInputPixels: 24_000_000 })
     .removeAlpha()
@@ -163,11 +215,14 @@ export async function dewarpPage(png: Buffer, warp: PageWarp): Promise<Buffer> {
     .toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
   const output = Buffer.from(data);
+  if (width < 2 || height < 2)
+    return sharp(output, { raw: info }).png().toBuffer();
+  const sourceRow = prepareSourceRows(warp, width, height);
   // Resample original pixels once using linear interpolation; no generated content.
-  for (let y = 0; y < height; y++)
+  for (let y = 0; y < height; y++) {
+    const coordinates = sourceRow(y);
     for (let x = 0; x < width; x++) {
-      const sy =
-        sourceY(warp, x / (width - 1), y / (height - 1)) * (height - 1);
+      const sy = coordinates[x]! * (height - 1);
       const y0 = Math.floor(sy),
         t = sy - y0;
       if (y0 < 0 || y0 >= height - 1) continue;
@@ -177,5 +232,6 @@ export async function dewarpPage(png: Buffer, warp: PageWarp): Promise<Buffer> {
       for (let c = 0; c < channels; c++)
         output[o + c] = Math.round(data[a + c]! * (1 - t) + data[b + c]! * t);
     }
+  }
   return sharp(output, { raw: info }).png().toBuffer();
 }

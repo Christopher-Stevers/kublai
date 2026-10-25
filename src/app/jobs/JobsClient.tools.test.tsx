@@ -1,3 +1,4 @@
+import { MaterialListScreen as ActualMaterialListScreen } from "~/components/materialLists/MaterialListScreen";
 import {
   cleanup,
   fireEvent,
@@ -111,6 +112,8 @@ vi.mock("~/components/materialLists/OrderEmailSkuOption", () => ({
   OrderEmailSkuOption: () => null,
 }));
 vi.mock("~/components/app/DeferredFeatures", async () => ({
+  MaterialListScreen: (props: React.ComponentProps<typeof ActualMaterialListScreen>) => <ActualMaterialListScreen {...props} />,
+  JobEditDialog: () => null,
   OrdersPreviewSheet: (
     await import("~/components/materialLists/OrdersPreviewSheet")
   ).OrdersPreviewSheet,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import type { ReadTransaction } from "replicache";
+import { useMemo, useSyncExternalStore } from "react";
+import type { ReadTransaction, Replicache } from "replicache";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
 import { createSharedReplicacheReader } from "~/hooks/use-shared-replicache";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
@@ -11,7 +11,9 @@ import type {
 } from "./use-replicache-material-list";
 
 export interface ReplicacheJob {
-  supplierDefaults?: import("~/lib/job-supplier-defaults").JobSupplierDefaults | null;
+  supplierDefaults?:
+    | import("~/lib/job-supplier-defaults").JobSupplierDefaults
+    | null;
   id: string;
   name: string;
   locationId: string | null;
@@ -90,9 +92,15 @@ function addContributor(
 ) {
   if (!contributor?.id) return;
   if (seenIds.has(contributor.id)) {
-    const index = contributors.findIndex(person => person.id === contributor.id);
+    const index = contributors.findIndex(
+      (person) => person.id === contributor.id,
+    );
     const existing = contributors[index];
-    if (existing && !existing.department?.trim() && contributor.department?.trim())
+    if (
+      existing &&
+      !existing.department?.trim() &&
+      contributor.department?.trim()
+    )
       contributors[index] = { ...existing, department: contributor.department };
     return;
   }
@@ -175,7 +183,9 @@ export function indexWorkspaceRecords(
     const bucket = listsByJob.get(list.jobId) ?? [];
     bucket.push({
       ...list,
-      pendingSync: Boolean(list.pendingSync || items.some(item => item.pendingSync)),
+      pendingSync: Boolean(
+        list.pendingSync || items.some((item) => item.pendingSync),
+      ),
       itemCount: items.length,
       materialTotal: total,
       contributors,
@@ -252,27 +262,183 @@ export async function readJobDetail(
       return [...byList, ...byQuote.filter((item) => !item.materialListId)];
     }),
   );
-  return indexWorkspaceRecords([job], lists, groups.flat()).details[jobId] ?? null;
+  return (
+    indexWorkspaceRecords([job], lists, groups.flat()).details[jobId] ?? null
+  );
 }
 
+/** Per-list subscriptions let Replicache invalidate just the list whose items changed.
+ * These derived summaries stay in memory: old tabs and offline mutators need no migration. */
+export function createJobSummaryStore(
+  rep: Pick<Replicache, "subscribe">,
+  jobId: string,
+) {
+  type Detail = WorkspaceIndex["details"][string];
+  let value: Detail | null = null;
+  let metadata: Detail | null = null;
+  let generation = 0;
+  let stop: (() => void) | undefined;
+  const listeners = new Set<() => void>();
+  const summaries = new Map<string, ReplicacheMaterialListSummary | null>();
+  const subscriptions = new Map<string, () => void>();
+  const emit = () => {
+    if (
+      metadata?.materialLists.some((list) => !summaries.has(list.id))
+    )
+      return;
+    value = metadata
+      ? {
+          job: metadata.job,
+          materialLists: metadata.materialLists
+            .map((list) => summaries.get(list.id))
+            .filter((list): list is ReplicacheMaterialListSummary => !!list)
+            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+        }
+      : null;
+    listeners.forEach((notify) => notify());
+  };
+  const onError = (error: unknown) =>
+    console.error("Offline list summary failed", error);
+  return {
+    get: () => value,
+    subscribe(this: void, notify: () => void) {
+      listeners.add(notify);
+      if (!stop && jobId) {
+        const active = ++generation;
+        stop = rep.subscribe((tx) => readJobDetail(tx, jobId, false), {
+          onError,
+          onData: (next) => {
+            if (active !== generation) return;
+            metadata = next;
+            const ids = new Set(next?.materialLists.map((list) => list.id));
+            for (const [id, unsubscribe] of subscriptions)
+              if (!ids.has(id)) {
+                unsubscribe();
+                subscriptions.delete(id);
+                summaries.delete(id);
+              }
+            for (const list of next?.materialLists ?? [])
+              if (!subscriptions.has(list.id)) {
+                subscriptions.set(
+                  list.id,
+                  rep.subscribe(
+                    async (tx) => {
+                      const current = (await tx.get(
+                        `materialList/${list.id}`,
+                      )) as unknown as
+                        | ReplicacheMaterialListSummary
+                        | undefined;
+                      if (current?.jobId !== jobId) return null;
+                      const byList = (await tx
+                        .scan({ indexName: "itemsByList", prefix: current.id })
+                        .values()
+                        .toArray()) as unknown as ReplicacheMaterialListItem[];
+                      const byQuote = current.quoteId
+                        ? ((await tx
+                            .scan({
+                              indexName: "itemsByQuote",
+                              prefix: current.quoteId,
+                            })
+                            .values()
+                            .toArray()) as unknown as ReplicacheMaterialListItem[])
+                        : [];
+                      return indexWorkspaceRecords(
+                        [{ id: jobId, name: "", createdAt: "" }],
+                        [current],
+                        [
+                          ...byList,
+                          ...byQuote.filter((item) => !item.materialListId),
+                        ],
+                      ).details[jobId]!.materialLists[0]!;
+                    },
+                    {
+                      onError,
+                      onData: (summary) => {
+                        if (
+                          active !== generation ||
+                          !subscriptions.has(list.id)
+                        )
+                          return;
+                        summaries.set(list.id, summary);
+                        emit();
+                      },
+                    },
+                  ),
+                );
+              }
+            emit();
+          },
+        });
+      }
+      return () => {
+        listeners.delete(notify);
+        if (!listeners.size) {
+          generation++;
+          stop?.();
+          stop = undefined;
+          subscriptions.forEach((unsubscribe) => unsubscribe());
+          subscriptions.clear();
+          summaries.clear();
+          metadata = null;
+        }
+      };
+    },
+  };
+}
+const summaryStores = new WeakMap<
+  object,
+  Map<string, ReturnType<typeof createJobSummaryStore>>
+>();
+const idleSummary = {
+  get: () => null,
+  subscribe: (_notify: () => void) => () => undefined,
+};
 export function useReplicacheJobDetail(jobId: string, includeItems = true) {
   const sandbox = useTutorialSandbox();
+  const rep = sandbox?.material ?? tryGetMaterialListReplicache();
+  const store = useMemo(() => {
+    if (!rep || !jobId || !includeItems) return idleSummary;
+    let stores = summaryStores.get(rep);
+    if (!stores) {
+      stores = new Map();
+      summaryStores.set(rep, stores);
+    }
+    let store = stores.get(jobId);
+    if (!store) {
+      store = createJobSummaryStore(rep, jobId);
+      stores.set(jobId, store);
+    }
+    return store;
+  }, [rep, jobId, includeItems]);
+  const detailed = useSyncExternalStore(
+    store.subscribe,
+    store.get,
+    idleSummary.get,
+  );
   const useReader = useMemo(
     () =>
       createSharedReplicacheReader(
-        (tx) => readJobDetail(tx, jobId, includeItems),
+        (tx) => readJobDetail(tx, jobId, false),
         null as WorkspaceIndex["details"][string] | null,
       ),
-    [jobId, includeItems],
+    [jobId],
   );
-  return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
+  const metadata = useReader(includeItems ? null : rep);
+  return includeItems ? detailed : metadata;
 }
 
 /** Header fields do not depend on every material line in the job. */
 export function useReplicacheJob(jobId: string) {
   const sandbox = useTutorialSandbox();
-  const useReader = useMemo(() => createSharedReplicacheReader(async tx =>
-    (await tx.get(`job/${jobId}`) ?? null) as unknown as ReplicacheJob | null,
-    null as ReplicacheJob | null), [jobId]);
+  const useReader = useMemo(
+    () =>
+      createSharedReplicacheReader(
+        async (tx) =>
+          ((await tx.get(`job/${jobId}`)) ??
+            null) as unknown as ReplicacheJob | null,
+        null as ReplicacheJob | null,
+      ),
+    [jobId],
+  );
   return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }

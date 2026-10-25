@@ -43,7 +43,7 @@ vi.mock("~/trpc/react", () => ({
     }),
   },
 }));
-vi.mock("./TutorialExperience", () => ({
+vi.mock("~/components/app/DeferredFeatures", () => ({
   TutorialExperience: ({
     onFinish,
   }: {

@@ -185,3 +185,31 @@ export const JobDocumentsView = feature<
 export const JobSystemsView = feature<
   ComponentProps<typeof import("~/components/jobs/JobSystemsView").JobSystemsView>
 >(() => import("~/components/jobs/JobSystemsView").then((m) => ({ default: m.JobSystemsView })));
+
+export const MaterialListScreen = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/MaterialListScreen").MaterialListScreen
+  >
+>(() =>
+  import("~/components/materialLists/MaterialListScreen").then((m) => ({
+    default: m.MaterialListScreen,
+  })),
+);
+export const JobEditDialog = feature<
+  ComponentProps<typeof import("~/components/jobs/JobEditDialog").JobEditDialog>
+>(
+  () =>
+    import("~/components/jobs/JobEditDialog").then((m) => ({
+      default: m.JobEditDialog,
+    })),
+  true,
+);
+export const TutorialExperience = feature<
+  ComponentProps<
+    typeof import("~/components/tutorial/TutorialExperience").TutorialExperience
+  >
+>(() =>
+  import("~/components/tutorial/TutorialExperience").then((m) => ({
+    default: m.TutorialExperience,
+  })),
+);

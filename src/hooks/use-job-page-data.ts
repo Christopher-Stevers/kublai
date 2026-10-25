@@ -9,7 +9,7 @@ export function useJobPageData(jobId: string, includeItems = false) {
   const jobDetail = useReplicacheJobDetail(jobId, includeItems);
   const { data: serverJob, isFetched: hasFetchedServerJob } =
     api.job.getJob.useQuery(
-      { jobId },
+      { jobId, includeMaterialLists: includeItems },
       {
         enabled: isBrowserOnline,
         networkMode: "always",

@@ -1,13 +1,14 @@
 // @vitest-environment node
 import { TRPCError } from "@trpc/server";
 import { randomUUID } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendVersion,
   emptyDocumentState,
   type DocumentActor,
 } from "./domain";
-import type * as DocumentStorage from "./storage";
+import { rm } from "node:fs/promises";
+import type * as StreamUpload from "./stream-upload";
 import { defaultSubmittal } from "~/lib/submittals";
 const mock = vi.hoisted(() => ({
   access: vi.fn(),
@@ -27,10 +28,32 @@ vi.mock("./service", () => ({
   readWorkspace: mock.read,
   saveDocumentVersion: mock.save,
 }));
-vi.mock("./storage", async (original) => ({
-  ...(await original<typeof DocumentStorage>()),
-  writeDocumentBlob: mock.write,
+const temporaryRoot = await vi.hoisted(async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const path = await import("node:path");
+  return (process.env.JOB_DOCUMENT_STORAGE_ROOT = mkdtempSync(
+    path.join(tmpdir(), "upload-route-test-"),
+  ));
+});
+vi.mock("./stream-upload", async (original) => {
+  const actual = await original<typeof StreamUpload>();
+  return {
+    ...actual,
+    receiveDocumentUpload: async (
+      ...args: Parameters<typeof actual.receiveDocumentUpload>
+    ) => {
+      const staged = await actual.receiveDocumentUpload(...args);
+      return { ...staged, publish: mock.write };
+    },
+  };
+});
+vi.mock("./page-preview", () => ({
+  documentPagePreview: vi.fn(async () => undefined),
 }));
+afterAll(async () => {
+  await rm(temporaryRoot, { recursive: true, force: true });
+});
 import { POST } from "~/app/api/job-documents/upload/route";
 const jobId = randomUUID();
 let state = emptyDocumentState();

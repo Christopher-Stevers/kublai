@@ -20,7 +20,7 @@ import {
   type TutorialOutcome,
   type TutorialProgress,
 } from "~/lib/tutorial-progress";
-import { TutorialExperience } from "./TutorialExperience";
+import { TutorialExperience } from "~/components/app/DeferredFeatures";
 
 const TutorialContext = createContext<{ restart: () => void } | null>(null);
 export function useTutorial() {

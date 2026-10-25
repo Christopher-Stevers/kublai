@@ -51,3 +51,75 @@ it("keeps the inverse mapping monotonic so rows cannot cross", () => {
     for (let y = 0.001; y < 1; y += 0.001)
       expect(sourceY(warp, x, y)).toBeGreaterThan(sourceY(warp, x, y - 0.001));
 });
+
+it("prepared rows preserve every source coordinate including anchor and paper edges", async () => {
+  const { prepareSourceRows } = await import("./dewarp");
+  for (const count of [1, 3, 12]) {
+    const warp = {
+      maxOffset: 0.008,
+      anchors: Array.from({ length: count }, (_, i) => ({
+        y: 0.1 + i * 0.07,
+        points: [
+          { x: 0.1, offset: 0 },
+          { x: 0.45, offset: 0.008 - i * 0.0001 },
+          { x: 0.65, offset: 0.003 },
+          { x: 0.9, offset: 0 },
+        ],
+      })),
+    };
+    const width = 171,
+      height = 221,
+      row = prepareSourceRows(warp, width, height);
+    for (let y = 0; y < height; y++) {
+      const values = row(y);
+      for (let x = 0; x < width; x++)
+        expect(values[x]).toBe(
+          sourceY(warp, x / (width - 1), y / (height - 1)),
+        );
+    }
+  }
+});
+
+it("produces byte-identical pixels to the original inverse mapping", async () => {
+  const warp = {
+    maxOffset: 0.008,
+    anchors: [0.1, 0.4, 0.8].map((y) => ({
+      y,
+      points: [
+        { x: 0, offset: -0.002 },
+        { x: 0.4, offset: 0.008 },
+        { x: 1, offset: 0 },
+      ],
+    })),
+  };
+  const width = 173,
+    height = 229,
+    channels = 3;
+  const data = Buffer.from(
+    Array.from(
+      { length: width * height * channels },
+      (_, i) => (i * 13 + Math.floor(i / width) * 7) % 256,
+    ),
+  );
+  const expected = Buffer.from(data);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const sy =
+          sourceY(warp, x / (width - 1), y / (height - 1)) * (height - 1),
+        y0 = Math.floor(sy),
+        t = sy - y0;
+      if (y0 < 0 || y0 >= height - 1) continue;
+      for (let c = 0; c < channels; c++)
+        expected[(y * width + x) * channels + c] = Math.round(
+          data[(y0 * width + x) * channels + c]! * (1 - t) +
+            data[((y0 + 1) * width + x) * channels + c]! * t,
+        );
+    }
+  const input = await sharp(data, { raw: { width, height, channels } })
+    .png()
+    .toBuffer();
+  const output = await sharp(await dewarpPage(input, warp))
+    .raw()
+    .toBuffer();
+  expect(output.equals(expected)).toBe(true);
+});

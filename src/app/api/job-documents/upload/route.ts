@@ -2,7 +2,7 @@ import { startSlipAnalysis } from "~/server/packing-slips/service";
 import { userCan } from "~/server/auth/permissions";
 import { documentPagePreview } from "~/server/documents/page-preview";
 import { TRPCError } from "@trpc/server";
-import { createHash } from "node:crypto";
+import { receiveDocumentUpload } from "~/server/documents/stream-upload";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { assertDocumentAccess, documentActor } from "~/server/documents/access";
 import {
@@ -14,22 +14,17 @@ import {
   parseSubmittalUpload,
   jobIdSchema,
 } from "~/server/documents/contracts";
-import {
-  assertSameOrigin,
-  documentHttpError,
-  readBoundedBody,
-} from "~/server/documents/http";
+import { assertSameOrigin, documentHttpError } from "~/server/documents/http";
 import { readWorkspace, saveDocumentVersion } from "~/server/documents/service";
 import {
   detectedDocumentMime,
-  MAX_DOCUMENT_FILE_BYTES,
   safeDocumentName,
-  writeDocumentBlob,
 } from "~/server/documents/storage";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  let upload: Awaited<ReturnType<typeof receiveDocumentUpload>> | undefined;
   try {
     assertSameOrigin(request);
     const jobId = jobIdSchema.parse(
@@ -48,32 +43,9 @@ export async function POST(request: Request) {
         code: "BAD_REQUEST",
         message: "Send a multipart file upload.",
       });
-    const body = await readBoundedBody(
-      request,
-      MAX_DOCUMENT_FILE_BYTES + 64 * 1024,
-    );
-    let form: FormData;
-    try {
-      form = await new Response(new Uint8Array(body), {
-        headers: { "content-type": contentType },
-      }).formData();
-    } catch {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Invalid multipart upload.",
-      });
-    }
-    const file = form.get("file");
-    if (!file || typeof file === "string" || form.getAll("file").length !== 1)
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Choose exactly one file.",
-      });
-    if (file.size === 0 || file.size > MAX_DOCUMENT_FILE_BYTES)
-      throw new TRPCError({
-        code: "PAYLOAD_TOO_LARGE",
-        message: "Upload a nonempty file no larger than 50 MB.",
-      });
+    upload = await receiveDocumentUpload(request, access.job.organizationId);
+    const file = upload;
+    const form = upload.fields;
     const field = (name: string) => {
       const value = form.get(name);
       return value === "" ? null : value;
@@ -81,7 +53,7 @@ export async function POST(request: Request) {
     const metadata = uploadMetadataSchema.parse({
       jobId,
       packingSlipOrderId: field("packingSlipOrderId") ?? undefined,
-      submittal: parseSubmittalUpload(form.get("submittal")),
+      submittal: parseSubmittalUpload(form.get("submittal") ?? null),
       folderId: field("folderId") ?? null,
       documentId: field("documentId") ?? undefined,
       expectedVersionId: field("expectedVersionId") ?? undefined,
@@ -89,6 +61,11 @@ export async function POST(request: Request) {
     });
     // Recheck current account permissions after receiving the potentially slow body.
     const fresh = await assertDocumentAccess(userId, jobId);
+    if (fresh.job.organizationId !== access.job.organizationId)
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Document access changed. Retry the upload.",
+      });
     if (!metadata.packingSlipOrderId && !fresh.canWrite)
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -121,13 +98,12 @@ export async function POST(request: Request) {
         });
     } else if (!metadata.packingSlipOrderId)
       assertFolderRole(state, actor, metadata.folderId ?? null, "editor");
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const mimeType = detectedDocumentMime(bytes, metadata.name);
-    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const mimeType = detectedDocumentMime(upload.header, metadata.name);
+    const sha256 = upload.sha256;
     const result = await saveDocumentVersion(
       fresh,
-      { ...metadata, size: bytes.length, mimeType, sha256 },
-      () => writeDocumentBlob(fresh.job.organizationId, bytes),
+      { ...metadata, size: upload.size, mimeType, sha256 },
+      upload.publish,
     );
     if (mimeType === "application/pdf")
       void documentPagePreview(fresh.job.organizationId, sha256, 1).catch(
@@ -148,5 +124,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return documentHttpError(error);
+  } finally {
+    await upload?.dispose();
   }
 }

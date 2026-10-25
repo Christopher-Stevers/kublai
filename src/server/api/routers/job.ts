@@ -84,7 +84,7 @@ export const jobRouter = createTRPCRouter({
    * Get a single job with material lists
    */
   getJob: hasAppAccess
-    .input(z.object({ jobId: z.string().uuid() }))
+    .input(z.object({ jobId: z.string().uuid(), includeMaterialLists: z.boolean().default(true) }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -135,6 +135,8 @@ export const jobRouter = createTRPCRouter({
       if (!job) {
         return null;
       }
+
+      if (!input.includeMaterialLists) return { ...job, materialLists: [] };
 
       // Get material lists for this job
       const lists = await ctx.db

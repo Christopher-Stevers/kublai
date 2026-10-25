@@ -16,6 +16,7 @@ export async function checkpoint<T>(
   key: unknown,
   parse: (value: unknown) => T,
   work: () => Promise<T>,
+  options?: { shouldSave?: (value: T) => boolean },
 ): Promise<T> {
   const file = path.join(
     root,
@@ -36,6 +37,7 @@ export async function checkpoint<T>(
     }
   }
   const value = parse(await work());
+  if (options?.shouldSave && !options.shouldSave(value)) return value;
   await mkdir(root, { recursive: true, mode: 0o700 });
   const temp = file + "." + randomUUID();
   try {

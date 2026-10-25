@@ -1,3 +1,4 @@
+import * as roomShape from "~/lib/room-shape";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { polygonPathAttr, type RoomPolygonShape } from "~/lib/room-shape";
@@ -91,23 +92,52 @@ describe("room tracing overlay", () => {
   });
 });
 
-
 describe("drawing double tap", () => {
   function setup(extra = {}) {
     vi.useFakeTimers();
     const onSelectRoom = vi.fn();
-    const result = render(<FloorPlanCanvas imageUrl="/plan.png" canEdit={false}
-      rooms={[{ id: "room", name: "Room", confirmed: false,
-        shape: { type: "bbox", x: 0, y: 0, w: 1, h: 1 } }]}
-      onSelectRoom={onSelectRoom} {...extra} />);
+    const result = render(
+      <FloorPlanCanvas
+        imageUrl="/plan.png"
+        canEdit={false}
+        rooms={[
+          {
+            id: "room",
+            name: "Room",
+            confirmed: false,
+            shape: { type: "bbox", x: 0, y: 0, w: 1, h: 1 },
+          },
+        ]}
+        onSelectRoom={onSelectRoom}
+        {...extra}
+      />,
+    );
     const image = result.getByAltText("Floor plan");
     const plan = image.parentElement!;
     const layer = plan.parentElement!;
     const viewport = layer.parentElement!;
-    const rect = { left: 20, top: 80, width: 300, height: 400, right: 320, bottom: 480, x: 20, y: 80, toJSON() { return {}; } };
+    const rect = {
+      left: 20,
+      top: 80,
+      width: 300,
+      height: 400,
+      right: 320,
+      bottom: 480,
+      x: 20,
+      y: 80,
+      toJSON() {
+        return {};
+      },
+    };
     vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(rect);
     vi.spyOn(plan, "getBoundingClientRect").mockReturnValue(rect);
-    return { ...result, viewport, layer, onSelectRoom, svg: result.container.querySelector("svg")! };
+    return {
+      ...result,
+      viewport,
+      layer,
+      onSelectRoom,
+      svg: result.container.querySelector("svg")!,
+    };
   }
 
   it("zooms around the tapped point without opening the room, including with a header offset", () => {
@@ -121,7 +151,12 @@ describe("drawing double tap", () => {
   });
 
   it("zooms continuously while holding the second tap and stops on release", () => {
-    vi.stubGlobal("PointerEvent", class extends MouseEvent { pointerId = 1; });
+    vi.stubGlobal(
+      "PointerEvent",
+      class extends MouseEvent {
+        pointerId = 1;
+      },
+    );
     const { svg, viewport, layer, onSelectRoom } = setup();
     Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
     fireEvent.click(svg, { clientX: 120, clientY: 180 });
@@ -130,7 +165,9 @@ describe("drawing double tap", () => {
     vi.advanceTimersByTime(600);
     expect(onSelectRoom).not.toHaveBeenCalled();
     fireEvent.pointerMove(viewport, { clientX: 120, clientY: 330 });
-    const downScale = Number(/scale\(([^)]+)\)/.exec(layer.style.transform)![1]);
+    const downScale = Number(
+      /scale\(([^)]+)\)/.exec(layer.style.transform)![1],
+    );
     expect(downScale).toBeCloseTo(Math.E);
     fireEvent.pointerMove(viewport, { clientX: 120, clientY: 255 });
     const upScale = Number(/scale\(([^)]+)\)/.exec(layer.style.transform)![1]);
@@ -144,7 +181,12 @@ describe("drawing double tap", () => {
   });
 
   it("keeps ordinary double tap zoom when the second tap does not move", () => {
-    vi.stubGlobal("PointerEvent", class extends MouseEvent { pointerId = 1; });
+    vi.stubGlobal(
+      "PointerEvent",
+      class extends MouseEvent {
+        pointerId = 1;
+      },
+    );
     const { svg, viewport, layer } = setup();
     Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
     fireEvent.click(svg, { clientX: 120, clientY: 180 });
@@ -172,4 +214,38 @@ describe("drawing double tap", () => {
     fireEvent.click(tracing.svg, { clientX: 120, clientY: 180 });
     expect(tracing.layer.style.transform).toContain("scale(1)");
   });
+});
+
+it("reuses prepared room geometry when camera or selection changes", () => {
+  const path = vi.spyOn(roomShape, "polygonPathAttr");
+  const rooms = [
+    {
+      id: "room",
+      name: "Room",
+      confirmed: false,
+      shape: { type: "bbox" as const, x: 0.1, y: 0.1, w: 0.3, h: 0.3 },
+    },
+  ];
+  const props = {
+    imageUrl: "/plan.png",
+    rooms,
+    canEdit: false,
+    onSelectRoom: vi.fn(),
+  };
+  const view = render(<FloorPlanCanvas {...props} />);
+  expect(path).toHaveBeenCalledTimes(1);
+  view.rerender(<FloorPlanCanvas {...props} selectedRoomId="room" />);
+  fireEvent.wheel(
+    view.getByAltText("Floor plan").parentElement!.parentElement!
+      .parentElement!,
+    { deltaY: -20, clientX: 100, clientY: 100 },
+  );
+  expect(path).toHaveBeenCalledTimes(1);
+  view.rerender(
+    <FloorPlanCanvas
+      {...props}
+      rooms={[{ ...rooms[0]!, shape: { ...rooms[0]!.shape, w: 0.5 } }]}
+    />,
+  );
+  expect(path).toHaveBeenCalledTimes(2);
 });

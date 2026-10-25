@@ -1,6 +1,6 @@
 import { jobSupplierDefaultsSchema, supplierVersionSchema } from "~/lib/job-supplier-defaults";
 import { resolveDefaultSupplier, supplierVersionPrice, validateJobSupplierDefaults } from "~/server/job-supplier-defaults";
-import { getJobPriceBook } from "~/server/job-pricing";
+import { getJobPriceBooks } from "~/server/job-pricing";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { indexJobPrices } from "~/lib/job-pricing";
 import { createMaterialListSummaries } from "~/lib/material-list-summary";
@@ -1423,10 +1423,9 @@ export async function handleMaterialListReplicachePull(
         });
       }
 
-      const priceBooks = new Map(await Promise.all(jobRows.map(async job => {
-        const book = await getJobPriceBook(tx, organizationId, job.id as string);
-        return [job.id, { ...book, entries: indexJobPrices(book.entries) }] as const;
-      })));
+      const books = await getJobPriceBooks(tx, organizationId, jobRows.map(job => job.id));
+      const priceBooks = new Map([...books].map(([jobId, book]) =>
+        [jobId, { ...book, entries: indexJobPrices(book.entries) }] as const));
       const listJobs = new Map(materialListRows.map(list => [list.id, list.jobId]));
       for (const item of itemRows) {
         patch.push({

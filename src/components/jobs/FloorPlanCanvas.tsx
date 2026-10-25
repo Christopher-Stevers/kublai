@@ -435,6 +435,25 @@ export function FloorPlanCanvas({
     return false;
   };
 
+  // Camera/selection changes reuse geometry; only shape edits rebuild these values.
+  const preparedRooms = useMemo(
+    () =>
+      rooms.map((room, index) => {
+        const polygon =
+          room.id === editingRoomId && visibleEditShape
+            ? visibleEditShape
+            : toPolygon(room.shape);
+        return {
+          room,
+          color: getRoomColor(index),
+          path: polygonPathAttr(polygon),
+          fontSize: roomLabelFontSize(room.name, shapeBBox(polygon)),
+          labelPoint: roomLabelPoint(polygon),
+        };
+      }),
+    [rooms, editingRoomId, visibleEditShape],
+  );
+
   return (
     <div
       ref={viewportRef}
@@ -818,21 +837,16 @@ export function FloorPlanCanvas({
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
           >
-            {rooms.map((room, index) => {
+            {preparedRooms.map(({ room, color, path }) => {
               const selected =
                 room.id === selectedRoomId ||
                 room.id === editingRoomId ||
                 room.id === detectingRoomId;
-              const color = getRoomColor(index);
-              const polygon =
-                room.id === editingRoomId && visibleEditShape
-                  ? visibleEditShape
-                  : toPolygon(room.shape);
               return (
                 <path
                   key={room.id}
                   data-room-id={room.id}
-                  d={polygonPathAttr(polygon)}
+                  d={path}
                   fillRule="evenodd"
                   fill={color.fill}
                   stroke={color.border}
@@ -883,15 +897,7 @@ export function FloorPlanCanvas({
                 strokeDasharray={`${0.01 / transform.scale} ${0.01 / transform.scale}`}
               />
             ) : null}
-            {rooms.map((room, index) => {
-              const polygon =
-                room.id === editingRoomId && visibleEditShape
-                  ? visibleEditShape
-                  : toPolygon(room.shape);
-              const color = getRoomColor(index);
-              const box = shapeBBox(polygon);
-              const fontSize = roomLabelFontSize(room.name, box);
-              const labelPoint = roomLabelPoint(polygon);
+            {preparedRooms.map(({ room, color, fontSize, labelPoint }) => {
               return (
                 <text
                   key={`${room.id}-label`}
