@@ -3090,8 +3090,8 @@ export function DrawingSheetViewer({
                     never covers the spot under an X. */}
                 <defs>
                   <radialGradient id={`${markId}-fade`}>
-                    <stop offset="0.45" stopColor="#000000" />
-                    <stop offset="1" stopColor="#ffffff" />
+                    <stop offset="0.2" stopColor="#000000" />
+                    <stop offset="0.75" stopColor="#ffffff" />
                   </radialGradient>
                   <mask
                     id={`${markId}-ends`}
@@ -3113,7 +3113,7 @@ export function DrawingSheetViewer({
                         key={index}
                         cx={point.x * fit.width}
                         cy={point.y * fit.height}
-                        r={markArm * 1.8}
+                        r={markArm * 1.2}
                         fill={`url(#${markId}-fade)`}
                       />
                     ))}

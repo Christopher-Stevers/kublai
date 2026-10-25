@@ -1,8 +1,9 @@
-/** Straight crosshair arms leave the target visible through a transparent center. */
+/** Straight crosshair arms reach in close to a small dot on the target. */
 export function DrawingMeasureNode({ x, y, arm, stroke, color, halo }: {
   x: number; y: number; arm: number; stroke: number; color: string; halo: string;
 }) {
-  const gap = arm * 0.35;
+  const gap = arm * 0.2;
+  const dot = stroke * 0.9;
   return <g data-measure-cross="open-center">
     {[-1, 1].flatMap(dx => [-1, 1].map(dy => (
       <g key={`${dx},${dy}`}>
@@ -12,5 +13,7 @@ export function DrawingMeasureNode({ x, y, arm, stroke, color, halo }: {
           stroke={color} strokeWidth={stroke} strokeLinecap="butt" />
       </g>
     )))}
+    <circle data-measure-dot cx={x} cy={y} r={dot + stroke * 0.6} fill={halo} fillOpacity={0.85} />
+    <circle cx={x} cy={y} r={dot} fill={color} />
   </g>;
 }

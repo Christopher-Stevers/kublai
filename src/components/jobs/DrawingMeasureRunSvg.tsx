@@ -51,7 +51,7 @@ export function DrawingMeasureRunSvg({
   const path = drawingLinePath(data, aspect);
   // Only the line is masked. Keep its fade surface local to the run, including
   // round caps/halo; a full-sheet mask per measurement wastes raster work.
-  const maskPadding = Math.max(style.arm * 1.8, line * 1.1) + screenPixelSize;
+  const maskPadding = Math.max(style.arm * 1.2, line * 1.1) + screenPixelSize;
   const maskBounds = {
     x: bounds.left - maskPadding,
     y: bounds.top - maskPadding,
@@ -76,8 +76,8 @@ export function DrawingMeasureRunSvg({
     <g opacity={data.opacity ?? 1} data-saved-measure-run="true">
       <defs>
         <radialGradient id={`${id}-fade`}>
-          <stop offset="0.45" stopColor="#000000" />
-          <stop offset="1" stopColor="#ffffff" />
+          <stop offset="0.2" stopColor="#000000" />
+          <stop offset="0.75" stopColor="#ffffff" />
         </radialGradient>
         <mask
           id={`${id}-ends`}
@@ -93,7 +93,7 @@ export function DrawingMeasureRunSvg({
               key={index}
               cx={point.x}
               cy={point.y}
-              r={style.arm * 1.8}
+              r={style.arm * 1.2}
               fill={`url(#${id}-fade)`}
             />
           ))}
