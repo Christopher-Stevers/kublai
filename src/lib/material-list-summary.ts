@@ -1,7 +1,11 @@
+import { materialListPartSearchText } from "./material-list-part-search";
 import { materialListProgress } from "./material-list-progress";
 import { materialListOrderStatuses } from "./material-list-order-status";
 
 type Item = Parameters<typeof materialListProgress>[0][number] & {
+  partDefinitionDisplayName?: string | null;
+  descriptionSnapshot?: string | null;
+  supplierPartSku?: string | null;
   quoteId: string | null;
   partDefinitionId: string | null;
   supplierId: string | null;
@@ -67,6 +71,7 @@ export function createMaterialListSummaries(
         verified.add(order.supplierId);
     }
     return {
+      partSearchTexts: [...new Set(rows.map(materialListPartSearchText).filter(Boolean))],
       overallProgress: materialListProgress(rows),
       orderStatuses: materialListOrderStatuses(
         list.id,

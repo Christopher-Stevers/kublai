@@ -19,6 +19,7 @@ import {
   orderItems,
   orders,
   quoteItems,
+  partDefinitions,
   supplierParts,
   suppliers,
   users,
@@ -169,6 +170,9 @@ export const jobRouter = createTRPCRouter({
           ? ctx.db
               .select({
                 quoteId: quoteItems.quoteId,
+                descriptionSnapshot: quoteItems.descriptionSnapshot,
+                partDefinitionDisplayName: partDefinitions.displayName,
+                supplierPartSku: supplierParts.supplierSku,
                 quantity: quoteItems.quantity,
                 sentQuantity: orderItems.quantity,
                 receivedQuantity: orderItems.receivedQuantity,
@@ -182,6 +186,7 @@ export const jobRouter = createTRPCRouter({
                 partDefinitionId: quoteItems.partDefinitionId,
               })
               .from(quoteItems)
+              .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))
               .leftJoin(
                 supplierParts,
                 eq(quoteItems.supplierPartId, supplierParts.id),

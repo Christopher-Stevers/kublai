@@ -1,6 +1,9 @@
 "use client";
 import { useState, type ComponentProps } from "react";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { Input } from "~/components/ui/input";
+import { matchesMaterialListPart } from "~/lib/material-list-part-search";
+import { usePageViewState } from "~/hooks/use-page-view-state";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
 import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { useCardMerge } from "~/components/materialLists/use-card-merge";
@@ -26,6 +29,7 @@ import { api } from "~/trpc/react";
 
 type List = ComponentProps<typeof MaterialListCard>["list"] & {
   pendingSync?: boolean;
+  partSearchTexts?: string[];
 };
 
 /** A job's material lists, shared by the Jobs workspace and the job's
@@ -40,6 +44,14 @@ export function JobMaterialListsView({
   lists: List[] | undefined;
   onOpen: (materialListId: string) => void;
 }) {
+  const [search, setSearch] = usePageViewState(
+    `material-list-part-search:${jobId}`,
+    "",
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const filteredLists = lists?.filter((list) =>
+    matchesMaterialListPart(list.partSearchTexts, search),
+  );
   const sandbox = useTutorialSandbox();
   const online = useOnlineStatus();
   const { getReplicache, mutateAndSync, requestSync } = useWorkspaceMutations();
@@ -108,6 +120,12 @@ export function JobMaterialListsView({
     <>
       <PageHeader level="section" title="Material Lists" />
 
+      {search.trim() && lists && (
+        <p role="status" className="text-muted-foreground mb-4 text-sm">
+          {filteredLists?.length ?? 0} of {lists.length} lists contain “
+          {search.trim()}”
+        </p>
+      )}
       {merge.banner}
       {!lists?.length ? (
         <Card>
@@ -132,9 +150,13 @@ export function JobMaterialListsView({
             />
           </CardContent>
         </Card>
+      ) : !filteredLists?.length ? (
+        <p className="text-muted-foreground py-12 text-center">
+          No material lists contain a matching part.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {lists.map((list) => (
+          {filteredLists.map((list) => (
             <MaterialListCard
               key={list.id}
               list={list}
@@ -156,38 +178,77 @@ export function JobMaterialListsView({
         </div>
       )}
 
-      {(canCreate || canReceive) && (
-        <>
-          <div aria-hidden="true" className="hidden h-20 sm:block" />
-          <div
-            aria-label="Material list actions"
-            className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6"
-          >
-            <div
-              className={
-                canReceive && canCreate
-                  ? "mx-auto grid max-w-6xl grid-cols-2 gap-2"
-                  : "mx-auto max-w-6xl"
-              }
-            >
-              {canReceive && (
-                <ScanSlipButton jobId={jobId} className="h-12 w-full" />
-              )}
-              {canCreate && (
-                <Button
-                  data-tutorial="create-list"
-                  onClick={create}
-                  size="lg"
-                  className="h-12 w-full"
-                >
-                  <PlusIcon className="mr-2 h-5 w-5" />
-                  {canReceive ? "New List" : "New Material List"}
-                </Button>
-              )}
+      <>
+        <div
+          aria-hidden="true"
+          className={searchOpen || search ? "h-36" : "h-20"}
+        />
+        <div
+          aria-label="Material list actions"
+          className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6"
+        >
+          {(searchOpen || search) && (
+            <div className="mx-auto mb-2 flex max-w-6xl items-center gap-2">
+              <Input
+                autoFocus
+                type="search"
+                aria-label="Search parts in material lists"
+                placeholder="Part name or SKU…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setSearch("");
+                    setSearchOpen(false);
+                  }
+                }}
+                className="h-11 text-base"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Clear part search"
+                onClick={() => {
+                  setSearch("");
+                  setSearchOpen(false);
+                }}
+              >
+                <XIcon className="h-5 w-5" />
+              </Button>
             </div>
+          )}
+          <div className="mx-auto grid max-w-6xl auto-cols-fr grid-flow-col gap-2">
+            <Button
+              variant="outline"
+              className="h-12 w-full px-2"
+              aria-expanded={searchOpen || !!search}
+              onClick={() => {
+                if (searchOpen || search) {
+                  setSearch("");
+                  setSearchOpen(false);
+                } else setSearchOpen(true);
+              }}
+            >
+              <SearchIcon className="mr-2 h-5 w-5" />
+              Search
+            </Button>
+            {canReceive && (
+              <ScanSlipButton jobId={jobId} className="h-12 w-full px-2" />
+            )}
+            {canCreate && (
+              <Button
+                data-tutorial="create-list"
+                onClick={create}
+                size="lg"
+                className="h-12 w-full px-2"
+              >
+                <PlusIcon className="mr-2 h-5 w-5" />
+                New List
+              </Button>
+            )}
           </div>
-        </>
-      )}
+        </div>
+      </>
 
       <Dialog
         open={!!toDelete}

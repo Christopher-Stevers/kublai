@@ -1,5 +1,6 @@
 "use client";
 
+import { materialListPartSearchText } from "~/lib/material-list-part-search";
 import { useMemo, useSyncExternalStore } from "react";
 import type { ReadTransaction, Replicache } from "replicache";
 import { tryGetMaterialListReplicache } from "~/lib/replicache-material-list";
@@ -40,6 +41,7 @@ export interface ReplicacheContributor {
 }
 
 export interface ReplicacheMaterialListSummary {
+  partSearchTexts?: string[];
   id: string;
   roomId?: string | null;
   roomName?: string | null;
@@ -186,6 +188,7 @@ export function indexWorkspaceRecords(
       pendingSync: Boolean(
         list.pendingSync || items.some((item) => item.pendingSync),
       ),
+      partSearchTexts: [...new Set(items.map(item => materialListPartSearchText({partDefinitionDisplayName: item.partDefinition?.displayName, descriptionSnapshot: item.descriptionSnapshot, supplierPartSku: item.supplierPart?.supplierSku})).filter(Boolean))],
       itemCount: items.length,
       materialTotal: total,
       contributors,
