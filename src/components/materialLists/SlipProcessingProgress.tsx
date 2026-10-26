@@ -8,7 +8,7 @@ export function SlipProcessingProgress({ analysis, order = "" }: { analysis: Sli
   const processing = analysis.status === "processing";
   const failed = analysis.status === "failed";
   const lines = failed ? [] : processing ? analysis.progress?.lines ?? [] : analysis.lines;
-  const flagged = (line: (typeof lines)[number]) => !line.orderItemId || line.proposed === null || line.issues.length > 0 || line.handwritten !== undefined;
+  const flagged = (line: (typeof lines)[number]) => !line.orderItemId || line.proposed === null || line.issues.length > 0 || !line.quantityClear || (!!line.confidence && line.confidence !== "high") || line.handwritten !== undefined;
   const checks = lines.filter(flagged).length;
   const progress = analysis.progress;
   const title = failed ? "Packing slip could not be checked" : processing ? "Checking packing slip" : "Packing slip checks complete";
