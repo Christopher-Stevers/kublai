@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -94,7 +95,7 @@ export const drawingsRouter = createTRPCRouter({
       const ids = sets.map((set) => set.id);
       const counts = ids.length
         ? await ctx.db
-            .select({ setId: jobDrawingSheets.setId, sheets: count() })
+            .select({ setId: jobDrawingSheets.setId, sheets: count(), downloadVersion: sql<string>`md5(string_agg(${jobDrawingSheets.id}::text || ':' || ${jobDrawingSheets.imageUrl}, '|' order by ${jobDrawingSheets.id}))` })
             .from(jobDrawingSheets)
             .where(inArray(jobDrawingSheets.setId, ids))
             .groupBy(jobDrawingSheets.setId)
@@ -117,6 +118,7 @@ export const drawingsRouter = createTRPCRouter({
           id: set.id,
           name: set.name,
           updatedAt: set.updatedAt,
+          downloadVersion: counts.find(row => row.setId === set.id)?.downloadVersion ?? "empty",
           sheetCount: Number(counts.find((row) => row.setId === set.id)?.sheets ?? 0),
           coverImageUrl:
             covers.find((row) => row.setId === set.id)?.imageUrl ?? null,
@@ -153,6 +155,7 @@ export const drawingsRouter = createTRPCRouter({
         canDelete: userCan(ctx.user, "drawings.delete"),
         set: { id: set.id, jobId: set.jobId, name: set.name },
         sheets,
+        downloadVersion: createHash("md5").update(sheets.map(sheet => `${sheet.id}:${sheet.imageUrl}`).sort().join("|")).digest("hex"),
       };
     }),
 

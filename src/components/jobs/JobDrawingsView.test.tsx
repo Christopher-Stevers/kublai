@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
     sheetCount: number;
     coverImageUrl: string | null;
     updatedAt: Date;
+    downloadVersion?: string;
   }>,
   sheets: [] as Array<{
     id: string;
@@ -599,6 +600,32 @@ describe("drawing set downloads", () => {
     await waitFor(() => expect(store.readSnapshot).toHaveBeenCalled());
     expect(screen.getByRole("button", {name:"Download Mechanical for offline use"})).toBeEnabled();
     expect(screen.queryByText("Downloaded")).toBeNull();
+  });
+  it("upgrades a renamed folder's old marker using matching files without downloading them again", async () => {
+    const store = offlineStore();
+    state.sets[0]!.downloadVersion = "content-v1";
+    state.fetchSet.mockResolvedValue({ sheets: [...state.sheets].reverse(), downloadVersion: "content-v1" });
+    store.readSnapshot.mockImplementation(async (key: string) => key === "drawing-download:set-1" ? {
+      version: "old-timestamp:2", urls: ["/1.webp", "/2.webp", "/original.pdf"], sheets: ["s1", "s2"],
+    } : key === "drawing-set:set-1" ? { sheets: state.sheets } : {});
+    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    render(<JobDrawingsView jobId="job" />);
+    await screen.findByText("Downloaded");
+    expect(store.saveAssets).not.toHaveBeenCalled();
+    expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ version: "content-v1" }));
+  });
+  it("requires an update when a source file is replaced even if the number of sheets is unchanged", async () => {
+    const store = offlineStore();
+    state.sets[0]!.downloadVersion = "content-v2";
+    state.fetchSet.mockResolvedValue({ sheets: state.sheets.map(s => ({ ...s, imageUrl: s.imageUrl + "-new" })), downloadVersion: "content-v2" });
+    store.readSnapshot.mockImplementation(async (key: string) => key === "drawing-download:set-1" ? {
+      version: "content-v1", urls: ["/1.webp", "/2.webp", "/original.pdf"], sheets: ["s1", "s2"],
+    } : key === "drawing-set:set-1" ? { sheets: state.sheets } : {});
+    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    render(<JobDrawingsView jobId="job" />);
+    await waitFor(() => expect(state.fetchSet).toHaveBeenCalled());
+    expect(screen.queryByText("Downloaded")).toBeNull();
+    expect(store.saveSnapshot.mock.calls.some(call => call[0] === "drawing-download:set-1")).toBe(false);
   });
   it("does not mark a failed download as complete", async () => {
     const store = offlineStore();

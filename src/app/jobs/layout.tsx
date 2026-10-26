@@ -84,6 +84,7 @@ export default async function JobsLayout({
                 userId={effectiveUserId}
                 organizationId={organizationId}
                 simulationId={identity.simulation?.id}
+                preserveAccountKey={identity.simulation && identity.actorUser?.organizationId ? `${identity.actorUser.organizationId}:${identity.actorUser.id}` : undefined}
               >
                 <SnapshotProvider>
                   <DrawingDestinationProvider>

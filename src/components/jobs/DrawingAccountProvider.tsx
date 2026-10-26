@@ -33,11 +33,13 @@ export function DrawingAccountProvider({
   organizationId,
   children,
   simulationId,
+  preserveAccountKey,
 }: {
   userId: string;
   organizationId: string;
   children: React.ReactNode;
   simulationId?: string;
+  preserveAccountKey?: string;
 }) {
   const accountKey = `${organizationId}:${userId}${simulationId ? `:simulation:${simulationId}` : ""}`;
   const queryClient = useQueryClient();
@@ -64,7 +66,7 @@ export function DrawingAccountProvider({
       "foremanhq-drawing-account-invalidated",
       invalidate,
     );
-    void setDrawingOfflineAccount(accountKey)
+    void setDrawingOfflineAccount(accountKey, preserveAccountKey)
       .then(() => {
         if (disposed) return;
         store = new DrawingOfflineStore(accountKey);
@@ -84,7 +86,7 @@ export function DrawingAccountProvider({
         invalidate,
       );
     };
-  }, [accountKey, userId, queryClient]);
+  }, [accountKey, userId, queryClient, preserveAccountKey]);
   if (locked)
     return (
       <main className="mx-auto max-w-lg space-y-3 p-6" role="alert">

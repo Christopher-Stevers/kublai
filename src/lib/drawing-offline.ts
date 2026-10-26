@@ -32,6 +32,7 @@ export type DrawingOfflineSaveOptions = {
 };
 let database: Promise<IDBDatabase> | undefined;
 let activeAccount: string | null = null;
+let preservedAccount: string | null = null;
 const stores = new Set<DrawingOfflineStore>();
 export function isDrawingOfflineAccountActive(accountKey: string) {
   return activeAccount === accountKey;
@@ -142,7 +143,7 @@ function assetPath(url: string) {
 }
 
 /** Bind only a server-validated account (org:user); null on logout, never infer it from a cache. */
-export async function setDrawingOfflineAccount(accountKey: string | null) {
+export async function setDrawingOfflineAccount(accountKey: string | null, preserveAccountKey?: string) {
   accountSignals();
   if (accountKey !== activeAccount && typeof window !== "undefined") {
     try {
@@ -155,6 +156,9 @@ export async function setDrawingOfflineAccount(accountKey: string | null) {
     }
   }
   activeAccount = accountKey;
+  // Only a server-validated simulation may retain its actor’s normal downloads.
+  // Retention never grants read access to that account. Logout still clears all.
+  preservedAccount = accountKey?.includes(":simulation:") && preserveAccountKey ? preserveAccountKey : null;
   bindingChanged();
   for (const store of stores)
     if (store.accountKey !== accountKey) store.dispose();
@@ -169,7 +173,7 @@ export async function setDrawingOfflineAccount(accountKey: string | null) {
       // Consult the latest binding: a slow logout cleanup must not erase the
       // new user's downloads if they sign in while IndexedDB opens.
       const item = cursor.result.value as Asset | Snapshot;
-      if (item.account !== activeAccount) cursor.result.delete();
+      if (item.account !== activeAccount && item.account !== preservedAccount) cursor.result.delete();
       cursor.result.continue();
     };
   }

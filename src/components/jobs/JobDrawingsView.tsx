@@ -230,17 +230,32 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const setsData = setsSnapshot.data;
   // Completion markers live with the account's assets, so clearing device data
   // also clears the downloaded status.
-  const folderVersions = JSON.stringify((setsData?.sets ?? []).map(folder => [folder.id, new Date(folder.updatedAt).toISOString(), folder.sheetCount]));
+  const folderVersions = JSON.stringify((setsData?.sets ?? []).map(folder => [folder.id, folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`, folder.sheetCount]));
   useEffect(() => {
     let stopped = false;
     setSavedSets({});
     const store = account?.store;
     if (store) void (async () => {
-      const saved: Record<string, string> = {};
-      for (const [id, updated, count] of JSON.parse(folderVersions) as [string, string, number][]) {
+      const savedSetsFound: Record<string, string> = {};
+      for (const [id, version, count] of JSON.parse(folderVersions) as [string, string, number][]) {
         const marker = await store.readSnapshot<{ version: string; urls: string[]; sheets: string[] }>(`drawing-download:${id}`);
-        if (!marker || marker.version !== `${updated}:${count}`) continue;
-        let complete = Boolean(await store.readSnapshot(`drawing-set:${id}`));
+        if (!marker) continue;
+        const saved = await store.readSnapshot<{ sheets?: { id: string; imageUrl: string }[]; downloadVersion?: string }>(`drawing-set:${id}`);
+        if (!saved) continue;
+        if (marker.version !== version) {
+          // Upgrade old timestamp markers without downloading the files again.
+          // Compare actual source identities; names, order and annotations do not matter.
+          if (marker.sheets.length !== count) continue;
+          if (!setsSnapshot.online) continue;
+          const current = await utils.drawings.getSet.fetch({ setId: id });
+          if (JSON.stringify([...marker.sheets].sort()) !== JSON.stringify(current.sheets.map(s => s.id).sort())) continue;
+          const currentUrls = await collectDrawingOfflineUrls(current.sheets.map(s => s.imageUrl), { includeTiles: false });
+          if (!currentUrls.every(url => marker.urls.includes(url))) continue;
+          marker.version = current.downloadVersion ?? version;
+          await store.saveSnapshot(`drawing-download:${id}`, marker);
+          if (marker.version !== version) continue;
+        }
+        let complete = true;
         for (const url of marker.urls) {
           if (stopped) return;
           if (!(await store.readAsset(url))) { complete = false; break; }
@@ -249,12 +264,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           if (stopped) return;
           if (!(await store.readSnapshot(`workspace:${sheet}`))) { complete = false; break; }
         }
-        if (complete) saved[id] = marker.version;
+        if (complete) savedSetsFound[id] = marker.version;
       }
-      if (!stopped) setSavedSets(saved);
+      if (!stopped) setSavedSets(savedSetsFound);
     })().catch(() => undefined);
     return () => { stopped = true; };
-  }, [account, folderVersions, downloadRevision]);
+  }, [account, folderVersions, downloadRevision, setsSnapshot.online]);
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
     await utils.drawingsWorkspace.list.invalidate({ jobId });
@@ -331,7 +346,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const downloadFolder = async (targetId = setId) => {
     if (!account?.store || downloader.current || !targetId) return;
     const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
-    if (currentFolder && savedSets[targetId] === `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`) return;
+    if (currentFolder && savedSets[targetId] === (currentFolder.downloadVersion ?? `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`)) return;
     const controller = new AbortController();
     downloader.current = controller;
     setDownloadingSet(targetId);
@@ -339,10 +354,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     try {
       const target = await utils.drawings.getSet.fetch({ setId: targetId });
       const folder = setsData?.sets.find(item => item.id === targetId);
-      const version = `${folder ? new Date(folder.updatedAt).toISOString() : "unknown"}:${target.sheets.length}`;
+      const version = target.downloadVersion ?? `${folder ? new Date(folder.updatedAt).toISOString() : "unknown"}:${target.sheets.length}`;
       const sheets = target.sheets;
       // Request protection against automatic browser eviction where supported.
-      await navigator.storage?.persist?.().catch(() => false);
+      const storageProtected = await navigator.storage?.persist?.().catch(() => false);
       const estimate = await navigator.storage?.estimate?.().catch(() => undefined);
       const existing = await account.store.summary();
       const budgetBytes = estimate?.quota
@@ -397,7 +412,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         version, urls, sheets: workspaces.map(workspace => workspace.sheetId),
       });
       setSavedSets(previous => ({ ...previous, [targetId]: version }));
-      notify("Drawing set downloaded on this device for offline viewing.", "success");
+      notify(storageProtected ? "Drawing set downloaded on this device for offline viewing." : "Drawing set downloaded. This browser did not grant persistent storage, so the device may clear it when space is needed.", "success");
     } catch (error) {
       if (!controller.signal.aborted)
         notify(
@@ -1195,12 +1210,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` || (Boolean(download) && downloadingSet !== folder.id)}
-                    aria-label={downloadingSet === folder.id ? `Cancel download of ${folder.name}` : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
+                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) || (Boolean(download) && downloadingSet !== folder.id)}
+                    aria-label={downloadingSet === folder.id ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
                     onClick={() => downloadingSet === folder.id ? downloader.current?.abort() : void downloadFolder(folder.id)}
                   >
-                    {downloadingSet === folder.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-                    {downloadingSet === folder.id ? "Cancel download" : savedSets[folder.id] === `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}` ? "Downloaded" : "Download"}
+                    {downloadingSet === folder.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+                    {downloadingSet === folder.id ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? "Downloaded" : "Download"}
                   </Button>
                   {downloadingSet === folder.id && <p role="status" className="mt-2 text-xs">{download}</p>}
                 </div>

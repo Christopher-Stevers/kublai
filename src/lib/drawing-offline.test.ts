@@ -152,6 +152,26 @@ describe("explicit account-scoped drawing downloads", () => {
     ).toBeNull();
   });
 
+  it("preserves the actor's normal downloads across isolated simulation sessions", async () => {
+    const normal = new DrawingOfflineStore("org:alice");
+    await normal.saveAssets([first]);
+    await normal.saveSnapshot("job", { private: "Alice" });
+    await setDrawingOfflineAccount("org:bob:simulation:one", "org:alice");
+    const simulation = new DrawingOfflineStore("org:bob:simulation:one");
+    expect(await simulation.readAsset(first)).toBeNull();
+    expect(await simulation.readSnapshot("job")).toBeNull();
+    expect(() => new DrawingOfflineStore("org:alice")).toThrow(/Sign in/);
+    await expect(normal.readAsset(first)).rejects.toMatchObject({ name: "AbortError" });
+    await setDrawingOfflineAccount("org:bob:simulation:two", "org:alice");
+    await setDrawingOfflineAccount("org:alice");
+    const restored = new DrawingOfflineStore("org:alice");
+    expect(await restored.readAsset(first)).not.toBeNull();
+    expect(await restored.readSnapshot("job")).toEqual({ private: "Alice" });
+    await setDrawingOfflineAccount(null);
+    await setDrawingOfflineAccount("org:alice");
+    expect(await new DrawingOfflineStore("org:alice").readAsset(first)).toBeNull();
+  });
+
   it("cannot restore a download after logout while its network response was pending", async () => {
     let release!: (response: Response) => void;
     const pending = new Promise<Response>((resolve) => {
