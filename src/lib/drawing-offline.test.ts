@@ -87,27 +87,19 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(await store.readAsset(second)).toBeNull();
   });
 
-  it("atomically caps total metadata bytes across concurrent snapshots and allows replacing a saved record", async () => {
+  it("saves multiple sets beyond the old 32 MB metadata cap and replaces records", async () => {
     const store = new DrawingOfflineStore("org:alice");
     const large = "a".repeat(7 * 1024 * 1024);
-    await Promise.all(
-      ["one", "two", "three"].map((key) => store.saveSnapshot(key, large)),
-    );
-    const attempts = await Promise.allSettled([
-      store.saveSnapshot("four", large),
-      store.saveSnapshot("five", large),
-    ]);
-    expect(
-      attempts.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
-    expect(
-      attempts.filter((result) => result.status === "rejected"),
-    ).toHaveLength(1);
+    await Promise.all(["one", "two", "three", "four", "five"].map(key => store.saveSnapshot(key, large)));
+    expect(await store.readSnapshot("five")).toBe(large);
     await store.saveSnapshot("one", "replaced");
     expect(await store.readSnapshot("one")).toBe("replaced");
-    const remaining = attempts[0]?.status === "rejected" ? "four" : "five";
-    await store.saveSnapshot(remaining, large);
-    expect(await store.readSnapshot(remaining)).toBe(large);
+  });
+
+  it("allows more than 512 saved workspace records", async () => {
+    const store = new DrawingOfflineStore("org:alice");
+    await Promise.all(Array.from({length: 520}, (_, i) => store.saveSnapshot(`workspace-${i}`, {sheet: i})));
+    expect(await store.readSnapshot("workspace-519")).toEqual({sheet: 519});
   });
 
   it("enforces the budget while streaming even without a Content-Length header", async () => {

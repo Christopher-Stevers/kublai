@@ -18,7 +18,6 @@ type Snapshot = {
   savedAt: number;
   bytes?: number;
 };
-export const DRAWING_OFFLINE_SNAPSHOT_BUDGET = 32 * 1024 * 1024;
 export type DrawingOfflineProgress = {
   completed: number;
   total: number;
@@ -423,53 +422,19 @@ export class DrawingOfflineStore {
     const generation = this.generation;
     const serialized = JSON.stringify(value);
     const bytes = new TextEncoder().encode(serialized).byteLength;
-    if (bytes > 10 * 1024 * 1024)
-      throw new Error(
-        "This drawing workspace is too large for an offline snapshot.",
-      );
     const db = await openDatabase();
     this.assertActive(generation);
-    const tx = db.transaction("snapshots", "readwrite"),
-      complete = done(tx);
-    const store = tx.objectStore("snapshots");
-    const existing = store.index("account").getAll(this.accountKey);
-    let quotaError: Error | undefined;
-    existing.onsuccess = () => {
-      try {
-        this.assertActive(generation);
-        const others = (existing.result as Snapshot[]).filter(
-          (item) => item.key !== key,
-        );
-        const used = others.reduce(
-          (total, item) =>
-            total +
-            (item.bytes ??
-              new TextEncoder().encode(JSON.stringify(item.value)).byteLength),
-          0,
-        );
-        if (
-          others.length >= 512 ||
-          used + bytes > DRAWING_OFFLINE_SNAPSHOT_BUDGET
-        ) {
-          quotaError = new Error(
-            "Saved drawing workspaces exceed this device's offline limit. Remove saved drawings before saving more.",
-          );
-          tx.abort();
-          return;
-        }
-        store.put({
-          account: this.accountKey,
-          key,
-          value,
-          bytes,
-          savedAt: Date.now(),
-        } satisfies Snapshot);
-      } catch {
-        tx.abort();
-      }
-    };
+    const tx = db.transaction("snapshots", "readwrite");
+    const complete = done(tx);
+    // IndexedDB enforces the device's real quota. Arbitrary record/byte caps
+    // prevented additional sets from being saved despite available storage.
+    tx.objectStore("snapshots").put({
+      account: this.accountKey, key, value, bytes, savedAt: Date.now(),
+    } satisfies Snapshot);
     await complete.catch((error: unknown) => {
-      throw quotaError ?? error;
+      if (tx.error?.name === "QuotaExceededError")
+        throw new Error("This device's browser storage is full. Free device storage or remove saved drawings, then retry.");
+      throw error;
     });
     if (key.startsWith("drawing-download:") || key.startsWith("sheet-download:"))
       window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
