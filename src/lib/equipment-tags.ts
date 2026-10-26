@@ -1,4 +1,7 @@
-import { extractDrawingIdentity, type TitleBlockWord } from "./drawing-title-block";
+import {
+  extractDrawingIdentity,
+  type TitleBlockWord,
+} from "./drawing-title-block";
 import { makeSnapshotSource } from "./snapshot-source";
 
 const dashes = /[\u2010-\u2015\u2212]/g;
@@ -20,26 +23,146 @@ const families = new Set(
   ),
 );
 // Standards bodies cite their documents like tags: "ASTM B-62", "NEMA KS 1".
-const standards = `ANSI ASTM ASME AWWA MSS NEMA UL ULC NFPA ASSE CSA ISO IEEE IEC SMACNA ASHRAE AHRI ARI CISPI NSF IAPMO PDI AABC NEBB TIA EIA ICEA ETL AGA API AWS ACI AISC DIN NEC IPC IMC IBC UPC UMC MIL CFR OSHA CGA ASPE AMCA NZS`.split(" ");
+const standards =
+  `ANSI ASTM ASME AWWA MSS NEMA UL ULC NFPA ASSE CSA ISO IEEE IEC SMACNA ASHRAE AHRI ARI CISPI NSF IAPMO PDI AABC NEBB TIA EIA ICEA ETL AGA API AWS ACI AISC DIN NEC IPC IMC IBC UPC UMC MIL CFR OSHA CGA ASPE AMCA NZS`.split(
+    " ",
+  );
 // Common words and units are never an equipment prefix.
 const prose = new Set([
-  ...`ADD AISLE AND APPENDIX ASSET AT BUILDING BY CHAPTER CLASS COORD DAY DETAIL DIV DIVISION DRAWING DWG ELEC ELEV FLOOR FLOODED FOR FROM GRID IN ISSUED JANITOR KITCHEN LAUNDRY LEVEL LOBBY LOUNGE MAX MAXIMUM MIN MINIMUM MODEL NO NOTE OF ON OWNER PAGE PARKING PHASE PROGRESS REF REV REVISION ROOM SCALE SECTION SERVICE SHEET SI SIZE STORAGE THE TO TYPE VENDING VEST VOLUME ZONE KG KW KVA HZ GPM CFM PSI PSIG LBS RPM MBH BTU BTUH VAC VDC AMP AMPS FT MM`.split(" "),
+  ...`ADD AISLE AND APPENDIX ASSET AT BUILDING BY CHAPTER CLASS COORD DAY DETAIL DIV DIVISION DRAWING DWG ELEC ELEV FLOOR FLOODED FOR FROM GRID IN ISSUED JANITOR KITCHEN LAUNDRY LEVEL LOBBY LOUNGE MAX MAXIMUM MIN MINIMUM MODEL NO NOTE OF ON OWNER PAGE PARKING PHASE PROGRESS REF REV REVISION ROOM SCALE SECTION SERVICE SHEET SI SIZE STORAGE THE TO TYPE VENDING VEST VOLUME ZONE KG KW KVA HZ GPM CFM PSI PSIG LBS RPM MBH BTU BTUH VAC VDC AMP AMPS FT MM`.split(
+    " ",
+  ),
   ...standards,
 ]);
 // Families that are also units or common words. Without a hyphen they are a
 // schedule value ("HP 15", "SF 270") far more often than equipment.
-const ambiguous = new Set(
-  `AS CB CR HP SF SL SP SS ST MS T`.split(" "),
-);
+const ambiguous = new Set(`AS CB CR HP SF SL SP SS ST MS T`.split(" "));
 const sheetPrefix = /^(?:A|C|E|F|G|I|ID|M|S|ST|STR|EL|ME|ARCH)$/;
 // A standard, catalogue or manufacturer immediately before the identifier
 // makes it a reference or a model number: "MSS SP-58", "SLOAN SS-3001".
 const referenceBefore = new RegExp(
   `(?:^|[^A-Z])(?:${[
     ...standards,
-    "STANDARD", "STD", "SPEC", "SPECIFICATION", "SERIES", "MODEL", "CAT", "CATALOG", "FIG", "FIGURE", "PART", "P/N", "NO", "NUMBER",
-    "BELL & GOSSETT", "B&G", "CLEAVER BROOKS", "CLEAVER-BROOKS", "SLOAN", "AMTROL", "ZURN", "WATTS", "JAY R\\.? SMITH", "J\\.?R\\.? SMITH", "KOHLER", "AMERICAN STANDARD", "ELKAY", "HAWS", "TRANE", "CARRIER", "DAIKIN", "YORK", "LENNOX", "MITSUBISHI", "GREENHECK", "LOREN COOK", "TITUS", "KRUEGER", "NAILOR", "TACO", "ARMSTRONG", "GRUNDFOS", "AERCO", "LOCHINVAR", "RHEEM", "RUUD", "A\\.? ?O\\.? SMITH", "BRADFORD WHITE", "STATE INDUSTRIES", "VICTAULIC", "NIBCO", "APOLLO", "LEONARD", "POWERS", "SYMMONS", "CHICAGO FAUCETS", "T&S", "GUARDIAN", "SPEAKMAN", "ACORN", "BRADLEY", "MIFAB", "WADE", "JOSAM", "ZOELLER", "LIBERTY", "LIEBERT", "SQUARE D", "EATON", "CUTLER-HAMMER", "SIEMENS", "ASCO", "HONEYWELL", "BELIMO", "DWYER", "PENTAIR", "AURORA", "PATTERSON", "XYLEM", "BALDOR", "ABB", "DANFOSS", "YASKAWA", "MODINE", "REZNOR", "STERLING", "BERKO", "MARKEL", "QMARK", "RUSKIN", "POTTORFF", "NAILOR", "ANEMOSTAT", "METALAIRE", "HART & COOLEY", "SPIROTHERM", "SPIROVENT", "ARMSTRONG", "CANARIS", "BAC", "EVAPCO", "MARLEY", "AAON", "VALENT", "RENEWAIRE", "ENGINEERED AIR", "ENGA", "VIESSMANN", "NAVIEN", "RINNAI", "NORITZ", "HOLBY", "THERMON", "RAYCHEM", "WILKINS", "FEBCO", "CONBRACO",
-  ].join("|")})\\)?(?:\\s+(?:GUIDES?|STANDARDS?|PRACTICE|SPECS?|MODEL|NO|NUMBER|SERIES|TYPE|FIG|CAT))*\\.?\\s*[#:]?\\s*$`,
+    "STANDARD",
+    "STD",
+    "SPEC",
+    "SPECIFICATION",
+    "SERIES",
+    "MODEL",
+    "CAT",
+    "CATALOG",
+    "FIG",
+    "FIGURE",
+    "PART",
+    "P/N",
+    "NO",
+    "NUMBER",
+    "BELL & GOSSETT",
+    "B&G",
+    "CLEAVER BROOKS",
+    "CLEAVER-BROOKS",
+    "SLOAN",
+    "AMTROL",
+    "ZURN",
+    "WATTS",
+    "JAY R\\.? SMITH",
+    "J\\.?R\\.? SMITH",
+    "KOHLER",
+    "AMERICAN STANDARD",
+    "ELKAY",
+    "HAWS",
+    "TRANE",
+    "CARRIER",
+    "DAIKIN",
+    "YORK",
+    "LENNOX",
+    "MITSUBISHI",
+    "GREENHECK",
+    "LOREN COOK",
+    "TITUS",
+    "KRUEGER",
+    "NAILOR",
+    "TACO",
+    "ARMSTRONG",
+    "GRUNDFOS",
+    "AERCO",
+    "LOCHINVAR",
+    "RHEEM",
+    "RUUD",
+    "A\\.? ?O\\.? SMITH",
+    "BRADFORD WHITE",
+    "STATE INDUSTRIES",
+    "VICTAULIC",
+    "NIBCO",
+    "APOLLO",
+    "LEONARD",
+    "POWERS",
+    "SYMMONS",
+    "CHICAGO FAUCETS",
+    "T&S",
+    "GUARDIAN",
+    "SPEAKMAN",
+    "ACORN",
+    "BRADLEY",
+    "MIFAB",
+    "WADE",
+    "JOSAM",
+    "ZOELLER",
+    "LIBERTY",
+    "LIEBERT",
+    "SQUARE D",
+    "EATON",
+    "CUTLER-HAMMER",
+    "SIEMENS",
+    "ASCO",
+    "HONEYWELL",
+    "BELIMO",
+    "DWYER",
+    "PENTAIR",
+    "AURORA",
+    "PATTERSON",
+    "XYLEM",
+    "BALDOR",
+    "ABB",
+    "DANFOSS",
+    "YASKAWA",
+    "MODINE",
+    "REZNOR",
+    "STERLING",
+    "BERKO",
+    "MARKEL",
+    "QMARK",
+    "RUSKIN",
+    "POTTORFF",
+    "NAILOR",
+    "ANEMOSTAT",
+    "METALAIRE",
+    "HART & COOLEY",
+    "SPIROTHERM",
+    "SPIROVENT",
+    "ARMSTRONG",
+    "CANARIS",
+    "BAC",
+    "EVAPCO",
+    "MARLEY",
+    "AAON",
+    "VALENT",
+    "RENEWAIRE",
+    "ENGINEERED AIR",
+    "ENGA",
+    "VIESSMANN",
+    "NAVIEN",
+    "RINNAI",
+    "NORITZ",
+    "HOLBY",
+    "THERMON",
+    "RAYCHEM",
+    "WILKINS",
+    "FEBCO",
+    "CONBRACO",
+  ].join(
+    "|",
+  )})\\)?(?:\\s+(?:GUIDES?|STANDARDS?|PRACTICE|SPECS?|MODEL|NO|NUMBER|SERIES|TYPE|FIG|CAT))*\\.?\\s*[#:]?\\s*$`,
 );
 // A quantity directly after the number: "AT 100%", "LAV 3/8\"", "HP 15 RPM".
 const unitAfter =
@@ -140,7 +263,9 @@ function mentions(text: string): Mention[] {
     const doubtful =
       // Specifications and notes are sentence case; drawing tags are capitals.
       /[a-z]/.test(original.slice(match.index, baseEnd)) ||
-      referenceBefore.test(value.slice(Math.max(0, match.index - 24), match.index)) ||
+      referenceBefore.test(
+        value.slice(Math.max(0, match.index - 24), match.index),
+      ) ||
       unitAfter.test(value.slice(end, end + 12)) ||
       /\d\.\d/.test(body) ||
       // Catalogue numbers: 1510-6G-SS-365T-L, 1100-A-X, 10-FOOT.
@@ -148,7 +273,10 @@ function mentions(text: string): Mention[] {
       // Catalogue numbers: FS-730-150, DA-45-840.
       segments.some((part) => /^\d{3,}/.test(part)) ||
       segments.some((part) => /^[A-Z]{3,}$/.test(part)) ||
-      segments.some((part, index) => /^[A-Z]+$/.test(part) && /^[A-Z]+$/.test(segments[index + 1] ?? ""));
+      segments.some(
+        (part, index) =>
+          /^[A-Z]+$/.test(part) && /^[A-Z]+$/.test(segments[index + 1] ?? ""),
+      );
     result.push({
       tags: bodies.map((number) => `${prefix}-${number}`),
       ranges,
@@ -157,7 +285,9 @@ function mentions(text: string): Mention[] {
       start: match.index,
       end,
       doubtful,
-      compact: !/[-\s]/.test(match[0].slice(prefix.length, match[0].length - match[3]!.length)),
+      compact: !/[-\s]/.test(
+        match[0].slice(prefix.length, match[0].length - match[3]!.length),
+      ),
       hyphenated: match[2] === "-",
     });
   }
@@ -233,7 +363,9 @@ function occurrences(words: TitleBlockWord[]): Occurrence[] {
     for (const found of mentions(word.text)) {
       const item = { ...found, hyphenated: found.hyphenated && !stacked };
       if (!item.doubtful && !word.text.slice(0, item.start).trim())
-        item.doubtful = referenceBefore.test(cellBefore(word).toUpperCase().replace(dashes, "-"));
+        item.doubtful = referenceBefore.test(
+          cellBefore(word).toUpperCase().replace(dashes, "-"),
+        );
       for (const [index, tag] of item.tags.entries()) {
         // Give grouped tags distinct hit areas; otherwise the last link would
         // cover every other member of labels such as AC-1 A/B/C.
@@ -351,8 +483,15 @@ function occurrences(words: TitleBlockWord[]): Occurrence[] {
   cache.set(words, unique);
   return unique;
 }
-type Vocabulary = { known: Set<string>; families: Set<string>; sheets: Set<string> };
-function vocabulary(options: { knownTags?: string[]; sheetNumbers?: string[] }): Vocabulary {
+type Vocabulary = {
+  known: Set<string>;
+  families: Set<string>;
+  sheets: Set<string>;
+};
+function vocabulary(options: {
+  knownTags?: string[];
+  sheetNumbers?: string[];
+}): Vocabulary {
   const known = new Set((options.knownTags ?? []).map(normalizeEquipmentTag));
   return {
     known,
@@ -387,7 +526,8 @@ function plausible(item: Occurrence, automatic: boolean, words: Vocabulary) {
     if (item.compact && digits.startsWith("0")) return false;
     if (!item.hyphenated && ambiguous.has(baseFamily)) return false;
     // BAS points such as RA.CO2 use dotted names.
-    if (item.prefix.includes(".") && !words.families.has(item.prefix)) return false;
+    if (item.prefix.includes(".") && !words.families.has(item.prefix))
+      return false;
   }
   if (
     !item.explicit &&
@@ -396,7 +536,11 @@ function plausible(item: Occurrence, automatic: boolean, words: Vocabulary) {
     return false;
   return recognized || (!automatic && item.explicit && item.prefix.length <= 8);
 }
-type TagOptions = { automatic?: boolean; knownTags?: string[]; sheetNumbers?: string[] };
+type TagOptions = {
+  automatic?: boolean;
+  knownTags?: string[];
+  sheetNumbers?: string[];
+};
 export function equipmentTagCandidates(
   words: TitleBlockWord[],
   points: Array<{ x: number; y: number }>,
@@ -426,7 +570,10 @@ export function equipmentTagCandidates(
   ];
 }
 /** Every equipment tag on a page with its tight location, for a whole-sheet scan. */
-export function equipmentTagsOnPage(words: TitleBlockWord[], options: Omit<TagOptions, "automatic"> = {}) {
+export function equipmentTagsOnPage(
+  words: TitleBlockWord[],
+  options: Omit<TagOptions, "automatic"> = {},
+) {
   const context = vocabulary(options);
   return occurrences(words)
     .filter((item) => plausible(item, true, context))
@@ -437,12 +584,16 @@ export function equipmentTagIndex(words: TitleBlockWord[]) {
   const index = new Map<string, TitleBlockWord[]>();
   for (const item of occurrences(words))
     if (!item.doubtful)
-      for (const tag of item.tags) index.set(tag, [...(index.get(tag) ?? []), { ...item.box, text: tag }]);
+      for (const tag of item.tags)
+        index.set(tag, [...(index.get(tag) ?? []), { ...item.box, text: tag }]);
   return index;
 }
 /** The sheet number at the start of a sheet name: "M-101 FIRST FLOOR" → M-101. */
 export function sheetNumberOfName(name: string) {
-  const code = /^\s*([A-Z]{1,3}[-.]?\d{1,4}(?:\.\d{1,3})?[A-Z]?)(?![A-Z0-9])/i.exec(name.replace(dashes, "-"))?.[1];
+  const code =
+    /^\s*([A-Z]{1,3}[-.]?\d{1,4}(?:\.\d{1,3})?[A-Z]?)(?![A-Z0-9])/i.exec(
+      name.replace(dashes, "-"),
+    )?.[1];
   return code ? normalizeEquipmentTag(code) : null;
 }
 export function equipmentTagLocations(words: TitleBlockWord[], tag: string) {
@@ -457,7 +608,8 @@ const sheetIndexTitle =
   /\b(?:PLANS?|SCHEDULES?|DETAILS?|LEGENDS?|NOTES|DIAGRAMS?|ELEVATIONS?|SECTIONS?|SITE|DEMOLITION|COVER|INDEX|RISERS?|ENLARGED|ROOF|ISOMETRICS?|SPECIFICATIONS|ABBREVIATIONS|SCHEMATICS?|LAYOUTS?|SYMBOLS|TITLE)\b/;
 const sheetReference =
   /\b(?:REFER\s+TO|SEE|REF\.?|SHEETS?|DWGS?\.?|DRAWINGS?)\s+(?:SHEETS?\s+|DRAWINGS?\s+|DWG\.?\s+)?((?:[A-Z]{1,3}-?\d{1,4}(?:\.\d{1,3})?[A-Z]?(?:\s*(?:,|AND|&|THRU|THROUGH|-)\s*)?)+)/g;
-const detailCallout = /(?:^|[^A-Z0-9/])\d{1,2}[A-Z]?\s*\/\s*([A-Z]{1,3}-?\d{2,4}(?:\.\d{1,3})?[A-Z]?)(?![A-Z0-9/])/g;
+const detailCallout =
+  /(?:^|[^A-Z0-9/])\d{1,2}[A-Z]?\s*\/\s*([A-Z]{1,3}-?\d{2,4}(?:\.\d{1,3})?[A-Z]?)(?![A-Z0-9/])/g;
 /**
  * Sheet numbers of a drawing set: each sheet's title-block number, the
  * drawing index, and sheet references ("REFER TO P-001", detail "1/P-501").
@@ -471,12 +623,20 @@ export function drawingSheetNumbers(pages: Array<{ words: TitleBlockWord[] }>) {
   };
   for (const { words } of pages) {
     const valid = words.filter(
-      (w) => [w.left, w.right, w.top, w.bottom].every(Number.isFinite) && w.right > w.left && w.bottom > w.top && w.text.trim(),
+      (w) =>
+        [w.left, w.right, w.top, w.bottom].every(Number.isFinite) &&
+        w.right > w.left &&
+        w.bottom > w.top &&
+        w.text.trim(),
     );
     // Product data sheets also put a code in the corner (WH1, P-17). Without a
     // sheet title, trust only codes shaped like sheet numbers.
     const identity = extractDrawingIdentity(valid);
-    if (identity.title || /^\D*(?:\d{3}(?!\d)|\d{1,2}\.\d)/.test(identity.number)) addSheet(identity.number);
+    if (
+      identity.title ||
+      /^\D*(?:\d{3}(?!\d)|\d{1,2}\.\d)/.test(identity.number)
+    )
+      addSheet(identity.number);
     for (const word of valid) {
       const text = word.text.toUpperCase().replace(dashes, "-");
       for (const match of text.matchAll(sheetReference))
@@ -486,7 +646,9 @@ export function drawingSheetNumbers(pages: Array<{ words: TitleBlockWord[] }>) {
       for (const match of text.matchAll(detailCallout)) addSheet(match[1]!);
     }
     // A drawing index lists codes in a column with a sheet title beside each.
-    const rows = valid.filter((word) => sheetCode.test(word.text.trim().toUpperCase().replace(dashes, "-")));
+    const rows = valid.filter((word) =>
+      sheetCode.test(word.text.trim().toUpperCase().replace(dashes, "-")),
+    );
     const titled = rows.filter((code) => {
       const title = valid
         .filter(
@@ -494,13 +656,22 @@ export function drawingSheetNumbers(pages: Array<{ words: TitleBlockWord[] }>) {
             w !== code &&
             w.left >= code.right - charWidth(code) * 0.3 &&
             w.left - code.right <= 0.15 &&
-            Math.abs((w.top + w.bottom - code.top - code.bottom) / 2) < Math.min(height(w), height(code)) * 0.45,
+            Math.abs((w.top + w.bottom - code.top - code.bottom) / 2) <
+              Math.min(height(w), height(code)) * 0.45,
         )
         .sort((a, b) => a.left - b.left)[0];
-      return title && sheetIndexTitle.test(title.text.toUpperCase()) && !/\bROOM\b/i.test(title.text);
+      return (
+        title &&
+        sheetIndexTitle.test(title.text.toUpperCase()) &&
+        !/\bROOM\b/i.test(title.text)
+      );
     });
     for (const code of titled)
-      if (titled.filter((other) => Math.abs(other.left - code.left) < 0.004).length >= 3) addSheet(code.text);
+      if (
+        titled.filter((other) => Math.abs(other.left - code.left) < 0.004)
+          .length >= 3
+      )
+        addSheet(code.text);
   }
   return [...sheets];
 }
@@ -513,19 +684,40 @@ export type EquipmentScheduleEntry = {
   title: string;
   /** The tag's row (or column, for a transposed schedule), cell by cell. */
   cells: string[];
+  /** Values under explicit schedule headers; absent when a layout is unclear. */
+  fields?: {
+    model?: string;
+    manufacturer?: string;
+    description?: string;
+    quantity?: string;
+  };
 };
+export function equipmentModelKey(text: string) {
+  const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return normalized.length >= 4 &&
+    normalized.length <= 60 &&
+    /[A-Z]/.test(normalized) &&
+    /\d/.test(normalized)
+    ? normalized
+    : null;
+}
 const sameRow = (a: TitleBlockWord, b: TitleBlockWord) =>
-  Math.abs((a.top + a.bottom - b.top - b.bottom) / 2) < Math.min(height(a), height(b)) * 0.45;
+  Math.abs((a.top + a.bottom - b.top - b.bottom) / 2) <
+  Math.min(height(a), height(b)) * 0.45;
 const scheduleHeader =
   /^(?:SYMBOL|TAG|MARK|NO\.?|NUMBER|ID|UNIT(?:\s*(?:NO\.?|NUMBER|TAG|ID))?|DESIGNATION|(?:PLAN|FIXTURE|EQUIP(?:MENT|\.)?)\s*(?:MARK|NO\.?|NUMBER|TAG|ID|SYMBOL)|(?:EQUIPMENT|FIXTURE|UNIT)\s*(?:TAG|MARK))$/i;
-const panelLabel = /\bPANEL(?:BOARD)?\s*(?:NAME|DESIGNATION|NO\.?|TAG)?\s*[:#]?\s*["']?$/;
+const panelLabel =
+  /\bPANEL(?:BOARD)?\s*(?:NAME|DESIGNATION|NO\.?|TAG)?\s*[:#]?\s*["']?$/;
 /** The words of a line around one word, as printed: "PUMP" "SCHEDULE" → "PUMP SCHEDULE". */
 function lineAround(word: TitleBlockWord, words: TitleBlockWord[]) {
-  const row = words.filter((w) => sameRow(w, word)).sort((a, b) => a.left - b.left);
+  const row = words
+    .filter((w) => sameRow(w, word))
+    .sort((a, b) => a.left - b.left);
   const at = row.indexOf(word);
   let first = at,
     last = at;
-  const near = (a: TitleBlockWord, b: TitleBlockWord) => b.left - a.right <= Math.max(charWidth(a), charWidth(b)) * 2.5;
+  const near = (a: TitleBlockWord, b: TitleBlockWord) =>
+    b.left - a.right <= Math.max(charWidth(a), charWidth(b)) * 2.5;
   while (first > 0 && near(row[first - 1]!, row[first]!)) first--;
   while (last < row.length - 1 && near(row[last]!, row[last + 1]!)) last++;
   return row
@@ -544,25 +736,44 @@ export function equipmentSchedules(
   pages: Array<{ page?: number; words: TitleBlockWord[] }>,
   options: { sheetNumbers?: string[] } = {},
 ) {
-  const sheets = new Set((options.sheetNumbers ?? drawingSheetNumbers(pages)).map(normalizeEquipmentTag));
+  const sheets = new Set(
+    (options.sheetNumbers ?? drawingSheetNumbers(pages)).map(
+      normalizeEquipmentTag,
+    ),
+  );
   // A drawing index is a table of A-311, G-002... Codes of a discipline that
   // numbers its sheets this way are sheets, not equipment.
-  const sheetFamilies = new Set([...sheets].map((sheet) => sheet.replace(/-\d.*$/, "")));
-  const sheetLike = (tag: string) => sheetFamilies.has(tag.replace(/-\d.*$/, "")) && /-(?:\d{3}|0)/.test(tag);
+  const sheetFamilies = new Set(
+    [...sheets].map((sheet) => sheet.replace(/-\d.*$/, "")),
+  );
+  const sheetLike = (tag: string) =>
+    sheetFamilies.has(tag.replace(/-\d.*$/, "")) && /-(?:\d{3}|0)/.test(tag);
   const entries: EquipmentScheduleEntry[] = [];
   const seen = new Set<string>();
   for (const [index, { page = index + 1, words: input }] of pages.entries()) {
     const words = input.filter(
-      (w) => [w.left, w.right, w.top, w.bottom].every(Number.isFinite) && w.right > w.left && w.bottom > w.top && w.text.trim(),
+      (w) =>
+        [w.left, w.right, w.top, w.bottom].every(Number.isFinite) &&
+        w.right > w.left &&
+        w.bottom > w.top &&
+        w.text.trim(),
     );
     // "SCHEDULE 80" is pipe wall thickness, not a table title.
     const titles = words.filter(
-      (w) => /\bSCHEDULES?\b(?!\s*\d)/i.test(w.text) && !/\b(?:SEE|REFER|PER)\b/i.test(w.text),
+      (w) =>
+        /\bSCHEDULES?\b(?!\s*\d)/i.test(w.text) &&
+        !/\b(?:SEE|REFER|PER)\b/i.test(w.text),
     );
     if (!titles.length) continue;
     const titleFor = (cell: TitleBlockWord) => {
       const title = titles
-        .filter((t) => t.bottom <= cell.top + 0.002 && cell.top - t.bottom < 0.5 && cell.left >= t.left - 0.35 && cell.left <= t.right + 0.1)
+        .filter(
+          (t) =>
+            t.bottom <= cell.top + 0.002 &&
+            cell.top - t.bottom < 0.5 &&
+            cell.left >= t.left - 0.35 &&
+            cell.left <= t.right + 0.1,
+        )
         .sort((a, b) => cell.top - a.bottom - (cell.top - b.bottom))[0];
       return title ? lineAround(title, words) : "";
     };
@@ -582,43 +793,136 @@ export function equipmentSchedules(
             m.prefix.includes(".") ||
             m.prefix.split(/[-./]/).some((part) => prose.has(part)) ||
             // 500K and 4000K are colour temperatures.
-            m.tags.some((tag) => sheets.has(tag) || sheetLike(tag) || /^\D*-\d{4}|\d{3}K$/.test(tag)),
+            m.tags.some(
+              (tag) =>
+                sheets.has(tag) ||
+                sheetLike(tag) ||
+                /^\D*-\d{4}|\d{3}K$/.test(tag),
+            ),
         )
       )
         return [];
-      return [{ word, tags: found.flatMap((m) => m.tags), prefix: found[0]!.prefix }];
+      return [
+        { word, tags: found.flatMap((m) => m.tags), prefix: found[0]!.prefix },
+      ];
     });
     type Cell = (typeof cells)[number];
     const rowOf = (cell: Cell) =>
       words
-        .filter((w) => w !== cell.word && sameRow(w, cell.word) && w.left >= cell.word.right - 0.001 && w.left - cell.word.right < 0.6)
+        .filter(
+          (w) =>
+            w !== cell.word &&
+            sameRow(w, cell.word) &&
+            w.left >= cell.word.right - 0.001 &&
+            w.left - cell.word.right < 0.6,
+        )
         .sort((a, b) => a.left - b.left);
     const add = (cell: Cell, cellsAfter: TitleBlockWord[]) => {
       const title = titleFor(cell.word);
+      if (!title) return;
       // Stop the row at a large gap: the next table on the sheet.
       const row: string[] = [];
       let last = cell.word;
+      const identifierHeader = words
+        .filter(
+          (w) =>
+            scheduleHeader.test(w.text.trim()) &&
+            w.bottom <= cell.word.top &&
+            cell.word.top - w.bottom < 0.2 &&
+            Math.abs(center(w) - center(cell.word)) <
+              Math.max(
+                w.right - w.left,
+                cell.word.right - cell.word.left,
+                0.006,
+              ),
+        )
+        .sort((a, b) => b.top - a.top)[0];
+      const columnHeaders = identifierHeader
+        ? words.filter(
+            (w) =>
+              sameRow(w, identifierHeader) &&
+              w.left >= identifierHeader.right &&
+              !scheduleHeader.test(w.text.trim()),
+          )
+        : [];
       for (const w of cellsAfter) {
-        if (w.left - last.right > 0.12) break;
+        const underHeader = columnHeaders.some(
+          (h) =>
+            Math.abs(center(h) - center(w)) <
+            Math.max(h.right - h.left, w.right - w.left, 0.01) * 0.8,
+        );
+        if (w.left - last.right > 0.12 && !underHeader) break;
         row.push(w.text.trim().replace(/\s+/g, " "));
         last = w;
       }
       for (const tag of cell.tags) {
-        const key = `${page}:${tag}`;
+        // The same equipment may appear in separate schedules on one page.
+        // Keep each physical line, while deduplicating overlapping text layers.
+        const key = `${page}:${tag}:${cell.word.left.toFixed(3)}:${cell.word.top.toFixed(3)}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        entries.push({ tag, page, box: cell.word, title, cells: row.slice(0, 16) });
+        const fields: NonNullable<EquipmentScheduleEntry["fields"]> = {};
+        const labels = {
+          model: /^MODEL(?:\s*(?:NO\.?|NUMBER))?$/i,
+          manufacturer: /^(?:MANUFACTURER|MFR\.?|MAKE)$/i,
+          description: /^(?:DESCRIPTION|SERVICE|TYPE)$/i,
+          quantity: /^(?:QTY\.?|QUANTITY)$/i,
+        };
+        for (const [key, pattern] of Object.entries(labels)) {
+          const header = words
+            .filter(
+              (w) =>
+                pattern.test(w.text.trim()) &&
+                w.bottom <= cell.word.top &&
+                cell.word.top - w.bottom < 0.2 &&
+                w.left >= cell.word.right &&
+                w.left < last.right,
+            )
+            .sort((a, b) => b.top - a.top)[0];
+          if (!header) continue;
+          const candidate = cellsAfter
+            .filter(
+              (w) =>
+                sameRow(w, cell.word) &&
+                Math.abs(center(w) - center(header)) <
+                  Math.max(header.right - header.left, w.right - w.left, 0.01) *
+                    0.7,
+            )
+            .sort(
+              (a, b) =>
+                Math.abs(center(a) - center(header)) -
+                Math.abs(center(b) - center(header)),
+            )[0];
+          if (candidate)
+            fields[key as keyof typeof fields] = candidate.text.trim();
+        }
+        entries.push({
+          tag,
+          page,
+          box: cell.word,
+          title,
+          cells: row.slice(0, 16),
+          ...(Object.keys(fields).length ? { fields } : {}),
+        });
       }
     };
     // 1. A column under an identifier header.
     const accepted = new Set<Cell>();
-    for (const header of words.filter((w) => scheduleHeader.test(w.text.trim()))) {
+    for (const header of words.filter((w) =>
+      scheduleHeader.test(w.text.trim()),
+    )) {
       let previous = header.bottom;
       const column = cells
         .filter(
           (cell) =>
             cell.word.top >= header.bottom - 0.001 &&
-            Math.abs(center(cell.word) - center(header)) <= Math.max(header.right - header.left, cell.word.right - cell.word.left, 0.006) * 0.8,
+            Math.abs(center(cell.word) - center(header)) <=
+              Math.max(
+                header.right - header.left,
+                cell.word.right - cell.word.left,
+                0.006,
+              ) *
+                0.8,
         )
         .sort((a, b) => a.word.top - b.word.top);
       for (const cell of column) {
@@ -630,24 +934,38 @@ export function equipmentSchedules(
       }
     }
     // 2. A column of distinct tags of one family, each starting a data row.
-    const starts = cells.filter((cell) => !accepted.has(cell) && rowOf(cell).length >= 2);
+    const starts = cells.filter(
+      (cell) => !accepted.has(cell) && rowOf(cell).length >= 2,
+    );
     for (const cell of starts) {
       const column = starts.filter(
         (other) =>
           other.prefix === cell.prefix &&
-          (Math.abs(other.word.left - cell.word.left) < 0.004 || Math.abs(center(other.word) - center(cell.word)) < 0.004) &&
+          (Math.abs(other.word.left - cell.word.left) < 0.004 ||
+            Math.abs(center(other.word) - center(cell.word)) < 0.004) &&
           Math.abs(other.word.top - cell.word.top) < 0.25,
       );
       const tags = column.flatMap((other) => other.tags);
-      const known = families.has(cell.prefix) || column.every((other) => /^\D*-\d{1,2}[A-Z]?$/.test(other.tags[0]!));
-      if (column.length >= 2 && new Set(tags).size === tags.length && known && titleFor(cell.word)) accepted.add(cell);
+      const known =
+        families.has(cell.prefix) ||
+        column.every((other) => /^\D*-\d{1,2}[A-Z]?$/.test(other.tags[0]!));
+      if (
+        column.length >= 2 &&
+        new Set(tags).size === tags.length &&
+        known &&
+        titleFor(cell.word)
+      )
+        accepted.add(cell);
     }
     for (const cell of accepted) add(cell, rowOf(cell));
     // 3. Transposed schedules: a header row of tags with values beneath.
     for (const cell of cells) {
       if (accepted.has(cell)) continue;
       const row = cells.filter(
-        (other) => other.prefix === cell.prefix && sameRow(other.word, cell.word) && Math.abs(other.word.left - cell.word.left) < 0.4,
+        (other) =>
+          other.prefix === cell.prefix &&
+          sameRow(other.word, cell.word) &&
+          Math.abs(other.word.left - cell.word.left) < 0.4,
       );
       const tags = row.flatMap((other) => other.tags);
       const below = (c: Cell) =>
@@ -655,17 +973,25 @@ export function equipmentSchedules(
           (w) =>
             w.top >= c.word.bottom - 0.001 &&
             w.top - c.word.bottom < height(c.word) * 3 &&
-            Math.abs(center(w) - center(c.word)) < Math.max(c.word.right - c.word.left, 0.01),
+            Math.abs(center(w) - center(c.word)) <
+              Math.max(c.word.right - c.word.left, 0.01),
         );
       if (
         row.length >= 2 &&
         new Set(tags).size === tags.length &&
-        (families.has(cell.prefix) || row.every((other) => /^\D*-\d{1,2}[A-Z]?$/.test(other.tags[0]!))) &&
+        (families.has(cell.prefix) ||
+          row.every((other) => /^\D*-\d{1,2}[A-Z]?$/.test(other.tags[0]!))) &&
         row.every((other) => below(other).length) &&
         titleFor(cell.word)
       ) {
         const column = words
-          .filter((w) => w.top >= cell.word.bottom - 0.001 && w.top - cell.word.bottom < 0.4 && Math.abs(center(w) - center(cell.word)) < Math.max(cell.word.right - cell.word.left, 0.01))
+          .filter(
+            (w) =>
+              w.top >= cell.word.bottom - 0.001 &&
+              w.top - cell.word.bottom < 0.4 &&
+              Math.abs(center(w) - center(cell.word)) <
+                Math.max(cell.word.right - cell.word.left, 0.01),
+          )
           .sort((a, b) => a.top - b.top);
         const kept: TitleBlockWord[] = [];
         let last = cell.word;
@@ -674,19 +1000,40 @@ export function equipmentSchedules(
           kept.push(w);
           last = w;
         }
-        add(cell, kept.map((w) => ({ ...w, left: cell.word.right, right: cell.word.right + 0.001 })));
+        add(
+          cell,
+          kept.map((w) => ({
+            ...w,
+            left: cell.word.right,
+            right: cell.word.right + 0.001,
+          })),
+        );
       }
     }
     // 4. Panelboard schedules name the panel in a heading: "PANEL: LP-1".
     for (const word of words) {
       const text = word.text.toUpperCase().replace(dashes, "-");
       for (const found of mentions(text)) {
-        const before = text.slice(0, found.start) || ` ${lineAround(word, words).toUpperCase().split(text)[0] ?? ""}`;
-        if (!panelLabel.test(before) || found.doubtful || found.tags.some((tag) => sheets.has(tag) || sheetLike(tag))) continue;
+        const before =
+          text.slice(0, found.start) ||
+          ` ${lineAround(word, words).toUpperCase().split(text)[0] ?? ""}`;
+        if (
+          !panelLabel.test(before) ||
+          found.doubtful ||
+          found.tags.some((tag) => sheets.has(tag) || sheetLike(tag))
+        )
+          continue;
         for (const tag of found.tags) {
-          if (seen.has(`${page}:${tag}`)) continue;
-          seen.add(`${page}:${tag}`);
-          entries.push({ tag, page, box: word, title: lineAround(word, words), cells: [] });
+          const key = `${page}:${tag}:${word.left.toFixed(3)}:${word.top.toFixed(3)}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          entries.push({
+            tag,
+            page,
+            box: word,
+            title: lineAround(word, words),
+            cells: [],
+          });
         }
       }
     }
@@ -698,7 +1045,9 @@ export function equipmentScheduleTags(
   pages: Array<{ page?: number; words: TitleBlockWord[] }>,
   options: { sheetNumbers?: string[] } = {},
 ) {
-  return [...new Set(equipmentSchedules(pages, options).map((entry) => entry.tag))];
+  return [
+    ...new Set(equipmentSchedules(pages, options).map((entry) => entry.tag)),
+  ];
 }
 export function equipmentDrawingDestination(input: {
   jobId: string;
@@ -745,30 +1094,70 @@ export function equipmentDrawingDestination(input: {
 
 /** PDF document destinations retain both immutable version and exact tag position. */
 export function equipmentDocumentDestination(input: {
-  jobId: string; documentId: string; versionId: string;
-  name: string; tag: string; page: number; box: TitleBlockWord;
+  jobId: string;
+  documentId: string;
+  versionId: string;
+  name: string;
+  tag: string;
+  page: number;
+  box: TitleBlockWord;
 }) {
   const { box } = input;
   const viewport = {
     center: { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 },
-    zoom: Math.min(10, Math.max(2, 0.35 / Math.max(box.right - box.left, box.bottom - box.top))),
+    zoom: Math.min(
+      10,
+      Math.max(2, 0.35 / Math.max(box.right - box.left, box.bottom - box.top)),
+    ),
   };
-  return makeSnapshotSource(`/jobs/${input.jobId}/documents`, {
-    version: 1,
-    document: { jobId: input.jobId, documentId: input.documentId, versionId: input.versionId, tab: "details", viewer: "preview" },
-    pdf: { page: input.page, viewport, zoom: viewport.zoom, left: 0, top: 0 },
-  }, `${input.tag} — ${input.name}`);
+  return makeSnapshotSource(
+    `/jobs/${input.jobId}/documents`,
+    {
+      version: 1,
+      document: {
+        jobId: input.jobId,
+        documentId: input.documentId,
+        versionId: input.versionId,
+        tab: "details",
+        viewer: "preview",
+      },
+      pdf: { page: input.page, viewport, zoom: viewport.zoom, left: 0, top: 0 },
+    },
+    `${input.tag} — ${input.name}`,
+  );
 }
 
 /** Older automatic links stored a tag in the label but only a document URL. */
-export function legacyEquipmentDocumentLink(link: { label?: string; url?: string }, jobId: string) {
+export function legacyEquipmentDocumentLink(
+  link: { label?: string; url?: string },
+  jobId: string,
+) {
   const tag = link.label?.split(" — ")[0]?.trim();
-  if (!tag || tag.length > 40 || !link.label?.includes(" — ") || !/^[A-Z][A-Z0-9]*-\d[A-Z0-9-]*$/i.test(tag)) return null;
+  if (
+    !tag ||
+    tag.length > 40 ||
+    !link.label?.includes(" — ") ||
+    !/^[A-Z][A-Z0-9]*-\d[A-Z0-9-]*$/i.test(tag)
+  )
+    return null;
   try {
     const url = new URL(link.url ?? "", "https://equipment.invalid");
-    if (url.origin !== "https://equipment.invalid" || url.pathname !== `/jobs/${jobId}/documents` || url.hash) return null;
+    if (
+      url.origin !== "https://equipment.invalid" ||
+      url.pathname !== `/jobs/${jobId}/documents` ||
+      url.hash
+    )
+      return null;
     const id = url.searchParams.get("document");
-    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+    if (
+      !id ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    )
+      return null;
     return { tag, documentId: id };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }

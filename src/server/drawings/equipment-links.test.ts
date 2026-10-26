@@ -6,6 +6,7 @@ const mock = vi.hoisted(() => ({
   documentAccess: vi.fn(),
   overview: vi.fn(),
   index: vi.fn(),
+  ocr: vi.fn(),
   versions: [] as unknown[],
   metadata: [] as unknown[],
 }));
@@ -20,10 +21,11 @@ vi.mock("~/server/documents/service", () => ({
   documentOverview: mock.overview,
 }));
 vi.mock("~/server/documents/storage", () => ({
-  documentBlobPath: () => "/private/test.pdf",
+  documentBlobPath: (_org:string,hash:string) => `/private/${hash}.pdf`,
 }));
 vi.mock("./equipment-index", () => ({
   equipmentIndex: mock.index,
+  recognizeEquipmentPage: mock.ocr,
   drawingPdfLocation: () => ({ file: "/private/plan.pdf", page: 1 }),
 }));
 import {
@@ -264,6 +266,69 @@ it("finds a clicked tag's schedule row, other drawings and documents across the 
   expect(result.drawings.map((d) => [d.name, d.here, d.links.length])).toEqual([["A", true, 1], ["B", false, 2]]);
   expect(result.documents).toEqual([expect.objectContaining({ documentId: docId, pages: [4] })]);
   expect(result.documents[0]!.url).toContain("#snapshot=");
-  expect(result.warnings).toEqual([]);
+  expect(result.warnings).toEqual([expect.stringContaining("pages without readable text")]);
   await expect(equipmentTagDestinations(ctx, { sheetId: a.id, tag: "ZONE" })).rejects.toThrow("equipment tag");
+});
+
+
+function equipmentReportFixture() {
+ const word=(text:string,left:number,top:number)=>({text,left,right:left+.04,top,bottom:top+.01});
+ mock.sheets.mockResolvedValue([a]);
+ const state={folders:[],reviews:[],documents:[{id:uuid(60),name:"Pump submittal",description:"",tags:[],status:"approved",currentVersionId:uuid(61),folderId:null}],versions:[{id:uuid(61),number:2,name:"pump.pdf",mimeType:"application/pdf",sha256:"pump"}]};
+ mock.overview.mockResolvedValue(state);
+ mock.index.mockImplementation(async(file:string)=>({pages:[{page:1,words:file.includes("plan.pdf")?[word("PUMP SCHEDULE",.1,.05),word("TAG",.1,.1),word("MODEL",.22,.1),word("P-1",.1,.15),word("ABC123",.22,.15),word("P-2",.1,.19),word("DEF456",.22,.19)]:[word("P-1",.1,.15)]}],incomplete:false}));
+ return {state,word};
+}
+it("reports each schedule line, exact submittal evidence and absent tags separately",async()=>{
+ const {superEquipmentReport}=await import("./super-equipment");equipmentReportFixture();
+ const result=await superEquipmentReport(ctx,{sheetId:a.id});
+ expect(result.lines.map(l=>[l.tag,l.status])).toEqual([["P-1","matched"],["P-2","missing"]]);
+ expect(result.lines[0]!.matches[0]).toMatchObject({version:2,status:"approved",confirmed:true});
+ expect(result.lines[0]!.matches[0]!.url).toContain("#snapshot=");
+ expect(result.coverage).toEqual({sheets:1,totalSheets:1,documents:1,totalDocuments:1});
+ expect(mock.index).toHaveBeenCalledTimes(2);
+});
+it("keeps generic references, superseded submittals and model-only matches in review",async()=>{
+ const {superEquipmentReport}=await import("./super-equipment");
+ for(const variant of ["generic","superseded","model"]) {
+  clearEquipmentRegisters();const {state,word}=equipmentReportFixture();
+  if(variant==="generic")state.documents[0]!.name="Meeting minutes";
+  if(variant==="superseded")state.documents[0]!.status="superseded";
+  if(variant==="model"){const original=mock.index.getMockImplementation()!;mock.index.mockImplementation(async(file:string)=>file.includes("plan.pdf")?original(file):{pages:[{page:1,words:[word("ABC123",.1,.15)]}],incomplete:false});}
+  const result=await superEquipmentReport(ctx,{sheetId:a.id});
+  expect(result.lines[0]!.status,variant).toBe("review");
+  expect(result.lines[0]!.matches[0]!.confirmed).toBe(false);
+ }
+});
+it("never marks unmatched equipment missing after unreadable or truncated document searches",async()=>{
+ const {superEquipmentReport}=await import("./super-equipment");
+ for(const failure of ["error","empty","truncated"]) {
+  clearEquipmentRegisters();equipmentReportFixture();const original=mock.index.getMockImplementation()!;
+  mock.index.mockImplementation(async(file:string)=>{if(file.includes("plan.pdf"))return original(file);if(failure==="error")throw Error("unreadable");return {pages:[{page:1,words:[]}],incomplete:failure==="truncated"};});
+  const result=await superEquipmentReport(ctx,{sheetId:a.id});
+  expect(result.lines.every(l=>l.status==="incomplete"),failure).toBe(true);
+  expect(result.warnings.length).toBeGreaterThan(0);
+ }
+});
+it("rejects inaccessible selected documents and OCR sources before reading their contents",async()=>{
+ const {superEquipmentReport,recognizeEquipmentSource}=await import("./super-equipment");equipmentReportFixture();
+ await expect(superEquipmentReport(ctx,{sheetId:a.id,documentIds:[uuid(999)]})).rejects.toMatchObject({code:"FORBIDDEN"});
+ await expect(recognizeEquipmentSource(ctx,{sheetId:a.id,kind:"document",id:uuid(999),page:1})).rejects.toMatchObject({code:"NOT_FOUND"});
+ expect(mock.index).not.toHaveBeenCalled();expect(mock.ocr).not.toHaveBeenCalled();
+ mock.access.mockRejectedValue(Error("No drawing access"));
+ await expect(superEquipmentReport(ctx,{sheetId:a.id})).rejects.toThrow("No drawing access");
+});
+it("applies source selection and refreshes the report when the current version changes",async()=>{
+ const {superEquipmentReport}=await import("./super-equipment");const {state,word}=equipmentReportFixture();
+ expect((await superEquipmentReport(ctx,{sheetId:a.id,documentIds:[]})).lines.every(l=>l.status==="incomplete")).toBe(true);
+ state.documents[0]!.currentVersionId=uuid(62);state.versions.push({id:uuid(62),number:3,name:"pump.pdf",mimeType:"application/pdf",sha256:"new-pump"});
+ const original=mock.index.getMockImplementation()!;mock.index.mockImplementation(async(file:string)=>file.endsWith("/new-pump.pdf")?{pages:[{page:1,words:[word("P-2",.1,.15)]}],incomplete:false}:original(file));
+ const result=await superEquipmentReport(ctx,{sheetId:a.id});
+ expect(result.lines.map(l=>[l.tag,l.status])).toEqual([["P-1","missing"],["P-2","matched"]]);expect(result.lines[1]!.matches[0]!.version).toBe(3);
+});
+it("previews many hyperlink tags with one shared index pass across drawing sets",async()=>{
+ const {autoHyperlinkPreview}=await import("./auto-hyperlink");equipmentReportFixture();mock.sheets.mockResolvedValue([a,{...b,setId:uuid(90)}]);
+ const result=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1","P-2"],scope:"job"});
+ expect(result.results.map(r=>[r.tag,r.drawings,r.documents])).toEqual([["P-1",1,1],["P-2",1,0]]);
+ expect(mock.index).toHaveBeenCalledTimes(2);expect(mock.access).toHaveBeenCalledOnce();
 });

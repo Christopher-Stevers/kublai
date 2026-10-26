@@ -29,6 +29,13 @@ vi.mock("~/trpc/react", () => ({
                 width: 1000,
                 height: 750,
               },
+              {
+                id: "sheet2",
+                name: "M-002",
+                imageUrl: "/sheet2.webp",
+                width: 1000,
+                height: 750,
+              },
             ],
           },
           refetch,
@@ -117,4 +124,41 @@ it("allows excluding detections and surfaces scan failures", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Original PDF unavailable",
   );
+});
+
+it("scans a whole set, keeps each source and preserves corrected candidates on rescans", async () => {
+  render(
+    <LegendItemsDialog
+      sheetId="sheet"
+      sourceId="sheet"
+      onClose={vi.fn()}
+      onSource={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByLabelText("Recognize scanned text"));
+  fireEvent.click(screen.getByRole("button", { name: "Read entire set" }));
+  await waitFor(() =>
+    expect(screen.getAllByDisplayValue("Circuit balancing valve")).toHaveLength(
+      2,
+    ),
+  );
+  expect(
+    scan.mock.calls.map(([v]) => [v.sourceSheetId, v.recognizeText]),
+  ).toEqual([
+    ["sheet", true],
+    ["sheet2", true],
+  ]);
+  fireEvent.change(screen.getAllByLabelText("Component name")[0]!, {
+    target: { value: "Reviewed valve" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Read entire set" }));
+  await waitFor(() => expect(scan).toHaveBeenCalledTimes(4));
+  expect(screen.getByDisplayValue("Reviewed valve")).toBeInTheDocument();
+  expect(screen.getAllByLabelText("Component name")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "Save selected (2)" }));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+  expect(save.mock.calls.map(([v]) => v.sourceSheetId)).toEqual([
+    "sheet",
+    "sheet2",
+  ]);
 });

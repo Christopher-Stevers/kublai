@@ -6,13 +6,13 @@ import {
   fireEvent,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ sources: vi.fn(), matches: vi.fn() }));
+const mock = vi.hoisted(() => ({ sources: vi.fn(), preview: vi.fn() }));
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
       drawingsWorkspace: {
         autoHyperlinkSources: { fetch: mock.sources },
-        equipmentMatchesBatch: { fetch: mock.matches },
+        autoHyperlinkPreview: { fetch: mock.preview },
       },
     }),
   },
@@ -23,10 +23,6 @@ const word = { text: "HEX-2", left: 0.2, right: 0.25, top: 0.3, bottom: 0.32 };
 const save = vi.fn<(value: DrawingSave) => Promise<unknown>>(),
   onSaved = vi.fn(),
   readWords = vi.fn();
-function markup(value: DrawingSave) {
-  if (value.kind !== "markup") throw Error("Expected a saved hyperlink");
-  return value.data;
-}
 const uuid = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const props = () => ({
@@ -49,44 +45,50 @@ beforeEach(() => {
     { ...word, text: "FCU-1", top: 0.5, bottom: 0.52 },
   ]);
   mock.sources.mockResolvedValue({
-    sources: [{ kind: "document", id: "doc", name: "datasheet" }],
+    knownTags: [],
+    sheetNumbers: [],
+    warnings: [],
   });
-  mock.matches.mockImplementation(async ({ tag }: { tag: string }) => ({
-    results: [
-      {
-        source: { name: "datasheet" },
-        links: [{ label: tag, url: `/documents/${tag}` }],
-        warnings: [],
-        overflow: false,
-      },
-    ],
+  mock.preview.mockImplementation(async ({ tags }: { tags: string[] }) => ({
+    results: tags.map((tag) => ({
+      tag,
+      links: [{ label: `${tag} schedule`, url: `/drawings/${tag}` }],
+      overflow: false,
+      drawings: 1,
+      documents: 0,
+    })),
+    warnings: [],
+    pending: 0,
   }));
   save.mockResolvedValue({});
 });
 afterEach(cleanup);
-it("scans every distinct tag and saves automatic links without requiring a drawn box", async () => {
+it("previews all tags in one job-wide request, then saves only the selected tags", async () => {
   render(<AutoHyperlinkDialog {...props()} />);
-  await waitFor(() =>
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Finished. 2 tags linked",
-    ),
+  await screen.findByText("HEX-2");
+  expect(save).not.toHaveBeenCalled();
+  expect(mock.preview).toHaveBeenCalledWith(
+    { sheetId: uuid(1), tags: ["HEX-2", "FCU-1"], scope: "job" },
+    { staleTime: 0 },
   );
-  expect(save.mock.calls.map(([value]) => markup(value).equipmentTag)).toEqual([
-    "HEX-2",
-    "FCU-1",
-  ]);
-  expect(markup(save.mock.calls[0]![0]).points).toEqual([
-    { x: 0.2, y: 0.3 },
-    { x: 0.25, y: 0.32 },
-  ]);
-  expect(onSaved).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByLabelText("Link FCU-1"));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save selected links (1)" }),
+  );
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  expect(save).toHaveBeenCalledOnce();
+  expect(save.mock.calls[0]![0]).toMatchObject({
+    visibility: "private",
+    data: {
+      equipmentTag: "HEX-2",
+      points: [
+        { x: 0.2, y: 0.3 },
+        { x: 0.25, y: 0.32 },
+      ],
+    },
+  });
 });
-it("links repeated occurrences on this page through one origin, preserving existing tags", async () => {
-  readWords.mockResolvedValue([
-    word,
-    { ...word, left: 0.6, right: 0.65 },
-    { ...word, text: "FCU-1", top: 0.5, bottom: 0.52 },
-  ]);
+it("keeps existing tags and links repeated occurrences through one saved origin", async () => {
   const input = props();
   input.entities = [
     {
@@ -95,83 +97,101 @@ it("links repeated occurrences on this page through one origin, preserving exist
       data: { sourceSheetId: uuid(2), equipmentTag: "FCU-1" },
     },
   ] as DrawingEntity[];
+  readWords.mockResolvedValue([
+    word,
+    { ...word, left: 0.6, right: 0.65 },
+    { ...word, text: "FCU-1", top: 0.5, bottom: 0.52 },
+  ]);
   render(<AutoHyperlinkDialog {...input} />);
-  await waitFor(() =>
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "1 tags linked, 1 already linked",
-    ),
+  await screen.findByText("HEX-2");
+  expect(screen.getByLabelText("Link FCU-1")).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save selected links (1)" }),
   );
-  expect(save).toHaveBeenCalledOnce();
-  expect(markup(save.mock.calls[0]![0]).links).toHaveLength(2);
-  expect(markup(save.mock.calls[0]![0]).links?.[0]?.url).toContain("snapshot=");
-});
-it("does not save an incomplete search when a batch fails, and reports the failure", async () => {
-  mock.matches.mockRejectedValue(new Error("Access changed"));
-  render(<AutoHyperlinkDialog {...props()} />);
-  await screen.findByRole("button", { name: "Done" });
-  expect(save).not.toHaveBeenCalled();
-  expect(screen.getAllByText(/Access changed/)).toHaveLength(2);
-});
-it("stopping during a pending match prevents that tag from being saved", async () => {
-  let resolve!: (value: unknown) => void;
-  mock.matches.mockReturnValue(
-    new Promise((r) => {
-      resolve = r;
-    }),
-  );
-  render(<AutoHyperlinkDialog {...props()} />);
-  await waitFor(() => expect(mock.matches).toHaveBeenCalledOnce());
-  fireEvent.click(screen.getByRole("button", { name: "Stop" }));
-  resolve({
-    results: [{ links: [{ url: "/doc" }], warnings: [], overflow: false }],
+  await waitFor(() => expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0]![0]).toMatchObject({
+    data: {
+      links: expect.arrayContaining([
+        expect.objectContaining({ url: expect.stringContaining("#snapshot=") }),
+      ]),
+    },
   });
-  await screen.findByRole("button", { name: "Done" });
-  expect(save).not.toHaveBeenCalled();
-  expect(mock.matches).toHaveBeenCalledOnce();
 });
-it("reports scanned/unreadable drawings without creating empty links", async () => {
+it("does not save incomplete indexing or over-limit destination lists", async () => {
+  mock.preview.mockResolvedValue({
+    results: [
+      {
+        tag: "HEX-2",
+        links: [{ label: "Schedule", url: "/sheet" }],
+        overflow: false,
+      },
+    ],
+    warnings: ["Still indexing"],
+    pending: 1,
+  });
+  render(<AutoHyperlinkDialog {...props()} />);
+  await screen.findByText("HEX-2");
+  expect(
+    screen.getByRole("button", { name: "Save selected links (1)" }),
+  ).toBeDisabled();
+  mock.preview.mockResolvedValue({
+    results: [
+      {
+        tag: "HEX-2",
+        links: [{ label: "Schedule", url: "/sheet" }],
+        overflow: true,
+      },
+    ],
+    warnings: [],
+    pending: 0,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Scan again" }));
+  await screen.findByText(/Too many destinations/);
+  expect(screen.getByLabelText("Link HEX-2")).toBeDisabled();
+  expect(save).not.toHaveBeenCalled();
+});
+it("retries failed saves without duplicating successful tags", async () => {
+  save.mockRejectedValueOnce(Error("Conflict"));
+  render(<AutoHyperlinkDialog {...props()} />);
+  await screen.findByText("HEX-2");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save selected links (2)" }),
+  );
+  await screen.findByRole("alert");
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save selected links (1)" }),
+  );
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(3));
+  expect(
+    save.mock.calls.map(([v]) =>
+      v.kind === "markup" ? v.data.equipmentTag : null,
+    ),
+  ).toEqual(["HEX-2", "FCU-1", "HEX-2"]);
+});
+it("shows missing readable text and performs no destination search", async () => {
   readWords.mockResolvedValue([]);
   render(<AutoHyperlinkDialog {...props()} />);
-  await waitFor(() =>
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "No readable equipment tags",
-    ),
-  );
+  await screen.findByText(/No readable text found/);
+  expect(mock.preview).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
-  expect(mock.sources).not.toHaveBeenCalled();
 });
-it("continues after a failed save and reports it without counting it as linked", async () => {
-  save.mockRejectedValueOnce(new Error("Read only"));
+it("stops a scan without saving or displaying its late results", async () => {
+  let finish: (value: unknown) => void = () => {};
+  mock.preview.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   render(<AutoHyperlinkDialog {...props()} />);
-  await waitFor(() =>
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Finished. 1 tags linked",
-    ),
-  );
-  expect(screen.getByText(/could not save — Read only/)).toBeInTheDocument();
-});
-it("uses project schedule tags and avoids duplicate destinations for a frequently repeated tag", async () => {
-  readWords.mockResolvedValue(
-    Array.from({ length: 65 }, (_, i) => ({
-      ...word,
-      text: "ZBC-7",
-      left: 0.1 + (i % 10) * 0.03,
-      right: 0.12 + (i % 10) * 0.03,
-      top: 0.1 + Math.floor(i / 10) * 0.03,
-      bottom: 0.11 + Math.floor(i / 10) * 0.03,
-    })),
-  );
-  mock.sources.mockResolvedValue({
-    sources: [{ kind: "drawing", id: uuid(9), name: "M-2" }],
-    knownTags: ["ZBC-7"],
+  await waitFor(() => expect(mock.preview).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+  finish({
+    results: [{ tag: "HEX-2", links: [], overflow: false }],
     warnings: [],
+    pending: 0,
   });
-  render(<AutoHyperlinkDialog {...props()} />);
-  await screen.findByRole("button", { name: "Done" });
-  expect(save).toHaveBeenCalledOnce();
-  expect(markup(save.mock.calls[0]![0]).links).toHaveLength(2);
-  expect(mock.matches).toHaveBeenCalledWith(
-    expect.objectContaining({ groupBySheet: true, tag: "ZBC-7" }),
-    expect.anything(),
-  );
+  await waitFor(() => expect(screen.queryByText("HEX-2")).toBeNull());
+  expect(save).not.toHaveBeenCalled();
 });

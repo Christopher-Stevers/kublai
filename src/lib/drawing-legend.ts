@@ -44,7 +44,7 @@ const join = (words: TitleBlockWord[]) =>
     .join(" ")
     .slice(0, 300);
 
-/** Only propose bordered legend rows beneath explicit legend headings.
+/** Propose bordered or aligned legend rows beneath explicit legend headings.
  * Geometry/text are evidence, never confirmation that a detected item is correct.
  */
 export function detectLegendItems(
@@ -176,6 +176,136 @@ export function detectLegendItems(
         },
       });
       seen.add(key);
+      if (items.length >= 300) return items;
+    }
+  }
+  // Unbordered tables are common in consultant legends. Require either column
+  // headings or a repeated symbol/description gap; do not guess from prose.
+  for (const heading of headings) {
+    const left = Math.max(0, heading.left - 0.08);
+    const nextRight = headings
+      .filter(
+        (h) => h.left > heading.right && Math.abs(h.top - heading.top) < 0.06,
+      )
+      .sort((a, b) => a.left - b.left)[0];
+    const right = Math.min(1, nextRight?.left ?? heading.right + 0.27);
+    const nextBelow = words
+      .filter(
+        (w) =>
+          w.top > heading.bottom &&
+          w.left >= left &&
+          w.left < right &&
+          /\b(?:NOTES|SCHEDULE|LEGEND|ABBREVIATIONS)\b/i.test(w.text),
+      )
+      .sort((a, b) => a.top - b.top)[0];
+    const bottom = Math.min(heading.bottom + 0.45, nextBelow?.top ?? 1);
+    const region = words
+      .filter(
+        (w) =>
+          w.top > heading.bottom &&
+          w.bottom < bottom &&
+          w.left >= left &&
+          w.right <= right,
+      )
+      .sort((a, b) => a.top - b.top || a.left - b.left);
+    const descriptionHeader = region.find(
+      (w) =>
+        /^DESCRIPTION$/i.test(w.text.trim()) && w.top - heading.bottom < 0.08,
+    );
+    const symbolHeader = region.find(
+      (w) => /^SYMBOL$/i.test(w.text.trim()) && w.top - heading.bottom < 0.08,
+    );
+    const lines: TitleBlockWord[][] = [];
+    for (const word of region) {
+      const line = lines.find(
+        (row) =>
+          Math.abs(
+            (row[0]!.top + row[0]!.bottom - word.top - word.bottom) / 2,
+          ) <
+          Math.min(row[0]!.bottom - row[0]!.top, word.bottom - word.top) * 0.55,
+      );
+      if (line) line.push(word);
+      else lines.push([word]);
+    }
+    const candidates = lines
+      .map((line) => {
+        line.sort((a, b) => a.left - b.left);
+        const gap = descriptionHeader
+          ? line.findIndex((w) => w.left >= descriptionHeader.left - 0.003)
+          : line.findIndex(
+              (w, i) =>
+                i > 0 &&
+                w.left - line[i - 1]!.right > 0.012 &&
+                join(line.slice(0, i)).length <= 24,
+            );
+        if (gap < 0 || (!descriptionHeader && gap === 0)) return null;
+        const descriptions = line.slice(gap),
+          name = join(descriptions);
+        if (
+          name.length < 3 ||
+          /^(?:DESCRIPTION|SYMBOL|EXISTING|NEW|DEMOLITION)$/i.test(name)
+        )
+          return null;
+        if (
+          descriptionHeader &&
+          descriptions[0]!.top <= descriptionHeader.bottom
+        )
+          return null;
+        return {
+          line,
+          descriptions,
+          name,
+          symbolWords: line.slice(0, gap),
+          x: descriptions[0]!.left,
+          top: Math.min(...line.map((w) => w.top)),
+          bottom: Math.max(...line.map((w) => w.bottom)),
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+    if (candidates.length < 2) continue;
+    const aligned = candidates.filter(
+      (row) =>
+        candidates.filter((other) => Math.abs(other.x - row.x) < 0.006)
+          .length >= 2,
+    );
+    let previous = descriptionHeader?.bottom ?? heading.bottom;
+    for (const row of aligned) {
+      if (row.top - previous > 0.065) break;
+      previous = row.bottom;
+      if (
+        items.some(
+          (item) =>
+            row.top >= item.row.top - 0.001 &&
+            row.bottom <= item.row.bottom + 0.001 &&
+            row.x >= item.row.left &&
+            row.x <= item.row.right,
+        )
+      )
+        continue;
+      const x0 = Math.max(
+          left,
+          symbolHeader?.left ?? row.symbolWords[0]?.left ?? row.x - 0.06,
+        ),
+        x1 = row.x - 0.003;
+      if (x1 - x0 < 0.006) continue;
+      const h = row.bottom - row.top,
+        padding = Math.min(0.004, h * 0.6);
+      const bounds = {
+        left: x0,
+        top: Math.max(0, row.top - padding),
+        right: Math.min(
+          right,
+          Math.max(...row.descriptions.map((w) => w.right)) + 0.003,
+        ),
+        bottom: Math.min(1, row.bottom + padding),
+      };
+      items.push({
+        name: row.name,
+        abbreviation: join(row.symbolWords).slice(0, 80),
+        category: clean(heading.text).slice(0, 100),
+        row: bounds,
+        symbol: { ...bounds, right: x1 },
+      });
       if (items.length >= 300) return items;
     }
   }

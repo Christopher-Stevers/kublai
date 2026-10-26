@@ -98,3 +98,32 @@ describe("legend proposals", () => {
     ).toBe(false);
   });
 });
+
+it("reads aligned borderless symbol rows and stops before unrelated notes", () => {
+  const w = (text: string, left: number, top: number, right = left + 0.05) => ({
+    text,
+    left,
+    right,
+    top,
+    bottom: top + 0.008,
+  });
+  const words = [
+    w("MECHANICAL LEGEND", 0.1, 0.1, 0.4),
+    w("SYMBOL", 0.1, 0.12),
+    w("DESCRIPTION", 0.22, 0.12, 0.32),
+    w("CBV", 0.1, 0.14),
+    w("BALANCING VALVE", 0.22, 0.14, 0.38),
+    w("IV", 0.1, 0.16),
+    w("ISOLATION VALVE", 0.22, 0.16, 0.38),
+    w("GENERAL NOTES", 0.1, 0.19, 0.35),
+    w("A", 0.1, 0.21),
+    w("UNRELATED TEXT", 0.22, 0.21, 0.38),
+  ];
+  const items = detectLegendItems(words, []);
+  expect(items.map((i) => i.name)).toEqual([
+    "BALANCING VALVE",
+    "ISOLATION VALVE",
+  ]);
+  expect(items.every((i) => legendItemSchema.safeParse(i).success)).toBe(true);
+  expect(detectLegendItems([...words, words[0]!], [])).toHaveLength(2);
+});

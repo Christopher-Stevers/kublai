@@ -22,13 +22,13 @@ it("lets the Chat page switch change without changing Jobs access", () => {
     .getByRole("heading", { name: "Pages" })
     .closest("section")!;
   fireEvent.click(
-    within(pages).getByRole("switch", { name: "Chat", exact: true }),
+    within(pages).getByRole("switch", { name: "Chat" }),
   );
   expect(
-    within(pages).getByRole("switch", { name: "Chat", exact: true }),
+    within(pages).getByRole("switch", { name: "Chat" }),
   ).toHaveAttribute("aria-checked", "false");
   expect(
-    within(pages).getByRole("switch", { name: "Jobs", exact: true }),
+    within(pages).getByRole("switch", { name: "Jobs" }),
   ).toHaveAttribute("aria-checked", "true");
 });
 

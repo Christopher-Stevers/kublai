@@ -37,3 +37,20 @@ export function specMaterialRange(rule: SystemRule) {
   if (r.min == null && r.max == null) return "All specified sizes";
   return `${r.min == null ? "" : `${r.minInclusive ? "≥" : ">"} ${r.min}`} ${r.max == null ? "" : `${r.maxInclusive ? "≤" : "<"} ${r.max}`} ${r.unit}`.trim();
 }
+
+export function specMaterialReviewReasons(rule: SystemRule) {
+  const reasons: string[] = [];
+  if (rule.reviewStatus !== "approved")
+    reasons.push("Requirement needs review");
+  if (!rule.alternatives.length) reasons.push("No material identified");
+  if (rule.alternatives.length > 1 && !rule.selectedAlternativeId)
+    reasons.push("Choose a material alternative");
+  if (
+    rule.alternatives.some(
+      (o) => !o.materialId && !o.categoryId && !o.catalogId,
+    )
+  )
+    reasons.push("Catalogue mapping needed");
+  if (!rule.evidence.length) reasons.push("Source evidence missing");
+  return reasons;
+}

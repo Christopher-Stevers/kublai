@@ -7,6 +7,8 @@ import { legendItemSchema } from "~/lib/drawing-legend";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
+import { autoHyperlinkPreview } from "~/server/drawings/auto-hyperlink";
+import { superEquipmentSources, superEquipmentReport, recognizeEquipmentSource } from "~/server/drawings/super-equipment";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
 import { drawingLinkTargetKinds } from "~/lib/drawing-links";
@@ -51,13 +53,17 @@ const item = z.object({
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
   autoHyperlinkSources: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
+  autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(2).max(40)).min(1).max(200),scope:z.enum(["job","set"]).default("job")})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
+  superEquipmentSources: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superEquipmentSources(ctx,input.sheetId)),
+  superEquipmentReport: sheetTools.input(z.object({sheetId,documentIds:z.array(sheetId).max(2000).optional()})).query(({ctx,input})=>superEquipmentReport(ctx,input)),
+  recognizeEquipmentSource: sheetTools.input(z.object({sheetId,kind:z.enum(["drawing","document"]),id:sheetId,page:z.number().int().min(1).max(2000)})).mutation(({ctx,input})=>recognizeEquipmentSource(ctx,input)),
   autoHyperlinkSave: sheetTools.input(drawingSaveSchema).mutation(({ctx,input})=>saveDrawingEntity(ctx,input)),
   superLabelSettings: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superLabelSettings(ctx,input.sheetId)),
   saveSuperLabelBoxes: sheetTools.input(z.object({sheetId,boxes:superLabelSchema})).mutation(({ctx,input})=>saveSuperLabelBoxes(ctx,input)),
   applySuperLabel: sheetTools.input(z.object({sheetId,targetId:sheetId,boxes:superLabelSchema})).mutation(({ctx,input})=>applySuperLabel(ctx,input)),
   pipeLegendReferences: hasAppAccess.input(z.object({sheetId})).query(({ctx,input})=>pipeLegendReferences(ctx,input.sheetId)),
   legendItems: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>listLegendItems(ctx,input.sheetId)),
-  scanLegend: sheetTools.input(z.object({sheetId,sourceSheetId:sheetId})).mutation(({ctx,input})=>scanLegend(ctx,input)),
+  scanLegend: sheetTools.input(z.object({sheetId,sourceSheetId:sheetId,recognizeText:z.boolean().optional()})).mutation(({ctx,input})=>scanLegend(ctx,input)),
   saveLegendItems: sheetTools.input(z.object({sheetId,sourceSheetId:sheetId,items:z.array(legendItemSchema).min(1).max(300)})).mutation(({ctx,input})=>saveLegendItems(ctx,input)),
   updateLegendItem: sheetTools.input(z.object({sheetId,id:sheetId,revision:z.number().int().min(1),data:legendItemSchema.nullable()})).mutation(({ctx,input})=>updateLegendItem(ctx,input)),
   addMeasurementLayer: hasAppAccess.input(z.object({sheetId, name:z.string().trim().min(1).max(80)})).mutation(({ctx,input})=>addDrawingMeasurementLayer(ctx,input)),

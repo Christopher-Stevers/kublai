@@ -5,7 +5,12 @@ import { gunzipSync } from "node:zlib";
 import { TRPCError } from "@trpc/server";
 import { drawingLegendItems, jobDrawingSheets } from "~/server/db/schema";
 import { accessSheet, type DrawingContext } from "./service";
-import { drawingPdfLocation, equipmentIndex } from "./equipment-index";
+import {
+  drawingPdfLocation,
+  equipmentIndex,
+  recognizeEquipmentPage,
+} from "./equipment-index";
+import { clearEquipmentRegisters } from "./equipment-register";
 import {
   detectLegendItems,
   type LegendItemData,
@@ -72,7 +77,7 @@ export async function listLegendItems(ctx: DrawingContext, sheetId: string) {
 }
 export async function scanLegend(
   ctx: DrawingContext,
-  input: { sheetId: string; sourceSheetId: string },
+  input: { sheetId: string; sourceSheetId: string; recognizeText?: boolean },
 ) {
   const { source } = await legendAccess(
     ctx,
@@ -85,13 +90,17 @@ export async function scanLegend(
       code: "BAD_REQUEST",
       message: "This drawing needs an original PDF to read its legend.",
     });
+  if (input.recognizeText) {
+    await recognizeEquipmentPage(location.file, location.page);
+    clearEquipmentRegisters();
+  }
   const index = await equipmentIndex(location.file, "pdf");
   const words = index.pages.find((p) => p.page === location.page)?.words ?? [];
   if (!words.length)
     return {
       items: [],
       warning:
-        "No readable text found. Scanned legends need text recognition before they can be read.",
+        "No readable text found. Enable text recognition and read this legend again.",
     };
   let segments: LegendLine[];
   let truncated = false;
@@ -117,11 +126,7 @@ export async function scanLegend(
       segments.length > 250_000 ||
       words.length > 50_000;
   } catch {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message:
-        "Vector data is unavailable for this sheet. Choose another legend sheet or re-upload the original PDF.",
-    });
+    segments = [];
   }
   const items = detectLegendItems(words, segments);
   return {
@@ -131,8 +136,8 @@ export async function scanLegend(
         ? "This sheet reached a reading limit; some symbols may be missing. "
         : "") +
       (items.length
-        ? "Review each symbol and description before saving. Unbordered or unusual legend layouts may be missed."
-        : "No bordered symbol legend found on this sheet. Choose the sheet containing the legend."),
+        ? "Review each symbol crop and description before saving. Both bordered and aligned unbordered legends are checked."
+        : "No symbol legend identified. Choose a legend sheet, enable text recognition for scans, or add a symbol manually."),
   };
 }
 const sourceKey = (data: LegendItemData) =>

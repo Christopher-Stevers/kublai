@@ -288,3 +288,12 @@ it("learns panel names from panelboard headings", async () => {
   const { equipmentScheduleTags } = await import("./equipment-tags");
   expect(equipmentScheduleTags([{ words: [line("PANELBOARD SCHEDULE", 0.1), line("PANEL: LP-1", 0.15)] }], { sheetNumbers: [] })).toEqual(["LP-1"]);
 });
+
+it("keeps separate schedule lines with the same tag and extracts explicit model headers",async()=>{
+ const {equipmentSchedules}=await import("./equipment-tags");
+ const w=(text:string,left:number,top:number)=>({text,left,right:left+.04,top,bottom:top+.01});
+ const rows=[w("PUMP SCHEDULE",.1,.05),w("TAG",.1,.1),w("MODEL",.22,.1),w("P-1",.1,.15),w("ABC123",.22,.15),w("P-1",.1,.19),w("DEF456",.22,.19)];
+ const result=equipmentSchedules([{page:1,words:[...rows,rows[3]!]}],{sheetNumbers:[]});
+ expect(result).toHaveLength(2);
+ expect(result.map(r=>r.fields?.model)).toEqual(["ABC123","DEF456"]);
+});

@@ -1,5 +1,5 @@
 "use client";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -21,7 +21,7 @@ type Sheet = {
   width: number;
   height: number;
 };
-type Candidate = LegendItemData & { selected: boolean };
+type Candidate = LegendItemData & { selected: boolean; sourceSheetId: string };
 const PAGE_SIZE = 12;
 
 export function LegendCrop({
@@ -29,11 +29,13 @@ export function LegendCrop({
   box,
   selection,
   onSelection,
+  large = false,
 }: {
   sheet: Sheet;
   box: LegendBox;
   selection?: LegendBox;
   onSelection?: (box: LegendBox) => void;
+  large?: boolean;
 }) {
   const clipId = "legend-crop-" + useId().replace(/:/g, "");
   const base = tileBase(sheet.imageUrl);
@@ -50,7 +52,11 @@ export function LegendCrop({
     retry: false,
   });
   const level = manifest.data
-    ? [...manifest.data.levels].sort((a, b) => b.width - a.width)[0]
+    ? ([...manifest.data.levels]
+        .sort((a, b) => a.width - b.width)
+        .find(
+          (l) => l.width * (box.right - box.left) >= (large ? 1600 : 600),
+        ) ?? manifest.data.levels.at(-1))
     : undefined;
   const width = level?.width ?? sheet.width,
     height = level?.height ?? sheet.height,
@@ -96,7 +102,7 @@ export function LegendCrop({
       role="img"
       className={
         onSelection
-          ? "h-40 w-full touch-none rounded border bg-white"
+          ? `${large ? "h-[48dvh]" : "h-40"} w-full touch-none rounded border bg-white`
           : "h-20 w-40 shrink-0 rounded border bg-white"
       }
       viewBox={`${box.left * width} ${box.top * height} ${(box.right - box.left) * width} ${(box.bottom - box.top) * height}`}
@@ -254,7 +260,16 @@ export function LegendItemsDialog({
   const save = api.drawingsWorkspace.saveLegendItems.useMutation();
   const update = api.drawingsWorkspace.updateLegendItem.useMutation();
   const [sourceSheetId, setSourceSheetId] = useState(sourceId);
-  const [scannedSource, setScannedSource] = useState(sourceId);
+  const [recognizeText, setRecognizeText] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [manual, setManual] = useState(false);
+  const stop = useRef(false);
+  useEffect(
+    () => () => {
+      stop.current = true;
+    },
+    [],
+  );
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [tab, setTab] = useState<"saved" | "review">("saved");
   const [page, setPage] = useState(0);
@@ -268,9 +283,9 @@ export function LegendItemsDialog({
   } | null>(null);
   const sheets = overview.data?.sheets ?? [],
     items = overview.data?.items ?? [];
-  const source = sheets.find((s) => s.id === scannedSource);
+  const manualSource = sheets.find((s) => s.id === sourceSheetId);
   const canEdit = overview.data?.canEdit ?? false;
-  const busy = scan.isPending || save.isPending || update.isPending;
+  const busy = reading || scan.isPending || save.isPending || update.isPending;
   const filtered = items.filter((i) =>
     [i.data.name, i.data.abbreviation, i.data.category]
       .join(" ")
@@ -288,37 +303,101 @@ export function LegendItemsDialog({
   const shown = tab === "review" ? reviewRows : filtered;
   const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const pageIndex = Math.min(page, totalPages - 1);
-  async function read() {
+  const candidateKey = (item: LegendItemData, source: string) =>
+    `${source}:${[item.row.left, item.row.top, item.row.right, item.row.bottom].map((n) => n.toFixed(4)).join(":")}`;
+  async function read(all = false) {
     setError("");
     setMessage("");
+    setReading(true);
+    stop.current = false;
+    const selected = all
+      ? sheets
+      : sheets.filter((s) => s.id === sourceSheetId);
+    const notes: string[] = [];
     try {
-      const result = await scan.mutateAsync({ sheetId, sourceSheetId });
-      setScannedSource(sourceSheetId);
-      setCandidates(result.items.map((data) => ({ ...data, selected: true })));
+      for (const [index, sheet] of selected.entries()) {
+        if (stop.current) break;
+        setMessage(
+          `Reading ${sheet.name} · ${index + 1} of ${selected.length}…`,
+        );
+        try {
+          const result = await scan.mutateAsync({
+            sheetId,
+            sourceSheetId: sheet.id,
+            recognizeText,
+          });
+          if (stop.current) break;
+          setCandidates((current) => {
+            const keys = new Set([
+              ...current.map((c) => candidateKey(c, c.sourceSheetId)),
+              ...items.map((i) => candidateKey(i.data, i.sourceSheetId)),
+            ]);
+            return [
+              ...current,
+              ...result.items
+                .filter((data) => !keys.has(candidateKey(data, sheet.id)))
+                .map((data) => ({
+                  ...data,
+                  sourceSheetId: sheet.id,
+                  selected: true,
+                })),
+            ];
+          });
+          if (result.warning) notes.push(`${sheet.name}: ${result.warning}`);
+        } catch (e) {
+          setError(
+            `${sheet.name}: ${e instanceof Error ? e.message : "Could not read legend."}`,
+          );
+          notes.push(
+            `${sheet.name}: ${e instanceof Error ? e.message : "Could not read legend."}`,
+          );
+        }
+      }
       setTab("review");
       setSearch("");
       setPage(0);
-      setMessage(result.warning);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not read this legend.");
+      setMessage(`${stop.current ? "Scan stopped. " : ""}${notes.join(" ")}`);
+    } finally {
+      setReading(false);
     }
   }
   async function persist() {
     setError("");
+    let added = 0,
+      existing = 0;
     try {
-      const result = await save.mutateAsync({
-        sheetId,
-        sourceSheetId: scannedSource,
-        items: candidates.filter((c) => c.selected),
-      });
+      const ids = [
+        ...new Set(
+          candidates.filter((c) => c.selected).map((c) => c.sourceSheetId),
+        ),
+      ];
+      for (const id of ids) {
+        const selected = candidates.filter(
+          (c) => c.selected && c.sourceSheetId === id,
+        );
+        for (let start = 0; start < selected.length; start += 300) {
+          const batch = selected.slice(start, start + 300);
+          const result = await save.mutateAsync({
+            sheetId,
+            sourceSheetId: id,
+            items: batch,
+          });
+          added += result.added;
+          existing += result.existing;
+          const keys = new Set(batch.map((c) => candidateKey(c, id)));
+          setCandidates((current) =>
+            current.filter((c) => !keys.has(candidateKey(c, c.sourceSheetId))),
+          );
+        }
+      }
       await overview.refetch();
-      setCandidates([]);
       setTab("saved");
       setPage(0);
       setMessage(
-        `${result.added} legend items saved.${result.existing ? ` ${result.existing} already saved; your edits were kept.` : ""}`,
+        `${added} legend items saved.${existing ? ` ${existing} already saved; your edits were kept.` : ""}`,
       );
     } catch (e) {
+      await overview.refetch();
       setError(e instanceof Error ? e.message : "Could not save legend items.");
     }
   }
@@ -379,11 +458,81 @@ export function LegendItemsDialog({
           </label>
           <Button
             disabled={busy || !sheets.some((s) => s.id === sourceSheetId)}
-            onClick={() => void read()}
+            onClick={() => void read(false)}
           >
             {scan.isPending ? "Reading…" : "Read legend"}
           </Button>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={busy || !sheets.length}
+            onClick={() => void read(true)}
+          >
+            Read entire set
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy || !canEdit || !manualSource}
+            onClick={() => setManual(!manual)}
+          >
+            {manual ? "Cancel manual symbol" : "Add symbol manually"}
+          </Button>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={recognizeText}
+              disabled={busy}
+              onChange={(e) => setRecognizeText(e.target.checked)}
+            />
+            Recognize scanned text
+          </label>
+          {reading && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                stop.current = true;
+                setMessage("Stopping after the current sheet…");
+              }}
+            >
+              Stop
+            </Button>
+          )}
+        </div>
+        {manual && manualSource && (
+          <div className="space-y-2">
+            <p className="text-sm">
+              Drag around one complete legend row, including its symbol and
+              description. Then enter the name and adjust the symbol crop.
+            </p>
+            <LegendCrop
+              sheet={manualSource}
+              box={{ left: 0, top: 0, right: 1, bottom: 1 }}
+              large
+              onSelection={(row) => {
+                setCandidates((current) => [
+                  ...current,
+                  {
+                    sourceSheetId: manualSource.id,
+                    selected: true,
+                    name: "",
+                    abbreviation: "",
+                    category: "Manual",
+                    row,
+                    symbol: {
+                      ...row,
+                      right: row.left + (row.right - row.left) * 0.25,
+                    },
+                  },
+                ]);
+                setManual(false);
+                setTab("review");
+                setPage(0);
+                setSearch("");
+              }}
+            />
+          </div>
+        )}
         <div className="flex gap-2">
           <Button
             variant={tab === "saved" ? "default" : "outline"}
@@ -453,14 +602,21 @@ export function LegendItemsDialog({
             </p>
           )}
           {tab === "review" &&
-            source &&
             reviewRows
               .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
               .map(({ item, index }) => {
+                const source = sheets.find((s) => s.id === item.sourceSheetId);
+                if (!source) return null;
                 const replace = (data: LegendItemData) =>
                   setCandidates((current) =>
                     current.map((c, i) =>
-                      i === index ? { ...data, selected: c.selected } : c,
+                      i === index
+                        ? {
+                            ...data,
+                            selected: c.selected,
+                            sourceSheetId: c.sourceSheetId,
+                          }
+                        : c,
                     ),
                   );
                 return (

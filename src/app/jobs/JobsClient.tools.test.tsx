@@ -259,7 +259,7 @@ it("opens lists in the job workspace on the same screen as their own page", () =
 
 it("withholds list creation from verification-only members and while permissions are unavailable", () => {
   state.materialListId = null;
-  for (const can of [{ "orders.receive": true, "lists.edit": false }, {}]) {
+  for (const can of [{ "orders.receive": true, "lists.edit": false }, {}] as Record<string, boolean>[]) {
     state.can = can;
     render(<JobsClient initialJobs={[]} />);
     expect(screen.queryByRole("button", { name: /New (Material )?List/ })).toBeNull();

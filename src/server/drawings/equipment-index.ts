@@ -1,13 +1,14 @@
 import { workerCommand } from "~/server/background/command";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { TitleBlockWord } from "~/lib/drawing-title-block";
 const execute = promisify(execFile);
 export type EquipmentIndex = {
   pages: Array<{ page: number; words: TitleBlockWord[] }>;
   incomplete: boolean;
+  ocrPages?: number[];
 };
 const cache = new Map<string, { value: EquipmentIndex; bytes: number }>();
 let cachedBytes = 0;
@@ -32,10 +33,10 @@ export async function equipmentIndex(
   if (cached) {
     cache.delete(key);
     cache.set(key, cached);
-    return cached.value;
+    return withOcr(file, cached.value);
   }
   const existing = pending.get(key);
-  if (existing) return existing;
+  if (existing) return withOcr(file, await existing);
   const promise = (async () => {
     const read = async () => {
       const bytes = (await stat(key)).size;
@@ -77,9 +78,84 @@ export async function equipmentIndex(
   })();
   pending.set(key, promise);
   try {
-    return await promise;
+    return await withOcr(file, await promise);
   } finally {
     pending.delete(key);
+  }
+}
+
+// OCR is explicit, bounded to one page per operation, and retained beside the
+// immutable source. It never replaces the original PDF or embedded text index.
+async function recognized(file: string): Promise<EquipmentIndex["pages"]> {
+  try {
+    const name = `${file}.equipment-ocr-v1.json`;
+    if ((await stat(name)).size > 48 * 1024 * 1024) return [];
+    return JSON.parse(await readFile(name, "utf8")) as EquipmentIndex["pages"];
+  } catch {
+    return [];
+  }
+}
+async function withOcr(
+  file: string,
+  index: EquipmentIndex,
+): Promise<EquipmentIndex> {
+  const pages = await recognized(file);
+  if (!pages.length) return index;
+  const merged = new Map(index.pages.map((p) => [p.page, p]));
+  for (const page of pages) merged.set(page.page, page);
+  return {
+    ...index,
+    pages: [...merged.values()].sort((a, b) => a.page - b.page),
+    ocrPages: pages.map((p) => p.page),
+  };
+}
+const recognizing = new Map<string, Promise<void>>();
+export async function recognizeEquipmentPage(
+  file: string,
+  page: number,
+): Promise<void> {
+  if (!Number.isInteger(page) || page < 1 || page > 2000)
+    throw Error("Invalid OCR page");
+  // Serialize updates to a file's supplement and deduplicate concurrent callers.
+  while (recognizing.has(file)) await recognizing.get(file);
+  const operation = (async () => {
+    const existing = await recognized(file);
+    if (existing.some((p) => p.page === page)) return;
+    const release = await slot();
+    const output = `${file}.equipment-ocr-${process.pid}-${page}.tmp`;
+    try {
+      await execute(
+        process.execPath,
+        [
+          "--max-old-space-size=512",
+          ...workerCommand("src/server/drawings/equipment-index-worker.ts"),
+          file,
+          output,
+          "pdf",
+          String(page),
+        ],
+        { timeout: 55_000, maxBuffer: 65536 },
+      );
+      if ((await stat(output)).size > 8 * 1024 * 1024)
+        throw Error("OCR page exceeds reading limit");
+      const result = JSON.parse(
+        await readFile(output, "utf8"),
+      ) as EquipmentIndex;
+      const json = JSON.stringify([...existing, ...result.pages]);
+      if (json.length > 48 * 1024 * 1024)
+        throw Error("OCR cache exceeds reading limit");
+      await writeFile(output, json, { mode: 0o600 });
+      await rename(output, `${file}.equipment-ocr-v1.json`);
+    } finally {
+      release();
+      await unlink(output).catch(() => undefined);
+    }
+  })();
+  recognizing.set(file, operation);
+  try {
+    await operation;
+  } finally {
+    recognizing.delete(file);
   }
 }
 export function drawingPdfLocation(imageUrl: string, jobId: string) {
