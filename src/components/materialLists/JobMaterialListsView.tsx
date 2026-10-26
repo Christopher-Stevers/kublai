@@ -106,26 +106,7 @@ export function JobMaterialListsView({
 
   return (
     <>
-      <PageHeader
-        level="section"
-        title="Material Lists"
-        actions={
-          <div className="hidden flex-wrap items-center gap-2 sm:flex sm:justify-end">
-            {canReceive && <ScanSlipButton jobId={jobId} className="h-11" />}
-            {canCreate && (
-              <Button
-                data-tutorial="create-list"
-                onClick={create}
-                size="lg"
-                className="hidden h-11 sm:inline-flex sm:w-auto"
-              >
-                <PlusIcon className="mr-2 h-5 w-5" />
-                New Material List
-              </Button>
-            )}
-          </div>
-        }
-      />
+      <PageHeader level="section" title="Material Lists" />
 
       {merge.banner}
       {!lists?.length ? (
@@ -176,28 +157,36 @@ export function JobMaterialListsView({
       )}
 
       {(canCreate || canReceive) && (
-        <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+        <>
+          <div aria-hidden="true" className="hidden h-20 sm:block" />
           <div
-            className={
-              canReceive && canCreate ? "grid grid-cols-2 gap-2" : undefined
-            }
+            aria-label="Material list actions"
+            className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6"
           >
-            {canReceive && (
-              <ScanSlipButton jobId={jobId} className="h-12 w-full" />
-            )}
-            {canCreate && (
-              <Button
-                data-tutorial="create-list"
-                onClick={create}
-                size="lg"
-                className="h-12 w-full"
-              >
-                <PlusIcon className="mr-2 h-5 w-5" />
-                {canReceive ? "New List" : "New Material List"}
-              </Button>
-            )}
+            <div
+              className={
+                canReceive && canCreate
+                  ? "mx-auto grid max-w-6xl grid-cols-2 gap-2"
+                  : "mx-auto max-w-6xl"
+              }
+            >
+              {canReceive && (
+                <ScanSlipButton jobId={jobId} className="h-12 w-full" />
+              )}
+              {canCreate && (
+                <Button
+                  data-tutorial="create-list"
+                  onClick={create}
+                  size="lg"
+                  className="h-12 w-full"
+                >
+                  <PlusIcon className="mr-2 h-5 w-5" />
+                  {canReceive ? "New List" : "New Material List"}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <Dialog
