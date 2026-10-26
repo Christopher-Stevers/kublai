@@ -39,3 +39,5 @@ it("shows unavailable instead of a false zero without cached rooms", () => {
   expect(screen.getByText("Room count unavailable")).toBeInTheDocument();
   expect(screen.queryByText("0 rooms")).not.toBeInTheDocument();
 });
+
+vi.mock("~/components/permissions/SystemsAccess", () => ({ useSystemsAccess: () => true }));

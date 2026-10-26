@@ -1,5 +1,6 @@
 "use client";
 
+import { SystemsAccessGate } from "~/components/permissions/SystemsAccess";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -27,6 +28,10 @@ import { pipeSystemCode } from "~/lib/pipe-spec";
 import { JobSystemsEditor, newManualSystemSpec } from "./JobSystemsEditor";
 
 export function JobSystemsView({ jobId }: { jobId: string }) {
+  return <SystemsAccessGate><JobSystemsContent jobId={jobId} /></SystemsAccessGate>;
+}
+
+function JobSystemsContent({ jobId }: { jobId: string }) {
   const router = useRouter();
   const utils = api.useUtils();
   const [system, setSystem] = useState<string | null>(null);

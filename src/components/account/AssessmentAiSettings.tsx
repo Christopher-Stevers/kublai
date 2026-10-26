@@ -1,10 +1,14 @@
 "use client";
+import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { type AssessmentAi } from "~/lib/assessment-ai";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 export function AssessmentAiSettings() {
+  return useSystemsAccess() ? <AssessmentAiSettingsContent /> : null;
+}
+function AssessmentAiSettingsContent() {
   const query = api.pipeSpecs.aiConnection.useQuery();
   const utils = api.useUtils();
   const [draft, setDraft] = useState<AssessmentAi | null>(null);

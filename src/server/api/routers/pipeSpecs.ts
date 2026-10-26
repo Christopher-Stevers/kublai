@@ -70,8 +70,13 @@ export type PipeSpecRow = {
   updatedAt: Date;
 };
 
+const systemsProcedure = hasAppAccess.use(({ ctx, next }) => {
+  assertCan(ctx.user, "systems.access");
+  return next({ ctx });
+});
+
 export const pipeSpecsRouter = createTRPCRouter({
-  aiConnection: hasAppAccess.query(async ({ ctx }) => {
+  aiConnection: systemsProcedure.query(async ({ ctx }) => {
     if (!userCan(ctx.user as never, "org.settings"))
       return { canConfigure: false as const, settings: null };
     const { apiKey, ...settings } = await readAssessmentAi(organizationOf(ctx));
@@ -80,7 +85,7 @@ export const pipeSpecsRouter = createTRPCRouter({
       settings: { ...settings, hasKey: !!apiKey },
     };
   }),
-  saveAiConnection: hasAppAccess
+  saveAiConnection: systemsProcedure
     .input(assessmentAiSchema)
     .mutation(async ({ ctx, input }) => {
       if (!userCan(ctx.user as never, "org.settings"))
@@ -118,7 +123,7 @@ export const pipeSpecsRouter = createTRPCRouter({
         });
       }
     }),
-  assessSpecMaterials: hasAppAccess
+  assessSpecMaterials: systemsProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       assertCan(ctx.user, "drawings.view");
@@ -129,10 +134,10 @@ export const pipeSpecsRouter = createTRPCRouter({
       // No client source selection: include every accessible specification and no drawings.
       return startAssessment(userIdOf(ctx), input.jobId);
     }),
-  assessment: hasAppAccess
+  assessment: systemsProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => getAssessment(userIdOf(ctx), input.jobId)),
-  assess: hasAppAccess
+  assess: systemsProcedure
     .input(
       z.object({
         jobId: z.string().uuid(),
@@ -142,13 +147,13 @@ export const pipeSpecsRouter = createTRPCRouter({
     .mutation(({ ctx, input }) =>
       startAssessment(userIdOf(ctx), input.jobId, input.selection),
     ),
-  ensureSpecifications: hasAppAccess
+  ensureSpecifications: systemsProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(({ ctx, input }) =>
       ensureSpecifications(userIdOf(ctx), input.jobId),
     ),
   /** Company standards, and this job's overrides when a job is given. */
-  list: hasAppAccess
+  list: systemsProcedure
     .input(z.object({ jobId: z.string().uuid().nullish() }).optional())
     .query(async ({ ctx, input }) => {
       const jobId = input?.jobId ?? null;
@@ -203,7 +208,7 @@ export const pipeSpecsRouter = createTRPCRouter({
     }),
 
   /** Save a standard. `revision` is what the editor started from; a stale save is refused. */
-  save: hasAppAccess
+  save: systemsProcedure
     .input(
       z.object({
         system: pipeSystemCode,
@@ -295,7 +300,7 @@ export const pipeSpecsRouter = createTRPCRouter({
     }),
 
   /** Remove a standard; for a job, the system goes back to the company standard. */
-  remove: hasAppAccess
+  remove: systemsProcedure
     .input(
       z.object({ system: pipeSystemCode, jobId: z.string().uuid().nullable() }),
     )

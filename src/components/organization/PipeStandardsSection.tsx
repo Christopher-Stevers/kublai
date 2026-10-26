@@ -1,4 +1,5 @@
 "use client";
+import { SystemsAccessGate } from "~/components/permissions/SystemsAccess";
 
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
@@ -13,6 +14,9 @@ import { api } from "~/trpc/react";
 
 /** Company standards: the pipe, fittings and valves each system is built from. */
 export function PipeStandardsSection() {
+  return <SystemsAccessGate><PipeStandardsContent /></SystemsAccessGate>;
+}
+function PipeStandardsContent() {
   const specs = api.pipeSpecs.list.useQuery(undefined, { staleTime: 30_000 });
   const materials = api.catalogue.getMaterials.useQuery(undefined, { staleTime: 5 * 60_000 });
   const [open, setOpen] = useState<string | null>(null);

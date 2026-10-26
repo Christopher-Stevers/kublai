@@ -47,11 +47,11 @@ const tasks = new Map<string, Promise<void>>();
 let admissions = 0;
 let tail = Promise.resolve();
 export function assertAssessPermission(user: Parameters<typeof userCan>[0]) {
-  if (!userCan(user, "lists.edit"))
+  if (!userCan(user, "systems.access") || !userCan(user, "lists.edit"))
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
-        "Editing job material lists permission is required to assess systems.",
+        "Systems and material-list editing permissions are required to assess systems.",
     });
 }
 export async function getSpecificationContext(
@@ -60,6 +60,8 @@ export async function getSpecificationContext(
   reader: Pick<typeof db, "select"> = db,
 ) {
   const access = await assertDocumentAccess(userId, jobId, reader);
+  if (!userCan(access.user, "systems.access"))
+    throw new TRPCError({ code: "FORBIDDEN", message: "Systems permission is required." });
   const state = await readWorkspace(access, reader);
   const context = specificationSources(state, access);
   const actor = documentActor(access, []);
@@ -230,7 +232,7 @@ export async function getAssessment(userId: string, jobId: string) {
       })),
     drawingSets: context.drawingSets,
     folderId: context.folderId,
-    canAssess: userCan(context.access.user, "lists.edit"),
+    canAssess: userCan(context.access.user, "systems.access") && userCan(context.access.user, "lists.edit"),
   };
 }
 export async function ensureSpecifications(userId: string, jobId: string) {

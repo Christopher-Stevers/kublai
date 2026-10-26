@@ -38,6 +38,7 @@ export const PERMISSION_GROUPS = [
       { key: "jobs.create", label: "Create jobs", description: "Start new jobs." },
       { key: "jobs.edit", label: "Edit jobs", description: "Rename jobs, change location, foreman and PO number." },
       { key: "jobs.delete", label: "Delete jobs", description: "Permanently delete a job and everything in it." },
+      { key: "systems.access", label: "Systems", description: "Access job systems, company pipe standards and specification assessment tools." },
     ],
   },
   {
@@ -221,7 +222,7 @@ export const PERMISSION_PRESETS: Array<{
     id: "manager",
     label: "Manager",
     description: "Everything, including people and billing.",
-    permissions: { ...all(true), "assets.manage": false },
+    permissions: { ...all(true), "assets.manage": false, "systems.access": false },
   },
   {
     id: "foreman",

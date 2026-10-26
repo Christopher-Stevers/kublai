@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   cleanup,
   fireEvent,
@@ -360,3 +361,5 @@ it("opens drawing evidence at the cited sheet and immutable revision", () => {
     setId: uuid("4"),
   });
 });
+
+vi.mock("~/components/permissions/SystemsAccess", () => ({ useSystemsAccess: () => true, SystemsAccessGate: ({ children }: { children: ReactNode }) => children }));

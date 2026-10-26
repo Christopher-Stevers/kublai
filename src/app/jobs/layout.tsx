@@ -1,3 +1,4 @@
+import { SystemsAccessProvider } from "~/components/permissions/SystemsAccess";
 import { MaterialSortProvider } from "~/components/app/MaterialSortProvider";
 import { AutomaticDiagnostics } from "~/components/app/AutomaticDiagnostics";
 import { SupplierLabelProvider } from "~/components/suppliers/SupplierLabelProvider";
@@ -72,6 +73,7 @@ export default async function JobsLayout({
           userId={effectiveUserId}
           initialCompleted={!!user.tutorialCompletedAt}
         >
+          <SystemsAccessProvider initialAllowed={userCan(user, "systems.access")}>
           <FinancialVisibilityProvider
             initialVisible={userCan(user, "financial.view")}
           >
@@ -133,6 +135,7 @@ export default async function JobsLayout({
               </DrawingAccountProvider>
             </DrawingsAccessProvider>
           </FinancialVisibilityProvider>
+          </SystemsAccessProvider>
         </TutorialGate>
       </SimulationProvider>
     </HydrateClient>

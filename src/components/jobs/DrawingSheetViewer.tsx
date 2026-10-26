@@ -112,6 +112,7 @@ import { usePipeSystemSelection } from "./usePipeSystemSelection";
 import { PipeSystemPanel } from "./PipeSystemPanel";
 import { usePipeLegendAnalysis } from "./usePipeLegendAnalysis";
 import { PipeComponentsDialog } from "./PipeComponentsDialog";
+import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { PipeMaterialListDialog } from "./PipeMaterialListDialog";
 import { nearestPipeSize, parsePipeSize, pipeRunSizes } from "~/lib/pipe-run-sizes";
 import type { PipeTakeoff } from "~/lib/pipe-spec";
@@ -394,7 +395,8 @@ export function DrawingSheetViewer({
     if (!pipe.components && !editorProps.loadPipeLegendReferences) void pipe.analyze(templates);
   };
   const [listOpen, setListOpen] = useState(false);
-  const pipeMaterialList = editorProps.pipeMaterialList;
+  const canAccessSystems = useSystemsAccess();
+  const pipeMaterialList = canAccessSystems ? editorProps.pipeMaterialList : undefined;
   const openMaterialList = () => {
     setListOpen(true);
     if (!pipe.components && !pipe.analyzing && !legendAnalysis.loading && !editorProps.loadPipeLegendReferences) void pipe.analyze(templates);

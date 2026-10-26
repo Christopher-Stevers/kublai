@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PERMISSION_KEYS } from "~/lib/permission-catalog";
+import { PERMISSION_KEYS, PERMISSION_PRESETS } from "~/lib/permission-catalog";
 import {
   getUserPermissions,
   hasManagingSeat,
@@ -12,6 +12,21 @@ const paid = { stripeSubscriptionId: "sub_1", subscriptionStatus: "active" };
 const allDenied = toStoredConfig(
   Object.fromEntries(PERMISSION_KEYS.map((key) => [key, false])),
 );
+
+describe("Systems permission defaults", () => {
+  it("is off for every standard preset and existing member without an explicit grant", () => {
+    expect(resolvePermissions({ role: "user" })["systems.access"]).toBe(false);
+    for (const preset of PERMISSION_PRESETS) {
+      expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig(preset.permissions) })["systems.access"]).toBe(false);
+    }
+    const oldManager = Object.fromEntries(PERMISSION_KEYS.filter(key => key !== "systems.access").map(key => [key, true]));
+    expect(resolvePermissions({ role: "manager", permissionConfig: toStoredConfig(oldManager) })["systems.access"]).toBe(false);
+  });
+  it("retains Executive access and allows an explicit later grant", () => {
+    expect(resolvePermissions({ ...paid, role: "user", permissionConfig: allDenied })["systems.access"]).toBe(true);
+    expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "systems.access": true }) })["systems.access"]).toBe(true);
+  });
+});
 
 describe("resolvePermissions", () => {
   it("gives admins everything, whatever is stored", () => {

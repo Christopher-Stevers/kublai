@@ -1,4 +1,5 @@
 "use client";
+import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
 
 import { LegendItemsDialog } from "./LegendItemsDialog";
@@ -428,6 +429,7 @@ export function DrawingWorkspace({
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => { if (quickWheel) { setMoreOpen(false); setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
+  const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
   const [superLabelOpen, setSuperLabelOpen] = useState(false);
   const [superScaleOpen, setSuperScaleOpen] = useState(false);
@@ -1662,7 +1664,7 @@ export function DrawingWorkspace({
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
-      ...(!data.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !data.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
+      ...(!data.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !canAccessSystems || !data.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
       ...(!data.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
       ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
@@ -1747,7 +1749,7 @@ export function DrawingWorkspace({
           </div>
         </DialogContent>
       </Dialog>
-      {data.canUseSheetTools && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
+      {data.canUseSheetTools && canAccessSystems && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
       {data.canUseSheetTools && superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
       {data.canUseSheetTools && superScaleOpen && (
         <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
@@ -3466,7 +3468,7 @@ export function DrawingWorkspace({
                 </DropdownMenuItem>}
                 {!data.documentSource && (
                   <>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setSuperSpecMaterialOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Spec Material</DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!canAccessSystems || !data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setSuperSpecMaterialOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Spec Material</DropdownMenuItem>
                   <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !data.canManage || !online} onSelect={()=>{setMoreOpen(false);setSuperLabelOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Label</DropdownMenuItem>
                   <DropdownMenuItem className={MENU_ITEM}
                     disabled={!data.canUseSheetTools || !data.canManage || !online}

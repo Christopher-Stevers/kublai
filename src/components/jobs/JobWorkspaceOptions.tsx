@@ -1,5 +1,6 @@
 "use client";
 
+import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { FrequentJobCards } from "./FrequentJobCards";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -29,6 +30,7 @@ export function JobWorkspaceOptions({
   chatUnreadCount?: number;
   onSelect: (id: JobWorkspaceOptionId) => void;
 }) {
+  const canAccessSystems = useSystemsAccess();
   const canAccessDrawings = useDrawingsAccess();
   return (
     <FrequentJobCards>
@@ -217,7 +219,7 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
-      <Card
+      {canAccessSystems && <Card
         data-job-card="systems"
         role="button"
         aria-label="Systems"
@@ -247,7 +249,7 @@ export function JobWorkspaceOptions({
             </span>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </FrequentJobCards>
   );
 }

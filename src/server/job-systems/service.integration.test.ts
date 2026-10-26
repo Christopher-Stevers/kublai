@@ -24,6 +24,8 @@ vi.mock("~/server/db", () => ({
   db: new Proxy({}, { get: (_, key) => mocked.db[String(key)] }),
 }));
 vi.mock("~/server/auth/permissions", () => ({
+  // Endpoint authorization is covered separately by systems-permissions.test.ts.
+  assertCan: vi.fn(),
   userCan: (u: { role?: string }, p: string) =>
     p === "drawings.view"
       ? u.role !== "no-drawings"

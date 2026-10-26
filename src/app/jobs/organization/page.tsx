@@ -1,5 +1,6 @@
 "use client";
 
+import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import {
   Building2Icon,
@@ -32,6 +33,7 @@ const SECTIONS = [
 ] as const;
 
 export default function OrganizationPage() {
+  const canAccessSystems = useSystemsAccess();
   const isOnline = useOnlineStatus();
   const utils = api.useUtils();
   const [section, setSection] = usePageViewState<
@@ -90,7 +92,7 @@ export default function OrganizationPage() {
           className="bg-card flex gap-1 overflow-x-auto rounded-xl border p-1 shadow-xs sm:w-fit"
           aria-label="Organization sections"
         >
-          {SECTIONS.map(({ id, label, icon: Icon }) => (
+          {SECTIONS.filter(({ id }) => id !== "pipes" || canAccessSystems).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
