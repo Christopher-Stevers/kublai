@@ -180,30 +180,21 @@ test("private image attachments bypass both image caching and background image w
     h.context.isCacheableImageRequest(privateUrl, { destination: "image" }),
     false,
   );
-  let intercepted = false;
-  await h.emit("fetch", {
-    request: { method: "GET", url: privateUrl.href, destination: "image" },
-    respondWith: () => {
-      intercepted = true;
-    },
-  });
-  assert.equal(intercepted, false);
-  const optimizedUrl = new URL(
-    `${origin}/_next/image?url=${encodeURIComponent(privateUrl.pathname)}&w=64&q=75`,
-  );
-  assert.equal(
-    h.context.isCacheableImageRequest(optimizedUrl, { destination: "image" }),
-    false,
-  );
-  await h.emit("fetch", {
-    request: { method: "GET", url: optimizedUrl.href, destination: "image" },
-    respondWith: () => {
-      intercepted = true;
-    },
-  });
-  assert.equal(intercepted, false);
-  // General shell preloads must not accept private APIs either.
   const fetches = [];
+  h.context.fetch = async request => { fetches.push(request.url); return new Response("private network response"); };
+  let response;
+  await h.emit("fetch", {
+    request: new Request(privateUrl.href),
+    respondWith: value => { response = value; },
+  });
+  assert.equal(await (await response).text(), "private network response");
+  const optimizedUrl = new URL(`${origin}/_next/image?url=${encodeURIComponent(privateUrl.pathname)}&w=64&q=75`);
+  assert.equal(h.context.isCacheableImageRequest(optimizedUrl, {destination:"image"}), false);
+  await h.emit("fetch", {request:new Request(optimizedUrl.href),respondWith:value=>{response=value}});
+  assert.equal(await (await response).text(), "private network response");
+  assert.deepEqual(fetches, [privateUrl.href, optimizedUrl.href]);
+  fetches.length = 0;
+  // General shell preloads must not accept private APIs either.
   h.context.fetch = async (request) => {
     fetches.push(request.url);
     return new Response("shell");

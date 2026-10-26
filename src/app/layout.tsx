@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import { OFFLINE_TEST_BOOT_SCRIPT } from "~/lib/offline-test-document";
 
 import { type Metadata, type Viewport } from "next";
 import { Geist } from "next/font/google";
@@ -95,6 +96,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: OFFLINE_TEST_BOOT_SCRIPT }} />
         <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-512.png" fetchPriority="high" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { OfflineTestSettings } from "~/components/account/OfflineTestSettings";
 import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
 import { FrequentJobCardsSetting } from "~/components/jobs/FrequentJobCards";
 import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
@@ -127,6 +128,7 @@ export default function SettingsPage() {
 
       <RestartTutorialCard />
       <AssessmentAiSettings key={me?.id} />
+      <OfflineTestSettings />
       <DiagnosticsSettings />
 
       <Card>

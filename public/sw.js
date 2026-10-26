@@ -17,6 +17,45 @@ const CACHE_LIMITS = {
   [PDF_RUNTIME_CACHE]: 31,
 };
 
+
+// A device-local test switch; deliberately independent of versioned app caches.
+const OFFLINE_TEST_CACHE = "foremanhq-offline-test-v1";
+const OFFLINE_TEST_URL = new URL("/__offline-test", self.location.origin).href;
+let offlineTestState;
+function offlineTestEnabled() {
+  return offlineTestState ??= caches.open(OFFLINE_TEST_CACHE).then(cache => cache.match(OFFLINE_TEST_URL)).then(response => response ? response.text() : "0").then(value => value === "1").catch(() => false);
+}
+async function offlineTestFetch(...args) {
+  if (await offlineTestEnabled()) throw new TypeError("ForemanHQ offline test mode");
+  return fetch(...args);
+}
+async function setOfflineTest(enabled) {
+  const cache = await caches.open(OFFLINE_TEST_CACHE);
+  await cache.put(OFFLINE_TEST_URL, new Response(enabled ? "1" : "0"));
+  offlineTestState = Promise.resolve(enabled);
+}
+self.addEventListener("message", event => {
+  if (event.data?.type === "FOREMANHQ_OFFLINE_TEST_GET") {
+    event.waitUntil(offlineTestEnabled().then(enabled => event.ports?.[0]?.postMessage({enabled})));
+    return;
+  }
+  if (event.data?.type !== "FOREMANHQ_OFFLINE_TEST_SET" || typeof event.data.enabled !== "boolean") return;
+  event.waitUntil((async () => {
+    try {
+      // Warm the current settings shell while still connected so turning the
+      // switch on cannot strand the user on an uncached settings route.
+      if (event.data.enabled && !(await offlineTestEnabled())) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        try { await Promise.all(["/jobs", "/jobs/account/settings", OFFLINE_PAGE].map(url => networkFirstNavigation(new Request(new URL(url, self.location.origin), {credentials: "same-origin", signal: controller.signal})))); }
+        finally { clearTimeout(timer); }
+      }
+      await setOfflineTest(event.data.enabled);
+      event.ports?.[0]?.postMessage({ok: true});
+    } catch { event.ports?.[0]?.postMessage({ok: false, error: "Browser storage is unavailable. Offline test mode was not changed."}); }
+  })());
+});
+
 // Cache storage is optional: quota/privacy failures must never discard a network response.
 async function safeMatch(request, name) {
   try {
@@ -49,7 +88,7 @@ self.addEventListener("install", (event) => {
       .open(PAGE_CACHE)
       .then((cache) =>
         Promise.allSettled(
-          ["/", "/jobs", OFFLINE_PAGE].map((url) => cache.add(url)),
+          ["/", "/jobs", OFFLINE_PAGE].map(async (url) => { const response = await offlineTestFetch(new Request(new URL(url, self.location.origin))); if(response.ok) await cache.put(url, response); }),
         ).catch(() => {
           // Authenticated routes may not precache during install depending on the
           // browser/session. Runtime navigation caching below is the real source
@@ -169,7 +208,7 @@ function isPublicPdfRuntime(url) {
 }
 async function networkFirstPdfRuntime(request) {
   try {
-    const response = await fetch(request);
+    const response = await offlineTestFetch(request);
     if (response.ok)
       await safePut(PDF_RUNTIME_CACHE, request, response.clone());
     // Authentication or missing routes must not be disguised as old cached software.
@@ -204,7 +243,7 @@ function isStaticAsset(url, request) {
 
 async function networkFirstNavigation(request) {
   try {
-    const response = await fetch(request);
+    const response = await offlineTestFetch(request);
     if (response.ok && response.type === "basic") {
       await safePut(PAGE_CACHE, request, response.clone());
       // Keep a Jobs shell fallback fresh for deep links.
@@ -241,7 +280,7 @@ function isRscRequest(url, request) {
 
 async function networkFirstRsc(request) {
   try {
-    const response = await fetch(request);
+    const response = await offlineTestFetch(request);
     if (response.ok && response.type === "basic") {
       await safePut(PAGE_CACHE, request, response.clone());
     }
@@ -257,7 +296,7 @@ async function cacheFirstStatic(request) {
   const cached = await safeMatch(request);
   if (cached) return cached;
 
-  const response = await fetch(request);
+  const response = await offlineTestFetch(request);
   if (response.ok) {
     await safePut(STATIC_CACHE, request, response.clone());
   }
@@ -285,7 +324,7 @@ function drainImages() {
     (async () => {
       const cached = await safeMatch(job.request, IMAGE_CACHE);
       if (cached) return cached;
-      const response = await fetch(job.request);
+      const response = await offlineTestFetch(job.request);
       if (response.ok)
         await safePut(IMAGE_CACHE, job.request, response.clone());
       return response;
@@ -376,7 +415,7 @@ self.addEventListener("message", (event) => {
             const request = new Request(url.href, {
               credentials: "same-origin",
             });
-            const response = await fetch(request);
+            const response = await offlineTestFetch(request);
             if (response.ok && response.type === "basic") {
               await safePut(PAGE_CACHE, request, response);
             }
@@ -423,42 +462,19 @@ self.addEventListener("message", (event) => {
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-
-  const url = new URL(event.request.url);
-  if (!isSameOrigin(url) || isPrivateChatRequest(url)) return;
-
-  if (isPublicPdfRuntime(url)) {
-    event.respondWith(networkFirstPdfRuntime(event.request));
-    return;
-  }
-
-  if (isCacheableImageRequest(url, event.request)) {
-    event.respondWith(cacheFirstImage(event.request));
-    return;
-  }
-
-  // Never cache other API/sync responses. Offline data belongs in
-  // Replicache/IndexedDB, not in a service-worker HTTP cache.
-  if (isApiOrSyncRequest(url)) return;
-
-  if (
-    event.request.mode === "navigate" ||
-    event.request.destination === "document"
-  ) {
-    event.respondWith(networkFirstNavigation(event.request));
-    return;
-  }
-
-  if (isRscRequest(url, event.request)) {
-    event.respondWith(networkFirstRsc(event.request));
-    return;
-  }
-
-  if (isStaticAsset(url, event.request)) {
-    event.respondWith(cacheFirstStatic(event.request));
-  }
+async function routeAppRequest(request) {
+  const url = new URL(request.url);
+  if (request.method !== "GET" || !isSameOrigin(url) || isPrivateChatRequest(url)) return offlineTestFetch(request);
+  if (isPublicPdfRuntime(url)) return networkFirstPdfRuntime(request);
+  if (isCacheableImageRequest(url, request)) return cacheFirstImage(request);
+  if (isApiOrSyncRequest(url)) return offlineTestFetch(request);
+  if (request.mode === "navigate" || request.destination === "document") return networkFirstNavigation(request);
+  if (isRscRequest(url, request)) return networkFirstRsc(request);
+  if (isStaticAsset(url, request)) return cacheFirstStatic(request);
+  return offlineTestFetch(request);
+}
+self.addEventListener("fetch", event => {
+  event.respondWith(routeAppRequest(event.request));
 });
 
 // A device opt-in belongs to one signed-in account. Persist only its one-way account

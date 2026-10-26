@@ -1,10 +1,11 @@
 "use client";
 
+import { isOfflineTestEnabled } from "~/lib/offline-test";
 import { useEffect, useState } from "react";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 
 export function getBrowserOnlineStatus() {
-  return typeof navigator === "undefined" || navigator.onLine;
+  return !isOfflineTestEnabled() && (typeof navigator === "undefined" || navigator.onLine);
 }
 
 export function useOnlineStatus() {
@@ -20,5 +21,5 @@ export function useOnlineStatus() {
       window.removeEventListener("offline", update);
     };
   }, []);
-  return sandbox ? true : isOnline;
+  return sandbox && !isOfflineTestEnabled() ? true : isOnline;
 }

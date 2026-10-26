@@ -62,6 +62,23 @@
         can load jobs, material lists, and cached part photos without a
         connection.
       </p>
+      <button id="reconnect" hidden style="margin-top:1rem;padding:.75rem 1rem">Turn off offline test mode</button>
+      <script>
+        const button = document.getElementById('reconnect');
+        if (localStorage.getItem('foremanhq.offline-test') === '1') button.hidden = false;
+        button.onclick = () => {
+          const worker = navigator.serviceWorker?.controller;
+          if (!worker) { location.reload(); return; }
+          const channel = new MessageChannel();
+          channel.port1.onmessage = event => {
+            if (!event.data.ok) return;
+            channel.port1.close();
+            localStorage.setItem('foremanhq.offline-test', '0');
+            location.href = '/jobs';
+          };
+          worker.postMessage({type: 'FOREMANHQ_OFFLINE_TEST_SET', enabled: false}, [channel.port2]);
+        };
+      </script>
     </main>
   </body>
 </html>

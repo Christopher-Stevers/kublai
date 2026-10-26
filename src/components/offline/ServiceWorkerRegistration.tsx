@@ -1,10 +1,11 @@
 "use client";
 
+import { isOfflineTestEnabled } from "~/lib/offline-test";
 import { useEffect } from "react";
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || isOfflineTestEnabled()) return;
     if (!("serviceWorker" in navigator)) return;
 
     const registerWorker = async () => {
