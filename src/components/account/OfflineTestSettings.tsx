@@ -1,16 +1,26 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { WifiOffIcon } from "lucide-react";
 import {
   isOfflineTestEnabled,
   setOfflineTestEnabled,
 } from "~/lib/offline-test";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+function subscribe(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+const serverSnapshot = () => false;
 export function OfflineTestSettings() {
-  const [enabled, setEnabled] = useState(false);
+  const enabled = useSyncExternalStore(subscribe, isOfflineTestEnabled, serverSnapshot);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => setEnabled(isOfflineTestEnabled()), []);
   return (
     <Card>
       <CardHeader>
@@ -35,7 +45,6 @@ export function OfflineTestSettings() {
               setError("");
               try {
                 await setOfflineTestEnabled(next);
-                setEnabled(next);
               } catch (e) {
                 setError(
                   e instanceof Error
