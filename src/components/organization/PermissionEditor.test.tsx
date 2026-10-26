@@ -12,6 +12,26 @@ import { PermissionEditor } from "./PermissionEditor";
 
 afterEach(cleanup);
 
+it("lets the Chat page switch change without changing Jobs access", () => {
+  function Editor() {
+    const [value, setValue] = useState(STANDARD_DEFAULTS);
+    return <PermissionEditor value={value} onChange={setValue} />;
+  }
+  render(<Editor />);
+  const pages = screen
+    .getByRole("heading", { name: "Pages" })
+    .closest("section")!;
+  fireEvent.click(
+    within(pages).getByRole("switch", { name: "Chat", exact: true }),
+  );
+  expect(
+    within(pages).getByRole("switch", { name: "Chat", exact: true }),
+  ).toHaveAttribute("aria-checked", "false");
+  expect(
+    within(pages).getByRole("switch", { name: "Jobs", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+});
+
 it("offers the four material list permissions as independent switches", () => {
   function Editor() {
     const [value, setValue] = useState(STANDARD_DEFAULTS);

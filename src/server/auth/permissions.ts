@@ -23,6 +23,7 @@ type PermissionUser = {
 
 export const appTabIds = [
   "dashboard",
+  "chat",
   "catalogue",
   "suppliers",
   "quotes",
@@ -94,6 +95,9 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
     const stored = expandDrawingPermissions(asObject(config.permissions) ?? {});
     for (const [key, value] of Object.entries(stored))
       if (isPermissionKey(key) && typeof value === "boolean") base[key] = value;
+    // Before Chat had its own page permission, it followed Jobs access.
+    if (typeof stored["tab.chat"] !== "boolean")
+      base["tab.chat"] = base["tab.dashboard"];
     return base;
   }
 
@@ -109,6 +113,8 @@ export function resolvePermissions(user: PermissionUser): PermissionMap {
     base["parts.create"] = a.canCreateParts;
   if (typeof a.canEditParts === "boolean") base["parts.edit"] = a.canEditParts;
   if (a.canDeleteParts || a.canDelete) base["parts.delete"] = true;
+  if (typeof legacy.tabs?.chat !== "boolean")
+    base["tab.chat"] = base["tab.dashboard"];
   // Billing and organization were never grantable to standard accounts before.
   base["tab.draws"] = false;
   base["draws.edit"] = false;

@@ -8,6 +8,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 
 function tabForPath(pathname: string | null) {
   if (!pathname) return "dashboard";
+  if (pathname === "/jobs/chat" || pathname.startsWith("/jobs/chat/")) return "chat";
   if (pathname.startsWith("/jobs/catalogue")) return "catalogue";
   if (pathname.startsWith("/jobs/suppliers")) return "suppliers";
   if (pathname.startsWith("/jobs/quotes")) return "quotes";

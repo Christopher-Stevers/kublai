@@ -84,6 +84,7 @@ function HeaderFrame({
   showAccount: boolean;
   tabAccess: {
     dashboard: boolean;
+    chat: boolean;
     catalogue: boolean;
     suppliers: boolean;
     quotes: boolean;
@@ -130,10 +131,10 @@ function HeaderFrame({
   };
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard
-      ? [
-          { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
-          { href: "/jobs/chat", label: "Chat", icon: MessageSquareIcon },
-        ]
+      ? [{ href: "/jobs", label: "Jobs", icon: BriefcaseIcon }]
+      : []),
+    ...(tabAccess.chat
+      ? [{ href: "/jobs/chat", label: "Chat", icon: MessageSquareIcon }]
       : []),
     ...(tabAccess.catalogue
       ? [
@@ -564,6 +565,7 @@ function HeaderWithClerk() {
       tabAccess={
         userRole?.permissions.tabAccess ?? {
           dashboard: true,
+          chat: true,
           catalogue: true,
           suppliers: true,
           quotes: true,
@@ -592,6 +594,7 @@ function HeaderWithoutClerk() {
       showAccount={false}
       tabAccess={{
         dashboard: true,
+        chat: true,
         catalogue: true,
         suppliers: true,
         quotes: true,
@@ -623,6 +626,7 @@ function HeaderForPractice() {
       showAccount={true}
       tabAccess={{
         dashboard: true,
+        chat: true,
         catalogue: true,
         suppliers: true,
         quotes: true,

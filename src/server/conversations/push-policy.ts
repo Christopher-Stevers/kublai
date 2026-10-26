@@ -19,7 +19,7 @@ export function eligibleForConversationPush(input: {
     input.user.id !== input.senderId &&
     input.user.organizationId === input.organizationId &&
     input.user.organizationAccessStatus === "approved" &&
-    userCan(input.user, "tab.dashboard") &&
+    (userCan(input.user, "tab.dashboard") || userCan(input.user, "tab.chat")) &&
     input.member !== null &&
     input.member.lastReadSequence < input.sequence
   );

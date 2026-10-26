@@ -53,7 +53,7 @@ export function createSandboxHandler(sandbox: TutorialSandbox) {
         permissions: {
           role: "user", isAdmin: false, accountType: "standard", accountTypeLabel: "Practice account", isManagingAccount: false, isStandardAccount: true, isWorker: false,
           can: { ...STANDARD_DEFAULTS, "parts.create": false, "parts.edit": false, "drawings.view": true, "drawings.upload": false, "drawings.delete": false },
-          tabAccess: { dashboard: true, catalogue: true, suppliers: true, quotes: false, orders: false, draws: false, assets: false, organization: false },
+          tabAccess: { dashboard: true, chat: true, catalogue: true, suppliers: true, quotes: false, orders: false, draws: false, assets: false, organization: false },
           actionAccess: { canCreateParts: false, canEditParts: false, canDeleteParts: false, canDelete: false },
           canCreateParts: false, canEditParts: false, canDeleteParts: false, canManageAssets: false, canGenerateDocuments: false, canDeleteCoreRecords: false,
         },

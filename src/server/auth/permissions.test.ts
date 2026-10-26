@@ -168,6 +168,23 @@ describe("material list permissions", () => {
   });
 });
 
+describe("Chat page permission", () => {
+  it.each([true, false])("preserves prior Jobs-based Chat access (%s) until explicitly changed", (allowed) => {
+    for (const permissionConfig of [
+      { version: 2, permissions: { "tab.dashboard": allowed } },
+      { tabs: { dashboard: allowed } },
+    ]) {
+      expect(getUserPermissions({ permissionConfig }).tabAccess.chat).toBe(allowed);
+    }
+  });
+  it.each([true, false])("lets Chat (%s) differ from Jobs", (chat) => {
+    const permissionConfig = toStoredConfig({ "tab.chat": chat, "tab.dashboard": !chat });
+    const access = getUserPermissions({ permissionConfig }).tabAccess;
+    expect(access.chat).toBe(chat);
+    expect(access.dashboard).toBe(!chat);
+  });
+});
+
 it("preserves existing Sheet tool access but respects an explicit denial", () => {
   expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.upload": true }) })["drawings.sheetTools"]).toBe(true);
   expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.sheetTools": false, "drawings.upload": true }) })["drawings.sheetTools"]).toBe(false);

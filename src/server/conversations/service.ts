@@ -39,11 +39,11 @@ export function checkConversationUser(user: RequestUser | null) {
   if (
     !user.organizationId ||
     user.organizationAccessStatus !== "approved" ||
-    !userCan(user, "tab.dashboard")
+    !(userCan(user, "tab.dashboard") || userCan(user, "tab.chat"))
   )
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Approved organization and Jobs access are required.",
+      message: "Approved organization and Jobs or Chat access are required.",
     });
   return { ...user, organizationId: user.organizationId };
 }
@@ -104,7 +104,7 @@ export async function conversationPeople(userId: string) {
     )
     .limit(1000);
   return (rows as RequestUser[])
-    .filter((v) => v.id !== user.id && userCan(v, "tab.dashboard"))
+    .filter((v) => v.id !== user.id && (userCan(v, "tab.dashboard") || userCan(v, "tab.chat")))
     .map((v) => ({
       id: v.id,
       name: v.name ?? v.email,
@@ -132,7 +132,7 @@ export async function createConversation(
       (v) =>
         v.organizationId !== user.organizationId ||
         v.organizationAccessStatus !== "approved" ||
-        !userCan(v, "tab.dashboard"),
+        !(userCan(v, "tab.dashboard") || userCan(v, "tab.chat")),
     )
   )
     throw new TRPCError({
