@@ -68,7 +68,7 @@ export function AutoHyperlinkDialog(props: {
           knownTags = [],
           sheetNumbers = [],
           warnings = [],
-        } = await utils.drawingsWorkspace.equipmentSources.fetch({
+        } = await utils.drawingsWorkspace.autoHyperlinkSources.fetch({
           sheetId: input.sheetId,
         });
         issues.push(...warnings);

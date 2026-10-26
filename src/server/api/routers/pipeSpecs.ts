@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import { pipeSpecSchema, pipeSystemCode, type PipeSpec } from "~/lib/pipe-spec";
 import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
-import { userCan } from "~/server/auth/permissions";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import type { db } from "~/server/db";
 import { pipeSystemSpecs } from "~/server/db/schema";
 import { pricingJobs as jobs } from "~/server/job-pricing-schema";
@@ -121,6 +121,8 @@ export const pipeSpecsRouter = createTRPCRouter({
   assessSpecMaterials: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      assertCan(ctx.user, "drawings.view");
+      assertCan(ctx.user, "drawings.sheetTools");
       const context = await getSpecificationContext(userIdOf(ctx), input.jobId);
       if (!context.folderId || !context.sources.length)
         throw new TRPCError({code: "BAD_REQUEST", message: "Add documents to this job’s Specifications folder first."});

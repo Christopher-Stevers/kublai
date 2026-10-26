@@ -521,6 +521,7 @@ export async function getDrawingWorkspace(
     jobId: access.sheet.jobId,
     actor: { id: access.actor.id, name: access.actor.name },
     canManage: access.actor.canManage,
+    canUseSheetTools: userCan(access.user, "drawings.sheetTools"),
     canAnnotate: access.canAnnotate,
     documentSource: Boolean(access.sheet.documentVersionId),
     entities: visible,

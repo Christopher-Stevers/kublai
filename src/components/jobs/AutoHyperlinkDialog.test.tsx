@@ -11,7 +11,7 @@ vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
       drawingsWorkspace: {
-        equipmentSources: { fetch: mock.sources },
+        autoHyperlinkSources: { fetch: mock.sources },
         equipmentMatchesBatch: { fetch: mock.matches },
       },
     }),

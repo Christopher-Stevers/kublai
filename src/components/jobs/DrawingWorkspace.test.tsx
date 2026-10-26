@@ -81,6 +81,7 @@ vi.mock("~/trpc/react", () => ({
       notifications: {
         useQuery: () => ({ data: [], error: null, isLoading: false }),
       },
+      autoHyperlinkSave: { useMutation: () => ({ mutateAsync: mocks.save }) },
       save: { useMutation: () => ({ mutateAsync: mocks.save }) },
       metadata: { useMutation: () => ({ mutateAsync: mocks.metadata }) },
       archive: { useMutation: () => ({ mutateAsync: mocks.archive }) },
@@ -304,6 +305,7 @@ function fixture(): Workspace {
     sheetId,
     jobId,
     canManage: true,
+    canUseSheetTools: true,
     actor: { id: "tim", name: "Tim" },
     members: [
       { id: "tim", name: "Tim" },
@@ -567,6 +569,16 @@ describe("drawing workspace workflows", () => {
     const saved = start();
     act(() => saved.toolControls?.onCalibrationEnd?.(true));
     expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
+  });
+
+  it("disables every Sheet tool when permission is denied, while keeping drawing controls", () => {
+    mocks.data!.canUseSheetTools = false;
+    open();
+    openMenu("More");
+    for (const name of ["Auto Hyperlink", "Legend Items", "Super Spec Material", "Super Label", "Super scale"]) {
+      expect(screen.getByRole("menuitem", { name })).toHaveAttribute("data-disabled");
+    }
+    expect(screen.getByRole("menuitem", { name: "Fit to screen" })).not.toHaveAttribute("data-disabled");
   });
 
   it("offers Super scale under More", () => {

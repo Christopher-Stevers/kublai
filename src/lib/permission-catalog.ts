@@ -99,6 +99,7 @@ export const PERMISSION_GROUPS = [
     icon: "map",
     permissions: [
       { key: "drawings.view", label: "Access drawings card", description: "Show the Drawings card and open drawing folders, sheets and their workspace." },
+      { key: "drawings.sheetTools", label: "Use Sheet tools", description: "Use everything under Drawings → More → Sheet: Auto Hyperlink, Legend Items, Super Spec Material, Super Label and Super Scale. Existing editing permissions still apply." },
       { key: "drawings.upload", label: "Upload drawings", description: "Upload drawing PDFs, create folders and rename drawings and floors. Does not allow deleting drawings." },
       { key: "drawings.delete", label: "Delete drawings", description: "Delete drawing sheets, drawing folders and uploaded floor plans." },
     ],
@@ -184,6 +185,7 @@ const all = (value: boolean) =>
 export const STANDARD_DEFAULTS: PermissionMap = {
   ...all(false),
   "drawings.view": true,
+  "drawings.sheetTools": true,
   "financial.view": true,
   "tab.dashboard": true,
   "tab.catalogue": true,

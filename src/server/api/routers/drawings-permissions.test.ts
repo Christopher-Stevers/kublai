@@ -8,6 +8,8 @@ vi.mock("~/server/rooms/tiles", () => ({
   ensureDrawingTiles: vi.fn(),
   uploadsFromImageUrls: vi.fn(() => []),
 }));
+import { drawingsWorkspaceRouter } from "./drawingsWorkspace";
+import { pipeSpecsRouter } from "./pipeSpecs";
 import { drawingsRouter } from "./drawings";
 import { roomsRouter } from "./rooms";
 import type { createTRPCContext } from "~/server/api/trpc";
@@ -36,6 +38,8 @@ function setup(permissions: Partial<PermissionMap>) {
   } as unknown as Awaited<ReturnType<typeof createTRPCContext>>;
   return {
     db,
+    workspace: drawingsWorkspaceRouter.createCaller(ctx),
+    specs: pipeSpecsRouter.createCaller(ctx),
     drawings: drawingsRouter.createCaller(ctx),
     rooms: roomsRouter.createCaller(ctx),
   };
@@ -95,4 +99,25 @@ describe("drawing permission enforcement", () => {
     });
     expect(db.select).toHaveBeenCalledOnce();
   });
+});
+
+it("blocks all Sheet tool routes before reading data when disabled", async () => {
+  const { workspace, specs, db } = setup({ "drawings.view": true, "drawings.upload": true, "drawings.sheetTools": false });
+  const boxes = { title: { left: 0, top: 0, right: 1, bottom: 1 }, number: { left: 0, top: 0, right: 1, bottom: 1 } };
+  for (const request of [
+    () => workspace.superLabelSettings({ sheetId: id }),
+    () => workspace.saveSuperLabelBoxes({ sheetId: id, boxes }),
+    () => workspace.applySuperLabel({ sheetId: id, targetId: id, boxes }),
+    () => workspace.legendItems({ sheetId: id }),
+    () => workspace.scanLegend({ sheetId: id, sourceSheetId: id }),
+    () => workspace.updateLegendItem({ sheetId: id, id, revision: 1, data: null }),
+    () => workspace.superScaleLatest({ sheetId: id }),
+    () => workspace.superScaleStart({ sheetId: id, id }),
+    () => workspace.superScaleCancel({ sheetId: id, id }),
+    () => workspace.autoHyperlinkSources({ sheetId: id }),
+    () => workspace.autoHyperlinkSave({} as never),
+    () => workspace.saveLegendItems({} as never),
+    () => specs.assessSpecMaterials({ jobId: id }),
+  ]) await expect(request()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  expect(db.select).not.toHaveBeenCalled();
 });

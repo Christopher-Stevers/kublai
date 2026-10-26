@@ -723,6 +723,7 @@ export function DrawingWorkspace({
     };
   }, [source.id, source.imageUrl, resolveAssetUrl, selectTool]);
 
+  const autoHyperlinkSave = api.drawingsWorkspace.autoHyperlinkSave.useMutation();
   const saveMutation = api.drawingsWorkspace.save.useMutation();
   const archiveMutation = api.drawingsWorkspace.archive.useMutation();
   const commentMutation = api.drawingsWorkspace.comment.useMutation();
@@ -1656,14 +1657,14 @@ export function DrawingWorkspace({
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
-      ...(!data.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !online, run: () => setLegendOpen(true) }] : []),
-      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !writable || !online, run: openAutoHyperlink },
+      ...(!data.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !data.canUseSheetTools || !online, run: () => setLegendOpen(true) }] : []),
+      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !data.canUseSheetTools || !writable || !online, run: openAutoHyperlink },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
-      ...(!data.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
-      ...(!data.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !data.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
-      ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
+      ...(!data.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !data.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
+      ...(!data.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
+      ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, run: () => { setPanel(id); setForm(null); } };
@@ -1693,13 +1694,13 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
-      {legendOpen && <LegendItemsDialog sheetId={sheet.id} sourceId={sourceId} onClose={()=>setLegendOpen(false)}
+      {data.canUseSheetTools && legendOpen && <LegendItemsDialog sheetId={sheet.id} sourceId={sourceId} onClose={()=>setLegendOpen(false)}
         onSource={(id,box)=>{
           const target=data.jobSheets.find(s=>s.id===id);
           if(id===sourceId) setNavigate({center:{x:(box.left+box.right)/2,y:(box.top+box.bottom)/2},zoom:Math.min(50,0.8/Math.max(box.right-box.left,box.bottom-box.top)),requestId:crypto.randomUUID()});
           else if(target) openLinkUrl(equipmentDrawingDestination({jobId,setId:target.setId,sheetId:id,sourceSheetId:id,name:target.name,tag:"Legend",box:{...box,text:"Legend"}}).href);
         }}/>}
-      {autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
+      {data.canUseSheetTools && autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
         readWords={async () => {
           if (words.words.length) return words.words;
           if (!pdf) return [];
@@ -1708,7 +1709,7 @@ export function DrawingWorkspace({
           return index.words;
         }}
         save={async value => {
-          const entity = await saveMutation.mutateAsync({ ...value, expectedUserId: data.actor.id });
+          const entity = await autoHyperlinkSave.mutateAsync({ ...value, expectedUserId: data.actor.id });
           patchEntity(entity);
           return entity;
         }}
@@ -1746,9 +1747,9 @@ export function DrawingWorkspace({
           </div>
         </DialogContent>
       </Dialog>
-      {superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
-      {superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
-      {superScaleOpen && (
+      {data.canUseSheetTools && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
+      {data.canUseSheetTools && superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
+      {data.canUseSheetTools && superScaleOpen && (
         <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
       {appearanceOpen && (
@@ -3455,20 +3456,20 @@ export function DrawingWorkspace({
                 <DropdownMenuLabel className={MENU_SECTION}>
                   Sheet
                 </DropdownMenuLabel>
-                <DropdownMenuItem className={MENU_ITEM} disabled={!writable || !online} onSelect={openAutoHyperlink}>
+                <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !writable || !online} onSelect={openAutoHyperlink}>
                   <MenuTile icon={Link2Icon} />
                   Auto Hyperlink
                 </DropdownMenuItem>
-                {!data.documentSource && <DropdownMenuItem className={MENU_ITEM} disabled={!online} onSelect={()=>{setMoreOpen(false);setLegendOpen(true);}}>
+                {!data.documentSource && <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setLegendOpen(true);}}>
                   <MenuTile icon={BookOpenIcon} />
                   Legend Items
                 </DropdownMenuItem>}
                 {!data.documentSource && (
                   <>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!online} onSelect={()=>{setMoreOpen(false);setSuperSpecMaterialOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Spec Material</DropdownMenuItem>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canManage || !online} onSelect={()=>{setMoreOpen(false);setSuperLabelOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Label</DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setSuperSpecMaterialOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Spec Material</DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !data.canManage || !online} onSelect={()=>{setMoreOpen(false);setSuperLabelOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Label</DropdownMenuItem>
                   <DropdownMenuItem className={MENU_ITEM}
-                    disabled={!data.canManage || !online}
+                    disabled={!data.canUseSheetTools || !data.canManage || !online}
                     onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>
                     <MenuTile icon={RulerIcon} />
                     Super scale

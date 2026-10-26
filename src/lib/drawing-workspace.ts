@@ -428,6 +428,7 @@ export type DrawingWorkspace = {
   /** Opaque revision of this account's complete workspace dependencies. */
   revision?: string;
   canAnnotate?: boolean;
+  canUseSheetTools?: boolean;
   documentSource?: boolean;
   sheetId: string;
   jobId: string;

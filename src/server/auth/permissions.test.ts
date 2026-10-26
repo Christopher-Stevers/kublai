@@ -167,3 +167,8 @@ describe("material list permissions", () => {
     keys.forEach((key) => expect(resolved[key]).toBe(key === selected));
   });
 });
+
+it("preserves existing Sheet tool access but respects an explicit denial", () => {
+  expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.upload": true }) })["drawings.sheetTools"]).toBe(true);
+  expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.sheetTools": false, "drawings.upload": true }) })["drawings.sheetTools"]).toBe(false);
+});
