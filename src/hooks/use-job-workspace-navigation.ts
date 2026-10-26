@@ -13,6 +13,7 @@ import {
 
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
+const RESTORE_EVENT = "foremenhq:workspace-restore";
 const RESET_EVENT = "foremenhq:workspace-root";
 const HISTORY_KEY = "foremenhqWorkspace";
 type WorkspaceHistory = {
@@ -60,6 +61,13 @@ export function resetJobWorkspaceNavigation() {
   window.dispatchEvent(new Event(RESET_EVENT));
 }
 
+/** Restore a saved logo destination without reloading active downloads. */
+export function restoreJobWorkspaceNavigationFromSnapshot() {
+  const saved = currentSnapshotState()?.workspace ?? null;
+  writeHistory("replaceState", saved, window.location.hash);
+  window.dispatchEvent(new Event(RESTORE_EVENT));
+}
+
 export function useJobWorkspaceNavigation() {
   const sandbox = useTutorialSandbox();
   const [location, setLocation] = useState<JobWorkspaceLocation | null>(null);
@@ -89,8 +97,13 @@ export function useJobWorkspaceNavigation() {
     // over localStorage, which may describe a later screen in the stack.
     restore(entry?.location ?? null);
     const reset = () => restore(null);
+    const restoreSaved = () => restore(readHistory()?.location ?? null);
     window.addEventListener(RESET_EVENT, reset);
-    return () => window.removeEventListener(RESET_EVENT, reset);
+    window.addEventListener(RESTORE_EVENT, restoreSaved);
+    return () => {
+      window.removeEventListener(RESET_EVENT, reset);
+      window.removeEventListener(RESTORE_EVENT, restoreSaved);
+    };
   }, [restore, sandbox]);
 
   const navigate = useCallback(

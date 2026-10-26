@@ -56,7 +56,7 @@ import {
   type HeaderBackStateDetail,
 } from "~/lib/header-back-events";
 import { parentRoute } from "~/lib/parent-navigation";
-import { resetJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
+import { resetJobWorkspaceNavigation, restoreJobWorkspaceNavigationFromSnapshot } from "~/hooks/use-job-workspace-navigation";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -120,8 +120,13 @@ function HeaderFrame({
     window.history.replaceState(state, "");
     const target = new URL(landingPage, window.location.origin);
     const sameRoute = target.pathname === window.location.pathname && target.search === window.location.search;
-    window.location.assign(landingPage);
-    if (sameRoute) window.location.reload();
+    if (sameRoute) {
+      window.history.pushState(state, "", landingPage);
+      restoreJobWorkspaceNavigationFromSnapshot();
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } else {
+      router.push(landingPage);
+    }
   };
   const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
     ...(tabAccess.dashboard

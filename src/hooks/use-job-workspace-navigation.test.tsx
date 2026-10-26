@@ -2,7 +2,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getLastJobWorkspaceLocation, setLastJobWorkspaceLocation, type JobWorkspaceLocation } from "~/lib/job-workspace-last-option";
-import { resetJobWorkspaceNavigation, useJobWorkspaceNavigation } from "./use-job-workspace-navigation";
+import { resetJobWorkspaceNavigation, restoreJobWorkspaceNavigationFromSnapshot, useJobWorkspaceNavigation } from "./use-job-workspace-navigation";
 import { makeSnapshotSource } from "~/lib/snapshot-source";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
 
@@ -84,4 +84,17 @@ it("returns saved tool-request locations to the shared material lists", () => {
   expect(result.current.location).toEqual(list);
   act(() => result.current.back());
   expect(result.current.location).toEqual(lists);
+});
+
+it("restores the saved logo destination without remounting the workspace", () => {
+  const captured = { ...job, jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" };
+  const source = makeSnapshotSource("/jobs", { version: 1, workspace: captured }, "Saved job");
+  const { result } = renderHook(useJobWorkspaceNavigation);
+  act(() => result.current.navigate(list));
+  act(() => {
+    window.history.pushState(nextState, "", source.href);
+    restoreJobWorkspaceNavigationFromSnapshot();
+  });
+  expect(result.current.location).toEqual(captured);
+  expect(window.history.state).toMatchObject(nextState);
 });
