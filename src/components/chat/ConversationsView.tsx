@@ -207,9 +207,9 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
       setUnavailableJob(id);
       setRemembered(null);
       setChatsOpen(true);
-      router.replace("/jobs/chat", { scroll: false });
+      router.replace(initialJobId ? "/jobs" : "/jobs/chat", { scroll: false });
     },
-    [router, setRemembered, setChatsOpen],
+    [router, setRemembered, setChatsOpen, initialJobId],
   );
   const create = api.conversations.create.useMutation();
   const availableJobs: { id: string; name: string }[] = jobs
@@ -229,7 +229,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     setChatsOpen(false);
     setDrag(null);
     router.push(
-      `/jobs/chat?${chat.kind === "job" ? "job" : "conversation"}=${encodeURIComponent(chat.id)}`,
+      `/jobs/${initialJobId ? `${encodeURIComponent(initialJobId)}/chat` : "chat"}?${chat.kind === "job" ? "job" : "conversation"}=${encodeURIComponent(chat.id)}`,
       { scroll: false },
     );
   };

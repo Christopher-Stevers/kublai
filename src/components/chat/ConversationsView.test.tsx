@@ -238,6 +238,23 @@ it("keeps notification controls out of person and group chats", () => {
   ).toBeNull();
 });
 
+it("keeps conversation switching within a job instead of entering the restricted main Chat page", () => {
+  const jobId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  mocks.params = "";
+  render(<ConversationsView initialJobId={jobId} />);
+  expect(screen.getByTestId("job-thread")).toHaveAttribute("data-job", jobId);
+  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+  fireEvent.click(screen.getByRole("button", { name: /Alex/ }));
+  expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/chat?conversation=direct-other`, { scroll: false });
+});
+
+it("returns to Jobs if the job chat becomes unavailable", () => {
+  mocks.params = "";
+  render(<ConversationsView initialJobId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
+  fireEvent.click(screen.getByRole("button", { name: "Job unavailable" }));
+  expect(mocks.replace).toHaveBeenCalledWith("/jobs", { scroll: false });
+});
+
 it("opens direct chats and job chats in the same workspace", () => {
   const view = render(<ConversationsView />);
   fireEvent.click(screen.getByRole("button", { name: "Chat" }));
