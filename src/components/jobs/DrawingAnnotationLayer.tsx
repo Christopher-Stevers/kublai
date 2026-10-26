@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, type Ref } from "react";
+import { memo, useState, type Ref } from "react";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import type { LengthUnit, SheetScale } from "~/lib/sheet-measure";
 import {
@@ -12,6 +12,8 @@ import { DrawingAnnotationSvg } from "./DrawingAnnotationSvg";
 
 type DrawingAnnotationLayerProps = {
   annotations: DrawingEntity[];
+  /** Hold expensive screen-sized labels steady between zoom resolution steps. */
+  moving?: boolean;
   aspect: number;
   selectedId?: string | null;
   /** A markup being held before it is picked up; it shakes. */
@@ -33,6 +35,8 @@ type DrawingAnnotationLayerProps = {
   canEditAnnotation?: (entityId: string) => boolean;
   /** Live SVG camera used by the viewer; printable layers keep the full sheet. */
   viewportRef?: Ref<SVGSVGElement>;
+  /** Separate paint surface for draft/edited ink; moves with the saved camera. */
+  activeViewportRef?: Ref<SVGSVGElement>;
   viewBox?: string;
   /** Viewer owns a buffered camera imperatively; React must not reset it on pan. */
   bufferedViewport?: boolean;
@@ -45,6 +49,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   data,
   selected,
   held = false,
+  animate = true,
   interactive,
   canEdit,
   aspect,
@@ -62,6 +67,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   data: DrawingMarkup | null;
   selected: boolean;
   held?: boolean;
+  animate?: boolean;
   canEdit: boolean;
 } & Pick<
   DrawingAnnotationLayerProps,
@@ -115,8 +121,10 @@ const SavedAnnotation = memo(function SavedAnnotation({
       // A tap must not paint the browser's grey highlight or focus box around the markup.
       className={
         !interactive
-          ? "pointer-events-none [&_*]:!pointer-events-none outline-none"
-          : selected || held ? "annotation-shake outline-none" : "outline-none"
+          ? "pointer-events-none outline-none [&_*]:!pointer-events-none"
+          : animate && (selected || held)
+            ? "annotation-shake outline-none"
+            : "outline-none"
       }
       style={{
         pointerEvents: interactive ? "visiblePainted" : "none",
@@ -174,9 +182,15 @@ const SavedAnnotation = memo(function SavedAnnotation({
                 stroke="transparent"
                 // Measurement selection stays within three screen pixels of the line,
                 // even while the SVG camera zooms without a React render.
-                data-measurement-hit-area={data.type === "dimension" ? "" : undefined}
-                strokeWidth={data.type === "dimension" ? 6 : Math.max(18, data.width + 12)}
-                vectorEffect={data.type === "dimension" ? "non-scaling-stroke" : undefined}
+                data-measurement-hit-area={
+                  data.type === "dimension" ? "" : undefined
+                }
+                strokeWidth={
+                  data.type === "dimension" ? 6 : Math.max(18, data.width + 12)
+                }
+                vectorEffect={
+                  data.type === "dimension" ? "non-scaling-stroke" : undefined
+                }
                 pointerEvents={data.type === "dimension" ? "stroke" : undefined}
               />
             ) : (
@@ -188,9 +202,15 @@ const SavedAnnotation = memo(function SavedAnnotation({
                 stroke="transparent"
                 // Measurement selection stays within three screen pixels of the line,
                 // even while the SVG camera zooms without a React render.
-                data-measurement-hit-area={data.type === "dimension" ? "" : undefined}
-                strokeWidth={data.type === "dimension" ? 6 : Math.max(18, data.width + 12)}
-                vectorEffect={data.type === "dimension" ? "non-scaling-stroke" : undefined}
+                data-measurement-hit-area={
+                  data.type === "dimension" ? "" : undefined
+                }
+                strokeWidth={
+                  data.type === "dimension" ? 6 : Math.max(18, data.width + 12)
+                }
+                vectorEffect={
+                  data.type === "dimension" ? "non-scaling-stroke" : undefined
+                }
                 pointerEvents={data.type === "dimension" ? "stroke" : undefined}
               />
             ))}
@@ -309,6 +329,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
 
 export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   annotations,
+  moving = false,
   aspect,
   selectedId,
   heldId,
@@ -327,21 +348,46 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   showMoveArea = false,
   canEditAnnotation,
   viewportRef,
+  activeViewportRef,
   viewBox,
   bufferedViewport,
 }: DrawingAnnotationLayerProps) {
+  // Remember a captured edit so moving between paint surfaces does not replay
+  // the pickup shake on every start/release. Conditional state adjustment keeps
+  // this render state safe if React interrupts or retries a render.
+  const [editedId, setEditedId] = useState<string | null>(null);
+  const lastEditedId =
+    editing?.id ??
+    (selectedId === editedId || heldId === editedId ? editedId : null);
+  if (lastEditedId !== editedId) setEditedId(lastEditedId);
+  const [savedPixel, setSavedPixel] = useState(screenPixelSize);
+  if (
+    savedPixel !== screenPixelSize &&
+    (!moving ||
+      screenPixelSize / savedPixel > 1.5 ||
+      screenPixelSize / savedPixel < 0.67)
+  )
+    setSavedPixel(screenPixelSize);
   // Clip the live camera so offscreen ink/masks do not paint a huge sheet
   // surface. Printable layers can still extend beyond sheet edges.
-  const ink = (
+  // Keep tap/keyboard targets mounted during selection/hold. Only a captured
+  // edit moves to the active surface, after the viewer owns the pointer.
+  const isActive = (entity: DrawingEntity) => entity.id === editing?.id;
+  const split = bufferedViewport && Boolean(activeViewportRef);
+  const ink = (active: boolean) => (
     <svg
-      ref={viewportRef}
+      ref={active ? activeViewportRef : viewportRef}
       className={`pointer-events-none absolute inset-0 z-[3] h-full w-full ${viewBox || bufferedViewport ? "overflow-hidden" : "overflow-visible"}`}
       viewBox={viewBox ?? `0 0 1000 ${1000 * aspect}`}
-      aria-label="Drawing annotations"
+      aria-label={active ? "Active drawing annotations" : "Drawing annotations"}
     >
       {!hidden &&
         annotations
-          .filter((entity) => entity.visibility !== "archived")
+          .filter(
+            (entity) =>
+              entity.visibility !== "archived" &&
+              (!split || isActive(entity) === active),
+          )
           .map((entity) => {
             if (entity.kind !== "markup" && entity.kind !== "issue")
               return null;
@@ -357,7 +403,8 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
             const usesScreenSize =
               selected ||
               entity.kind === "issue" ||
-              Boolean(data?.type === "dimension" && data.parents) || Boolean(data?.pipeComponent);
+              Boolean(data?.type === "dimension" && data.parents) ||
+              Boolean(data?.pipeComponent);
             return (
               <SavedAnnotation
                 key={entity.id}
@@ -365,6 +412,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 data={data}
                 selected={selected}
                 held={interactive && entity.id === heldId}
+                animate={!active && entity.id !== editedId}
                 interactive={interactive}
                 canEdit={selected && (canEditAnnotation?.(entity.id) ?? true)}
                 aspect={aspect}
@@ -373,7 +421,9 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 showAngles={showAngles}
                 onSelect={onSelect}
                 onActivate={onActivate}
-                screenPixelSize={usesScreenSize ? screenPixelSize : 1}
+                screenPixelSize={
+                  usesScreenSize ? (active ? screenPixelSize : savedPixel) : 1
+                }
                 sheetPixelSize={
                   data?.type === "dimension" && data.parents
                     ? sheetPixelSize
@@ -384,7 +434,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
               />
             );
           })}
-      {draft && draft.points.length > 0 && (
+      {(!split || active) && draft && draft.points.length > 0 && (
         <g opacity={0.75}>
           <DrawingAnnotationSvg
             data={draft}
@@ -411,9 +461,23 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
       )}
     </svg>
   );
-  return bufferedViewport ? (
-    <div data-annotation-pan-surface="" className="pointer-events-none absolute left-0 top-0 z-[3] h-full w-full">
-      {ink}
-    </div>
-  ) : ink;
+  if (!bufferedViewport) return ink(false);
+  return (
+    <>
+      <div
+        data-annotation-pan-surface=""
+        className="pointer-events-none absolute top-0 left-0 z-[3] h-full w-full"
+      >
+        {ink(false)}
+      </div>
+      {split && (draft ?? editing) && (
+        <div
+          data-annotation-pan-surface=""
+          className="pointer-events-none absolute top-0 left-0 z-[3] h-full w-full"
+        >
+          {ink(true)}
+        </div>
+      )}
+    </>
+  );
 });

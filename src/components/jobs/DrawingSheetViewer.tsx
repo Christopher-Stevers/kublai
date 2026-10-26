@@ -236,6 +236,7 @@ export function DrawingSheetViewer({
   const overlayPaint = useRef<((view: View) => void) | null>(null);
   const pdfPaint = useRef<((view: View) => void) | null>(null);
   const annotationViewport = useRef<SVGSVGElement>(null);
+  const activeAnnotationViewport = useRef<SVGSVGElement>(null);
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
@@ -257,6 +258,7 @@ export function DrawingSheetViewer({
   const entryViewport = useRef(initialViewport);
   const [view, setView] = useState<View>(REST);
   const [moving, setMoving] = useState(false);
+  const movingLive = useRef(false);
   const [pdfLinks, setPdfLinks] = useState<{
     key: string;
     links: DrawingPdfLink[];
@@ -1316,7 +1318,8 @@ export function DrawingSheetViewer({
       };
       const camera = drawingVectorViewBox(fit, size, live.current);
       if (camera) {
-        paintDrawingAnnotationCamera(annotationViewport.current, fit, size, live.current);
+        paintDrawingAnnotationCamera(annotationViewport.current, fit, size, live.current, movingLive.current);
+        paintDrawingAnnotationCamera(activeAnnotationViewport.current, fit, size, live.current, false, false);
         pipeViewport.current?.setAttribute("viewBox", camera);
       }
       const measureCamera = drawingVectorViewBox(
@@ -1354,6 +1357,7 @@ export function DrawingSheetViewer({
     live.current = clamp(next);
     publishViewport();
     frameRequest.current ||= requestAnimationFrame(paint);
+    movingLive.current = !settle;
     setMoving(!settle);
     if (settle) {
       if (commitTimer.current) clearTimeout(commitTimer.current);
@@ -2922,7 +2926,9 @@ export function DrawingSheetViewer({
         {fit && (
           <DrawingAnnotationLayer
             viewportRef={annotationViewport}
+            activeViewportRef={activeAnnotationViewport}
             bufferedViewport
+            moving={moving}
             annotations={visibleAnnotations}
             interactive={!viewing}
             aspect={fit.aspect}

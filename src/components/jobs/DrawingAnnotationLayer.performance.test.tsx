@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
@@ -199,4 +200,82 @@ describe("saved markup reuse during gestures", () => {
     expect(newActivate).toHaveBeenCalledOnce();
     expect(oldActivate).not.toHaveBeenCalled();
   });
+});
+
+it("paints draft and captured edits independently without remounting tap targets on selection", () => {
+  const annotations = [markup("one"), markup("two")];
+  const viewportRef = createRef<SVGSVGElement>(),
+    activeViewportRef = createRef<SVGSVGElement>();
+  const props = {
+    annotations,
+    aspect: 0.75,
+    bufferedViewport: true,
+    viewportRef,
+    activeViewportRef,
+  };
+  const { container, rerender } = render(<DrawingAnnotationLayer {...props} />);
+  const target = container.querySelector('[data-annotation-id="one"]');
+  expect(activeViewportRef.current).toBeNull();
+  rerender(<DrawingAnnotationLayer {...props} selectedId="one" heldId="one" />);
+  expect(container.querySelector('[data-annotation-id="one"]')).toBe(target);
+  const data = (annotations[0] as Extract<DrawingEntity, { kind: "markup" }>)
+    .data;
+  draw.mockClear();
+  rerender(<DrawingAnnotationLayer {...props} selectedId="one" draft={data} />);
+  expect(draw).toHaveBeenCalledExactlyOnceWith(data);
+  expect(activeViewportRef.current?.parentElement).not.toBe(
+    viewportRef.current?.parentElement,
+  );
+  expect(
+    viewportRef.current?.querySelectorAll("[data-annotation-id]"),
+  ).toHaveLength(2);
+  const editing = { id: "one", data: { ...data, stroke: "#9333ea" } };
+  rerender(
+    <DrawingAnnotationLayer {...props} selectedId="one" editing={editing} />,
+  );
+  expect(
+    viewportRef.current?.querySelectorAll("[data-annotation-id]"),
+  ).toHaveLength(1);
+  expect(
+    activeViewportRef.current?.querySelectorAll("[data-annotation-id]"),
+  ).toHaveLength(1);
+  expect(
+    activeViewportRef.current?.querySelector(".annotation-shake"),
+  ).toBeNull();
+  rerender(<DrawingAnnotationLayer {...props} selectedId="one" />);
+  expect(activeViewportRef.current).toBeNull();
+  expect(container.querySelector('[data-annotation-id="one"]')).not.toHaveClass(
+    "annotation-shake",
+  );
+  expect(
+    viewportRef.current?.querySelectorAll("[data-annotation-id]"),
+  ).toHaveLength(2);
+});
+
+it("reuses measurement labels between zoom steps and restores exact screen sizes on settle", () => {
+  const measure = markup("measure", {
+    type: "dimension",
+    points: [
+      { x: 0.1, y: 0.2 },
+      { x: 0.4, y: 0.2 },
+    ],
+    parents: [null, 0],
+  });
+  const props = { annotations: [measure], aspect: 0.75, screenPixelSize: 1 };
+  const { container, rerender } = render(<DrawingAnnotationLayer {...props} />);
+  const label = () =>
+    container.querySelector("[data-measurement-segment] text");
+  const initial = label()?.getAttribute("font-size");
+  draw.mockClear();
+  for (const size of [0.95, 0.9, 0.85, 0.8])
+    rerender(
+      <DrawingAnnotationLayer {...props} moving screenPixelSize={size} />,
+    );
+  expect(draw).not.toHaveBeenCalled();
+  expect(label()?.getAttribute("font-size")).toBe(initial);
+  rerender(<DrawingAnnotationLayer {...props} screenPixelSize={0.8} />);
+  expect(draw).toHaveBeenCalledOnce();
+  expect(Number(label()?.getAttribute("font-size"))).toBeCloseTo(
+    Number(initial) * 0.8,
+  );
 });

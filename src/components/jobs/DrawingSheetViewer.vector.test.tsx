@@ -114,7 +114,7 @@ describe("crisp drawing overlays", () => {
       expect(annotations.getAttribute("viewBox")).toBe(
         drawingVectorViewBox(
           { width: 390, height: 292.5 },
-          { width: 585, height: 795 },
+          { width: 780, height: 990 },
           { scale, x: 0, y: 0 },
         ),
       );
@@ -176,22 +176,18 @@ describe("crisp drawing overlays", () => {
       x: (0.5 - viewport.center.x) * 390 * scale,
       y: (0.5 - viewport.center.y) * 292.5 * scale,
     };
-    const expected = drawingVectorViewBox(
-      { width: 390, height: 292.5 },
-      { width: 585, height: 795 },
-      view,
-    )!
-      .split(" ")
-      .map(Number);
-    const actual = annotations.getAttribute("viewBox")!.split(" ").map(Number);
-    const shift = /translate3d\(([^p]+)px, ([^p]+)px/.exec(annotations.parentElement!.style.transform)!;
-    // A device-pixel camera anchor plus compositor translation must equal
-    // the exact live camera, including fractional pointer positions.
-    actual[0]! -= Number(shift[1]) * actual[2]! / 585;
-    actual[1]! -= Number(shift[2]) * actual[3]! / 795;
-    expected.forEach((value, index) =>
-      expect(actual[index]).toBeCloseTo(value, 10),
-    );
+    const surface = annotations.parentElement!;
+    const [left, top, width, height] = annotations.getAttribute("viewBox")!.split(" ").map(Number);
+    const shift = /translate3d\(([^p]+)px, ([^p]+)px/.exec(surface.style.transform)!;
+    const zoom = Number(/scale\(([^)]+)/.exec(surface.style.transform)?.[1] ?? 1);
+    // Check actual projected coordinates, including the temporary compositor
+    // zoom; neither a rounded anchor nor a throttled React render may drift.
+    for (const [x, y] of [[500, 375], [230, 170], [800, 610]]) {
+      const screenX = (x! - left!) / width! * parseFloat(surface.style.width) * zoom + parseFloat(surface.style.left) + Number(shift[1]);
+      const screenY = (y! - top!) / height! * parseFloat(surface.style.height) * zoom + parseFloat(surface.style.top) + Number(shift[2]);
+      expect(screenX).toBeCloseTo(195 + view.x + (x! - 500) * .39 * scale, 9);
+      expect(screenY).toBeCloseTo(300 + view.y + (y! - 375) * .39 * scale, 9);
+    }
     expect(annotations.querySelector("text")).toBe(text);
   });
 });

@@ -416,9 +416,9 @@ describe("drawing annotation tools in the real viewer", () => {
     fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
     await hold();
     fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
-    await waitFor(() => expect(shape.getAttribute("x")).toBe("350"));
+    await waitFor(() => expect(container.querySelector('[data-annotation-id="markup"] rect:not([data-annotation-move-area])')!.getAttribute("x")).toBe("350"));
     rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} tool="select" annotations={[entity]} selectedId={entity.id} canEditAnnotation={() => false} onUpdate={onUpdate} />);
-    expect(shape.getAttribute("x")).toBe("250");
+    expect(container.querySelector('[data-annotation-id="markup"] rect:not([data-annotation-move-area])')!.getAttribute("x")).toBe("250");
     fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
     expect(onUpdate).not.toHaveBeenCalled();
   });
@@ -431,7 +431,7 @@ describe("drawing annotation tools in the real viewer", () => {
     const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
     fireEvent.pointerDown(shape, { clientX: 250, clientY: 250, pointerId: 1, button: 0 });
     fireEvent.pointerMove(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
-    expect(shape.getAttribute("x")).toBe("250");
+    expect(container.querySelector('[data-annotation-id="markup"] rect:not([data-annotation-move-area])')!.getAttribute("x")).toBe("250");
     fireEvent.pointerUp(frame, { clientX: 330, clientY: 290, pointerId: 1, button: 0 });
     fireEvent.keyDown(window, { key: "Delete" });
     expect(onUpdate).not.toHaveBeenCalled();

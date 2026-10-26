@@ -1,8 +1,7 @@
 import { DrawingMeasureNode } from "./DrawingMeasureNode";
-import { useId } from "react";
+import { measurementStrokeBands } from "~/lib/measurement-stroke-bands";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
 import {
-  drawingLinePath,
   drawingMarkupEdges,
   drawingMeasurement,
   drawingBounds,
@@ -35,7 +34,6 @@ export function DrawingMeasureRunSvg({
   screenPixelSize: number;
   sheetPixelSize?: number;
 }) {
-  const id = `saved-measure-${useId().replace(/:/g, "")}`;
   const style = sheetMeasureStyle(
     screenPixelSize,
     sheetPixelSize ?? screenPixelSize,
@@ -48,18 +46,11 @@ export function DrawingMeasureRunSvg({
     y: point.y * 1000 * aspect,
   }));
   const bounds = drawingBounds(points);
-  const path = drawingLinePath(data, aspect);
-  // Only the line is masked. Keep its fade surface local to the run, including
-  // round caps/halo; a full-sheet mask per measurement wastes raster work.
-  const maskPadding = Math.max(style.arm * 1.2, line * 1.1) + screenPixelSize;
-  const maskBounds = {
-    x: bounds.left - maskPadding,
-    y: bounds.top - maskPadding,
-    width: bounds.right - bounds.left + maskPadding * 2,
-    height: bounds.bottom - bounds.top + maskPadding * 2,
-  };
   const edges = drawingMarkupEdges(data);
-  const angles = showAngles ? savedMeasureAngleArcs(data, aspect, screenPixelSize) : [];
+  const bands = measurementStrokeBands(points, edges, style.arm * 1.2);
+  const angles = showAngles
+    ? savedMeasureAngleArcs(data, aspect, screenPixelSize)
+    : [];
   const storedUnit = data.unit ?? sharedScale?.unit;
   const rawScale = data.scale ?? sharedScale?.unitsPerSheetWidth;
   const baseUnit = storedUnit === "ft" || storedUnit === "in" ? "ft" : "m";
@@ -74,51 +65,29 @@ export function DrawingMeasureRunSvg({
           : rawScale);
   return (
     <g opacity={data.opacity ?? 1} data-saved-measure-run="true">
-      <defs>
-        <radialGradient id={`${id}-fade`}>
-          <stop offset="0.2" stopColor="#000000" />
-          <stop offset="0.75" stopColor="#ffffff" />
-        </radialGradient>
-        <mask
-          id={`${id}-ends`}
-          maskUnits="userSpaceOnUse"
-          {...maskBounds}
-        >
-          <rect
-            {...maskBounds}
-            fill="#ffffff"
-          />
-          {points.map((point, index) => (
-            <circle
-              key={index}
-              cx={point.x}
-              cy={point.y}
-              r={style.arm * 1.2}
-              fill={`url(#${id}-fade)`}
-            />
-          ))}
-        </mask>
-      </defs>
-      <g mask={`url(#${id}-ends)`}>
-        <path
-          d={path}
-          fill="none"
-          stroke={halo}
-          strokeOpacity={0.85}
-          strokeWidth={line * 2.2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        <path
-          data-saved-measure-path="true"
-          d={path}
-          fill="none"
-          stroke={data.stroke}
-          strokeWidth={line}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </g>
+      {bands.map(
+        (path, index) =>
+          path && (
+            <g key={index} opacity={index === 3 ? 1 : (index + 0.5) / 3}>
+              <path
+                d={path}
+                fill="none"
+                stroke={halo}
+                strokeOpacity={0.85}
+                strokeWidth={line * 2.2}
+                strokeLinecap="butt"
+              />
+              <path
+                data-saved-measure-path={index === 3 ? "true" : undefined}
+                d={path}
+                fill="none"
+                stroke={data.stroke}
+                strokeWidth={line}
+                strokeLinecap="butt"
+              />
+            </g>
+          ),
+      )}
       {edges.map(({ from, to }) => {
         const a = points[from]!,
           b = points[to]!;
@@ -223,7 +192,15 @@ export function DrawingMeasureRunSvg({
       )}
       {points.map((point, index) => (
         <g key={index} opacity={0.6} data-saved-measure-node={index}>
-          <DrawingMeasureNode x={point.x} y={point.y} arm={style.arm} stroke={style.stroke} color={data.stroke} halo={halo} />
+          <DrawingMeasureNode
+            compact
+            x={point.x}
+            y={point.y}
+            arm={style.arm}
+            stroke={style.stroke}
+            color={data.stroke}
+            halo={halo}
+          />
         </g>
       ))}
     </g>
