@@ -57,11 +57,14 @@ export default function PackingSlipScanner({
   onSave,
   onCancel,
   onUpload,
+  documentKind = "packing slip",
 }: {
   onSave: (file: File) => Promise<boolean>;
   onCancel: () => void;
   /** Choose a saved photo or PDF instead, e.g. on a computer without a camera. */
   onUpload?: () => void;
+  /** Reuse camera capture for ordinary job documents. */
+  documentKind?: "packing slip" | "document";
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [pages, setPages] = useState<string[]>([]),
@@ -112,7 +115,7 @@ export default function PackingSlipScanner({
         typeof e === "object" && e && "name" in e ? String(e.name) : "";
       setError(
         name === "NotFoundError" || name === "OverconstrainedError"
-          ? "No camera found on this device. Upload a photo or PDF of the slip instead."
+          ? `No camera found on this device. Upload a photo or PDF of the ${documentKind} instead.`
           : name === "NotAllowedError"
             ? "Camera access is blocked. Allow the camera for this site, or upload a photo or PDF instead."
             : e instanceof Error
@@ -181,7 +184,7 @@ export default function PackingSlipScanner({
       try {
         if (!navigator.mediaDevices?.getUserMedia)
           throw Error(
-            "Live scanning is unavailable in this browser. Upload a photo or PDF of the slip instead.",
+            `Live scanning is unavailable in this browser. Upload a photo or PDF of the ${documentKind} instead.`,
           );
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
@@ -262,7 +265,7 @@ export default function PackingSlipScanner({
             setMessage(
               result.clipped
                 ? "Move back so all four corners of the page are in view."
-                : "Point the camera at the packing slip, with all four edges visible.",
+                : `Point the camera at the ${documentKind}, with all four edges visible.`,
             );
             return next(60);
           }
@@ -299,13 +302,16 @@ export default function PackingSlipScanner({
       stop();
       document.removeEventListener("visibilitychange", hidden);
     };
-  }, [mode, restart]);
+  }, [mode, restart, documentKind]);
 
   const save = async () => {
     setMode("saving");
     setError("");
     try {
-      pdf.current ??= await scanPdf(pages);
+      pdf.current ??= await scanPdf(
+        pages,
+        documentKind === "document" ? "Scanned document.pdf" : "Packing slip.pdf",
+      );
       if (await onSave(pdf.current)) {
         setMode("saved");
         setPages([]);
@@ -381,13 +387,13 @@ export default function PackingSlipScanner({
             ✓ Page {pages.length} captured.{" "}
             {mode === "saving"
               ? "Saving PDF…"
-              : "Check that the whole slip is readable."}
+              : `Check that the whole ${documentKind} is readable.`}
           </p>
           {/* Camera capture stays local until Done saves the PDF. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pages[pages.length - 1]}
-            alt="Captured packing slip page"
+            alt={`Captured ${documentKind} page`}
             className="max-h-[45dvh] w-full object-contain"
           />
           {blurry && (
@@ -449,7 +455,7 @@ export default function PackingSlipScanner({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={shot.preview}
-              alt="Photo of the packing slip"
+              alt={`Photo of the ${documentKind}`}
               draggable={false}
               className="max-h-[50dvh] w-auto max-w-full rounded-lg"
             />
@@ -485,8 +491,9 @@ export default function PackingSlipScanner({
       {mode === "saved" && (
         <>
           <p role="status">
-            ✓ PDF saved in Documents → Packing Slips and linked to this order
-            and material list.
+            {documentKind === "document"
+              ? "✓ PDF saved in Documents."
+              : "✓ PDF saved in Documents → Packing Slips and linked to this order and material list."}
           </p>
           <Button onClick={onCancel}>Close</Button>
         </>

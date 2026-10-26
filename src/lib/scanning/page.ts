@@ -1288,7 +1288,7 @@ export function toJpeg(pixels: Pixels, quality = 0.92, maxSide = Infinity) {
   return small.toDataURL("image/jpeg", quality);
 }
 
-export async function scanPdf(pages: string[]) {
+export async function scanPdf(pages: string[], filename = "Packing slip.pdf") {
   const { PDFDocument } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
   for (const image of pages) {
@@ -1301,7 +1301,7 @@ export async function scanPdf(pages: string[]) {
   const bytes = await pdf.save();
   if (bytes.length > 49 * 1024 * 1024)
     throw Error("This scan is too large. Save fewer pages in one PDF.");
-  return new File([new Uint8Array(bytes)], "Packing slip.pdf", {
+  return new File([new Uint8Array(bytes)], filename, {
     type: "application/pdf",
   });
 }

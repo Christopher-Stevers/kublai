@@ -9,6 +9,18 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DocumentOverview, JobDocument } from "~/server/documents/types";
 
+const scanSaved = vi.hoisted(() => vi.fn());
+vi.mock("next/dynamic", () => ({
+  default: () => function Scanner({ onSave, onCancel, documentKind }: {
+    onSave: (file: File) => Promise<boolean>; onCancel: () => void; documentKind: string;
+  }) {
+    return <div data-testid="scanner" data-kind={documentKind}>
+      <button onClick={() => void onSave(new File(["scan"], "Scanned document.pdf", {type: "application/pdf"})).then(scanSaved)}>Save scan</button>
+      <button onClick={onCancel}>Cancel scan</button>
+    </div>;
+  },
+}));
+
 vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn(async () => true),
   notify: vi.fn(),
@@ -79,6 +91,7 @@ async function ready() {
 
 beforeEach(() => {
   requests = [];
+  scanSaved.mockClear();
   vi.mocked(confirmAction).mockClear().mockResolvedValue(true);
   Object.defineProperty(navigator, "onLine", {
     configurable: true,
@@ -1092,4 +1105,47 @@ it("opens a linked Specifications folder for uploads without opening a document"
   expect(await screen.findByRole("button", { name: "Open Agreement.docx" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Open Specification.pdf" })).not.toBeInTheDocument();
   expect(posts()).toHaveLength(0);
+});
+
+
+describe("document scanning", () => {
+  async function openScan() {
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scan document" }));
+  }
+  it("saves a scanned PDF into the open folder without a packing-slip link", async () => {
+    await openScan();
+    expect(screen.getByTestId("scanner")).toHaveAttribute("data-kind", "document");
+    fireEvent.click(screen.getByRole("button", { name: "Save scan" }));
+    await waitFor(() => expect(scanSaved).toHaveBeenCalledWith(true));
+    const form = posts().find(x => x.url.includes("/upload"))!.init!.body as FormData;
+    expect(form.get("folderId")).toBe("folder-1");
+    expect((form.get("file") as File).name).toBe("Scanned document.pdf");
+    expect(form.has("packingSlip")).toBe(false);
+    expect(form.has("documentId")).toBe(false);
+  });
+  it("reports failed uploads to the scanner and permits retry", async () => {
+    await openScan();
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (url, init) => init?.method === "POST"
+      ? new Response(JSON.stringify({error: "Upload unavailable"}), {status: 502})
+      : original(url, init));
+    fireEvent.click(screen.getByRole("button", { name: "Save scan" }));
+    await waitFor(() => expect(scanSaved).toHaveBeenCalledWith(false));
+    expect(screen.getByTestId("scanner")).toBeInTheDocument();
+    vi.mocked(fetch).mockImplementation(original);
+    fireEvent.click(screen.getByRole("button", { name: "Save scan" }));
+    await waitFor(() => expect(scanSaved).toHaveBeenLastCalledWith(true));
+  });
+  it("does not offer adding or scanning in a read-only folder", async () => {
+    overview.folders[0]!.canWrite = false;
+    render(<JobDocumentsView jobId="job-1" />);
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
+    expect(screen.getByRole("button", {name: "Add document"})).toBeDisabled();
+    expect(screen.queryByRole("button", {name: "Scan document"})).not.toBeInTheDocument();
+  });
 });

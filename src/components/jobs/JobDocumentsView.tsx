@@ -1,4 +1,10 @@
 "use client";
+import dynamic from "next/dynamic";
+
+const DocumentScanner = dynamic(
+  () => import("~/components/materialLists/PackingSlipScanner"),
+  { ssr: false },
+);
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import { DrawingPageModeSetting } from "./DrawingPageMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
@@ -6,6 +12,7 @@ import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { currentSnapshotState, readSnapshotState, DRAWING_DESTINATION_EVENT } from "~/lib/snapshot-source";
 import {
+  CameraIcon,
   ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
@@ -209,6 +216,8 @@ export function JobDocumentsView({
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  useEffect(() => setScanning(false), [jobId]);
   const [query, setQuery] = usePageViewState(`documents:${jobId}:query`, "");
   const [status, setStatus] = usePageViewState(`documents:${jobId}:status`, "");
   const [kind, setKind] = usePageViewState(`documents:${jobId}:kind`, "");
@@ -471,8 +480,8 @@ export function JobDocumentsView({
     }
   };
 
-  const upload = async (files: File[]) => {
-    if (!mutable || processing || uploadMutex.current || !files.length) return;
+  const upload = async (files: File[]): Promise<boolean> => {
+    if (!mutable || processing || uploadMutex.current || !files.length) return false;
     const target = uploadTarget.current;
     if (
       target
@@ -481,7 +490,7 @@ export function JobDocumentsView({
           ? !data.capabilities.canWrite
           : !canWrite
     )
-      return;
+      return false;
     uploadMutex.current = true;
     const asSubmittal = uploadAsSubmittal.current;
     let uploaded = 0;
@@ -550,6 +559,7 @@ export function JobDocumentsView({
       uploadTarget.current = null;
       if (fileInput.current) fileInput.current.value = "";
     }
+    return uploaded === (target ? 1 : files.length) && failures.length === 0;
   };
   const pickFiles = (target: JobDocument | null = null) => {
     uploadTarget.current = target;
@@ -1542,12 +1552,36 @@ export function JobDocumentsView({
           </p>
         </DialogContent>
       </Dialog>
+      <Dialog open={scanning}>
+        <DialogContent
+          className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+          showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Scan document</DialogTitle>
+            <DialogDescription>
+              Capture one or more pages, review them, then save a PDF in this folder.
+            </DialogDescription>
+          </DialogHeader>
+          <DocumentScanner
+            documentKind="document"
+            onSave={(file) => upload([file])}
+            onCancel={() => setScanning(false)}
+            onUpload={() => {
+              setScanning(false);
+              pickFiles();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add document</DialogTitle>
             <DialogDescription>
-              Upload a file, create a document, or link a Microsoft file.
+              Scan or upload a file, create a document, or link a Microsoft file.
             </DialogDescription>
           </DialogHeader>
           {!sandbox && editorStatus && !editorStatus.configured && (
@@ -1596,6 +1630,19 @@ export function JobDocumentsView({
                 >
                   <LinkIcon />
                   Link Microsoft file
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={processing}
+                  onClick={() => {
+                    uploadTarget.current = null;
+                    uploadAsSubmittal.current = false;
+                    setAddOpen(false);
+                    setScanning(true);
+                  }}
+                >
+                  <CameraIcon />
+                  Scan document
                 </Button>
                 <Button
                   disabled={processing}

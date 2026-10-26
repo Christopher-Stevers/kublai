@@ -37,8 +37,8 @@ vi.mock("~/lib/scanning/page", () => ({
   pageBlur: scanning.pageBlur,
   rectifyPage: scanning.rectifyPage,
   toJpeg: () => "data:image/jpeg;base64,test",
-  scanPdf: async () =>
-    new File(["pdf"], "Packing slip.pdf", { type: "application/pdf" }),
+  scanPdf: async (_pages: string[], filename = "Packing slip.pdf") =>
+    new File(["pdf"], filename, { type: "application/pdf" }),
 }));
 beforeEach(() => {
   scanning.grabFrame.mockClear();
@@ -208,4 +208,16 @@ it("offers an upload when the device has no camera", async () => {
   await screen.findByText(/No camera found on this device/);
   fireEvent.click(screen.getByRole("button", { name: "Upload photo or PDF" }));
   expect(onUpload).toHaveBeenCalledOnce();
+});
+
+it("saves ordinary documents with a document filename and destination message", async () => {
+  camera();
+  const save = vi.fn().mockResolvedValue(true);
+  render(<PackingSlipScanner documentKind="document" onSave={save} onCancel={vi.fn()} />);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  expect(screen.getByAltText("Captured document page")).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Done"));
+  await screen.findByText("✓ PDF saved in Documents.");
+  expect((save.mock.calls[0]![0] as File).name).toBe("Scanned document.pdf");
+  expect(screen.queryByText(/linked to this order/)).not.toBeInTheDocument();
 });
