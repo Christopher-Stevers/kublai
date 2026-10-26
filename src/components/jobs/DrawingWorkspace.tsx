@@ -3416,7 +3416,7 @@ export function DrawingWorkspace({
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator className="my-1.5" />
-                {statusText && (
+                {statusText !== "Saved" && (
                   <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
                     {statusText}
                   </DropdownMenuLabel>
