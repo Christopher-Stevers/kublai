@@ -1,4 +1,6 @@
 "use client";
+import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
+import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingScrollPages } from "./DrawingScrollPages";
 import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "./DrawingPageNavigation";
@@ -158,8 +160,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     `drawings:${jobId}:registerOpen`,
     false,
   );
-  const [download, setDownload] = useState<string | null>(null);
-  const [downloadingSet, setDownloadingSet] = useState<string | null>(null);
+  const downloadTasks = useDrawingDownloads();
+  const activeDownload = (id: string) => downloadTasks.find(task => task.id === `${account?.accountKey}:set:${id}` && (task.status === "queued" || task.status === "running"));
   const [downloadRevision, setDownloadRevision] = useState(0);
   useEffect(() => {
     const changed = () => setDownloadRevision(value => value + 1);
@@ -167,7 +169,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     return () => window.removeEventListener("foremanhq-drawing-downloads-changed", changed);
   }, []);
   const [savedSets, setSavedSets] = useState<Record<string, string>>({});
-  const downloader = useRef<AbortController | null>(null);
   const summaries = api.drawingsWorkspace.list.useQuery(
     { jobId },
     { staleTime: 30_000 },
@@ -217,7 +218,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       window.removeEventListener("popstate", current);
     };
   }, [jobId, setSetId, setSheetId]);
-  useEffect(() => () => downloader.current?.abort(), []);
 
   const sets = api.drawings.listSets.useQuery({ jobId });
   const set = api.drawings.getSet.useQuery(
@@ -344,14 +344,11 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     openSheet(id);
   };
   const downloadFolder = async (targetId = setId) => {
-    if (!account?.store || downloader.current || !targetId) return;
+    if (!account?.store || !targetId) return;
     const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
     if (currentFolder && savedSets[targetId] === (currentFolder.downloadVersion ?? `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`)) return;
-    const controller = new AbortController();
-    downloader.current = controller;
-    setDownloadingSet(targetId);
-    setDownload("Preparing folder…");
-    try {
+    const store = account.store;
+    drawingDownloadQueue.enqueue({ id: `${account.accountKey}:set:${targetId}`, account: account.accountKey, label: currentFolder?.name ?? "Drawing set" }, async (signal, setDownload) => {
       const target = await utils.drawings.getSet.fetch({ setId: targetId });
       const folder = setsData?.sets.find(item => item.id === targetId);
       const version = target.downloadVersion ?? `${folder ? new Date(folder.updatedAt).toISOString() : "unknown"}:${target.sheets.length}`;
@@ -359,15 +356,15 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       // Request protection against automatic browser eviction where supported.
       const storageProtected = await navigator.storage?.persist?.().catch(() => false);
       const estimate = await navigator.storage?.estimate?.().catch(() => undefined);
-      const existing = await account.store.summary();
+      const existing = await store.summary();
       const budgetBytes = estimate?.quota
         ? existing.bytes + Math.floor(Math.max(0, estimate.quota - (estimate.usage ?? 0)) * 0.9)
         : 2 * 1024 * 1024 * 1024;
-      await warmDrawingPdfRuntime({ signal: controller.signal });
+      await warmDrawingPdfRuntime({ signal });
       const workspaces: WorkspaceSnapshot[] = [];
       const images = new Set(sheets.map((item) => item.imageUrl));
       for (const item of sheets) {
-        controller.signal.throwIfAborted();
+        signal.throwIfAborted();
         setDownload(
           `Preparing drawing ${workspaces.length + 1} of ${sheets.length}…`,
         );
@@ -382,48 +379,37 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       }
       const urls = await collectDrawingOfflineUrls([...images], {
         includeTiles: false,
-        signal: controller.signal,
+        signal,
       });
-      await account.store.saveAssets(urls, {
+      await store.saveAssets(urls, {
         budgetBytes,
-        signal: controller.signal,
+        signal,
         onProgress: (p) =>
           setDownload(
             `${p.completed}/${p.total} files · ${(p.bytes / 1048576).toFixed(1)} MB`,
           ),
       });
-      await account.store.saveSnapshot(`drawing-set:${targetId}`, target);
+      await store.saveSnapshot(`drawing-set:${targetId}`, target);
       if (setsData)
-        await account.store.saveSnapshot(`drawing-sets:${jobId}`, setsData);
+        await store.saveSnapshot(`drawing-sets:${jobId}`, setsData);
       if (summarySnapshot.data)
-        await account.store.saveSnapshot(
+        await store.saveSnapshot(
           `drawing-index:${jobId}`,
           summarySnapshot.data,
         );
       for (const workspace of workspaces) {
-        controller.signal.throwIfAborted();
-        await account.store.saveSnapshot(
+        signal.throwIfAborted();
+        await store.saveSnapshot(
           `workspace:${workspace.sheetId}`,
           workspace,
         );
       }
-      controller.signal.throwIfAborted();
-      await account.store.saveSnapshot(`drawing-download:${targetId}`, {
+      signal.throwIfAborted();
+      await store.saveSnapshot(`drawing-download:${targetId}`, {
         version, urls, sheets: workspaces.map(workspace => workspace.sheetId),
       });
-      setSavedSets(previous => ({ ...previous, [targetId]: version }));
       notify(storageProtected ? "Drawing set downloaded on this device for offline viewing." : "Drawing set downloaded. This browser did not grant persistent storage, so the device may clear it when space is needed.", "success");
-    } catch (error) {
-      if (!controller.signal.aborted)
-        notify(
-          error instanceof Error ? error.message : "Download failed",
-          "error",
-        );
-    } finally {
-      downloader.current = null;
-      setDownload(null);
-      setDownloadingSet(null);
-    }
+    });
   };
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
@@ -687,17 +673,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           <p role="status" className="mb-3 text-sm">
             Offline · Saved drawings are available to view. Reconnect to make
             changes.
-          </p>
-        )}
-        {download && (
-          <p role="status" className="mb-3 text-sm">
-            {download}{" "}
-            <button
-              className="underline"
-              onClick={() => downloader.current?.abort()}
-            >
-              Cancel download
-            </button>
           </p>
         )}
         {set.error && setSnapshot.online && (
@@ -1210,14 +1185,14 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) || (Boolean(download) && downloadingSet !== folder.id)}
-                    aria-label={downloadingSet === folder.id ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
-                    onClick={() => downloadingSet === folder.id ? downloader.current?.abort() : void downloadFolder(folder.id)}
+                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`)}
+                    aria-label={Boolean(activeDownload(folder.id)) ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
+                    onClick={() => Boolean(activeDownload(folder.id)) ? drawingDownloadQueue.cancel(`${account?.accountKey}:set:${folder.id}`) : void downloadFolder(folder.id)}
                   >
-                    {downloadingSet === folder.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-                    {downloadingSet === folder.id ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? "Downloaded" : "Download"}
+                    {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+                    {Boolean(activeDownload(folder.id)) ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? "Downloaded" : "Download"}
                   </Button>
-                  {downloadingSet === folder.id && <p role="status" className="mt-2 text-xs">{download}</p>}
+                  {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
                 </div>
               </CardContent>
             </Card>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
+import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import {
   CheckIcon,
   CloudCheckIcon,
@@ -29,75 +30,50 @@ export function SheetOfflineButton({
   iconOnly = false,
 }: Props) {
   const store = useDrawingAccount()?.store;
-  const { saved, setSaved } = useSheetOfflineStatus(
-    store,
-    sheet,
-    workspaceSheetId,
-  );
-  const [progress, setProgress] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const controller = useRef<AbortController | null>(null);
+  const { saved } = useSheetOfflineStatus(store, sheet, workspaceSheetId);
   const marker = `sheet-download:${sheet.id}:${sheet.imageUrl}`;
-  useEffect(() => {
-    setProgress(null);
-    setError(null);
-    return () => {
-      controller.current?.abort();
-      controller.current = null;
-    };
-  }, [store, marker]);
-  const save = async () => {
-    if (!store || controller.current) return;
-    const aborter = new AbortController();
-    controller.current = aborter;
-    setProgress("Preparing…");
-    setError(null);
-    try {
-      await navigator.storage?.persist?.().catch(() => false);
-      await warmDrawingPdfRuntime({ signal: aborter.signal });
-      const additionalImages = await prepare?.(aborter.signal);
-      aborter.signal.throwIfAborted();
-      const urls = await collectDrawingOfflineUrls(
-        [sheet.imageUrl, ...(additionalImages ?? [])],
-        { signal: aborter.signal },
-      );
-      const existing = await store.summary();
-      const estimate = await navigator.storage
-        ?.estimate?.()
-        .catch(() => undefined);
-      const budgetBytes = estimate?.quota
-        ? existing.bytes +
-          Math.floor(Math.max(0, estimate.quota - (estimate.usage ?? 0)) * 0.9)
-        : 2 * 1024 * 1024 * 1024;
-      await store.saveAssets(urls, {
-        budgetBytes,
-        signal: aborter.signal,
-        onProgress: (p) => {
-          if (!aborter.signal.aborted)
-            setProgress(`${p.completed}/${p.total} files`);
-        },
-      });
-      aborter.signal.throwIfAborted();
-      await store.saveSnapshot(marker, urls);
-      if (!aborter.signal.aborted) setSaved(true);
-    } catch (reason) {
-      if (!aborter.signal.aborted)
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Could not save this sheet offline.",
+  const downloadId = `${store?.accountKey}:${marker}`;
+  const task = useDrawingDownloads().find((item) => item.id === downloadId);
+  const progress =
+    task && ["queued", "running"].includes(task.status) ? task.progress : null;
+  const error = task?.status === "failed" ? task.progress : null;
+  const save = () => {
+    if (!store) return;
+    drawingDownloadQueue.enqueue(
+      { id: downloadId, account: store.accountKey, label: sheet.name },
+      async (signal, setProgress) => {
+        await navigator.storage?.persist?.().catch(() => false);
+        await warmDrawingPdfRuntime({ signal });
+        const additionalImages = await prepare?.(signal);
+        signal.throwIfAborted();
+        const urls = await collectDrawingOfflineUrls(
+          [sheet.imageUrl, ...(additionalImages ?? [])],
+          { signal },
         );
-    } finally {
-      if (controller.current === aborter) {
-        controller.current = null;
-        setProgress(null);
-      }
-    }
+        const existing = await store.summary();
+        const estimate = await navigator.storage
+          ?.estimate?.()
+          .catch(() => undefined);
+        const budgetBytes = estimate?.quota
+          ? existing.bytes +
+            Math.floor(
+              Math.max(0, estimate.quota - (estimate.usage ?? 0)) * 0.9,
+            )
+          : 2 * 1024 * 1024 * 1024;
+        await store.saveAssets(urls, {
+          budgetBytes,
+          signal,
+          onProgress: (p) => {
+            if (!signal.aborted) setProgress(`${p.completed}/${p.total} files`);
+          },
+        });
+        signal.throwIfAborted();
+        await store.saveSnapshot(marker, urls);
+      },
+    );
   };
   return (
-    <div
-      className={iconOnly ? "shrink-0" : "min-w-0"}
-    >
+    <div className={iconOnly ? "shrink-0" : "min-w-0"}>
       <button
         type="button"
         className={
@@ -122,7 +98,7 @@ export function SheetOfflineButton({
           // Only the control consumes the tap; blank row space still opens
           // the containing floor/drawing card.
           event.stopPropagation();
-          if (progress) controller.current?.abort();
+          if (progress) drawingDownloadQueue.cancel(downloadId);
           else void save();
         }}
       >

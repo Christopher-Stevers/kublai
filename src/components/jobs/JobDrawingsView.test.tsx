@@ -549,13 +549,15 @@ describe("Drawings", () => {
 
 describe("drawing set downloads", () => {
   function offlineStore() {
+    const savedSnapshots = new Map<string, unknown>();
+    let assetsSaved = false;
     const store = {
-      readSnapshot: vi.fn(async (_key: string): Promise<unknown> => null),
-      saveSnapshot: vi.fn(async (_key: string, _value: unknown) => undefined),
-      readAsset: vi.fn(async (_url: string): Promise<Blob | null> => null),
+      readSnapshot: vi.fn(async (key: string): Promise<unknown> => savedSnapshots.get(key) ?? null),
+      saveSnapshot: vi.fn(async (key: string, value: unknown) => { savedSnapshots.set(key, value); }),
+      readAsset: vi.fn(async (_url: string): Promise<Blob | null> => assetsSaved ? new Blob(["PDF"]) : null),
       resolveAssetUrl: vi.fn(async () => null),
       summary: vi.fn(async () => ({ bytes: 0, files: 0 })),
-      saveAssets: vi.fn(async () => undefined),
+      saveAssets: vi.fn(async () => { assetsSaved = true; }),
     };
     state.account = { accountKey: "test", store };
     state.fetchSet.mockResolvedValue({ set: { id: "set-1" }, sheets: state.sheets });
@@ -574,6 +576,17 @@ describe("drawing set downloads", () => {
     expect(store.saveSnapshot).toHaveBeenCalledWith("workspace:s2", expect.objectContaining({ sheetId: "s2" }));
     expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ sheets: ["s1", "s2"] }));
     expect(screen.getByRole("button", { name: "Open Mechanical" })).toBeTruthy();
+  });
+  it("finishes a set download after leaving the drawing page", async () => {
+    const store = offlineStore();
+    let release!: (value: unknown) => void;
+    state.fetchSet.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+    const view = render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", {name:"Download Mechanical for offline use"}));
+    await waitFor(() => expect(state.fetchSet).toHaveBeenCalled());
+    view.unmount();
+    await act(async () => { release({set:{id:"set-1"},sheets:state.sheets}); });
+    await waitFor(() => expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({sheets:["s1","s2"]})));
   });
   it("restores downloaded status only when the saved files and workspaces exist", async () => {
     const store = offlineStore();

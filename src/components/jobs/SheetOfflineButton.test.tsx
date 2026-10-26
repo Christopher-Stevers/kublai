@@ -1,3 +1,4 @@
+import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SheetOfflineButton } from "./SheetOfflineButton";
@@ -10,8 +11,11 @@ vi.mock("~/lib/drawing-pdf-offline-runtime", () => ({ warmDrawingPdfRuntime: moc
 vi.mock("~/lib/drawing-offline", () => ({ collectDrawingOfflineUrls: mocks.collect }));
 const sheet = { id: "s1", name: "A101", imageUrl: "/sheet.webp" };
 beforeEach(() => {
+  for (const task of drawingDownloadQueue.getSnapshot()) { drawingDownloadQueue.cancel(task.id); drawingDownloadQueue.dismiss(task.id); }
   vi.resetAllMocks();
-  mocks.store.readSnapshot.mockResolvedValue(null);
+  const snapshots = new Map<string, unknown>();
+  mocks.store.readSnapshot.mockImplementation(async key => snapshots.get(key) ?? null);
+  mocks.store.saveSnapshot.mockImplementation(async (key, value) => { snapshots.set(key, value); });
   mocks.store.readAsset.mockResolvedValue(new Blob(["drawing"]));
   mocks.store.summary.mockResolvedValue({ bytes: 0 });
   mocks.store.saveAssets.mockResolvedValue(undefined);
@@ -83,7 +87,9 @@ it("updates mounted sheets when a folder finishes saving or downloads are remove
   mocks.store.readSnapshot.mockImplementation(async key => key === "workspace:owner" ? workspace : null);
   window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   await screen.findByText("Available offline");
-  mocks.store.readSnapshot.mockResolvedValue(null);
+  const snapshots = new Map<string, unknown>();
+  mocks.store.readSnapshot.mockImplementation(async key => snapshots.get(key) ?? null);
+  mocks.store.saveSnapshot.mockImplementation(async (key, value) => { snapshots.set(key, value); });
   window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   await waitFor(() => expect(screen.queryByText("Available offline")).toBeNull());
 });

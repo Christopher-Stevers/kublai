@@ -1,5 +1,7 @@
 "use client";
 
+import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
+import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingUnit } from "./useDrawingUnit";
 import { useSheetOfflineStatus } from "./useSheetOfflineStatus";
 import { useEffect, useRef, useState } from "react";
@@ -10,8 +12,6 @@ import type { SheetScale } from "~/lib/sheet-measure";
 import { sourcePdfPage } from "~/lib/pdf-client";
 import {
   collectDrawingOfflineUrls,
-  DRAWING_OFFLINE_BUDGET,
-  type DrawingOfflineProgress,
   type DrawingOfflineStore,
 } from "~/lib/drawing-offline";
 
@@ -63,11 +63,13 @@ export function DrawingDocumentActions({
   const [scope, setScope] = useState<"sheet" | "folder">("sheet");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [progress, setProgress] = useState<DrawingOfflineProgress | null>(null);
   const [summary, setSummary] = useState<{
     files: number;
     bytes: number;
   } | null>(null);
+  const downloadId = `${store?.accountKey}:sheets:${allowBatchOffline && scope === "folder" ? sheets.map(s => s.id).sort().join(",") : sheet.id}:tiles:${includeTiles}`;
+  const downloadTask = useDrawingDownloads().find(task => task.id === downloadId);
+  const downloading = downloadTask && ["queued", "running"].includes(downloadTask.status);
   const controller = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const epoch = useRef(0);
@@ -86,7 +88,6 @@ export function DrawingDocumentActions({
     setBusy(null);
     setMessage(null);
     setSummary(null);
-    setProgress(null);
     if (store)
       void store
         .summary()
@@ -111,7 +112,6 @@ export function DrawingDocumentActions({
     controller.current = aborter;
     setBusy(label);
     setMessage(null);
-    setProgress(null);
     try {
       await action(aborter.signal);
       if (mounted.current && generation === epoch.current)
@@ -315,7 +315,7 @@ export function DrawingDocumentActions({
           <p className="text-sm font-medium">Offline drawings</p>
           <p className="text-muted-foreground text-xs">
             Save while connected, then view drawings without a connection.
-            Limit: {megabytes(DRAWING_OFFLINE_BUDGET)} on this device. Private
+            Downloads continue while you browse ForemanHQ and use available device storage. Private
             drafts can be saved offline and synced after reconnecting.
             Publishing requires a connection.
           </p>
@@ -349,31 +349,20 @@ export function DrawingDocumentActions({
           <div className="flex flex-wrap gap-2">
             <button
               className={button}
-              disabled={!store || Boolean(busy)}
+              disabled={!store || Boolean(busy) || Boolean(downloading)}
               onClick={() => {
                 if (store)
-                  void run("Saving offline", async (signal) => {
-                    const { warmDrawingPdfRuntime } =
-                      await import("~/lib/drawing-pdf-offline-runtime");
+                  drawingDownloadQueue.enqueue({ id: downloadId, account: store.accountKey, label: scope === "folder" ? "Job drawings" : sheet.name }, async (signal, report) => {
+                    const { warmDrawingPdfRuntime } = await import("~/lib/drawing-pdf-offline-runtime");
                     await warmDrawingPdfRuntime({ signal });
-                    const urls = await collectDrawingOfflineUrls(
-                      (allowBatchOffline && scope === "folder"
-                        ? sheets
-                        : [sheet]
-                      ).map((item) => item.imageUrl),
-                      { includeTiles, signal },
-                    );
-                    const generation = epoch.current;
-                    await store.saveAssets(urls, {
-                      signal,
-                      onProgress: (value) => {
-                        if (mounted.current && generation === epoch.current)
-                          setProgress(value);
-                      },
-                    });
+                    await navigator.storage?.persist?.().catch(() => false);
+                    const estimate = await navigator.storage?.estimate?.().catch(() => undefined);
+                    const existing = await store.summary();
+                    const budgetBytes = estimate?.quota ? existing.bytes + Math.floor(Math.max(0, estimate.quota - (estimate.usage ?? 0)) * 0.9) : 2 * 1024 * 1024 * 1024;
+                    const urls = await collectDrawingOfflineUrls((allowBatchOffline && scope === "folder" ? sheets : [sheet]).map(item => item.imageUrl), { includeTiles, signal });
+                    await store.saveAssets(urls, { signal, budgetBytes, onProgress: value => report(`${value.completed}/${value.total} files · ${megabytes(value.bytes)}`) });
                     signal.throwIfAborted();
                     await onOfflineSaved?.();
-                    window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
                   });
               }}
             >
@@ -383,7 +372,10 @@ export function DrawingDocumentActions({
               className={button}
               disabled={!store || Boolean(busy) || !summary?.files}
               onClick={() => {
-                if (store) void run("Removing downloads", () => store.clear());
+                if (store) void run("Removing downloads", () => {
+                  for (const task of drawingDownloadQueue.getSnapshot()) if (task.account === store.accountKey) { drawingDownloadQueue.cancel(task.id); drawingDownloadQueue.dismiss(task.id); }
+                  return store.clear();
+                });
               }}
             >
               Remove saved drawings
@@ -397,6 +389,7 @@ export function DrawingDocumentActions({
               </button>
             )}
           </div>
+          {downloadTask && <p role="status" className="text-sm">{downloadTask.progress}{downloading && <button className={button} onClick={() => drawingDownloadQueue.cancel(downloadId)}>Cancel download</button>}</p>}
           {summary && (
             <p className="text-muted-foreground text-xs">
               {summary.files} saved files · {megabytes(summary.bytes)}
@@ -405,8 +398,7 @@ export function DrawingDocumentActions({
           {busy && (
             <p role="status" className="text-sm">
               {busy}…{" "}
-              {progress &&
-                `${progress.completed}/${progress.total} files · ${megabytes(progress.bytes)}`}
+
             </p>
           )}
           {message && (

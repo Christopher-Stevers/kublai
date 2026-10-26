@@ -1,5 +1,6 @@
 "use client";
 
+import { DrawingDownloadStatus } from "~/components/jobs/DrawingDownloadStatus";
 import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
 import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
 import { InstallAppButton } from "~/components/app/InstallAppButton";
@@ -327,6 +328,7 @@ function HeaderFrame({
             </Button>
           )}
         </div>
+        <DrawingDownloadStatus />
         <InstallAppButton compact />
         {!sandbox && !simulation && sessionKey && (
           <AppDeviceReporter key={sessionKey} userId={sessionKey} />

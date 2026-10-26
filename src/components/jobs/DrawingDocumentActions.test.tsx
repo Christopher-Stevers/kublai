@@ -1,5 +1,6 @@
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
@@ -218,33 +219,26 @@ describe("drawing document actions", () => {
     );
     await waitFor(() => expect(snapshots).toHaveBeenCalledOnce());
     expect(
-      await screen.findByText("Drawings saved for offline viewing."),
+      await screen.findByText("Downloaded"),
     ).toBeVisible();
   });
 
-  it("cancels a pending offline download on unmount", async () => {
+  it("continues an offline download after leaving the page", async () => {
     let signal: AbortSignal | undefined;
-    const saveAssets = vi.fn(
-      (_urls: string[], options: { signal: AbortSignal }) => {
-        signal = options.signal;
-        return new Promise<never>((_resolve, reject) =>
-          signal!.addEventListener(
-            "abort",
-            () => reject(new DOMException("Cancelled", "AbortError")),
-            { once: true },
-          ),
-        );
-      },
-    );
-    const store = {
-      summary: async () => ({ files: 0, bytes: 0 }),
-      saveAssets,
-    } as unknown as DrawingOfflineStore;
-    const view = render(<DrawingDocumentActions sheet={sheet} store={store} />);
-    fireEvent.click(screen.getByRole("button", { name: "Save offline" }));
+    let finish!: () => void;
+    const saveAssets = vi.fn((_urls: string[], options: {signal: AbortSignal}) => {
+      signal = options.signal;
+      return new Promise<void>(resolve => { finish = resolve; });
+    });
+    const store = { accountKey: "test-user", summary: async () => ({files:0,bytes:0}), saveAssets } as unknown as DrawingOfflineStore;
+    const snapshots = vi.fn(async () => undefined);
+    const view = render(<DrawingDocumentActions sheet={sheet} store={store} onOfflineSaved={snapshots} />);
+    fireEvent.click(screen.getByRole("button", {name:"Save offline"}));
     await waitFor(() => expect(saveAssets).toHaveBeenCalledOnce());
     view.unmount();
-    expect(signal?.aborted).toBe(true);
+    expect(signal?.aborted).toBe(false);
+    await act(async () => { finish(); });
+    await waitFor(() => expect(snapshots).toHaveBeenCalledOnce());
   });
 
   it("does not claim offline readiness or save private assets when the PDF runtime cannot be retained", async () => {
