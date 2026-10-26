@@ -332,3 +332,9 @@ it("previews many hyperlink tags with one shared index pass across drawing sets"
  expect(result.results.map(r=>[r.tag,r.drawings,r.documents])).toEqual([["P-1",1,1],["P-2",1,0]]);
  expect(mock.index).toHaveBeenCalledTimes(2);expect(mock.access).toHaveBeenCalledOnce();
 });
+it("reports the current revision once and preserves its exact source link",async()=>{
+ const {superEquipmentReport}=await import("./super-equipment");equipmentReportFixture();mock.sheets.mockResolvedValue([a,b]);mock.metadata=[{sheetId:a.id,data:{currentSourceSheetId:b.id}}];
+ const result=await superEquipmentReport(ctx,{sheetId:a.id});expect(result.coverage.totalSheets).toBe(1);expect(result.lines).toHaveLength(2);
+ const state=JSON.parse(decodeURIComponent(new URL(result.lines[0]!.sourceUrl,'https://example.com').hash.slice('#snapshot='.length)));
+ expect(state.drawing).toMatchObject({sheetId:a.id,sourceSheetId:b.id});
+});

@@ -263,6 +263,13 @@ export function LegendItemsDialog({
   const [recognizeText, setRecognizeText] = useState(false);
   const [reading, setReading] = useState(false);
   const [manual, setManual] = useState(false);
+  const [manualView, setManualView] = useState<LegendBox>({
+    left: 0,
+    top: 0,
+    right: 1,
+    bottom: 1,
+  });
+  const [zoomSelection, setZoomSelection] = useState(false);
   const stop = useRef(false);
   useEffect(
     () => () => {
@@ -283,7 +290,10 @@ export function LegendItemsDialog({
   } | null>(null);
   const sheets = overview.data?.sheets ?? [],
     items = overview.data?.items ?? [];
-  const manualSource = sheets.find((s) => s.id === sourceSheetId);
+  const chosenSource = sheets.find((s) => s.id === sourceSheetId);
+  const manualSource = sheets.find(
+    (s) => s.id === (chosenSource?.scanSourceId ?? sourceSheetId),
+  );
   const canEdit = overview.data?.canEdit ?? false;
   const busy = reading || scan.isPending || save.isPending || update.isPending;
   const filtered = items.filter((i) =>
@@ -311,7 +321,7 @@ export function LegendItemsDialog({
     setReading(true);
     stop.current = false;
     const selected = all
-      ? sheets
+      ? sheets.filter((sheet) => sheet.isCurrent !== false)
       : sheets.filter((s) => s.id === sourceSheetId);
     const notes: string[] = [];
     try {
@@ -321,9 +331,10 @@ export function LegendItemsDialog({
           `Reading ${sheet.name} · ${index + 1} of ${selected.length}…`,
         );
         try {
+          const scanSourceId = sheet.scanSourceId ?? sheet.id;
           const result = await scan.mutateAsync({
             sheetId,
-            sourceSheetId: sheet.id,
+            sourceSheetId: scanSourceId,
             recognizeText,
           });
           if (stop.current) break;
@@ -335,10 +346,10 @@ export function LegendItemsDialog({
             return [
               ...current,
               ...result.items
-                .filter((data) => !keys.has(candidateKey(data, sheet.id)))
+                .filter((data) => !keys.has(candidateKey(data, scanSourceId)))
                 .map((data) => ({
                   ...data,
-                  sourceSheetId: sheet.id,
+                  sourceSheetId: scanSourceId,
                   selected: true,
                 })),
             ];
@@ -439,77 +450,42 @@ export function LegendItemsDialog({
             {error || overview.error?.message}
           </p>
         )}
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="min-w-0 flex-1 text-sm">
-            Legend sheet
-            <select
-              aria-label="Legend sheet"
-              value={sourceSheetId}
-              disabled={busy}
-              onChange={(e) => setSourceSheetId(e.target.value)}
-              className="bg-background mt-1 h-10 w-full rounded-md border px-2"
-            >
-              {sheets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button
-            disabled={busy || !sheets.some((s) => s.id === sourceSheetId)}
-            onClick={() => void read(false)}
-          >
-            {scan.isPending ? "Reading…" : "Read legend"}
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            disabled={busy || !sheets.length}
-            onClick={() => void read(true)}
-          >
-            Read entire set
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || !canEdit || !manualSource}
-            onClick={() => setManual(!manual)}
-          >
-            {manual ? "Cancel manual symbol" : "Add symbol manually"}
-          </Button>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={recognizeText}
-              disabled={busy}
-              onChange={(e) => setRecognizeText(e.target.checked)}
-            />
-            Recognize scanned text
-          </label>
-          {reading && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                stop.current = true;
-                setMessage("Stopping after the current sheet…");
-              }}
-            >
-              Stop
-            </Button>
-          )}
-        </div>
-        {manual && manualSource && (
-          <div className="space-y-2">
+        {manual && manualSource ? (
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
             <p className="text-sm">
               Drag around one complete legend row, including its symbol and
               description. Then enter the name and adjust the symbol crop.
             </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                aria-pressed={zoomSelection}
+                onClick={() => setZoomSelection(!zoomSelection)}
+              >
+                {zoomSelection ? "Drag around an area to zoom" : "Zoom to area"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setManualView({ left: 0, top: 0, right: 1, bottom: 1 });
+                  setZoomSelection(false);
+                }}
+              >
+                Reset view
+              </Button>
+            </div>
             <LegendCrop
               sheet={manualSource}
-              box={{ left: 0, top: 0, right: 1, bottom: 1 }}
+              box={manualView}
               large
               onSelection={(row) => {
+                if (zoomSelection) {
+                  setManualView(row);
+                  setZoomSelection(false);
+                  return;
+                }
                 setCandidates((current) => [
                   ...current,
                   {
@@ -531,261 +507,350 @@ export function LegendItemsDialog({
                 setSearch("");
               }}
             />
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Button
-            variant={tab === "saved" ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setTab("saved");
-              setPage(0);
-            }}
-          >
-            Saved ({items.length})
-          </Button>
-          <Button
-            variant={tab === "review" ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setTab("review");
-              setPage(0);
-            }}
-          >
-            Review ({candidates.length})
-          </Button>
-        </div>
-        {message && (
-          <p role="status" className="text-muted-foreground text-sm">
-            {message}
-          </p>
-        )}
-        <Input
-          aria-label="Search legend items"
-          placeholder="Search symbols, names or abbreviations"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-        />
-        {tab === "review" && candidates.length > 0 && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setCandidates((c) => c.map((i) => ({ ...i, selected: true })))
-              }
-            >
-              Select all
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setCandidates((c) => c.map((i) => ({ ...i, selected: false })))
-              }
-            >
-              Select none
+            <Button variant="outline" onClick={() => setManual(false)}>
+              Cancel manual symbol
             </Button>
           </div>
-        )}
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-          {!shown.length && !overview.isLoading && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              {search
-                ? "No matching legend items."
-                : tab === "review"
-                  ? "Choose a legend sheet and click Read legend."
-                  : "No saved symbols yet. Read a legend to get started."}
-            </p>
-          )}
-          {tab === "review" &&
-            reviewRows
-              .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
-              .map(({ item, index }) => {
-                const source = sheets.find((s) => s.id === item.sourceSheetId);
-                if (!source) return null;
-                const replace = (data: LegendItemData) =>
-                  setCandidates((current) =>
-                    current.map((c, i) =>
-                      i === index
-                        ? {
-                            ...data,
-                            selected: c.selected,
-                            sourceSheetId: c.sourceSheetId,
-                          }
-                        : c,
-                    ),
-                  );
-                return (
-                  <div key={index} className="space-y-2 rounded-md border p-3">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        aria-label={`Include ${item.name}`}
-                        checked={item.selected}
-                        onChange={(e) =>
-                          setCandidates((current) =>
-                            current.map((c, i) =>
-                              i === index
-                                ? { ...c, selected: e.target.checked }
-                                : c,
-                            ),
-                          )
-                        }
-                      />
-                      <LegendCrop sheet={source} box={item.symbol} />
-                      <span className="text-muted-foreground text-xs">
-                        {source.name}
-                      </span>
-                    </div>
-                    <ItemFields data={item} sheet={source} onChange={replace} />
-                  </div>
-                );
-              })}
-          {tab === "saved" &&
-            filtered
-              .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
-              .map((item) => {
-                const sheet = sheets.find((s) => s.id === item.sourceSheetId);
-                if (!sheet) return null;
-                const active = editing?.id === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    className="space-y-2 rounded-md border p-3"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <LegendCrop
-                        sheet={sheet}
-                        box={active ? editing.data.symbol : item.data.symbol}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">{item.data.name}</p>
-                        <p className="text-muted-foreground text-sm">
-                          {[item.data.abbreviation, item.data.category]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                        <button
-                          className="text-primary text-sm underline"
-                          onClick={() => {
-                            onSource(sheet.id, item.data.row);
-                            onClose();
-                          }}
-                        >
-                          View on {sheet.name}
-                        </button>
-                      </div>
-                    </div>
-                    {active ? (
-                      <>
-                        <ItemFields
-                          data={editing.data}
-                          sheet={sheet}
-                          onChange={(data) => setEditing({ ...editing, data })}
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            disabled={busy || !editing.data.name.trim()}
-                            onClick={() =>
-                              void change(
-                                item.id,
-                                editing.revision,
-                                editing.data,
+        ) : (
+          <>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="min-w-0 flex-1 text-sm">
+                Legend sheet
+                <select
+                  aria-label="Legend sheet"
+                  value={sourceSheetId}
+                  disabled={busy}
+                  onChange={(e) => setSourceSheetId(e.target.value)}
+                  className="bg-background mt-1 h-10 w-full rounded-md border px-2"
+                >
+                  {sheets.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.isCurrent === false ? " (revision source)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button
+                disabled={busy || !sheets.some((s) => s.id === sourceSheetId)}
+                onClick={() => void read(false)}
+              >
+                {scan.isPending ? "Reading…" : "Read legend"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={busy || !sheets.length}
+                onClick={() => void read(true)}
+              >
+                Read entire set
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || !canEdit || !manualSource}
+                onClick={() => setManual(!manual)}
+              >
+                {manual ? "Cancel manual symbol" : "Add symbol manually"}
+              </Button>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={recognizeText}
+                  disabled={busy}
+                  onChange={(e) => setRecognizeText(e.target.checked)}
+                />
+                Recognize scanned text
+              </label>
+              {reading && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    stop.current = true;
+                    setMessage("Stopping after the current sheet…");
+                  }}
+                >
+                  Stop
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={tab === "saved" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTab("saved");
+                  setPage(0);
+                }}
+              >
+                Saved ({items.length})
+              </Button>
+              <Button
+                variant={tab === "review" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTab("review");
+                  setPage(0);
+                }}
+              >
+                Review ({candidates.length})
+              </Button>
+            </div>
+            {message && (
+              <p
+                role="status"
+                className="text-muted-foreground max-h-24 overflow-y-auto text-sm"
+              >
+                {message}
+              </p>
+            )}
+            <Input
+              aria-label="Search legend items"
+              placeholder="Search symbols, names or abbreviations"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+            />
+            {tab === "review" && candidates.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setCandidates((c) =>
+                      c.map((i) => ({ ...i, selected: true })),
+                    )
+                  }
+                >
+                  Select all
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setCandidates((c) =>
+                      c.map((i) => ({ ...i, selected: false })),
+                    )
+                  }
+                >
+                  Select none
+                </Button>
+              </div>
+            )}
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {!shown.length && !overview.isLoading && (
+                <p className="text-muted-foreground py-8 text-center text-sm">
+                  {search
+                    ? "No matching legend items."
+                    : tab === "review"
+                      ? "Choose a legend sheet and click Read legend."
+                      : "No saved symbols yet. Read a legend to get started."}
+                </p>
+              )}
+              {tab === "review" &&
+                reviewRows
+                  .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
+                  .map(({ item, index }) => {
+                    const source = sheets.find(
+                      (s) => s.id === item.sourceSheetId,
+                    );
+                    if (!source) return null;
+                    const replace = (data: LegendItemData) =>
+                      setCandidates((current) =>
+                        current.map((c, i) =>
+                          i === index
+                            ? {
+                                ...data,
+                                selected: c.selected,
+                                sourceSheetId: c.sourceSheetId,
+                              }
+                            : c,
+                        ),
+                      );
+                    return (
+                      <div
+                        key={index}
+                        className="space-y-2 rounded-md border p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            aria-label={`Include ${item.name}`}
+                            checked={item.selected}
+                            onChange={(e) =>
+                              setCandidates((current) =>
+                                current.map((c, i) =>
+                                  i === index
+                                    ? { ...c, selected: e.target.checked }
+                                    : c,
+                                ),
                               )
                             }
-                          >
-                            Save changes
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => setEditing(null)}
-                          >
-                            Cancel
-                          </Button>
+                          />
+                          <LegendCrop sheet={source} box={item.symbol} />
+                          <span className="text-muted-foreground text-xs">
+                            {source.name}
+                          </span>
                         </div>
-                      </>
-                    ) : (
-                      canEdit && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() =>
-                              setEditing({
-                                id: item.id,
-                                revision: item.revision,
-                                data: item.data,
-                              })
+                        <ItemFields
+                          data={item}
+                          sheet={source}
+                          onChange={replace}
+                        />
+                      </div>
+                    );
+                  })}
+              {tab === "saved" &&
+                filtered
+                  .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
+                  .map((item) => {
+                    const sheet = sheets.find(
+                      (s) => s.id === item.sourceSheetId,
+                    );
+                    if (!sheet) return null;
+                    const active = editing?.id === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        className="space-y-2 rounded-md border p-3"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <LegendCrop
+                            sheet={sheet}
+                            box={
+                              active ? editing.data.symbol : item.data.symbol
                             }
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busy}
-                            onClick={() =>
-                              void change(item.id, item.revision, null)
-                            }
-                          >
-                            Remove
-                          </Button>
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium">{item.data.name}</p>
+                            <p className="text-muted-foreground text-sm">
+                              {[item.data.abbreviation, item.data.category]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                            <button
+                              className="text-primary text-sm underline"
+                              onClick={() => {
+                                onSource(sheet.id, item.data.row);
+                                onClose();
+                              }}
+                            >
+                              View on {sheet.name}
+                            </button>
+                          </div>
                         </div>
-                      )
-                    )}
-                  </div>
-                );
-              })}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pageIndex === 0}
-              onClick={() => setPage(pageIndex - 1)}
-            >
-              Previous
-            </Button>
-            <span className="text-xs">
-              {pageIndex + 1} / {totalPages}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pageIndex + 1 >= totalPages}
-              onClick={() => setPage(pageIndex + 1)}
-            >
-              Next
-            </Button>
-          </div>
-          {tab === "review" && (
-            <Button
-              disabled={
-                busy ||
-                !canEdit ||
-                !candidates.some((c) => c.selected) ||
-                candidates.some((c) => c.selected && !c.name.trim())
-              }
-              onClick={() => void persist()}
-            >
-              {save.isPending
-                ? "Saving…"
-                : `Save selected (${candidates.filter((c) => c.selected).length})`}
-            </Button>
-          )}
-          <Button variant="outline" disabled={busy} onClick={onClose}>
-            Done
-          </Button>
-        </div>
+                        {active ? (
+                          <>
+                            <ItemFields
+                              data={editing.data}
+                              sheet={sheet}
+                              onChange={(data) =>
+                                setEditing({ ...editing, data })
+                              }
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                disabled={busy || !editing.data.name.trim()}
+                                onClick={() =>
+                                  void change(
+                                    item.id,
+                                    editing.revision,
+                                    editing.data,
+                                  )
+                                }
+                              >
+                                Save changes
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => setEditing(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          canEdit && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() =>
+                                  setEditing({
+                                    id: item.id,
+                                    revision: item.revision,
+                                    data: item.data,
+                                  })
+                                }
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() =>
+                                  void change(item.id, item.revision, null)
+                                }
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pageIndex === 0}
+                  onClick={() => setPage(pageIndex - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs">
+                  {pageIndex + 1} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pageIndex + 1 >= totalPages}
+                  onClick={() => setPage(pageIndex + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+              {tab === "review" && (
+                <Button
+                  disabled={
+                    busy ||
+                    !canEdit ||
+                    !candidates.some((c) => c.selected) ||
+                    candidates.some((c) => c.selected && !c.name.trim())
+                  }
+                  onClick={() => void persist()}
+                >
+                  {save.isPending
+                    ? "Saving…"
+                    : `Save selected (${candidates.filter((c) => c.selected).length})`}
+                </Button>
+              )}
+              <Button variant="outline" disabled={busy} onClick={onClose}>
+                Done
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

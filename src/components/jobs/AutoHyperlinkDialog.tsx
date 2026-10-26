@@ -56,7 +56,7 @@ export function AutoHyperlinkDialog(props: {
     [pending, setPending] = useState(0),
     [search, setSearch] = useState("");
   const run = useRef(0),
-    initial = useRef<() => void>(() => {});
+    initial = useRef<() => void>(() => undefined);
   async function scan() {
     const id = ++run.current;
     setBusy(true);
@@ -168,9 +168,10 @@ export function AutoHyperlinkDialog(props: {
   }
   initial.current = () => void scan();
   useEffect(() => {
+    const counter = run;
     initial.current();
     return () => {
-      run.current++;
+      counter.current++;
     };
   }, []);
   async function saveSelected() {

@@ -170,7 +170,7 @@ export async function superEquipmentReport(ctx: DrawingContext, input: Input) {
             : undefined;
           const modelMatch = Boolean(
             model &&
-            (modelPosition ||
+            (Boolean(modelPosition) ||
               d.descriptor
                 .split(/\s+/)
                 .some((text) => equipmentModelKey(text) === model)),

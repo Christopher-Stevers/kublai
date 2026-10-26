@@ -124,18 +124,36 @@ export async function recognizeEquipmentPage(
     const release = await slot();
     const output = `${file}.equipment-ocr-${process.pid}-${page}.tmp`;
     try {
-      await execute(
-        process.execPath,
-        [
-          "--max-old-space-size=512",
-          ...workerCommand("src/server/drawings/equipment-index-worker.ts"),
-          file,
-          output,
-          "pdf",
-          String(page),
-        ],
-        { timeout: 55_000, maxBuffer: 65536 },
-      );
+      await new Promise<void>((resolve, reject) => {
+        const child = execFile(
+          process.execPath,
+          [
+            "--max-old-space-size=512",
+            ...workerCommand("src/server/drawings/equipment-index-worker.ts"),
+            file,
+            output,
+            "pdf",
+            String(page),
+          ],
+          {
+            timeout: 55_000,
+            maxBuffer: 65536,
+            detached: true,
+            killSignal: "SIGKILL",
+          },
+          (error) => {
+            // A timeout must terminate Tesseract as well as its Node parent.
+            if (child.pid)
+              try {
+                process.kill(-child.pid, "SIGKILL");
+              } catch {
+                /* The process group already exited. */
+              }
+            if (error) reject(error);
+            else resolve();
+          },
+        );
+      });
       if ((await stat(output)).size > 8 * 1024 * 1024)
         throw Error("OCR page exceeds reading limit");
       const result = JSON.parse(

@@ -145,12 +145,6 @@ export function SuperEquipmentDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-          <p className="text-muted-foreground text-sm">
-            Exact equipment tags provide the match evidence. “Submittal found”
-            confirms a document is present, not engineering approval. Untagged
-            items, model-only references and unusual schedule layouts need
-            manual review.
-          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -479,6 +473,15 @@ export function SuperEquipmentDialog({
                   Next
                 </Button>
               </div>
+              <details className="text-sm">
+                <summary>About equipment matches</summary>{" "}
+                <p className="text-muted-foreground text-sm">
+                  Exact equipment tags provide the match evidence. “Submittal
+                  found” confirms a document is present, not engineering
+                  approval. Untagged items, model-only references and unusual
+                  schedule layouts need manual review.
+                </p>
+              </details>
               <p className="text-muted-foreground text-xs">
                 Generated {new Date(data.generatedAt).toLocaleString()}.
                 Coverage includes only sources you can access and the selected

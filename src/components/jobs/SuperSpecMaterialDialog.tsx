@@ -28,7 +28,7 @@ function Matches({
   option: SystemAlternative;
 }) {
   const mapped = Boolean(
-    option.materialId || option.categoryId || option.catalogId,
+    option.materialId ?? option.categoryId ?? option.catalogId,
   );
   const [findMatches, setFindMatches] = useState(false);
   const parts = api.catalogue.searchParts.useQuery(
@@ -387,9 +387,11 @@ export function SuperSpecMaterialDialog({
         {!status.isLoading && !docs.length && (
           <p>Add documents to the Specifications folder to begin.</p>
         )}
-        {(error || status.error || systems.error) && (
+        {(Boolean(error) ||
+          Boolean(status.error) ||
+          Boolean(systems.error)) && (
           <p role="alert" className="text-destructive">
-            {error || status.error?.message || systems.error?.message}
+            {error ? error : (status.error?.message ?? systems.error?.message)}
           </p>
         )}
         {busy && (

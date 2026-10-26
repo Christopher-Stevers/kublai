@@ -1,9 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { TRPCError } from "@trpc/server";
 import { drawingLegendItems, jobDrawingSheets } from "~/server/db/schema";
+import {
+  drawingWorkspaceEntities,
+  drawingWorkspaceMetadata,
+} from "~/server/db/drawing-workspace-schema";
 import { accessSheet, type DrawingContext } from "./service";
 import {
   drawingPdfLocation,
@@ -73,7 +77,60 @@ export async function listLegendItems(ctx: DrawingContext, sheetId: string) {
       )
       .orderBy(jobDrawingSheets.sortOrder),
   ]);
-  return { items, sheets, canEdit: canAnnotate };
+  const [metadata, versions] = sheets.length
+    ? await Promise.all([
+        ctx.db
+          .select({
+            sheetId: drawingWorkspaceMetadata.sheetId,
+            data: drawingWorkspaceMetadata.data,
+          })
+          .from(drawingWorkspaceMetadata)
+          .where(
+            inArray(
+              drawingWorkspaceMetadata.sheetId,
+              sheets.map((s) => s.id),
+            ),
+          ),
+        ctx.db
+          .select({ entity: drawingWorkspaceEntities.entity })
+          .from(drawingWorkspaceEntities)
+          .where(
+            and(
+              inArray(
+                drawingWorkspaceEntities.sheetId,
+                sheets.map((s) => s.id),
+              ),
+              eq(drawingWorkspaceEntities.organizationId, sheet.organizationId),
+              sql`entity->>'kind'='version'`,
+            ),
+          ),
+      ])
+    : [[], []];
+  const historical = new Set([
+    ...metadata.flatMap((row) =>
+      row.data.currentSourceSheetId &&
+      row.data.currentSourceSheetId !== row.sheetId
+        ? [row.data.currentSourceSheetId]
+        : [],
+    ),
+    ...versions.flatMap((row) =>
+      row.entity.kind === "version" ? [row.entity.data.sourceSheetId] : [],
+    ),
+  ]);
+  // Existing references to older revisions remain viewable; whole-set scans
+  // select logical current sheets and use their latest physical source below.
+  const current = new Map(
+    metadata.map((row) => [row.sheetId, row.data.currentSourceSheetId]),
+  );
+  return {
+    items,
+    sheets: sheets.map((s) => ({
+      ...s,
+      isCurrent: !historical.has(s.id),
+      scanSourceId: current.get(s.id) ?? s.id,
+    })),
+    canEdit: canAnnotate,
+  };
 }
 export async function scanLegend(
   ctx: DrawingContext,
