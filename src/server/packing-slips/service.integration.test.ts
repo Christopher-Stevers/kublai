@@ -264,6 +264,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     expect(test.extractionStarted).toBe(true);
+    expect((await workspace()).documents[0]!.packingSlipAnalysis?.progress?.stage).toBe("extracting");
     for (let i = 0; i < 3; i++)
       test.transaction.mockRejectedValueOnce(Error("database unavailable"));
     const rejected = expect(running).rejects.toThrow("database unavailable");

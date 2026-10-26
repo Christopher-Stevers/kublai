@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { SlipProcessingProgress } from "./SlipProcessingProgress";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -437,16 +438,7 @@ export function SlipVerifyBar({
   const order =
     showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
   if (!draft.slip) {
-    if (!draft.reading) return null;
-    return (
-      <div
-        role="status"
-        className="bg-card mb-3 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm"
-      >
-        <Loader2Icon className="text-muted-foreground size-4 shrink-0 animate-spin" />
-        Reading the packing slip{order}. The parts fill in when it is done.
-      </div>
-    );
+    return <SlipProcessingProgress analysis={draft.tracking} order={order} />;
   }
   const filled = draft.items.filter((i) => i.amount !== undefined).length;
   const checks = draft.items.filter((i) => i.check).length;
@@ -502,6 +494,7 @@ export function SlipVerifyBar({
           Confirm delivery
         </Button>
       </div>
+      <SlipProcessingProgress analysis={draft.reading || draft.tracking?.status === "failed" ? draft.tracking : draft.analysis} order={order} />
       {draft.error && (
         <div
           role="alert"

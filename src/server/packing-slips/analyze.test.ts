@@ -161,3 +161,11 @@ it("adds shipped rows only into proposals, not prior receipts", () => {
   } as SlipAnalysis;
   expect(proposedReceipts(analysis)).toEqual({ a: 5 });
 });
+
+it("reports real processing stages and leaves final duplicate checks authoritative", async () => {
+  const progress: import("~/lib/packing-slip-review").SlipProgress[] = [];
+  const result = await analyzeSlip([header, line], [item], run, {pages: [], onProgress: async value => { progress.push(structuredClone(value)); }});
+  expect(progress[0]?.stage).toBe("matching");
+  expect(progress.at(-1)?.stage).toBe("checking");
+  expect(progress.at(-1)?.lines).toEqual(result.lines);
+});

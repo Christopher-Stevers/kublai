@@ -108,7 +108,7 @@ export function useSlipDrafts({
     if (!active || !reading) return;
     const timer = setInterval(() => {
       void reload().catch(() => undefined);
-    }, 4000);
+    }, 1500);
     return () => clearInterval(timer);
   }, [active, reading, reload]);
 
@@ -190,6 +190,7 @@ export function useSlipDrafts({
       orderNumber: mine[0]?.packingSlip.orderNumber ?? null,
       slip,
       analysis,
+      tracking: [...mine].filter((s) => s.packingSlipAnalysis?.versionId === s.currentVersionId).sort((a, b) => (b.packingSlipAnalysis?.startedAt ?? "").localeCompare(a.packingSlipAnalysis?.startedAt ?? ""))[0]?.packingSlipAnalysis ?? null,
       reading: mine.some((s) => s.packingSlipAnalysis?.status === "processing"),
       busy,
       error,
@@ -259,7 +260,7 @@ export function useSlipDrafts({
       slips
         .filter(
           (s) =>
-            reviewable(s) || s.packingSlipAnalysis?.status === "processing",
+            reviewable(s) || s.packingSlipAnalysis?.status === "processing" || s.packingSlipAnalysis?.status === "failed",
         )
         .map((s) => s.packingSlip.orderId),
     ),

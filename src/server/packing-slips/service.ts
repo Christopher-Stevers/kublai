@@ -36,6 +36,7 @@ import {
   convertSlipQuantity,
   type ReceiptOrderItem,
   type SlipAnalysis,
+  type SlipProgress,
 } from "~/lib/packing-slip-review";
 import { extractSlip } from "./extract";
 import { analyzeSlip } from "./analyze";
@@ -431,6 +432,23 @@ async function runSlipTask(
       throw Error(
         "Analysis was interrupted repeatedly. Retry or verify manually.",
       );
+    let progressTail = Promise.resolve();
+    const report = (progress: SlipProgress) => {
+      const snapshot = structuredClone(progress);
+      progressTail = progressTail.then(async () => {
+        await mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
+          if (claim && !(await ownsPackingSlip(tx, claim))) return;
+          const doc = accessibleDocument(state, actor, documentId);
+          if (doc.packingSlip?.orderId !== task.orderId || doc.currentVersionId !== task.version.id ||
+              doc.packingSlipAnalysis?.runId !== task.analysis.runId || doc.packingSlipAnalysis.status !== "processing") return;
+          await orderFor(tx, fresh, task.orderId);
+          doc.packingSlipAnalysis.progress = snapshot;
+          assertStateBounds(state);
+        });
+      });
+      return progressTail;
+    };
+    await report({ stage: "extracting", message: "Reading the scanned pages…" });
     const extracted = await extractSlip(
       access.job.organizationId,
       task.version.sha256,
@@ -447,7 +465,7 @@ async function runSlipTask(
       extracted.rows,
       task.analysis.items,
       undefined,
-      { pages: extracted.pages, memory },
+      { pages: extracted.pages, memory, onProgress: report },
     );
     await mutateWorkspace(
       access.user.id,

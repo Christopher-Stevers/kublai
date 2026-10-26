@@ -374,3 +374,20 @@ it("checks slips for every order on the whole list, each confirmed on its own", 
     quantities: { c: 4 },
   });
 });
+
+it("shows live provisional matches without allowing receipt confirmation", async () => {
+  const posts = serve({ ...analysis, status: "processing", lines: [], progress: { stage: "matching", message: "Checking each printed line…", completed: 1, total: 3, lines: [analysis.lines[0]!] } });
+  render(<List />);
+  expect(await screen.findByText("Checking each printed line…")).toBeInTheDocument();
+  expect(screen.getByText(/1 of 3 lines checked/)).toBeInTheDocument();
+  expect(screen.getByText(/Matched · final checks pending/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", {name: /Confirm delivery/})).not.toBeInTheDocument();
+  expect(posts).toHaveLength(0);
+});
+it("keeps failed analysis visible on the receiving list", async () => {
+  serve({ ...analysis, status: "failed", error: "The image could not be read." });
+  render(<List />);
+  expect(await screen.findByText("The image could not be read.")).toBeInTheDocument();
+  expect(screen.getByText(/Open Packing slips to rerun/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", {name: /Confirm delivery/})).not.toBeInTheDocument();
+});

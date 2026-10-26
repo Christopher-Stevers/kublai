@@ -13,6 +13,7 @@ import {
   type ReceiptOrderItem,
   type SlipBox,
   type SlipLine,
+  type SlipProgress,
 } from "~/lib/packing-slip-review";
 import { locatedBands, pageInk, type QuantityColumns } from "./line-bands";
 import { skuScore } from "./match";
@@ -688,6 +689,7 @@ export function codeMatch(
 }
 
 export async function readSlipImages(input: {
+  onProgress?: (progress: SlipProgress) => Promise<void>;
   pages: Buffer[];
   rows: SlipRow[];
   items: ReceiptOrderItem[];
@@ -884,8 +886,10 @@ export async function readSlipImages(input: {
           (a, b) => Math.abs(a.page - info.page) - Math.abs(b.page - info.page),
         )[0] ?? info);
 
+  const partial = new Map<number, Reading>();
+  await input.onProgress?.({ stage: "matching", message: "Checking each printed line against the order…", completed: 0, total: bands.length });
   const readings = await limited(
-    bands.map((band) => async (): Promise<Reading> => {
+    bands.map((band, index) => async (): Promise<Reading> => {
       const info = pageInfo[band.page - 1]!;
       const png = pages[band.page - 1]!;
       const titled = headingsFor(info),
@@ -1109,7 +1113,7 @@ export async function readSlipImages(input: {
               )
           : Promise.resolve(null),
       ]);
-      return decideReading(
+      const reading = decideReading(
         band,
         // The line's figure for a column the slip lacks is another column's.
         Object.fromEntries(
@@ -1120,12 +1124,17 @@ export async function readSlipImages(input: {
         code,
         choice(hand?.handwritten),
       );
+      partial.set(index, reading);
+      await input.onProgress?.({ stage: "matching", message: "Checking each printed line against the order…", completed: partial.size, total: bands.length,
+        lines: checkAgainstOrder([...partial.entries()].sort(([a], [b]) => a - b).map(([, value]) => value), items) });
+      return reading;
     }),
     3,
   );
 
   for (const [k, r] of readings.entries()) readings[k] = settleHidden(r, items);
   const lines = checkAgainstOrder(readings, items);
+  await input.onProgress?.({ stage: "checking", message: "Checking printed totals and cross-checking quantities…", completed: readings.length, total: readings.length, lines });
   let checks = await itemChecks;
   const { problems, countOff, counted, shipped } = last
     ? totalsProblems(lines, readings, last.answers, last.total)

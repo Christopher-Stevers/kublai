@@ -41,7 +41,16 @@ export type SlipLine = {
   handwritten?: number;
 };
 export type SlipBox = { x: number; y: number; width: number; height: number };
+export type SlipProgress = {
+  stage: "extracting" | "matching" | "checking";
+  message: string;
+  completed?: number;
+  total?: number;
+  /** Provisional readings: never used to receive stock. */
+  lines?: SlipLine[];
+};
 export type SlipAnalysis = {
+  progress?: SlipProgress;
   runId: string;
   versionId: string;
   status: "processing" | "ready" | "failed" | "cleared";

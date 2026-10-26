@@ -4,6 +4,7 @@ import {
   type ReceiptOrderItem,
   type SlipBox,
   type SlipLine,
+  type SlipProgress,
 } from "~/lib/packing-slip-review";
 import type { SlipRow, SlipWord } from "./ocr-rows";
 import {
@@ -132,6 +133,7 @@ async function assistRows(
   rows: SlipRow[],
   items: ReceiptOrderItem[],
   run: Evaluator,
+  onProgress?: (progress: SlipProgress) => Promise<void>,
 ) {
   const warnings: string[] = [],
     lines: SlipLine[] = [];
@@ -381,6 +383,7 @@ async function assistRows(
         source: "assistant",
       });
     }
+    await onProgress?.({ stage: "matching", message: "Reading text rows and matching order parts…", completed: Math.min(offset + batch.length, 150), total: Math.min(candidates.length, 150), lines: structuredClone(lines) });
   }
   return { lines, warnings, model };
 }
@@ -661,6 +664,7 @@ export async function analyzeSlip(
   run: Evaluator = evaluate,
   /** Page images (PNG, page order): Jev then reads every line from them. */
   images?: {
+    onProgress?: (progress: SlipProgress) => Promise<void>;
     pages: Buffer[];
     ask?: VisionAsk;
     /** What earlier deliveries from this supplier taught. */
@@ -670,6 +674,7 @@ export async function analyzeSlip(
   if (items.length > 200)
     throw Error("This order has more than 200 lines. Verify it manually.");
   const warnings: string[] = [];
+  await images?.onProgress?.({ stage: "matching", message: "Finding printed lines and matching parts to the order…" });
   const table = readSlipTable(rows);
   let lines = tableLines(table, items),
     model = table.layouts.length ? "table reader" : "";
@@ -686,6 +691,7 @@ export async function analyzeSlip(
     images && canRead
       ? await readSlipImages({
           pages: images.pages,
+          onProgress: images.onProgress,
           rows,
           items,
           tableLines: lines,
@@ -711,7 +717,7 @@ export async function analyzeSlip(
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
   } else if (!table.layouts.length) {
-    const assisted = await assistRows(table.unread, items, run);
+    const assisted = await assistRows(table.unread, items, run, images?.onProgress);
     lines = assisted.lines;
     warnings.push(...assisted.warnings);
     model = assisted.model;
@@ -727,6 +733,7 @@ export async function analyzeSlip(
         );
     }
   }
+  await images?.onProgress?.({ stage: "checking", message: "Checking totals, quantities and duplicate lines…", completed: lines.length, total: lines.length, lines });
   const repeated = new Map<string, SlipLine[]>();
   for (const l of lines) {
     const key = l.evidence.toLowerCase().replace(/\s+/g, " ");
