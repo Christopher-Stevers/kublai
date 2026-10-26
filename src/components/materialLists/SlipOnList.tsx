@@ -435,6 +435,7 @@ export function SlipVerifyBar({
   /** Name the order, for lists with more than one. */
   showOrder?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const order =
     showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
   if (!draft.slip) {
@@ -462,7 +463,7 @@ export function SlipVerifyBar({
   return (
     <section
       aria-label="Packing slip"
-      className="bg-card sticky top-0 z-30 mb-3 space-y-2 rounded-xl border p-3 shadow-sm"
+      className="bg-card space-y-2 rounded-xl border p-3 shadow-sm"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -481,6 +482,20 @@ export function SlipVerifyBar({
             . Tap a part to change it.
           </p>
         </div>
+        {draft.analysis!.lines.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground h-8 shrink-0 px-2 text-xs"
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? "Hide" : "Details"}
+            <ChevronDownIcon
+              className={cn("size-3.5 transition-transform", open && "rotate-180")}
+            />
+          </Button>
+        )}
         <Button
           className="h-10 w-full sm:w-auto"
           disabled={draft.busy || !filled}
@@ -494,7 +509,15 @@ export function SlipVerifyBar({
           Confirm delivery
         </Button>
       </div>
-      <SlipProcessingProgress analysis={draft.reading || draft.tracking?.status === "failed" ? draft.tracking : draft.analysis} order={order} />
+      {/* Line by line results fold away so the parts stay in view; each
+          part card carries its own Check mark. */}
+      {(open || draft.reading || draft.tracking?.status === "failed") && (
+        <SlipProcessingProgress
+          analysis={draft.reading || draft.tracking?.status === "failed" ? draft.tracking : draft.analysis}
+          order={order}
+          embedded
+        />
+      )}
       {draft.error && (
         <div
           role="alert"
@@ -529,7 +552,7 @@ export function SlipVerifyBar({
             {unmatched.length} slip {unmatched.length === 1 ? "line" : "lines"}{" "}
             not matched to a part
           </summary>
-          <ul className="mt-2 max-h-[50dvh] space-y-3 overflow-y-auto">
+          <ul className="mt-2 space-y-3">
             {unmatched.map(({ line, index }) => (
               <li
                 key={index}

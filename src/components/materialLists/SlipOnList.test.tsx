@@ -395,6 +395,7 @@ it("keeps failed analysis visible on the receiving list", async () => {
 it("flags uncertain matches even when a quantity was proposed", async () => {
   serve({ ...analysis, lines: [{...analysis.lines[0]!, confidence: "medium"}] });
   render(<List />);
-  expect(await screen.findByText("0 checked · 1 flagged for review")).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: "Details" }));
+  expect(screen.getByText(/Flagged/)).toBeInTheDocument();
   expect(screen.queryByText(/Checked · ready to confirm/)).not.toBeInTheDocument();
 });

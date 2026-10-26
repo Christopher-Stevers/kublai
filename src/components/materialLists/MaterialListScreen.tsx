@@ -359,9 +359,15 @@ export function MaterialListScreen({
               )}
             </div>
           )}
-          {mlHeader?.jobId && slipDrafts.drafts.map((draft) => (
-            <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId} showOrder={!verifyOrderId} />
-          ))}
+          {mlHeader?.jobId && slipDrafts.drafts.length > 0 && (
+            // One pinned stack for every order's slip, capped so the parts
+            // underneath always stay reachable.
+            <div className="sticky top-0 z-30 mb-3 max-h-[45dvh] space-y-2 overflow-y-auto overscroll-contain rounded-xl">
+              {slipDrafts.drafts.map((draft) => (
+                <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId!} showOrder={!verifyOrderId} />
+              ))}
+            </div>
+          )}
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">
