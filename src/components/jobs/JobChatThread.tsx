@@ -397,6 +397,9 @@ function ChatLobby({
   ]);
 
   useEffect(() => {
+    // Embedded threads fill the workspace. A second viewport-derived height can
+    // retain the keyboard-open size after the workspace has already expanded.
+    if (embedded) return;
     const resize = () => {
       if (!panel.current) return;
       const viewport = window.visualViewport;
@@ -416,7 +419,7 @@ function ChatLobby({
       window.visualViewport?.removeEventListener("resize", resize);
       window.visualViewport?.removeEventListener("scroll", resize);
     };
-  }, []);
+  }, [embedded]);
   useEffect(() => {
     const update = () => setVisible(document.visibilityState !== "hidden");
     document.addEventListener("visibilitychange", update);
@@ -956,7 +959,7 @@ function ChatLobby({
       ref={panel}
       aria-label="Job chat"
       className="bg-card flex h-full min-h-0 w-full flex-col overflow-hidden"
-      style={{ height: panelHeight }}
+      style={{ height: embedded ? undefined : panelHeight }}
     >
       {embedded ? (
         headerControlsTarget && (

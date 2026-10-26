@@ -679,3 +679,18 @@ it("retains chat and draft during a gateway outage and recovers without leaving 
     "Keep my unsent message",
   );
 });
+
+it("lets the workspace size embedded job chats after the keyboard closes", async () => {
+  const viewport = Object.assign(new EventTarget(), { height: 400, offsetTop: 0, scale: 1 });
+  vi.stubGlobal("visualViewport", viewport);
+  render(<JobChatView jobId="job-one" embedded />);
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Message" })).not.toBeDisabled());
+  const panel = screen.getByRole("region", { name: "Job chat" });
+  expect(panel.style.height).toBe("");
+  act(() => {
+    viewport.height = 800;
+    viewport.dispatchEvent(new Event("resize"));
+  });
+  expect(panel.style.height).toBe("");
+  expect(panel).toHaveClass("h-full");
+});
