@@ -1,5 +1,5 @@
 import { workerCommand } from "~/server/background/command";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, stat, writeFile, rename, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -125,7 +125,7 @@ export async function recognizeEquipmentPage(
     const output = `${file}.equipment-ocr-${process.pid}-${page}.tmp`;
     try {
       await new Promise<void>((resolve, reject) => {
-        const child = execFile(
+        const child = spawn(
           process.execPath,
           [
             "--max-old-space-size=512",
@@ -135,24 +135,35 @@ export async function recognizeEquipmentPage(
             "pdf",
             String(page),
           ],
-          {
-            timeout: 55_000,
-            maxBuffer: 65536,
-            detached: true,
-            killSignal: "SIGKILL",
-          },
-          (error) => {
-            // A timeout must terminate Tesseract as well as its Node parent.
-            if (child.pid)
-              try {
-                process.kill(-child.pid, "SIGKILL");
-              } catch {
-                /* The process group already exited. */
-              }
-            if (error) reject(error);
-            else resolve();
-          },
+          { detached: true, stdio: "ignore" },
         );
+        const killGroup = () => {
+          if (child.pid)
+            try {
+              process.kill(-child.pid, "SIGKILL");
+            } catch {
+              /* The process group already exited. */
+            }
+        };
+        const timeout = setTimeout(() => {
+          killGroup();
+          reject(
+            Error(
+              "Text recognition timed out. Try a smaller source or review this page manually.",
+            ),
+          );
+        }, 55_000);
+        child.once("error", (error) => {
+          clearTimeout(timeout);
+          killGroup();
+          reject(error);
+        });
+        child.once("exit", (code) => {
+          clearTimeout(timeout);
+          killGroup();
+          if (code === 0) resolve();
+          else reject(Error("Text recognition could not read this page."));
+        });
       });
       if ((await stat(output)).size > 8 * 1024 * 1024)
         throw Error("OCR page exceeds reading limit");
