@@ -35,7 +35,7 @@ Each reading preserves reader version, questions, raw responses, crop hashes, ti
 ## Verification
 
 - 111 unit and UI checks passed across 15 files.
-- 37 isolated PostgreSQL checks passed for review history, permissions, stale/concurrent approvals, duplicate replacement, corrections, returns, source adoption, units, shared records and reconstruction.
+- 38 isolated PostgreSQL checks passed for review history, permissions, stale/concurrent approvals, duplicate replacement, corrections, returns, source adoption, units, shared records and reconstruction.
 - 43 isolated PostgreSQL purchasing checks passed.
 - TypeScript passed. Full lint still has existing repository debt; comparison with the base commit found zero introduced lint errors. The repository-wide lint command does not pass.
 - Real uploaded corpus: all 240 live packing-slip PDFs (348 pages) completed local OCR with zero extraction failures. None had useful embedded text. 101 had no confidently recognized deterministic table; five showed return-header evidence. These counts are not measured matching accuracy.

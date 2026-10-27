@@ -325,12 +325,15 @@ export async function startSlipAnalysis(
         );
         doc.packingSlipAnalysis = copy;
         const { initialReview } = await import("~/lib/receiving-review");
-        doc.receivingReview = initialReview(
+        const cachedReview = initialReview(
           copy,
           version.id,
           fresh.user.id,
           same.receivingReview?.sourceText ?? "",
         );
+        doc.receivingReview = doc.receivingReview
+          ? mergeReading(doc.receivingReview, cachedReview)
+          : cachedReview;
         await recordReviewHistory(tx, fresh, doc, copy, "analysis", {
           analysis: copy,
           reusedFromDocument: same.id,

@@ -761,6 +761,24 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   const finger = async (
     access: Awaited<ReturnType<typeof assertDocumentAccess>>,
   ) => orderFingerprint(await orderSnapshot(db, access, order));
+  it("preserves saved review decisions when cleared detection reuses an identical source", async () => {
+    const { access } = await ready();
+    const duplicate = await saveDocumentVersion(access, { ...file, name: "another scan.jpg" }, async () => undefined);
+    await startSlipAnalysis(access, duplicate.documentId);
+    await reviewAction(access, duplicate.documentId, { action: "header", kind: "delivery", supplierId: null, supplierName: "Checked supplier", deliveryNumber: "D-123", supplierOrderNumber: "", deliveryDate: "", confirmed: true });
+    await reviewAction(access, duplicate.documentId, { action: "line", lineId: "0", description: "Checked valve", sku: "", quantity: 7, ordered: 10, unit: "ea", unitPrice: null, orderItemId: id(6), checked: true });
+    const before = (await workspace()).documents.find(d => d.id === duplicate.documentId)!;
+    await clearSlipAnalysis(access, duplicate.documentId, before.packingSlipAnalysis!.runId);
+    test.extractionStarted = false;
+    await startSlipAnalysis(access, duplicate.documentId);
+    const after = (await workspace()).documents.find(d => d.id === duplicate.documentId)!;
+    expect(test.extractionStarted).toBe(false);
+    expect(after.packingSlipAnalysis!.usage?.calls).toBe(0);
+    expect(after.receivingReview!.deliveryNumber).toBe("D-123");
+    expect(after.receivingReview!.lines[0]).toMatchObject({ description: "Checked valve", quantity: 7, checked: true });
+    expect(after.receivingReview!.lines.slice(1).every(l => !l.checked && l.issues.some(issue => issue.startsWith("New reading:")))).toBe(true);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("new queue approves once under concurrent requests and preserves unresolved lines", async () => {
     const { access, doc } = await confirmedHeader();
     await reviewAction(access, doc.documentId, {
