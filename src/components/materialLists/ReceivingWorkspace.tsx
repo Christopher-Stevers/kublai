@@ -37,6 +37,12 @@ import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import type { JobDocument } from "~/server/documents/types";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  PackingSlipTrialComparison,
+  PackingSlipTrialSummary,
+  type TrialSummary,
+} from "./PackingSlipTrial";
+import { trialReaders } from "~/lib/packing-slip-trial";
 
 type Entry = {
   id: string;
@@ -47,6 +53,7 @@ type Entry = {
   status: string;
   pending: number | null;
   approved: number;
+  reviewTrialRunId?: string;
 };
 type Option = { id: string; name: string };
 type Part = {
@@ -128,6 +135,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     id = query.get("document");
   const online = useOnlineStatus();
   const [docs, setDocs] = useState<Entry[]>([]),
+    [trial, setTrial] = useState<TrialSummary | null>(null),
     [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -246,7 +254,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     a = detail?.document.packingSlipAnalysis;
   const ready = r?.lines.filter((l) => approvable(l, r.kind)) ?? [];
   const remaining =
-    r?.lines.filter((l) => !l.ignored && changed(l, r.kind)).length ?? 0;
+    r?.lines.filter(
+      (l) =>
+        !l.ignored &&
+        (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true)),
+    ).length ?? 0;
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
   const blocked =
@@ -321,6 +333,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       )}
       {!id ? (
         <>
+          <PackingSlipTrialSummary
+            jobId={jobId}
+            online={online}
+            onUpdate={setTrial}
+          />
           <div className="mb-5 flex flex-wrap items-center gap-4">
             <div className="relative min-w-48 flex-1">
               <SearchIcon className="text-muted-foreground absolute top-3.5 left-3 size-4" />
@@ -354,6 +371,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               .filter(
                 (d) =>
                   (showAll ||
+                    !!trial?.cases.some(
+                      (c) =>
+                        c.documentId === d.id &&
+                        d.reviewTrialRunId !== trial.runId,
+                    ) ||
                     d.status === "review" ||
                     d.status === "processing") &&
                   `${d.name} ${d.order?.orderNumber ?? ""}`
@@ -373,6 +395,19 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       {d.order?.orderNumber ?? "Order not linked"} ·{" "}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </span>
+                    {trial?.cases.find((c) => c.documentId === d.id) && (
+                      <span className="text-muted-foreground block text-xs">
+                        Fresh trial ·{" "}
+                        {
+                          trialReaders.filter(
+                            (reader) =>
+                              trial.cases.find((c) => c.documentId === d.id)
+                                ?.readers?.[reader] === "complete",
+                          ).length
+                        }
+                        /4 readings ready
+                      </span>
+                    )}
                   </span>
                   <span className="text-sm">
                     {d.status === "processing"
@@ -382,7 +417,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           ? "Needs review"
                           : `${d.pending} unresolved`
                         : d.status === "complete"
-                          ? "Reviewed"
+                          ? trial && d.reviewTrialRunId !== trial.runId
+                            ? "Previously approved"
+                            : "Reviewed"
                           : d.status === "supporting"
                             ? "Supporting file"
                             : "Replaced"}
@@ -429,6 +466,17 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               )}
             </div>
           </div>
+          <PackingSlipTrialComparison
+            key={detail.document.id}
+            jobId={jobId}
+            documentId={detail.document.id}
+            online={online}
+            busy={busy}
+            selectedReader={r?.sourceTrial?.reader}
+            onUse={async (reader, runId) => {
+              await run({ action: "trialDraft", reader, runId });
+            }}
+          />
           {progress && a && <SlipProcessingProgress analysis={a} embedded />}
           {sourceChanged && (
             <div className="mb-4 border-l-2 border-amber-500 p-3 text-sm">
@@ -1087,7 +1135,9 @@ function LineReview({
     : l.approved
       ? changed(l, detail.review.kind)
         ? "Correction to review"
-        : "Approved"
+        : detail.review.sourceTrial && l.checked !== true
+          ? "Previously approved · recheck"
+          : "Approved"
       : approvable(l, detail.review.kind)
         ? "Ready to approve"
         : "Needs review";

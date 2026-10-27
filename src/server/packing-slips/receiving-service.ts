@@ -43,9 +43,12 @@ import {
 import { orderFor, orderSnapshot, orderFingerprint } from "./service";
 import { matchLines } from "./match";
 import { seedPreviousReceipt } from "./review-draft";
+import { trialDocument } from "./trial-store";
+import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { canCreateFromSlip } from "./receiving-access";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
+import { trialReaders } from "~/lib/packing-slip-trial";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -139,7 +142,8 @@ export async function receivingQueue(
             (l) =>
               !l.ignored &&
               (l.approved?.quantity !== l.quantity ||
-                l.approved.kind !== lineKind(l, r.kind)),
+                l.approved.kind !== lineKind(l, r.kind) ||
+                (!!r.sourceTrial && l.checked !== true)),
           ).length
         : null;
       return {
@@ -168,6 +172,7 @@ export async function receivingQueue(
         approved:
           r?.lines.filter((l) => l.approved).length ??
           (a?.applied ? Object.keys(a.applied.quantities).length : 0),
+        reviewTrialRunId: r?.sourceTrial?.runId,
       };
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -332,6 +337,7 @@ async function history(
     before: ReceivingReview;
     after: ReceivingReview;
   },
+  developmentImport = false,
 ) {
   const review = doc.receivingReview!;
   const applied = review.lines.filter(
@@ -361,12 +367,15 @@ async function history(
     documentId: doc.id,
     versionId: review.versionId,
     runId: requestId,
-    kind: "confirmation",
+    kind: developmentImport ? "analysis" : "confirmation",
     userId: access.user.id,
     release: process.env.NEXT_PUBLIC_APP_RELEASE ?? "unknown",
     data: {
       schemaVersion: 2,
-      operation: input.action,
+      operation: developmentImport ? "trial-import" : input.action,
+      initiator: developmentImport ? "development-trial" : "human",
+      targetLineId: "lineId" in input ? input.lineId : undefined,
+      targetLineIds: input.action === "approve" ? input.lineIds : undefined,
       requestHash: createHash("sha256")
         .update(JSON.stringify(input))
         .digest("hex"),
@@ -534,6 +543,22 @@ export async function mutateReceiving(
   access: DocumentAccess,
   input: ReceivingInput,
 ) {
+  return mutateReceivingImpl(access, input, false);
+}
+
+/** Development-only ingestion. Not exposed as an API action or human approval. */
+export async function importTrialReview(
+  access: DocumentAccess,
+  input: Extract<ReceivingInput, { action: "trialDraft" }>,
+) {
+  return mutateReceivingImpl(access, input, true);
+}
+
+async function mutateReceivingImpl(
+  access: DocumentAccess,
+  input: ReceivingInput,
+  developmentImport: boolean,
+) {
   receiveAccess(access);
   const result = await mutateWorkspace(
     access.user.id,
@@ -541,12 +566,47 @@ export async function mutateReceiving(
     async (state, actor, fresh, tx) => {
       receiveAccess(fresh);
       const doc = accessibleDocument(
-          state,
-          { ...actor, canWrite: true },
-          input.documentId,
-          { write: true },
-        ),
-        review = ensure(doc, fresh.user.id);
+        state,
+        { ...actor, canWrite: true },
+        input.documentId,
+        { write: true },
+      );
+      if (developmentImport) {
+        if (input.action !== "trialDraft")
+          return fail("Only trial drafts can be imported.");
+        const saved = doc.receivingReview;
+        if (
+          doc.packingSlipAnalysis?.applied ||
+          saved?.retiredBy ||
+          saved?.humanReviewed ||
+          saved?.orderConfirmed ||
+          saved?.documentChecked ||
+          saved?.duplicateDecision ||
+          saved?.lines.some(
+            (l) =>
+              !!l.approved ||
+              l.checked === true ||
+              l.humanEdited === true ||
+              !!l.ignored ||
+              !!l.partId,
+          )
+        )
+          return {
+            replayed: false,
+            skipped: "Saved human decisions were preserved.",
+            materialListId: undefined,
+          };
+        if (
+          saved?.sourceTrial?.runId === input.runId &&
+          saved?.sourceTrial?.reader === input.reader
+        )
+          return {
+            replayed: true,
+            skipped: "This trial draft is already imported.",
+            materialListId: undefined,
+          };
+      }
+      const review = ensure(doc, fresh.user.id);
       const [prior] = await tx
         .select({
           data: packingSlipReviewHistory.data,
@@ -561,7 +621,10 @@ export async function mutateReceiving(
               fresh.job.organizationId,
             ),
             eq(packingSlipReviewHistory.runId, input.requestId),
-            eq(packingSlipReviewHistory.kind, "confirmation"),
+            eq(
+              packingSlipReviewHistory.kind,
+              developmentImport ? "analysis" : "confirmation",
+            ),
           ),
         )
         .limit(1);
@@ -607,7 +670,74 @@ export async function mutateReceiving(
         if (!l) fail("Slip line no longer exists.", "CONFLICT");
         return l!;
       };
-      if (input.action === "reopen") {
+      if (input.action === "trialDraft") {
+        const trial = await trialDocument(fresh, doc.id, input.runId, state);
+        if (!trial || trial.stale)
+          fail(
+            "This comparison is not for the current source file.",
+            "CONFLICT",
+          );
+        if (
+          developmentImport &&
+          trialReaders.some((r) => trial!.results[r]?.status !== "complete")
+        )
+          fail(
+            "All four readers must finish before importing the trial draft.",
+            "CONFLICT",
+          );
+        const prediction = trial!.results[input.reader];
+        if (prediction?.status !== "complete")
+          fail("This reader has not completed the slip.");
+        const chosenOrderId = doc.packingSlip?.orderId ?? prediction!.orderId;
+        const order = chosenOrderId
+          ? await orderFor(tx, fresh, chosenOrderId)
+          : null;
+        if (order && !doc.packingSlip) {
+          const [list] = await tx
+            .select()
+            .from(materialLists)
+            .where(
+              and(
+                eq(materialLists.id, order.materialListId!),
+                eq(materialLists.jobId, fresh.job.id),
+                eq(materialLists.organizationId, fresh.job.organizationId),
+              ),
+            )
+            .limit(1);
+          if (!list) fail("Material list unavailable.");
+          doc.packingSlip = {
+            orderId: order.id,
+            orderNumber: order.orderNumber ?? order.id,
+            materialListId: list!.id,
+            materialListName: list!.name,
+          };
+        }
+        const items = order ? await orderSnapshot(tx, fresh, order.id) : [];
+        const prepared = trialDraft({
+          results: trial!.results,
+          reader: input.reader,
+          runId: trial!.runId,
+          versionId: doc.currentVersionId!,
+          userId: fresh.user.id,
+          items,
+        });
+        prepared.review.supplierId = order?.supplierId ?? null;
+        if (prediction!.orderId && order && prediction!.orderId !== order.id)
+          prepared.review.warnings.push(
+            "This reader suggests a different order. The existing link was preserved; resolve the order before approving.",
+          );
+        const revision = review.revision;
+        const merged = mergeTrialDraft(review, prepared.review);
+        Object.assign(review, merged, {
+          revision,
+          sourceTrial: prepared.review.sourceTrial,
+        });
+        doc.packingSlipAnalysis = {
+          ...prepared.analysis,
+          applied: doc.packingSlipAnalysis?.applied,
+          confirmedItems: doc.packingSlipAnalysis?.confirmedItems,
+        };
+      } else if (input.action === "reopen") {
         delete review.duplicateDecision;
         delete review.duplicateChecked;
         review.documentChecked = false;
@@ -1217,7 +1347,7 @@ export async function mutateReceiving(
           doc.packingSlipAnalysis.confirmedItems = snapshot;
         }
       }
-      review.humanReviewed = true;
+      if (!developmentImport) review.humanReviewed = true;
       review.revision++;
       doc.updatedAt = now;
       await history(
@@ -1228,6 +1358,7 @@ export async function mutateReceiving(
         input,
         before,
         replacedDocument,
+        developmentImport,
       );
       return {
         replayed: false,

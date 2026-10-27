@@ -18,6 +18,12 @@ const base = {
 export const receivingInput = z.discriminatedUnion("action", [
   z.object({
     ...base,
+    action: z.literal("trialDraft"),
+    runId: z.string().regex(/^[a-zA-Z0-9-]{8,80}$/),
+    reader: z.enum(["ocr", "jev", "terra", "astra"]),
+  }),
+  z.object({
+    ...base,
     action: z.literal("reopen"),
     reason: text.min(3).max(1000),
   }),

@@ -17,6 +17,7 @@ const test = vi.hoisted(() => ({
   select: vi.fn(),
   update: vi.fn(),
   receive: true,
+  trial: null as unknown,
   extractionFails: false,
   extractionStarted: false,
   extractionGate: null as Promise<void> | null,
@@ -35,7 +36,7 @@ vi.mock("~/server/auth/permissions", () => ({
 }));
 import * as schema from "~/server/db/schema";
 import { assertManualReceiptEditable } from "./manual-receiving";
-import { mutateReceiving } from "./receiving-service";
+import { mutateReceiving, importTrialReview } from "./receiving-service";
 import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
@@ -48,6 +49,7 @@ import {
   confirmSlipReceipt,
   refreshSlipReview,
 } from "./service";
+vi.mock("./trial-store", () => ({ trialDocument: async () => test.trial }));
 vi.mock("./extract", () => ({
   extractSlip: async () => {
     test.extractionStarted = true;
@@ -146,6 +148,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   beforeEach(async () => {
     vi.unstubAllEnvs();
     test.receive = true;
+    test.trial = null;
     test.extractionFails = false;
     test.extractionStarted = false;
     test.extractionGate = null;
@@ -172,22 +175,18 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       status: "sent",
       orderNumber: "PO-123",
     });
-    await db
-      .insert(schema.catalogs)
-      .values({
-        id: id(50),
-        organizationId: org,
-        name: "Plumbing",
-        kind: "materials",
-      });
-    await db
-      .insert(schema.units)
-      .values({
-        id: id(51),
-        code: "ea",
-        displayName: "Each",
-        kind: "quantity",
-      });
+    await db.insert(schema.catalogs).values({
+      id: id(50),
+      organizationId: org,
+      name: "Plumbing",
+      kind: "materials",
+    });
+    await db.insert(schema.units).values({
+      id: id(51),
+      code: "ea",
+      displayName: "Each",
+      kind: "quantity",
+    });
     await db.insert(schema.partDefinitions).values({
       id: id(5),
       organizationId: org,
@@ -522,6 +521,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     test.receive = true;
+    test.trial = null;
     await db
       .update(schema.orders)
       .set({ status: "cancelled" })
@@ -681,6 +681,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       clearSlipAnalysis(access, doc.documentId, analysis.runId),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     test.receive = true;
+    test.trial = null;
     await expect(
       clearSlipAnalysis(access, doc.documentId, id(90)),
     ).rejects.toMatchObject({ code: "CONFLICT" });
@@ -761,22 +762,261 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   const finger = async (
     access: Awaited<ReturnType<typeof assertDocumentAccess>>,
   ) => orderFingerprint(await orderSnapshot(db, access, order));
+  it("imports a trial as proposals without changing receipts, and rejects stale or foreign matches", async () => {
+    const { access, doc } = await ready();
+    const document = (await workspace()).documents[0]!;
+    const score = {
+      value: 0.99,
+      basis: "self_assessed",
+      reason: "Fixture source",
+    };
+    const prediction = {
+      schemaVersion: 1,
+      caseId: "case-001",
+      reader: "astra",
+      model: "gpt-6-astra",
+      status: "complete",
+      sourceSha256: "a".repeat(64),
+      documentKind: "delivery",
+      orderId: order,
+      lines: [
+        {
+          lineId: "one",
+          page: 1,
+          box: null,
+          evidence: "Valve 4 ea",
+          description: "Valve",
+          sku: null,
+          ordered: 10,
+          shipped: 4,
+          backordered: 6,
+          unit: "ea",
+          unitPrice: null,
+          orderItemId: id(6),
+          confidence: {
+            part: score,
+            quantity: score,
+            match: score,
+            overall: score,
+          },
+          issues: [],
+        },
+      ],
+      warnings: [],
+    };
+    test.trial = {
+      runId: "trial-testing-001",
+      stale: false,
+      entry: { versionId: document.currentVersionId },
+      results: { astra: prediction },
+    };
+    await reviewAction(access, doc.documentId, {
+      action: "trialDraft",
+      runId: "trial-testing-001",
+      reader: "astra",
+    });
+    let review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.lines[0]!.quantity).toBe(4);
+    expect(review.lines[0]!.approved).toBeUndefined();
+    expect(review.lines[0]!.predictionSource?.reader).toBe("astra");
+    expect(review.orderConfirmed).toBe(false);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    test.trial = { ...(test.trial as object), stale: true };
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "trialDraft",
+        runId: "trial-testing-001",
+        reader: "astra",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    test.trial = {
+      runId: "trial-testing-001",
+      stale: false,
+      results: {
+        astra: {
+          ...prediction,
+          lines: [{ ...prediction.lines[0], orderItemId: id(99) }],
+        },
+      },
+    };
+    await reviewAction(access, doc.documentId, {
+      action: "trialDraft",
+      runId: "trial-testing-001",
+      reader: "astra",
+    });
+    review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.lines[0]!.orderItemId).toBeNull();
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    test.receive = false;
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "trialDraft",
+        runId: "trial-testing-001",
+        reader: "astra",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+  it("stages a development trial once without human labels, receipt changes or overwriting later edits", async () => {
+    const { access, doc } = await ready();
+    const score = { value: 0.9, basis: "self_assessed", reason: "Fixture" };
+    const prediction = {
+      status: "complete",
+      documentKind: "delivery",
+      orderId: order,
+      warnings: [],
+      lines: [
+        {
+          lineId: "one",
+          page: 1,
+          box: null,
+          evidence: "Valve 4 ea",
+          description: "Valve",
+          sku: null,
+          ordered: 10,
+          shipped: 4,
+          backordered: 6,
+          unit: "ea",
+          unitPrice: null,
+          orderItemId: id(6),
+          issues: [],
+          confidence: {
+            part: score,
+            quantity: score,
+            match: score,
+            overall: score,
+          },
+        },
+      ],
+    };
+    test.trial = {
+      runId: "trial-testing-001",
+      stale: false,
+      results: { astra: prediction },
+    };
+    const input = {
+      action: "trialDraft" as const,
+      jobId: job,
+      documentId: doc.documentId,
+      revision: 1,
+      requestId: randomUUID(),
+      runId: "trial-testing-001",
+      reader: "astra" as const,
+    };
+    await expect(importTrialReview(access, input)).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    test.trial = {
+      runId: input.runId,
+      stale: false,
+      results: Object.fromEntries(
+        ["astra", "terra", "jev", "ocr"].map((reader) => [
+          reader,
+          { ...prediction, reader },
+        ]),
+      ),
+    };
+    await importTrialReview(access, input);
+    const saved = (await workspace()).documents[0]!.receivingReview!;
+    expect(saved.humanReviewed).not.toBe(true);
+    expect(saved.documentChecked).toBe(false);
+    expect(saved.lines[0]!.approved).toBeUndefined();
+    expect(saved.lines[0]!.quantity).toBe(4);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    const imported = (
+      await db.select().from(schema.packingSlipReviewHistory)
+    ).find(
+      (h) => (h.data as { operation?: string }).operation === "trial-import",
+    );
+    expect(imported?.kind).toBe("analysis");
+    const second = await importTrialReview(access, {
+      ...input,
+      revision: saved.revision,
+      requestId: randomUUID(),
+    });
+    expect(second.replayed).toBe(true);
+    expect((await workspace()).documents[0]!.receivingReview!.revision).toBe(
+      saved.revision,
+    );
+    await reviewAction(access, doc.documentId, {
+      action: "header",
+      kind: "delivery",
+      supplierId: null,
+      supplierName: "Human correction",
+      deliveryNumber: "Checked",
+      supplierOrderNumber: "",
+      deliveryDate: "",
+      confirmed: true,
+    });
+    const before = (await workspace()).documents[0]!.receivingReview!;
+    const skipped = await importTrialReview(access, {
+      ...input,
+      revision: before.revision,
+      requestId: randomUUID(),
+    });
+    expect(skipped).toHaveProperty("skipped");
+    expect((await workspace()).documents[0]!.receivingReview).toEqual(before);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("preserves saved review decisions when cleared detection reuses an identical source", async () => {
     const { access } = await ready();
-    const duplicate = await saveDocumentVersion(access, { ...file, name: "another scan.jpg" }, async () => undefined);
+    const duplicate = await saveDocumentVersion(
+      access,
+      { ...file, name: "another scan.jpg" },
+      async () => undefined,
+    );
     await startSlipAnalysis(access, duplicate.documentId);
-    await reviewAction(access, duplicate.documentId, { action: "header", kind: "delivery", supplierId: null, supplierName: "Checked supplier", deliveryNumber: "D-123", supplierOrderNumber: "", deliveryDate: "", confirmed: true });
-    await reviewAction(access, duplicate.documentId, { action: "line", lineId: "0", description: "Checked valve", sku: "", quantity: 7, ordered: 10, unit: "ea", unitPrice: null, orderItemId: id(6), checked: true });
-    const before = (await workspace()).documents.find(d => d.id === duplicate.documentId)!;
-    await clearSlipAnalysis(access, duplicate.documentId, before.packingSlipAnalysis!.runId);
+    await reviewAction(access, duplicate.documentId, {
+      action: "header",
+      kind: "delivery",
+      supplierId: null,
+      supplierName: "Checked supplier",
+      deliveryNumber: "D-123",
+      supplierOrderNumber: "",
+      deliveryDate: "",
+      confirmed: true,
+    });
+    await reviewAction(access, duplicate.documentId, {
+      action: "line",
+      lineId: "0",
+      description: "Checked valve",
+      sku: "",
+      quantity: 7,
+      ordered: 10,
+      unit: "ea",
+      unitPrice: null,
+      orderItemId: id(6),
+      checked: true,
+    });
+    const before = (await workspace()).documents.find(
+      (d) => d.id === duplicate.documentId,
+    )!;
+    await clearSlipAnalysis(
+      access,
+      duplicate.documentId,
+      before.packingSlipAnalysis!.runId,
+    );
     test.extractionStarted = false;
     await startSlipAnalysis(access, duplicate.documentId);
-    const after = (await workspace()).documents.find(d => d.id === duplicate.documentId)!;
+    const after = (await workspace()).documents.find(
+      (d) => d.id === duplicate.documentId,
+    )!;
     expect(test.extractionStarted).toBe(false);
     expect(after.packingSlipAnalysis!.usage?.calls).toBe(0);
     expect(after.receivingReview!.deliveryNumber).toBe("D-123");
-    expect(after.receivingReview!.lines[0]).toMatchObject({ description: "Checked valve", quantity: 7, checked: true });
-    expect(after.receivingReview!.lines.slice(1).every(l => !l.checked && l.issues.some(issue => issue.startsWith("New reading:")))).toBe(true);
+    expect(after.receivingReview!.lines[0]).toMatchObject({
+      description: "Checked valve",
+      quantity: 7,
+      checked: true,
+    });
+    expect(
+      after
+        .receivingReview!.lines.slice(1)
+        .every(
+          (l) =>
+            !l.checked &&
+            l.issues.some((issue) => issue.startsWith("New reading:")),
+        ),
+    ).toBe(true);
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
   it("new queue approves once under concurrent requests and preserves unresolved lines", async () => {
@@ -1305,34 +1545,105 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         reviewAction(access, doc.documentId, { ...action, catalogId }),
       ).rejects.toThrow("catalogue");
   });
-  it('accepts an explicitly checked return on a mixed slip without changing the other line type',async()=>{
-    const {access,doc}=await confirmedHeader();
-    await reviewAction(access,doc.documentId,{action:'line',lineId:'0',kind:'return-credit',description:'Valve return',sku:'',quantity:1,ordered:10,unit:'ea',unitPrice:null,orderItemId:id(6),checked:true});
-    await reviewAction(access,doc.documentId,{action:'approve',lineIds:['0'],fingerprint:await finger(access)});
-    expect(Number((await item()).receivedQuantity)).toBe(1);expect(Number((await item()).creditedQuantity)).toBe(1);
-    expect((await workspace()).documents[0]!.receivingReview!.kind).toBe('delivery');
+  it("accepts an explicitly checked return on a mixed slip without changing the other line type", async () => {
+    const { access, doc } = await confirmedHeader();
+    await reviewAction(access, doc.documentId, {
+      action: "line",
+      lineId: "0",
+      kind: "return-credit",
+      description: "Valve return",
+      sku: "",
+      quantity: 1,
+      ordered: 10,
+      unit: "ea",
+      unitPrice: null,
+      orderItemId: id(6),
+      checked: true,
+    });
+    await reviewAction(access, doc.documentId, {
+      action: "approve",
+      lineIds: ["0"],
+      fingerprint: await finger(access),
+    });
+    expect(Number((await item()).receivedQuantity)).toBe(1);
+    expect(Number((await item()).creditedQuantity)).toBe(1);
+    expect((await workspace()).documents[0]!.receivingReview!.kind).toBe(
+      "delivery",
+    );
   });
-  it('requires explicit adoption and reconfirmation after the source file changes',async()=>{
-    const {access,doc}=await confirmedHeader();
-    const state=await workspace(), current=state.documents[0]!;
-    current.currentVersionId=id(91);current.packingSlipAnalysis!.versionId=id(91);
-    state.versions.push({...state.versions[0]!,id:id(91),sha256:'b'.repeat(64)});
-    await db.update(schema.jobDocumentWorkspaces).set({state}).where(eq(schema.jobDocumentWorkspaces.jobId,job));
-    await expect(reviewAction(access,doc.documentId,{action:'approve',lineIds:['0'],fingerprint:await finger(access)})).rejects.toThrow('source file changed');
-    await reviewAction(access,doc.documentId,{action:'adoptSource',confirmed:true});
-    const review=(await workspace()).documents[0]!.receivingReview!;
-    expect(review.versionId).toBe(id(91));expect(review.orderConfirmed).toBe(false);expect(review.documentChecked).toBe(false);expect(review.lines[0]!.sourceBox).toBeUndefined();
-    await expect(reviewAction(access,doc.documentId,{action:'approve',lineIds:['0'],fingerprint:await finger(access)})).rejects.toThrow('linked order');
+  it("requires explicit adoption and reconfirmation after the source file changes", async () => {
+    const { access, doc } = await confirmedHeader();
+    const state = await workspace(),
+      current = state.documents[0]!;
+    current.currentVersionId = id(91);
+    current.packingSlipAnalysis!.versionId = id(91);
+    state.versions.push({
+      ...state.versions[0]!,
+      id: id(91),
+      sha256: "b".repeat(64),
+    });
+    await db
+      .update(schema.jobDocumentWorkspaces)
+      .set({ state })
+      .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "approve",
+        lineIds: ["0"],
+        fingerprint: await finger(access),
+      }),
+    ).rejects.toThrow("source file changed");
+    await reviewAction(access, doc.documentId, {
+      action: "adoptSource",
+      confirmed: true,
+    });
+    const review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.versionId).toBe(id(91));
+    expect(review.orderConfirmed).toBe(false);
+    expect(review.documentChecked).toBe(false);
+    expect(review.lines[0]!.sourceBox).toBeUndefined();
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "approve",
+        lineIds: ["0"],
+        fingerprint: await finger(access),
+      }),
+    ).rejects.toThrow("linked order");
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
-  it('requires explicit pack conversion and lets a reviewer restore an excluded line',async()=>{
-    const {access,doc}=await confirmedHeader();
-    await db.update(schema.partDefinitions).set({piecesPerPack:50,bulkUnit:'box',individualUnit:'ea'}).where(eq(schema.partDefinitions.id,id(5)));
-    await expect(reviewAction(access,doc.documentId,{action:'line',lineId:'0',description:'Valve',sku:'',quantity:50,ordered:10,unit:'ea',unitPrice:null,orderItemId:id(6),checked:true})).rejects.toThrow('Convert packs');
-    await reviewAction(access,doc.documentId,{action:'ignore',lineId:'0',reason:'Check this separately'});
-    await reviewAction(access,doc.documentId,{action:'restoreLine',lineId:'0',reason:'Source is now readable'});
-    expect((await workspace()).documents[0]!.receivingReview!.lines[0]!.ignored).toBeUndefined();
+  it("requires explicit pack conversion and lets a reviewer restore an excluded line", async () => {
+    const { access, doc } = await confirmedHeader();
+    await db
+      .update(schema.partDefinitions)
+      .set({ piecesPerPack: 50, bulkUnit: "box", individualUnit: "ea" })
+      .where(eq(schema.partDefinitions.id, id(5)));
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "line",
+        lineId: "0",
+        description: "Valve",
+        sku: "",
+        quantity: 50,
+        ordered: 10,
+        unit: "ea",
+        unitPrice: null,
+        orderItemId: id(6),
+        checked: true,
+      }),
+    ).rejects.toThrow("Convert packs");
+    await reviewAction(access, doc.documentId, {
+      action: "ignore",
+      lineId: "0",
+      reason: "Check this separately",
+    });
+    await reviewAction(access, doc.documentId, {
+      action: "restoreLine",
+      lineId: "0",
+      reason: "Source is now readable",
+    });
+    expect(
+      (await workspace()).documents[0]!.receivingReview!.lines[0]!.ignored,
+    ).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
-
 });

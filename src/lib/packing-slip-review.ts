@@ -15,6 +15,14 @@ export type ReceiptOrderItem = {
   individualUnit: string | null;
 };
 export type SlipLine = {
+  /** Uncalibrated evidence scores, retained separately from human decisions. */
+  confidenceDetails?: {
+    part: number;
+    quantity: number;
+    backordered?: number;
+    basis: "provider_composite";
+    productProbabilities?: Record<string, number>;
+  };
   page: number;
   evidence: string;
   orderItemId: string | null;
@@ -62,8 +70,16 @@ export type SlipAnalysis = {
   completedAt?: string;
   error?: string;
   model?: string;
-  readerVersion?:string;
-  usage?:{calls:number;inputTokens:number;outputTokens:number;unknownCalls:number;estimatedUsd:number|null;pricingAsOf:string;pricingSource:string};
+  readerVersion?: string;
+  usage?: {
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    unknownCalls: number;
+    estimatedUsd: number | null;
+    pricingAsOf: string;
+    pricingSource: string;
+  };
   items: ReceiptOrderItem[];
   lines: SlipLine[];
   warnings: string[];

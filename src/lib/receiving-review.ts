@@ -2,6 +2,13 @@ import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
 import { receiptUnit } from "./packing-slip-review";
 export type ReceiptKind = "delivery" | "return-replacement" | "return-credit";
 export type ReceivingLine = {
+  predictionSource?: {
+    trialRunId: string;
+    reader: import("./packing-slip-trial").TrialReader;
+    lineId: string;
+    artifactSha256?: string;
+    confidence: import("./packing-slip-trial").TrialLine["confidence"];
+  };
   kind?: ReceiptKind;
   humanEdited?: boolean;
   id: string;
@@ -30,6 +37,10 @@ export type ReceivingLine = {
   checked?: boolean;
 };
 export type ReceivingReview = {
+  sourceTrial?: {
+    runId: string;
+    reader: import("./packing-slip-trial").TrialReader;
+  };
   revision: number;
   humanReviewed?: boolean;
   versionId: string;
