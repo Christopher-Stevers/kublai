@@ -131,8 +131,8 @@ function availableUploadName(
   if (!names.has(name.toLocaleLowerCase())) return name;
   const extension = /\.[^.]{1,16}$/.exec(name)?.[0] ?? "";
   const stem = extension ? name.slice(0, -extension.length) : name;
-  const numbered = /^(.*)-([2-9]|[1-9]\d{1,8})$/.exec(stem);
-  const base = numbered?.[1] || stem;
+  const numbered = /^(.+)-([2-9]|[1-9]\d{1,8})$/.exec(stem);
+  const base = numbered?.[1] ?? stem;
   let number =
     numbered && Number.isSafeInteger(Number(numbered[2]))
       ? Number(numbered[2]) + 1
