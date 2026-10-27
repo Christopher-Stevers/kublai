@@ -14,7 +14,7 @@ export const packingSlipJobs = pgTable(
     organizationId: uuid().notNull(),
     jobId: uuid().notNull(),
     documentId: uuid().notNull(),
-    orderId: uuid().notNull(),
+    orderId: uuid(),
     versionId: uuid().notNull(),
     userId: varchar({ length: 255 }).notNull(),
     status: text()

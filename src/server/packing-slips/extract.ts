@@ -1,6 +1,6 @@
 import { workerCommand } from "~/server/background/command";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, mkdir, writeFile, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
@@ -57,6 +57,14 @@ export async function extractSlip(
   };
 }
 async function readSlip(organizationId: string, sha256: string, mime: string) {
+  const cache=path.join(path.dirname(documentBlobPath(organizationId,sha256)), '.slip-cache-v2',sha256);
+  try {
+    const parsed=result.parse(JSON.parse(await readFile(path.join(cache,'text.json'),'utf8')));
+    const count=Number(await readFile(path.join(cache,'pages'),'utf8'));
+    if(!Number.isInteger(count)||count<0||count>20)throw Error('Invalid cache');
+    const pages=await Promise.all(Array.from({length:count},(_,i)=>readFile(path.join(cache,`page-${i+1}.png`))));
+    return {...parsed,pages};
+  } catch { /* Missing, old or incomplete cache: read the immutable source. */ }
   const directory = await mkdtemp(path.join(tmpdir(), "foreman-slip-"));
   try {
     const target = path.join(directory, "text.json");
@@ -112,6 +120,11 @@ async function readSlip(organizationId: string, sha256: string, mime: string) {
       );
       if (!png) break;
       pages.push(png);
+    }
+    if(pages.reduce((n,p)=>n+p.length,0)<48*1024*1024){
+      await mkdir(path.dirname(cache),{recursive:true,mode:0o700});
+      await writeFile(path.join(directory,'pages'),String(pages.length),{mode:0o600});
+      await rename(directory,cache).catch(()=>undefined);
     }
     return { ...parsed, pages };
   } finally {

@@ -5,6 +5,9 @@ export type ReceiptOrderItem = {
   sku: string | null;
   aliases: string[];
   ordered: number;
+  originalOrdered?: number;
+  returned?: number;
+  credited?: number;
   received: number;
   verificationStatus: string;
   unit: string;
@@ -50,6 +53,7 @@ export type SlipProgress = {
   lines?: SlipLine[];
 };
 export type SlipAnalysis = {
+  orderCandidates?: string[];
   progress?: SlipProgress;
   runId: string;
   versionId: string;
@@ -58,6 +62,8 @@ export type SlipAnalysis = {
   completedAt?: string;
   error?: string;
   model?: string;
+  readerVersion?:string;
+  usage?:{calls:number;inputTokens:number;outputTokens:number;unknownCalls:number;estimatedUsd:number|null;pricingAsOf:string;pricingSource:string};
   items: ReceiptOrderItem[];
   lines: SlipLine[];
   warnings: string[];

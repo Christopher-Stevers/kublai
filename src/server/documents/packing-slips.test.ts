@@ -52,8 +52,8 @@ it("creates one Packing Slips folder and links multiple delivery photos without 
     ),
   ).toBe(true);
   expect(new Set(state.documents.map((d) => d.name)).size).toBe(2);
-  expect(appendPackingSlip(state, actor, input, link)).toEqual(first);
-  expect(state.documents).toHaveLength(2);
+  expect(appendPackingSlip(state, actor, input, link).documentId).not.toBe(first.documentId);
+  expect(state.documents).toHaveLength(3);
 });
 it("does not silently replace existing documents or accept executable files", () => {
   expect(() =>
@@ -98,13 +98,13 @@ it("keeps an unmatched scan in Packing Slips and links it in place to the chosen
   const doc = state.documents[0]!;
   expect(doc.name).toMatch(/^Packing slip - unmatched \d{4}-\d{2}-\d{2}\.jpg$/);
   expect(doc.packingSlip).toBeUndefined();
-  expect(appendUnmatchedSlip(state, actor, input)).toEqual(saved);
+  expect(appendUnmatchedSlip(state, actor, input).documentId).not.toBe(saved.documentId);
   // A receiver without document editing may still link the slip they saved.
   const receiver = { ...actor, canWrite: false };
   expect(linkSavedSlip(state, receiver, saved.documentId, link)).toEqual({
     documentId: saved.documentId,
   });
-  expect(state.documents).toHaveLength(1);
+  expect(state.documents).toHaveLength(2);
   expect(doc.packingSlip).toEqual(link);
   expect(doc.name).not.toContain("unmatched");
   expect(doc.tags).toEqual(["Packing slip"]);
@@ -119,7 +119,7 @@ it("keeps an unmatched scan in Packing Slips and links it in place to the chosen
     }),
   ).toThrow("already attached to PO-123");
 });
-it("links a read-only slip from another folder as a copy and reuses an earlier copy", () => {
+it("keeps read-only linked copies separate for explicit duplicate review", () => {
   const state = emptyDocumentState();
   const other = applyDocumentAction(
     state,
@@ -141,10 +141,8 @@ it("links a read-only slip from another folder as a copy and reuses an earlier c
   expect(
     state.documents.find((d) => d.id === copy.documentId)?.packingSlip,
   ).toEqual(link);
-  expect(linkSavedSlip(state, viewer, original.documentId, link)).toEqual({
-    documentId: copy.documentId,
-  });
-  expect(state.documents).toHaveLength(2);
+  expect(linkSavedSlip(state, viewer, original.documentId, link).documentId).not.toBe(copy.documentId);
+  expect(state.documents).toHaveLength(3);
 });
 it("does not link in place in a Packing Slips folder restricted to viewing", () => {
   const state = emptyDocumentState();

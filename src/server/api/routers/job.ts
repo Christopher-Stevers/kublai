@@ -146,7 +146,7 @@ export const jobRouter = createTRPCRouter({
           name: materialLists.name,
           roomId: materialLists.roomId,
           roomName: jobRooms.name,
-          kind: materialLists.kind,
+          kind: sql<"materials" | "tools">`case when ${materialLists.kind}='tools' then 'tools' else 'materials' end`,
           quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
         })
@@ -174,7 +174,7 @@ export const jobRouter = createTRPCRouter({
                 partDefinitionDisplayName: partDefinitions.displayName,
                 supplierPartSku: supplierParts.supplierSku,
                 quantity: quoteItems.quantity,
-                sentQuantity: orderItems.quantity,
+                sentQuantity: sql<string>`(${orderItems.quantity}-${orderItems.creditedQuantity})::text`,
                 receivedQuantity: orderItems.receivedQuantity,
                 verificationStatus: orderItems.verificationStatus,
                 sentOrderStatus: orders.status,

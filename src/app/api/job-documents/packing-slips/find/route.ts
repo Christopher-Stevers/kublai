@@ -117,9 +117,8 @@ export async function POST(request: Request) {
         { name, size: bytes.length, mimeType, sha256 },
         () => writeDocumentBlob(access.job.organizationId, bytes),
       );
-      return Response.json(await identifySlipOrder(access, saved.documentId), {
-        headers,
-      });
+      await startSlipAnalysis(access,saved.documentId);
+      return Response.json({documentId:saved.documentId,match:null,candidates:[],orders:[],queued:true},{headers});
     }
     const body = action.parse(
       JSON.parse((await readBoundedBody(request, 8 * 1024)).toString("utf8")),

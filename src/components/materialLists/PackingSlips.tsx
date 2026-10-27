@@ -2,6 +2,7 @@
 import { PackingSlipTestReview } from "./PackingSlipTestReview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {useRouter} from "next/navigation";
 import { PackingSlipReview } from "./PackingSlipReview";
 import { DeliveryTracker } from "./DeliveryTracker";
 import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
@@ -59,6 +60,7 @@ export function PackingSlips({
   /** Read slips are checked on the material list's parts, not here. */
   onReviewOnList?: (documentId: string) => void;
 }) {
+  const router=useRouter();
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
@@ -153,6 +155,7 @@ export function PackingSlips({
       );
       const result = (await response.json()) as {
         error?: string;
+        documentId?:string;
         analysisError?: string;
       };
       if (!response.ok)
@@ -171,7 +174,7 @@ export function PackingSlips({
       // Back to the list so the analysis can be watched as it runs.
       setScanning(false);
       // Or straight to the parts, which fill in once the slip is read.
-      if (onReviewOnList) setOpen(false);
+      if (result.documentId) {setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);}
       return true;
     } catch (e) {
       setRetryFile(file);
@@ -214,21 +217,18 @@ export function PackingSlips({
       if (!res.ok)
         throw Error(result.error ?? "Could not update this receipt.");
       await load();
-      const tookBack =
-        (action === "clear" || action === "analyze") &&
-        Object.keys(slip.packingSlipAnalysis?.applied?.quantities ?? {})
-          .length > 0;
+      const tookBack = false;
       if (action === "clear")
         setNotice(
           tookBack
             ? "Detection cleared and this slip's received quantities taken back. The file is still saved."
-            : "Detection cleared. The file is still saved.",
+            : "Detection cleared. Approved quantities and review decisions are preserved.",
         );
       if (action === "analyze")
         setNotice(
           tookBack
             ? "This slip's received quantities were taken back. Reading it again now."
-            : "Reading the slip again now.",
+            : "Reading the slip again. Approved quantities are preserved.",
         );
       if (tookBack) onVerified?.();
       onChanged?.();
@@ -419,6 +419,7 @@ export function PackingSlips({
                       </span>
                       <SlipState analysis={slip.packingSlipAnalysis} />
                     </div>
+                    <Link className="block py-2 font-medium underline" href={`/jobs/${jobId}/receiving?document=${slip.id}`}>Review matches and receiving</Link>
                     {slip.currentVersionId && (
                       <PackingSlipTestReview
                         key={`${jobId}:${slip.currentVersionId}`}
@@ -438,8 +439,7 @@ export function PackingSlips({
                         onShowList={
                           onReviewOnList
                             ? () => {
-                                onReviewOnList(slip.id);
-                                setOpen(false);
+                                window.location.assign(`/jobs/${jobId}/receiving?document=${slip.id}`);
                               }
                             : undefined
                         }

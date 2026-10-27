@@ -159,243 +159,99 @@ function List({
 }
 const card = (id: string) => screen.getByTestId(`card-${id}`);
 
-it("fills the parts in from the slip and confirms the delivery in one go", async () => {
+it("takes an old provisional reading to the shared queue without posting quantities", async () => {
   const posts = serve(analysis);
   render(<List />);
   await screen.findByText("Packing slip read");
-  expect(card("a")).toHaveTextContent("Slip +6");
-  expect(card("a")).toHaveTextContent("total 8");
-  expect(card("b")).toHaveTextContent("Not on slip");
   expect(
-    screen.getByText(/1 part filled in from the slip/),
-  ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /Confirm delivery/ }));
-  await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({
-    action: "confirm",
-    documentId: "doc",
-    runId: "r",
-    quantities: { a: 6 },
-  });
-  expect(posts[0]!.links).toBeUndefined();
-  await waitFor(() =>
-    expect(screen.queryByText("Packing slip read")).not.toBeInTheDocument(),
-  );
-  expect(notify).toHaveBeenCalledWith(
-    "Delivery confirmed. Received quantities updated.",
-    "success",
-  );
+    screen.getByRole("link", { name: "Review & approve" }),
+  ).toHaveAttribute("href", "/jobs/j/receiving?document=doc");
+  expect(posts).toEqual([]);
+  expect(confirmAction).not.toHaveBeenCalled();
 });
-
-it("links an unmatched slip line to a part from the bar", async () => {
-  const posts = serve(analysis);
-  render(<List />);
-  await screen.findByText(/1 slip line not matched to a part/);
-  fireEvent.change(screen.getByLabelText("Order item for slip line 2"), {
-    target: { value: "b" },
-  });
-  expect(card("b")).toHaveTextContent("Slip +3");
-  expect(screen.queryByText(/not matched to a part/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /Confirm delivery/ }));
-  await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({
-    quantities: { a: 6, b: 3 },
-    links: { 1: "b" },
-  });
-});
-
-it("asks for a check on unclear lines and takes a corrected count from the part", async () => {
-  const posts = serve({
-    ...analysis,
-    lines: [
-      {
-        ...analysis.lines[0]!,
-        proposed: null,
-        quantityClear: false,
-        handwritten: 5,
-        issues: [
-          "Handwriting on this line may change the quantity. Check the slip.",
-        ],
-      },
-    ],
-  });
-  render(<List />);
-  await screen.findByText("Packing slip read");
-  expect(card("a")).toHaveTextContent("Check");
-  expect(screen.getByText(/1 to check/)).toBeInTheDocument();
-  expect(
-    screen.getByRole("button", { name: /Confirm delivery/ }),
-  ).toBeDisabled();
-  fireEvent.click(
-    screen.getByRole("button", { name: /Packing slip for Valve/ }),
-  );
-  const input = await screen.findByLabelText("Arrived in this delivery: Valve");
-  expect(input).toHaveValue(null);
-  fireEvent.click(screen.getByRole("button", { name: "Use handwritten 5" }));
-  expect(input).toHaveValue(5);
-  expect(
-    screen.getByText(/Received total becomes 7 ea of 10 ea/),
-  ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /Done/ }));
-  await waitFor(() =>
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-  );
-  expect(card("a")).not.toHaveTextContent("Check");
-  expect(card("a")).toHaveTextContent("total 7");
-  fireEvent.click(screen.getByRole("button", { name: /Confirm delivery/ }));
-  await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({ quantities: { a: 5 } });
-});
-
-it("keeps changes made on a part card and its problem mark", async () => {
-  const posts = serve(analysis);
-  const confirmed = vi.fn();
-  render(<List onConfirmed={confirmed} />);
-  await screen.findByText("Packing slip read");
-  fireEvent.click(screen.getByRole("button", { name: "Card Valve" }));
-  expect(card("a")).toHaveTextContent("total 10");
-  fireEvent.click(screen.getByRole("button", { name: /Confirm delivery/ }));
-  await waitFor(() => expect(confirmed).toHaveBeenCalledWith({ a: 10 }));
-  expect(posts[0]).toMatchObject({ quantities: { a: 8 } });
-});
-
-it("does nothing when the member backs out of confirming", async () => {
-  const posts = serve(analysis);
-  vi.mocked(confirmAction).mockResolvedValueOnce(false);
-  render(<List />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: /Confirm delivery/ }),
-  );
-  await waitFor(() => expect(confirmAction).toHaveBeenCalled());
-  expect(posts).toHaveLength(0);
-});
-
-it("offers Refresh totals when the order changed since the slip was read", async () => {
-  const posts = serve(
-    analysis,
-    "This order or its received quantities changed. Refresh totals and check this delivery again.",
-  );
-  render(<List />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: /Confirm delivery/ }),
-  );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Refresh totals" }),
-  );
-  await waitFor(() => expect(posts).toHaveLength(2));
-  expect(posts[1]).toMatchObject({ action: "refresh", runId: "r" });
-});
-
-function WholeList() {
-  const drafts = useSlipDrafts({
-    jobId: "j",
-    materialListId: "m",
-    enabled: true,
-  });
-  return (
-    <>
-      {drafts.drafts.map((draft) => (
-        <SlipVerifyBar key={draft.orderId} draft={draft} jobId="j" showOrder />
-      ))}
-      {["a", "c"].map((id) => {
-        const found = drafts.find(id);
-        return (
-          <div key={id} data-testid={`card-${id}`}>
-            {found && (
-              <SlipBadge entry={found.entry} onOpen={() => undefined} />
-            )}
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
-it("checks slips for every order on the whole list, each confirmed on its own", async () => {
-  const urls: string[] = [];
-  const posts: Record<string, unknown>[] = [];
-  const second: SlipAnalysis = {
-    ...analysis,
-    runId: "r2",
-    items: [{ ...valve, id: "c", description: "Clamp" }],
-    lines: [{ ...analysis.lines[0]!, orderItemId: "c", proposed: 4 }],
-  };
-  const doc = (
-    id: string,
-    orderId: string,
-    orderNumber: string,
-    a: SlipAnalysis,
-  ) => ({
-    id,
-    name: `Packing slip - ${orderNumber}.pdf`,
-    createdAt: "2026-10-24",
-    currentVersionId: "v",
-    packingSlip: { orderId, materialListId: "m", orderNumber },
-    packingSlipAnalysis: a,
-  });
+it("keeps modern reviews in the queue and does not overlay unapproved quantities on parts", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string, options?: RequestInit) => {
-      if (options?.method === "POST") {
-        posts.push(
-          JSON.parse(options.body as string) as Record<string, unknown>,
-        );
-        return Response.json({ success: true });
-      }
-      urls.push(url);
-      return Response.json({
+    vi.fn(async () =>
+      Response.json({
         canUpload: true,
         documents: [
-          doc("doc", "o", "PO-1", analysis),
-          doc("doc2", "o2", "PO-2", second),
+          {
+            id: "doc",
+            name: "Slip",
+            createdAt: "2026-10-27",
+            currentVersionId: "v",
+            packingSlip: {
+              orderId: "o",
+              materialListId: "m",
+              orderNumber: "PO-155",
+            },
+            packingSlipAnalysis: analysis,
+            receivingReview: { pending: 2, complete: false, retired: false },
+          },
         ],
-      });
-    }),
-  );
-  render(<WholeList />);
-  await screen.findByText("Packing slip read for PO-2");
-  expect(screen.getByText("Packing slip read for PO-1")).toBeInTheDocument();
-  expect(urls[0]).not.toContain("orderId");
-  expect(card("a")).toHaveTextContent("Slip +6");
-  expect(card("c")).toHaveTextContent("Slip +4");
-  const bars = screen.getAllByRole("region", { name: "Packing slip" });
-  fireEvent.click(
-    within(bars.find((bar) => bar.textContent?.includes("PO-2"))!).getByRole(
-      "button",
-      {
-        name: /Confirm delivery/,
-      },
+      }),
     ),
   );
-  await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({
-    documentId: "doc2",
-    runId: "r2",
-    quantities: { c: 4 },
-  });
+  render(<List />);
+  await screen.findByText("2 lines to review");
+  expect(screen.queryByText("Slip +6")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "Review & approve" }),
+  ).toHaveAttribute("href", "/jobs/j/receiving?document=doc");
 });
 
 it("shows live provisional matches without allowing receipt confirmation", async () => {
-  const posts = serve({ ...analysis, status: "processing", lines: [], progress: { stage: "matching", message: "Checking each printed line…", completed: 1, total: 3, lines: [analysis.lines[0]!] } });
+  const posts = serve({
+    ...analysis,
+    status: "processing",
+    lines: [],
+    progress: {
+      stage: "matching",
+      message: "Checking each printed line…",
+      completed: 1,
+      total: 3,
+      lines: [analysis.lines[0]!],
+    },
+  });
   render(<List />);
-  expect(await screen.findByText("Checking each printed line…")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Checking each printed line…"),
+  ).toBeInTheDocument();
   expect(screen.getByText(/1 of 3 lines checked/)).toBeInTheDocument();
-  expect(screen.getByText(/Matched · final checks pending/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", {name: /Confirm delivery/})).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/Matched · final checks pending/),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /Confirm delivery/ }),
+  ).not.toBeInTheDocument();
   expect(posts).toHaveLength(0);
 });
 it("keeps failed analysis visible on the receiving list", async () => {
-  serve({ ...analysis, status: "failed", error: "The image could not be read." });
+  serve({
+    ...analysis,
+    status: "failed",
+    error: "The image could not be read.",
+  });
   render(<List />);
-  expect(await screen.findByText("The image could not be read.")).toBeInTheDocument();
+  expect(
+    await screen.findByText("The image could not be read."),
+  ).toBeInTheDocument();
   expect(screen.getByText(/Open Packing slips to rerun/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", {name: /Confirm delivery/})).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /Confirm delivery/ }),
+  ).not.toBeInTheDocument();
 });
 
 it("flags uncertain matches even when a quantity was proposed", async () => {
-  serve({ ...analysis, lines: [{...analysis.lines[0]!, confidence: "medium"}] });
+  serve({
+    ...analysis,
+    lines: [{ ...analysis.lines[0]!, confidence: "medium" }],
+  });
   render(<List />);
   fireEvent.click(await screen.findByRole("button", { name: "Details" }));
   expect(screen.getByText(/Flagged/)).toBeInTheDocument();
-  expect(screen.queryByText(/Checked · ready to confirm/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/Checked · ready to confirm/),
+  ).not.toBeInTheDocument();
 });

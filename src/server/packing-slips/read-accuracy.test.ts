@@ -14,6 +14,7 @@ it("reads synthetic supplier slips without prefilling a wrong quantity", async (
   let correct = 0,
     review = 0,
     wrong = 0,
+    unitReview = 0,
     extras = 0,
     flagged = 0;
   for (let seed = 1; seed <= 120; seed++) {
@@ -24,7 +25,7 @@ it("reads synthetic supplier slips without prefilling a wrong quantity", async (
       const truth = slip.truth.find((t) => t.itemId === item.id);
       const got = proposed[item.id];
       if (got === undefined) {
-        if (truth) review++;
+        if (truth) {review++;if(result.lines.some(l=>l.orderItemId===item.id&&l.issues.some(s=>s.includes("Quantity unit is not printed"))))unitReview++;}
         else correct++;
       } else if (truth && Math.abs(got - truth.shipped) < 1e-6) correct++;
       else wrong++;
@@ -40,7 +41,8 @@ it("reads synthetic supplier slips without prefilling a wrong quantity", async (
     }
   }
   expect(wrong).toBe(0);
-  expect(correct / (correct + review)).toBeGreaterThan(0.98);
+  expect(correct / (correct + review-unitReview)).toBeGreaterThan(0.98);
+  expect(unitReview).toBeGreaterThan(0);
   expect(flagged).toBe(extras);
 });
 

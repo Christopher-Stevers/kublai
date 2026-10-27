@@ -9,7 +9,6 @@ import {
   EraserIcon,
   RotateCcwIcon,
 } from "lucide-react";
-import { confirmAction } from "~/components/ui/app-dialogs";
 import { Button } from "~/components/ui/button";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import {
@@ -33,23 +32,7 @@ type Props = {
 
 export function PackingSlipReview(props: Props) {
   const { analysis, busy, onAction, canManage = true } = props;
-  const received = analysis?.applied
-    ? Object.keys(analysis.applied.quantities).length
-    : 0;
-  /** A confirmed slip starts over: its received quantities come off first. */
   const startOver = async (action: "analyze" | "clear") => {
-    if (
-      received &&
-      !(await confirmAction({
-        title:
-          action === "analyze" ? "Read this slip again?" : "Clear this slip?",
-        description: `This takes back the received quantities this slip confirmed for ${received} ${received === 1 ? "item" : "items"}${action === "analyze" ? ", then reads it again so you can check and confirm it fresh." : ". The file stays saved, and you can read it again later."}`,
-        confirmLabel:
-          action === "analyze" ? "Take back and reread" : "Take back and clear",
-        destructive: true,
-      }))
-    )
-      return;
     await onAction(action);
   };
   return (

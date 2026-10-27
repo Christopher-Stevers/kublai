@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { SlipProcessingProgress } from "./SlipProcessingProgress";
 import {
@@ -438,28 +439,13 @@ export function SlipVerifyBar({
   const [open, setOpen] = useState(false);
   const order =
     showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
+  if(draft.reviewDoc)return <section className="mb-3 border-y py-3 text-sm"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">Packing slip{order}</p><p className="text-muted-foreground">{draft.reading?'Reading in the background…':`${draft.reviewDoc.receivingReview?.pending??0} lines to review`}</p></div><Button asChild variant="outline"><Link href={`/jobs/${jobId}/receiving?document=${draft.reviewDoc.id}`}>Review & approve</Link></Button></div></section>;
   if (!draft.slip) {
     return <SlipProcessingProgress analysis={draft.tracking} order={order} />;
   }
   const filled = draft.items.filter((i) => i.amount !== undefined).length;
   const checks = draft.items.filter((i) => i.check).length;
   const unmatched = draft.unmatched;
-  const confirm = async () => {
-    if (
-      !(await confirmAction({
-        title: "Confirm this delivery?",
-        description: `This adds what arrived to ${filled} ${filled === 1 ? "part" : "parts"} on the order.${
-          checks
-            ? ` ${checks} ${checks === 1 ? "part is" : "parts are"} still marked Check.`
-            : ""
-        }`,
-        confirmLabel: "Confirm delivery",
-      }))
-    )
-      return;
-    if (await draft.confirm())
-      notify("Delivery confirmed. Received quantities updated.", "success");
-  };
   return (
     <section
       aria-label="Packing slip"
@@ -499,15 +485,16 @@ export function SlipVerifyBar({
         <Button
           className="h-10 w-full sm:w-auto"
           disabled={draft.busy || !filled}
-          onClick={() => void confirm()}
-        >
+          asChild
+        ><Link href={`/jobs/${jobId}/receiving?document=${draft.slip.id}`}>
+
           {draft.busy ? (
             <Loader2Icon className="size-4 animate-spin" />
           ) : (
             <CheckIcon className="size-4" />
           )}
-          Confirm delivery
-        </Button>
+          Review & approve
+        </Link></Button>
       </div>
       {/* Line by line results fold away so the parts stay in view; each
           part card carries its own Check mark. */}

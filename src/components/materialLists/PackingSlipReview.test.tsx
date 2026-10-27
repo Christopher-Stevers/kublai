@@ -127,36 +127,12 @@ it("counts slip lines that were not matched to a part", () => {
   );
 });
 
-it("asks before a confirmed slip's receipt is taken back by clearing or rerunning", async () => {
-  const action = vi.fn().mockResolvedValue(undefined);
-  const ask = vi.mocked(confirmAction);
-  render(
-    <PackingSlipReview
-      analysis={{
-        ...analysis,
-        applied: { at: "2026-10-17", by: "u", quantities: { a: 6 } },
-      }}
-      versionId="v"
-      busy={false}
-      onAction={action}
-    />,
-  );
-  ask.mockResolvedValueOnce(false);
-  fireEvent.click(screen.getByRole("button", { name: "Clear detection" }));
-  await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
-  expect(ask.mock.calls[0]![0].description).toContain(
-    "takes back the received quantities this slip confirmed for 1 item",
-  );
-  expect(action).not.toHaveBeenCalled();
-  ask.mockResolvedValueOnce(true);
-  fireEvent.click(screen.getByRole("button", { name: "Clear detection" }));
-  await waitFor(() => expect(action).toHaveBeenLastCalledWith("clear"));
-  ask.mockResolvedValueOnce(true);
-  fireEvent.click(screen.getByRole("button", { name: "Rerun detection" }));
-  await waitFor(() => expect(action).toHaveBeenLastCalledWith("analyze"));
-  expect(ask.mock.calls[2]![0].title).toBe("Read this slip again?");
-  expect(screen.queryByText("Confirm received quantities")).toBeNull();
-  ask.mockReset();
+it("clears and reruns detection without requesting a receipt rollback",async()=>{
+ const action=vi.fn().mockResolvedValue(undefined);
+ render(<PackingSlipReview analysis={{...analysis,applied:{at:'2026-10-17',by:'u',quantities:{a:6}}}} versionId="v" busy={false} onAction={action}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Clear detection'}));await waitFor(()=>expect(action).toHaveBeenLastCalledWith('clear'));
+ fireEvent.click(screen.getByRole('button',{name:'Rerun detection'}));await waitFor(()=>expect(action).toHaveBeenLastCalledWith('analyze'));
+ expect(confirmAction).not.toHaveBeenCalled();
 });
 it("reruns an unconfirmed slip without asking", async () => {
   const action = vi.fn().mockResolvedValue(undefined);

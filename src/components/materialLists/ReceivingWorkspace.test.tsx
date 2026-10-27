@@ -1,0 +1,195 @@
+import type { ReceivingLine } from "~/lib/receiving-review";
+import type { SlipAnalysis } from "~/lib/packing-slip-review";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { ReceivingWorkspace } from "./ReceivingWorkspace";
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams("document=doc"),
+}));
+vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
+vi.mock("~/components/jobs/documents/DocumentPdfPreview", () => ({
+  DocumentPdfPreview: () => <div>Source PDF</div>,
+}));
+function fixture() {
+  return {
+    documents: [],
+    document: {
+      id: "doc",
+      name: "Packing slip.pdf",
+      createdAt: "2026-10-27",
+      currentVersionId: "v",
+      packingSlip: { orderId: "order", orderNumber: "PO-155" },
+      packingSlipAnalysis: {
+        progress: undefined as SlipAnalysis["progress"],
+        runId: "run",
+        versionId: "v",
+        status: "ready" as SlipAnalysis["status"],
+        items: [],
+        lines: [],
+        warnings: [],
+      },
+    },
+    review: {
+      revision: 1,
+      versionId: "v",
+      kind: "delivery",
+      kindConfirmed: true,
+      orderConfirmed: true,
+      documentChecked: false,
+      supplierId: "supplier",
+      supplierName: "Supplier",
+      deliveryNumber: "123",
+      supplierOrderNumber: "",
+      deliveryDate: "",
+      lines: [
+        {
+          approved: undefined as ReceivingLine["approved"],
+          id: "0",
+          description: "Valve",
+          sku: "V123",
+          page: 1,
+          evidence: "6 EA Valve",
+          quantity: 6,
+          unit: "ea",
+          orderItemId: "item",
+          issues: [],
+          unitPrice: null,
+          ordered: 10,
+        },
+        {
+          id: "1",
+          description: "Unclear pipe",
+          page: 1,
+          evidence: "Unreadable quantity",
+          quantity: null,
+          unit: "ea",
+          orderItemId: null,
+          issues: ["Quantity unclear"],
+          unitPrice: null,
+          ordered: null,
+        },
+      ],
+      warnings: [],
+    },
+    items: [
+      {
+        id: "item",
+        description: "Valve",
+        unit: "ea",
+        ordered: 10,
+        received: 2,
+      },
+    ],
+    fingerprint: "current-totals",
+    duplicates: [],
+    suppliers: [{ id: "supplier", name: "Supplier" }],
+    orders: [{ id: "order", name: "PO-155", supplierId: "supplier" }],
+    lists: [],
+    catalogs: [],
+    units: [],
+    parts: [],
+    photoSuggestions: [],
+    canCreate: false,
+    sourceUrl: "/source",
+    scannedBy: "Scanner",
+  };
+}
+let state: ReturnType<typeof fixture>, posts: Array<Record<string, unknown>>;
+beforeEach(() => {
+  posts = [];
+  state = fixture();
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") {
+        const body = JSON.parse(
+          typeof opts.body === "string" ? opts.body : "{}",
+        ) as Record<string, unknown>;
+        posts.push(body);
+        if (body.action === "approve") {
+          state.review.lines[0]!.approved = {
+            itemId: "item",
+            quantity: 6,
+            kind: "delivery",
+            by: "receiver",
+            at: "now",
+          };
+          state.review.revision++;
+        }
+        return Response.json({ success: true });
+      }
+      return Response.json(state);
+    }),
+  );
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+it("shows source issues and never receives automatically", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.getByText("Unclear pipe")).toBeInTheDocument();
+  expect(posts).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "View source" }));
+  expect(screen.getByText("Source PDF")).toBeInTheDocument();
+});
+it("previews and approves only ready lines, retaining unresolved lines", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review & approve" }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Approve 1 line" }),
+  ).toBeInTheDocument();
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "approve",
+    jobId: "job",
+    documentId: "doc",
+    lineIds: ["0"],
+    fingerprint: "current-totals",
+    revision: 1,
+  });
+  expect(posts[0]!.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  await screen.findByText(
+    "Approved quantities updated. Unresolved lines remain in the queue.",
+  );
+  expect(screen.getByText("Unclear pipe")).toBeInTheDocument();
+});
+it("keeps actual processing visible and lets the member hide it", async () => {
+  state.document.packingSlipAnalysis.status = "processing";
+  state.document.packingSlipAnalysis.progress = {
+    stage: "extracting",
+    message: "Reading the scanned pages…",
+  };
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText("Reading the scanned pages…");
+  fireEvent.click(screen.getByRole("button", { name: "Hide progress" }));
+  expect(
+    screen.queryByText("Reading the scanned pages…"),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Review & approve" }),
+  ).toBeDisabled();
+  expect(posts).toEqual([]);
+});
+it("requires review of a new source version before approving", async () => {
+  state.document.currentVersionId = "new";
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText(/file has a newer version/);
+  expect(
+    screen.getByRole("button", { name: "Review & approve" }),
+  ).toBeDisabled();
+});

@@ -34,6 +34,7 @@ type Found = {
   candidates: string[];
   orders: OrderOption[];
   readError?: string;
+  queued?: boolean;
 };
 type SavedSlip = {
   id: string;
@@ -110,6 +111,7 @@ export function ScanSlipButton({
     setOpen(false);
   };
   const found = (result: Found) => {
+    if(result.queued){setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);return;}
     const order = result.orders.find((o) => o.id === result.match);
     setCountdown(AUTO_START);
     setStep(
@@ -131,16 +133,9 @@ export function ScanSlipButton({
           `/api/job-documents/packing-slips/find?jobId=${encodeURIComponent(jobId)}`,
           { method: "POST", body: form },
         );
-      } else
-        response = await fetch("/api/job-documents/packing-slips/find", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "identify",
-            jobId,
-            documentId: input.documentId,
-          }),
-        });
+      } else {
+        setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${input.documentId}`);return;
+      }
       const result = await json<Found>(
         response,
         "Could not read this packing slip. Please retry.",
@@ -178,7 +173,7 @@ export function ScanSlipButton({
       if (run.current !== id) return;
       setOpen(false);
       if (result.analysisError) notify(result.analysisError, "error");
-      openList(result.materialListId, result.orderId);
+      router.push(`/jobs/${jobId}/receiving?document=${documentId}`);
     } catch (e) {
       if (run.current === id)
         setError(e instanceof Error ? e.message : "Could not attach the slip.");
@@ -321,15 +316,7 @@ export function ScanSlipButton({
                   type="button"
                   className="hover:bg-accent rounded-lg border p-3 text-left text-sm"
                   onClick={() => {
-                    const linked = slip.packingSlip;
-                    if (!linked) return void identify({ documentId: slip.id });
-                    close();
-                    // A received slip has nothing left to check on the list.
-                    if (slip.status === "applied")
-                      router.push(
-                        `/jobs/material-lists/${linked.materialListId}?orderId=${linked.orderId}&slips=1`,
-                      );
-                    else openList(linked.materialListId, linked.orderId);
+                    close();router.push(`/jobs/${jobId}/receiving?document=${slip.id}`);
                   }}
                 >
                   <span className="block font-medium">{slip.name}</span>
@@ -350,7 +337,7 @@ export function ScanSlipButton({
           )}
           {step.kind === "reading" && !error && (
             <p role="status">
-              Finding the order this slip is for… This can take up to a minute.
+              Saving the scan. Reading continues in the background once it is saved.
             </p>
           )}
           {step.kind === "matched" && (

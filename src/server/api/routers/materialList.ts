@@ -1,3 +1,4 @@
+import { assertManualReceiptEditable } from "~/server/packing-slips/manual-receiving";
 import { nextMaterialOrderNumber } from "~/server/order-number";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { orderItemSequence } from "~/lib/order-item-sequence";
@@ -1977,7 +1978,9 @@ ${foremanName}`;
           roomName: jobRooms.name,
           supplierPartId: orderItems.supplierPartId,
           partDefinitionId: orderItems.partDefinitionId,
-          quantity: orderItems.quantity,
+          quantity: sql<string>`(${orderItems.quantity}-${orderItems.creditedQuantity})::text`,
+          originalQuantity: orderItems.quantity,
+          creditedQuantity: orderItems.creditedQuantity,
           requestedQuantity: orderItems.requestedQuantity,
           orderMultipleSnapshot: orderItems.orderMultipleSnapshot,
           receivedQuantity: orderItems.receivedQuantity,
@@ -2022,6 +2025,8 @@ ${foremanName}`;
           supplierPartId: item.supplierPartId,
           partDefinitionId: item.partDefinitionId,
           quantity: item.quantity,
+          originalQuantity:item.originalQuantity,
+          creditedQuantity:item.creditedQuantity,
           receivedQuantity: item.receivedQuantity,
           verificationStatus: item.verificationStatus,
           descriptionSnapshot:
@@ -2041,6 +2046,9 @@ ${foremanName}`;
       const organizationId = ctx.user.organizationId;
       if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
       const result = await ctx.db.transaction(async (tx) => {
+        const [scope] = await tx.select({jobId:orders.jobId}).from(orders).where(and(eq(orders.id,input.orderId),eq(orders.organizationId,organizationId))).limit(1);
+        if (!scope) throw new TRPCError({code:"NOT_FOUND",message:"Order not found"});
+        await assertManualReceiptEditable(tx,organizationId,scope.jobId,input.orderId);
         const [order] = await tx.select().from(orders)
           .where(and(eq(orders.id, input.orderId), eq(orders.organizationId, organizationId)))
           .for("update");
@@ -2049,7 +2057,7 @@ ${foremanName}`;
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cancelled orders cannot be received." });
         }
         const updated = await tx.update(orderItems)
-          .set({ receivedQuantity: input.allReceived ? sql`${orderItems.quantity}` : "0", verificationStatus: input.allReceived ? "complete" : "pending" })
+          .set({ receivedQuantity: input.allReceived ? sql`${orderItems.quantity}-${orderItems.creditedQuantity}` : "0", verificationStatus: input.allReceived ? "complete" : "pending" })
           .where(eq(orderItems.orderId, order.id)).returning({ id: orderItems.id });
         return { materialListId: order.materialListId, count: updated.length };
       });
@@ -2064,7 +2072,7 @@ ${foremanName}`;
     .input(
       z.object({
         orderItemId: z.string().uuid(),
-        receivedQuantity: z.number().min(0),
+        receivedQuantity: z.number().finite().min(0).max(999999),
         verificationStatus: z.enum([
           "pending",
           "partial",
@@ -2082,39 +2090,20 @@ ${foremanName}`;
         });
       }
 
-      const [existing] = await ctx.db
-        .select({ id: orderItems.id, materialListId: orders.materialListId })
-        .from(orderItems)
-        .innerJoin(orders, eq(orderItems.orderId, orders.id))
-        .where(
-          and(
-            eq(orderItems.id, input.orderItemId),
-            eq(orders.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!existing) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Order item not found",
-        });
-      }
-
-      const [updated] = await ctx.db
-        .update(orderItems)
-        .set({
-          receivedQuantity: input.receivedQuantity.toString(),
-          verificationStatus: input.verificationStatus,
-        })
-        .where(eq(orderItems.id, input.orderItemId))
-        .returning({
-          id: orderItems.id,
-          receivedQuantity: orderItems.receivedQuantity,
-          verificationStatus: orderItems.verificationStatus,
-        });
-
-      if (existing.materialListId) publishMaterialListEvent(existing.materialListId, "updated", ctx.user.organizationId);
+      const organizationId = ctx.user.organizationId;
+      const {updated,materialListId} = await ctx.db.transaction(async tx => {
+        const [existing] = await tx.select({id:orderItems.id,orderId:orders.id,jobId:orders.jobId,materialListId:orders.materialListId}).from(orderItems)
+          .innerJoin(orders,eq(orderItems.orderId,orders.id))
+          .where(and(eq(orderItems.id,input.orderItemId),eq(orders.organizationId,organizationId))).limit(1);
+        if (!existing) throw new TRPCError({code:"NOT_FOUND",message:"Order item not found"});
+        await assertManualReceiptEditable(tx,organizationId,existing.jobId,existing.orderId,input.orderItemId);
+        const [order] = await tx.select({status:orders.status,fulfillmentStatus:orders.fulfillmentStatus}).from(orders).where(eq(orders.id,existing.orderId)).for("update");
+        if (!order || order.status === "cancelled" || order.fulfillmentStatus === "cancelled") throw new TRPCError({code:"BAD_REQUEST",message:"Cancelled orders cannot be received."});
+        const [updated] = await tx.update(orderItems).set({receivedQuantity:String(input.receivedQuantity),verificationStatus:input.verificationStatus})
+          .where(eq(orderItems.id,input.orderItemId)).returning({id:orderItems.id,receivedQuantity:orderItems.receivedQuantity,verificationStatus:orderItems.verificationStatus});
+        return {updated,materialListId:existing.materialListId};
+      });
+      if (materialListId) publishMaterialListEvent(materialListId,"updated",organizationId);
       return updated;
     }),
 

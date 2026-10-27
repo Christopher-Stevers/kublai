@@ -1432,7 +1432,7 @@ export const materialLists = createTable(
     roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
 
     name: d.varchar({ length: 255 }).notNull(),
-    quoteId: d.uuid().references(() => quotes.id, { onDelete: "set null" }),
+    quoteId: d.uuid().references((): AnyPgColumn => quotes.id, { onDelete: "set null" }),
 
     createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
@@ -1537,7 +1537,7 @@ export const quotes = createTable(
 
     materialListId: d
       .uuid()
-      .references(() => materialLists.id, { onDelete: "cascade" }),
+      .references((): AnyPgColumn => materialLists.id, { onDelete: "cascade" }),
 
     jobId: d.uuid().references(() => jobs.id, { onDelete: "cascade" }),
 
@@ -1680,7 +1680,7 @@ export const materialListSyncMutations = createTable(
     materialListId: d
       .uuid()
       .notNull()
-      .references(() => materialLists.id, { onDelete: "cascade" }),
+      .references((): AnyPgColumn => materialLists.id, { onDelete: "cascade" }),
     clientMutationId: d.varchar({ length: 255 }).notNull(),
     mutationType: d.varchar({ length: 80 }).notNull(),
     serverItemId: d.uuid(),
@@ -1984,6 +1984,8 @@ export const orderItems = createTable(
       .numeric({ precision: 12, scale: 6 })
       .notNull()
       .default("0"),
+    returnedQuantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("0"),
+    creditedQuantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("0"),
     verificationStatus: d.varchar({ length: 50 }).notNull().default("pending"),
     uomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 

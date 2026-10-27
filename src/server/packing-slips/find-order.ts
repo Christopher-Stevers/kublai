@@ -107,7 +107,7 @@ export function findOrder(
       const named = supplierNamed(order.supplier, text);
       const number = squash(order.orderNumber);
       const ours =
-        number.length >= 5 && squash(text).includes(number) ? 0.5 : 0;
+        number.length >= 5 && text.toLowerCase().split(/[^a-z0-9-]+/).some(t=>squash(t)===number) ? 0.5 : 0;
       const delivered =
         order.items.length > 0 &&
         order.items.every((i) => i.received >= i.ordered);
@@ -124,7 +124,7 @@ export function findOrder(
     .sort((a, b) => b.score - a.score);
   const [top, second] = ranked;
   const confident = Boolean(
-    top && top.score >= 0.5 && top.score - (second?.score ?? 0) >= 0.2,
+    top && top.found >= 2 && top.score >= 0.9 && top.score - (second?.score ?? 0) >= 0.3,
   );
   return { ranked, confident };
 }

@@ -79,15 +79,6 @@ function assertNewSlip(input: Parameters<typeof appendVersion>[2]) {
       message: "Choose a JPEG, PNG, WebP photo or PDF packing slip.",
     });
 }
-const linkedCopy = (state: DocumentState, orderId: string, sha256: string) =>
-  state.documents.find(
-    (d) =>
-      !d.deletedAt &&
-      d.packingSlip?.orderId === orderId &&
-      state.versions.some(
-        (v) => v.id === d.currentVersionId && v.sha256 === sha256,
-      ),
-  );
 /** Called with a transaction-verified order/list association. */
 export function appendPackingSlip(
   state: DocumentState,
@@ -96,11 +87,8 @@ export function appendPackingSlip(
   link: PackingSlipLink,
 ) {
   assertNewSlip(input);
-  const duplicate = linkedCopy(state, link.orderId, input.sha256);
-  if (duplicate) {
-    accessibleDocument(state, actor, duplicate.id, { write: true });
-    return { documentId: duplicate.id, versionId: duplicate.currentVersionId! };
-  }
+  // A repeated upload stays a separate document pending an explicit duplicate decision.
+  // Immutable bytes are still deduplicated in blob storage; receiving is never copied.
   const folderId = slipFolder(state, actor);
   const name = freeName(state, folderId, orderBase(link), input.mimeType);
   const result = appendVersion(state, actor, { ...input, name, folderId });
@@ -111,28 +99,13 @@ export function appendPackingSlip(
   assertStateBounds(state);
   return result;
 }
-/** A scanned slip kept in Packing Slips until its order is chosen. The same
- * file saved before is reused. */
+/** A scanned slip kept in Packing Slips until its order and duplicate status are reviewed. */
 export function appendUnmatchedSlip(
   state: DocumentState,
   actor: DocumentActor,
   input: Parameters<typeof appendVersion>[2],
 ) {
   assertNewSlip(input);
-  const folder = findSlipFolder(state);
-  const saved = state.documents.find(
-    (d) =>
-      !d.deletedAt &&
-      d.jobId === actor.jobId &&
-      (Boolean(d.packingSlip) || d.folderId === folder?.id) &&
-      state.versions.some(
-        (v) => v.id === d.currentVersionId && v.sha256 === input.sha256,
-      ),
-  );
-  if (saved) {
-    accessibleDocument(state, actor, saved.id);
-    return { documentId: saved.id, versionId: saved.currentVersionId! };
-  }
   const folderId = slipFolder(state, actor);
   const name = freeName(
     state,
@@ -170,11 +143,6 @@ export function linkSavedSlip(
       code: "BAD_REQUEST",
       message: "Choose a JPEG, PNG, WebP photo or PDF packing slip.",
     });
-  const duplicate = linkedCopy(state, link.orderId, version.sha256);
-  if (duplicate) {
-    accessibleDocument(state, actor, duplicate.id);
-    return { documentId: duplicate.id };
-  }
   // Receiving grants editing slips in Packing Slips, unless that folder is
   // restricted for the member.
   const inPlace =

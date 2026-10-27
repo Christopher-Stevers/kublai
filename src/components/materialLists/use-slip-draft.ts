@@ -10,6 +10,7 @@ import {
 import type { PackingSlipLink } from "~/server/documents/types";
 
 export type DraftSlip = {
+  receivingReview?:{pending:number;complete:boolean;retired:boolean};
   id: string;
   name: string;
   createdAt: string;
@@ -29,7 +30,7 @@ const blank = (): Edits => ({ links: {}, amounts: {}, problems: {}, seen: {} });
 const reviewable = (slip: DraftSlip) => {
   const a = slip.packingSlipAnalysis;
   return (
-    a?.status === "ready" && !a.applied && a.versionId === slip.currentVersionId
+    !slip.receivingReview && a?.status === "ready" && !a.applied && a.versionId === slip.currentVersionId
   );
 };
 
@@ -186,6 +187,7 @@ export function useSlipDrafts({
     };
 
     return {
+      reviewDoc: mine.find(s=>s.receivingReview&&!s.receivingReview.retired&&(s.receivingReview.pending>0||!s.receivingReview.complete)),
       orderId: order,
       orderNumber: mine[0]?.packingSlip.orderNumber ?? null,
       slip,
@@ -260,7 +262,7 @@ export function useSlipDrafts({
       slips
         .filter(
           (s) =>
-            reviewable(s) || s.packingSlipAnalysis?.status === "processing" || s.packingSlipAnalysis?.status === "failed",
+            (!!s.receivingReview&&!s.receivingReview.retired&&(s.receivingReview.pending>0||!s.receivingReview.complete)) || reviewable(s) || s.packingSlipAnalysis?.status === "processing" || s.packingSlipAnalysis?.status === "failed",
         )
         .map((s) => s.packingSlip.orderId),
     ),

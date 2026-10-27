@@ -559,6 +559,7 @@ export function DocumentDetails({
               <div role="tabpanel" aria-label={tab} className="space-y-4">
                 {tab === "details" && (
                   <>
+                    {(!!document.packingSlip || data.folders.some(f=>f.id===document.folderId && f.name.toLowerCase()==='packing slips')) && <Link className="block py-2 font-medium underline" href={`/jobs/${jobId}/receiving?document=${document.id}`}>Review packing slip</Link>}
                     {document.packingSlip && <div className="rounded-lg border p-3 text-sm space-y-2">
                       <p className="font-medium">Packing slip · {document.packingSlip.orderNumber}</p>
                       <Link className="block underline" href={`/jobs/material-lists/${document.packingSlip.materialListId}`}>{document.packingSlip.materialListName}</Link>

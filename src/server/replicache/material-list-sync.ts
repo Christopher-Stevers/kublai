@@ -398,7 +398,7 @@ async function getMaterialListForMutation(
     throw new MissingMaterialListError("Material list not found");
   }
 
-  return materialList;
+  return {...materialList, quoteId: materialList.quoteId};
 }
 
 async function getUnitCostFromSupplierPart(
@@ -1246,7 +1246,9 @@ export async function handleMaterialListReplicachePull(
           sentOrderNumber: orders.orderNumber,
           sentOrderStatus: orders.status,
           sentAt: orders.sentAt,
-          sentQuantity: orderItems.quantity,
+          sentQuantity: sql<string>`(${orderItems.quantity}-${orderItems.creditedQuantity})::text`,
+          originalSentQuantity: orderItems.quantity,
+          creditedQuantity: orderItems.creditedQuantity,
           receivedQuantity: orderItems.receivedQuantity,
           verificationStatus: orderItems.verificationStatus,
           roomId: quoteItems.roomId,
@@ -1402,7 +1404,7 @@ export async function handleMaterialListReplicachePull(
             createdBy: materialList.createdByUserId
               ? (() => {
                   const createdByUser = contributorUserMap.get(
-                    materialList.createdByUserId as string,
+                    materialList.createdByUserId,
                   );
                   return {
                     id: materialList.createdByUserId,
@@ -1438,7 +1440,7 @@ export async function handleMaterialListReplicachePull(
             priceBookNameSnapshot: item.priceBookNameSnapshot,
             sentOrder: item.sentOrderId ? {
               id: item.sentOrderId, number: item.sentOrderNumber, status: item.sentOrderStatus,
-              quantity: item.sentQuantity, receivedQuantity: item.receivedQuantity,
+              quantity: item.sentQuantity, originalQuantity:item.originalSentQuantity, creditedQuantity:item.creditedQuantity, receivedQuantity: item.receivedQuantity,
               verificationStatus: item.verificationStatus,
             } : null,
             roomId: item.roomId,

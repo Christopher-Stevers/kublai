@@ -122,6 +122,7 @@ describe.skipIf(!socket)(
         "purchase_integration"
       )
         throw Error("Unexpected database");
+      await conn.unsafe('CREATE TABLE kublai_job_document_workspace ("jobId" uuid primary key, "organizationId" uuid, state jsonb)');
       for (const table of tables) {
         const columns = Object.values(getTableColumns(table as PgTable)).map(
           (column) => `"${column.name}" ${column.getSQLType()}`,
@@ -130,6 +131,7 @@ describe.skipIf(!socket)(
           `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("id"))`,
         );
       }
+      await conn.unsafe('ALTER TABLE kublai_order_item ALTER COLUMN "returnedQuantity" SET DEFAULT 0, ALTER COLUMN "creditedQuantity" SET DEFAULT 0');
       await conn`ALTER TABLE kublai_asset_movement ADD CONSTRAINT test_movement_order_fk FOREIGN KEY ("orderId") REFERENCES kublai_order(id) ON DELETE SET NULL`;
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS supplier_sku_unique ON kublai_supplier_part ("organizationId", "supplierId", "supplierSku")`;
       await conn`CREATE UNIQUE INDEX IF NOT EXISTS prefab_item_unique ON kublai_material_prefab_item ("prefabId", "partDefinitionId")`;
@@ -152,7 +154,7 @@ describe.skipIf(!socket)(
       supplierAccess.financial = true;
       supplierAccess.orders = true;
       await conn.unsafe(
-        `TRUNCATE kublai_order_number_counter,kublai_job_supplier_price_book,kublai_supplier_price_book_entry,kublai_supplier_price_book,kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
+        `TRUNCATE kublai_job_document_workspace,kublai_order_number_counter,kublai_job_supplier_price_book,kublai_supplier_price_book_entry,kublai_supplier_price_book,kublai_supplier_email_preference, kublai_job_pricing_audit, kublai_job_order_approval, kublai_job_price_entry, kublai_job_price_list, ${tables.map((table) => `"${getTableName(table)}"`).join(",")}`,
       );
       await db
         .insert(schema.organizations)

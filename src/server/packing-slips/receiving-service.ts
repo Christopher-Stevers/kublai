@@ -1,0 +1,1280 @@
+import { randomUUID, createHash } from "node:crypto";
+import { TRPCError } from "@trpc/server";
+import { and, eq, ilike, sql, desc } from "drizzle-orm";
+import { db } from "~/server/db";
+import {
+  orders,
+  orderItems,
+  partDefinitions,
+  supplierParts,
+  suppliers,
+  catalogs,
+  units,
+  materialLists,
+  quotes,
+  quoteItems,
+  packingSlipReviewHistory,
+  photoAssets,
+} from "~/server/db/schema";
+import { userCan } from "~/server/auth/permissions";
+import {
+  documentActor,
+  documentMembers,
+  type DocumentAccess,
+} from "~/server/documents/access";
+import { accessibleDocument, folderRole } from "~/server/documents/domain";
+import { mutateWorkspace, readWorkspace } from "~/server/documents/service";
+import type { JobDocument, DocumentState } from "~/server/documents/types";
+import {
+  initialReview,
+  lineKind,
+  duplicateEvidence,
+  normalizedIdentity,
+  receiptDelta,
+  qtyRound,
+  type ReceivingReview,
+  type ReceivingLine,
+} from "~/lib/receiving-review";
+import {
+  receiptUnit,
+  convertSlipQuantity,
+  MATCH_ISSUE,
+} from "~/lib/packing-slip-review";
+import { orderFor, orderSnapshot, orderFingerprint } from "./service";
+import { matchLines } from "./match";
+import { canCreateFromSlip } from "./receiving-access";
+import { publishMaterialListEvent } from "~/server/material-list-events";
+import type { ReceivingInput } from "./receiving-input";
+type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
+const fail = (
+  message: string,
+  code: "BAD_REQUEST" | "CONFLICT" | "FORBIDDEN" = "BAD_REQUEST",
+): never => {
+  throw new TRPCError({ code, message });
+};
+function receiveAccess(access: DocumentAccess) {
+  if (!userCan(access.user, "orders.receive"))
+    fail("Order receiving permission is required.", "FORBIDDEN");
+}
+export function seedPreviousReceipt(doc: JobDocument) {
+  const a = doc.packingSlipAnalysis,
+    r = doc.receivingReview;
+  if (!a?.applied || !r || r.lines.some((l) => l.approved)) return;
+  // Legacy confirmations were per order item, not per printed row. Preserve those totals exactly.
+  r.lines = Object.entries(a.applied.quantities).map(
+    ([itemId, quantity], i) => {
+      const item = (a.confirmedItems ?? a.items).find((x) => x.id === itemId),
+        source = a.lines.find((l) => l.orderItemId === itemId);
+      return {
+        id: `legacy-${i}`,
+        page: source?.page ?? 1,
+        evidence: source?.evidence ?? "Previously approved receipt",
+        description: item?.description ?? "Previously received part",
+        sku: item?.sku ?? "",
+        unit: item?.unit ?? "ea",
+        quantity,
+        ordered: item?.ordered ?? null,
+        unitPrice: null,
+        orderItemId: itemId,
+        issues: [],
+        checked: true,
+        approved: {
+          itemId,
+          quantity,
+          kind: "delivery",
+          by: a.applied!.by,
+          at: a.applied!.at,
+        },
+      } satisfies ReceivingLine;
+    },
+  );
+  r.kindConfirmed = true;
+  r.orderConfirmed = true;
+  r.documentChecked = true;
+}
+function ensure(doc: JobDocument, userId: string) {
+  if (!doc.currentVersionId) fail("This slip has no source file.");
+  if (!doc.receivingReview) {
+    doc.receivingReview = initialReview(
+      doc.packingSlipAnalysis,
+      doc.currentVersionId!,
+      userId,
+    );
+    seedPreviousReceipt(doc);
+  }
+  return doc.receivingReview;
+}
+function duplicateList(state: DocumentState, doc: JobDocument) {
+  const hash =
+    state.versions.find((v) => v.id === doc.currentVersionId)?.sha256 ?? "";
+  return state.documents
+    .filter((d) => d.id !== doc.id)
+    .flatMap((other) => {
+      if (
+        other.receivingReview?.retiredBy === doc.id ||
+        doc.receivingReview?.replaces === other.id
+      )
+        return [];
+      const reason = duplicateEvidence(
+        {
+          hash,
+          review: doc.receivingReview,
+          analysis: doc.packingSlipAnalysis,
+          orderId: doc.packingSlip?.orderId,
+        },
+        {
+          hash:
+            state.versions.find((v) => v.id === other.currentVersionId)
+              ?.sha256 ?? "",
+          review: other.receivingReview,
+          analysis: other.packingSlipAnalysis,
+          orderId: other.packingSlip?.orderId,
+        },
+      );
+      return reason
+        ? [
+            {
+              id: other.id,
+              name: other.name,
+              versionId: other.currentVersionId,
+              reason,
+              received:
+                !!other.packingSlipAnalysis?.applied ||
+                !!other.receivingReview?.lines.some((l) => l.approved),
+              key: `${other.id}:${other.currentVersionId}`,
+            },
+          ]
+        : [];
+    });
+}
+export async function receivingQueue(
+  access: DocumentAccess,
+  documentId?: string,
+  query = "",
+) {
+  receiveAccess(access);
+  const state = await readWorkspace(access),
+    actor = documentActor(access, []);
+  const folder = state.folders.find(
+    (f) =>
+      f.parentId === null && f.name.toLowerCase().trim() === "packing slips",
+  );
+  const visible = state.documents.filter(
+    (d) =>
+      !d.deletedAt &&
+      (!!d.packingSlip || d.folderId === folder?.id) &&
+      folderRole(state, actor, d.folderId),
+  );
+  const docs = visible
+    .map((d) => {
+      const r = d.receivingReview,
+        a = d.packingSlipAnalysis;
+      const pending = r
+        ? r.lines.filter(
+            (l) =>
+              !l.ignored &&
+              (l.approved?.quantity !== l.quantity ||
+                l.approved.kind !== lineKind(l, r.kind)),
+          ).length
+        : null;
+      return {
+        id: d.id,
+        name: d.name,
+        createdAt: d.createdAt,
+        createdBy: d.createdBy,
+        order: d.packingSlip,
+        status: r?.retiredBy
+          ? "replaced"
+          : r?.duplicateDecision?.action === "supporting"
+            ? "supporting"
+            : a?.status === "processing"
+              ? "processing"
+              : r &&
+                  pending === 0 &&
+                  r.lines.length > 0 &&
+                  r.documentChecked &&
+                  r.orderConfirmed &&
+                  r.versionId === d.currentVersionId
+                ? "complete"
+                : a?.applied && !r
+                  ? "complete"
+                  : "review",
+        pending,
+        approved:
+          r?.lines.filter((l) => l.approved).length ??
+          (a?.applied ? Object.keys(a.applied.quantities).length : 0),
+      };
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!documentId) return { documents: docs };
+  const doc = accessibleDocument(state, actor, documentId),
+    review = ensure(doc, access.user.id);
+  const linked = doc.packingSlip
+    ? await orderSnapshot(db, access, doc.packingSlip.orderId)
+    : [];
+  const [
+    supplierOptions,
+    catalogOptions,
+    unitOptions,
+    listOptions,
+    orderOptions,
+    parts,
+    mayCreate,
+    members,
+  ] = await Promise.all([
+    db
+      .select({ id: suppliers.id, name: suppliers.name })
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.organizationId, access.job.organizationId),
+          eq(suppliers.kind, "external"),
+        ),
+      )
+      .orderBy(suppliers.name),
+    db
+      .select({ id: catalogs.id, name: catalogs.name })
+      .from(catalogs)
+      .where(
+        and(
+          eq(catalogs.organizationId, access.job.organizationId),
+          eq(catalogs.kind, "materials"),
+        ),
+      ),
+    db.select({ id: units.id, code: units.code }).from(units),
+    db
+      .select({ id: materialLists.id, name: materialLists.name })
+      .from(materialLists)
+      .where(
+        and(
+          eq(materialLists.organizationId, access.job.organizationId),
+          eq(materialLists.jobId, access.job.id),
+          eq(materialLists.kind, "materials"),
+        ),
+      ),
+    db
+      .select({
+        id: orders.id,
+        name: orders.orderNumber,
+        supplierId: orders.supplierId,
+        listId: orders.materialListId,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.organizationId, access.job.organizationId),
+          eq(orders.jobId, access.job.id),
+          sql`${orders.status} not in ('draft','cancelled')`,
+          sql`coalesce(${orders.fulfillmentStatus},'') <> 'cancelled'`,
+        ),
+      )
+      .orderBy(desc(orders.createdAt)),
+    query.trim().length >= 2
+      ? db
+          .select({
+            id: partDefinitions.id,
+            name: partDefinitions.displayName,
+            description: partDefinitions.description,
+            photoUrl: partDefinitions.imageUrl,
+            catalogId: partDefinitions.catalogId,
+            unit: partDefinitions.bulkUnit,
+            piecesPerPack: partDefinitions.piecesPerPack,
+            individualUnit: partDefinitions.individualUnit,
+          })
+          .from(partDefinitions)
+          .where(
+            and(
+              eq(partDefinitions.organizationId, access.job.organizationId),
+              eq(partDefinitions.isActive, true),
+              sql`exists (select 1 from ${catalogs} where ${catalogs.id}=${partDefinitions.catalogId} and ${catalogs.kind}='materials')`,
+              ilike(
+                partDefinitions.displayName,
+                `%${query.replace(/[\\%_]/g, "\\$&")}%`,
+              ),
+            ),
+          )
+          .limit(50)
+      : Promise.resolve([]),
+    canCreateFromSlip(access, db),
+    documentMembers(access),
+  ]);
+  const photoSuggestions =
+    query.trim().length >= 2
+      ? await import("~/server/api/routers/catalogue")
+          .then((m) =>
+            m.getPartImageFamilySuggestionsForSource({
+              db,
+              organizationId: access.job.organizationId,
+              mode: "get",
+              sourcePart: {
+                displayName: query,
+                description: query,
+                categoryName: null,
+                materialId: undefined,
+                materialName: null,
+              },
+            }),
+          )
+          .then((r) => r.suggestions.slice(0, 8))
+          .catch(() => [])
+      : [];
+  const duplicates = duplicateList(state, doc).map((d) => ({
+    ...d,
+    name: visible.some((v) => v.id === d.id) ? d.name : "Another saved slip",
+  }));
+  // Supplier suggestion is never used as an approval.
+  if (!review.supplierId && doc.packingSlip) {
+    const order = orderOptions.find((o) => o.id === doc.packingSlip!.orderId);
+    if (order?.supplierId) {
+      review.supplierId = order.supplierId;
+      review.supplierName =
+        supplierOptions.find((s) => s.id === order.supplierId)?.name ?? "";
+    }
+  }
+  return {
+    documents: docs,
+    document: doc,
+    review,
+    items: linked,
+    fingerprint: orderFingerprint(linked),
+    duplicates,
+    suppliers: supplierOptions,
+    catalogs: catalogOptions,
+    units: unitOptions,
+    lists: listOptions,
+    orders: orderOptions,
+    parts,
+    photoSuggestions,
+    canCreate: mayCreate,
+    scannedBy:
+      members.find((m) => m.id === doc.createdBy)?.name ??
+      "Organization member",
+    sourceMimeType:
+      state.versions.find((v) => v.id === doc.currentVersionId)?.mimeType ??
+      "application/pdf",
+    sourceUrl: `/api/job-documents/files/${doc.currentVersionId}?jobId=${access.job.id}`,
+  };
+}
+async function history(
+  tx: Tx,
+  access: DocumentAccess,
+  doc: JobDocument,
+  requestId: string,
+  input: ReceivingInput,
+  before: ReceivingReview,
+  replacedDocument?: {
+    id: string;
+    before: ReceivingReview;
+    after: ReceivingReview;
+  },
+) {
+  const review = doc.receivingReview!;
+  const applied = review.lines.filter(
+    (l) => l.approved && l.approved.quantity > 0 && !l.ignored,
+  );
+  const confirmedAnalysis = {
+    lines: applied.map((l) => ({
+      orderItemId: l.approved!.itemId,
+      sku: l.sku,
+      proposed: l.approved!.quantity,
+      linked: "user",
+    })),
+    applied: {
+      quantities: Object.fromEntries(
+        [...new Set(applied.map((l) => l.approved!.itemId))].map((id) => [
+          id,
+          applied
+            .filter((l) => l.approved!.itemId === id)
+            .reduce((n, l) => n + l.approved!.quantity, 0),
+        ]),
+      ),
+    },
+  };
+  await tx.insert(packingSlipReviewHistory).values({
+    organizationId: access.job.organizationId,
+    jobId: access.job.id,
+    documentId: doc.id,
+    versionId: review.versionId,
+    runId: requestId,
+    kind: "confirmation",
+    userId: access.user.id,
+    release: process.env.NEXT_PUBLIC_APP_RELEASE ?? "unknown",
+    data: {
+      schemaVersion: 2,
+      operation: input.action,
+      requestHash: createHash("sha256")
+        .update(JSON.stringify(input))
+        .digest("hex"),
+      packingSlip: doc.packingSlip,
+      before,
+      after: review,
+      replacedDocument,
+      confirmedAnalysis:
+        input.action === "approve" ? confirmedAnalysis : undefined,
+      source: doc.currentVersionId,
+    },
+  });
+}
+async function requireCreate(access: DocumentAccess, tx: Tx) {
+  if (!(await canCreateFromSlip(access, tx)))
+    fail(
+      "An executive, the foreman or a lead hand must approve new parts, suppliers and reconstructed orders.",
+      "FORBIDDEN",
+    );
+}
+async function scopedSupplier(
+  tx: Tx,
+  access: DocumentAccess,
+  id: string | null,
+) {
+  if (!id) fail("Choose or create the supplier first.");
+  const [s] = await tx
+    .select()
+    .from(suppliers)
+    .where(
+      and(
+        eq(suppliers.id, id!),
+        eq(suppliers.organizationId, access.job.organizationId),
+        eq(suppliers.kind, "external"),
+      ),
+    )
+    .limit(1);
+  if (!s) fail("Supplier is unavailable.");
+  return s!;
+}
+async function addOrderLine(
+  tx: Tx,
+  access: DocumentAccess,
+  doc: JobDocument,
+  line: ReceivingLine,
+  order: typeof orders.$inferSelect,
+  quoteId: string,
+) {
+  if (!line.partId || line.ordered === null || line.ordered <= 0)
+    fail("Choose a catalogue part and confirm the ordered quantity first.");
+  const [part] = await tx
+    .select()
+    .from(partDefinitions)
+    .where(
+      and(
+        eq(partDefinitions.id, line.partId!),
+        eq(partDefinitions.organizationId, access.job.organizationId),
+        eq(partDefinitions.isActive, true),
+        sql`exists (select 1 from ${catalogs} where ${catalogs.id}=${partDefinitions.catalogId} and ${catalogs.kind}='materials')`,
+      ),
+    )
+    .limit(1);
+  if (!part) fail("The catalogue part is unavailable.");
+  const unit = receiptUnit(line.unit);
+  if (
+    part!.piecesPerPack &&
+    part!.piecesPerPack > 1 &&
+    unit !== receiptUnit(part!.bulkUnit ?? "pack")
+  )
+    fail(
+      `Enter ordered and delivered quantities in ${part!.bulkUnit ?? "pack"} before adding this packaged part.`,
+    );
+  if (!unit) fail("Confirm the quantity unit.");
+  const unitRows = await tx.select().from(units);
+  const uom = unitRows.find((u) => receiptUnit(u.code) === unit);
+  if (!uom) fail("Choose a supported unit.");
+  const existing = line.sku
+    ? await tx
+        .select()
+        .from(supplierParts)
+        .where(
+          and(
+            eq(supplierParts.organizationId, access.job.organizationId),
+            eq(supplierParts.supplierId, order.supplierId!),
+            eq(supplierParts.supplierSku, line.sku),
+          ),
+        )
+        .limit(1)
+    : [];
+  let listing = existing[0];
+  if (listing && listing.partDefinitionId !== part!.id)
+    fail(
+      "That supplier code already points to another catalogue part. Resolve the catalogue mapping before adding this line.",
+      "CONFLICT",
+    );
+  if (!listing) {
+    [listing] = await tx
+      .insert(supplierParts)
+      .values({
+        organizationId: access.job.organizationId,
+        supplierId: order.supplierId!,
+        partDefinitionId: part!.id,
+        supplierSku: line.sku || null,
+        supplierName: line.description,
+      })
+      .returning();
+  }
+  const [item] = await tx
+    .insert(orderItems)
+    .values({
+      orderId: order.id,
+      partDefinitionId: part!.id,
+      supplierPartId: listing!.id,
+      quantity: String(line.ordered),
+      requestedQuantity: doc.packingSlip ? "0" : String(line.ordered),
+      uomId: uom!.id,
+      unitCostAtOrderTime:
+        line.unitPrice === null ? null : String(line.unitPrice),
+      priceStatusSnapshot: line.unitPrice === null ? "none" : "confirmed",
+      priceBookNameSnapshot: "Packing slip · this job",
+      descriptionSnapshot: part!.displayName,
+      supplierSkuSnapshot: line.sku || null,
+      notes: `Reconstructed from packing slip ${doc.id}; approved by ${access.user.id}.`,
+    })
+    .returning();
+  await tx.insert(quoteItems).values({
+    quoteId,
+    sentOrderItemId: item!.id,
+    partDefinitionId: part!.id,
+    supplierPartId: listing!.id,
+    supplierId: order.supplierId,
+    quantity: String(line.ordered),
+    uomId: uom!.id,
+    unitCost: line.unitPrice === null ? null : String(line.unitPrice),
+    unitPrice: line.unitPrice === null ? null : String(line.unitPrice),
+    extendedPrice:
+      line.unitPrice === null
+        ? null
+        : (line.ordered! * line.unitPrice).toFixed(2),
+    descriptionSnapshot: part!.displayName,
+    addedByUserId: access.user.id,
+  });
+  const [subtotal] = await tx
+    .select({
+      value: sql<string>`coalesce(sum(${quoteItems.extendedPrice}),0)::text`,
+    })
+    .from(quoteItems)
+    .where(eq(quoteItems.quoteId, quoteId));
+  await tx
+    .update(quotes)
+    .set({
+      subtotalMaterials: subtotal!.value,
+      total: sql`${subtotal!.value}::numeric*(1+coalesce(${quotes.markupPercent},0)/100)`,
+    })
+    .where(eq(quotes.id, quoteId));
+  line.orderItemId = item!.id;
+  line.unit =
+    part!.piecesPerPack && part!.piecesPerPack > 1
+      ? (part!.bulkUnit ?? line.unit)
+      : line.unit;
+  // Price stays on the order/list in this job, never supplierParts.lastKnownUnitCost.
+  return item!;
+}
+export async function mutateReceiving(
+  access: DocumentAccess,
+  input: ReceivingInput,
+) {
+  receiveAccess(access);
+  const result = await mutateWorkspace(
+    access.user.id,
+    access.job.id,
+    async (state, actor, fresh, tx) => {
+      receiveAccess(fresh);
+      const doc = accessibleDocument(
+          state,
+          { ...actor, canWrite: true },
+          input.documentId,
+          { write: true },
+        ),
+        review = ensure(doc, fresh.user.id);
+      const [prior] = await tx
+        .select({
+          data: packingSlipReviewHistory.data,
+          documentId: packingSlipReviewHistory.documentId,
+          jobId: packingSlipReviewHistory.jobId,
+        })
+        .from(packingSlipReviewHistory)
+        .where(
+          and(
+            eq(
+              packingSlipReviewHistory.organizationId,
+              fresh.job.organizationId,
+            ),
+            eq(packingSlipReviewHistory.runId, input.requestId),
+            eq(packingSlipReviewHistory.kind, "confirmation"),
+          ),
+        )
+        .limit(1);
+      if (prior) {
+        const h = prior.data as { requestHash?: string };
+        if (
+          prior.jobId !== fresh.job.id ||
+          prior.documentId !== doc.id ||
+          h.requestHash !==
+            createHash("sha256").update(JSON.stringify(input)).digest("hex")
+        )
+          fail(
+            "This request ID was already used for another operation.",
+            "CONFLICT",
+          );
+        return {
+          replayed: true,
+          materialListId: doc.packingSlip?.materialListId,
+        };
+      }
+      if (review.revision !== input.revision)
+        fail(
+          "Someone changed this review. Reload it before continuing.",
+          "CONFLICT",
+        );
+      if (review.retiredBy)
+        fail("This slip was replaced. Open its replacement.", "CONFLICT");
+      if (
+        input.action !== "adoptSource" &&
+        review.versionId !== doc.currentVersionId
+      )
+        fail(
+          "The source file changed. Review the new version before approving.",
+          "CONFLICT",
+        );
+      let replacedDocument:
+        | { id: string; before: ReceivingReview; after: ReceivingReview }
+        | undefined;
+      const before = structuredClone(review),
+        now = new Date().toISOString();
+      const lineFor = (id: string) => {
+        const l = review.lines.find((l) => l.id === id);
+        if (!l) fail("Slip line no longer exists.", "CONFLICT");
+        return l!;
+      };
+      if (input.action === "reopen") {
+        delete review.duplicateDecision;
+        delete review.duplicateChecked;
+        review.documentChecked = false;
+      } else if (input.action === "restoreLine") {
+        const l = lineFor(input.lineId);
+        delete l.ignored;
+        l.checked = false;
+        l.humanEdited = true;
+        review.documentChecked = false;
+      } else if (input.action === "adoptSource") {
+        if (
+          doc.packingSlipAnalysis?.versionId !== doc.currentVersionId ||
+          doc.packingSlipAnalysis?.status !== "ready"
+        )
+          fail("Read the current source before adopting it.");
+        review.versionId = doc.currentVersionId!;
+        review.orderConfirmed = false;
+        review.documentChecked = false;
+        review.warnings.push(
+          "Source replaced. Check every page against the preserved receipt and correct any changed quantities explicitly.",
+        );
+        for (const l of review.lines) {
+          l.checked = false;
+          delete l.sourceIndex;
+          delete l.sourceBox;
+          l.evidence =
+            "Preserved from the prior source. Compare with the current document.";
+        }
+      } else if (input.action === "header") {
+        if (input.supplierId) await scopedSupplier(tx, fresh, input.supplierId);
+        Object.assign(review, {
+          kind: input.kind,
+          kindConfirmed: true,
+          documentChecked: input.documentChecked,
+          supplierId: input.supplierId,
+          supplierName: input.supplierName,
+          deliveryNumber: input.deliveryNumber,
+          supplierOrderNumber: input.supplierOrderNumber,
+          deliveryDate: input.deliveryDate,
+          orderConfirmed: !!doc.packingSlip,
+        });
+        if (
+          before.supplierId !== input.supplierId ||
+          before.deliveryNumber !== input.deliveryNumber
+        ) {
+          delete review.duplicateDecision;
+          delete review.duplicateChecked;
+        }
+      } else if (input.action === "line") {
+        const l = lineFor(input.lineId);
+        if (l.ignored) fail("This line has already been excluded.");
+        if (l.approved && input.orderItemId !== l.approved.itemId)
+          fail(
+            "An approved line cannot be moved to another product. Correct its quantity to zero, then add the correct line.",
+          );
+        if (input.orderItemId) {
+          if (!doc.packingSlip) fail("Choose an order first.");
+          const items = await orderSnapshot(
+            tx,
+            fresh,
+            doc.packingSlip!.orderId,
+          );
+          const item = items.find((i) => i.id === input.orderItemId);
+          if (!item) fail("Choose a line on this job’s linked order.");
+          if (receiptUnit(input.unit) !== receiptUnit(item!.unit))
+            fail(
+              `Enter the quantity in ${item!.unit}, the order’s unit. Convert packs or lengths explicitly.`,
+            );
+        }
+        if (input.kind === null) delete l.kind;
+        else if (input.kind !== undefined) l.kind = input.kind;
+        Object.assign(l, {
+          humanEdited: true,
+          description: input.description,
+          sku: input.sku,
+          quantity: input.quantity,
+          ordered: input.ordered,
+          unit: input.unit,
+          unitPrice: input.unitPrice,
+          orderItemId: input.orderItemId,
+          checked: input.checked,
+        });
+      } else if (input.action === "addLine") {
+        review.documentChecked = false;
+        if (review.lines.length >= 200)
+          fail("This review has reached the 200-line limit.");
+        review.lines.push({
+          id: randomUUID(),
+          page: input.page,
+          evidence: "Added by reviewer from the source document",
+          humanEdited: true,
+          description: input.description,
+          sku: "",
+          unit: "",
+          quantity: null,
+          ordered: null,
+          unitPrice: null,
+          orderItemId: null,
+          issues: [
+            "Reviewer added this line; confirm product, quantity and unit.",
+          ],
+          checked: false,
+        });
+      } else if (input.action === "ignore") {
+        const l = lineFor(input.lineId);
+        if (l.approved && l.approved.quantity !== 0)
+          fail("Correct an approved quantity to zero before excluding a line.");
+        l.ignored = { reason: input.reason, by: fresh.user.id, at: now };
+      } else if (input.action === "link") {
+        if (review.lines.some((l) => l.approved && l.approved.quantity !== 0))
+          fail(
+            "An approved receipt cannot be moved to another order. Correct it first.",
+          );
+        const order = await orderFor(tx, fresh, input.orderId);
+        const [list] = await tx
+          .select()
+          .from(materialLists)
+          .where(
+            and(
+              eq(materialLists.id, order.materialListId!),
+              eq(materialLists.jobId, fresh.job.id),
+              eq(materialLists.organizationId, fresh.job.organizationId),
+            ),
+          )
+          .limit(1);
+        if (!list) fail("Material list unavailable.");
+        doc.packingSlip = {
+          orderId: order.id,
+          orderNumber: order.orderNumber ?? order.id,
+          materialListId: list!.id,
+          materialListName: list!.name,
+        };
+        const freshItems = await orderSnapshot(tx, fresh, order.id);
+        const matches = matchLines(
+          freshItems,
+          review.lines.map((l) => ({
+            code: l.sku,
+            text: l.description + " " + l.evidence,
+          })),
+        );
+        review.lines.forEach((l, index) => {
+          delete l.approved;
+          l.orderItemId =
+            matches[index]?.confidence === "high"
+              ? matches[index].itemId
+              : null;
+          l.checked = false;
+          const item = freshItems.find((i) => i.id === l.orderItemId);
+          if (item) {
+            const converted =
+              l.quantity === null
+                ? null
+                : convertSlipQuantity(l.quantity, l.unit, item);
+            if (converted !== null) {
+              l.quantity = converted;
+              l.unit = item.unit;
+            }
+            l.issues = l.issues.filter((issue) => !MATCH_ISSUE.test(issue));
+            l.issues.push(
+              "Matched to the selected order. Check the product, quantity and any unit conversion.",
+            );
+          }
+        });
+        if (doc.packingSlipAnalysis) doc.packingSlipAnalysis.items = freshItems;
+        review.orderConfirmed = true;
+        review.supplierId = order.supplierId;
+      } else if (input.action === "duplicate") {
+        const other = accessibleDocument(state, actor, input.otherDocumentId),
+          otherReview = ensure(other, fresh.user.id);
+        if (other.id === doc.id) fail("Choose another slip.");
+        const collisions = duplicateList(state, doc);
+        if (!collisions.some((c) => c.id === other.id))
+          fail(
+            "The duplicate candidates changed. Reload the review.",
+            "CONFLICT",
+          );
+        if (input.decision === "replace") {
+          if (
+            !doc.packingSlip ||
+            doc.packingSlip.orderId !== other.packingSlip?.orderId
+          )
+            fail("A replacement must be linked to the same order.");
+          if (review.lines.some((l) => l.approved) || otherReview.retiredBy)
+            fail(
+              "This replacement would repeat an existing receipt.",
+              "CONFLICT",
+            );
+          const oldLines = otherReview.lines.filter((l) => l.approved);
+          const used = new Set<string>();
+          for (const old of oldLines) {
+            const candidates = review.lines.filter(
+              (l) => l.orderItemId === old.approved!.itemId && !used.has(l.id),
+            );
+            if (candidates.length !== 1)
+              fail(
+                "The replacement lines cannot be paired safely. Correct the original receipt, then keep this file as supporting documentation.",
+              );
+            const l = candidates[0]!;
+            l.approved = structuredClone(old.approved);
+            l.checked = false;
+            l.issues.push(
+              "Replacement: check the change from the previously approved quantity.",
+            );
+            used.add(l.id);
+          }
+          const otherBefore = structuredClone(otherReview);
+          otherReview.retiredBy = doc.id;
+          otherReview.revision++;
+          review.replaces = other.id;
+          replacedDocument = {
+            id: other.id,
+            before: otherBefore,
+            after: structuredClone(otherReview),
+          };
+        } else if (
+          input.decision === "supporting" &&
+          review.lines.some((l) => l.approved && l.approved.quantity !== 0)
+        )
+          fail(
+            "Correct approved quantities to zero before making this a supporting document.",
+          );
+        review.duplicateDecision = {
+          action: input.decision === "supporting" ? "supporting" : "additional",
+          reason: input.reason,
+          by: fresh.user.id,
+          at: now,
+          documentId: other.id,
+        };
+        review.duplicateChecked = [
+          ...new Set([
+            ...(review.duplicateChecked ?? []),
+            ...collisions.filter((c) => c.id === other.id).map((c) => c.key),
+          ]),
+        ];
+      } else if (input.action === "supplier") {
+        await requireCreate(fresh, tx);
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${fresh.job.organizationId},4150))`,
+        );
+        const all = await tx
+          .select({ id: suppliers.id, name: suppliers.name })
+          .from(suppliers)
+          .where(eq(suppliers.organizationId, fresh.job.organizationId));
+        if (
+          all.some(
+            (s) =>
+              normalizedIdentity(s.name) === normalizedIdentity(input.name),
+          )
+        )
+          fail("That supplier already exists. Select it instead.", "CONFLICT");
+        const [s] = await tx
+          .insert(suppliers)
+          .values({
+            organizationId: fresh.job.organizationId,
+            name: input.name,
+            contactEmail: input.email || null,
+            contactPhone: input.phone || null,
+            kind: "external",
+          })
+          .returning();
+        review.supplierId = s!.id;
+        review.supplierName = s!.name;
+      } else if (input.action === "part") {
+        await requireCreate(fresh, tx);
+        const l = lineFor(input.lineId);
+        if (l.approved) fail("An approved part cannot be replaced.");
+        l.humanEdited = true;
+        if (input.partId) {
+          const [p] = await tx
+            .select()
+            .from(partDefinitions)
+            .where(
+              and(
+                eq(partDefinitions.id, input.partId),
+                eq(partDefinitions.organizationId, fresh.job.organizationId),
+                eq(partDefinitions.isActive, true),
+                sql`exists (select 1 from ${catalogs} where ${catalogs.id}=${partDefinitions.catalogId} and ${catalogs.kind}='materials')`,
+              ),
+            )
+            .limit(1);
+          if (!p) fail("Catalogue part unavailable.");
+          l.partId = p!.id;
+          l.photoUrl = p!.imageUrl;
+        } else {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtextextended(${fresh.job.organizationId},4150))`,
+          );
+          const [cat] = await tx
+            .select()
+            .from(catalogs)
+            .where(
+              and(
+                eq(catalogs.id, input.catalogId),
+                eq(catalogs.organizationId, fresh.job.organizationId),
+                eq(catalogs.kind, "materials"),
+              ),
+            )
+            .limit(1);
+          if (!cat) fail("Choose a catalogue in your organization.");
+          const supportedUnits = await tx
+            .select({ code: units.code })
+            .from(units);
+          if (
+            !supportedUnits.some(
+              (u) => receiptUnit(u.code) === receiptUnit(input.unit),
+            )
+          )
+            fail("Choose a supported quantity unit.");
+          // Only already-hosted catalogue images can be reused. External photos must be uploaded through the normal image pipeline.
+          const [photo] = input.photoUrl
+            ? await tx
+                .select()
+                .from(photoAssets)
+                .where(
+                  and(
+                    eq(photoAssets.organizationId, fresh.job.organizationId),
+                    eq(photoAssets.url, input.photoUrl),
+                  ),
+                )
+                .limit(1)
+            : [];
+          const [existingPhoto] =
+            input.photoUrl && !photo
+              ? await tx
+                  .select({ id: partDefinitions.id })
+                  .from(partDefinitions)
+                  .where(
+                    and(
+                      eq(
+                        partDefinitions.organizationId,
+                        fresh.job.organizationId,
+                      ),
+                      eq(partDefinitions.imageUrl, input.photoUrl),
+                    ),
+                  )
+                  .limit(1)
+              : [];
+          if (input.photoUrl && !photo && !existingPhoto)
+            fail(
+              "Choose an existing organization photo or upload it through Catalogue first.",
+            );
+          const same = await tx
+            .select({ id: partDefinitions.id })
+            .from(partDefinitions)
+            .where(
+              and(
+                eq(partDefinitions.organizationId, fresh.job.organizationId),
+                sql`lower(${partDefinitions.displayName})=lower(${input.name})`,
+              ),
+            )
+            .limit(1);
+          if (same.length)
+            fail(
+              "A part with this name already exists. Search the catalogue and select it.",
+              "CONFLICT",
+            );
+          const [p] = await tx
+            .insert(partDefinitions)
+            .values({
+              organizationId: fresh.job.organizationId,
+              catalogId: input.catalogId,
+              displayName: input.name,
+              description: input.description || null,
+              bulkUnit: input.unit,
+              individualUnit: input.individualUnit || null,
+              piecesPerPack: input.piecesPerPack,
+              imageUrl: input.photoUrl,
+              imageAssetId: photo?.id ?? null,
+            })
+            .returning();
+          l.partId = p!.id;
+          l.photoUrl = p!.imageUrl;
+        }
+      } else if (input.action === "reconstruct") {
+        await requireCreate(fresh, tx);
+        if (doc.packingSlip) fail("This slip already has an order.");
+        if (
+          review.kind !== "delivery" ||
+          review.lines.some((l) => l.kind && l.kind !== "delivery")
+        )
+          fail("Returns must be linked to the original order.");
+        const supplier = await scopedSupplier(tx, fresh, review.supplierId);
+        let list = input.materialListId
+          ? (
+              await tx
+                .select()
+                .from(materialLists)
+                .where(
+                  and(
+                    eq(materialLists.id, input.materialListId),
+                    eq(materialLists.organizationId, fresh.job.organizationId),
+                    eq(materialLists.jobId, fresh.job.id),
+                    eq(materialLists.kind, "materials"),
+                  ),
+                )
+                .for("update")
+            )[0]
+          : undefined;
+        if (input.materialListId && !list) fail("Material list unavailable.");
+        if (!list) {
+          [list] = await tx
+            .insert(materialLists)
+            .values({
+              organizationId: fresh.job.organizationId,
+              jobId: fresh.job.id,
+              name: input.listName,
+              createdByUserId: fresh.user.id,
+            })
+            .returning();
+        }
+        let quoteId = list!.quoteId;
+        if (!quoteId) {
+          const [q] = await tx
+            .insert(quotes)
+            .values({
+              organizationId: fresh.job.organizationId,
+              jobId: fresh.job.id,
+              materialListId: list!.id,
+              createdByUserId: fresh.user.id,
+            })
+            .returning();
+          quoteId = q!.id;
+          await tx
+            .update(materialLists)
+            .set({ quoteId })
+            .where(eq(materialLists.id, list!.id));
+        }
+        const [order] = await tx
+          .insert(orders)
+          .values({
+            organizationId: fresh.job.organizationId,
+            jobId: fresh.job.id,
+            materialListId: list!.id,
+            orderNumber: input.orderNumber,
+            supplierId: supplier.id,
+            createdByUserId: fresh.user.id,
+            status: "sent",
+            sentVia: "packing-slip",
+            sentAt: new Date(),
+            notes: `Reconstructed from saved packing slip ${doc.id}. No order was sent to the supplier.`,
+          })
+          .returning();
+        for (const id of new Set(input.lineIds))
+          await addOrderLine(tx, fresh, doc, lineFor(id), order!, quoteId);
+        doc.packingSlip = {
+          orderId: order!.id,
+          orderNumber: input.orderNumber,
+          materialListId: list!.id,
+          materialListName: list!.name,
+        };
+        review.orderConfirmed = true;
+      } else if (input.action === "extra") {
+        await requireCreate(fresh, tx);
+        if (!doc.packingSlip) fail("Choose an order first.");
+        const l = lineFor(input.lineId);
+        if (l.orderItemId || l.approved)
+          fail("This line already belongs to the order.");
+        const order = await orderFor(tx, fresh, doc.packingSlip!.orderId);
+        await scopedSupplier(tx, fresh, order.supplierId);
+        const [list] = await tx
+          .select()
+          .from(materialLists)
+          .where(eq(materialLists.id, order.materialListId!))
+          .for("update");
+        if (!list?.quoteId) fail("The material list has no item container.");
+        await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!);
+      } else if (input.action === "approve") {
+        if (!doc.packingSlip || !review.orderConfirmed)
+          fail("Confirm the linked order first.");
+        if (!review.kindConfirmed)
+          fail(
+            "Confirm whether this is a delivery, return for replacement or return for credit.",
+          );
+        if (review.duplicateDecision?.action === "supporting")
+          fail("Supporting documents cannot receive quantities.");
+        const outstandingDuplicates = duplicateList(state, doc).filter(
+          (d) => !review.duplicateChecked?.includes(d.key),
+        );
+        if (outstandingDuplicates.length)
+          fail("Review the possible duplicate before posting quantities.");
+        const order = await orderFor(tx, fresh, doc.packingSlip!.orderId);
+        if (order.supplierId !== review.supplierId)
+          fail(
+            "The slip supplier and linked order supplier do not match. Check the order.",
+          );
+        const snapshot = await orderSnapshot(tx, fresh, order.id);
+        if (orderFingerprint(snapshot) !== input.fingerprint)
+          fail(
+            "The order changed while this review was open. Reload to see the latest quantities.",
+            "CONFLICT",
+          );
+        const selected = [...new Set(input.lineIds)].map(lineFor);
+        const rows = await tx
+          .select()
+          .from(orderItems)
+          .where(eq(orderItems.orderId, order.id))
+          .for("update");
+        for (const l of selected) {
+          if (l.ignored || !l.orderItemId || l.quantity === null)
+            fail("Every selected line needs a matched part and a quantity.");
+          if (!l.checked && l.issues.length)
+            fail(
+              "Check the flagged lines against the source before approving.",
+            );
+          const row = rows.find((i) => i.id === l.orderItemId),
+            item = snapshot.find((i) => i.id === l.orderItemId);
+          if (!row || !item) fail("A selected part is not on this order.");
+          if (receiptUnit(l.unit) !== receiptUnit(item!.unit))
+            fail(`Confirm the quantity in ${item!.unit}.`);
+          if (l.approved && !input.reason.trim())
+            fail(
+              "Describe why the previously approved receipt is being corrected.",
+            );
+          if (!l.approved && l.quantity === 0)
+            fail(
+              "Exclude a zero-delivery line with a reason, or leave it in the queue.",
+            );
+          const delta = receiptDelta(
+            lineKind(l, review.kind),
+            l.quantity!,
+            l.approved,
+          );
+          const received = qtyRound(
+              Number(row!.receivedQuantity) + delta.received,
+            ),
+            credit = qtyRound(Number(row!.creditedQuantity) + delta.credit);
+          const returned = qtyRound(
+            Number(row!.returnedQuantity) +
+              (lineKind(l, review.kind) === "delivery" ? 0 : l.quantity!) -
+              (l.approved && l.approved.kind !== "delivery"
+                ? l.approved.quantity
+                : 0),
+          );
+          if (
+            received < 0 ||
+            credit < 0 ||
+            returned < 0 ||
+            credit > Number(row!.quantity)
+          )
+            fail(
+              "This return or correction exceeds the recorded delivery or ordered quantity. Resolve the original receipt first.",
+            );
+          if (
+            received > Number(row!.quantity) - credit &&
+            !input.allowOverDelivery
+          )
+            fail(
+              "This exceeds the quantity due. Explicitly approve the over-delivery or correct the quantity.",
+            );
+          if (received > 999999 || credit > 999999 || returned > 999999)
+            fail("The resulting total exceeds the supported quantity limit.");
+          const status =
+            received >= Number(row!.quantity) - credit
+              ? "complete"
+              : received > 0
+                ? "partial"
+                : "pending";
+          await tx
+            .update(orderItems)
+            .set({
+              receivedQuantity: String(received),
+              creditedQuantity: String(credit),
+              returnedQuantity: String(returned),
+              verificationStatus: status,
+            })
+            .where(eq(orderItems.id, row!.id));
+          row!.receivedQuantity = String(received);
+          row!.creditedQuantity = String(credit);
+          row!.returnedQuantity = String(returned);
+          l.approved = {
+            itemId: l.orderItemId!,
+            quantity: l.quantity!,
+            kind: lineKind(l, review.kind),
+            by: fresh.user.id,
+            at: now,
+          };
+          l.checked = true;
+        }
+        if (input.documentChecked) review.documentChecked = true;
+        // Compatibility for old status displays. Approved lines remain separately recorded in the review.
+        if (doc.packingSlipAnalysis) {
+          doc.packingSlipAnalysis.applied = {
+            at: now,
+            by: fresh.user.id,
+            quantities: Object.fromEntries(
+              [
+                ...new Set(
+                  review.lines.flatMap((l) =>
+                    l.approved ? [l.approved.itemId] : [],
+                  ),
+                ),
+              ].map((id) => [
+                id,
+                review.lines
+                  .filter((l) => l.approved?.itemId === id)
+                  .reduce(
+                    (n, l) =>
+                      n +
+                      (l.approved!.kind === "delivery"
+                        ? l.approved!.quantity
+                        : -l.approved!.quantity),
+                    0,
+                  ),
+              ]),
+            ),
+          };
+          doc.packingSlipAnalysis.confirmedItems = snapshot;
+        }
+      }
+      review.humanReviewed = true;
+      review.revision++;
+      doc.updatedAt = now;
+      await history(
+        tx,
+        fresh,
+        doc,
+        input.requestId,
+        input,
+        before,
+        replacedDocument,
+      );
+      return {
+        replayed: false,
+        materialListId: doc.packingSlip?.materialListId,
+      };
+    },
+  );
+  if (result.materialListId)
+    publishMaterialListEvent(
+      result.materialListId,
+      "updated",
+      access.job.organizationId,
+    );
+  return result;
+}

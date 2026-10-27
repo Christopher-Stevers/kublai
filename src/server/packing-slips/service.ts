@@ -1,3 +1,5 @@
+import { withSlipTrace, traceUsage, READER_VERSION } from "./trace";
+import { draftReceiving, mergeReading } from "./review-draft";
 import { separateBackground } from "~/server/background/mode";
 import { packingSlipJobs } from "~/server/background/packing-schema";
 import {
@@ -66,7 +68,11 @@ async function recordReviewHistory(
     })
     .onConflictDoNothing();
 }
-async function orderFor(tx: Tx, access: DocumentAccess, orderId: string) {
+export async function orderFor(
+  tx: Tx,
+  access: DocumentAccess,
+  orderId: string,
+) {
   const [order] = await tx
     .select()
     .from(orders)
@@ -99,7 +105,7 @@ async function orderFor(tx: Tx, access: DocumentAccess, orderId: string) {
     });
   return order;
 }
-async function orderSnapshot(
+export async function orderSnapshot(
   tx: Pick<Tx, "select">,
   access: DocumentAccess,
   orderId: string,
@@ -116,6 +122,8 @@ async function orderSnapshot(
       currentSku: supplierParts.supplierSku,
       supplierDescription: supplierParts.supplierName,
       quantity: orderItems.quantity,
+      returned: orderItems.returnedQuantity,
+      credited: orderItems.creditedQuantity,
       received: orderItems.receivedQuantity,
       verificationStatus: orderItems.verificationStatus,
       piecesPerPack: partDefinitions.piecesPerPack,
@@ -173,7 +181,10 @@ async function orderSnapshot(
         .filter((a) => a.partDefinitionId === r.partId)
         .map((a) => a.synonym),
     ].slice(0, 20),
-    ordered: Number(r.quantity),
+    ordered: Number(r.quantity) - Number(r.credited),
+    originalOrdered: Number(r.quantity),
+    returned: Number(r.returned),
+    credited: Number(r.credited),
     received: Number(r.received),
     verificationStatus: r.verificationStatus,
     unit:
@@ -222,57 +233,6 @@ export function orderFingerprint(
       ]),
   );
 }
-/** Take back what a confirmed slip added, so clearing or rerunning detection
- * starts clean. Items untouched since get their earlier total and status
- * back; items changed since only lose this slip's quantity. */
-async function undoSlipReceipt(
-  tx: Tx,
-  orderId: string,
-  analysis: SlipAnalysis,
-) {
-  if (!analysis.applied) return false;
-  const rows = await tx
-    .select({
-      id: orderItems.id,
-      ordered: orderItems.quantity,
-      received: orderItems.receivedQuantity,
-    })
-    .from(orderItems)
-    .where(eq(orderItems.orderId, orderId))
-    .for("update");
-  const before = new Map(
-    (analysis.confirmedItems ?? analysis.items).map((i) => [i.id, i]),
-  );
-  const round = (n: number) => Math.round(n * 1e6) / 1e6;
-  for (const [itemId, added] of Object.entries(analysis.applied.quantities)) {
-    const row = rows.find((r) => r.id === itemId);
-    if (!row) continue;
-    const received = Number(row.received),
-      ordered = Number(row.ordered),
-      prior = before.get(itemId);
-    const untouched =
-      prior && Math.abs(round(prior.received + added) - received) < 1e-6;
-    const total = untouched
-      ? prior.received
-      : Math.max(0, round(received - added));
-    await tx
-      .update(orderItems)
-      .set({
-        receivedQuantity: String(total),
-        verificationStatus: untouched
-          ? prior.verificationStatus
-          : total > ordered + 1e-6
-            ? "problem"
-            : total >= ordered
-              ? "complete"
-              : total > 0
-                ? "partial"
-                : "pending",
-      })
-      .where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
-  }
-  return true;
-}
 const inflight = new Map<string, Promise<void>>();
 let tail: Promise<void> = Promise.resolve();
 /** Persist first, then run bounded background work. Interrupted runs can be retried after the lease expires. */
@@ -293,13 +253,15 @@ export async function startSlipAnalysis(
     access.job.id,
     async (state, actor, fresh, tx) => {
       const doc = accessibleDocument(state, actor, documentId);
-      if (!doc.packingSlip)
+      if (!userCan(fresh.user, "orders.receive"))
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This document is not a linked packing slip.",
+          code: "FORBIDDEN",
+          message: "Order receiving permission is required.",
         });
-      const order = await orderFor(tx, fresh, doc.packingSlip.orderId);
-      if (order.materialListId !== doc.packingSlip.materialListId)
+      const order = doc.packingSlip
+        ? await orderFor(tx, fresh, doc.packingSlip.orderId)
+        : null;
+      if (order && order.materialListId !== doc.packingSlip?.materialListId)
         throw new TRPCError({
           code: "CONFLICT",
           message: "The material list link changed.",
@@ -328,11 +290,57 @@ export async function startSlipAnalysis(
           message: "Packing slip file unavailable.",
         });
       const previous = doc.packingSlipAnalysis;
-      // Reading a confirmed slip again is a clean start: its receipt comes off.
-      const undone =
-        force && previous
-          ? await undoSlipReceipt(tx, order.id, previous)
-          : false;
+      const same = force
+        ? undefined
+        : state.documents.find(
+            (d) =>
+              d.id !== doc.id &&
+              d.packingSlipAnalysis?.status === "ready" &&
+              state.versions.some(
+                (v) =>
+                  v.id === d.currentVersionId && v.sha256 === version.sha256,
+              ) &&
+              d.packingSlip?.orderId === doc.packingSlip?.orderId,
+          );
+      if (same?.packingSlipAnalysis) {
+        const copy = structuredClone(same.packingSlipAnalysis);
+        delete copy.applied;
+        delete copy.confirmedItems;
+        copy.usage = {
+          calls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          unknownCalls: 0,
+          estimatedUsd: 0,
+          pricingAsOf: "2026-10-27",
+          pricingSource:
+            "https://typesafe.ai/blog/introducing-system-one-models-and-jev",
+        };
+        copy.runId = randomUUID();
+        copy.versionId = version.id;
+        copy.startedAt = new Date().toISOString();
+        copy.items = order ? await orderSnapshot(tx, fresh, order.id) : [];
+        copy.warnings.push(
+          "Repeated source file: review the duplicate before receiving.",
+        );
+        doc.packingSlipAnalysis = copy;
+        const { initialReview } = await import("~/lib/receiving-review");
+        doc.receivingReview = initialReview(
+          copy,
+          version.id,
+          fresh.user.id,
+          same.receivingReview?.sourceText ?? "",
+        );
+        await recordReviewHistory(tx, fresh, doc, copy, "analysis", {
+          analysis: copy,
+          reusedFromDocument: same.id,
+          source: { sha256: version.sha256, mimeType: version.mimeType },
+        });
+        return null;
+      }
+      // Detection is read-only with respect to receiving. A reviewed adjustment
+      // is the only operation allowed to change an already approved receipt.
+
       if (previous && previous.status !== "cleared") {
         const previousVersion = state.versions.find(
           (v) => v.id === previous.versionId,
@@ -361,7 +369,6 @@ export async function startSlipAnalysis(
               : null,
             archivedBeforeRetry: true,
             originalReleaseUnknown: true,
-            ...(undone ? { receiptUndone: previous.applied } : {}),
           },
         );
       }
@@ -370,9 +377,15 @@ export async function startSlipAnalysis(
         versionId: version.id,
         status: "processing",
         startedAt: new Date().toISOString(),
-        items: await orderSnapshot(tx, fresh, order.id),
+        items: order ? await orderSnapshot(tx, fresh, order.id) : [],
         lines: [],
         warnings: [],
+        ...(previous?.applied
+          ? {
+              applied: previous.applied,
+              confirmedItems: previous.confirmedItems ?? previous.items,
+            }
+          : {}),
       };
       doc.packingSlipAnalysis = analysis;
       if (separateBackground())
@@ -381,26 +394,16 @@ export async function startSlipAnalysis(
           organizationId: fresh.job.organizationId,
           jobId: fresh.job.id,
           documentId: doc.id,
-          orderId: order.id,
+          orderId: order?.id ?? null,
           versionId: version.id,
           userId: fresh.user.id,
-        });
-      if (undone)
-        state.activity.push({
-          id: randomUUID(),
-          documentId: doc.id,
-          folderId: doc.folderId,
-          action: "undoPackingSlipReceipt",
-          detail: `Reran packing slip detection and took back its confirmed receipt for ${order.orderNumber ?? order.id}`,
-          createdBy: fresh.user.id,
-          createdAt: analysis.startedAt,
         });
       assertStateBounds(state);
       return {
         analysis,
         version,
-        orderId: order.id,
-        materialListId: undone ? order.materialListId : null,
+        orderId: order?.id ?? null,
+        materialListId: null,
       };
     },
   );
@@ -424,7 +427,25 @@ export async function startSlipAnalysis(
 async function runSlipTask(
   access: DocumentAccess,
   documentId: string,
-  task: { analysis: SlipAnalysis; version: DocumentVersion; orderId: string },
+  task: {
+    analysis: SlipAnalysis;
+    version: DocumentVersion;
+    orderId: string | null;
+  },
+  claim?: SlipClaim,
+) {
+  return withSlipTrace(access.job.organizationId, task.analysis.runId, () =>
+    performSlipTask(access, documentId, task, claim),
+  );
+}
+async function performSlipTask(
+  access: DocumentAccess,
+  documentId: string,
+  task: {
+    analysis: SlipAnalysis;
+    version: DocumentVersion;
+    orderId: string | null;
+  },
   claim?: SlipClaim,
 ) {
   try {
@@ -436,31 +457,55 @@ async function runSlipTask(
     const report = (progress: SlipProgress) => {
       const snapshot = structuredClone(progress);
       progressTail = progressTail.then(async () => {
-        await mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
-          if (claim && !(await ownsPackingSlip(tx, claim))) return;
-          const doc = accessibleDocument(state, actor, documentId);
-          if (doc.packingSlip?.orderId !== task.orderId || doc.currentVersionId !== task.version.id ||
-              doc.packingSlipAnalysis?.runId !== task.analysis.runId || doc.packingSlipAnalysis.status !== "processing") return;
-          await orderFor(tx, fresh, task.orderId);
-          doc.packingSlipAnalysis.progress = snapshot;
-          assertStateBounds(state);
-        });
+        await mutateWorkspace(
+          access.user.id,
+          access.job.id,
+          async (state, actor, fresh, tx) => {
+            if (claim && !(await ownsPackingSlip(tx, claim))) return;
+            const doc = accessibleDocument(state, actor, documentId);
+            if (
+              (doc.packingSlip?.orderId ?? null) !== task.orderId ||
+              doc.currentVersionId !== task.version.id ||
+              doc.packingSlipAnalysis?.runId !== task.analysis.runId ||
+              doc.packingSlipAnalysis.status !== "processing"
+            )
+              return;
+            if (task.orderId) await orderFor(tx, fresh, task.orderId);
+            doc.packingSlipAnalysis.progress = snapshot;
+            assertStateBounds(state);
+          },
+        );
       });
       return progressTail;
     };
-    await report({ stage: "extracting", message: "Reading the scanned pages…" });
+    await report({
+      stage: "extracting",
+      message: "Reading the scanned pages…",
+    });
     const extracted = await extractSlip(
       access.job.organizationId,
       task.version.sha256,
       task.version.mimeType,
     );
-    const memory = extracted.pages.length
-      ? await import("~/server/db")
-          .then(({ db }) =>
-            supplierMemory(db, access.job.organizationId, task.orderId),
-          )
-          .catch(() => undefined)
-      : undefined;
+    const identified = !task.orderId
+      ? await import("./find-order-service").then((m) =>
+          m.identifySlipOrder(access, documentId),
+        )
+      : null;
+    const suggested = identified?.orders.find((o) => o.id === identified.match);
+    if (suggested) {
+      const { db } = await import("~/server/db");
+      task.analysis.items = await orderSnapshot(db, access, suggested.id);
+    }
+    const readingOrderId = task.orderId ?? suggested?.id;
+    const memory =
+      readingOrderId && extracted.pages.length
+        ? await import("~/server/db")
+            .then(({ db }) =>
+              supplierMemory(db, access.job.organizationId, readingOrderId),
+            )
+            .catch(() => undefined)
+        : undefined;
     const result = await analyzeSlip(
       extracted.rows,
       task.analysis.items,
@@ -473,16 +518,28 @@ async function runSlipTask(
       async (state, actor, fresh, tx) => {
         if (claim && !(await ownsPackingSlip(tx, claim))) return;
         const doc = accessibleDocument(state, actor, documentId);
-        await orderFor(tx, fresh, doc.packingSlip!.orderId);
+        if (doc.packingSlip) await orderFor(tx, fresh, doc.packingSlip.orderId);
         if (
-          doc.packingSlip?.orderId !== task.orderId ||
+          (doc.packingSlip?.orderId ?? null) !== task.orderId ||
           doc.currentVersionId !== task.version.id ||
           doc.packingSlipAnalysis?.runId !== task.analysis.runId
         )
           return;
+        if (suggested) {
+          const chosen = await orderFor(tx, fresh, suggested.id);
+          doc.packingSlip = {
+            orderId: chosen.id,
+            orderNumber: suggested.orderNumber,
+            materialListId: suggested.materialListId,
+            materialListName: suggested.materialListName,
+          };
+        }
         doc.packingSlipAnalysis = {
           ...task.analysis,
           ...result,
+          readerVersion: READER_VERSION,
+          usage: traceUsage(),
+          orderCandidates: identified?.candidates,
           warnings: [
             ...extracted.warnings,
             ...result.warnings,
@@ -496,6 +553,20 @@ async function runSlipTask(
           status: "ready",
           completedAt: new Date().toISOString(),
         };
+        // Rereading never replaces a human decision or an approved receipt.
+        if (!doc.receivingReview) {
+          doc.receivingReview = draftReceiving(
+            doc.packingSlipAnalysis,
+            fresh.user.id,
+            extracted.rows,
+          );
+          if (doc.packingSlipAnalysis.applied) {
+            const { seedPreviousReceipt } = await import("./receiving-service");
+            seedPreviousReceipt(doc);
+          }
+        } else {
+          doc.receivingReview = mergeReading(doc.receivingReview,draftReceiving(doc.packingSlipAnalysis,fresh.user.id,extracted.rows));
+        }
         await recordReviewHistory(
           tx,
           fresh,
@@ -524,7 +595,7 @@ async function runSlipTask(
         if (
           doc.packingSlipAnalysis?.runId === task.analysis.runId &&
           doc.currentVersionId === task.version.id &&
-          doc.packingSlip?.orderId === task.orderId
+          (doc.packingSlip?.orderId ?? null) === task.orderId
         ) {
           doc.packingSlipAnalysis = {
             ...task.analysis,
@@ -578,20 +649,24 @@ export async function dispatchPackingSlips() {
       claim.jobId,
       async (state, actor, fresh, tx) => {
         if (!(await ownsPackingSlip(tx, claim))) return null;
+        if (!userCan(fresh.user, "orders.receive"))
+          throw Error("Receiving access changed");
         const doc = accessibleDocument(state, actor, claim.documentId);
         const analysis = doc.packingSlipAnalysis;
         if (analysis?.runId !== claim.id || analysis.status !== "processing")
           return null;
         if (
-          doc.packingSlip?.orderId !== claim.orderId ||
+          (doc.packingSlip?.orderId ?? null) !== claim.orderId ||
           doc.currentVersionId !== claim.versionId ||
           analysis.versionId !== doc.currentVersionId
         )
           throw Error("Packing slip source changed");
-        const order = await orderFor(tx, fresh, doc.packingSlip.orderId);
+        const order = doc.packingSlip
+          ? await orderFor(tx, fresh, doc.packingSlip.orderId)
+          : null;
         const version = state.versions.find((v) => v.id === analysis.versionId);
         if (!version) throw Error("Packing slip version unavailable");
-        return { analysis, version, orderId: order.id };
+        return { analysis, version, orderId: order?.id ?? null };
       },
     );
     const failed = task
@@ -605,8 +680,7 @@ export async function dispatchPackingSlips() {
     clearInterval(heartbeat);
   }
 }
-/** Clear the current detection and take back its confirmed receipt. Keep the
- * file and audit history. */
+/** Clear detection only; preserve the receipt and its audit trail. */
 export async function clearSlipAnalysis(
   access: DocumentAccess,
   documentId: string,
@@ -617,18 +691,23 @@ export async function clearSlipAnalysis(
     access.job.id,
     async (state, actor, fresh, tx) => {
       const doc = accessibleDocument(state, actor, documentId);
-      if (!doc.packingSlip)
+      if (!userCan(fresh.user, "orders.receive"))
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Not a packing slip.",
+          code: "FORBIDDEN",
+          message: "Order receiving permission is required.",
         });
-      const order = await orderFor(tx, fresh, doc.packingSlip.orderId);
-      if (order.materialListId !== doc.packingSlip.materialListId)
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "The material list link changed.",
-        });
+      if (doc.packingSlip) await orderFor(tx, fresh, doc.packingSlip.orderId);
       const previous = doc.packingSlipAnalysis;
+      if (previous?.applied && !doc.receivingReview) {
+        const { initialReview } = await import("~/lib/receiving-review");
+        doc.receivingReview = initialReview(
+          previous,
+          previous.versionId,
+          fresh.user.id,
+        );
+        const { seedPreviousReceipt } = await import("./receiving-service");
+        seedPreviousReceipt(doc);
+      }
       if (previous?.runId !== runId)
         throw new TRPCError({
           code: "CONFLICT",
@@ -636,7 +715,7 @@ export async function clearSlipAnalysis(
         });
       if (previous.status === "cleared" && !previous.applied)
         return { analysis: previous, materialListId: null };
-      const undone = await undoSlipReceipt(tx, order.id, previous);
+
       if (previous.status !== "cleared")
         await recordReviewHistory(
           tx,
@@ -654,9 +733,15 @@ export async function clearSlipAnalysis(
                   }
                 : previous,
             archivedBeforeClear: true,
-            ...(undone ? { receiptUndone: previous.applied } : {}),
           },
         );
+      if (doc.receivingReview) {
+        doc.receivingReview.lines = doc.receivingReview.lines.filter(
+          (l) => !!l.approved || !!l.ignored || l.humanEdited === true || l.checked === true,
+        );
+        doc.receivingReview.revision++;
+        doc.receivingReview.documentChecked = false;
+      }
       doc.packingSlipAnalysis = {
         runId: randomUUID(),
         versionId: previous.versionId,
@@ -665,22 +750,26 @@ export async function clearSlipAnalysis(
         items: [],
         lines: [],
         warnings: [],
+        ...(previous.applied
+          ? {
+              applied: previous.applied,
+              confirmedItems: previous.confirmedItems ?? previous.items,
+            }
+          : {}),
       };
       state.activity.push({
         id: randomUUID(),
         documentId: doc.id,
         folderId: doc.folderId,
         action: "clearPackingSlipDetection",
-        detail: undone
-          ? `Cleared packing slip detection and took back its confirmed receipt for ${order.orderNumber ?? order.id}. File kept.`
-          : "Cleared packing slip detection. File kept.",
+        detail: "Cleared packing slip detection. Approved receipts preserved.",
         createdBy: fresh.user.id,
         createdAt: new Date().toISOString(),
       });
       assertStateBounds(state);
       return {
         analysis: doc.packingSlipAnalysis,
-        materialListId: undone ? order.materialListId : null,
+        materialListId: null,
       };
     },
   );

@@ -290,7 +290,7 @@ function hasFuzzyPartImageFamilyMatch(
   return sharedTokenCount / sourceTokens.size >= 0.67;
 }
 
-async function getPartImageFamilySuggestionsForSource({
+export async function getPartImageFamilySuggestionsForSource({
   db,
   organizationId,
   sourcePart,
@@ -305,7 +305,7 @@ async function getPartImageFamilySuggestionsForSource({
     displayName: string;
     description: string | null;
     categoryName: string | null;
-    materialId: string | null;
+    materialId?: string | null;
     materialName: string | null;
   };
 }) {
@@ -320,7 +320,7 @@ async function getPartImageFamilySuggestionsForSource({
   const candidateConditions = [
     eq(partDefinitions.organizationId, organizationId),
     eq(partDefinitions.isActive, true),
-    sourcePart.materialId
+    sourcePart.materialId === undefined ? undefined : sourcePart.materialId
       ? eq(partDefinitions.materialId, sourcePart.materialId)
       : isNull(partDefinitions.materialId),
     mode === "get"

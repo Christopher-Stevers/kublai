@@ -1,3 +1,4 @@
+import {TRPCError} from "@trpc/server";
 import { z } from "zod";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { assertDocumentAccess } from "~/server/documents/access";
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     );
     const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, body.jobId);
+    if(body.action==="confirm")throw new TRPCError({code:"PRECONDITION_FAILED",message:"Open the Receiving review queue to approve this slip. Your quantities have not changed."});
     const result =
       body.action === "analyze"
         ? await startSlipAnalysis(access, body.documentId, true, body.runId)
@@ -62,13 +64,7 @@ export async function POST(request: Request) {
           ? await clearSlipAnalysis(access, body.documentId, body.runId)
           : body.action === "refresh"
             ? await refreshSlipReview(access, body.documentId, body.runId)
-            : await confirmSlipReceipt(
-                access,
-                body.documentId,
-                body.runId,
-                body.quantities,
-                body.links,
-              );
+            : undefined;
     return Response.json(
       { success: true, result },
       { headers: { "Cache-Control": "private, no-store" } },

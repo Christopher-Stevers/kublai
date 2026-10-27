@@ -1,3 +1,4 @@
+import {recordModelCall} from "./trace";
 import { z } from "zod";
 import {
   convertSlipQuantity,
@@ -38,6 +39,7 @@ export const evaluate: Evaluator = async (state, questions) => {
     throw Error(
       "Packing-slip analysis is not configured. Your PDF is saved; verify the order manually.",
     );
+  const started=Date.now();
   const response = await fetch("https://api.typesafe.ai/v1/systemone", {
     method: "POST",
     headers: {
@@ -51,9 +53,9 @@ export const evaluate: Evaluator = async (state, questions) => {
     throw Error(
       "Packing-slip analysis is temporarily unavailable. Your PDF is saved; retry analysis.",
     );
-  const parsed = z
-    .object({ model: z.string(), answers: z.record(z.string(), answer) })
-    .parse(await response.json());
+  const raw:unknown=await response.json();
+  await recordModelCall({model:"jev-latest",inputs:{state:JSON.stringify(state)},questions,response:raw,durationMs:Date.now()-started});
+  const parsed = z.object({ model: z.string(), answers: z.record(z.string(), answer) }).parse(raw);
   for (const [id, q] of Object.entries(questions)) {
     const a = parsed.answers[id];
     if (!a || !(a.choice in q.criteria))
@@ -420,11 +422,11 @@ export function readQuantity(words: SlipWord[] | undefined) {
       found.push({ value: 0, unit: null, fixed: w.text !== "0" });
       continue;
     }
-    const m = /^([\d.,lIO|oS]*\d[\d.,lIO|oS]*)([a-z]{1,4})?$/i.exec(w.text);
+    const m = /^(-?[\d.,lIO|oS]*\d[\d.,lIO|oS]*)([a-z]{1,4})?$/i.exec(w.text);
     if (!m) return { value: null, unit: null, confidence, blank: false };
     const digits = m[1]!.replace(/[lIO|oS]/g, (c) => DIGIT_LOOKALIKES[c]!);
     const clean = digits.replace(/,(?=\d{3}\b)/g, "");
-    if (!/^\d+(?:\.\d+)?$/.test(clean))
+    if (!/^-?\d+(?:\.\d+)?$/.test(clean))
       return { value: null, unit: null, confidence, blank: false };
     if (m[2] && !UNITS.test(m[2]))
       return { value: null, unit: null, confidence, blank: false };
@@ -434,7 +436,7 @@ export function readQuantity(words: SlipWord[] | undefined) {
       fixed: digits !== m[1],
     });
   }
-  if (found.length !== 1 || found[0]!.value > 999999)
+  if (found.length !== 1 || Math.abs(found[0]!.value) > 999999)
     return { value: null, unit: null, confidence, blank: false };
   return {
     value: found[0]!.value,
@@ -519,6 +521,7 @@ function tableLines(
         0,
         Math.round((ordered - previous - shipped) * 1e6) / 1e6,
       );
+    if(shipped!==null && shipped<0) issues.push("Negative quantity: confirm this return and its disposition.");
     if (unclearColumns(layout))
       issues.push(
         "The slip's quantity columns could not be told apart. Check shipped against the slip.",
@@ -540,7 +543,7 @@ function tableLines(
         ?.toLowerCase() ??
       q.shipped.unit ??
       null;
-    let unit = rawUnit;
+    const unit = rawUnit;
     const matchIssue = (text: string) => {
       matchIssues.add(text);
       issues.push(text);
@@ -556,30 +559,7 @@ function tableLines(
         matchIssue("Check the product: the description only partly matches.");
       else if (match.confidence === "medium")
         notes.push("Matched by description. Check it is the same product.");
-      if (!unit) {
-        if (item.piecesPerPack && item.piecesPerPack > 1) {
-          // Use the only plausible reading: 2 of 3 boxes, or 200 of 300 pieces.
-          const pack = item.piecesPerPack,
-            amount = shipped ?? ordered ?? 0,
-            near = (n: number) => n <= Math.max(item.ordered, 1) * 1.5;
-          const packs = near(amount),
-            pieces = amount > 0 && amount % pack === 0 && near(amount / pack);
-          if (packs !== pieces) {
-            unit = packs ? item.unit : (item.individualUnit ?? "pcs");
-            notes.push(
-              packs
-                ? `No unit printed; read as ${item.unit}.`
-                : `No unit printed; read as pieces (${pack} per ${item.unit}).`,
-            );
-          } else
-            issues.push(
-              `Check whether the slip counts ${item.unit} or pieces.`,
-            );
-        } else {
-          unit = item.unit;
-          notes.push(`No unit printed; counted as ${item.unit}.`);
-        }
-      }
+      if (!unit) issues.push("Quantity unit is not printed. Confirm the unit before receiving.");
       if (
         ordered !== null &&
         Math.abs(ordered - item.ordered) > 1e-6 &&
@@ -687,8 +667,9 @@ export async function analyzeSlip(
   const canRead = Boolean(
     images?.pages.length && (images.ask ?? process.env.TYPESAFE_API_KEY),
   );
+  const deterministic = lines.length>0 && table.unread.length===0 && rows.every(r=>r.words.every(w=>w.confidence===100)) && lines.every(l=>l.orderItemId && l.proposed!==null && !l.issues.length && l.sku && items.some(i=>i.id===l.orderItemId&&i.sku?.trim().toUpperCase()===l.sku!.trim().toUpperCase()));
   const vision =
-    images && canRead
+    images && canRead && !deterministic
       ? await readSlipImages({
           pages: images.pages,
           onProgress: images.onProgress,
@@ -707,7 +688,7 @@ export async function analyzeSlip(
           return null;
         })
       : null;
-  if (canRead && !vision?.lines.length)
+  if (canRead && !deterministic && !vision?.lines.length)
     warnings.push(
       "The slip images could not be checked; lines were read from text only.",
     );
@@ -716,7 +697,7 @@ export async function analyzeSlip(
     model = vision.model;
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
-  } else if (!table.layouts.length) {
+  } else if (!table.layouts.length && (process.env.TYPESAFE_API_KEY || run!==evaluate)) {
     const assisted = await assistRows(table.unread, items, run, images?.onProgress);
     lines = assisted.lines;
     warnings.push(...assisted.warnings);

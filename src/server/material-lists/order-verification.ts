@@ -11,9 +11,9 @@ export async function loadOrderVerification(
         .select({
           orderId: orderItems.orderId,
           itemCount: sql<number>`count(*)::int`,
-          orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}, 0)), 0)::float8`,
-          receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}, 0))), 0)::float8`,
-          completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= ${orderItems.quantity})::int`,
+          orderedQuantity: sql<number>`coalesce(sum(greatest(${orderItems.quantity}-${orderItems.creditedQuantity}, 0)), 0)::float8`,
+          receivedQuantity: sql<number>`coalesce(sum(least(greatest(${orderItems.receivedQuantity}, 0), greatest(${orderItems.quantity}-${orderItems.creditedQuantity}, 0))), 0)::float8`,
+          completeItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} = 'complete' and ${orderItems.receivedQuantity} >= (${orderItems.quantity}-${orderItems.creditedQuantity}))::int`,
           verifiedItemCount: sql<number>`count(*) filter (where ${orderItems.verificationStatus} in ('complete', 'partial', 'problem'))::int`,
         })
         .from(orderItems)

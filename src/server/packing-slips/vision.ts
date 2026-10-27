@@ -1,3 +1,4 @@
+import {recordModelCall} from "./trace";
 /** Reads each slip line from the page images with Jev and checks it against
  * the order. The OCR table reader still finds where the lines are; Jev reads
  * each line crop, an enlarged crop of each quantity cell (tick marks drawn
@@ -97,6 +98,7 @@ export const askJev: VisionAsk = async (inputs, questions) => {
     questions,
   });
   for (let attempt = 0; ; attempt++) {
+    const started = Date.now();
     const response = await fetch("https://api.typesafe.ai/v1/systemone", {
       method: "POST",
       headers: {
@@ -108,9 +110,9 @@ export const askJev: VisionAsk = async (inputs, questions) => {
       signal: AbortSignal.timeout(90000),
     }).catch(() => null);
     if (response?.ok) {
-      const answers = z
-        .object({ answers: z.record(z.string(), visionAnswer) })
-        .parse(await response.json()).answers;
+      const raw:unknown=await response.json();
+      await recordModelCall({model:VISION_MODEL,inputs,questions,response:raw,durationMs:Date.now()-started});
+      const answers = z.object({ answers: z.record(z.string(), visionAnswer) }).parse(raw).answers;
       for (const [id, q] of Object.entries(questions)) {
         const a = answers[id];
         if (
@@ -122,6 +124,7 @@ export const askJev: VisionAsk = async (inputs, questions) => {
       }
       return answers;
     }
+    await recordModelCall({model:VISION_MODEL,inputs,questions,response:{errorStatus:response?.status??0},durationMs:Date.now()-started});
     const status = response?.status ?? 0;
     if (attempt >= 3 || (status >= 400 && status < 500 && status !== 429))
       throw Error("Image reading is temporarily unavailable.");
@@ -1539,30 +1542,6 @@ export function settleHidden(r: Reading, items: ReceiptOrderItem[]): Reading {
   };
 }
 
-/** Unit for a line whose slip prints none: the order's, or pieces when only that fits. */
-export function assumedUnit(item: ReceiptOrderItem, amount: number) {
-  if (!(item.piecesPerPack && item.piecesPerPack > 1))
-    return {
-      unit: item.unit,
-      note: `No unit printed; counted as ${item.unit}.`,
-    };
-  const pack = item.piecesPerPack,
-    near = (n: number) => n <= Math.max(item.ordered, 1) * 1.5;
-  const packs = near(amount),
-    pieces = amount > 0 && amount % pack === 0 && near(amount / pack);
-  if (packs === pieces)
-    return {
-      unit: null,
-      issue: `Check whether the slip counts ${item.unit} or pieces.`,
-    };
-  return packs
-    ? { unit: item.unit, note: `No unit printed; read as ${item.unit}.` }
-    : {
-        unit: item.individualUnit ?? "pcs",
-        note: `No unit printed; read as pieces (${pack} per ${item.unit}).`,
-      };
-}
-
 export function checkAgainstOrder(
   readings: Reading[],
   items: ReceiptOrderItem[],
@@ -1586,8 +1565,8 @@ export function checkAgainstOrder(
       issues.push(
         `Check the product: only ${sure} sure it is this order item.`,
       );
-    let unit = r.unit,
-      explained = false,
+    const unit = r.unit;
+    let explained = false,
       { shippedConf, backorderedConf } = r;
     if (item) {
       if ((matched.get(r.part as number) ?? 0) > 1)
@@ -1615,10 +1594,7 @@ export function checkAgainstOrder(
           `Check the product: the slip shows ${r.ordered} ordered; the order has ${item.ordered} ${item.unit}.`,
         );
       if (!unit && r.shipped !== null) {
-        const assumed = assumedUnit(item, r.shipped);
-        unit = assumed.unit;
-        if (assumed.note) notes.push(assumed.note);
-        if (assumed.issue) issues.push(assumed.issue);
+        issues.push("No unit could be read on the slip. Confirm the printed unit and any pack or length conversion.");
       }
       const inOrderUnit =
         r.shipped !== null && unit

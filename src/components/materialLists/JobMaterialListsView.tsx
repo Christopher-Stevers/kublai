@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, type ComponentProps } from "react";
 import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -119,6 +120,7 @@ export function JobMaterialListsView({
   return (
     <>
       <PageHeader level="section" title="Material Lists" />
+      {canReceive && <Link href={`/jobs/${jobId}/receiving`} className="mb-4 inline-flex py-2 text-sm underline">Receiving review queue</Link>}
 
       {search.trim() && lists && (
         <p role="status" className="text-muted-foreground mb-4 text-sm">

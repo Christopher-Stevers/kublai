@@ -75,7 +75,7 @@ async function jobOrders(access: DocumentAccess) {
       ),
     )
     .orderBy(desc(orders.sentAt))
-    .limit(60);
+    .limit(2000);
   if (!rows.length) return [];
   const items = await db
     .select({
@@ -233,7 +233,7 @@ export async function identifySlipOrder(
       ).catch(() => null);
       pick = answer?.orderId ?? null;
       const guess = ranked.find((r) => r.orderId === pick);
-      if (answer && guess && answer.confidence >= JEV_PICK && guess.found >= 1)
+      if (answer && guess && answer.confidence >= JEV_PICK && guess.found >= 2 && guess.score >= 0.9 && guess.score - (ranked.find(r=>r.orderId!==pick)?.score??0) >= 0.3)
         match = pick;
     }
     const candidates = [
