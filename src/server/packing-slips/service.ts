@@ -1,5 +1,5 @@
 import { withSlipTrace, traceUsage, READER_VERSION } from "./trace";
-import { draftReceiving, mergeReading } from "./review-draft";
+import { draftReceiving, mergeReading, seedPreviousReceipt } from "./review-draft";
 import { separateBackground } from "~/server/background/mode";
 import { packingSlipJobs } from "~/server/background/packing-schema";
 import {
@@ -561,7 +561,6 @@ async function performSlipTask(
             extracted.rows,
           );
           if (doc.packingSlipAnalysis.applied) {
-            const { seedPreviousReceipt } = await import("./receiving-service");
             seedPreviousReceipt(doc);
           }
         } else {
@@ -705,7 +704,6 @@ export async function clearSlipAnalysis(
           previous.versionId,
           fresh.user.id,
         );
-        const { seedPreviousReceipt } = await import("./receiving-service");
         seedPreviousReceipt(doc);
       }
       if (previous?.runId !== runId)

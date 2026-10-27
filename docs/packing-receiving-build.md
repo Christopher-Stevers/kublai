@@ -44,6 +44,8 @@ Each reading preserves reader version, questions, raw responses, crop hashes, ti
 
 ## Release
 
+Run the bundled background worker with `--check` under the production environment before switching releases; this catches dependencies that only fail outside the web bundler. Keep legacy receipt seeding in `review-draft.ts` so the worker never imports the receiving HTTP/catalogue router.
+
 Build web and background worker from the same clean commit on `packing-receiving-review`, excluding the paused in-app Terra comparison draft in the primary checkout. Apply only additive `drizzle/0097_receiving_returns.sql`; migration 0096 belongs to that paused draft and must not be applied as part of this release. Both returned/credited columns default to zero, preserving existing receiving quantities. Unlinked slip-reading jobs are now allowed.
 
 Deploy versioned web and worker directories by swapping `.next` and `.background/current`, retaining their previous targets for rollback. Verify idle background work first, preserve a private receiving/workspace snapshot, check both services and database health, and compare live receipt totals before/after. The deployment record is private in `.tmp/receiving/deployment.json`.

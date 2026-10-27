@@ -1,8 +1,10 @@
+import type { JobDocument } from "~/server/documents/types";
 import { createHash } from "node:crypto";
 import {
   initialReview,
   normalizedIdentity,
   type ReceivingReview,
+  type ReceivingLine,
 } from "~/lib/receiving-review";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import type { SlipRow } from "./ocr-rows";
@@ -131,4 +133,41 @@ export function mergeReading(review: ReceivingReview, fresh: ReceivingReview) {
     ],
     documentChecked: predictions.length ? false : review.documentChecked,
   };
+}
+
+export function seedPreviousReceipt(doc: JobDocument) {
+  const a = doc.packingSlipAnalysis,
+    r = doc.receivingReview;
+  if (!a?.applied || !r || r.lines.some((l) => l.approved)) return;
+  // Legacy confirmations were per order item, not per printed row. Preserve those totals exactly.
+  r.lines = Object.entries(a.applied.quantities).map(
+    ([itemId, quantity], i) => {
+      const item = (a.confirmedItems ?? a.items).find((x) => x.id === itemId),
+        source = a.lines.find((l) => l.orderItemId === itemId);
+      return {
+        id: `legacy-${i}`,
+        page: source?.page ?? 1,
+        evidence: source?.evidence ?? "Previously approved receipt",
+        description: item?.description ?? "Previously received part",
+        sku: item?.sku ?? "",
+        unit: item?.unit ?? "ea",
+        quantity,
+        ordered: item?.ordered ?? null,
+        unitPrice: null,
+        orderItemId: itemId,
+        issues: [],
+        checked: true,
+        approved: {
+          itemId,
+          quantity,
+          kind: "delivery",
+          by: a.applied!.by,
+          at: a.applied!.at,
+        },
+      } satisfies ReceivingLine;
+    },
+  );
+  r.kindConfirmed = true;
+  r.orderConfirmed = true;
+  r.documentChecked = true;
 }
