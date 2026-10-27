@@ -316,7 +316,7 @@ export function appendVersion(
       Date.parse(version.createdAt) > Date.now() - 86_400_000,
   );
   if (
-    recent.length >= (input.revisionSource === "editor" ? 2000 : 200) ||
+    recent.length >= (input.revisionSource === "editor" ? 2000 : 500) ||
     recent.reduce((total, version) => total + version.size, 0) + input.size >
       2 * 1024 * 1024 * 1024
   )
