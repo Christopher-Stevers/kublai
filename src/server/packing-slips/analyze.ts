@@ -1,4 +1,4 @@
-import {recordModelCall} from "./trace";
+import {recordModelCall, recordPipelineStage} from "./trace";
 import { z } from "zod";
 import {
   convertSlipQuantity,
@@ -632,6 +632,13 @@ function tableLines(
       sku: code || null,
       description: description || undefined,
       confidence: item ? match.confidence : undefined,
+      confidenceDetails: {
+        part: Math.min(100, ...[...(line.cells.description ?? []), ...(line.cells.sku ?? [])].map(w => w.confidence)) / 100,
+        quantity: shipped === null ? 0 : q.shipped.value === null ? 0.5 : q.shipped.confidence / 100,
+        match: !item ? 0 : match.confidence === "high" ? 0.95 : match.confidence === "medium" ? 0.7 : 0.4,
+        basis: "ocr_and_rules" as const,
+        reason: "OCR word confidence and rule-based matching estimates; not measured accuracy.",
+      },
       candidates: item ? undefined : match.candidates,
       source: "table" as const,
     };
@@ -649,6 +656,7 @@ export async function analyzeSlip(
     ask?: VisionAsk;
     /** What earlier deliveries from this supplier taught. */
     memory?: { known: Record<string, string[]>; expectFooter: boolean };
+    models?: boolean;
   },
 ) {
   if (items.length > 200)
@@ -658,6 +666,7 @@ export async function analyzeSlip(
   const table = readSlipTable(rows);
   let lines = tableLines(table, items),
     model = table.layouts.length ? "table reader" : "";
+  await recordPipelineStage("ocr", { rows, lines, layouts: table.layouts, unreadRows: table.unread.length });
   let headers: Array<{ page: number; box: SlipBox; printedOn?: number }> =
     table.layouts.map((l) => ({
       page: l.page,
@@ -665,7 +674,7 @@ export async function analyzeSlip(
       printedOn: table.layouts.find((x) => x.header === l.header)!.page,
     }));
   const canRead = Boolean(
-    images?.pages.length && (images.ask ?? process.env.TYPESAFE_API_KEY),
+    images?.models !== false && images?.pages.length && (images.ask ?? process.env.TYPESAFE_API_KEY),
   );
   const deterministic = lines.length>0 && table.unread.length===0 && rows.every(r=>r.words.every(w=>w.confidence===100)) && lines.every(l=>l.orderItemId && l.proposed!==null && !l.issues.length && l.sku && items.some(i=>i.id===l.orderItemId&&i.sku?.trim().toUpperCase()===l.sku!.trim().toUpperCase()));
   const vision =
@@ -697,7 +706,7 @@ export async function analyzeSlip(
     model = vision.model;
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
-  } else if (!table.layouts.length && (process.env.TYPESAFE_API_KEY || run!==evaluate)) {
+  } else if (images?.models !== false && !table.layouts.length && (process.env.TYPESAFE_API_KEY || run!==evaluate)) {
     const assisted = await assistRows(table.unread, items, run, images?.onProgress);
     lines = assisted.lines;
     warnings.push(...assisted.warnings);
@@ -733,6 +742,7 @@ export async function analyzeSlip(
     warnings.push(
       "No shipment lines could be identified. Verify this order manually.",
     );
+  await recordPipelineStage("cheap-reading", { lines, warnings, model });
   return {
     lines,
     warnings,

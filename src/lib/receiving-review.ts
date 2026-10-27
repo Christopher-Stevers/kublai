@@ -2,6 +2,11 @@ import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
 import { receiptUnit } from "./packing-slip-review";
 export type ReceiptKind = "delivery" | "return-replacement" | "return-credit";
 export type ReceivingLine = {
+  readingSource?: {
+    analysisRunId: string;
+    reader: "ocr" | "jev" | "terra";
+    confidence?: SlipLine["confidenceDetails"];
+  };
   predictionSource?: {
     trialRunId: string;
     reader: import("./packing-slip-trial").TrialReader;
@@ -108,6 +113,7 @@ export function initialReview(
     lines: (analysis?.lines ?? []).map((l, i) => {
       const draft = reviewLine(l, i),
         item = analysis?.items.find((x) => x.id === l.orderItemId);
+      if (analysis) draft.readingSource = { analysisRunId: analysis.runId, reader: l.source === "terra" ? "terra" : l.source === "vision" || l.source === "assistant" ? "jev" : "ocr", confidence: l.confidenceDetails };
       if (l.proposed !== null && item) draft.unit = item.unit;
       if (
         (analysis?.lines.some((line) => (line.shipped ?? 0) < 0) ?? false) &&

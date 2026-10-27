@@ -15,6 +15,7 @@ type Trace = {
   organizationId: string;
   runId: string;
   calls: Call[];
+  stages: Array<{ stage: string; at: string; data: unknown }>;
   startedAt: number;
 };
 const context = new AsyncLocalStorage<Trace>();
@@ -22,11 +23,13 @@ export function traceUsage() {
   const calls = context.getStore()?.calls ?? [];
   let inputTokens = 0,
     outputTokens = 0,
-    unknownCalls = 0;
+    unknownCalls = 0,
+    estimatedUsd = 0;
   for (const c of calls) {
     const u = c.usage as {
       input_tokens?: number;
       output_tokens?: number;
+      input_tokens_details?: { cached_tokens?: number };
     } | null;
     if (
       typeof u?.input_tokens === "number" &&
@@ -34,6 +37,12 @@ export function traceUsage() {
     ) {
       inputTokens += u.input_tokens;
       outputTokens += u.output_tokens;
+      if (c.model.startsWith("gpt-6.1-terra")) {
+        const cached = Math.min(u.input_tokens, Math.max(0, u.input_tokens_details?.cached_tokens ?? 0));
+        const long = u.input_tokens > 272000;
+        estimatedUsd += (((u.input_tokens - cached) + cached * 0.05) * (long ? 2 : 1) + u.output_tokens * 5 * (long ? 1.5 : 1)) / 1e6;
+      } else if (c.model.startsWith("jev")) estimatedUsd += u.input_tokens * 0.042 / 1e6;
+      else unknownCalls++;
     } else unknownCalls++;
   }
   return {
@@ -41,13 +50,19 @@ export function traceUsage() {
     inputTokens,
     outputTokens,
     unknownCalls,
-    estimatedUsd: unknownCalls ? null : (inputTokens * 0.042) / 1_000_000,
+    estimatedUsd: unknownCalls ? null : estimatedUsd,
     pricingAsOf: "2026-10-27",
     pricingSource:
-      "https://typesafe.ai/blog/introducing-system-one-models-and-jev",
+      "https://typesafe.ai/blog/introducing-system-one-models-and-jev ; https://developers.openai.com/api/docs/models/gpt-6.1-terra",
   };
 }
-export const READER_VERSION = "receiving-2026-10-27.1";
+export const READER_VERSION = "receiving-2026-10-27.2";
+/** Frozen stage predictions accompany later human corrections in review history. */
+export async function recordPipelineStage(stage: string, data: unknown) {
+  const trace = context.getStore();
+  if (!trace) return;
+  trace.stages.push({ stage, at: new Date().toISOString(), data: structuredClone(data) });
+}
 export async function withSlipTrace<T>(
   organizationId: string,
   runId: string,
@@ -57,6 +72,7 @@ export async function withSlipTrace<T>(
     organizationId,
     runId,
     calls: [],
+    stages: [],
     startedAt: Date.now(),
   };
   return context.run(trace, async () => {

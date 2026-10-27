@@ -43,6 +43,8 @@ import {
 import { extractSlip } from "./extract";
 import { analyzeSlip } from "./analyze";
 import { supplierMemory } from "./memory";
+import { productionCascade } from "./production-cascade";
+import { escalationPlan } from "./cascade-policy";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 /** Written in the same transaction as the result/receipt: never lose the original matches. */
 async function recordReviewHistory(
@@ -495,7 +497,7 @@ async function performSlipTask(
           m.identifySlipOrder(access, documentId),
         )
       : null;
-    const suggested = identified?.orders.find((o) => o.id === identified.match);
+    let suggested = identified?.orders.find((o) => o.id === identified.match);
     if (suggested) {
       const { db } = await import("~/server/db");
       task.analysis.items = await orderSnapshot(db, access, suggested.id);
@@ -509,17 +511,64 @@ async function performSlipTask(
             )
             .catch(() => undefined)
         : undefined;
-    const result = await analyzeSlip(
+    const cheap = await analyzeSlip(
       extracted.rows,
       task.analysis.items,
       undefined,
       { pages: extracted.pages, memory, onProgress: report },
-    );
+    ).catch(async () => {
+      const fallback = await analyzeSlip(extracted.rows, task.analysis.items, undefined, { pages: [], models: false });
+      fallback.warnings.push("Jev could not finish the image reading; the OCR result was preserved.");
+      return fallback;
+    });
+    const result = await productionCascade({
+      scope: { runId: task.analysis.runId, organizationId: access.job.organizationId, jobId: access.job.id, documentId, versionId: task.version.id, sourceHash: task.version.sha256 },
+      base: cheap,
+      pages: extracted.pages,
+      unresolvedOrder: !readingOrderId && !!identified?.orders.length,
+      assertCurrent: async () => {
+        const current = await mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
+          if (!userCan(fresh.user, "orders.receive")) return false;
+          const doc = accessibleDocument(state, actor, documentId);
+          return (!claim || await ownsPackingSlip(tx, claim)) && doc.currentVersionId === task.version.id && doc.packingSlipAnalysis?.runId === task.analysis.runId && (doc.packingSlip?.orderId ?? null) === task.orderId;
+        });
+        if (!current) throw Error("The source, access, or processing owner changed.");
+      },
+      progress: message => report({ stage: "checking", message, lines: cheap.lines }),
+      context: async () => {
+        const { jobOrders } = await import("./find-order-service");
+        const options = await jobOrders(access);
+        const ids = readingOrderId ? [readingOrderId] : identified?.candidates ?? [];
+        // Include all candidates when bounded; otherwise use the cheap reader's
+        // shortlist and explicitly permit abstention for an incomplete pool.
+        let candidates = readingOrderId ? options.filter(o => ids.includes(o.option.id)) : options;
+        const data = () => candidates.map(o => ({
+          id: o.option.id, orderNumber: o.option.orderNumber, supplier: o.option.supplier,
+          items: (o.option.id === readingOrderId ? task.analysis.items : o.slip.items).map(({ id, description, sku, aliases, ordered, unit }) => ({ id, description, sku, aliases, ordered, unit })),
+        }));
+        if (JSON.stringify(data()).length > 85000) candidates = candidates.filter(o => ids.includes(o.option.id));
+        return {
+          orders: data(), candidatePoolComplete: candidates.length === options.length,
+          linkedOrderId: readingOrderId ?? null,
+          reasons: escalationPlan(cheap, !readingOrderId && !!identified?.orders.length).reasons,
+          earlierLines: cheap.lines.map(({ page, evidence, orderItemId, shipped, backordered, unit, box, issues, confidenceDetails }) => ({ page, evidence, orderItemId, shipped, backordered, unit, box, issues, confidenceDetails })),
+        };
+      },
+    });
+    if (!readingOrderId && result.suggestedOrderId) {
+      suggested = identified?.orders.find(o => o.id === result.suggestedOrderId);
+      if (suggested) {
+        const { db } = await import("~/server/db");
+        task.analysis.items = await orderSnapshot(db, access, suggested.id);
+        result.warnings.push("Terra suggested this order. Confirm the order identity against the source before approving.");
+      }
+    }
     await mutateWorkspace(
       access.user.id,
       access.job.id,
       async (state, actor, fresh, tx) => {
         if (claim && !(await ownsPackingSlip(tx, claim))) return;
+        if (!userCan(fresh.user, "orders.receive")) return;
         const doc = accessibleDocument(state, actor, documentId);
         if (doc.packingSlip) await orderFor(tx, fresh, doc.packingSlip.orderId);
         if (

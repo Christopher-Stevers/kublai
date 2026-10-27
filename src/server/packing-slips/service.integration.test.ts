@@ -40,6 +40,7 @@ import { mutateReceiving, importTrialReview } from "./receiving-service";
 import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
+import { reserveTerra } from "./production-cascade";
 import { saveDocumentVersion } from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
@@ -103,6 +104,7 @@ const tables = [
   schema.organizationPermissionPresets,
   schema.packingSlipJobs,
   schema.packingSlipReviewHistory,
+  schema.packingSlipTerraCalls,
   schema.jobPriceLists,
   schema.users,
   schema.jobs,
@@ -211,6 +213,24 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   afterAll(() => conn.end());
   const workspace = async () =>
     (await db.select().from(schema.jobDocumentWorkspaces))[0]!.state;
+
+  it("reserves Terra spending durably and never repeats an uncertain paid attempt", async () => {
+    vi.stubEnv("PACKING_SLIP_TERRA_DAILY_USD", "1");
+    const scope = { runId: id(900), organizationId: org, jobId: job, documentId: id(901), versionId: id(902), sourceHash: "a".repeat(64) };
+    expect((await reserveTerra(scope, "request-1")).kind).toBe("reserved");
+    expect((await reserveTerra(scope, "request-1")).kind).toBe("interrupted");
+    expect((await reserveTerra({ ...scope, runId: id(903) }, "request-2")).kind).toBe("budget-limited");
+    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+  });
+
+  it("reuses a finished Terra call only for identical job, file and request inputs", async () => {
+    const scope = { runId: id(900), organizationId: org, jobId: job, documentId: id(901), versionId: id(902), sourceHash: "a".repeat(64) };
+    await reserveTerra(scope, "request-1");
+    await db.update(schema.packingSlipTerraCalls).set({ status: "done", budgetUsd: .02, result: { model: "gpt-6.1-terra", durationMs: 10, usage: null, output: { document: { kind: "delivery", supplierName: null, deliveryNumber: null, supplierOrderNumber: null, deliveryDate: null }, orderId: null, orderConfidence: 0, lines: [], warnings: [] } } }).where(eq(schema.packingSlipTerraCalls.id, scope.runId));
+    expect((await reserveTerra(scope, "request-1")).kind).toBe("cached");
+    expect((await reserveTerra({ ...scope, jobId: id(999) }, "request-1")).kind).toBe("interrupted");
+    expect((await reserveTerra(scope, "request-changed")).kind).toBe("interrupted");
+  });
 
   async function ready() {
     const access = await assertDocumentAccess("receiver", job, db);

@@ -32,8 +32,21 @@ export function draftReceiving(
   );
   review.supplierEmail = take(/\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/i);
   review.supplierPhone = take(/(?:tel|phone)\s*[:.]?\s*([+\d() -]{10,24})/i);
+  const header = analysis.cascade?.document;
+  if (header) {
+    review.supplierName = header.supplierName ?? review.supplierName;
+    review.deliveryNumber = header.deliveryNumber ?? review.deliveryNumber;
+    review.supplierOrderNumber = header.supplierOrderNumber ?? review.supplierOrderNumber;
+    review.deliveryDate = header.deliveryDate ?? review.deliveryDate;
+    review.kind = header.kind === "credit" ? "return-credit" : header.kind === "return" ? "return-replacement" : review.kind;
+    review.kindConfirmed = false;
+    review.orderConfirmed = false;
+    review.documentChecked = false;
+    review.warnings.push("Terra assisted the reading. Verify the document type, order, and printed quantities against the original.");
+  }
   const table = readSlipTable(rows);
   if (
+    review.kind !== "return-credit" &&
     table.lines.some(
       (l) => (readQuantity(l.cells.shipped ?? l.cells.qty).value ?? 0) < 0,
     )

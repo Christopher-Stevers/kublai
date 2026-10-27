@@ -637,6 +637,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 <summary className="text-muted-foreground cursor-pointer">
                   Detection and source text
                 </summary>
+                {a?.cascade && (
+                  <div className="my-3 space-y-1">
+                    <p>{a.cascade.status === "not-needed" ? "OCR / Jev handled this slip. Terra was not needed." : a.cascade.status === "completed" ? "OCR → Jev → Terra assistance" : `OCR / Jev reading · Terra ${a.cascade.status.replaceAll("-", " ")}`}</p>
+                    {!!a.cascade.reasons.length && <p className="text-muted-foreground">{a.cascade.reasons.join(" · ")}</p>}
+                    {a.cascade.estimatedUsd != null && <p className="text-muted-foreground">Terra API estimate: US${a.cascade.estimatedUsd.toFixed(4)}</p>}
+                    {a.cascade.error && <p>{a.cascade.error}</p>}
+                  </div>
+                )}
                 <p className="my-3">
                   Rerunning or clearing detection preserves approved quantities
                   and saved review decisions. Compare a new reading with the
@@ -1149,6 +1157,12 @@ function LineReview({
             Line {index + 1} · page {l.page}
           </p>
           <h3 className="mt-1 font-medium break-words">{l.description}</h3>
+          {l.readingSource && (
+            <p className="text-muted-foreground mt-1 text-xs" title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
+              {l.readingSource.reader === "terra" ? "Terra assisted" : l.readingSource.reader === "jev" ? "Jev image reading" : "OCR reading"}
+              {l.readingSource.confidence && ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
+            </p>
+          )}
           <p className="text-muted-foreground mt-1 text-sm">
             {l.quantity ?? "Unclear"} {l.unit} · {l.sku || "No supplier code"}
             {l.orderItemId

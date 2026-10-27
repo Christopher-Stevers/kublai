@@ -20,7 +20,10 @@ export type SlipLine = {
     part: number;
     quantity: number;
     backordered?: number;
-    basis: "provider_composite";
+    basis: "provider_composite" | "model_estimate" | "ocr_and_rules";
+    match?: number;
+    overall?: number;
+    reason?: string;
     productProbabilities?: Record<string, number>;
   };
   page: number;
@@ -43,7 +46,7 @@ export type SlipLine = {
   notes?: string[];
   /** Likely order items when no unique match was made, best first. */
   candidates?: string[];
-  source?: "table" | "assistant" | "vision";
+  source?: "table" | "assistant" | "vision" | "terra";
   /** Shipped was read clearly and agrees with the other columns. */
   quantityClear?: boolean;
   /** Matched to an order item by the user at confirmation. */
@@ -61,6 +64,22 @@ export type SlipProgress = {
   lines?: SlipLine[];
 };
 export type SlipAnalysis = {
+  cascade?: {
+    policy: string;
+    status: "not-needed" | "completed" | "unavailable" | "budget-limited" | "failed" | "interrupted";
+    reasons: string[];
+    lineIndexes: number[];
+    model?: string;
+    error?: string;
+    estimatedUsd?: number | null;
+    document?: {
+      kind: "delivery" | "return" | "credit" | "other" | "unclear";
+      supplierName: string | null;
+      deliveryNumber: string | null;
+      supplierOrderNumber: string | null;
+      deliveryDate: string | null;
+    };
+  };
   orderCandidates?: string[];
   progress?: SlipProgress;
   runId: string;

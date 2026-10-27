@@ -43,7 +43,7 @@ export type OrderOption = {
 const JEV_PICK = 0.85;
 
 /** The job's sent, active orders with the products on them. */
-async function jobOrders(access: DocumentAccess) {
+export async function jobOrders(access: DocumentAccess) {
   const rows = await db
     .select({
       id: orders.id,

@@ -2,7 +2,7 @@
 import { expect, it } from "vitest";
 import { initialReview } from "~/lib/receiving-review";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
-import { mergeReading } from "./review-draft";
+import { mergeReading, draftReceiving } from "./review-draft";
 const reading = (q: number): SlipAnalysis => ({
   runId: `run-${q}`,
   versionId: "v",
@@ -64,4 +64,15 @@ it("flags newly found rows near preserved decisions and never silently adopts a 
   expect(next.lines).toHaveLength(2);
   expect(next.lines[1]!.issues.join(" ")).toContain("avoid repeating");
   expect(mergeReading(old, { ...fresh, versionId: "changed" })).toBe(old);
+});
+it("keeps Terra provenance and requires checking assisted identity and quantities", () => {
+  const analysis = reading(-3);
+  analysis.lines[0]!.source = "terra";
+  analysis.lines[0]!.confidenceDetails = { part: .99, quantity: .99, match: .99, basis: "model_estimate" };
+  analysis.lines[0]!.proposed = null;
+  analysis.cascade = { policy: "test", status: "completed", reasons: ["Unreadable quantity"], lineIndexes: [0], document: { kind: "credit", supplierName: "Supplier", deliveryNumber: "CR-1", supplierOrderNumber: null, deliveryDate: null } };
+  const draft = draftReceiving(analysis, "member", []);
+  expect(draft).toMatchObject({ kind: "return-credit", kindConfirmed: false, orderConfirmed: false, documentChecked: false, deliveryNumber: "CR-1" });
+  expect(draft.lines[0]).toMatchObject({ quantity: 3, checked: false, readingSource: { reader: "terra", analysisRunId: analysis.runId, confidence: { quantity: .99 } } });
+  expect(draft.lines[0]!.approved).toBeUndefined();
 });

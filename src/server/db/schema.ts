@@ -2707,6 +2707,7 @@ export const packingSlipReviewHistory = createTable("packing_slip_review_history
 ]);
 
 export { packingSlipJobs } from "../background/packing-schema";
+export { packingSlipTerraCalls } from "../packing-slips/terra-call-schema";
 
 /** Shared executive default and explicit per-account sorting overrides. */
 export const materialSortPreferences = createTable("material_sort_preference", (d) => ({
