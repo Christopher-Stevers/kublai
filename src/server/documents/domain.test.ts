@@ -325,13 +325,19 @@ describe("Immutable document lifecycle", () => {
       accessibleDocument(state, reader, doc.documentId).deletedAt,
     ).toBeNull();
   });
-  it("rejects sibling name collisions when uploading, moving and restoring", () => {
+  it("numbers duplicate uploads but rejects collisions when moving and restoring", () => {
     const state = emptyDocumentState();
     const doc = uploaded(state);
     const target = folder(state);
-    expectCode(
-      () => appendVersion(state, owner, { ...file, name: "schedule.XLSX" }),
-      "CONFLICT",
+    const duplicate = appendVersion(state, owner, {
+      ...file,
+      name: "schedule.XLSX",
+    });
+    expect(
+      state.documents.find((d) => d.id === duplicate.documentId)?.name,
+    ).toBe("schedule-2.XLSX");
+    expect(state.versions.find((v) => v.id === duplicate.versionId)?.name).toBe(
+      "schedule-2.XLSX",
     );
     const second = uploaded(state, target);
     expectCode(
@@ -600,10 +606,20 @@ it("moves selected documents together while retaining IDs and versions", () => {
   const b = appendVersion(state, owner, { ...file, name: "Saw.pdf" });
   const target = folder(state);
   const versions = structuredClone(state.versions);
-  applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target });
-  expect(state.documents.map(doc => doc.folderId)).toEqual([target, target]);
+  applyDocumentAction(state, owner, {
+    action: "moveDocuments",
+    documentIds: [a.documentId, b.documentId],
+    folderId: target,
+  });
+  expect(state.documents.map((doc) => doc.folderId)).toEqual([target, target]);
   expect(state.versions).toEqual(versions);
-  expect(documentActionSchema.safeParse({ action: "moveDocuments", documentIds: [a.documentId, a.documentId], folderId: target }).success).toBe(false);
+  expect(
+    documentActionSchema.safeParse({
+      action: "moveDocuments",
+      documentIds: [a.documentId, a.documentId],
+      folderId: target,
+    }).success,
+  ).toBe(false);
 });
 it("does not move any selected documents when one is locked or destination names conflict", () => {
   const state = emptyDocumentState();
@@ -611,21 +627,114 @@ it("does not move any selected documents when one is locked or destination names
   const b = appendVersion(state, owner, { ...file, name: "Saw.pdf" });
   const target = folder(state);
   state.documents[1]!.lockedBy = "editor";
-  expectCode(() => applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target }), "CONFLICT");
-  expect(state.documents.slice(0, 2).map(doc => doc.folderId)).toEqual([null, null]);
+  expectCode(
+    () =>
+      applyDocumentAction(state, owner, {
+        action: "moveDocuments",
+        documentIds: [a.documentId, b.documentId],
+        folderId: target,
+      }),
+    "CONFLICT",
+  );
+  expect(state.documents.slice(0, 2).map((doc) => doc.folderId)).toEqual([
+    null,
+    null,
+  ]);
   state.documents[1]!.lockedBy = null;
   appendVersion(state, owner, { ...file, name: "Saw.pdf", folderId: target });
-  expectCode(() => applyDocumentAction(state, owner, { action: "moveDocuments", documentIds: [a.documentId, b.documentId], folderId: target }), "CONFLICT");
-  expect(state.documents.slice(0, 2).map(doc => doc.folderId)).toEqual([null, null]);
+  expectCode(
+    () =>
+      applyDocumentAction(state, owner, {
+        action: "moveDocuments",
+        documentIds: [a.documentId, b.documentId],
+        folderId: target,
+      }),
+    "CONFLICT",
+  );
+  expect(state.documents.slice(0, 2).map((doc) => doc.folderId)).toEqual([
+    null,
+    null,
+  ]);
 });
 it("enforces source and destination permissions for bulk moves", () => {
   const state = emptyDocumentState();
   const source = folder(state, "Private");
   const target = folder(state, "Target");
   const a = appendVersion(state, owner, { ...file, folderId: source });
-  applyDocumentAction(state, owner, { action: "setFolderPermissions", folderId: source, permissions: [{ userId: "reader", role: "viewer" }] });
-  expectCode(() => applyDocumentAction(state, reader, { action: "moveDocuments", documentIds: [a.documentId], folderId: target }), "FORBIDDEN");
-  applyDocumentAction(state, owner, { action: "setFolderPermissions", folderId: target, permissions: [{ userId: "editor", role: "viewer" }] });
-  expectCode(() => applyDocumentAction(state, editor, { action: "moveDocuments", documentIds: [a.documentId], folderId: target }), "FORBIDDEN");
+  applyDocumentAction(state, owner, {
+    action: "setFolderPermissions",
+    folderId: source,
+    permissions: [{ userId: "reader", role: "viewer" }],
+  });
+  expectCode(
+    () =>
+      applyDocumentAction(state, reader, {
+        action: "moveDocuments",
+        documentIds: [a.documentId],
+        folderId: target,
+      }),
+    "FORBIDDEN",
+  );
+  applyDocumentAction(state, owner, {
+    action: "setFolderPermissions",
+    folderId: target,
+    permissions: [{ userId: "editor", role: "viewer" }],
+  });
+  expectCode(
+    () =>
+      applyDocumentAction(state, editor, {
+        action: "moveDocuments",
+        documentIds: [a.documentId],
+        folderId: target,
+      }),
+    "FORBIDDEN",
+  );
   expect(state.documents[0]!.folderId).toBe(source);
+});
+
+it("numbers uploads per folder, skips occupied suffixes and preserves revisions", () => {
+  const state = emptyDocumentState();
+  const first = uploaded(state);
+  uploaded(state);
+  const third = uploaded(state);
+  expect(state.documents.find((d) => d.id === third.documentId)?.name).toBe(
+    "Schedule-3.xlsx",
+  );
+  const next = appendVersion(state, owner, {
+    ...file,
+    name: "Schedule-2.xlsx",
+  });
+  expect(state.documents.find((d) => d.id === next.documentId)?.name).toBe(
+    "Schedule-4.xlsx",
+  );
+  const elsewhere = uploaded(state, folder(state));
+  expect(state.documents.find((d) => d.id === elsewhere.documentId)?.name).toBe(
+    "Schedule.xlsx",
+  );
+  const revision = appendVersion(state, owner, {
+    ...file,
+    documentId: first.documentId,
+    expectedVersionId: first.versionId,
+  });
+  expect(revision.documentId).toBe(first.documentId);
+  expect(state.documents.find((d) => d.id === first.documentId)?.name).toBe(
+    "Schedule.xlsx",
+  );
+  expect(state.versions.find((v) => v.id === revision.versionId)?.number).toBe(
+    2,
+  );
+});
+it("keeps numbered upload names within the filename limit and supports extensionless files", () => {
+  const state = emptyDocumentState();
+  const name = "a".repeat(196) + ".pdf";
+  appendVersion(state, owner, { ...file, name });
+  const next = appendVersion(state, owner, { ...file, name });
+  expect(state.documents.find((d) => d.id === next.documentId)?.name).toBe(
+    "a".repeat(194) + "-2.pdf",
+  );
+  appendVersion(state, owner, { ...file, name: "Notes" });
+  const notes = appendVersion(state, owner, { ...file, name: "Notes" });
+  expect(state.documents.find((d) => d.id === notes.documentId)?.name).toBe(
+    "Notes-2",
+  );
 });

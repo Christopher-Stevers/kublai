@@ -116,6 +116,35 @@ export function accessibleDocument(
     return fail("CONFLICT", "Document is locked by another member.");
   return doc;
 }
+/** Called inside the workspace transaction, so simultaneous uploads cannot
+ * claim the same name. Revisions and explicit renames keep their own rules. */
+function availableUploadName(
+  state: DocumentState,
+  name: string,
+  folderId: string | null,
+) {
+  const names = new Set(
+    state.documents
+      .filter((doc) => !doc.deletedAt && doc.folderId === folderId)
+      .map((doc) => doc.name.toLocaleLowerCase()),
+  );
+  if (!names.has(name.toLocaleLowerCase())) return name;
+  const extension = /\.[^.]{1,16}$/.exec(name)?.[0] ?? "";
+  const stem = extension ? name.slice(0, -extension.length) : name;
+  const numbered = /^(.*)-([2-9]|[1-9]\d{1,8})$/.exec(stem);
+  const base = numbered?.[1] || stem;
+  let number =
+    numbered && Number.isSafeInteger(Number(numbered[2]))
+      ? Number(numbered[2]) + 1
+      : 2;
+  for (;;) {
+    const suffix = `-${number}${extension}`;
+    const candidate = `${base.slice(0, 200 - suffix.length)}${suffix}`;
+    if (!names.has(candidate.toLocaleLowerCase())) return candidate;
+    number++;
+  }
+}
+
 function siblingName(
   state: DocumentState,
   name: string,
@@ -306,12 +335,16 @@ export function appendVersion(
   )
     fail("BAD_REQUEST", "Submittals and their revisions must be PDF files.");
   const number = input.submittal ? nextSubmittalNumber(state) : null;
+  const uploadName =
+    input.documentId || number
+      ? input.name
+      : availableUploadName(state, input.name, input.folderId ?? null);
   const doc = input.documentId
     ? accessibleDocument(state, actor, input.documentId, { write: true })
     : newDocument(
         state,
         actor,
-        number ? `${number} · ${input.name}`.slice(0, 200) : input.name,
+        number ? `${number} · ${input.name}`.slice(0, 200) : uploadName,
         input.folderId ?? null,
       );
   if (input.submittal && number) doc.submittal = { ...input.submittal, number };
@@ -334,7 +367,7 @@ export function appendVersion(
     documentId: doc.id,
     number:
       state.versions.filter((entry) => entry.documentId === doc.id).length + 1,
-    name: input.name,
+    name: uploadName,
     size: input.size,
     mimeType: input.mimeType,
     sha256: input.sha256,
@@ -614,17 +647,25 @@ export function applyDocumentAction(
     }
     case "moveDocuments": {
       assertFolderRole(state, actor, action.folderId, "editor");
-      const documents = action.documentIds.map(id => accessibleDocument(state, actor, id, { write: true }));
+      const documents = action.documentIds.map((id) =>
+        accessibleDocument(state, actor, id, { write: true }),
+      );
       const names = new Set<string>();
       for (const doc of documents) {
         const name = doc.name.toLocaleLowerCase();
-        if (names.has(name)) fail("CONFLICT", "Selected documents have duplicate names. Rename them before moving.");
+        if (names.has(name))
+          fail(
+            "CONFLICT",
+            "Selected documents have duplicate names. Rename them before moving.",
+          );
         names.add(name);
         siblingName(state, doc.name, action.folderId, doc.id);
       }
       for (const doc of documents) {
         doc.folderId = action.folderId;
-        doc.updatedAt = new Date(Math.max(Date.parse(now), Date.parse(doc.updatedAt) + 1)).toISOString();
+        doc.updatedAt = new Date(
+          Math.max(Date.parse(now), Date.parse(doc.updatedAt) + 1),
+        ).toISOString();
       }
       resultId = documents[0]!.id;
       auditFolder = action.folderId;
