@@ -1,5 +1,8 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
 import { supplierLabel } from "~/lib/supplier-label";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
@@ -27,9 +30,7 @@ import {
   WifiOffIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  SearchIcon,
   CalendarDaysIcon,
-  CheckIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -139,7 +140,6 @@ export default function OrdersPage() {
   const [jobFilter, setJobFilter] = usePageViewState<string | null>("orders:jobFilter", null);
   const [supplierFilter, setSupplierFilter] = usePageViewState<string | null>("orders:supplierFilter", null);
   const [dateFilter, setDateFilter] = usePageViewState<DateFilter>("orders:dateFilter", "all");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
@@ -657,42 +657,21 @@ export default function OrdersPage() {
 
       {/* Pinned to the bottom of the window on every screen size. */}
       <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-        <PriorityActionBar className="mx-auto max-w-2xl">
-          {searchOpen ? (
-            <>
-              <div className="relative flex-1">
-                <SearchIcon className="text-muted-foreground/70 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                <Input
-                  type="search"
-                  autoFocus
-                  aria-label="Search orders"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === "Escape") setSearchOpen(false);
-                  }}
-                  placeholder="Search items, jobs, suppliers..."
-                  className="h-12 pl-10"
-                />
-              </div>
-              <Button variant="outline" size="lg" className="h-12 shrink-0" onClick={() => setSearchOpen(false)}>
-                <CheckIcon className="h-5 w-5" />
-                Done
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setSearchOpen(true)}>
-                <SearchIcon className="h-5 w-5" />
-                <span className="truncate">{searchQuery.trim() ? `“${searchQuery.trim()}”` : "Search"}</span>
-              </Button>
-              {canSendOrders && (
-                <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
-                  <CalendarDaysIcon className="text-primary h-5 w-5" />
-                  <span className="truncate">Delivery calendar</span>
-                </Button>
-              )}
-            </>
+        <PriorityActionBar
+          className="mx-auto max-w-2xl"
+          search={{
+            value: searchQuery,
+            onChange: setSearchQuery,
+            label: "Search orders",
+            placeholder: "Search items, jobs, suppliers...",
+          }}
+        >
+          <BarSearchButton className="h-12 min-w-0 flex-1" />
+          {canSendOrders && (
+            <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
+              <CalendarDaysIcon className="text-primary h-5 w-5" />
+              <span className="truncate">Delivery calendar</span>
+            </Button>
           )}
         </PriorityActionBar>
       </div>

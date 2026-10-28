@@ -476,6 +476,7 @@ describe("Drawings", () => {
     ];
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
     fireEvent.change(screen.getByLabelText("Search drawings"), {
       target: { value: "permit" },
     });
@@ -483,9 +484,7 @@ describe("Drawings", () => {
     expect(
       screen.getByRole("button", { name: "Open M-102" }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search drawings"), {
-      target: { value: "" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
     // Filters live in the bottom bar's Filters menu.
     const openFilters = () =>
       fireEvent.keyDown(screen.getByRole("button", { name: /^Filters/ }), { key: "Enter" });

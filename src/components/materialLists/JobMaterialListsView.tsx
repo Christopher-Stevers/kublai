@@ -1,9 +1,11 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
 import Link from "next/link";
 import { useState, type ComponentProps } from "react";
-import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
-import { Input } from "~/components/ui/input";
+import { PlusIcon } from "lucide-react";
 import { matchesMaterialListPart } from "~/lib/material-list-part-search";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { MaterialListCard } from "~/components/materialLists/MaterialListCard";
@@ -50,7 +52,6 @@ export function JobMaterialListsView({
     `material-list-part-search:${jobId}`,
     "",
   );
-  const [searchOpen, setSearchOpen] = useState(false);
   const filteredLists = lists?.filter((list) =>
     matchesMaterialListPart(list.partSearchTexts, search),
   );
@@ -184,57 +185,22 @@ export function JobMaterialListsView({
       <>
         <div
           aria-hidden="true"
-          className={searchOpen || search ? "h-36" : "h-20"}
+          className="h-20"
         />
         <div
           aria-label="Material list actions"
           className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6"
         >
-          {(searchOpen || search) && (
-            <div className="mx-auto mb-2 flex max-w-6xl items-center gap-2">
-              <Input
-                autoFocus
-                type="search"
-                aria-label="Search parts in material lists"
-                placeholder="Part name or SKU…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    setSearch("");
-                    setSearchOpen(false);
-                  }
-                }}
-                className="h-11 text-base"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Clear part search"
-                onClick={() => {
-                  setSearch("");
-                  setSearchOpen(false);
-                }}
-              >
-                <XIcon className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
-          <PriorityActionBar className="mx-auto max-w-6xl">
-            <Button
-              variant="outline"
-              className="h-12 w-full px-2"
-              aria-expanded={searchOpen || !!search}
-              onClick={() => {
-                if (searchOpen || search) {
-                  setSearch("");
-                  setSearchOpen(false);
-                } else setSearchOpen(true);
-              }}
-            >
-              <SearchIcon className="mr-2 h-5 w-5" />
-              Search
-            </Button>
+          <PriorityActionBar
+            className="mx-auto max-w-6xl"
+            search={{
+              value: search,
+              onChange: setSearch,
+              label: "Search parts in material lists",
+              placeholder: "Part name or SKU…",
+            }}
+          >
+            <BarSearchButton className="h-12 w-full px-2" />
             {canReceive && (
               <ScanSlipButton jobId={jobId} className="h-12 w-full px-2" />
             )}

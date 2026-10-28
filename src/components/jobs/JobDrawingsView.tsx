@@ -1,5 +1,8 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
@@ -21,7 +24,6 @@ import {
   StarIcon,
   DownloadIcon,
   CheckIcon,
-  SearchIcon,
   SlidersHorizontalIcon,
   MinimizeIcon,
 } from "lucide-react";
@@ -852,7 +854,15 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         )}
         {/* Bottom bar like Add Parts: filters menu, search, add drawings. */}
         <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-          <PriorityActionBar className="mx-auto max-w-6xl">
+          <PriorityActionBar
+            className="mx-auto max-w-6xl"
+            search={{
+              value: query,
+              onChange: setQuery,
+              label: "Search drawings",
+              placeholder: "Search drawings",
+            }}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -950,25 +960,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="relative min-w-0">
-              <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-              <Input
-                type="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                aria-label="Search drawings"
-                placeholder="Search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") event.currentTarget.blur();
-                }}
-                className="h-9 w-full rounded-lg pl-8 text-base pointer-fine:text-sm [&::-webkit-search-cancel-button]:appearance-none"
-              />
-            </div>
+            <BarSearchButton className={BAR_BUTTON} />
             {canUpload && <Button
               className={BAR_BUTTON}
               disabled={uploading !== null}

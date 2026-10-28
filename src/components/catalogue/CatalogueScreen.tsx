@@ -1,6 +1,9 @@
 "use client";
 import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import {
@@ -16,7 +19,6 @@ import { currentSnapshotState } from "~/lib/snapshot-source";
 import { SupplierPartDetails, SupplierPartEditor, type SupplierListing } from "./SupplierPartEditor";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +57,6 @@ import {
   Grid2X2,
   Images,
   PackagePlus,
-  Search,
   Upload,
 } from "lucide-react";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
@@ -637,6 +638,12 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
       />
       <div className="bg-card shrink-0 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
         <PriorityActionBar
+          search={{
+            value: wizardSearchQuery,
+            onChange: setWizardSearchQuery,
+            label: "Search parts",
+            placeholder: supplierMode ? "Name or SKU" : "Search parts",
+          }}
           label={
             importProgress && (
               <>
@@ -661,27 +668,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             <PackagePlus className="h-4 w-4 shrink-0" />
             Create Part
           </Button>}
-          <div className="relative min-w-0">
-            <Search className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-            <Input
-              type="search"
-              inputMode="search"
-              enterKeyHint="search"
-              name="catalogue-part-search"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              value={wizardSearchQuery}
-              onChange={(event) => setWizardSearchQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-              }}
-              placeholder={supplierMode ? "Name or SKU" : "Search"}
-              aria-label="Search parts"
-              className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
-            />
-          </div>
+          <BarSearchButton className={barButton} />
           {canEditParts && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

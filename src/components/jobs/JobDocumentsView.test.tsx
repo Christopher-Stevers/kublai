@@ -304,20 +304,26 @@ describe("job documents workspace", () => {
     expect(
       screen.getByRole("button", { name: "Open Agreement.docx" }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search documents"), {
-      target: { value: "mechanical" },
-    });
+    const search = () => {
+      fireEvent.click(screen.getByRole("button", { name: "Search" }));
+      fireEvent.change(screen.getByLabelText("Search documents"), {
+        target: { value: "mechanical" },
+      });
+    };
+    search();
     expect(
       screen.getByRole("button", { name: "Open Specification.pdf" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Open Agreement.docx" }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
     fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.change(screen.getByLabelText("Filter by file type"), {
       target: { value: "word" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    search();
     expect(screen.getByText("No matching documents")).toBeInTheDocument();
   });
 
@@ -1059,9 +1065,10 @@ it("keeps the document workspace focused on the bottom controls", async () => {
   render(<JobDocumentsView jobId="job-1" />);
   await ready();
   const toolbar = screen.getByRole("toolbar", { name: "Document controls" });
-  expect(toolbar.querySelectorAll("button")).toHaveLength(2);
+  expect(toolbar.querySelectorAll("button")).toHaveLength(3);
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
   expect(
-    toolbar.contains(screen.getByRole("textbox", { name: "Search documents" })),
+    toolbar.contains(screen.getByRole("searchbox", { name: "Search documents" })),
   ).toBe(true);
   expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   expect(

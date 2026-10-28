@@ -1,5 +1,8 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
 import dynamic from "next/dynamic";
 
 const DocumentScanner = dynamic(
@@ -30,7 +33,6 @@ import {
   PackageIcon,
   RefreshCwIcon,
   RotateCcwIcon,
-  SearchIcon,
   ShieldIcon,
   Trash2Icon,
   UploadIcon,
@@ -1384,7 +1386,19 @@ export function JobDocumentsView({
         hidden={Boolean(selected || editorDocument)}
         className="bg-card fixed inset-x-0 bottom-0 z-30 pin-viewport-bottom border-t px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
       >
-        <PriorityActionBar className="mx-auto max-w-7xl">
+        <PriorityActionBar
+          className="mx-auto max-w-7xl"
+          search={{
+            value: query,
+            onChange: (value) => {
+              setQuery(value);
+              if (value && view !== "files" && view !== "recycle")
+                setView("files");
+            },
+            label: "Search documents",
+            placeholder: "Search documents",
+          }}
+        >
           <Button
             variant="outline"
             className="h-11 gap-1 px-2 text-xs sm:text-sm"
@@ -1393,19 +1407,7 @@ export function JobDocumentsView({
             <MoreHorizontalIcon className="size-4" />
             Options
           </Button>
-          <div className="relative min-w-0">
-            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-3.5 left-2 size-4" />
-            <Input
-              className="h-11 min-w-0 pr-2 pl-7"
-              aria-label="Search documents"
-              placeholder="Search documents"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                if (view !== "files" && view !== "recycle") setView("files");
-              }}
-            />
-          </div>
+          <BarSearchButton className="h-11 gap-1 px-2 text-xs sm:text-sm" />
           {canWrite && <Button
             className="h-11 gap-1 px-1 text-xs sm:text-sm"
             disabled={processing}

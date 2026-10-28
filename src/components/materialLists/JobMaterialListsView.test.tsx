@@ -57,6 +57,8 @@ it("lets read-only users search lists by contained parts, open a result, and cle
   const input = screen.getByRole("searchbox", {
     name: "Search parts in material lists",
   });
+  // The search takes over the whole bar until it is closed.
+  expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
   fireEvent.change(input, { target: { value: "cap" } });
   expect(
     screen.queryByRole("button", { name: "Monday" }),
@@ -68,7 +70,9 @@ it("lets read-only users search lists by contained parts, open a result, and cle
   expect(
     screen.getByText("No material lists contain a matching part."),
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Clear part search" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close search" }));
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Monday" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Tuesday" })).toBeInTheDocument();
 });

@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { PriorityActionBar } from "./priority-action-bar";
+import { BarSearchButton, PriorityActionBar } from "./priority-action-bar";
 
 afterEach(cleanup);
 const buttons = (n: number) =>
@@ -168,4 +168,28 @@ it("shows more actions on a wider bar", () => {
     width.mockRestore();
     vi.unstubAllGlobals();
   }
+});
+
+it("widens the search across the bar and shrinks it back with the X", () => {
+  function Bar() {
+    const [value, setValue] = useState("");
+    return (
+      <PriorityActionBar search={{ value, onChange: setValue, label: "Search parts" }}>
+        <BarSearchButton />
+        <button>Receive</button>
+      </PriorityActionBar>
+    );
+  }
+  render(<Bar />);
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  const input = screen.getByRole("searchbox", { name: "Search parts" });
+  expect(input).toHaveFocus();
+  expect(screen.queryByRole("button", { name: "Receive" })).toBeNull();
+  fireEvent.change(input, { target: { value: "cap" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(screen.getByRole("searchbox")).toHaveValue("cap");
+  fireEvent.click(screen.getByRole("button", { name: "Close search" }));
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  expect(screen.getByRole("button", { name: "Receive" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
 });

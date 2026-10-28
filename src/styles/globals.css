@@ -693,9 +693,21 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-bottom: 0.375rem;
   border-bottom: 1px dashed var(--border);
 }
-[data-action-bar-shelf][hidden] {
+[data-action-bar-shelf][hidden],
+[data-action-bar-row][hidden] {
   display: none;
 }
+/* The bar's search, widened across the whole bar. */
+[data-action-bar-search] {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: var(--action-height);
+}
+[data-action-bar-search] input {
+  font-size: 1rem;
+}
+[data-landscape-action-row] > [data-action-bar-search] { min-width: 0; flex: 1; }
 @media (prefers-reduced-motion: no-preference) {
   [data-action-bar-shelf] {
     animation: action-shelf-rise 180ms ease-out;

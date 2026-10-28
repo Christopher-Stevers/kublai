@@ -3,8 +3,10 @@
 import {
   Children,
   cloneElement,
+  createContext,
   Fragment,
   isValidElement,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -15,8 +17,14 @@ import {
   type RefObject,
   type ReactNode,
 } from "react";
-import { ChevronUpIcon, MoreHorizontalIcon } from "lucide-react";
+import {
+  ChevronUpIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 import { Button } from "./button";
+import { Input } from "./input";
 import { cn } from "~/lib/utils";
 
 /** Children form the priority list, lowest first / highest (rightmost) last.
@@ -41,13 +49,16 @@ export const ACTION_LIMIT = 3;
 const ACTION_MIN_WIDTH = 128;
 const ACTION_MAX = 6;
 
-const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /** How many actions fit in the bar: three on a phone, more on wider bars. */
 function useActionLimit(root: RefObject<HTMLDivElement | null>) {
   const [limit, setLimit] = useState(ACTION_LIMIT);
   useIsoLayoutEffect(() => {
-    const element = root.current?.querySelector<HTMLElement>("[data-action-bar-row]") ?? root.current;
+    const element =
+      root.current?.querySelector<HTMLElement>("[data-action-bar-row]") ??
+      root.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const fit = Math.floor(element.clientWidth / ACTION_MIN_WIDTH);
@@ -59,6 +70,39 @@ function useActionLimit(root: RefObject<HTMLDivElement | null>) {
     return () => observer.disconnect();
   }, [root]);
   return limit;
+}
+
+/** A search that lives in the bottom bar. Put `<BarSearchButton />` among the
+ * actions; tapping it widens the search field across the whole bar, and its X
+ * clears the search and brings the buttons back. */
+export type BarSearch = {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  placeholder?: string;
+};
+
+const BarSearchContext = createContext<{
+  value: string;
+  open: () => void;
+} | null>(null);
+
+export function BarSearchButton({ className }: { className?: string }) {
+  const search = useContext(BarSearchContext);
+  if (!search) return null;
+  const value = search.value.trim();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className={className}
+      data-bar-search-button
+      onClick={search.open}
+    >
+      <SearchIcon />
+      <span className="truncate">{value ? `“${value}”` : "Search"}</span>
+    </Button>
+  );
 }
 
 /**
@@ -74,8 +118,9 @@ export function PriorityActionBar({
   children,
   className,
   label,
+  search,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode }) {
+}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch }) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = useActionLimit(root);
@@ -85,7 +130,18 @@ export function PriorityActionBar({
   const tab = useRef<HTMLButtonElement>(null);
   const swipe = useRef<{ y: number; dy: number } | null>(null);
   const shelfId = useId();
-  const expanded = open && shelved > 0;
+  const [searching, setSearching] = useState(() => !!search?.value);
+  const searchButton = useRef(false);
+  const expanded = open && shelved > 0 && !searching;
+
+  useEffect(() => {
+    // Back from the search: return focus to the Search button.
+    if (searching || !searchButton.current) return;
+    searchButton.current = false;
+    root.current
+      ?.querySelector<HTMLElement>("[data-bar-search-button]")
+      ?.focus();
+  }, [searching]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -107,6 +163,11 @@ export function PriorityActionBar({
   }, [expanded]);
 
   if (!actions.length) return null;
+  const closeSearch = () => {
+    search?.onChange("");
+    searchButton.current = true;
+    setSearching(false);
+  };
   const slot = (action: ReactNode, index: number, column?: number) => (
     <div
       data-action-slot
@@ -117,85 +178,136 @@ export function PriorityActionBar({
     </div>
   );
   return (
-    <div
-      ref={root}
-      data-bottom-menu
-      data-action-bar
-      {...props}
-      className={cn("relative w-full", className)}
+    <BarSearchContext.Provider
+      value={
+        search ? { value: search.value, open: () => setSearching(true) } : null
+      }
     >
-      {shelved > 0 && (
-        <button
-          ref={tab}
-          type="button"
-          data-action-bar-tab
-          data-count={shelved}
-          aria-expanded={expanded}
-          aria-controls={shelfId}
-          title={`${shelved} more ${shelved === 1 ? "action" : "actions"}`}
-          className="touch-none"
-          onPointerDown={(event) => {
-            swipe.current = { y: event.clientY, dy: 0 };
-          }}
-          onPointerMove={(event) => {
-            if (swipe.current) swipe.current.dy = event.clientY - swipe.current.y;
-          }}
-          onClick={() => {
-            // A swipe up raises the shelf and a swipe down lowers it; a tap
-            // or a key toggles it.
-            const dy = swipe.current?.dy ?? 0;
-            swipe.current = null;
-            setOpen(Math.abs(dy) > 12 ? dy < 0 : !expanded);
-          }}
-        >
-          <ChevronUpIcon aria-hidden />
-          More
-        </button>
-      )}
-      {/* In landscape the screen's second top bar moves in here. */}
-      <div data-landscape-subbar-slot />
-      {/* Keep shelved controls mounted: opening their dialog must not destroy
-          local state when the shelf lowers. */}
       <div
-        id={shelfId}
-        role="group"
-        aria-label="More actions"
-        hidden={!expanded}
-        data-action-bar-shelf
-        style={{ gridTemplateColumns: `repeat(${limit}, minmax(0, 1fr))` }}
-        onClick={(event) => {
-          const button = (event.target as HTMLElement).closest("button");
-          if (
-            button &&
-            !button.disabled &&
-            !button.hasAttribute("aria-haspopup")
-          ) {
-            tab.current?.focus();
-            setOpen(false);
-          }
-        }}
+        ref={root}
+        data-bottom-menu
+        data-action-bar
+        {...props}
+        className={cn("relative w-full", className)}
       >
-        {/* Right-aligned like the bar below: a part row goes on top, so the
-            highest shelved actions sit just above the bar. */}
-        {actions
-          .slice(0, shelved)
-          .map((action, index) =>
-            slot(action, index, index ? undefined : limit - ((shelved - 1) % limit)),
-          )}
-      </div>
-      {label != null && label !== false && (
-        <div data-action-bar-label>{label}</div>
-      )}
-      <div data-landscape-action-row>
-        <div data-landscape-navigation-slot />
+        {shelved > 0 && !searching && (
+          <button
+            ref={tab}
+            type="button"
+            data-action-bar-tab
+            data-count={shelved}
+            aria-expanded={expanded}
+            aria-controls={shelfId}
+            title={`${shelved} more ${shelved === 1 ? "action" : "actions"}`}
+            className="touch-none"
+            onPointerDown={(event) => {
+              swipe.current = { y: event.clientY, dy: 0 };
+            }}
+            onPointerMove={(event) => {
+              if (swipe.current)
+                swipe.current.dy = event.clientY - swipe.current.y;
+            }}
+            onClick={() => {
+              // A swipe up raises the shelf and a swipe down lowers it; a tap
+              // or a key toggles it.
+              const dy = swipe.current?.dy ?? 0;
+              swipe.current = null;
+              setOpen(Math.abs(dy) > 12 ? dy < 0 : !expanded);
+            }}
+          >
+            <ChevronUpIcon aria-hidden />
+            More
+          </button>
+        )}
+        {/* In landscape the screen's second top bar moves in here. */}
+        <div data-landscape-subbar-slot />
+        {/* Keep shelved controls mounted: opening their dialog must not destroy
+          local state when the shelf lowers. */}
         <div
-          data-action-bar-row
-          style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}
+          id={shelfId}
+          role="group"
+          aria-label="More actions"
+          hidden={!expanded}
+          data-action-bar-shelf
+          style={{ gridTemplateColumns: `repeat(${limit}, minmax(0, 1fr))` }}
+          onClick={(event) => {
+            const button = (event.target as HTMLElement).closest("button");
+            if (
+              button &&
+              !button.disabled &&
+              !button.hasAttribute("aria-haspopup")
+            ) {
+              tab.current?.focus();
+              setOpen(false);
+            }
+          }}
         >
-          {shown.map((action, index) => slot(action, index))}
+          {/* Right-aligned like the bar below: a part row goes on top, so the
+            highest shelved actions sit just above the bar. */}
+          {actions
+            .slice(0, shelved)
+            .map((action, index) =>
+              slot(
+                action,
+                index,
+                index ? undefined : limit - ((shelved - 1) % limit),
+              ),
+            )}
+        </div>
+        {label != null && label !== false && (
+          <div data-action-bar-label>{label}</div>
+        )}
+        <div data-landscape-action-row>
+          <div data-landscape-navigation-slot />
+          {search && searching && (
+            <div data-action-bar-search>
+              <div className="relative min-w-0 flex-1">
+                <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                <Input
+                  autoFocus
+                  type="search"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  aria-label={search.label}
+                  placeholder={search.placeholder ?? "Search"}
+                  value={search.value}
+                  onChange={(event) => search.onChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                    if (event.key === "Escape") closeSearch();
+                  }}
+                  className="h-full rounded-lg pl-9 [&::-webkit-search-cancel-button]:appearance-none"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-(--action-height) shrink-0"
+                aria-label="Close search"
+                onClick={closeSearch}
+              >
+                <XIcon className="size-5" />
+              </Button>
+            </div>
+          )}
+          {/* Hidden, not removed, while searching: the bar measures this row. */}
+          <div
+            data-action-bar-row
+            hidden={!!search && searching}
+            style={{
+              gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {shown.map((action, index) => slot(action, index))}
+          </div>
         </div>
       </div>
-    </div>
+    </BarSearchContext.Provider>
   );
 }
 
@@ -242,11 +354,13 @@ export function ViewerActionBar({
       data-viewer-action-bar
       {...props}
       className={cn("relative grid w-full gap-1.5", className)}
-      style={{
-        ...props.style,
-        "--viewer-action-count": overflowCount ? 4 : actions.length,
-        gridTemplateColumns: `repeat(${overflowCount ? 4 : actions.length}, minmax(0, 1fr))`,
-      } as CSSProperties}
+      style={
+        {
+          ...props.style,
+          "--viewer-action-count": overflowCount ? 4 : actions.length,
+          gridTemplateColumns: `repeat(${overflowCount ? 4 : actions.length}, minmax(0, 1fr))`,
+        } as CSSProperties
+      }
     >
       <div data-landscape-navigation-slot />
       {overflowCount > 0 && (
