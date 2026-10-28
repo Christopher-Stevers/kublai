@@ -454,9 +454,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               <span className="text-foreground max-w-full truncate font-medium">
                 {detail.document.name}
               </span>
-              <span>
-                ·{" "}
-                {detail.document.packingSlip?.orderNumber ?? "No order linked"}{" "}
+              <span className="basis-full pl-5.5 sm:basis-auto sm:pl-0">
+                <span className="hidden sm:inline">· </span>
+                {detail.document.packingSlip?.orderNumber ??
+                  "No order linked"}{" "}
                 · {detail.scannedBy} ·{" "}
                 {new Date(detail.document.createdAt).toLocaleDateString()}
               </span>
@@ -507,7 +508,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           Reconnect to review and approve receipts.
         </p>
       )}
-      {error && (
+      {error && !preview && (
         <div
           role="alert"
           className="fixed inset-x-4 bottom-24 z-40 mx-auto flex max-w-xl items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950 shadow-lg dark:border-red-500/40 dark:bg-red-950 dark:text-red-100"
@@ -858,15 +859,15 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       variant="ghost"
                       size="sm"
                       onClick={async () => {
-                        const before = new Set(r!.lines.map((l) => l.id));
+                        added.current = new Set(r!.lines.map((l) => l.id));
                         if (
-                          await run({
+                          !(await run({
                             action: "addLine",
                             page: 1,
                             description: "New slip line",
-                          })
+                          }))
                         )
-                          added.current = before;
+                          added.current = null;
                       }}
                     >
                       <PlusIcon />
