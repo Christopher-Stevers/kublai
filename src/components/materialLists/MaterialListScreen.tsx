@@ -1,5 +1,4 @@
 "use client";
-import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
@@ -254,8 +253,8 @@ export function MaterialListScreen({
   if (isLoading && !mlHeader) {
     return (
       <div className="flex h-[var(--app-content-height)] flex-col">
-        <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
-          <div className="mx-auto max-w-6xl">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="mx-auto mb-6 max-w-6xl">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
                 <div className="h-5 w-44 rounded skeleton-shimmer" />
@@ -267,8 +266,6 @@ export function MaterialListScreen({
               </div>
             </div>
           </div>
-        </div>
-        <div className="flex-1 px-4 py-4 sm:px-6">
           <div className="mx-auto max-w-6xl space-y-2">
             <div className="h-32 rounded-2xl skeleton-shimmer" />
             <div className="h-32 rounded-2xl skeleton-shimmer" />
@@ -304,44 +301,40 @@ export function MaterialListScreen({
 
   return (
     <div data-landscape-scope className="flex h-[var(--app-content-height)] flex-col">
-      {/* Top Bar */}
-      <LandscapeSubBar className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
-        <div className="mx-auto max-w-6xl [[data-landscape-subbar]_&]:max-w-none">
-          {!isBrowserOnline && (
-            <div className="mb-1 flex flex-wrap items-center gap-1.5">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-                <WifiOffIcon className="h-4 w-4" />
-                Offline mode
-              </div>
-            </div>
-          )}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-h-10 min-w-0 items-center gap-2">
-                <h1 data-tutorial="material-list" className="min-w-0 text-lg leading-tight font-bold break-words text-foreground sm:text-xl">
-                  {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
-                </h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowMaterialListNameModal(true)}
-                  className="h-8 w-8 shrink-0"
-                  aria-label="Edit material list"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </Button>
-              </div>
-              {!verifyOrderId && (
-                <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
-              )}
-            </div>
-          </div>
-        </div>
-      </LandscapeSubBar>
-
-      {/* Main Area - Parts List */}
+      {/* Title and view controls scroll with the parts, like the lists page. */}
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
+          <div className="mb-6" data-material-list-heading>
+            {!isBrowserOnline && (
+              <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+                  <WifiOffIcon className="h-4 w-4" />
+                  Offline mode
+                </div>
+              </div>
+            )}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-h-10 min-w-0 items-center gap-2">
+                  <h1 data-tutorial="material-list" className="min-w-0 text-lg leading-tight font-bold break-words text-foreground sm:text-xl">
+                    {mlHeader.name || (isToolRequest ? "Tool Request" : "Material List")}
+                  </h1>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowMaterialListNameModal(true)}
+                    className="h-8 w-8 shrink-0"
+                    aria-label="Edit material list"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                {!verifyOrderId && (
+                  <ViewToggle view={viewMode} onViewChange={setViewMode} showOnMobile />
+                )}
+              </div>
+            </div>
+          </div>
           {verifyOrderId && (
             <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-950">
               <span className="font-semibold">Verify Order</span>
