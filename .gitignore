@@ -72,3 +72,6 @@ yarn-error.log*
 # Local data snapshots (existing tracked snapshots remain versioned)
 /state-backups/
 /exports/*backup*
+
+# Private voice action audit
+.private/

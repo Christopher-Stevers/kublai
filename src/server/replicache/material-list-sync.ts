@@ -1526,3 +1526,32 @@ export async function handleMaterialListReplicachePull(
       return patch;
   });
 }
+
+/** Voice uses an explicit subset; never expose the general mutation dispatcher. */
+export async function applyVoiceMaterialMutation(
+  user: ReplicacheUser,
+  name: "createJob" | "updateJob" | "createMaterialList" | "renameMaterialList" | "addItem" | "updateItemQuantity",
+  args: unknown,
+  check: (tx: ReplicacheTx) => Promise<void>,
+) {
+  const allowed = ["createJob", "updateJob", "createMaterialList", "renameMaterialList", "addItem", "updateItemQuantity"];
+  if (!allowed.includes(name) || !user.organizationId || !resolvePermissions(user)[MUTATION_PERMISSION[name]!])
+    throw new Error("You cannot make this change.");
+  const organizationId = user.organizationId;
+  await db.transaction(async (tx) => {
+    await check(tx);
+    const sideEffects: ReplicacheMutationSideEffects = {
+      quoteIdsToRecalculate: new Set(),
+      materialListIdsToTouch: new Set(),
+    };
+    await applyReplicacheMutation(tx, {
+      name, args, organizationId, userId: user.id,
+      eventKey: `voice:${crypto.randomUUID()}`, sideEffects,
+    });
+    for (const quoteId of sideEffects.quoteIdsToRecalculate)
+      await recalculateQuoteTotals(tx, quoteId);
+    for (const listId of sideEffects.materialListIdsToTouch)
+      await touchMaterialList(tx, listId);
+  });
+  publishOrganizationReplicachePoke(organizationId, { mutationCount: 1 });
+}

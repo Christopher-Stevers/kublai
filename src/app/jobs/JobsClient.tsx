@@ -1,4 +1,5 @@
 "use client";
+import { VoiceCard } from "~/components/voice/VoiceProvider";
 import { JobOfflineNotice } from "~/components/jobs/JobOfflineNotice";
 import { formatLocationAddress, type JobLocationDisplay } from "~/lib/location-address";
 import { useScrollToTop } from "~/hooks/use-remembered-scroll";
@@ -340,6 +341,7 @@ export function JobsClient({
           }
         />
 
+        {!sandbox && <VoiceCard />}
         {isWaitingForJobs ? (
           <div
             role="status"

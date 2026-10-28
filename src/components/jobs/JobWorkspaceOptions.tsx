@@ -1,4 +1,5 @@
 "use client";
+import { VoiceCard } from "~/components/voice/VoiceProvider";
 
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { FrequentJobCards } from "./FrequentJobCards";
@@ -33,6 +34,8 @@ export function JobWorkspaceOptions({
   const canAccessSystems = useSystemsAccess();
   const canAccessDrawings = useDrawingsAccess();
   return (
+    <>
+    <VoiceCard />
     <FrequentJobCards>
       <Card
         data-job-card="material-lists"
@@ -251,5 +254,6 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>}
     </FrequentJobCards>
+    </>
   );
 }

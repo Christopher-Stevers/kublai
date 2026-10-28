@@ -1,3 +1,4 @@
+import { VoiceProvider } from "~/components/voice/VoiceProvider";
 import { SystemsAccessProvider } from "~/components/permissions/SystemsAccess";
 import { MaterialSortProvider } from "~/components/app/MaterialSortProvider";
 import { AutomaticDiagnostics } from "~/components/app/AutomaticDiagnostics";
@@ -123,7 +124,9 @@ export default async function JobsLayout({
                               organizationId={organizationId}
                             >
                               <SupplierLabelProvider>
-                                {children}
+                                <VoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
+                                  {children}
+                                </VoiceProvider>
                               </SupplierLabelProvider>
                             </MaterialSortProvider>
                           </ChatViewProvider>
