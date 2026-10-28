@@ -32,6 +32,7 @@ import {
   clarifyBeforeAction,
 } from "~/server/voice/clarification";
 import { assertSameOrigin, readBoundedBody } from "~/server/documents/http";
+import { inspectionAnswer } from "~/server/voice/answers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const sessionId = z.string().regex(/^[a-f0-9]{48}$/);
@@ -244,6 +245,16 @@ export async function POST(req: Request) {
             : (result as { items?: unknown }).items,
           text,
         );
+        if (tool.tool === "inspect") {
+          const directAnswer = inspectionAnswer(
+            result as Awaited<ReturnType<typeof inspect>>,
+            text,
+          );
+          if (directAnswer) {
+            answer = directAnswer;
+            break;
+          }
+        }
         messages.push(
           { role: "assistant", content: JSON.stringify(tool) },
           {

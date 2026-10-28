@@ -113,30 +113,36 @@ export async function inspect(
 ) {
   demand(u, "tab.dashboard");
   const r = await record(u, kind, id);
-  if (kind === "order")
+  if (kind === "order") {
+    const items = [
+      ...(await db.execute(
+        sql`select id,"descriptionSnapshot" as name,quantity,"receivedQuantity","verificationStatus",count(*) over() as "totalCount" from kublai_order_item where "orderId"=${id} order by id limit 100`,
+      )),
+    ];
     return {
       id,
       name: r.orderNumber,
       jobId: r.jobId,
       status: r.status,
       notes: r.notes,
-      items: [
-        ...(await db.execute(
-          sql`select id,"descriptionSnapshot" as name,quantity,"receivedQuantity","verificationStatus" from kublai_order_item where "orderId"=${id} order by id limit 100`,
-        )),
-      ],
+      totalItems: Number(items[0]?.totalCount ?? 0),
+      items,
     };
+  }
+  const items = [
+    ...(await db.execute(
+      sql`select id,"descriptionSnapshot" as name,quantity,"partDefinitionId" as "partId","roomId","sentOrderItemId",count(*) over() as "totalCount" from kublai_quote_item where "quoteId"=${r.quoteId as string} order by id limit 100`,
+    )),
+  ];
   return {
     id,
     name: r.name,
     jobId: r.jobId,
-    items: [
-      ...(await db.execute(
-        sql`select id,"descriptionSnapshot" as name,quantity,"partDefinitionId" as "partId","roomId","sentOrderItemId" from kublai_quote_item where "quoteId"=${r.quoteId as string} order by id limit 100`,
-      )),
-    ],
+    totalItems: Number(items[0]?.totalCount ?? 0),
+    items,
   };
 }
+
 const globalPages: Record<string, { path: string; permission: PermissionKey }> =
   {
     jobs: { path: "/jobs", permission: "tab.dashboard" },

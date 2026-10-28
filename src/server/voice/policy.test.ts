@@ -271,3 +271,33 @@ it("does not fall back to the current job when a named job is ambiguous", () => 
     ),
   ).toMatchObject({ jobId: a });
 });
+
+it("answers counts from the actual total rather than a truncated item sample", async () => {
+  const { inspectionAnswer } = await import("./answers");
+  expect(
+    inspectionAnswer(
+      {
+        name: "178-Next",
+        totalItems: 150,
+        items: [{ name: "Elbow", quantity: 3, receivedQuantity: 1 }],
+      },
+      "How many items?",
+    ),
+  ).toBe("178-Next has 150 line items.");
+  expect(
+    inspectionAnswer(
+      {
+        name: "178-Next",
+        totalItems: 1,
+        items: [{ name: "Elbow", quantity: 3, receivedQuantity: 1 }],
+      },
+      "What is on the order?",
+    ),
+  ).toContain("3 ordered, 1 received");
+  expect(
+    inspectionAnswer(
+      { name: "List", totalItems: 0, items: [] },
+      "Change quantity to 4",
+    ),
+  ).toBeUndefined();
+});
