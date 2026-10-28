@@ -15,6 +15,7 @@ const entries = [
   "job-systems/extract-worker",
   "packing-slips/extract-worker",
   "drawings/equipment-index-worker",
+  "drawings/hyperlink-render-worker",
 ];
 await build({
   entryPoints: entries.map((x) => "src/server/" + x + ".ts"),

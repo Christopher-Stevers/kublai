@@ -8,6 +8,8 @@ import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/su
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
 import { autoHyperlinkPreview } from "~/server/drawings/auto-hyperlink";
+import { hyperlinkDetectInput } from "~/lib/hyperlink-readers";
+import { detectHyperlinkTags, hyperlinkReaderOptions } from "~/server/drawings/hyperlink-readers";
 import { superEquipmentSources, superEquipmentReport, recognizeEquipmentSource } from "~/server/drawings/super-equipment";
 import { openDocumentDrawingWorkspace } from "~/server/documents/drawing-workspace";
 import { drawingLinkTargets } from "~/server/drawings/link-targets";
@@ -52,6 +54,8 @@ const item = z.object({
   expectedRevision: revision,
 });
 export const drawingsWorkspaceRouter = createTRPCRouter({
+  autoHyperlinkReaders: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>hyperlinkReaderOptions(ctx,input.sheetId)),
+  autoHyperlinkDetect: sheetTools.input(hyperlinkDetectInput).mutation(({ctx,input})=>detectHyperlinkTags(ctx,input)),
   autoHyperlinkSources: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
   autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(2).max(40)).min(1).max(200),scope:z.enum(["job","set"]).default("job")})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
   superEquipmentSources: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superEquipmentSources(ctx,input.sheetId)),

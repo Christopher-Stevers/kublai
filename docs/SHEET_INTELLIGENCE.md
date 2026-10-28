@@ -5,6 +5,47 @@ Super Equipment. Sheet tools require `drawings.view` and `drawings.sheetTools`;
 Super Spec Material also retains the separate `systems.access` permission.
 Every request resolves the job and readable document folders again.
 
+## Auto Hyperlink versions
+
+The Version selector offers three readers. Version 1 (Normal) retains the existing
+embedded PDF text / previously recognized OCR flow, tag rules and job schedule
+vocabulary. It runs when the dialog opens and makes no external model request.
+Version 2 (Terra, `gpt-6.1-terra`) and Version 3 (DeepSeek, `deepseek-flash`)
+read the current drawing image only after the user starts a scan. Both return
+typed tag text and source boxes. App code validates coordinates, anchors to exact
+PDF text where possible, deduplicates overlapping crops, and performs the same
+permission-filtered destination lookup. Neither model supplies URLs or saves links.
+AI results start unchecked; users can inspect locations and destinations before
+saving. Repeated image-only tags retain every reviewed occurrence on the source.
+Other linked sheets still use their own exact text positions.
+
+Keys stay server-side: `OPENAI_API_KEY` for Terra and `DEEPSEEK_API_KEY` for
+DeepSeek's hosted vision API. An unconfigured reader is shown as disconnected;
+there is no fallback to another model. Choosing a version alone never calls its
+provider. Whole-page and four overlapping crops are sent with up to 1,000 schedule
+tags. Requests have a 75-second timeout, a 12 MiB image limit, a 1 MiB response
+limit and at most 600 proposed tag occurrences. PDFs render in an isolated
+512 MiB-heap child (30-second timeout, 4,200-pixel maximum dimension); temporary
+images are deleted. PDF file/page limits match the equipment index.
+
+Completed readings are cached by organization, job, source, PDF contents/page,
+schedule vocabulary, reader/model and reader revision. Reopening can reuse them;
+Read again explicitly requests a fresh reading, including after an empty result.
+Database reservations prevent concurrent duplicate calls and retry billing.
+The default organization budget is 40 attempts per UTC day across AI readers,
+configured by `HYPERLINK_AI_DAILY_CALLS` (0 disables new readings, maximum 200).
+Failed/uncertain requests count; two active readings per organization are allowed.
+Stopping/closing the dialog ignores late results and prevents saves; an already
+submitted provider request may finish and be cached. Access is checked before
+rendering, before sending images and before returning or caching results.
+
+Deploy migration `0099_hyperlink_readers.sql` using
+`node scripts/ops/apply-hyperlink-readers-migration.mjs`, and deploy the
+`hyperlink-render-worker` bundle together with the web app. Provider unit tests
+use simulated responses and verify contracts, not recognition accuracy. The
+isolated database checks run with `bash scripts/test-hyperlink-readers-db.sh`;
+render tests cover rotated digital and image-only PDFs.
+
 ## Super Equipment
 
 The report reads equipment schedules from current drawing revisions across the

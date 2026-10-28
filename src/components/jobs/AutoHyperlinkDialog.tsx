@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -22,11 +22,18 @@ import type {
   DrawingSave,
 } from "~/lib/drawing-workspace";
 import type { DrawingText } from "~/lib/drawing-text";
+import {
+  hyperlinkReaderLabels,
+  hyperlinkReaders,
+  type HyperlinkReader,
+} from "~/lib/hyperlink-readers";
 
 type Match = {
   tag: string;
   links: DrawingMarkupLink[];
   box: DrawingText;
+  boxes: DrawingText[];
+  needsPositionReview: boolean;
   occurrences: number;
   existing: boolean;
   selected: boolean;
@@ -48,6 +55,16 @@ export function AutoHyperlinkDialog(props: {
   onSaved: () => void;
 }) {
   const utils = api.useUtils();
+  const detect = api.drawingsWorkspace.autoHyperlinkDetect.useMutation({
+    retry: false,
+  });
+  const [reader, setReader] = useState<HyperlinkReader>("normal");
+  const [hasReading, setHasReading] = useState(false);
+  const [readers, setReaders] = useState<{
+    terra: { available: boolean };
+    deepseek: { available: boolean };
+  } | null>(null);
+  const [readerError, setReaderError] = useState("");
   const [scope, setScope] = useState<"job" | "set">("job");
   const [rows, setRows] = useState<Match[]>([]),
     [notes, setNotes] = useState<string[]>([]);
@@ -57,7 +74,25 @@ export function AutoHyperlinkDialog(props: {
     [search, setSearch] = useState("");
   const run = useRef(0),
     initial = useRef<() => void>(() => undefined);
-  async function scan() {
+  const checkReaders = useCallback(async () => {
+    try {
+      setReaders(
+        await utils.drawingsWorkspace.autoHyperlinkReaders.fetch(
+          { sheetId: props.sheetId },
+          { staleTime: 0 },
+        ),
+      );
+      setReaderError("");
+    } catch {
+      setReaderError(
+        "Could not check AI reader connections. Normal is available.",
+      );
+    }
+  }, [props.sheetId, utils]);
+  useEffect(() => {
+    void checkReaders();
+  }, [checkReaders]);
+  async function scan(refresh = false) {
     const id = ++run.current;
     setBusy(true);
     setRows([]);
@@ -65,41 +100,73 @@ export function AutoHyperlinkDialog(props: {
     setPending(0);
     setStatus("Reading equipment tags…");
     try {
-      const words = await props.readWords();
-      if (id !== run.current) return;
-      if (!words.length) {
+      const located = new Map<
+        string,
+        { boxes: DrawingText[]; needsPositionReview: boolean }
+      >();
+      const warnings = new Set<string>();
+      if (reader === "normal") {
+        const words = await props.readWords();
+        if (id !== run.current) return;
+        if (!words.length) {
+          setStatus(
+            "No readable text found. Use Recognize text on this drawing, then scan again, or choose an AI version.",
+          );
+          return;
+        }
+        setStatus("Checking job schedules and indexing destinations…");
+        const vocabulary =
+          await utils.drawingsWorkspace.autoHyperlinkSources.fetch(
+            { sheetId: props.sheetId },
+            { staleTime: 0 },
+          );
+        if (id !== run.current) return;
+        vocabulary.warnings.forEach((w) => warnings.add(w));
+        for (const tag of equipmentTagCandidates(
+          words,
+          [
+            { x: 0, y: 0 },
+            { x: 1, y: 1 },
+          ],
+          {
+            automatic: true,
+            knownTags: vocabulary.knownTags,
+            sheetNumbers: vocabulary.sheetNumbers,
+          },
+        ))
+          located.set(tag, {
+            boxes: equipmentTagLocations(words, tag),
+            needsPositionReview: false,
+          });
+      } else {
         setStatus(
-          "No readable text found. Use Recognize text on this drawing, then scan again.",
+          `${reader === "terra" ? "Terra" : "DeepSeek"} is reading the drawing image…`,
         );
-        return;
+        const detection = await detect.mutateAsync({
+          sheetId: props.sheetId,
+          sourceSheetId: props.sourceId,
+          reader,
+          requestId: crypto.randomUUID(),
+          refresh,
+        });
+        if (id !== run.current) return;
+        setHasReading(true);
+        detection.warnings.forEach((w) => warnings.add(w));
+        if (detection.cached)
+          warnings.add(
+            "Reused the saved reading for this drawing. Read again requests a new reading.",
+          );
+        for (const tag of detection.tags) located.set(tag.tag, tag);
       }
-      setStatus("Checking job schedules and indexing destinations…");
-      const vocabulary =
-        await utils.drawingsWorkspace.autoHyperlinkSources.fetch(
-          { sheetId: props.sheetId },
-          { staleTime: 0 },
-        );
-      if (id !== run.current) return;
-      const tags = equipmentTagCandidates(
-        words,
-        [
-          { x: 0, y: 0 },
-          { x: 1, y: 1 },
-        ],
-        {
-          automatic: true,
-          knownTags: vocabulary.knownTags,
-          sheetNumbers: vocabulary.sheetNumbers,
-        },
-      );
+      const tags = [...located.keys()];
       if (!tags.length) {
+        setNotes([...warnings]);
         setStatus(
           "No equipment tags identified. Use Tools → Hyperlink to link a custom tag.",
         );
         return;
       }
-      const results: Match[] = [],
-        warnings = new Set(vocabulary.warnings);
+      const results: Match[] = [];
       let indexing = 0;
       for (let start = 0; start < tags.length; start += 200) {
         setStatus(
@@ -117,7 +184,8 @@ export function AutoHyperlinkDialog(props: {
         indexing = Math.max(indexing, result.pending);
         result.warnings.forEach((w) => warnings.add(w));
         for (const match of result.results) {
-          const boxes = equipmentTagLocations(words, match.tag),
+          const detection = located.get(match.tag);
+          const boxes = detection?.boxes ?? [],
             box = boxes[0];
           if (!box) continue;
           const links: DrawingMarkupLink[] = [...match.links];
@@ -145,10 +213,16 @@ export function AutoHyperlinkDialog(props: {
           results.push({
             tag: match.tag,
             box,
+            boxes,
+            needsPositionReview: detection?.needsPositionReview ?? false,
             links: unique,
             occurrences: boxes.length,
             existing,
-            selected: !existing && !overflow && unique.length > 0,
+            selected:
+              reader === "normal" &&
+              !existing &&
+              !overflow &&
+              unique.length > 0,
             overflow,
           });
         }
@@ -200,6 +274,19 @@ export function AutoHyperlinkDialog(props: {
               sourceSheetId: props.sourceId,
               type: "link",
               equipmentTag: row.tag,
+              hyperlinkReader: reader,
+              ...(reader !== "normal"
+                ? {
+                    equipmentTagBoxes: row.boxes.map(
+                      ({ left, top, right, bottom }) => ({
+                        left,
+                        top,
+                        right,
+                        bottom,
+                      }),
+                    ),
+                  }
+                : {}),
               points: [
                 { x: row.box.left, y: row.box.top },
                 { x: row.box.right, y: row.box.bottom },
@@ -270,6 +357,58 @@ export function AutoHyperlinkDialog(props: {
             tags.
           </DialogDescription>
         </DialogHeader>
+        <label className="grid gap-1 text-sm">
+          Version
+          <select
+            aria-label="Auto Hyperlink version"
+            className="bg-background h-11 w-full rounded border px-2"
+            value={reader}
+            disabled={busy}
+            onChange={(event) => {
+              const next = event.target.value as HyperlinkReader;
+              run.current++;
+              setReader(next);
+              setHasReading(false);
+              setRows([]);
+              setNotes([]);
+              setPending(0);
+              setStatus(
+                next === "normal"
+                  ? "Scan with the normal flow."
+                  : "Start a reading, review tag locations and destinations, then select the links to save.",
+              );
+            }}
+          >
+            {hyperlinkReaders.map((value) => (
+              <option key={value} value={value}>
+                {hyperlinkReaderLabels[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+        {reader !== "normal" && (
+          <p className="text-muted-foreground text-sm">
+            {readers?.[reader].available
+              ? "Reads tags from this drawing’s image. Check locations and select the links you want to save."
+              : readers
+                ? `${reader === "terra" ? "Terra" : "DeepSeek"} is not connected yet. Ask your administrator to connect it.`
+                : "Checking reader connection…"}
+          </p>
+        )}
+        {readerError && (
+          <p role="alert" className="text-sm">
+            {readerError}
+          </p>
+        )}
+        {reader !== "normal" && !readers?.[reader].available && (
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => void checkReaders()}
+          >
+            Check connection
+          </Button>
+        )}
         <div className="flex flex-wrap gap-2">
           <label className="min-w-0 flex-1 text-sm">
             Search scope
@@ -291,10 +430,16 @@ export function AutoHyperlinkDialog(props: {
           <Button
             className="self-end"
             variant="outline"
-            disabled={busy}
-            onClick={() => void scan()}
+            disabled={
+              busy || (reader !== "normal" && !readers?.[reader].available)
+            }
+            onClick={() => void scan(reader !== "normal" && hasReading)}
           >
-            Scan again
+            {reader === "normal"
+              ? "Scan again"
+              : hasReading
+                ? "Read again"
+                : `Scan with ${reader === "terra" ? "Terra" : "DeepSeek"}`}
           </Button>
         </div>
         <p role="status" className="text-sm">
@@ -380,8 +525,35 @@ export function AutoHyperlinkDialog(props: {
                           ? "Too many destinations; link manually"
                           : `${row.links.length} destinations`}
                   </span>
+                  {reader !== "normal" && (
+                    <span className="text-muted-foreground block text-xs">
+                      {row.needsPositionReview
+                        ? "Check image-based tag positions"
+                        : "Position matched to PDF text"}
+                    </span>
+                  )}
                 </span>
               </label>
+              {reader !== "normal" && (
+                <a
+                  className="mt-2 inline-block text-sm underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={
+                    equipmentDrawingDestination({
+                      jobId: props.jobId,
+                      setId: props.setId,
+                      sheetId: props.sheetId,
+                      sourceSheetId: props.sourceId,
+                      name: props.name,
+                      tag: row.tag,
+                      box: row.box,
+                    }).href
+                  }
+                >
+                  Review tag location
+                </a>
+              )}
               {row.error && (
                 <p role="alert" className="text-destructive text-sm">
                   {row.error}

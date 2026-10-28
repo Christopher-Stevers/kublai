@@ -2716,3 +2716,5 @@ export const materialSortPreferences = createTable("material_sort_preference", (
   settings: d.jsonb().notNull(),
   custom: d.boolean().notNull().default(false),
 }), (t) => [primaryKey({ columns: [t.organizationId, t.scope] })]);
+
+export { hyperlinkReaderRuns } from "../drawings/hyperlink-reader-schema";

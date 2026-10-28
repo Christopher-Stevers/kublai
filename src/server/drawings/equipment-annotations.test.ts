@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from "vitest";
 const index = vi.hoisted(() => vi.fn());
+const location = vi.hoisted(() => vi.fn());
 vi.mock("./equipment-index", () => ({
   equipmentIndex: index,
-  drawingPdfLocation: () => ({ file: "test.pdf", page: 1 }),
+  drawingPdfLocation: location,
 }));
 import {
   equipmentAnnotationPlan,
@@ -50,7 +51,9 @@ const entity = {
     ],
   },
 } as DrawingEntity;
-beforeEach(() =>
+beforeEach(() => {
+  location.mockReturnValue({ file: "test.pdf", page: 1 });
+  index.mockClear();
   index.mockResolvedValue({
     pages: [
       {
@@ -62,8 +65,8 @@ beforeEach(() =>
         ],
       },
     ],
-  }),
-);
+  });
+});
 it("creates a clickable annotation per exact occurrence, with shared links and a return link", async () => {
   const plan = await equipmentAnnotationPlan(
     entity,
@@ -201,4 +204,41 @@ it("makes common fixture tags clickable beyond fifty occurrences while keeping b
   );
   expect(plan).toHaveLength(80);
   expect(new Set(plan.map((item) => item.id)).size).toBe(80);
+});
+it("preserves reviewed image locations on the source without requiring PDF text", async () => {
+  location.mockReturnValue(undefined);
+  const second = { ...box, left: 0.6, right: 0.65 };
+  const updated = {
+    ...entity,
+    data: {
+      ...entity.data,
+      hyperlinkReader: "terra",
+      equipmentTagBoxes: [box, second],
+      points: [
+        { x: box.left, y: box.top },
+        { x: box.right, y: box.bottom },
+      ],
+      links: [{ label: "Submittal", url: "/jobs/test/documents/test" }],
+    },
+  } as DrawingEntity;
+  const plan = await equipmentAnnotationPlan(
+    updated,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(1);
+  expect(plan[0]).toMatchObject({
+    sheetId: id(1),
+    sourceSheetId: id(1),
+    points: [
+      { x: second.left, y: second.top },
+      { x: second.right, y: second.bottom },
+    ],
+  });
+  expect(index).not.toHaveBeenCalled();
+  // Never apply old image coordinates to a replacement source.
+  await expect(
+    equipmentAnnotationPlan(updated, id(10), sheets, async () => id(2)),
+  ).rejects.toThrow("no searchable PDF");
 });

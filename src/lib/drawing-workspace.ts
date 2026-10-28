@@ -112,6 +112,11 @@ export const drawingMarkupSchema = z
       .optional(),
     linkAppearance: z.enum(["box", "highlight"]).optional(),
     equipmentTag: z.string().trim().min(2).max(40).optional(),
+    hyperlinkReader: z.enum(["normal", "terra", "deepseek"]).optional(),
+    equipmentTagBoxes: z.array(z.object({
+      left: z.number().finite().min(0).max(1), top: z.number().finite().min(0).max(1),
+      right: z.number().finite().min(0).max(1), bottom: z.number().finite().min(0).max(1),
+    }).refine(box => box.right > box.left && box.bottom > box.top, "Invalid tag location")).min(1).max(600).optional(),
     equipmentOriginId: id.optional(),
     pipeComponent: z
       .object({

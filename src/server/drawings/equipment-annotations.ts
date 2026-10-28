@@ -60,6 +60,7 @@ export async function equipmentAnnotationPlan(
   if (!origin) return [];
   const links = drawingMarkupLinks(entity.data).map(withoutTagHighlight);
   const targets = new Set<string>();
+  if (entity.data.equipmentTagBoxes?.length) targets.add(entity.sheetId);
   for (const link of links) {
     if (!link.url) continue;
     const url = new URL(link.url, "https://snapshot.invalid");
@@ -108,25 +109,31 @@ export async function equipmentAnnotationPlan(
   for (const sheetId of [...targets].sort()) {
     const sourceSheetId = await currentSource(sheetId);
     const source = sheets.find((s) => s.id === sourceSheetId);
+    // Reviewed image readings retain all occurrences on their exact source.
+    // Other destination pages still derive positions from their own PDF text.
+    let boxes =
+      sheetId === entity.sheetId && sourceSheetId === entity.data.sourceSheetId
+        ? entity.data.equipmentTagBoxes
+        : undefined;
     const location = source && drawingPdfLocation(source.imageUrl, jobId);
-    if (!location)
+    if (!boxes && !location)
       throw new TRPCError({
         code: "BAD_REQUEST",
         message:
           "A linked drawing has no searchable PDF. Remove it or retry after its upload finishes.",
       });
-    const index = await equipmentIndex(location.file, "pdf");
-    const page = index.pages.find((p) => p.page === location.page);
-    if (!page)
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message:
-          "Could not search a linked drawing. Retry before saving the equipment links.",
-      });
-    for (const box of equipmentTagLocations(
-      page.words,
-      entity.data.equipmentTag,
-    )) {
+    if (!boxes && location) {
+      const index = await equipmentIndex(location.file, "pdf");
+      const page = index.pages.find((p) => p.page === location.page);
+      if (!page)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Could not search a linked drawing. Retry before saving the equipment links.",
+        });
+      boxes = equipmentTagLocations(page.words, entity.data.equipmentTag);
+    }
+    for (const box of boxes ?? []) {
       const points = [
         { x: box.left, y: box.top },
         { x: box.right, y: box.bottom },
