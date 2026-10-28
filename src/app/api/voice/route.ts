@@ -154,12 +154,31 @@ export async function POST(req: Request) {
           throw e;
         }
       }
-      delete s.pending;
       const text = body.audio
         ? await inferText({ mode: "transcribe", audio: body.audio })
         : body.text;
       if (!text?.trim())
         return reply({ text: "I didn’t catch that. Please try again." });
+      if (
+        s.pending &&
+        s.pending.expires > Date.now() &&
+        /^(?:yes|yeah|yep|okay|ok|confirm|apply|do it|no|nope|cancel|dismiss)[.!]?$/i.test(
+          text.trim(),
+        )
+      ) {
+        const dismiss = /^(no|nope|cancel|dismiss)/i.test(text.trim());
+        const proposal = dismiss
+          ? undefined
+          : { id: s.pending.id, summary: s.pending.summary };
+        if (dismiss) delete s.pending;
+        const answer = dismiss
+          ? "Dismissed. No change was applied."
+          : "Please tap Apply change on the preview. Your voice alone cannot apply edits.";
+        const speechId = randomUUID();
+        s.speech = { id: speechId, text: answer };
+        return reply({ transcript: text, text: answer, proposal, speechId });
+      }
+      delete s.pending;
       selectFromAnswer(s.evidence, text);
       const history = [...s.history.slice(-8), { role: "user", content: text }];
       const messages: Array<{ role: string; content: string }> = [
@@ -185,7 +204,7 @@ export async function POST(req: Request) {
             "Which job, list, or part do you mean, and what would you like me to do?";
           break;
         }
-        tool = completeNavigation(s.evidence, tool, body.page);
+        tool = completeNavigation(s.evidence, tool, body.page, text);
         if (tool.tool === "reply") {
           answer = tool.text;
           break;

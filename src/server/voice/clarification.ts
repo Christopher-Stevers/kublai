@@ -116,6 +116,7 @@ export function completeNavigation(
   e: Evidence,
   tool: VoiceTool,
   page: string,
+  request = "",
 ): VoiceTool {
   if (tool.tool !== "navigate" || tool.jobId) return tool;
   const jobPages = [
@@ -136,7 +137,14 @@ export function completeNavigation(
     e.selected.includes(c.id),
   );
   const pageJob = /^\/jobs\/([0-9a-f-]{36})(?:\/|$)/i.exec(page)?.[1];
-  const jobId = choices.length === 1 ? choices[0]!.id : pageJob;
+  const jobId =
+    /\b(this|current|here)\b/i.test(request) && pageJob
+      ? pageJob
+      : choices.length === 1
+        ? choices[0]!.id
+        : (e.groups.jobs?.length ?? 0) > 1
+          ? undefined
+          : pageJob;
   return jobId ? { ...tool, jobId } : tool;
 }
 

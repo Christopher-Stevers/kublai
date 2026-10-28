@@ -145,7 +145,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           setLevel(Math.min(1, rms * 12));
           timing.current.lastUI = now;
         }
-        if (live.current !== "listening") return;
+        if (live.current !== "listening" && live.current !== "review") return;
         // Keep a brief lead-in so the first consonant is not clipped.
         preroll.current.push(samples);
         while (preroll.current.length > Math.ceil((rate * 0.25) / 128))
@@ -466,7 +466,7 @@ export function VoiceCard() {
   const voice = useVoice();
   const sandbox = useTutorialSandbox();
   if (!voice || sandbox) return null;
-  const lit = voice.phase === "listening";
+  const lit = voice.phase === "listening" || voice.phase === "review";
   const active = voice.phase !== "off";
   return (
     <div className={styles.cardWrap}>

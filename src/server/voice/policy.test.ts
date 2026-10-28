@@ -243,3 +243,31 @@ it("asks for missing quantities without confusing a part size with an amount", (
     ]),
   ).toBeUndefined();
 });
+
+it("does not fall back to the current job when a named job is ambiguous", () => {
+  const e = newEvidence();
+  rememberCandidates(
+    e,
+    "jobs",
+    [
+      { id: a, name: "Alma 1" },
+      { id: b, name: "Alma 2" },
+    ],
+    "Open Alma",
+  );
+  expect(
+    completeNavigation(
+      e,
+      { tool: "navigate", destination: "drawings" },
+      "/jobs/" + a,
+    ),
+  ).not.toHaveProperty("jobId");
+  expect(
+    completeNavigation(
+      e,
+      { tool: "navigate", destination: "drawings" },
+      "/jobs/" + a,
+      "Open this job's drawings",
+    ),
+  ).toMatchObject({ jobId: a });
+});

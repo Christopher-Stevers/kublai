@@ -170,3 +170,25 @@ it("does not accept client-supplied mutation payloads on confirm", async () => {
   ).toBe(400);
   expect(m.execute).not.toHaveBeenCalled();
 });
+
+it("spoken yes preserves the preview and never executes it", async () => {
+  const sessionId = await start();
+  m.infer.mockResolvedValue(
+    '{"tool":"change","action":"createJob","name":"Test"}',
+  );
+  const first = await call({
+    action: "turn",
+    sessionId,
+    text: "Create job Test",
+    page: "/jobs",
+  });
+  const yes = await call({
+    action: "turn",
+    sessionId,
+    text: "Yes",
+    page: "/jobs",
+  });
+  expect(yes.proposal.id).toBe(first.proposal.id);
+  expect(yes.text).toContain("tap");
+  expect(m.execute).not.toHaveBeenCalled();
+});
