@@ -152,6 +152,11 @@ export async function receivingQueue(
         createdAt: d.createdAt,
         createdBy: d.createdBy,
         order: d.packingSlip,
+        hasSuggestedOrder:
+          !r?.orderConfirmed &&
+          !r?.retiredBy &&
+          r?.duplicateDecision?.action !== "supporting" &&
+          (!!d.packingSlip || !!a?.orderCandidates?.length),
         status: r?.retiredBy
           ? "replaced"
           : r?.duplicateDecision?.action === "supporting"

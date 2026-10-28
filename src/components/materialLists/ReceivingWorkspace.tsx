@@ -60,6 +60,7 @@ type Entry = {
   pending: number | null;
   approved: number;
   reviewTrialRunId?: string;
+  hasSuggestedOrder?: boolean;
 };
 type Option = { id: string; name: string };
 type Part = {
@@ -217,6 +218,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [showAll, setShowAll] = useState(false),
+    [suggestedFirst, setSuggestedFirst] = useState(true),
     [search, setSearch] = useState(""),
     [notice, setNotice] = useState(""),
     [progress, setProgress] = useState(true),
@@ -570,6 +572,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               />
               Show completed
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={suggestedFirst}
+                onChange={(e) => setSuggestedFirst(e.target.checked)}
+              />
+              Suggested order matches first
+            </label>
           </div>
           <p className="text-muted-foreground mb-3 text-sm">
             {
@@ -595,6 +605,12 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     .toLowerCase()
                     .includes(search.toLowerCase()),
               )
+              .sort((a, b) =>
+                suggestedFirst
+                  ? Number(!!b.hasSuggestedOrder) -
+                    Number(!!a.hasSuggestedOrder)
+                  : 0,
+              )
               .map((d) => (
                 <button
                   key={d.id}
@@ -608,6 +624,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       {d.order?.orderNumber ?? "Order not linked"} ·{" "}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </span>
+                    {d.hasSuggestedOrder && (
+                      <span className="block text-xs text-sky-700 dark:text-sky-300">
+                        Suggested order match · needs confirmation
+                      </span>
+                    )}
                     {trial?.cases.find((c) => c.documentId === d.id) && (
                       <span className="text-muted-foreground block text-xs">
                         Fresh trial ·{" "}

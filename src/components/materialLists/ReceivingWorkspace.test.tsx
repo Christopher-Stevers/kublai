@@ -10,9 +10,10 @@ import {
 } from "@testing-library/react";
 import { ReceivingWorkspace } from "./ReceivingWorkspace";
 const push = vi.fn();
+const navigation = vi.hoisted(() => ({ query: "document=doc" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
-  useSearchParams: () => new URLSearchParams("document=doc"),
+  useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("~/components/jobs/documents/DocumentPdfPreview", () => ({
@@ -104,6 +105,7 @@ function fixture() {
 }
 let state: ReturnType<typeof fixture>, posts: Array<Record<string, unknown>>;
 beforeEach(() => {
+  navigation.query = "document=doc";
   posts = [];
   state = fixture();
 
@@ -260,4 +262,57 @@ it("asks to allow over-delivery only when a line exceeds what is due", async () 
     action: "approve",
     allowOverDelivery: true,
   });
+});
+
+it("puts suggested order matches first and can restore newest-first order", async () => {
+  navigation.query = "";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        documents: [
+          {
+            id: "new",
+            name: "New unresolved slip",
+            createdAt: "2026-10-27",
+            status: "review",
+            pending: 1,
+            approved: 0,
+            hasSuggestedOrder: false,
+          },
+          {
+            id: "suggested",
+            name: "Older suggested slip",
+            createdAt: "2026-10-26",
+            status: "review",
+            pending: 1,
+            approved: 0,
+            hasSuggestedOrder: true,
+          },
+        ],
+      }),
+    ),
+  );
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText("Older suggested slip");
+  const names = () =>
+    screen
+      .getAllByRole("button")
+      .map((b) => b.textContent)
+      .filter(
+        (t) => t?.includes("unresolved slip") || t?.includes("suggested slip"),
+      );
+  expect(names()[0]).toContain("Older suggested slip");
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Suggested order matches first" }),
+  );
+  expect(names()[0]).toContain("New unresolved slip");
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Search packing slips" }),
+    { target: { value: "Older" } },
+  );
+  expect(screen.queryByText("New unresolved slip")).not.toBeInTheDocument();
+  expect(
+    screen.getByText("Suggested order match · needs confirmation"),
+  ).toBeInTheDocument();
 });
