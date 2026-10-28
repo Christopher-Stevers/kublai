@@ -597,7 +597,10 @@ export function bandsFromTable(lines: SlipLine[]): Band[] {
       prev &&
       prev.page === line.page &&
       prev.num !== null &&
-      (!num || Number(num) !== prev.num + 1)
+      !num &&
+      !line.sku &&
+      line.shipped === null &&
+      line.ordered == null
     ) {
       prev.bottom = Math.max(prev.bottom, line.box.y + line.box.height);
       prev.evidence += ` / ${line.evidence}`;
@@ -720,6 +723,9 @@ export async function readSlipImages(input: {
   expectFooter?: boolean;
 }) {
   const { pages, rows, items, ask = askJev } = input;
+  // Full-page preparation is shared by layout, footer and coverage checks.
+  // Crops still use the original image; never repeatedly encode the full page.
+  const preparedPages = await Promise.all(pages.map((png) => prepared(png)));
   const warnings: string[] = [];
   // Totals sit on the last page; every page with text needs its image.
   if (Math.max(0, ...rows.map((r) => r.page)) > pages.length)
@@ -728,7 +734,7 @@ export async function readSlipImages(input: {
   const pageInfo = await limited(
     pages.map((png, i) => async () => {
       const page = i + 1;
-      const image = await prepared(png);
+      const image = preparedPages[i]!;
       const a = await ask(
         { page: image },
         pageQuestions(page === pages.length),
@@ -779,8 +785,8 @@ export async function readSlipImages(input: {
   // Each page read whole, per order item, checks the line readings.
   const readItems = () =>
     Promise.all(
-      pages.map(async (png) => {
-        const image = await prepared(png);
+      pages.map(async (_png, pageIndex) => {
+        const image = preparedPages[pageIndex]!;
         const answers: Record<number, ChoiceAnswer | undefined> = {};
         for (let start = 0; start < items.length; start += 30) {
           const chunk = items.slice(start, start + 30);
@@ -838,7 +844,7 @@ export async function readSlipImages(input: {
       continue;
     }
     const located = await ask(
-      { page: await prepared(pages[info.page - 1]!) },
+      { page: preparedPages[info.page - 1]! },
       Object.fromEntries(
         Array.from({ length: n }, (_, k) => [
           `row${k + 1}`,
@@ -1022,6 +1028,51 @@ export async function readSlipImages(input: {
         );
       };
       const product = edges(info.answers.product);
+      // Preserve the source's wording even when its product is absent from
+      // the candidate order. Choice answers must not substitute a catalog name
+      // for a transcription. Unclear OCR remains flagged for a better reader.
+      if (!band.table?.description && product) {
+        const sourceWords = rows
+          .filter((r) => r.page === band.page)
+          .flatMap((r) => r.words)
+          .filter((w) => {
+            const x = w.x + w.width / 2,
+              y = w.y + w.height / 2;
+            return (
+              y >= band.top &&
+              y < band.bottom &&
+              x >= product.left &&
+              x <= product.right
+            );
+          });
+        if (sourceWords.length) {
+          const description = sourceWords
+            .map((w) => w.text)
+            .join(" ")
+            .slice(0, 400);
+          band.table = {
+            ...(band.table ?? {
+              page: band.page,
+              evidence: band.evidence,
+              orderItemId: null,
+              shipped: null,
+              backordered: null,
+              unit: null,
+              proposed: null,
+              issues: [],
+            }),
+            description,
+            fieldEvidence: {
+              description: {
+                kind: "printed",
+                text: description,
+                confidence:
+                  Math.min(...sourceWords.map((w) => w.confidence)) / 100,
+              },
+            },
+          };
+        }
+      }
       const text = ocrText(rows, band.page, band.top, band.bottom);
       const cells = {
         shippedCell: await cell("shipped"),
@@ -1687,6 +1738,12 @@ export function checkAgainstOrder(
       `Read from the slip image: product ${sure} sure, shipped ${Math.round(shippedConf * 100)}% sure.`,
     );
     const table = r.band.table;
+    if (!item && (table?.fieldEvidence?.description?.confidence ?? 1) < 0.75) {
+      issues.push(
+        "Description only partly readable in the source text; check the image before creating or matching a product.",
+      );
+      proposed = null;
+    }
     const box: SlipBox = {
       x: 0,
       y: r.band.top,
@@ -1725,10 +1782,34 @@ export function checkAgainstOrder(
         : undefined,
       confidenceDetails: {
         part: r.partConf,
+        match: r.partConf,
         quantity: shippedConf,
         backordered: backorderedConf,
         basis: "provider_composite",
         productProbabilities: r.probabilities,
+        reason:
+          "Provider product-match estimate; not independent transcription accuracy. Quantity combines image views and consistency checks.",
+      },
+      fieldEvidence: {
+        description: table?.fieldEvidence?.description ?? {
+          kind: table?.description ? "printed" : "unread",
+          text: table?.description,
+        },
+        shipped: {
+          kind:
+            r.shipped === null
+              ? "unread"
+              : r.notes.some((n) =>
+                    /marked over|ordered and backordered/.test(n),
+                  )
+                ? "derived"
+                : "image",
+          confidence: shippedConf,
+        },
+        backordered: {
+          kind: r.backordered === null ? "unread" : "image",
+          confidence: backorderedConf,
+        },
       },
       candidates: candidates?.length ? candidates : undefined,
       ...(r.handwritten !== null ? { handwritten: r.handwritten } : {}),

@@ -41,6 +41,7 @@ import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
 import { reserveTerra } from "./production-cascade";
+import {jobOrders} from "./find-order-service";
 import { saveDocumentVersion } from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
@@ -213,6 +214,16 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   afterAll(() => conn.end());
   const workspace = async () =>
     (await db.select().from(schema.jobDocumentWorkspaces))[0]!.state;
+
+  it("freezes the actual order unit and pack conversion in job matching candidates", async () => {
+    const access = await assertDocumentAccess("receiver", job, db);
+    await db.update(schema.units).set({code: "ft"}).where(eq(schema.units.id, id(51)));
+    await db.update(schema.orderItems).set({uomId: id(51)}).where(eq(schema.orderItems.id, id(6)));
+    expect((await jobOrders(access))[0]!.slip.items[0]!.unit).toBe("ft");
+    await db.update(schema.partDefinitions).set({piecesPerPack: 50, bulkUnit: "box", individualUnit: "ea"}).where(eq(schema.partDefinitions.id, id(5)));
+    expect((await jobOrders(access))[0]!.slip.items[0]).toMatchObject({unit: "box", piecesPerPack: 50, individualUnit: "ea"});
+    expect(await jobOrders({...access, job: {...access.job, id: id(999)}})).toEqual([]);
+  });
 
   it("reserves Terra spending durably and never repeats an uncertain paid attempt", async () => {
     vi.stubEnv("PACKING_SLIP_TERRA_DAILY_USD", "1");

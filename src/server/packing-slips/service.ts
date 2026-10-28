@@ -1,5 +1,16 @@
-import { withSlipTrace, traceUsage, READER_VERSION } from "./trace";
-import { draftReceiving, mergeReading, seedPreviousReceipt } from "./review-draft";
+import {
+  withSlipTrace,
+  traceUsage,
+  READER_VERSION,
+  captureDetectionInput,
+  recordPipelineStage,
+} from "./trace";
+import { blindItems } from "./detection-record";
+import {
+  draftReceiving,
+  mergeReading,
+  seedPreviousReceipt,
+} from "./review-draft";
 import { separateBackground } from "~/server/background/mode";
 import { packingSlipJobs } from "~/server/background/packing-schema";
 import {
@@ -341,7 +352,16 @@ export async function startSlipAnalysis(
           reusedFromDocument: same.id,
           source: { sha256: version.sha256, mimeType: version.mimeType },
         });
-        return null;
+        return {
+          analysis: copy,
+          version,
+          orderId: order?.id ?? null,
+          materialListId: null,
+          cachedFrom: {
+            documentId: same.id,
+            runId: same.packingSlipAnalysis.runId,
+          },
+        };
       }
       // Detection is read-only with respect to receiving. A reviewed adjustment
       // is the only operation allowed to change an already approved receipt.
@@ -409,10 +429,42 @@ export async function startSlipAnalysis(
         version,
         orderId: order?.id ?? null,
         materialListId: null,
+        cachedFrom: null,
       };
     },
   );
   if (!task) return;
+  if (task.cachedFrom) {
+    await withSlipTrace(
+      access.job.organizationId,
+      task.analysis.runId,
+      async () => {
+        await captureDetectionInput(
+          {
+            organizationId: access.job.organizationId,
+            jobId: access.job.id,
+            documentId,
+            versionId: task.version.id,
+            source: {
+              sha256: task.version.sha256,
+              mimeType: task.version.mimeType,
+              name: task.version.name,
+            },
+            sourceWarnings: [
+              "Reused prediction: follow reusedFrom to the original evidence. No new extraction or model call.",
+            ],
+            candidatePoolComplete: false,
+            orders: [],
+            provenance: "cached-reading",
+            reusedFrom: task.cachedFrom,
+          },
+          [],
+        );
+        await recordPipelineStage("final-reading", task.analysis);
+      },
+    );
+    return;
+  }
   if (task.materialListId)
     publishMaterialListEvent(
       task.materialListId,
@@ -492,11 +544,49 @@ async function performSlipTask(
       task.version.sha256,
       task.version.mimeType,
     );
+    const { jobOrders, identifySlipOrder } =
+      await import("./find-order-service");
+    const options = await jobOrders(access);
+    await captureDetectionInput(
+      {
+        organizationId: access.job.organizationId,
+        jobId: access.job.id,
+        documentId,
+        versionId: task.version.id,
+        source: {
+          sha256: task.version.sha256,
+          mimeType: task.version.mimeType,
+          name: task.version.name,
+        },
+        sourceWarnings: extracted.warnings,
+        candidatePoolComplete: options.length < 2000,
+        orders: options.map((o) => ({
+          id: o.option.id,
+          orderNumber: o.option.orderNumber,
+          supplier: o.option.supplier,
+          items: blindItems(
+            o.option.id === task.orderId ? task.analysis.items : o.slip.items,
+          ),
+        })),
+        provenance: "captured-before-reading",
+      },
+      extracted.pages,
+    );
+    await recordPipelineStage("extraction", {
+      rows: extracted.rows,
+      warnings: extracted.warnings,
+      pageCount: extracted.pages.length,
+    });
     const identified = !task.orderId
-      ? await import("./find-order-service").then((m) =>
-          m.identifySlipOrder(access, documentId),
-        )
+      ? await identifySlipOrder(access, documentId, undefined, {
+          orders: options,
+          extracted,
+        })
       : null;
+    await recordPipelineStage("order-match", {
+      linkedOrderId: task.orderId,
+      identified,
+    });
     let suggested = identified?.orders.find((o) => o.id === identified.match);
     if (suggested) {
       const { db } = await import("~/server/db");
@@ -511,58 +601,136 @@ async function performSlipTask(
             )
             .catch(() => undefined)
         : undefined;
+    // Retained for reproducing the production cascade, excluded from the
+    // independent reader input. Receipt history is operational context.
+    await recordPipelineStage("operational-context", {
+      items: task.analysis.items,
+      memory,
+    });
     const cheap = await analyzeSlip(
       extracted.rows,
       task.analysis.items,
       undefined,
       { pages: extracted.pages, memory, onProgress: report },
     ).catch(async () => {
-      const fallback = await analyzeSlip(extracted.rows, task.analysis.items, undefined, { pages: [], models: false });
-      fallback.warnings.push("Jev could not finish the image reading; the OCR result was preserved.");
+      const fallback = await analyzeSlip(
+        extracted.rows,
+        task.analysis.items,
+        undefined,
+        { pages: [], models: false },
+      );
+      fallback.warnings.push(
+        "Jev could not finish the image reading; the OCR result was preserved.",
+      );
       return fallback;
     });
     const result = await productionCascade({
-      scope: { runId: task.analysis.runId, organizationId: access.job.organizationId, jobId: access.job.id, documentId, versionId: task.version.id, sourceHash: task.version.sha256 },
+      scope: {
+        runId: task.analysis.runId,
+        organizationId: access.job.organizationId,
+        jobId: access.job.id,
+        documentId,
+        versionId: task.version.id,
+        sourceHash: task.version.sha256,
+      },
       base: cheap,
       pages: extracted.pages,
       unresolvedOrder: !readingOrderId && !!identified?.orders.length,
       assertCurrent: async () => {
-        const current = await mutateWorkspace(access.user.id, access.job.id, async (state, actor, fresh, tx) => {
-          if (!userCan(fresh.user, "orders.receive")) return false;
-          const doc = accessibleDocument(state, actor, documentId);
-          return (!claim || await ownsPackingSlip(tx, claim)) && doc.currentVersionId === task.version.id && doc.packingSlipAnalysis?.runId === task.analysis.runId && (doc.packingSlip?.orderId ?? null) === task.orderId;
-        });
-        if (!current) throw Error("The source, access, or processing owner changed.");
+        const current = await mutateWorkspace(
+          access.user.id,
+          access.job.id,
+          async (state, actor, fresh, tx) => {
+            if (!userCan(fresh.user, "orders.receive")) return false;
+            const doc = accessibleDocument(state, actor, documentId);
+            return (
+              (!claim || (await ownsPackingSlip(tx, claim))) &&
+              doc.currentVersionId === task.version.id &&
+              doc.packingSlipAnalysis?.runId === task.analysis.runId &&
+              (doc.packingSlip?.orderId ?? null) === task.orderId
+            );
+          },
+        );
+        if (!current)
+          throw Error("The source, access, or processing owner changed.");
       },
-      progress: message => report({ stage: "checking", message, lines: cheap.lines }),
+      progress: (message) =>
+        report({ stage: "checking", message, lines: cheap.lines }),
       context: async () => {
-        const { jobOrders } = await import("./find-order-service");
-        const options = await jobOrders(access);
-        const ids = readingOrderId ? [readingOrderId] : identified?.candidates ?? [];
+        const ids = readingOrderId
+          ? [readingOrderId]
+          : (identified?.candidates ?? []);
         // Include all candidates when bounded; otherwise use the cheap reader's
         // shortlist and explicitly permit abstention for an incomplete pool.
-        let candidates = readingOrderId ? options.filter(o => ids.includes(o.option.id)) : options;
-        const data = () => candidates.map(o => ({
-          id: o.option.id, orderNumber: o.option.orderNumber, supplier: o.option.supplier,
-          items: (o.option.id === readingOrderId ? task.analysis.items : o.slip.items).map(({ id, description, sku, aliases, ordered, unit }) => ({ id, description, sku, aliases, ordered, unit })),
-        }));
-        if (JSON.stringify(data()).length > 85000) candidates = candidates.filter(o => ids.includes(o.option.id));
+        let candidates = readingOrderId
+          ? options.filter((o) => ids.includes(o.option.id))
+          : options;
+        const data = () =>
+          candidates.map((o) => ({
+            id: o.option.id,
+            orderNumber: o.option.orderNumber,
+            supplier: o.option.supplier,
+            items: (o.option.id === readingOrderId
+              ? task.analysis.items
+              : o.slip.items
+            ).map(({ id, description, sku, aliases, ordered, unit }) => ({
+              id,
+              description,
+              sku,
+              aliases,
+              ordered,
+              unit,
+            })),
+          }));
+        if (JSON.stringify(data()).length > 85000)
+          candidates = candidates.filter((o) => ids.includes(o.option.id));
         return {
-          orders: data(), candidatePoolComplete: candidates.length === options.length,
+          orders: data(),
+          candidatePoolComplete: candidates.length === options.length,
           linkedOrderId: readingOrderId ?? null,
-          reasons: escalationPlan(cheap, !readingOrderId && !!identified?.orders.length).reasons,
-          earlierLines: cheap.lines.map(({ page, evidence, orderItemId, shipped, backordered, unit, box, issues, confidenceDetails }) => ({ page, evidence, orderItemId, shipped, backordered, unit, box, issues, confidenceDetails })),
+          reasons: escalationPlan(
+            cheap,
+            !readingOrderId && !!identified?.orders.length,
+          ).reasons,
+          earlierLines: cheap.lines.map(
+            ({
+              page,
+              evidence,
+              orderItemId,
+              shipped,
+              backordered,
+              unit,
+              box,
+              issues,
+              confidenceDetails,
+            }) => ({
+              page,
+              evidence,
+              orderItemId,
+              shipped,
+              backordered,
+              unit,
+              box,
+              issues,
+              confidenceDetails,
+            }),
+          ),
         };
       },
     });
     if (!readingOrderId && result.suggestedOrderId) {
-      suggested = identified?.orders.find(o => o.id === result.suggestedOrderId);
+      suggested = identified?.orders.find(
+        (o) => o.id === result.suggestedOrderId,
+      );
       if (suggested) {
         const { db } = await import("~/server/db");
         task.analysis.items = await orderSnapshot(db, access, suggested.id);
-        result.warnings.push("Terra suggested this order. Confirm the order identity against the source before approving.");
+        result.warnings.push(
+          "Terra suggested this order. Confirm the order identity against the source before approving.",
+        );
       }
     }
+    await recordPipelineStage("final-reading", result);
     await mutateWorkspace(
       access.user.id,
       access.job.id,
@@ -616,7 +784,14 @@ async function performSlipTask(
             seedPreviousReceipt(doc);
           }
         } else {
-          doc.receivingReview = mergeReading(doc.receivingReview,draftReceiving(doc.packingSlipAnalysis,fresh.user.id,extracted.rows));
+          doc.receivingReview = mergeReading(
+            doc.receivingReview,
+            draftReceiving(
+              doc.packingSlipAnalysis,
+              fresh.user.id,
+              extracted.rows,
+            ),
+          );
         }
         await recordReviewHistory(
           tx,
@@ -637,6 +812,12 @@ async function performSlipTask(
     );
     return false;
   } catch (error) {
+    await recordPipelineStage("failure", {
+      message:
+        error instanceof Error
+          ? error.message.slice(0, 250)
+          : "Analysis failed",
+    });
     await mutateWorkspace(
       access.user.id,
       access.job.id,
@@ -787,7 +968,11 @@ export async function clearSlipAnalysis(
         );
       if (doc.receivingReview) {
         doc.receivingReview.lines = doc.receivingReview.lines.filter(
-          (l) => !!l.approved || !!l.ignored || l.humanEdited === true || l.checked === true,
+          (l) =>
+            !!l.approved ||
+            !!l.ignored ||
+            l.humanEdited === true ||
+            l.checked === true,
         );
         doc.receivingReview.revision++;
         doc.receivingReview.documentChecked = false;

@@ -15,6 +15,17 @@ export type ReceiptOrderItem = {
   individualUnit: string | null;
 };
 export type SlipLine = {
+  /** Source readings kept distinct from calculated suggestions. */
+  fieldEvidence?: Partial<
+    Record<
+      "ordered" | "shipped" | "backordered" | "unit" | "description",
+      {
+        kind: "printed" | "derived" | "unread" | "image";
+        text?: string;
+        confidence?: number;
+      }
+    >
+  >;
   /** Uncalibrated evidence scores, retained separately from human decisions. */
   confidenceDetails?: {
     part: number;
@@ -66,7 +77,13 @@ export type SlipProgress = {
 export type SlipAnalysis = {
   cascade?: {
     policy: string;
-    status: "not-needed" | "completed" | "unavailable" | "budget-limited" | "failed" | "interrupted";
+    status:
+      | "not-needed"
+      | "completed"
+      | "unavailable"
+      | "budget-limited"
+      | "failed"
+      | "interrupted";
     reasons: string[];
     lineIndexes: number[];
     model?: string;

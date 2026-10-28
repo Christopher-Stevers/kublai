@@ -1,4 +1,4 @@
-import {recordModelCall, recordPipelineStage} from "./trace";
+import { recordModelCall, recordPipelineStage } from "./trace";
 import { z } from "zod";
 import {
   convertSlipQuantity,
@@ -15,7 +15,8 @@ import {
   type TableLine,
 } from "./read-table";
 import { matchLines } from "./match";
-import { readSlipImages, type VisionAsk } from "./vision";
+import { recoverProductRows } from "./recover-rows";
+import { readSlipImages, VISION_MODEL, type VisionAsk } from "./vision";
 type Question = {
   type: "choice";
   instructions: unknown;
@@ -39,23 +40,59 @@ export const evaluate: Evaluator = async (state, questions) => {
     throw Error(
       "Packing-slip analysis is not configured. Your PDF is saved; verify the order manually.",
     );
-  const started=Date.now();
+  const started = Date.now();
   const response = await fetch("https://api.typesafe.ai/v1/systemone", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: "jev-latest", state, questions }),
+    body: JSON.stringify({ model: VISION_MODEL, state, questions }),
     signal: AbortSignal.timeout(45000),
+  }).catch(async () => {
+    await recordModelCall({
+      model: VISION_MODEL,
+      inputs: { state: JSON.stringify(state) },
+      questions,
+      response: { errorStatus: 0 },
+      durationMs: Date.now() - started,
+    });
+    throw Error(
+      "Text reading was interrupted. Your PDF is saved; retry analysis.",
+    );
   });
-  if (!response.ok)
+  if (!response.ok) {
+    await recordModelCall({
+      model: VISION_MODEL,
+      inputs: { state: JSON.stringify(state) },
+      questions,
+      response: { errorStatus: response.status },
+      durationMs: Date.now() - started,
+    });
     throw Error(
       "Packing-slip analysis is temporarily unavailable. Your PDF is saved; retry analysis.",
     );
-  const raw:unknown=await response.json();
-  await recordModelCall({model:"jev-latest",inputs:{state:JSON.stringify(state)},questions,response:raw,durationMs:Date.now()-started});
-  const parsed = z.object({ model: z.string(), answers: z.record(z.string(), answer) }).parse(raw);
+  }
+  const raw: unknown = await response.json().catch(async () => {
+    await recordModelCall({
+      model: VISION_MODEL,
+      inputs: { state: JSON.stringify(state) },
+      questions,
+      response: { errorStatus: response.status, invalidJson: true },
+      durationMs: Date.now() - started,
+    });
+    throw Error("Text reading returned an invalid response. Please retry.");
+  });
+  await recordModelCall({
+    model: VISION_MODEL,
+    inputs: { state: JSON.stringify(state) },
+    questions,
+    response: raw,
+    durationMs: Date.now() - started,
+  });
+  const parsed = z
+    .object({ model: z.string(), answers: z.record(z.string(), answer) })
+    .parse(raw);
   for (const [id, q] of Object.entries(questions)) {
     const a = parsed.answers[id];
     if (!a || !(a.choice in q.criteria))
@@ -375,6 +412,31 @@ async function assistRows(
       lines.push({
         page: row.page,
         evidence: row.text,
+        description: row.text,
+        box: {
+          x: Math.min(...row.words.map((w) => w.x)),
+          y: Math.min(...row.words.map((w) => w.y)),
+          width:
+            Math.max(...row.words.map((w) => w.x + w.width)) -
+            Math.min(...row.words.map((w) => w.x)),
+          height:
+            Math.max(...row.words.map((w) => w.y + w.height)) -
+            Math.min(...row.words.map((w) => w.y)),
+        },
+        confidenceDetails: {
+          part: Math.min(...row.words.map((w) => w.confidence)) / 100,
+          match: !item ? 0 : exact.length === 1 ? 1 : match.confidence,
+          quantity:
+            shipped === null
+              ? 0
+              : Math.min(
+                  get("shipped").confidence,
+                  ...row.words.map((w) => w.confidence / 100),
+                ),
+          basis: "provider_composite",
+          reason:
+            "Source OCR confidence, typed value choice and deterministic exact-code matching; uncalibrated.",
+        },
         orderItemId: item?.id ?? null,
         shipped,
         backordered,
@@ -385,7 +447,13 @@ async function assistRows(
         source: "assistant",
       });
     }
-    await onProgress?.({ stage: "matching", message: "Reading text rows and matching order parts…", completed: Math.min(offset + batch.length, 150), total: Math.min(candidates.length, 150), lines: structuredClone(lines) });
+    await onProgress?.({
+      stage: "matching",
+      message: "Reading text rows and matching order parts…",
+      completed: Math.min(offset + batch.length, 150),
+      total: Math.min(candidates.length, 150),
+      lines: structuredClone(lines),
+    });
   }
   return { lines, warnings, model };
 }
@@ -521,7 +589,10 @@ function tableLines(
         0,
         Math.round((ordered - previous - shipped) * 1e6) / 1e6,
       );
-    if(shipped!==null && shipped<0) issues.push("Negative quantity: confirm this return and its disposition.");
+    if (shipped !== null && shipped < 0)
+      issues.push(
+        "Negative quantity: confirm this return and its disposition.",
+      );
     if (unclearColumns(layout))
       issues.push(
         "The slip's quantity columns could not be told apart. Check shipped against the slip.",
@@ -559,7 +630,10 @@ function tableLines(
         matchIssue("Check the product: the description only partly matches.");
       else if (match.confidence === "medium")
         notes.push("Matched by description. Check it is the same product.");
-      if (!unit) issues.push("Quantity unit is not printed. Confirm the unit before receiving.");
+      if (!unit)
+        issues.push(
+          "Quantity unit is not printed. Confirm the unit before receiving.",
+        );
       if (
         ordered !== null &&
         Math.abs(ordered - item.ordered) > 1e-6 &&
@@ -633,11 +707,62 @@ function tableLines(
       description: description || undefined,
       confidence: item ? match.confidence : undefined,
       confidenceDetails: {
-        part: Math.min(100, ...[...(line.cells.description ?? []), ...(line.cells.sku ?? [])].map(w => w.confidence)) / 100,
-        quantity: shipped === null ? 0 : q.shipped.value === null ? 0.5 : q.shipped.confidence / 100,
-        match: !item ? 0 : match.confidence === "high" ? 0.95 : match.confidence === "medium" ? 0.7 : 0.4,
+        part:
+          Math.min(
+            100,
+            ...[
+              ...(line.cells.description ?? []),
+              ...(line.cells.sku ?? []),
+            ].map((w) => w.confidence),
+          ) / 100,
+        quantity:
+          shipped === null
+            ? 0
+            : q.shipped.value === null
+              ? 0.5
+              : q.shipped.confidence / 100,
+        match: !item
+          ? 0
+          : match.confidence === "high"
+            ? 0.95
+            : match.confidence === "medium"
+              ? 0.7
+              : 0.4,
         basis: "ocr_and_rules" as const,
-        reason: "OCR word confidence and rule-based matching estimates; not measured accuracy.",
+        reason:
+          "OCR word confidence and rule-based matching estimates; not measured accuracy.",
+      },
+      fieldEvidence: {
+        ordered: {
+          kind: ordered === null ? "unread" : "printed",
+          text: words(line.cells, "ordered"),
+          confidence: q.ordered.confidence / 100,
+        },
+        shipped: {
+          kind:
+            shipped === null
+              ? "unread"
+              : q.shipped.value === null
+                ? "derived"
+                : "printed",
+          text: words(line.cells, has("shipped") ? "shipped" : "qty"),
+          confidence: q.shipped.value === null ? 0 : q.shipped.confidence / 100,
+        },
+        backordered: {
+          kind:
+            backordered === null
+              ? "unread"
+              : q.backordered.value === null
+                ? "derived"
+                : "printed",
+          text: words(line.cells, "backordered"),
+          confidence:
+            q.backordered.value === null ? 0 : q.backordered.confidence / 100,
+        },
+        description: {
+          kind: description ? "printed" : "unread",
+          text: description,
+        },
       },
       candidates: item ? undefined : match.candidates,
       source: "table" as const,
@@ -662,11 +787,26 @@ export async function analyzeSlip(
   if (items.length > 200)
     throw Error("This order has more than 200 lines. Verify it manually.");
   const warnings: string[] = [];
-  await images?.onProgress?.({ stage: "matching", message: "Finding printed lines and matching parts to the order…" });
+  await images?.onProgress?.({
+    stage: "matching",
+    message: "Finding printed lines and matching parts to the order…",
+  });
   const table = readSlipTable(rows);
-  let lines = tableLines(table, items),
-    model = table.layouts.length ? "table reader" : "";
-  await recordPipelineStage("ocr", { rows, lines, layouts: table.layouts, unreadRows: table.unread.length });
+  let lines = [
+      ...tableLines(table, items),
+      ...recoverProductRows(table.unread, items),
+    ].sort((a, b) => a.page - b.page || (a.box?.y ?? 0) - (b.box?.y ?? 0)),
+    model = table.layouts.length
+      ? "table reader"
+      : lines.length
+        ? "OCR row recovery"
+        : "";
+  await recordPipelineStage("ocr", {
+    rows,
+    lines,
+    layouts: table.layouts,
+    unreadRows: table.unread.length,
+  });
   let headers: Array<{ page: number; box: SlipBox; printedOn?: number }> =
     table.layouts.map((l) => ({
       page: l.page,
@@ -674,9 +814,26 @@ export async function analyzeSlip(
       printedOn: table.layouts.find((x) => x.header === l.header)!.page,
     }));
   const canRead = Boolean(
-    images?.models !== false && images?.pages.length && (images.ask ?? process.env.TYPESAFE_API_KEY),
+    images?.models !== false &&
+    images?.pages.length &&
+    (images.ask ?? process.env.TYPESAFE_API_KEY),
   );
-  const deterministic = lines.length>0 && table.unread.length===0 && rows.every(r=>r.words.every(w=>w.confidence===100)) && lines.every(l=>l.orderItemId && l.proposed!==null && !l.issues.length && l.sku && items.some(i=>i.id===l.orderItemId&&i.sku?.trim().toUpperCase()===l.sku!.trim().toUpperCase()));
+  const deterministic =
+    lines.length > 0 &&
+    table.unread.length === 0 &&
+    rows.every((r) => r.words.every((w) => w.confidence === 100)) &&
+    lines.every(
+      (l) =>
+        l.orderItemId &&
+        l.proposed !== null &&
+        !l.issues.length &&
+        l.sku &&
+        items.some(
+          (i) =>
+            i.id === l.orderItemId &&
+            i.sku?.trim().toUpperCase() === l.sku!.trim().toUpperCase(),
+        ),
+    );
   const vision =
     images && canRead && !deterministic
       ? await readSlipImages({
@@ -706,8 +863,17 @@ export async function analyzeSlip(
     model = vision.model;
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
-  } else if (images?.models !== false && !table.layouts.length && (process.env.TYPESAFE_API_KEY || run!==evaluate)) {
-    const assisted = await assistRows(table.unread, items, run, images?.onProgress);
+  } else if (
+    images?.models !== false &&
+    !table.layouts.length &&
+    (process.env.TYPESAFE_API_KEY || run !== evaluate)
+  ) {
+    const assisted = await assistRows(
+      table.unread,
+      items,
+      run,
+      images?.onProgress,
+    );
     lines = assisted.lines;
     warnings.push(...assisted.warnings);
     model = assisted.model;
@@ -723,7 +889,13 @@ export async function analyzeSlip(
         );
     }
   }
-  await images?.onProgress?.({ stage: "checking", message: "Checking totals, quantities and duplicate lines…", completed: lines.length, total: lines.length, lines });
+  await images?.onProgress?.({
+    stage: "checking",
+    message: "Checking totals, quantities and duplicate lines…",
+    completed: lines.length,
+    total: lines.length,
+    lines,
+  });
   const repeated = new Map<string, SlipLine[]>();
   for (const l of lines) {
     const key = l.evidence.toLowerCase().replace(/\s+/g, " ");

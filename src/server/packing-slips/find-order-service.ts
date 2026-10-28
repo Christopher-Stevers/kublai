@@ -19,6 +19,7 @@ import {
   partSynonyms,
   supplierParts,
   suppliers,
+  units,
 } from "~/server/db/schema";
 import { userCan } from "~/server/auth/permissions";
 import { documentActor, type DocumentAccess } from "~/server/documents/access";
@@ -90,6 +91,10 @@ export async function jobOrders(access: DocumentAccess) {
       quantity: orderItems.quantity,
       received: orderItems.receivedQuantity,
       verificationStatus: orderItems.verificationStatus,
+      piecesPerPack: partDefinitions.piecesPerPack,
+      bulkUnit: partDefinitions.bulkUnit,
+      individualUnit: partDefinitions.individualUnit,
+      uom: units.code,
     })
     .from(orderItems)
     .innerJoin(
@@ -111,7 +116,9 @@ export async function jobOrders(access: DocumentAccess) {
         orderItems.orderId,
         rows.map((r) => r.id),
       ),
-    );
+    )
+    .leftJoin(units, eq(units.id, orderItems.uomId))
+    .orderBy(orderItems.id);
   const aliases = items.length
     ? await db
         .select({
@@ -158,9 +165,12 @@ export async function jobOrders(access: DocumentAccess) {
           ordered: Number(i.quantity),
           received: Number(i.received),
           verificationStatus: i.verificationStatus,
-          unit: "ea",
-          piecesPerPack: null,
-          individualUnit: null,
+          unit:
+            i.piecesPerPack && i.piecesPerPack > 1
+              ? (i.bulkUnit ?? "pack")
+              : (i.uom ?? "ea"),
+          piecesPerPack: i.piecesPerPack,
+          individualUnit: i.individualUnit,
         })),
       } satisfies SlipOrder,
     };
@@ -176,6 +186,10 @@ export async function identifySlipOrder(
   access: DocumentAccess,
   documentId: string,
   ask: VisionAsk = askJev,
+  prepared?: {
+    orders: Awaited<ReturnType<typeof jobOrders>>;
+    extracted: Awaited<ReturnType<typeof extractSlip>>;
+  },
 ) {
   if (!userCan(access.user, "orders.receive"))
     throw new TRPCError({
@@ -190,7 +204,7 @@ export async function identifySlipOrder(
       code: "NOT_FOUND",
       message: "Packing slip file unavailable.",
     });
-  const found = await jobOrders(access);
+  const found = prepared?.orders ?? (await jobOrders(access));
   const orderOptions = found.map((o) => o.option);
   if (!found.length)
     return { documentId, match: null, candidates: [], orders: orderOptions };
@@ -205,11 +219,13 @@ export async function identifySlipOrder(
     };
   running++;
   try {
-    const extracted = await extractSlip(
-      access.job.organizationId,
-      version.sha256,
-      version.mimeType,
-    ).catch(() => null);
+    const extracted =
+      prepared?.extracted ??
+      (await extractSlip(
+        access.job.organizationId,
+        version.sha256,
+        version.mimeType,
+      ).catch(() => null));
     if (!extracted)
       return {
         documentId,
@@ -233,7 +249,15 @@ export async function identifySlipOrder(
       ).catch(() => null);
       pick = answer?.orderId ?? null;
       const guess = ranked.find((r) => r.orderId === pick);
-      if (answer && guess && answer.confidence >= JEV_PICK && guess.found >= 2 && guess.score >= 0.9 && guess.score - (ranked.find(r=>r.orderId!==pick)?.score??0) >= 0.3)
+      if (
+        answer &&
+        guess &&
+        answer.confidence >= JEV_PICK &&
+        guess.found >= 2 &&
+        guess.score >= 0.9 &&
+        guess.score - (ranked.find((r) => r.orderId !== pick)?.score ?? 0) >=
+          0.3
+      )
         match = pick;
     }
     const candidates = [

@@ -201,27 +201,35 @@ function edits(a: string, b: string) {
   return d[b.length]!;
 }
 
-export function skuScore(item: ReceiptOrderItem, code: string, text: string) {
+function skuEvidence(code: string, text: string) {
+  const pieces = text.split(/\s+/).map(normalizeSku).filter(Boolean);
+  const codes = [normalizeSku(code), ...pieces].filter((c) => c.length >= 3);
+  return {
+    codes,
+    shapes: codes.map(skuShape),
+    joined: new Set(
+      pieces.flatMap((_, i) =>
+        [2, 3, 4].map((n) => pieces.slice(i, i + n).join("")),
+      ),
+    ),
+  };
+}
+export function skuScore(
+  item: ReceiptOrderItem,
+  code: string,
+  text: string,
+  evidence = skuEvidence(code, text),
+) {
   if (!item.sku) return 0;
   const want = normalizeSku(item.sku);
   if (want.length < 3) return 0;
-  const codes = [code, ...text.split(/\s+/)]
-    .map(normalizeSku)
-    .filter((c) => c.length >= 3);
+  const { codes, shapes, joined } = evidence;
   if (codes.includes(want)) return 1;
   const shape = skuShape(want);
-  if (codes.some((c) => skuShape(c) === shape)) return 0.92;
+  if (shapes.includes(shape)) return 0.92;
   // Codes split by OCR or printed with spaces.
-  const pieces = text.split(/\s+/).map(normalizeSku).filter(Boolean);
-  if (
-    want.length >= 5 &&
-    pieces.some((_, i) =>
-      [2, 3, 4].some((n) => pieces.slice(i, i + n).join("") === want),
-    )
-  )
-    return 0.9;
-  if (want.length >= 6 && codes.some((c) => edits(skuShape(c), shape) === 1))
-    return 0.5;
+  if (want.length >= 5 && joined.has(want)) return 0.9;
+  if (want.length >= 6 && shapes.some((c) => edits(c, shape) === 1)) return 0.5;
   return 0;
 }
 
@@ -233,34 +241,50 @@ const sizes = (t: string[]) =>
 const same = (a: string[], b: string[]) =>
   a.length === b.length && a.every((x, i) => x === b[i]);
 
+export function prepareScoringLine(line: { code: string; text: string }) {
+  const slip = tokens(line.text);
+  return {
+    ...line,
+    slip,
+    slipSet: new Set(slip),
+    slipSizes: sizes(slip),
+    plain: new Set(
+      slip.filter((t) => t.startsWith("n:")).map((t) => t.slice(2)),
+    ),
+    skuEvidence: skuEvidence(line.code, line.text),
+  };
+}
 export type Scored = { itemId: string; score: number; sku: number };
 export function scoreLine(
   items: ReceiptOrderItem[],
   line: { code: string; text: string },
   weights: (t: string) => number,
   itemTokens: Map<string, string[][]>,
+  prepared = prepareScoringLine(line),
+  itemDetails = new Map(
+    [...itemTokens.values()]
+      .flat()
+      .map((words) => [
+        words,
+        {
+          want: sizes(words),
+          total: words.reduce((sum, t) => sum + weights(t), 0),
+        },
+      ]),
+  ),
 ): Scored[] {
-  const slip = tokens(line.text);
-  const slipSet = new Set(slip);
-  const slipSizes = sizes(slip);
-  const plain = new Set(
-    slip.filter((t) => t.startsWith("n:")).map((t) => t.slice(2)),
-  );
+  const { slip, slipSet, slipSizes, plain } = prepared;
+  const slipTotal = slip.reduce((sum, t) => sum + Math.min(1.5, weights(t)), 0);
   return items
     .map((item) => {
       let best = 0;
       for (const words of itemTokens.get(item.id)!) {
         if (!words.length) continue;
-        const want = sizes(words);
+        const { want, total } = itemDetails.get(words)!;
         // A bare "2" on the slip can be the 2" size.
         const has = (t: string) =>
           slipSet.has(t) || (t.startsWith("s:") && plain.has(t.slice(2)));
-        const total = words.reduce((s, t) => s + weights(t), 0);
         const shared = words.filter(has).reduce((s, t) => s + weights(t), 0);
-        const slipTotal = slip.reduce(
-          (s, t) => s + Math.min(1.5, weights(t)),
-          0,
-        );
         const slipShared = slip
           .filter(
             (t) =>
@@ -279,7 +303,7 @@ export function scoreLine(
         else if (!same(want, seen)) score *= 0.85;
         best = Math.max(best, score);
       }
-      const sku = skuScore(item, line.code, line.text);
+      const sku = skuScore(item, line.code, line.text, prepared.skuEvidence);
       const score =
         sku >= 0.9 ? 0.9 + 0.1 * best : Math.min(0.89, best + (sku ? 0.1 : 0));
       return { itemId: item.id, score, sku };
@@ -314,8 +338,39 @@ export function lineScorer(items: ReceiptOrderItem[]) {
         ? 1.2
         : 1) *
     (1 + Math.log(n / (df.get(t) ?? 1)) / Math.log(n + 1));
-  return (line: { code: string; text: string }) =>
-    scoreLine(items, line, weights, itemTokens);
+  const weightCache = new Map<string, number>();
+  const cachedWeight = (token: string) => {
+    let value = weightCache.get(token);
+    if (value === undefined) {
+      value = weights(token);
+      weightCache.set(token, value);
+    }
+    return value;
+  };
+  const details = new Map(
+    [...itemTokens.values()]
+      .flat()
+      .map((words) => [
+        words,
+        {
+          want: sizes(words),
+          total: words.reduce((sum, t) => sum + cachedWeight(t), 0),
+        },
+      ]),
+  );
+  return (
+    line:
+      | { code: string; text: string }
+      | ReturnType<typeof prepareScoringLine>,
+  ) =>
+    scoreLine(
+      items,
+      line,
+      cachedWeight,
+      itemTokens,
+      "slip" in line ? line : prepareScoringLine(line),
+      details,
+    );
 }
 export function matchLines(
   items: ReceiptOrderItem[],
