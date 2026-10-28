@@ -42,7 +42,11 @@ import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
 import { reserveTerra } from "./production-cascade";
 import { jobOrders } from "./find-order-service";
-import { saveDocumentVersion } from "../documents/service";
+import {
+  saveDocumentVersion,
+  saveUnmatchedSlip,
+  readableVersion,
+} from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
   startSlipAnalysis,
@@ -854,6 +858,76 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   const finger = async (
     access: Awaited<ReturnType<typeof assertDocumentAccess>>,
   ) => orderFingerprint(await orderSnapshot(db, access, order));
+  it.each(["header", "link"] as const)(
+    "renames an imported PDF only when the order is confirmed through %s",
+    async (action) => {
+      const access = await assertDocumentAccess("receiver", job, db);
+      const saved = await saveUnmatchedSlip(
+        access,
+        {
+          name: "supplier-email.pdf",
+          mimeType: "application/pdf",
+          size: 100,
+          sha256: "b".repeat(64),
+        },
+        async () => undefined,
+      );
+      const state = await workspace();
+      state.documents[0]!.name = state.versions[0]!.name = "supplier-email.pdf";
+      // A reader's suggested order is not yet a human confirmation.
+      state.documents[0]!.packingSlip = {
+        orderId: order,
+        orderNumber: "PO-123",
+        materialListId: list,
+        materialListName: "Level 3",
+      };
+      await db
+        .update(schema.jobDocumentWorkspaces)
+        .set({ state })
+        .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+      await reviewAction(access, saved.documentId, {
+        action: "addLine",
+        page: 1,
+        description: "Valve",
+      });
+      expect((await workspace()).documents[0]?.name).toBe("supplier-email.pdf");
+      expect(
+        (await readableVersion(access, saved.versionId)).version.name,
+      ).toBe("supplier-email.pdf");
+      const confirmation =
+        action === "link"
+          ? { action, orderId: order, confirmed: true }
+          : {
+              action,
+              kind: "delivery",
+              supplierId: null,
+              supplierName: "",
+              deliveryNumber: "",
+              supplierOrderNumber: "",
+              deliveryDate: "",
+              confirmed: true,
+            };
+      test.receive = false;
+      await expect(
+        reviewAction(access, saved.documentId, confirmation),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect((await workspace()).documents[0]?.name).toBe("supplier-email.pdf");
+      test.receive = true;
+      await reviewAction(access, saved.documentId, confirmation);
+      const { document, version } = await readableVersion(
+        access,
+        saved.versionId,
+      );
+      expect(document.name).toBe("Packing slip - PO-123.pdf");
+      expect(document.receivingReview?.orderConfirmed).toBe(true);
+      expect(version).toMatchObject({
+        id: saved.versionId,
+        name: document.name,
+        sha256: "b".repeat(64),
+      });
+      expect(Number((await item()).receivedQuantity)).toBe(2);
+    },
+  );
   it.each(["astra", "liquid"] as const)(
     "imports %s proposals without changing receipts, and rejects stale or foreign matches",
     async (reader) => {
@@ -1116,6 +1190,13 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   });
   it("new queue approves once under concurrent requests and preserves unresolved lines", async () => {
     const { access, doc } = await confirmedHeader();
+    const legacyState = await workspace();
+    legacyState.documents[0]!.name = legacyState.versions[0]!.name =
+      "old-upload.jpg";
+    await db
+      .update(schema.jobDocumentWorkspaces)
+      .set({ state: legacyState })
+      .where(eq(schema.jobDocumentWorkspaces.jobId, job));
     await reviewAction(access, doc.documentId, {
       action: "addLine",
       page: 1,
@@ -1136,6 +1217,12 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       mutateReceiving(access, input),
     ]);
     expect(result.map((r) => r.replayed).sort()).toEqual([false, true]);
+    expect((await workspace()).documents[0]?.name).toBe(
+      "Packing slip - PO-123.jpg",
+    );
+    expect((await readableVersion(access, doc.versionId)).version.name).toBe(
+      "Packing slip - PO-123.jpg",
+    );
     expect(Number((await item()).receivedQuantity)).toBe(8);
     const lines = (await workspace()).documents[0]!.receivingReview!.lines;
     expect(lines.filter((l) => l.approved)).toHaveLength(1);
@@ -1568,6 +1655,10 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       newOrder = (await db.select().from(schema.orders)).find(
         (o) => o.id === newDoc.packingSlip!.orderId,
       )!;
+    expect(newDoc.name).toBe("Packing slip - SLIP-PO-9.jpg");
+    expect((await readableVersion(access, doc.versionId)).version.name).toBe(
+      newDoc.name,
+    );
     expect(newOrder).toMatchObject({
       jobId: job,
       organizationId: org,

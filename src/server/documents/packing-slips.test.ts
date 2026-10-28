@@ -4,6 +4,7 @@ import {
   appendPackingSlip,
   appendUnmatchedSlip,
   linkSavedSlip,
+  renameLinkedSlip,
 } from "./packing-slips";
 import {
   emptyDocumentState,
@@ -52,7 +53,9 @@ it("creates one Packing Slips folder and links multiple delivery photos without 
     ),
   ).toBe(true);
   expect(new Set(state.documents.map((d) => d.name)).size).toBe(2);
-  expect(appendPackingSlip(state, actor, input, link).documentId).not.toBe(first.documentId);
+  expect(appendPackingSlip(state, actor, input, link).documentId).not.toBe(
+    first.documentId,
+  );
   expect(state.documents).toHaveLength(3);
 });
 it("does not silently replace existing documents or accept executable files", () => {
@@ -98,7 +101,9 @@ it("keeps an unmatched scan in Packing Slips and links it in place to the chosen
   const doc = state.documents[0]!;
   expect(doc.name).toMatch(/^Packing slip - unmatched \d{4}-\d{2}-\d{2}\.jpg$/);
   expect(doc.packingSlip).toBeUndefined();
-  expect(appendUnmatchedSlip(state, actor, input).documentId).not.toBe(saved.documentId);
+  expect(appendUnmatchedSlip(state, actor, input).documentId).not.toBe(
+    saved.documentId,
+  );
   // A receiver without document editing may still link the slip they saved.
   const receiver = { ...actor, canWrite: false };
   expect(linkSavedSlip(state, receiver, saved.documentId, link)).toEqual({
@@ -106,7 +111,10 @@ it("keeps an unmatched scan in Packing Slips and links it in place to the chosen
   });
   expect(state.documents).toHaveLength(2);
   expect(doc.packingSlip).toEqual(link);
-  expect(doc.name).not.toContain("unmatched");
+  expect(doc.name).toBe("Packing slip - PO-123.jpg");
+  expect(state.versions.find((v) => v.id === doc.currentVersionId)?.name).toBe(
+    doc.name,
+  );
   expect(doc.tags).toEqual(["Packing slip"]);
   expect(linkSavedSlip(state, receiver, saved.documentId, link)).toEqual({
     documentId: saved.documentId,
@@ -141,8 +149,77 @@ it("keeps read-only linked copies separate for explicit duplicate review", () =>
   expect(
     state.documents.find((d) => d.id === copy.documentId)?.packingSlip,
   ).toEqual(link);
-  expect(linkSavedSlip(state, viewer, original.documentId, link).documentId).not.toBe(copy.documentId);
+  expect(
+    linkSavedSlip(state, viewer, original.documentId, link).documentId,
+  ).not.toBe(copy.documentId);
   expect(state.documents).toHaveLength(3);
+});
+it("renames an uploaded PDF and its current download, preserving historical versions and file identity", () => {
+  const state = emptyDocumentState();
+  const pdf = {
+    ...input,
+    mimeType: "application/pdf",
+    name: "delivery-email.pdf",
+  };
+  const first = appendVersion(state, actor, pdf);
+  const latest = appendVersion(state, actor, {
+    ...pdf,
+    name: "corrected-email.pdf",
+    sha256: "b".repeat(64),
+    documentId: first.documentId,
+    expectedVersionId: first.versionId,
+  });
+  const versionBefore = { ...state.versions[1]! };
+  linkSavedSlip(state, actor, latest.documentId, {
+    ...link,
+    orderNumber: "162-Next",
+  });
+  expect(state.documents[0]?.name).toBe("Packing slip - 162-Next.pdf");
+  expect(state.versions[1]).toEqual({
+    ...versionBefore,
+    name: "Packing slip - 162-Next.pdf",
+  });
+  expect(state.versions[0]?.name).toBe("delivery-email.pdf");
+  expect(state.documents[0]?.currentVersionId).toBe(latest.versionId);
+  expect(state.versions).toHaveLength(2);
+});
+it("uses stable scanner suffixes and safe order names when confirming multiple slips", () => {
+  const state = emptyDocumentState();
+  const unsafeLink = { ...link, orderNumber: "162/Next\\delivery\n" };
+  const pdf = { ...input, mimeType: "application/pdf", name: "email.pdf" };
+  const scanned = appendPackingSlip(state, actor, pdf, unsafeLink);
+  const uploaded = appendVersion(state, actor, {
+    ...pdf,
+    folderId: state.folders[0]!.id,
+  });
+  linkSavedSlip(state, actor, uploaded.documentId, unsafeLink);
+  const doc = state.documents.find((d) => d.id === uploaded.documentId)!;
+  expect(doc.name).toBe("Packing slip - 162-Next-delivery- (2).pdf");
+  renameLinkedSlip(state, doc, unsafeLink);
+  linkSavedSlip(state, actor, uploaded.documentId, unsafeLink);
+  expect(doc.name).toBe("Packing slip - 162-Next-delivery- (2).pdf");
+  expect(state.versions.find((v) => v.id === doc.currentVersionId)?.name).toBe(
+    doc.name,
+  );
+  expect(state.documents.find((d) => d.id === scanned.documentId)?.name).toBe(
+    "Packing slip - 162-Next-delivery-.pdf",
+  );
+});
+it("repairs a confirmed attachment name on retry without changing a locked document", () => {
+  const state = emptyDocumentState();
+  const saved = appendPackingSlip(state, actor, input, link);
+  const doc = state.documents[0]!;
+  doc.name = state.versions[0]!.name = "original-upload.jpg";
+  doc.lockedBy = "another-member";
+  expect(() => linkSavedSlip(state, actor, saved.documentId, link)).toThrow(
+    "locked",
+  );
+  expect(doc.name).toBe("original-upload.jpg");
+  expect(state.versions[0]?.name).toBe("original-upload.jpg");
+  doc.lockedBy = null;
+  linkSavedSlip(state, actor, saved.documentId, link);
+  expect(doc.name).toBe("Packing slip - PO-123.jpg");
+  expect(state.versions[0]?.name).toBe(doc.name);
 });
 it("does not link in place in a Packing Slips folder restricted to viewing", () => {
   const state = emptyDocumentState();

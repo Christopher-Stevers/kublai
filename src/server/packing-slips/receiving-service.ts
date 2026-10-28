@@ -23,6 +23,7 @@ import {
   type DocumentAccess,
 } from "~/server/documents/access";
 import { accessibleDocument, folderRole } from "~/server/documents/domain";
+import { renameLinkedSlip } from "~/server/documents/packing-slips";
 import { mutateWorkspace, readWorkspace } from "~/server/documents/service";
 import type { JobDocument, DocumentState } from "~/server/documents/types";
 import {
@@ -1354,6 +1355,15 @@ async function mutateReceivingImpl(
           doc.packingSlipAnalysis.confirmedItems = snapshot;
         }
       }
+      // Suggestions and reader imports must never rename a source. Confirming
+      // the order, including a previously suggested link, uses the scanner's
+      // naming rule in the same transaction as the human decision.
+      if (
+        doc.packingSlip &&
+        review.orderConfirmed &&
+        ["header", "link", "reconstruct", "approve"].includes(input.action)
+      )
+        renameLinkedSlip(state, doc, doc.packingSlip);
       if (!developmentImport) review.humanReviewed = true;
       review.revision++;
       doc.updatedAt = now;

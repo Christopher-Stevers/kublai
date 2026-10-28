@@ -7,7 +7,7 @@ import {
   folderRole,
   type DocumentActor,
 } from "./domain";
-import type { DocumentState, PackingSlipLink } from "./types";
+import type { DocumentState, JobDocument, PackingSlipLink } from "./types";
 const SLIP_TYPES = [
   "image/jpeg",
   "image/png",
@@ -62,6 +62,30 @@ function freeName(
 }
 const orderBase = (link: PackingSlipLink) =>
   `Packing slip - ${link.orderNumber.replace(/[\\/\x00-\x1f\x7f]/g, "-").slice(0, 100)}`;
+/** Call only after write access and the order link have been confirmed.
+ * Keep the current file's download name in sync without replacing its bytes,
+ * version ID, or the names of historical versions. */
+export function renameLinkedSlip(
+  state: DocumentState,
+  doc: JobDocument,
+  link: PackingSlipLink,
+) {
+  const version = state.versions.find((v) => v.id === doc.currentVersionId);
+  if (!version || !SLIP_TYPES.includes(version.mimeType))
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Choose a JPEG, PNG, WebP photo or PDF packing slip.",
+    });
+  const name = freeName(
+    state,
+    doc.folderId,
+    orderBase(link),
+    version.mimeType,
+    doc.id,
+  );
+  doc.name = name;
+  version.name = name;
+}
 function assertNewSlip(input: Parameters<typeof appendVersion>[2]) {
   if (
     input.documentId ||
@@ -130,8 +154,7 @@ export function linkSavedSlip(
   link: PackingSlipLink,
 ) {
   const doc = accessibleDocument(state, actor, documentId);
-  if (doc.packingSlip) {
-    if (doc.packingSlip.orderId === link.orderId) return { documentId: doc.id };
+  if (doc.packingSlip && doc.packingSlip.orderId !== link.orderId) {
     throw new TRPCError({
       code: "CONFLICT",
       message: `This packing slip is already attached to ${doc.packingSlip.orderNumber}.`,
@@ -150,7 +173,9 @@ export function linkSavedSlip(
       folderRole(state, { ...actor, canWrite: true }, doc.folderId) !==
         "viewer") ||
     folderRole(state, actor, doc.folderId) !== "viewer";
-  if (!inPlace)
+  if (!inPlace) {
+    // An existing read-only attachment needs no new copy or metadata change.
+    if (doc.packingSlip) return { documentId: doc.id };
     return appendPackingSlip(
       state,
       { ...actor, canWrite: true },
@@ -162,19 +187,13 @@ export function linkSavedSlip(
       },
       link,
     );
+  }
   if (doc.lockedBy && doc.lockedBy !== actor.userId)
     throw new TRPCError({
       code: "CONFLICT",
       message: "Document is locked by another member.",
     });
-  if (doc.name.startsWith(UNMATCHED_SLIP))
-    doc.name = freeName(
-      state,
-      doc.folderId,
-      orderBase(link),
-      version.mimeType,
-      doc.id,
-    );
+  renameLinkedSlip(state, doc, link);
   doc.packingSlip = link;
   doc.description = `Packing slip for ${link.orderNumber} · ${link.materialListName}`;
   doc.tags = [...new Set([...doc.tags, "Packing slip"])];
