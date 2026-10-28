@@ -9,13 +9,19 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  CheckCircle2Icon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
+  EyeIcon,
+  EyeOffIcon,
   FileTextIcon,
   Loader2Icon,
+  PlusIcon,
   RefreshCwIcon,
   SearchIcon,
   AlertTriangleIcon,
+  XIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -105,6 +111,7 @@ const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "The request failed. Please try again.";
 const field =
   "border-input bg-background h-11 w-full min-w-0 rounded-md border px-3 text-base";
+const card = "bg-card rounded-xl border";
 const typeLabel = (k: ReceiptKind) =>
   k === "delivery"
     ? "Delivery"
@@ -119,6 +126,21 @@ function Label({ name, children }: { name: string; children: ReactNode }) {
     </label>
   );
 }
+function Callout({
+  children,
+  actions,
+}: {
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+      <AlertTriangleIcon className="size-4 shrink-0 text-amber-600" />
+      <div className="min-w-0 flex-1">{children}</div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
 const changed = (l: ReceivingLine, k: ReceiptKind) =>
   l.quantity !== l.approved?.quantity || lineKind(l, k) !== l.approved.kind;
 const approvable = (l: ReceivingLine, k: ReceiptKind) =>
@@ -129,6 +151,61 @@ const approvable = (l: ReceivingLine, k: ReceiptKind) =>
   !!l.unit &&
   (l.checked === true || !l.issues.length) &&
   changed(l, k);
+type LineStatus =
+  | "review"
+  | "recheck"
+  | "correction"
+  | "ready"
+  | "approved"
+  | "excluded";
+const lineStatus = (l: ReceivingLine, r: ReceivingReview): LineStatus =>
+  l.ignored
+    ? "excluded"
+    : l.approved
+      ? changed(l, r.kind)
+        ? "correction"
+        : r.sourceTrial && l.checked !== true
+          ? "recheck"
+          : "approved"
+      : approvable(l, r.kind)
+        ? "ready"
+        : "review";
+/** Work first: lines to review, then pending approvals, then finished lines. */
+const statusOrder: LineStatus[] = [
+  "review",
+  "recheck",
+  "correction",
+  "ready",
+  "approved",
+  "excluded",
+];
+const amber = {
+  badge: "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200",
+  text: "text-amber-700 dark:text-amber-300",
+};
+const sky = {
+  badge: "bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200",
+  text: "text-sky-700 dark:text-sky-300",
+};
+const statusStyle: Record<
+  LineStatus,
+  { label: string; badge: string; text: string }
+> = {
+  review: { label: "Needs review", ...amber },
+  recheck: { label: "Approved · recheck", ...amber },
+  correction: { label: "Correction", ...sky },
+  ready: { label: "Ready", ...sky },
+  approved: {
+    label: "Approved",
+    badge: "bg-emerald-600 text-white dark:bg-emerald-500",
+    text: "text-emerald-700 dark:text-emerald-300",
+  },
+  excluded: {
+    label: "Excluded",
+    badge: "bg-muted text-muted-foreground",
+    text: "text-muted-foreground",
+  },
+};
 export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const query = useSearchParams(),
     router = useRouter(),
@@ -147,9 +224,13 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [preview, setPreview] = useState(false),
     [reason, setReason] = useState(""),
     [over, setOver] = useState(false),
-    [accounted, setAccounted] = useState(false);
+    [accounted, setAccounted] = useState(false),
+    [openLine, setOpenLine] = useState<string | null>(null);
   const retry = useRef<Action | null>(null),
-    scope = useRef(id);
+    scope = useRef(id),
+    // Chained decisions (link, then confirm) need the revision the first one produced.
+    revision = useRef(0),
+    added = useRef<Set<string> | null>(null);
   scope.current = id;
   const load = useCallback(async () => {
     const selected = id;
@@ -160,6 +241,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     const data = (await res.json()) as Detail & { error?: string };
     if (!res.ok) throw Error(data.error ?? "Could not load receiving.");
     if (scope.current !== selected) return;
+    revision.current = data.review?.revision ?? 0;
     setDocs(data.documents);
     setDetail(id ? data : null);
   }, [jobId, id]);
@@ -168,6 +250,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     setDetail(null);
     setError("");
     setNotice("");
+    setOpenLine(null);
     void load().catch((e: unknown) => setError(errorMessage(e)));
   }, [load]);
   useEffect(() => {
@@ -177,6 +260,19 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     }, 4000);
     return () => clearInterval(t);
   }, [load, online, busy]);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  useEffect(() => {
+    // Open a line the reviewer just added so it can be filled in straight away.
+    const before = added.current,
+      fresh = before && detail?.review.lines.find((l) => !before.has(l.id));
+    if (!fresh) return;
+    added.current = null;
+    setOpenLine(fresh.id);
+  }, [detail]);
   const run = async (action: Action, exact = false) => {
     if (busy || !online) return false;
     setBusy(true);
@@ -187,7 +283,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           ...action,
           jobId,
           documentId: id,
-          revision: detail?.review.revision ?? 0,
+          revision: revision.current,
           requestId: crypto.randomUUID(),
         };
     retry.current = body;
@@ -259,25 +355,87 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         !l.ignored &&
         (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true)),
     ).length ?? 0;
+  const active = r?.lines.filter((l) => !l.ignored).length ?? 0;
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
+  const supporting = r?.duplicateDecision?.action === "supporting";
+  const repeat = !!detail?.duplicates.some(
+    (d) => !r?.duplicateChecked?.includes(d.key),
+  );
   const blocked =
-    sourceChanged ||
-    !!r?.retiredBy ||
-    r?.duplicateDecision?.action === "supporting" ||
-    a?.status === "processing";
+    sourceChanged || !!r?.retiredBy || supporting || a?.status === "processing";
   const canApprove =
     !!r?.kindConfirmed &&
     !!r.orderConfirmed &&
     ready.length > 0 &&
     !blocked &&
-    !detail?.duplicates.some((d) => !r?.duplicateChecked?.includes(d.key));
+    !repeat;
+  const hint = !online
+    ? "Reconnect to approve"
+    : a?.status === "processing"
+      ? "Still reading the slip"
+      : sourceChanged
+        ? "Review the newer file version first"
+        : r?.retiredBy
+          ? "This slip was replaced"
+          : supporting
+            ? "Supporting file · nothing to receive"
+            : !r?.kindConfirmed
+              ? "Confirm the slip details first"
+              : !r.orderConfirmed
+                ? "Link an order first"
+                : repeat
+                  ? "Decide on the possible repeat first"
+                  : remaining - ready.length > 0
+                    ? `${remaining - ready.length} still to review`
+                    : ready.length
+                      ? "Everything else is done"
+                      : "Every line is approved or excluded";
+  const lines = r
+    ? r.lines
+        .map((line, index) => ({ line, index, status: lineStatus(line, r) }))
+        .sort(
+          (x, y) =>
+            statusOrder.indexOf(x.status) - statusOrder.indexOf(y.status) ||
+            x.index - y.index,
+        )
+    : [];
+  // Approval preview: running totals per order line, as the server applies them.
+  const totals = new Map<string, { received: number; credit: number }>();
+  const approvals = r
+    ? ready.map((l) => {
+        const delta = receiptDelta(
+            lineKind(l, r.kind),
+            l.quantity!,
+            l.approved,
+          ),
+          item = detail?.items.find((i) => i.id === l.orderItemId),
+          sum = totals.get(l.orderItemId!) ?? {
+            received: item?.received ?? 0,
+            credit: 0,
+          },
+          before = sum.received;
+        sum.received = qtyRound(sum.received + delta.received);
+        sum.credit = qtyRound(sum.credit + delta.credit);
+        totals.set(l.orderItemId!, sum);
+        const due = item ? qtyRound(item.ordered - sum.credit) : null;
+        return {
+          line: l,
+          delta,
+          before,
+          after: sum.received,
+          due,
+          over: due !== null && sum.received > due,
+        };
+      })
+    : [];
   const select = (docId: string) =>
     router.push(`/jobs/${jobId}/receiving?document=${docId}`);
+  const signed = (n: number) => `${n > 0 ? "+" : ""}${n}`;
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
-      <header className="mb-5 flex items-center justify-between gap-3">
-        <div>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <Link
             className="text-muted-foreground inline-flex items-center gap-1 text-sm"
             href={
@@ -290,29 +448,72 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">
             {id ? "Review packing slip" : "Receiving queue"}
           </h1>
+          {detail && (
+            <p className="text-muted-foreground mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm">
+              <FileTextIcon className="size-4 shrink-0" />
+              <span className="text-foreground max-w-full truncate font-medium">
+                {detail.document.name}
+              </span>
+              <span>
+                ·{" "}
+                {detail.document.packingSlip?.orderNumber ?? "No order linked"}{" "}
+                · {detail.scannedBy} ·{" "}
+                {new Date(detail.document.createdAt).toLocaleDateString()}
+              </span>
+            </p>
+          )}
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Refresh receiving queue"
-          onClick={() =>
-            void load().catch((e: unknown) => setError(errorMessage(e)))
-          }
-        >
-          <RefreshCwIcon className="size-4" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-2 pt-7">
+          {detail && a?.status === "processing" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setProgress(!progress)}
+            >
+              {progress ? "Hide progress" : "Show progress"}
+            </Button>
+          )}
+          {detail && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={source ? "Hide source" : "View source"}
+              aria-pressed={source}
+              onClick={() => setSource(!source)}
+            >
+              {source ? <EyeOffIcon /> : <EyeIcon />}
+              <span className="hidden sm:inline">
+                {source ? "Hide source" : "View source"}
+              </span>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Refresh receiving queue"
+            onClick={() =>
+              void load().catch((e: unknown) => setError(errorMessage(e)))
+            }
+          >
+            <RefreshCwIcon className="size-4" />
+          </Button>
+        </div>
       </header>
       {!online && (
-        <p role="status" className="mb-4 border-b py-3">
+        <p
+          role="status"
+          className="bg-muted text-muted-foreground mb-4 rounded-xl px-4 py-3 text-sm"
+        >
           Reconnect to review and approve receipts.
         </p>
       )}
       {error && (
         <div
           role="alert"
-          className="mb-4 border-l-2 border-red-500 p-3 text-sm"
+          className="fixed inset-x-4 bottom-24 z-40 mx-auto flex max-w-xl items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950 shadow-lg dark:border-red-500/40 dark:bg-red-950 dark:text-red-100"
         >
-          {error}{" "}
+          <AlertTriangleIcon className="size-4 shrink-0 text-red-600" />
+          <p className="min-w-0 flex-1">{error}</p>
           <Button
             variant="outline"
             size="sm"
@@ -324,10 +525,21 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           >
             {retry.current ? "Retry request" : "Reload"}
           </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Dismiss"
+            onClick={() => setError("")}
+          >
+            <XIcon />
+          </Button>
         </div>
       )}
-      {notice && (
-        <p role="status" className="text-muted-foreground mb-4 text-sm">
+      {notice && !error && (
+        <p
+          role="status"
+          className="bg-foreground text-background fixed bottom-24 left-1/2 z-40 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg"
+        >
           {notice}
         </p>
       )}
@@ -438,34 +650,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         <p role="status">Loading review…</p>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="font-medium">{detail.document.name}</h2>
-              <p className="text-muted-foreground text-sm">
-                {detail.document.packingSlip?.orderNumber ?? "Choose an order"}{" "}
-                · scanned by {detail.scannedBy} ·{" "}
-                {new Date(detail.document.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSource(!source)}
-              >
-                {source ? "Hide source" : "View source"}
-              </Button>
-              {a?.status === "processing" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setProgress(!progress)}
-                >
-                  {progress ? "Hide progress" : "Show progress"}
-                </Button>
-              )}
-            </div>
-          </div>
           <PackingSlipTrialComparison
             key={detail.document.id}
             jobId={jobId}
@@ -477,67 +661,108 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               await run({ action: "trialDraft", reader, runId });
             }}
           />
-          {progress && a && <SlipProcessingProgress analysis={a} embedded />}
+          {progress && a?.status === "processing" && (
+            <div className={`${card} mb-4 px-4 py-3`}>
+              <SlipProcessingProgress analysis={a} embedded />
+            </div>
+          )}
+          {a?.status === "failed" && (
+            <Callout
+              actions={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || !online}
+                  onClick={() => void detection("analyze")}
+                >
+                  Read again
+                </Button>
+              }
+            >
+              <p>
+                This slip could not be read.
+                {a.error ? ` ${a.error}` : ""} You can still add its lines
+                yourself.
+              </p>
+            </Callout>
+          )}
           {sourceChanged && (
-            <div className="mb-4 border-l-2 border-amber-500 p-3 text-sm">
+            <Callout
+              actions={
+                <>
+                  <Button
+                    size="sm"
+                    disabled={busy || a?.status === "processing"}
+                    variant="outline"
+                    onClick={() => void detection("analyze")}
+                  >
+                    Read current version
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={
+                      busy ||
+                      a?.status !== "ready" ||
+                      a?.versionId !== detail.document.currentVersionId
+                    }
+                    onClick={() =>
+                      void run({ action: "adoptSource", confirmed: true })
+                    }
+                  >
+                    Review current source
+                  </Button>
+                </>
+              }
+            >
               <p>
                 The file has a newer version. Read it, then compare it with the
                 preserved receipt.
               </p>
-              <Button
-                disabled={busy || a?.status === "processing"}
-                variant="outline"
-                onClick={() => void detection("analyze")}
-              >
-                Read current version
-              </Button>
-              <Button
-                disabled={
-                  busy ||
-                  a?.status !== "ready" ||
-                  a?.versionId !== detail.document.currentVersionId
-                }
-                onClick={() =>
-                  void run({ action: "adoptSource", confirmed: true })
-                }
-              >
-                Review current source
-              </Button>
-            </div>
+            </Callout>
           )}
-          {r?.duplicateDecision?.action === "supporting" && (
-            <p className="border-y py-3 text-sm">
-              This is a supporting file; no quantities will be received.{" "}
-              <Button
-                variant="outline"
-                disabled={busy || !online}
-                onClick={() =>
-                  void run({
-                    action: "reopen",
-                    reason: "Reviewer reopened supporting document",
-                  })
-                }
-              >
-                Reopen review
-              </Button>
-            </p>
+          {supporting && (
+            <Callout
+              actions={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || !online}
+                  onClick={() =>
+                    void run({
+                      action: "reopen",
+                      reason: "Reviewer reopened supporting document",
+                    })
+                  }
+                >
+                  Reopen review
+                </Button>
+              }
+            >
+              <p>This is a supporting file; no quantities will be received.</p>
+            </Callout>
           )}
           {r?.retiredBy && (
-            <p className="border-y py-3">
-              This slip was replaced.{" "}
-              <Link
-                className="underline"
-                href={`/jobs/${jobId}/receiving?document=${r.retiredBy}`}
-              >
-                Open replacement
-              </Link>
-            </p>
+            <Callout
+              actions={
+                <Button size="sm" variant="outline" asChild>
+                  <Link
+                    href={`/jobs/${jobId}/receiving?document=${r.retiredBy}`}
+                  >
+                    Open replacement
+                  </Link>
+                </Button>
+              }
+            >
+              <p>This slip was replaced.</p>
+            </Callout>
           )}
           <div
-            className={`mt-5 grid gap-6 ${source ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}
+            className={`grid gap-5 ${source ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}
           >
             {source && (
-              <aside className="h-[55vh] overflow-hidden border xl:sticky xl:top-20 xl:h-[75vh]">
+              <aside
+                className={`${card} h-[55vh] overflow-hidden xl:sticky xl:top-20 xl:h-[75vh]`}
+              >
                 {detail.sourceMimeType?.startsWith("image/") ? (
                   <a href={detail.sourceUrl} target="_blank" rel="noreferrer">
                     <img
@@ -555,10 +780,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 )}
               </aside>
             )}
-            <div className="min-w-0 space-y-5">
+            <div className="min-w-0 space-y-4">
               <fieldset
                 disabled={busy || !online || blocked}
-                className="min-w-0 space-y-5 disabled:opacity-70"
+                className="min-w-0 space-y-4 disabled:opacity-70"
               >
                 <Identity
                   key={`${id}:${r!.revision}`}
@@ -568,51 +793,87 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 {detail.duplicates.length > 0 && (
                   <DuplicateReview detail={detail} run={run} />
                 )}
-                <div className="flex items-baseline justify-between border-b pb-3">
-                  <h2 className="font-semibold">Slip lines</h2>
-                  <span className="text-muted-foreground text-sm">
-                    {ready.length} ready · {remaining - ready.length} need
-                    attention
-                  </span>
-                </div>
-                <div className="divide-y">
-                  {r!.lines.map((l, i) => (
-                    <LineReview
-                      key={`${id}:${l.id}:${r!.revision}`}
-                      line={l}
-                      index={i}
-                      detail={detail}
-                      jobId={jobId}
-                      run={run}
-                    />
-                  ))}
-                </div>
-                {!r!.lines.length && (
-                  <p className="text-muted-foreground text-sm">
-                    Read this slip to propose lines, or add a line from the
-                    source.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      void run({
-                        action: "addLine",
-                        page: 1,
-                        description: "New slip line",
-                      })
-                    }
-                  >
-                    Add missing line
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => void run({ action: "prepare" })}
-                  >
-                    Read slip
-                  </Button>
-                </div>
+                <section className={`${card} overflow-hidden`}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pt-3 pb-2.5">
+                    <h2 className="font-semibold">Slip lines</h2>
+                    <p className="text-muted-foreground text-sm tabular-nums">
+                      {[
+                        active - remaining && `${active - remaining} approved`,
+                        ready.length && `${ready.length} ready`,
+                        remaining - ready.length &&
+                          `${remaining - ready.length} to review`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "No lines yet"}
+                    </p>
+                  </div>
+                  {active > 0 && (
+                    <div aria-hidden className="bg-muted flex h-1">
+                      <div
+                        className="bg-emerald-500 transition-[width] motion-reduce:transition-none"
+                        style={{
+                          width: `${((active - remaining) / active) * 100}%`,
+                        }}
+                      />
+                      <div
+                        className="bg-sky-500 transition-[width] motion-reduce:transition-none"
+                        style={{ width: `${(ready.length / active) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                  {lines.length > 0 ? (
+                    <ul className="divide-y">
+                      {lines.map(({ line: l, index, status }) => (
+                        <LineReview
+                          key={`${id}:${l.id}:${r!.revision}`}
+                          line={l}
+                          index={index}
+                          status={status}
+                          detail={detail}
+                          jobId={jobId}
+                          run={run}
+                          open={openLine === l.id}
+                          setOpen={(open) => setOpenLine(open ? l.id : null)}
+                        />
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="border-t px-4 py-8 text-center text-sm">
+                      <p className="text-muted-foreground">
+                        Read this slip to propose lines, or add a line from the
+                        source.
+                      </p>
+                      <Button
+                        className="mt-3"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void run({ action: "prepare" })}
+                      >
+                        Read slip
+                      </Button>
+                    </div>
+                  )}
+                  <div className="border-t px-2 py-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        const before = new Set(r!.lines.map((l) => l.id));
+                        if (
+                          await run({
+                            action: "addLine",
+                            page: 1,
+                            description: "New slip line",
+                          })
+                        )
+                          added.current = before;
+                      }}
+                    >
+                      <PlusIcon />
+                      Add missing line
+                    </Button>
+                  </div>
+                </section>
                 {!detail.document.packingSlip && detail.canCreate && (
                   <Reconstruct
                     key={`reconstruct:${r!.revision}`}
@@ -621,75 +882,104 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   />
                 )}
               </fieldset>
-              {!!r!.warnings.length && (
-                <details className="border-y py-3 text-sm">
-                  <summary className="cursor-pointer">
-                    Reading notes ({r!.warnings.length})
-                  </summary>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {r!.warnings.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              <details className="text-sm">
-                <summary className="text-muted-foreground cursor-pointer">
-                  Detection and source text
+              <details className={`${card} group text-sm`}>
+                <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                  <span>
+                    Slip tools
+                    {!!r!.warnings.length && (
+                      <span className={`ml-2 text-xs ${amber.text}`}>
+                        {r!.warnings.length} reading{" "}
+                        {r!.warnings.length === 1 ? "note" : "notes"}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
                 </summary>
-                {a?.cascade && (
-                  <div className="my-3 space-y-1">
-                    <p>{a.cascade.status === "not-needed" ? "OCR / Jev handled this slip. Terra was not needed." : a.cascade.status === "completed" ? "OCR → Jev → Terra assistance" : `OCR / Jev reading · Terra ${a.cascade.status.replaceAll("-", " ")}`}</p>
-                    {!!a.cascade.reasons.length && <p className="text-muted-foreground">{a.cascade.reasons.join(" · ")}</p>}
-                    {a.cascade.estimatedUsd != null && <p className="text-muted-foreground">Terra API estimate: US${a.cascade.estimatedUsd.toFixed(4)}</p>}
-                    {a.cascade.error && <p>{a.cascade.error}</p>}
+                <div className="space-y-4 border-t px-4 py-4">
+                  {!!r!.warnings.length && (
+                    <div>
+                      <p className="font-medium">Reading notes</p>
+                      <ul className="text-muted-foreground mt-1 list-disc space-y-1 pl-5">
+                        {r!.warnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {a?.cascade && (
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        {a.cascade.status === "not-needed"
+                          ? "OCR / Jev handled this slip. Terra was not needed."
+                          : a.cascade.status === "completed"
+                            ? "OCR → Jev → Terra assistance"
+                            : `OCR / Jev reading · Terra ${a.cascade.status.replaceAll("-", " ")}`}
+                      </p>
+                      {!!a.cascade.reasons.length && (
+                        <p className="text-muted-foreground">
+                          {a.cascade.reasons.join(" · ")}
+                        </p>
+                      )}
+                      {a.cascade.estimatedUsd != null && (
+                        <p className="text-muted-foreground">
+                          Terra API estimate: US$
+                          {a.cascade.estimatedUsd.toFixed(4)}
+                        </p>
+                      )}
+                      {a.cascade.error && <p>{a.cascade.error}</p>}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-muted-foreground">
+                      Reading again or erasing detection keeps approved
+                      quantities and saved review decisions.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy || a?.status === "processing"}
+                        onClick={() => void detection("analyze")}
+                      >
+                        Rerun detection
+                      </Button>
+                      {a && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void detection("clear")}
+                        >
+                          Erase detection
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
-                <p className="my-3">
-                  Rerunning or clearing detection preserves approved quantities
-                  and saved review decisions. Compare a new reading with the
-                  source before correcting a receipt.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy || a?.status === "processing"}
-                    onClick={() => void detection("analyze")}
-                  >
-                    Rerun detection
-                  </Button>
-                  {a && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void detection("clear")}
-                    >
-                      Erase detection
-                    </Button>
+                  {r!.sourceText && (
+                    <details>
+                      <summary className="text-muted-foreground cursor-pointer">
+                        Source text
+                      </summary>
+                      <pre className="bg-muted mt-2 max-h-72 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">
+                        {r!.sourceText}
+                      </pre>
+                    </details>
                   )}
                 </div>
-                {r!.sourceText && (
-                  <pre className="bg-muted mt-3 max-h-72 overflow-auto p-3 text-xs whitespace-pre-wrap">
-                    {r!.sourceText}
-                  </pre>
-                )}
               </details>
             </div>
           </div>
-          <footer className="bg-background fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
+          <footer className="bg-background/95 fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+            <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 sm:px-2">
               <div className="min-w-0 text-sm">
-                <p className="font-medium">
-                  {ready.length} lines ready for approval
+                <p className="font-semibold tabular-nums">
+                  {ready.length} {ready.length === 1 ? "line" : "lines"} ready
+                  to approve
                 </p>
-                <p className="text-muted-foreground">
-                  {remaining - ready.length} stay in review
-                </p>
+                <p className="text-muted-foreground truncate">{hint}</p>
               </div>
               <Button
-                variant="outline"
+                className="shrink-0"
                 disabled={busy || !online || !canApprove}
                 onClick={() => {
                   setReason("");
@@ -699,16 +989,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 }}
               >
                 {busy ? (
-                  <Loader2Icon className="size-4 animate-spin" />
+                  <Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />
                 ) : (
-                  <CheckIcon className="mr-1 size-4" />
+                  <CheckIcon className="size-4" />
                 )}
                 Review & approve
               </Button>
             </div>
           </footer>
           <Dialog open={preview} onOpenChange={setPreview}>
-            <DialogContent className="max-h-[85dvh] overflow-y-auto">
+            <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   Approve {ready.length} {ready.length === 1 ? "line" : "lines"}
@@ -719,32 +1009,49 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   will change.
                 </DialogDescription>
               </DialogHeader>
-              <div className="divide-y">
-                {ready.map((l) => {
-                  const delta = receiptDelta(
-                    lineKind(l, r!.kind),
-                    l.quantity!,
-                    l.approved,
-                  );
-                  return (
-                    <div key={l.id} className="py-3 text-sm">
-                      <p className="font-medium">
-                        {l.description} · {typeLabel(lineKind(l, r!.kind))}
-                      </p>
-                      <p>
-                        {l.approved
-                          ? `Previously ${l.approved.quantity} → ${l.quantity}`
-                          : `${l.quantity} ${l.unit}`}{" "}
-                        · received change {delta.received > 0 ? "+" : ""}
-                        {delta.received}
-                        {delta.credit !== 0
-                          ? ` · credit change ${delta.credit > 0 ? "+" : ""}${delta.credit}`
-                          : ""}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+              <ul className="divide-y rounded-lg border">
+                {approvals.map(
+                  ({ line: l, delta, before, after, due, over: above }) => (
+                    <li
+                      key={l.id}
+                      className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">
+                          {l.description}
+                        </p>
+                        <p className="text-muted-foreground text-xs tabular-nums">
+                          {[
+                            lineKind(l, r!.kind) !== r!.kind &&
+                              typeLabel(lineKind(l, r!.kind)),
+                            l.approved &&
+                              `Previously ${l.approved.quantity} → ${l.quantity}`,
+                            due !== null &&
+                              `Received ${before} → ${after} of ${due}`,
+                            delta.credit !== 0 &&
+                              `Credit ${signed(delta.credit)}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-semibold tabular-nums">
+                          {signed(delta.received)}{" "}
+                          <span className="text-muted-foreground text-xs font-normal">
+                            {l.unit}
+                          </span>
+                        </p>
+                        {above && (
+                          <p className={`text-xs ${amber.text}`}>
+                            {qtyRound(after - due!)} over
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  ),
+                )}
+              </ul>
               {ready.some((l) => l.approved) && (
                 <Label name="Reason for correction">
                   <input
@@ -754,24 +1061,38 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   />
                 </Label>
               )}
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={over}
-                  onChange={(e) => setOver(e.target.checked)}
-                />
-                I approve any quantity above the amount still due.
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={accounted}
-                  onChange={(e) => setAccounted(e.target.checked)}
-                />
-                I checked every source page; all item lines are represented in
-                this review.
-              </label>
+              <div className="space-y-2.5">
+                {(approvals.some((x) => x.over) ||
+                  over ||
+                  /quantity due/i.test(error)) && (
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={over}
+                      onChange={(e) => setOver(e.target.checked)}
+                    />
+                    I approve any quantity above the amount still due.
+                  </label>
+                )}
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={accounted}
+                    onChange={(e) => setAccounted(e.target.checked)}
+                  />
+                  I checked every source page; all item lines are represented in
+                  this review.
+                </label>
+              </div>
+              {error && (
+                <p role="alert" className="text-destructive text-sm">
+                  {error}
+                </p>
+              )}
               <Button
+                className="w-full"
                 disabled={
                   busy ||
                   (ready.some((l) => l.approved) && reason.trim().length < 3)
@@ -807,72 +1128,85 @@ function Identity({
   run: (a: Action) => Promise<boolean>;
 }) {
   const r = detail.review,
+    linked = detail.document.packingSlip?.orderId ?? "",
+    confirmed = r.kindConfirmed && !!r.orderConfirmed,
+    [editing, setEditing] = useState(!confirmed),
     [kind, setKind] = useState(r.kind),
     [supplier, setSupplier] = useState(r.supplierId ?? ""),
     [delivery, setDelivery] = useState(r.deliveryNumber),
     [orderNum, setOrderNum] = useState(r.supplierOrderNumber),
     [date, setDate] = useState(r.deliveryDate),
-    [link, setLink] = useState(detail.document.packingSlip?.orderId ?? ""),
+    [link, setLink] = useState(linked),
     [newSupplier, setNewSupplier] = useState(false),
     [name, setName] = useState(r.supplierName),
     [email, setEmail] = useState(r.supplierEmail ?? ""),
     [phone, setPhone] = useState(r.supplierPhone ?? ""),
     [accounted, setAccounted] = useState(r.documentChecked ?? false);
+  const suggested = (orderId: string) =>
+    detail.document.packingSlipAnalysis?.orderCandidates?.includes(orderId) ??
+    false;
+  if (!editing)
+    return (
+      <section className={`${card} flex items-center gap-3 px-4 py-3`}>
+        <CheckCircle2Icon className="size-5 shrink-0 text-emerald-600" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-medium">
+            {detail.document.packingSlip?.orderNumber ?? "No order linked"} ·{" "}
+            {typeLabel(r.kind)}
+          </p>
+          <p className="text-muted-foreground truncate">
+            {[
+              detail.suppliers.find((s) => s.id === r.supplierId)?.name ??
+                r.supplierName,
+              r.deliveryNumber && `Slip ${r.deliveryNumber}`,
+              r.supplierOrderNumber && `Ref ${r.supplierOrderNumber}`,
+              r.deliveryDate,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          Edit
+        </Button>
+      </section>
+    );
   return (
-    <details
-      open={!r.kindConfirmed || !r.orderConfirmed || !r.documentChecked}
-      className="border-y py-3"
-    >
-      <summary className="cursor-pointer font-medium">
-        {r.kindConfirmed && r.orderConfirmed && r.documentChecked
-          ? "Order and slip details confirmed"
-          : "Confirm order and slip details"}
-      </summary>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+    <section className={`${card} p-4`}>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 className="font-semibold">Slip details</h2>
+        {!confirmed && (
+          <p className={`text-xs ${amber.text}`}>
+            {r.kindConfirmed
+              ? "Link an order to approve lines"
+              : "Confirm before approving"}
+          </p>
+        )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <Label name="Order in this job">
           <select
             className={field}
             value={link}
-            onChange={(e) => setLink(e.target.value)}
+            onChange={(e) => {
+              setLink(e.target.value);
+              const order = detail.orders.find((o) => o.id === e.target.value);
+              if (order?.supplierId) setSupplier(order.supplierId);
+            }}
           >
-            <option value="">Choose order</option>
+            <option value="" disabled={!!linked}>
+              Choose order
+            </option>
             {[...detail.orders]
-              .sort(
-                (a, b) =>
-                  Number(
-                    detail.document.packingSlipAnalysis?.orderCandidates?.includes(
-                      b.id,
-                    ) ?? false,
-                  ) -
-                  Number(
-                    detail.document.packingSlipAnalysis?.orderCandidates?.includes(
-                      a.id,
-                    ) ?? false,
-                  ),
-              )
+              .sort((a, b) => Number(suggested(b.id)) - Number(suggested(a.id)))
               .map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name} · {detail.lists.find((l) => l.id === o.listId)?.name}
-                  {detail.document.packingSlipAnalysis?.orderCandidates?.includes(
-                    o.id,
-                  )
-                    ? " · Suggested match"
-                    : ""}
+                  {suggested(o.id) ? " · Suggested match" : ""}
                 </option>
               ))}
           </select>
         </Label>
-        <div className="self-end">
-          <Button
-            variant="outline"
-            disabled={!link || link === detail.document.packingSlip?.orderId}
-            onClick={() =>
-              void run({ action: "link", orderId: link, confirmed: true })
-            }
-          >
-            Link this order
-          </Button>
-        </div>
         <Label name="Document type">
           <select
             className={field}
@@ -923,47 +1257,61 @@ function Identity({
             onChange={(e) => setDate(e.target.value)}
           />
         </Label>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={accounted}
-            onChange={(e) => setAccounted(e.target.checked)}
-          />
-          All source pages and item lines are accounted for.
-        </label>
-        <div className="flex flex-wrap gap-2 self-end">
-          <Button
-            disabled={link !== (detail.document.packingSlip?.orderId ?? "")}
-            onClick={() =>
-              void run({
-                action: "header",
-                kind,
-                supplierId: supplier || null,
-                supplierName:
-                  detail.suppliers.find((s) => s.id === supplier)?.name ?? name,
-                deliveryNumber: delivery,
-                supplierOrderNumber: orderNum,
-                deliveryDate: date,
-                confirmed: true,
-                documentChecked: accounted,
-              })
-            }
-          >
-            Confirm details
+      </div>
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={accounted}
+          onChange={(e) => setAccounted(e.target.checked)}
+        />
+        All source pages and item lines are accounted for.
+      </label>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          onClick={async () => {
+            // Linking rematches the lines, so it goes first; the details then confirm on top.
+            if (
+              link &&
+              link !== linked &&
+              !(await run({ action: "link", orderId: link, confirmed: true }))
+            )
+              return;
+            await run({
+              action: "header",
+              kind,
+              supplierId: supplier || null,
+              supplierName:
+                detail.suppliers.find((s) => s.id === supplier)?.name ?? name,
+              deliveryNumber: delivery,
+              supplierOrderNumber: orderNum,
+              deliveryDate: date,
+              confirmed: true,
+              documentChecked: accounted,
+            });
+          }}
+        >
+          <CheckIcon />
+          Confirm details
+        </Button>
+        {confirmed && (
+          <Button variant="ghost" onClick={() => setEditing(false)}>
+            Cancel
           </Button>
-          {detail.canCreate && (
-            <Button
-              variant="ghost"
-              onClick={() => setNewSupplier(!newSupplier)}
-            >
-              New supplier
-            </Button>
-          )}
-        </div>
+        )}
+        {detail.canCreate && (
+          <Button
+            variant="ghost"
+            className="ml-auto"
+            onClick={() => setNewSupplier(!newSupplier)}
+          >
+            New supplier
+          </Button>
+        )}
       </div>
       {newSupplier && (
-        <div className="mt-4 grid gap-3 border-t pt-4">
-          <p className="text-sm">
+        <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-3">
+          <p className="text-muted-foreground text-sm sm:col-span-3">
             Create a shared organization supplier from this slip.
           </p>
           <Label name="Supplier name">
@@ -988,14 +1336,19 @@ function Identity({
               onChange={(e) => setPhone(e.target.value)}
             />
           </Label>
-          <Button
-            onClick={() => void run({ action: "supplier", name, email, phone })}
-          >
-            Approve new supplier
-          </Button>
+          <div className="sm:col-span-3">
+            <Button
+              variant="outline"
+              onClick={() =>
+                void run({ action: "supplier", name, email, phone })
+              }
+            >
+              Approve new supplier
+            </Button>
+          </div>
         </div>
       )}
-    </details>
+    </section>
   );
 }
 function DuplicateReview({
@@ -1012,7 +1365,7 @@ function DuplicateReview({
   );
   if (!unresolved.length)
     return (
-      <p className="text-muted-foreground text-sm">
+      <p className="text-muted-foreground px-1 text-sm">
         Duplicate reviewed:{" "}
         {detail.review.duplicateDecision?.action === "supporting"
           ? "supporting document, no receiving"
@@ -1021,9 +1374,9 @@ function DuplicateReview({
       </p>
     );
   return (
-    <section className="border-l-2 border-amber-500 pl-4">
-      <h3 className="flex items-center gap-2 font-medium">
-        <AlertTriangleIcon className="size-4" />
+    <section className="rounded-xl border border-amber-300/70 bg-amber-50/60 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
+      <h3 className="flex items-center gap-2 font-semibold">
+        <AlertTriangleIcon className="size-4 text-amber-600" />
         Possible repeated slip
       </h3>
       <p className="text-muted-foreground mt-1 text-sm">
@@ -1032,39 +1385,41 @@ function DuplicateReview({
       </p>
       {unresolved.map((d) => (
         <div key={d.id} className="mt-3 text-sm">
-          <Link className="underline" href={`?document=${d.id}`}>
+          <Link className="font-medium underline" href={`?document=${d.id}`}>
             {d.name}
           </Link>
-          <p>
+          <p className="text-muted-foreground">
             {d.reason}
             {d.received ? " It already has approved quantities." : ""}
           </p>
         </div>
       ))}
-      <Label name="Compare with this saved slip">
-        <select
-          className={field}
-          value={
-            unresolved.some((d) => d.id === comparison)
-              ? comparison
-              : unresolved[0]!.id
-          }
-          onChange={(e) => setComparison(e.target.value)}
-        >
-          {unresolved.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </Label>
-      <Label name="Reason for your decision">
-        <input
-          className={`${field} mt-2`}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-      </Label>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Label name="Compare with this saved slip">
+          <select
+            className={field}
+            value={
+              unresolved.some((d) => d.id === comparison)
+                ? comparison
+                : unresolved[0]!.id
+            }
+            onChange={(e) => setComparison(e.target.value)}
+          >
+            {unresolved.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </Label>
+        <Label name="Reason for your decision">
+          <input
+            className={field}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Label>
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {(["supporting", "additional", "replace"] as const).map((choice) => (
           <Button
@@ -1101,18 +1456,23 @@ function DuplicateReview({
 function LineReview({
   line: l,
   index,
+  status,
   detail,
   jobId,
   run,
+  open,
+  setOpen,
 }: {
   line: ReceivingLine;
   index: number;
+  status: LineStatus;
   detail: Detail;
   jobId: string;
   run: (a: Action) => Promise<boolean>;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }) {
-  const [editing, setEditing] = useState(false),
-    [name, setName] = useState(l.description),
+  const [name, setName] = useState(l.description),
     [kind, setKind] = useState(l.kind ?? ""),
     [sku, setSku] = useState(l.sku),
     [quantity, setQuantity] = useState(
@@ -1127,6 +1487,7 @@ function LineReview({
     ),
     [item, setItem] = useState(l.orderItemId ?? ""),
     [checked, setChecked] = useState(l.checked ?? false),
+    [excluding, setExcluding] = useState(false),
     [reason, setReason] = useState(""),
     [part, setPart] = useState(false);
   const a = detail.document.packingSlipAnalysis,
@@ -1138,85 +1499,205 @@ function LineReview({
     detail.review.versionId === detail.document.currentVersionId
       ? (l.sourceBox ?? source?.box)
       : undefined;
-  const status = l.ignored
-    ? "Excluded"
-    : l.approved
-      ? changed(l, detail.review.kind)
-        ? "Correction to review"
-        : detail.review.sourceTrial && l.checked !== true
-          ? "Previously approved · recheck"
-          : "Approved"
-      : approvable(l, detail.review.kind)
-        ? "Ready to approve"
-        : "Needs review";
+  const tone = statusStyle[status],
+    match = l.orderItemId
+      ? (detail.items.find((i) => i.id === l.orderItemId)?.description ??
+        "Order part")
+      : null;
+  const save = (asChecked: boolean) =>
+    run({
+      action: "line",
+      lineId: l.id,
+      kind: kind || null,
+      description: name,
+      sku,
+      quantity: quantity === "" ? null : Number(quantity),
+      ordered: ordered === "" ? null : Number(ordered),
+      unit,
+      unitPrice: price === "" ? null : Number(price),
+      orderItemId: item || null,
+      checked: asChecked,
+    });
+  const complete = !!item && quantity !== "" && !!unit.trim();
   return (
-    <article className="py-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-muted-foreground text-xs">
-            Line {index + 1} · page {l.page}
-          </p>
-          <h3 className="mt-1 font-medium break-words">{l.description}</h3>
-          {l.readingSource && (
-            <p className="text-muted-foreground mt-1 text-xs" title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
-              {l.readingSource.reader === "terra" ? "Terra assisted" : l.readingSource.reader === "jev" ? "Jev image reading" : "OCR reading"}
-              {l.readingSource.confidence && ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
-            </p>
+    <li className={open ? "bg-muted/30" : undefined}>
+      <div className="relative flex items-start gap-3 px-4 py-3">
+        <span
+          aria-hidden
+          className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone.badge}`}
+        >
+          {status === "approved" ? (
+            <CheckIcon className="size-3.5" />
+          ) : (
+            index + 1
           )}
-          <p className="text-muted-foreground mt-1 text-sm">
-            {l.quantity ?? "Unclear"} {l.unit} · {l.sku || "No supplier code"}
-            {l.orderItemId
-              ? ` · ${detail.items.find((i) => i.id === l.orderItemId)?.description ?? "Order part"}`
-              : " · No matched order part"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3
+            className={`font-medium break-words ${l.ignored ? "text-muted-foreground line-through" : ""}`}
+          >
+            {l.ignored ? (
+              l.description
+            ) : (
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpen(!open)}
+                className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
+              >
+                {l.description}
+              </button>
+            )}
+          </h3>
+          <p className="text-muted-foreground mt-0.5 text-sm break-words">
+            {l.ignored ? (
+              l.ignored.reason
+            ) : (
+              <>
+                {match ? (
+                  match.trim().toLowerCase() ===
+                  l.description.trim().toLowerCase() ? (
+                    "Matched to order"
+                  ) : (
+                    match
+                  )
+                ) : (
+                  <span className={amber.text}>Not matched to the order</span>
+                )}
+                {l.sku && ` · ${l.sku}`}
+              </>
+            )}
           </p>
         </div>
-        <span
-          className={`shrink-0 text-xs font-medium ${status === "Approved" ? "text-emerald-700 dark:text-emerald-300" : status === "Needs review" ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground"}`}
-        >
-          {status}
-        </span>
-      </div>
-      {l.ignored && (
-        <p className="mt-2 text-sm">
-          {l.ignored.reason}{" "}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              void run({
-                action: "restoreLine",
-                lineId: l.id,
-                reason: "Reviewer restored excluded line",
-              })
-            }
-          >
-            Restore line
-          </Button>
-        </p>
-      )}
-      {!l.ignored && (
-        <>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className="shrink-0 text-right">
+          {!l.ignored && (
+            <p className="font-semibold tabular-nums">
+              {l.quantity ?? <span className={amber.text}>?</span>}{" "}
+              <span className="text-muted-foreground text-xs font-normal">
+                {l.unit}
+              </span>
+            </p>
+          )}
+          <p className={`text-xs font-medium ${tone.text}`}>{tone.label}</p>
+          {l.ignored && (
             <Button
+              variant="ghost"
               size="sm"
-              variant="outline"
-              onClick={() => setEditing(!editing)}
+              className="relative z-10 -mr-2"
+              onClick={() =>
+                void run({
+                  action: "restoreLine",
+                  lineId: l.id,
+                  reason: "Reviewer restored excluded line",
+                })
+              }
             >
-              {editing
-                ? "Close details"
-                : l.approved
-                  ? "Correct / view"
-                  : "Review line"}
+              Restore line
             </Button>
-            {!l.orderItemId && detail.canCreate && (
-              <Button size="sm" variant="ghost" onClick={() => setPart(!part)}>
+          )}
+        </div>
+        {!l.ignored && (
+          <ChevronDownIcon
+            aria-hidden
+            className={`text-muted-foreground mt-1 size-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+          />
+        )}
+      </div>
+      {open && !l.ignored && (
+        <div className="space-y-4 px-4 pb-4 sm:pl-13">
+          {sourceBox && (
+            <SlipLineImage
+              url={detail.sourceUrl}
+              page={l.page}
+              box={sourceBox}
+              label={`Source for line ${index + 1}`}
+            />
+          )}
+          <p className="text-muted-foreground text-xs">
+            Line {index + 1} · page {l.page} · “{l.evidence}”
+            {l.readingSource && (
+              <span title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
+                {" · "}
+                {l.readingSource.reader === "terra"
+                  ? "Terra assisted"
+                  : l.readingSource.reader === "jev"
+                    ? "Jev image reading"
+                    : "OCR reading"}
+                {l.readingSource.confidence &&
+                  ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
+              </span>
+            )}
+          </p>
+          {l.issues.length > 0 && (
+            <ul className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              {l.issues.map((s, i) => (
+                <li key={i} className="flex gap-2">
+                  <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
+            <Label name="Matched order part">
+              <select
+                className={field}
+                value={item}
+                disabled={!!l.approved}
+                onChange={(e) => {
+                  setItem(e.target.value);
+                  const i = detail.items.find((i) => i.id === e.target.value);
+                  if (i) setUnit(i.unit);
+                  setChecked(false);
+                }}
+              >
+                <option value="">Unmatched</option>
+                {detail.items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.description} · due{" "}
+                    {Math.max(0, qtyRound(i.ordered - i.received))} {i.unit}
+                  </option>
+                ))}
+              </select>
+            </Label>
+            <Label
+              name={
+                (kind || detail.review.kind) === "delivery"
+                  ? "Quantity"
+                  : "Return quantity"
+              }
+            >
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                className={field}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </Label>
+            <Label name="Unit">
+              <input
+                className={field}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="ea, ft…"
+              />
+            </Label>
+          </div>
+          {!l.orderItemId && detail.canCreate && (
+            <div className="-mt-1 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="-ml-3"
+                onClick={() => setPart(!part)}
+              >
+                <SearchIcon />
                 Find or create part
               </Button>
-            )}
-            {l.partId &&
-              !l.orderItemId &&
-              detail.document.packingSlip &&
-              detail.canCreate && (
+              {l.partId && detail.document.packingSlip && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1227,188 +1708,120 @@ function LineReview({
                   Approve additional order line
                 </Button>
               )}
-          </div>
-          {editing && (
-            <div className="mt-4 space-y-3">
-              <p className="text-muted-foreground text-sm">{l.evidence}</p>
-              {sourceBox && (
-                <SlipLineImage
-                  url={detail.sourceUrl}
-                  page={l.page}
-                  box={sourceBox}
-                  label={`Source for line ${index + 1}`}
-                />
-              )}
-              {l.issues.length > 0 && (
-                <ul className="list-disc space-y-1 pl-4 text-sm text-amber-800 dark:text-amber-300">
-                  {l.issues.map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Label name="Matched order part">
-                  <select
-                    className={field}
-                    value={item}
-                    disabled={!!l.approved}
-                    onChange={(e) => {
-                      setItem(e.target.value);
-                      const i = detail.items.find(
-                        (i) => i.id === e.target.value,
-                      );
-                      if (i) setUnit(i.unit);
-                      setChecked(false);
-                    }}
-                  >
-                    <option value="">Unmatched</option>
-                    {detail.items.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.description} · due{" "}
-                        {Math.max(0, qtyRound(i.ordered - i.received))} {i.unit}
-                      </option>
-                    ))}
-                  </select>
-                </Label>
-                <Label name="Description">
-                  <input
-                    className={field}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Label>
-                <Label name="Line type">
-                  <select
-                    className={field}
-                    value={kind}
-                    onChange={(e) =>
-                      setKind(e.target.value as ReceiptKind | "")
-                    }
-                  >
-                    <option value="">Use document type</option>
-                    <option value="delivery">Delivery</option>
-                    <option value="return-replacement">
-                      Return for replacement
-                    </option>
-                    <option value="return-credit">Return for credit</option>
-                  </select>
-                </Label>
-                <Label name="Supplier code">
-                  <input
-                    className={field}
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                  />
-                </Label>
-                <Label
-                  name={`This ${(kind || detail.review.kind) === "delivery" ? "delivery" : "return"} quantity`}
-                >
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="any"
-                    className={field}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                  />
-                </Label>
-                <Label name="Quantity unit">
-                  <input
-                    className={field}
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder="ea, ft, box…"
-                  />
-                </Label>
-                <Label name="Printed ordered quantity">
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    className={field}
-                    value={ordered}
-                    onChange={(e) => setOrdered(e.target.value)}
-                  />
-                </Label>
-                <Label name="Price per order unit (optional)">
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    className={field}
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
-                </Label>
-              </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                />
-                I checked the product, quantity and unit against the source.
-              </label>
-              <Button
-                onClick={() =>
-                  void run({
-                    action: "line",
-                    lineId: l.id,
-                    kind: kind || null,
-                    description: name,
-                    sku,
-                    quantity: quantity === "" ? null : Number(quantity),
-                    ordered: ordered === "" ? null : Number(ordered),
-                    unit,
-                    unitPrice: price === "" ? null : Number(price),
-                    orderItemId: item || null,
-                    checked,
-                  })
-                }
-              >
-                Save line review
-              </Button>
-              {(!l.approved || l.approved.quantity === 0) && (
-                <details className="text-sm">
-                  <summary className="cursor-pointer">
-                    Exclude this line
-                  </summary>
-                  <p className="text-muted-foreground my-2">
-                    For totals, duplicates, zero-delivery lines or items that
-                    should not be received.
-                  </p>
-                  <input
-                    aria-label="Reason for excluding line"
-                    className={field}
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Reason"
-                  />
-                  <Button
-                    className="mt-2"
-                    size="sm"
-                    variant="outline"
-                    disabled={reason.trim().length < 3}
-                    onClick={() =>
-                      void run({ action: "ignore", lineId: l.id, reason })
-                    }
-                  >
-                    Exclude with reason
-                  </Button>
-                </details>
-              )}
             </div>
           )}
           {part && (
             <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
           )}
-        </>
+          <details className="group text-sm">
+            <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+              More fields
+              <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+            </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Label name="Description">
+                <input
+                  className={field}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Label>
+              <Label name="Line type">
+                <select
+                  className={field}
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as ReceiptKind | "")}
+                >
+                  <option value="">Use document type</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="return-replacement">
+                    Return for replacement
+                  </option>
+                  <option value="return-credit">Return for credit</option>
+                </select>
+              </Label>
+              <Label name="Supplier code">
+                <input
+                  className={field}
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                />
+              </Label>
+              <Label name="Printed ordered quantity">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  value={ordered}
+                  onChange={(e) => setOrdered(e.target.value)}
+                />
+              </Label>
+              <Label name="Price per order unit (optional)">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </Label>
+            </div>
+          </details>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              disabled={!complete}
+              onClick={async () => {
+                if (await save(true)) setOpen(false);
+              }}
+            >
+              <CheckIcon />
+              Confirm line
+            </Button>
+            <Button variant="outline" onClick={() => void save(checked)}>
+              Save changes
+            </Button>
+            {(!l.approved || l.approved.quantity === 0) && (
+              <Button
+                variant="ghost"
+                className="text-muted-foreground ml-auto"
+                aria-expanded={excluding}
+                onClick={() => setExcluding(!excluding)}
+              >
+                Exclude line
+              </Button>
+            )}
+          </div>
+          <p className="text-muted-foreground -mt-2 text-xs">
+            {complete
+              ? "Confirm once the product, quantity and unit match the source."
+              : "Match a part and enter the quantity to confirm this line."}
+          </p>
+          {excluding && (
+            <div className="flex flex-wrap gap-2">
+              <input
+                aria-label="Reason for excluding line"
+                className={`${field} flex-1 basis-56`}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why? Totals, duplicate, nothing delivered…"
+              />
+              <Button
+                variant="outline"
+                className="h-11"
+                disabled={reason.trim().length < 3}
+                onClick={() =>
+                  void run({ action: "ignore", lineId: l.id, reason })
+                }
+              >
+                Exclude with reason
+              </Button>
+            </div>
+          )}
+        </div>
       )}
-      {l.ignored && (
-        <p className="text-muted-foreground mt-1 text-sm">{l.ignored.reason}</p>
-      )}
-    </article>
+    </li>
   );
 }
 function PartDraft({
@@ -1454,7 +1867,7 @@ function PartDraft({
     return () => clearTimeout(t);
   }, [find]);
   return (
-    <section className="mt-4 space-y-3 border-l pl-4">
+    <section className="bg-background space-y-3 rounded-lg border p-4">
       <h4 className="font-medium">Catalogue part</h4>
       <p className="text-muted-foreground text-sm">
         Reuse an existing part, or approve a new entry for your organization.
@@ -1623,7 +2036,7 @@ function Reconstruct({
     (l) => !l.ignored && l.partId && l.ordered !== null && l.ordered > 0,
   );
   return (
-    <details className="border-y py-3">
+    <details className={`${card} px-4 py-3`}>
       <summary className="cursor-pointer font-medium">
         Reconstruct an order from this slip
       </summary>

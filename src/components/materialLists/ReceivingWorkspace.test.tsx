@@ -115,7 +115,7 @@ beforeEach(() => {
           typeof opts.body === "string" ? opts.body : "{}",
         ) as Record<string, unknown>;
         posts.push(body);
-        if (body.action === "approve") {
+        if (body.action === "approve")
           state.review.lines[0]!.approved = {
             itemId: "item",
             quantity: 6,
@@ -123,8 +123,7 @@ beforeEach(() => {
             by: "receiver",
             at: "now",
           };
-          state.review.revision++;
-        }
+        state.review.revision++;
         return Response.json({ success: true });
       }
       return Response.json(state);
@@ -192,4 +191,73 @@ it("requires review of a new source version before approving", async () => {
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
   ).toBeDisabled();
+});
+it("links a newly chosen order before confirming the slip details", async () => {
+  state.review.orderConfirmed = false;
+  state.review.kindConfirmed = false;
+  state.orders.push({ id: "order-2", name: "PO-156", supplierId: "other" });
+  state.suppliers.push({ id: "other", name: "Other supplier" });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.change(await screen.findByLabelText("Order in this job"), {
+    target: { value: "order-2" },
+  });
+  expect(screen.getByLabelText("Supplier")).toHaveValue("other");
+  fireEvent.click(screen.getByRole("button", { name: "Confirm details" }));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[0]).toMatchObject({
+    action: "link",
+    orderId: "order-2",
+    revision: 1,
+  });
+  expect(posts[1]).toMatchObject({
+    action: "header",
+    supplierId: "other",
+    confirmed: true,
+    documentChecked: false,
+    revision: 2,
+  });
+});
+it("lists lines to review first and confirms a line as checked", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(
+    screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+  ).toEqual(["Unclear pipe", "Valve"]);
+  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  expect(screen.getByText("Quantity unclear")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Confirm line" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Valve" }));
+  expect(screen.queryByText("Quantity unclear")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm line" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "line",
+    lineId: "0",
+    orderItemId: "item",
+    quantity: 6,
+    unit: "ea",
+    checked: true,
+  });
+});
+it("asks to allow over-delivery only when a line exceeds what is due", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review & approve" }),
+  );
+  expect(screen.getByText(/Received 2 → 8 of 10/)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/above the amount still due/)).toBeNull();
+  cleanup();
+  state.review.lines[0]!.quantity = 9;
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review & approve" }),
+  );
+  expect(screen.getByText("1 over")).toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText(/above the amount still due/));
+  fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "approve",
+    allowOverDelivery: true,
+  });
 });
