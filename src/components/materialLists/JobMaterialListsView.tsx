@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import Link from "next/link";
 import { useState, type ComponentProps } from "react";
 import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
@@ -219,7 +220,7 @@ export function JobMaterialListsView({
               </Button>
             </div>
           )}
-          <div className="mx-auto grid max-w-6xl auto-cols-fr grid-flow-col gap-2">
+          <PriorityActionBar className="mx-auto max-w-6xl gap-2" moreButtonClassName="h-12">
             <Button
               variant="outline"
               className="h-12 w-full px-2"
@@ -248,7 +249,7 @@ export function JobMaterialListsView({
                 New List
               </Button>
             )}
-          </div>
+          </PriorityActionBar>
         </div>
       </>
 

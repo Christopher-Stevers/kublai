@@ -65,6 +65,7 @@ vi.mock("~/lib/server-connection-mode", () => ({
 vi.mock("~/components/materialLists/wizard/use-part-wizard", () => ({
   usePartWizard: () => ({
     catalogs: [],
+    filteredPartsForSelection: [],
     allUnits: [],
     wizardStage: "review",
     wizardSearchQuery: "",
@@ -94,7 +95,7 @@ const upload = () =>
     target: { files: [new File(["fixture"], "parts.xlsx")] },
   });
 const openMore = () =>
-  fireEvent.keyDown(screen.getByRole("button", { name: "More" }), {
+  fireEvent.keyDown(screen.getByRole("button", { name: "Options" }), {
     key: "Enter",
   });
 beforeEach(() => {

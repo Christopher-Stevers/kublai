@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { jobPriceStatus } from "~/lib/job-price-status";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
@@ -270,7 +271,7 @@ export function PrefabsPanel({
               </ul>
             )}
             <div className="sticky bottom-0 -mx-1 space-y-2 bg-canvas px-1 pt-1 pb-1">
-            <div className={`grid ${managementOnly ? "grid-cols-1" : "grid-cols-2"} gap-2`}>
+            <PriorityActionBar className="gap-2">
               {canEdit && prefab.items.length > 0 && (
                 <Button
                   variant="outline"
@@ -282,13 +283,13 @@ export function PrefabsPanel({
               )}
               {!managementOnly && prefab.items.length > 0 && (
                 <Button
-                  className={canEdit ? "" : "col-span-2"}
+                  className="w-full"
                   onClick={() => setAdding({ prefabId: prefab.id, multiplier: 1 })}
                 >
                   Add to List
                 </Button>
               )}
-            </div>
+            </PriorityActionBar>
             {adding?.prefabId === prefab.id && (
               <MultiplierRow
                 prefab={prefab}

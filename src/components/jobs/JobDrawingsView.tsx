@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
@@ -851,7 +852,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         )}
         {/* Bottom bar like Add Parts: filters menu, search, add drawings. */}
         <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
+          <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName={BAR_BUTTON}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -968,9 +969,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 className="h-9 w-full rounded-lg pl-8 text-base pointer-fine:text-sm [&::-webkit-search-cancel-button]:appearance-none"
               />
             </div>
-            <Button
+            {canUpload && <Button
               className={BAR_BUTTON}
-              disabled={!canUpload || uploading !== null}
+              disabled={uploading !== null}
               title={
                 canUpload
                   ? "Upload a PDF; each page becomes a drawing"
@@ -982,8 +983,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 <Loader2Icon className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin" />
               )}
               {uploading ? "Adding…" : "Add Drawings"}
-            </Button>
-          </div>
+            </Button>}
+          </PriorityActionBar>
         </div>
         {canUpload && sheets.length > 0 && (
           <DrawingSheetRegister

@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { VoiceCard } from "~/components/voice/VoiceProvider";
 import { JobOfflineNotice } from "~/components/jobs/JobOfflineNotice";
 import { formatLocationAddress, type JobLocationDisplay } from "~/lib/location-address";
@@ -99,6 +100,7 @@ export function JobsClient({
       refetchOnWindowFocus: false,
     });
   const can = userData?.permissions.can;
+  const canCreateJobs = !!sandbox || !!can?.["jobs.create"];
   const canDeleteJobs = !sandbox && (can?.["jobs.delete"] ?? true);
 
   // Redirect to onboarding if user has no organizationId
@@ -329,7 +331,7 @@ export function JobsClient({
         <PageHeader
           title="Jobs"
           description="Select a job to open it"
-          actions={
+          actions={canCreateJobs && (
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"
@@ -338,7 +340,7 @@ export function JobsClient({
               <PlusIcon className="mr-2 h-5 w-5" />
               Add Job
             </Button>
-          }
+          )}
         />
 
         {isWaitingForJobs ? (
@@ -476,8 +478,9 @@ export function JobsClient({
 
         {!sandbox && <VoiceCard />}
 
-        {!isWaitingForJobs && jobs.length > 0 && (
+        {canCreateJobs && !isWaitingForJobs && jobs.length > 0 && (
           <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+            <PriorityActionBar moreButtonClassName="h-12">
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="lg"
@@ -486,6 +489,7 @@ export function JobsClient({
               <PlusIcon className="mr-2 h-5 w-5" />
               Add Job
             </Button>
+            </PriorityActionBar>
           </div>
         )}
 

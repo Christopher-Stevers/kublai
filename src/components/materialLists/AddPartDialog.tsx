@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabelContext } from "~/components/suppliers/SupplierLabel";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { findPreferredJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
@@ -58,6 +59,8 @@ export function AddPartDialog({
   managePrefabs = false,
 }: AddPartDialogProps) {
   const sandbox = useTutorialSandbox();
+  const { data: actionPermissions } = api.user.getMyRole.useQuery();
+  const canCreateParts = !sandbox && !!actionPermissions?.permissions.can["parts.create"];
   const { getReplicache: getMaterialListReplicache, requestSync: requestMaterialListReplicacheSync } = useWorkspaceMutations();
   // Tool request lists pick from tool catalogs; material lists never do.
   const { materialList: listHeader, items: listItems } =
@@ -1417,7 +1420,7 @@ export function AddPartDialog({
                   </span>
                 </div></FinancialOnly>
               ) : null}
-              <div className={`grid gap-1.5 ${prefabView ? "grid-cols-1" : "grid-cols-3"}`}>
+              <PriorityActionBar moreButtonClassName={barButton}>
                 {prefabView || wizardStage === "review" ? (
                   <Button
                     variant="outline"
@@ -1429,7 +1432,7 @@ export function AddPartDialog({
                   </Button>
                 ) : (
                   <>
-                    <Button
+                    {canCreateParts && <Button
                       variant="outline"
                       className={barButton}
                       disabled={!isOnline}
@@ -1447,7 +1450,7 @@ export function AddPartDialog({
                       }
                     >
                       {isOnline ? "Create Part" : "Create (online)"}
-                    </Button>
+                    </Button>}
                     <div className="relative min-w-0">
                       <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
                       {/* A plain search field: no autofill, autocorrect or
@@ -1516,7 +1519,7 @@ export function AddPartDialog({
                     </Button>
                   </>
                 ) : null}
-              </div>
+              </PriorityActionBar>
             </div>
           </div>
 

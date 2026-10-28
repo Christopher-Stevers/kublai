@@ -220,7 +220,7 @@ describe("live member presets", () => {
       screen.getByRole("combobox", { name: "Permission preset" }),
       { target: { value: presetId } },
     );
-    expect(screen.getByRole("switch", { name: "Send orders" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Make orders" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -237,7 +237,7 @@ describe("live member presets", () => {
       screen.getByRole("combobox", { name: "Permission preset" }),
       { target: { value: "" } },
     );
-    expect(screen.getByRole("switch", { name: "Send orders" })).toBeEnabled();
+    expect(screen.getByRole("switch", { name: "Make orders" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -252,7 +252,7 @@ describe("live member presets", () => {
     const view = render(
       <MembersSection settings={settings} onSaved={vi.fn()} />,
     );
-    expect(screen.getByRole("switch", { name: "Send orders" })).toHaveAttribute(
+    expect(screen.getByRole("switch", { name: "Make orders" })).toHaveAttribute(
       "aria-checked",
       "false",
     );
@@ -260,11 +260,11 @@ describe("live member presets", () => {
     updated.permissionPresets[0]!.permissions["orders.send"] = true;
     updated.members[0]!.permissions.can["orders.send"] = true;
     view.rerender(<MembersSection settings={updated} onSaved={vi.fn()} />);
-    expect(screen.getByRole("switch", { name: "Send orders" })).toHaveAttribute(
+    expect(screen.getByRole("switch", { name: "Make orders" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
-    expect(screen.getByRole("switch", { name: "Send orders" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Make orders" })).toBeDisabled();
     expect(mutate).not.toHaveBeenCalled();
   });
 });

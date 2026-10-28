@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { supplierLabel } from "~/lib/supplier-label";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
@@ -655,7 +656,7 @@ export default function OrdersPage() {
 
       {/* Pinned to the bottom of the window on every screen size. */}
       <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-        <div className="mx-auto flex max-w-2xl gap-2">
+        <PriorityActionBar className="mx-auto max-w-2xl gap-2" moreButtonClassName="h-12">
           {searchOpen ? (
             <>
               <div className="relative flex-1">
@@ -691,7 +692,7 @@ export default function OrdersPage() {
               )}
             </>
           )}
-        </div>
+        </PriorityActionBar>
       </div>
 
       {canSendOrders && (

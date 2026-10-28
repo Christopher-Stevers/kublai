@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 
 import { useState } from "react";
 import {
@@ -439,6 +440,8 @@ function PresetDetail({
       </div>
       {settings.viewer.canManageMembers && (
         <footer className="bg-card/95 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 backdrop-blur">
+          {!preset && <span className="text-muted-foreground text-xs">Assign members after saving.</span>}
+          <PriorityActionBar className="gap-2">
           {preset ? (
             <Button
               type="button"
@@ -463,11 +466,7 @@ function PresetDetail({
             >
               <Trash2Icon className="h-4 w-4" /> Delete preset
             </Button>
-          ) : (
-            <span className="text-muted-foreground text-xs">
-              Assign members after saving.
-            </span>
-          )}
+          ) : null}
           <Button type="submit" disabled={pending || !changed || !name.trim()}>
             {pending ? (
               <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -476,6 +475,7 @@ function PresetDetail({
             )}{" "}
             Save preset
           </Button>
+                  </PriorityActionBar>
         </footer>
       )}
     </form>

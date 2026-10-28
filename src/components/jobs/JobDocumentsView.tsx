@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import dynamic from "next/dynamic";
 
 const DocumentScanner = dynamic(
@@ -1383,14 +1384,14 @@ export function JobDocumentsView({
         hidden={Boolean(selected || editorDocument)}
         className="bg-card fixed inset-x-0 bottom-0 z-30 pin-viewport-bottom border-t px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
       >
-        <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-2">
+        <PriorityActionBar className="mx-auto max-w-7xl items-center gap-2" moreButtonClassName="h-11">
           <Button
             variant="outline"
             className="h-11 gap-1 px-2 text-xs sm:text-sm"
             onClick={() => setMoreOpen(true)}
           >
             <MoreHorizontalIcon className="size-4" />
-            More
+            Options
           </Button>
           <div className="relative min-w-0">
             <SearchIcon className="text-muted-foreground pointer-events-none absolute top-3.5 left-2 size-4" />
@@ -1405,22 +1406,22 @@ export function JobDocumentsView({
               }}
             />
           </div>
-          <Button
+          {canWrite && <Button
             className="h-11 gap-1 px-1 text-xs sm:text-sm"
-            disabled={!canWrite || processing}
+            disabled={processing}
             onClick={() => setAddOpen(true)}
           >
             <PlusIcon className="size-4 shrink-0" />
             <span className="leading-tight whitespace-normal">
               Add document
             </span>
-          </Button>
-        </div>
+          </Button>}
+        </PriorityActionBar>
       </div>
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>More</DialogTitle>
+            <DialogTitle>Document options</DialogTitle>
             <DialogDescription>
               Browse sections, filter documents, and manage folders.
             </DialogDescription>

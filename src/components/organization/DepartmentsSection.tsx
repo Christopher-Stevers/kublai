@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 
 import { useState } from "react";
 import {
@@ -342,6 +343,7 @@ function DepartmentDetail({
       </div>
       {settings.viewer.canManageMembers && (
         <footer className="bg-card/95 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 backdrop-blur">
+          <PriorityActionBar className="gap-2">
           {department ? (
             <Button
               type="button"
@@ -371,15 +373,14 @@ function DepartmentDetail({
               <Trash2Icon className="h-4 w-4" />
               Delete department
             </Button>
-          ) : (
-            <span />
-          )}
+          ) : null}
           <Button
             type="submit"
             disabled={pending || !name.trim() || (!!department && !dirty)}
           >
             {pending ? "Saving…" : "Save department"}
           </Button>
+                  </PriorityActionBar>
         </footer>
       )}
     </form>

@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import {
@@ -105,6 +106,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
   const utils = api.useUtils();
   const { data: orderWheelUsage } = api.catalogue.recentOrderWheelUsage.useQuery(undefined, { staleTime: 60_000 });
   const { data: roleData } = api.user.getMyRole.useQuery();
+  const canCreateParts = roleData?.permissions.can?.["parts.create"] ?? false;
   const canEditParts = roleData?.permissions.canEditParts ?? false;
   const canEditSupplier = canEditParts || (roleData?.permissions.can?.["suppliers.edit"] ?? false);
   const showPrice = roleData?.permissions.can?.["financial.view"] ?? false;
@@ -643,16 +645,15 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             )}
           </div>
         )}
-        <div className="grid grid-cols-3 gap-1.5">
-          <Button
+        <PriorityActionBar moreButtonClassName={barButton}>
+          {canCreateParts && !supplierMode && <Button
             type="button"
             variant="outline"
             className={barButton}
-            disabled={!canEditParts || supplierMode}
             onClick={() => setIsCreatePartDialogOpen(true)}
           >
             Create Part
-          </Button>
+          </Button>}
           <div className="relative min-w-0">
             <Search className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
             <Input
@@ -674,16 +675,15 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
               className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
             />
           </div>
-          <DropdownMenu>
+          {canEditParts && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
                 className={barButton}
-                disabled={!canEditParts}
               >
                 <Ellipsis className="mr-1 h-4 w-4 shrink-0" />
-                More
+                Options
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -726,8 +726,8 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
                 Export XLSX
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+          </DropdownMenu>}
+        </PriorityActionBar>
       </div>
 
       <Dialog

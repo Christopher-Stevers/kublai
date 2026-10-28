@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperEquipmentDialog } from "./SuperEquipmentDialog";
 import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
@@ -3355,16 +3356,17 @@ export function DrawingWorkspace({
             </div>
           </>
         )}
-        <div
+        <PriorityActionBar
           role="toolbar"
           aria-label="Drawing tools"
-          className={`relative mx-auto grid max-w-6xl gap-2 ${onFullscreen ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-4"} ${markupOpen ? "z-50" : ""}`}
+          className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
+          moreButtonClassName={BAR_BUTTON}
         >
           {panel && panel !== "selected" ? (
             <Button
               variant="default"
               className={BAR_BUTTON}
-              aria-label="More"
+              aria-label="Drawing options"
               aria-pressed={true}
               onClick={() => {
                 setPanel("");
@@ -3372,7 +3374,7 @@ export function DrawingWorkspace({
               }}
             >
               <MoreHorizontalIcon className="h-5 w-5" />
-              More
+              Options
             </Button>
           ) : (
             <DropdownMenu
@@ -3387,10 +3389,10 @@ export function DrawingWorkspace({
                 <Button
                   variant={moreOpen ? "default" : "ghost"}
                   className={BAR_BUTTON}
-                  aria-label="More"
+                  aria-label="Drawing options"
                 >
                   <MoreHorizontalIcon className="h-5 w-5" />
-                  More
+                  Options
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -3615,7 +3617,8 @@ export function DrawingWorkspace({
               <MaximizeIcon aria-hidden="true" />
             </Button>
           )}
-          <Button
+          {data.canAnnotate !== false && <Button
+            disabled={!writable}
             variant={
               markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "default"
@@ -3640,7 +3643,7 @@ export function DrawingWorkspace({
             <span className="min-w-0 break-words text-[11px] leading-3">
               {!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"}
             </span>
-          </Button>
+          </Button>}
           <Button
             variant={bottomMode.measuring ? "default" : "ghost"}
             className={BAR_BUTTON}
@@ -3656,7 +3659,7 @@ export function DrawingWorkspace({
             <RulerIcon className="h-5 w-5" />
             Measure
           </Button>
-        </div>
+        </PriorityActionBar>
       </div>
       </DrawingToolbarDock>}
       <Dialog

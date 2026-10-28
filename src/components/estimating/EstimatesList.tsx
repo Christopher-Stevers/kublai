@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -275,7 +276,8 @@ export function EstimatesList() {
           </Button>
         </div>
       )}
-      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom flex gap-2 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
+        <PriorityActionBar moreButtonClassName="h-12">
         <Button
           variant="outline"
           size="lg"
@@ -295,6 +297,7 @@ export function EstimatesList() {
             New estimate
           </Button>
         )}
+        </PriorityActionBar>
       </div>
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>

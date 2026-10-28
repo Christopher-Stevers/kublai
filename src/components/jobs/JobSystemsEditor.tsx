@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 
 import { useEffect, useId, useState } from "react";
 import {
@@ -891,6 +892,7 @@ export function JobSystemsEditor({
       )}
       {canEdit && (
         <div className="bg-background sticky bottom-0 flex items-center gap-2 border-t py-3">
+          <PriorityActionBar className="w-auto">
           <Button
             disabled={!dirty || save.isPending}
             onClick={() => void submit()}
@@ -907,6 +909,7 @@ export function JobSystemsEditor({
           >
             Discard changes
           </Button>
+          </PriorityActionBar>
           {dirty && (
             <span className="text-muted-foreground text-xs">
               Unsaved changes

@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { DrawingThumbnail } from "./DrawingThumbnail";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { SheetOfflineButton } from "./SheetOfflineButton";
@@ -760,7 +761,7 @@ export function JobRoomsView({
             />
             {canUpload ? (
               <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-                <div className="mx-auto max-w-6xl">
+                <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName="h-12">
                   <Button
                     onClick={() => setPickerOpen(true)}
                     size="lg"
@@ -771,7 +772,7 @@ export function JobRoomsView({
                       ? "Add more floors from Drawings"
                       : "Choose floor plans from Drawings"}
                   </Button>
-                </div>
+                </PriorityActionBar>
               </div>
             ) : null}
           </div>
@@ -1463,7 +1464,7 @@ export function JobRoomsView({
           ) : null}
 
           <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-            <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1.5">
+            <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName="h-10">
               <Button
                 data-tutorial="room-list-toggle"
                 variant={isRoomListOpen ? "default" : "outline"}
@@ -1475,11 +1476,10 @@ export function JobRoomsView({
                 <ListIcon className="mr-1 h-4 w-4 shrink-0" />
                 Rooms ({selectedFloor.rooms.length})
               </Button>
-              <Button
+              {canManage && <Button
                 variant={editMenuOpen ? "default" : "outline"}
                 className="h-10 w-full px-1.5 text-xs leading-tight whitespace-normal"
                 aria-expanded={editMenuOpen}
-                disabled={!canManage}
                 onClick={() => {
                   if (editMenuOpen) {
                     exitEditMode();
@@ -1490,14 +1490,14 @@ export function JobRoomsView({
               >
                 <PencilIcon className="mr-1 h-4 w-4 shrink-0" />
                 {editMenuOpen ? "Done" : "Edit"}
-              </Button>
+              </Button>}
               <SheetOfflineButton
                 sheet={selectedFloor}
                 prepare={(signal) =>
                   prepareFloorOffline(selectedFloor.id, signal)
                 }
               />
-            </div>
+            </PriorityActionBar>
           </div>
         </div>
       ) : null}

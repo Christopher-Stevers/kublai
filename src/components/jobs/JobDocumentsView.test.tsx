@@ -237,7 +237,7 @@ describe("job documents workspace", () => {
   it("shows a restore action for recycled documents", async () => {
     overview.documents[0]!.deletedAt = when;
     render(<JobDocumentsView jobId="job-1" />);
-    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("tab", { name: "Recycle bin" }));
     fireEvent.click(await screen.findByRole("button", { name: "Restore Specification.pdf" }));
     await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "restore", documentId: "doc-1" }));
@@ -313,7 +313,7 @@ describe("job documents workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open Agreement.docx" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.change(screen.getByLabelText("Filter by file type"), {
       target: { value: "word" },
     });
@@ -325,7 +325,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: " Submittals " },
@@ -534,7 +534,7 @@ describe("job documents workspace", () => {
           )
         : new Response(JSON.stringify(overview)),
     );
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Private" },
@@ -574,7 +574,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("button", { name: "Permissions" }));
     fireEvent.change(screen.getByLabelText("Access for Alex"), {
       target: { value: "viewer" },
@@ -650,7 +650,7 @@ describe("job documents workspace", () => {
       .mockImplementation(() => undefined);
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("tab", { name: "Transmittals" }));
     fireEvent.click(screen.getByRole("button", { name: "Download manifest" }));
     const blob = createObjectURL.mock.calls[0]![0] as Blob | undefined;
@@ -833,7 +833,7 @@ function pendingSubmittal() {
 }
 async function openSubmittals() {
   await ready();
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: "Options" }));
   fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
 }
 describe("dedicated submittal workspace", () => {
@@ -858,7 +858,7 @@ describe("dedicated submittal workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open SUB-001 · valve.pdf" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
     fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
     expect(
       screen.getByRole("button", { name: "Open SUB-002: Motor" }),
@@ -1044,7 +1044,7 @@ it("routes grouped approvals through the full review instead of approving unseen
     screen.queryByRole("button", { name: "Approve PDF" }),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open grouped review" }));
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: "Options" }));
   expect(screen.getByRole("tab", { name: "Reviews" })).toHaveAttribute(
     "aria-selected",
     "true",
@@ -1145,7 +1145,7 @@ describe("document scanning", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    expect(screen.getByRole("button", {name: "Add document"})).toBeDisabled();
+    expect(screen.queryByRole("button", {name: "Add document"})).not.toBeInTheDocument();
     expect(screen.queryByRole("button", {name: "Scan document"})).not.toBeInTheDocument();
   });
 });

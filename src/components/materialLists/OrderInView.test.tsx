@@ -114,6 +114,8 @@ const listBar = (orderActive: boolean) => (
   <MaterialListActions
     total={12}
     canGenerate
+    canOrder
+    canAdd
     onQuote={vi.fn()}
     onOrder={vi.fn()}
     onAdd={vi.fn()}
@@ -162,6 +164,8 @@ it("keeps the verify page's bar on its own", () => {
     <MaterialListActions
       total={12}
       canGenerate
+    canOrder
+    canAdd
       onQuote={vi.fn()}
       onOrder={vi.fn()}
       onAdd={vi.fn()}

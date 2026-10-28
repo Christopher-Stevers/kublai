@@ -149,9 +149,9 @@ export function MaterialListScreen({
   });
   const [slipPart, setSlipPart] = useState<{ orderId: string; id: string; name: string } | null>(null);
   const slipPartDraft = slipDrafts.drafts.find((draft) => draft.orderId === slipPart?.orderId);
-  const canQuote = userData?.permissions.can["quotes.create"] ?? true;
+  const canQuote = userData?.permissions.can["quotes.create"] ?? false;
   const canOrder =
-    isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? true);
+    isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? false);
   const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
@@ -523,6 +523,8 @@ export function MaterialListScreen({
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-card px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
         <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
+          canAdd={!!sandbox || !!userData?.permissions.can["lists.edit"]}
+          orderLabel={isToolRequest || (!userData?.permissions.can["orders.send"] && hasToolItems) ? "Request tools" : "Order"}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           packingSlips={verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId ? (

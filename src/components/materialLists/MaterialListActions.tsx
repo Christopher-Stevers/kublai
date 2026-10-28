@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, type ReactNode } from "react";
 import {
@@ -6,17 +7,10 @@ import {
   CheckCheckIcon,
   XIcon,
   FileTextIcon,
-  MoreHorizontalIcon,
   PlusIcon,
   ShoppingCartIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { SaveAsPrefabDialog } from "~/components/materialLists/prefabs/SaveAsPrefabDialog";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -47,39 +41,63 @@ export function OrderReceiveActions({
   const isOnline = useOnlineStatus();
   const style = MATERIAL_LIST_ACTION_CLASS;
   const row = (
-    <div data-bottom-menu className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
-      <Button variant="outline" className={style} onClick={onMarkAllReceived} disabled={!onMarkAllReceived || receiveDisabled || receivingAll || !isOnline}>
-        <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-        Mark all received
-      </Button>
+    <PriorityActionBar moreButtonClassName={style}>
+      {onMarkAllReceived && (
+        <Button
+          variant="outline"
+          className={style}
+          onClick={onMarkAllReceived}
+          disabled={receiveDisabled || receivingAll || !isOnline}
+        >
+          <CheckCheckIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+          Mark all received
+        </Button>
+      )}
       <Button className={style} onClick={onNotes}>
         <FileTextIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
         Notes
       </Button>
       {packingSlips}
-      <Button variant="outline" className={style} onClick={onMarkNoneReceived} disabled={!onMarkNoneReceived || receiveDisabled || receivingAll || !isOnline}>
-        <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-        Mark none received
-      </Button>
-    </div>
+      {onMarkNoneReceived && (
+        <Button
+          variant="outline"
+          className={style}
+          onClick={onMarkNoneReceived}
+          disabled={receiveDisabled || receivingAll || !isOnline}
+        >
+          <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+          Mark none received
+        </Button>
+      )}
+    </PriorityActionBar>
   );
   if (!label) return row;
   return (
     <div role="group" aria-label="Receive order" className="space-y-1.5">
-      <div className="flex items-baseline gap-1.5 text-sm sm:text-base">{label}</div>
+      <div className="flex items-baseline gap-1.5 text-sm sm:text-base">
+        {label}
+      </div>
       {row}
     </div>
   );
 }
 
-function FooterLayer({ shown, children }: { shown: boolean; children: ReactNode }) {
+function FooterLayer({
+  shown,
+  children,
+}: {
+  shown: boolean;
+  children: ReactNode;
+}) {
   return (
     <div
       aria-hidden={!shown || undefined}
       inert={!shown}
       // The bar going away drops out first; the new one rises in just after.
       className={`col-start-1 row-start-1 self-end transition-[opacity,translate,scale] duration-500 ease-in-out motion-reduce:transition-none ${
-        shown ? "translate-y-0 scale-100 opacity-100 delay-150" : "pointer-events-none translate-y-8 scale-95 opacity-0"
+        shown
+          ? "translate-y-0 scale-100 opacity-100 delay-150"
+          : "pointer-events-none translate-y-8 scale-95 opacity-0"
       }`}
     >
       {children}
@@ -91,8 +109,10 @@ export function MaterialListActions({
   total,
   canGenerate,
   blockedReason,
-  canQuote = true,
-  canOrder = true,
+  canQuote = false,
+  canOrder = false,
+  canAdd = false,
+  orderLabel = "Order",
   onQuote,
   onOrder,
   onAdd,
@@ -112,6 +132,8 @@ export function MaterialListActions({
   /** Member may request quotes / send orders (permissions). */
   canQuote?: boolean;
   canOrder?: boolean;
+  canAdd?: boolean;
+  orderLabel?: string;
   onQuote: () => void;
   onOrder: () => void;
   onAdd: () => void;
@@ -149,56 +171,65 @@ export function MaterialListActions({
     );
   const listActions = (
     <div className="space-y-1.5">
-      <FinancialOnly><div className="flex items-baseline gap-1.5">
-        <span className="text-base text-muted-foreground sm:text-lg">
-          Material Total
-        </span>
-        <span className="text-base font-bold sm:text-lg">
-          ${total.toFixed(2)}
-        </span>
-      </div></FinancialOnly>
-      <div data-bottom-menu className={`grid gap-1.5 ${packingSlips ? "grid-cols-4" : "grid-cols-3"}`}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className={style}>
-              <MoreHorizontalIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-              More
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="min-w-48">
-            <DropdownMenuItem
-              onSelect={onQuote}
-              disabled={!canGenerate || !canQuote}
-              title={!canQuote ? "You don't have permission to request quotes" : (blockedReason ?? undefined)}
-            >
-              <FileTextIcon className="h-4 w-4" />
-              Get Quote
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => setSavingPrefab(true)}
-              disabled={!materialListId || !!sandbox || !isOnline}
-              title={!isOnline ? "Reconnect to save a prefab" : undefined}
-            >
-              <BoxesIcon className="h-4 w-4" />
-              Save as Prefab
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          className={style}
-          onClick={onOrder}
-          disabled={!canGenerate || !canOrder}
-          title={!canOrder ? "You don't have permission to send orders" : (blockedReason ?? "Order")}
-        >
-          <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-          Order
-        </Button>
+      <FinancialOnly>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-muted-foreground text-base sm:text-lg">
+            Material Total
+          </span>
+          <span className="text-base font-bold sm:text-lg">
+            ${total.toFixed(2)}
+          </span>
+        </div>
+      </FinancialOnly>
+      <PriorityActionBar moreButtonClassName={style}>
+        {canQuote && (
+          <Button
+            variant="outline"
+            className={style}
+            onClick={onQuote}
+            disabled={!canGenerate}
+            title={blockedReason ?? undefined}
+          >
+            <FileTextIcon className="h-3.5 w-3.5 shrink-0" />
+            Get Quote
+          </Button>
+        )}
+        {canAdd && materialListId && !sandbox && (
+          <Button
+            variant="outline"
+            className={style}
+            onClick={() => setSavingPrefab(true)}
+            disabled={!isOnline}
+            title={!isOnline ? "Reconnect to save a prefab" : undefined}
+          >
+            <BoxesIcon className="h-3.5 w-3.5 shrink-0" />
+            Save as Prefab
+          </Button>
+        )}
+        {canOrder && (
+          <Button
+            className={style}
+            onClick={onOrder}
+            disabled={!canGenerate}
+            title={blockedReason ?? "Order"}
+          >
+            <ShoppingCartIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+            {orderLabel}
+          </Button>
+        )}
         {packingSlips}
-        <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
-          <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-          Add Part
-        </Button>
-      </div>
+        {canAdd && (
+          <Button
+            variant="outline"
+            className={style}
+            onClick={onAdd}
+            data-tutorial="add-part"
+          >
+            <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+            Add Part
+          </Button>
+        )}
+      </PriorityActionBar>
     </div>
   );
   return (

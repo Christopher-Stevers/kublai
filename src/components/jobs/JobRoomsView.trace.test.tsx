@@ -295,7 +295,7 @@ describe("floor plan bottom bar", () => {
     expect(
       document.querySelector('[data-tutorial="drawing-viewer"]'),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     fireEvent.click(
       document.querySelector('[data-tutorial="room-list-toggle"]')!,
     );

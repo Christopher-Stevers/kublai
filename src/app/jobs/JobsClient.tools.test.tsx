@@ -17,7 +17,7 @@ const state = vi.hoisted(() => ({
   quotedStatus: vi.fn(),
   materialListId: "list" as string | null,
   items: null as null | Array<Record<string, unknown>>,
-  can: { "orders.send": false, "quotes.create": false } as Record<string, boolean>,
+  can: { "orders.send": false, "quotes.create": false, "lists.edit": true } as Record<string, boolean>,
   priceBook: undefined as undefined | { policy: { active: boolean }; entries: Array<{id: string; partDefinitionId: string; supplierId: string; supplierPartId: string; supplierSku: null; unitCost: string; priceStatus: string}> },
 }));
 vi.mock("next/navigation", () => ({
@@ -199,9 +199,10 @@ it("lets a foreman send tools from the job workspace to Asset Management without
   }));
   render(<JobsClient initialJobs={[]} />);
   expect(state.itemMode).toHaveBeenCalledWith(true);
-  const start = screen.getByRole("button", { name: /^Order$/ });
+  const start = screen.getByRole("button", { name: /^Request tools$/ });
   expect(start).toBeEnabled();
-  expect(screen.getByRole("button", { name: "More" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Order" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add Part" })).toBeVisible();
   fireEvent.click(start);
   fireEvent.click(await screen.findByRole("button", { name: /^Send$/ }));

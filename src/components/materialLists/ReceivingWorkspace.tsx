@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import {
   useCallback,
   useEffect,
@@ -1007,6 +1008,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 </p>
                 <p className="text-muted-foreground truncate">{hint}</p>
               </div>
+              <PriorityActionBar className="w-auto min-w-0">
               <Button
                 className="shrink-0"
                 disabled={busy || !online || !canApprove}
@@ -1024,6 +1026,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 )}
                 Review & approve
               </Button>
+              </PriorityActionBar>
             </div>
           </footer>
           <Dialog open={preview} onOpenChange={setPreview}>

@@ -87,7 +87,7 @@ describe("permission preset editor", () => {
     expect(
       screen.getByRole("button", { name: "Delete preset" }),
     ).toBeDisabled();
-    fireEvent.click(screen.getByRole("switch", { name: "Send orders" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Make orders" }));
     fireEvent.click(screen.getByRole("button", { name: "Save preset" }));
     expect(save).toHaveBeenCalledWith({
       id: "preset",
@@ -116,14 +116,14 @@ describe("permission preset editor", () => {
   it("keeps unsaved edits and their revision when another manager changes the preset", () => {
     const first = settings();
     const view = render(<PresetsSection settings={first} onSaved={vi.fn()} />);
-    fireEvent.click(screen.getByRole("switch", { name: "Send orders" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Make orders" }));
     const updated = structuredClone(first);
     updated.permissionPresets[0]!.revision = 4;
     updated.permissionPresets[0]!.permissions["parts.create"] = false;
     view.rerender(<PresetsSection settings={updated} onSaved={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Save preset" }));
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }));
-    expect(screen.getByRole("switch", { name: "Send orders" })).toHaveAttribute(
+    expect(screen.getByRole("switch", { name: "Make orders" })).toHaveAttribute(
       "aria-checked",
       "true",
     );

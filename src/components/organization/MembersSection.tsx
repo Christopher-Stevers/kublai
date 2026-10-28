@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 
 import { useMemo, useState } from "react";
 import {
@@ -668,7 +669,7 @@ function MemberDetail({
           )}
         >
           <span className="text-sm font-medium">Unsaved changes</span>
-          <div className="flex gap-2">
+          <PriorityActionBar className="w-auto gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -706,7 +707,7 @@ function MemberDetail({
               )}
               Save changes
             </Button>
-          </div>
+          </PriorityActionBar>
         </footer>
       )}
     </div>
