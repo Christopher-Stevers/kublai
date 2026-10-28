@@ -794,3 +794,60 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+/* App chrome follows device orientation. All full-page workspaces use the
+   same header height, so hiding it also returns that space to the content. */
+:root {
+  --app-header-height: 3.5rem;
+  --landscape-fallback-height: 0px;
+  --app-content-height: calc(100dvh - var(--app-header-height) - var(--landscape-fallback-height));
+}
+@media (min-width: 640px) { :root { --app-header-height: 4rem; } }
+.app-below-header { top: var(--app-header-height); }
+[data-landscape-navigation-slot] { display: none; }
+[data-landscape-action-row] > [data-action-bar-row] { min-width: 0; flex: 1; }
+html[data-app-landscape] { --app-header-height: 0px; }
+html[data-app-landscape] [data-app-header] { display: none !important; }
+html[data-app-landscape] [data-landscape-navigation-slot] {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  align-items: center;
+}
+html[data-app-landscape] [data-landscape-navigation-slot]:empty { width: 0; min-height: 1px; }
+html[data-app-landscape] [data-landscape-action-row] { display: flex; align-items: end; gap: 0.375rem; }
+html[data-app-landscape] [data-viewer-action-bar]:has([data-landscape-navigation]) {
+  grid-template-columns: auto repeat(var(--viewer-action-count), minmax(0, 1fr)) !important;
+}
+html[data-app-landscape] [data-viewer-action-bar] > [data-landscape-navigation-slot]:empty { display: none; }
+[data-landscape-navigation] { display: flex; gap: 0.375rem; align-items: center; }
+[data-landscape-navigation] > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--foreground);
+}
+[data-landscape-navigation] > button:hover { background: var(--accent); }
+[data-landscape-navigation] [data-landscape-logo] span { display: none; }
+[data-landscape-fallback-bar] {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 80;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+html[data-app-landscape][data-landscape-fallback] { --landscape-fallback-height: calc(60px + env(safe-area-inset-bottom)); }
+html[data-app-landscape][data-landscape-fallback] [data-app-shell] > main { padding-bottom: var(--landscape-fallback-height); }
+html[data-app-landscape][data-landscape-fallback] .app-below-header { bottom: var(--landscape-fallback-height); }
+
+html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slot]) { display: block; }

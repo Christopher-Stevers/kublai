@@ -408,7 +408,7 @@ export function ModelWorkspace({
         "bg-background text-foreground flex min-h-[560px] flex-col overflow-hidden",
         expanded
           ? "fixed inset-0 z-40 h-dvh"
-          : "relative h-[calc(100dvh-3.5rem)] border-t sm:h-[calc(100dvh-4rem)]",
+          : "relative h-[var(--app-content-height)] border-t",
       )}
     >
       <header className="bg-background z-10 flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">

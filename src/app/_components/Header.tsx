@@ -1,4 +1,5 @@
 "use client";
+import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
 
 import { DrawingDownloadStatus } from "~/components/jobs/DrawingDownloadStatus";
 import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
@@ -97,6 +98,7 @@ function HeaderFrame({
   };
   sessionKey?: string;
 }) {
+  const landscape = useLandscapeLayout();
   const simulation = useEmployeeSimulation();
   const router = useRouter();
   const snapshot = useSnapshot();
@@ -265,15 +267,14 @@ function HeaderFrame({
   });
   const handleBack = () => { runHeaderBackOverride(); };
 
-  return (
-    <header className="border-border bg-card sticky top-0 z-50 flex h-14 items-center justify-between border-b px-3 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-8">
+  const navigation = <>
         {showBackButton && (
           <Button
-            variant="ghost"
+            variant={landscape ? "outline" : "ghost"}
             size="icon"
             onClick={handleBack}
             className="h-10 w-10 shrink-0"
+            data-landscape-back
             aria-label="Go up one level"
             data-tutorial="back"
           >
@@ -284,6 +285,7 @@ function HeaderFrame({
           type="button"
           aria-label={`ForemanHQ — ${landingSource?.title ?? "Jobs"}`}
           onClick={openLandingPage}
+          data-landscape-logo
           className="text-foreground flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight lg:shrink-0"
         >
           <Image
@@ -298,6 +300,14 @@ function HeaderFrame({
             {APP_NAME}
           </span>
         </button>
+  </>;
+
+  return (
+    <>
+    <LandscapeNavigation active={landscape}>{navigation}</LandscapeNavigation>
+    <header data-app-header hidden={landscape} className="border-border bg-card sticky top-0 z-50 flex h-14 items-center justify-between border-b px-3 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-8">
+        {!landscape && navigation}
         <EndSimulationButton />
         <nav className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
           {navLinks.map((link) => (
@@ -520,6 +530,7 @@ function HeaderFrame({
         </>
       )}
     </header>
+    </>
   );
 }
 

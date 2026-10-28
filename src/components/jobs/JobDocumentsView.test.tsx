@@ -252,7 +252,7 @@ describe("job documents workspace", () => {
     );
     expect(
       screen.getByRole("region", { name: "Specification.pdf" }),
-    ).toHaveClass("fixed", "top-14", "bottom-0");
+    ).toHaveClass("fixed", "app-below-header", "bottom-0");
     expect(
       screen.queryByRole("toolbar", { name: "Document controls" }),
     ).not.toBeInTheDocument();
@@ -264,7 +264,7 @@ describe("job documents workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
     expect(
       screen.getByRole("region", { name: "Specification.pdf" }),
-    ).toHaveClass("top-14", "bottom-0");
+    ).toHaveClass("app-below-header", "bottom-0");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(
       screen.getByRole("toolbar", { name: "Document controls" }),

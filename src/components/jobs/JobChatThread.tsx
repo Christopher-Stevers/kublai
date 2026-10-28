@@ -172,7 +172,7 @@ export function JobChatThread({
       className={
         embedded
           ? "bg-card h-full min-h-0 overflow-hidden"
-          : "bg-card fixed inset-x-0 top-14 bottom-0 z-30 overflow-hidden sm:top-16"
+          : "bg-card fixed inset-x-0 app-below-header bottom-0 z-30 overflow-hidden"
       }
     >
       {sandbox ? (
@@ -1267,6 +1267,7 @@ function ChatLobby({
               void sendDraft();
             }}
           >
+            <div data-landscape-navigation-slot />
             <input
               ref={fileInput}
               disabled={inTutorial}

@@ -316,7 +316,7 @@ function ChatWorkspace({ initialJobId }: { initialJobId?: string }) {
     <section
       ref={panel}
       aria-label="Chat workspace"
-      className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 flex min-h-0 flex-col overflow-hidden sm:top-16"
+      className="bg-card fixed inset-x-0 app-below-header bottom-0 z-30 flex min-h-0 flex-col overflow-hidden"
     >
       <header
         className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 text-white sm:px-4"

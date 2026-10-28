@@ -982,7 +982,7 @@ export function JobRoomsView({
         // the bottom bar; the room list and edit menu slide up over the bar.
         <div
           data-tutorial="drawing-viewer"
-          className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col sm:top-16"
+          className="bg-background fixed inset-x-0 app-below-header bottom-0 z-30 flex flex-col"
         >
           <div className="relative min-h-0 flex-1">
             <FloorPlanCanvas

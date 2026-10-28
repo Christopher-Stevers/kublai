@@ -188,7 +188,7 @@ export function DocumentDetails({
         role="region"
         aria-label={document.name}
         data-snapshot-source-title={`${document.name} · v${version.number}`}
-        className="bg-background fixed inset-x-0 top-14 bottom-0 z-30 flex min-h-0 flex-col sm:top-16"
+        className="bg-background fixed inset-x-0 app-below-header bottom-0 z-30 flex min-h-0 flex-col"
       >
         <DocumentPdfPreview
           key={version.id}

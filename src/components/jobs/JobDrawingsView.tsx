@@ -555,7 +555,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       <div
         ref={full.surface}
         data-drawing-fullscreen={full.fullscreen}
-        className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60] [&_[data-drawing-chrome]]:hidden" : "inset-x-0 top-14 bottom-0 z-30 sm:top-16"}`}
+        className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60] [&_[data-drawing-chrome]]:hidden" : "inset-x-0 app-below-header bottom-0 z-30"}`}
       >
         {full.fullscreen && (
           <Button

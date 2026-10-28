@@ -252,7 +252,7 @@ export function MaterialListScreen({
 
   if (isLoading && !mlHeader) {
     return (
-      <div className="flex h-[calc(100dvh-4rem)] flex-col">
+      <div className="flex h-[var(--app-content-height)] flex-col">
         <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
           <div className="mx-auto max-w-6xl">
             <div className="flex items-start justify-between gap-3">
@@ -290,7 +290,7 @@ export function MaterialListScreen({
 
   if (!mlHeader) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="flex h-[var(--app-content-height)] items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Material list not found</p>
           <Button onClick={() => router.push("/jobs")}>
@@ -302,7 +302,7 @@ export function MaterialListScreen({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col">
+    <div className="flex h-[var(--app-content-height)] flex-col">
       {/* Top Bar */}
       <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
         <div className="mx-auto max-w-6xl">

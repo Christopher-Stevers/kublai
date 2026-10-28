@@ -449,7 +449,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
 
   if (!isCatalogueOnline) {
     return (
-      <div className="bg-muted/50 flex h-[calc(100vh-4rem)] items-center justify-center p-6">
+      <div className="bg-muted/50 flex h-[var(--app-content-height)] items-center justify-center p-6">
         <div className="bg-card max-w-md rounded-2xl border p-6 text-center shadow-sm">
           <h1 className="text-foreground text-xl font-bold">
             Parts Catalogue is online-only
@@ -468,7 +468,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
       ref={panelRef}
       role="region"
       aria-label={catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
-      className="bg-canvas flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden sm:h-[calc(100dvh-4rem)]"
+      className="bg-canvas flex h-[var(--app-content-height)] min-h-0 flex-col overflow-hidden"
       style={panelHeight === undefined ? undefined : { height: panelHeight }}
     >
       <h1 className="sr-only">

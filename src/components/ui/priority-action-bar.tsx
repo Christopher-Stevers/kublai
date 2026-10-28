@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type CSSProperties,
   type RefObject,
   type ReactNode,
 } from "react";
@@ -46,7 +47,7 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 function useActionLimit(root: RefObject<HTMLDivElement | null>) {
   const [limit, setLimit] = useState(ACTION_LIMIT);
   useIsoLayoutEffect(() => {
-    const element = root.current;
+    const element = root.current?.querySelector<HTMLElement>("[data-action-bar-row]") ?? root.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const fit = Math.floor(element.clientWidth / ACTION_MIN_WIDTH);
@@ -183,11 +184,14 @@ export function PriorityActionBar({
       {label != null && label !== false && (
         <div data-action-bar-label>{label}</div>
       )}
-      <div
-        data-action-bar-row
-        style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}
-      >
-        {shown.map((action, index) => slot(action, index))}
+      <div data-landscape-action-row>
+        <div data-landscape-navigation-slot />
+        <div
+          data-action-bar-row
+          style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}
+        >
+          {shown.map((action, index) => slot(action, index))}
+        </div>
       </div>
     </div>
   );
@@ -233,13 +237,16 @@ export function ViewerActionBar({
     <div
       ref={root}
       data-bottom-menu
+      data-viewer-action-bar
       {...props}
       className={cn("relative grid w-full gap-1.5", className)}
       style={{
         ...props.style,
+        "--viewer-action-count": overflowCount ? 4 : actions.length,
         gridTemplateColumns: `repeat(${overflowCount ? 4 : actions.length}, minmax(0, 1fr))`,
-      }}
+      } as CSSProperties}
     >
+      <div data-landscape-navigation-slot />
       {overflowCount > 0 && (
         <Button
           ref={trigger}
