@@ -1,4 +1,5 @@
 "use client";
+import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
@@ -466,6 +467,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
   return (
     <div
       ref={panelRef}
+      data-landscape-scope
       role="region"
       aria-label={catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
       className="bg-canvas flex h-[var(--app-content-height)] min-h-0 flex-col overflow-hidden"
@@ -474,8 +476,8 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
       <h1 className="sr-only">
         {catalogKind === "assets" ? "Tool Types" : "Parts Catalogue"}
       </h1>
-      <div className="bg-card relative z-10 shrink-0 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
-        <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6">
+      <LandscapeSubBar className="bg-card relative z-10 shrink-0 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
+        <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6 [[data-landscape-subbar]_&]:p-0">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
             <label className="flex min-w-0 items-center gap-2">View
               <select aria-label="Catalogue mode" value={supplierMode ? "supplier" : "all"} onChange={event => onModeChange(event.target.value === "supplier")} className="border-input bg-background h-9 rounded-md border px-2">
@@ -498,7 +500,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             hideSearch
           />}
         </div>
-      </div>
+      </LandscapeSubBar>
 
       <QuickWheelSurface onBack={wizardStage === "catalog" ? undefined : () => {
         const order = ["catalog", "material", "size", "category", "part"] as const;

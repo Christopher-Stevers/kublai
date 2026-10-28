@@ -851,3 +851,12 @@ html[data-app-landscape][data-landscape-fallback] [data-app-shell] > main { padd
 html[data-app-landscape][data-landscape-fallback] .app-below-header { bottom: var(--landscape-fallback-height); }
 
 html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slot]) { display: block; }
+
+/* A screen's second top bar joins its bottom bar in landscape, above the
+   shelf and buttons. */
+[data-landscape-subbar-slot]:empty { display: none; }
+[data-landscape-subbar-slot] {
+  margin-bottom: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--border);
+}

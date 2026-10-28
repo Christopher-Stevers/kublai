@@ -1,4 +1,5 @@
 "use client";
+import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
@@ -302,10 +303,10 @@ export function MaterialListScreen({
   }
 
   return (
-    <div className="flex h-[var(--app-content-height)] flex-col">
+    <div data-landscape-scope className="flex h-[var(--app-content-height)] flex-col">
       {/* Top Bar */}
-      <div className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
-        <div className="mx-auto max-w-6xl">
+      <LandscapeSubBar className="border-b bg-card px-4 py-2 sm:px-6 sm:py-3">
+        <div className="mx-auto max-w-6xl [[data-landscape-subbar]_&]:max-w-none">
           {!isBrowserOnline && (
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
@@ -336,7 +337,7 @@ export function MaterialListScreen({
             </div>
           </div>
         </div>
-      </div>
+      </LandscapeSubBar>
 
       {/* Main Area - Parts List */}
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">

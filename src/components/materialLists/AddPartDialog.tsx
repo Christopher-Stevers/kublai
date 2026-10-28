@@ -1,4 +1,5 @@
 "use client";
+import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabelContext } from "~/components/suppliers/SupplierLabel";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
@@ -1095,6 +1096,7 @@ export function AddPartDialog({
           data-tutorial="add-part-dialog"
           data-tutorial-stage={wizardStage}
           data-tutorial-pending-count={pendingParts.length}
+          data-landscape-scope
           className={`fixed inset-x-0 flex flex-col overflow-hidden bg-canvas ${keyboardViewport ? "z-[60]" : "app-below-header bottom-0 z-[45]"} ${quantityPickerPreview ? "touch-none" : ""}`}
           style={
             keyboardViewport
@@ -1105,8 +1107,8 @@ export function AddPartDialog({
           {showStepsBar && (
             // Raised like the app bar above it (which drops its own shadow
             // while this shows), so the steps read as part of the top bar.
-            <div className="relative z-10 shrink-0 bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
-              <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6">
+            <LandscapeSubBar className="relative z-10 shrink-0 bg-card shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)]">
+              <div className="mx-auto w-full max-w-6xl px-2 pt-1 pb-2 sm:px-4 sm:pb-3 md:px-6 [[data-landscape-subbar]_&]:p-0">
                 <WizardHeader
                   currentStage={wizardStage}
                   selectedCatalog={selectedCatalogName}
@@ -1116,7 +1118,7 @@ export function AddPartDialog({
                   onStageClick={handleStageClick}
                 />
               </div>
-            </div>
+            </LandscapeSubBar>
           )}
           <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
           {catalogueDownloading && (

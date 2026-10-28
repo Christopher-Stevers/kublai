@@ -152,6 +152,8 @@ export function PriorityActionBar({
           More
         </button>
       )}
+      {/* In landscape the screen's second top bar moves in here. */}
+      <div data-landscape-subbar-slot />
       {/* Keep shelved controls mounted: opening their dialog must not destroy
           local state when the shelf lowers. */}
       <div
