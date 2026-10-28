@@ -91,7 +91,7 @@ vi.mock("~/components/materialLists/MaterialListSheet", () => ({
   MaterialListSheet: () => null,
 }));
 vi.mock("~/components/materialLists/ScanSlipButton", () => ({
-  ScanSlipButton: () => <button>Scan Slip</button>,
+  ScanSlipButton: () => <button>Receive</button>,
 }));
 vi.mock("~/components/materialLists/MaterialListNameModal", () => ({
   MaterialListNameModal: () => null,
@@ -227,16 +227,16 @@ it("passes the current job's quoted status into dashboard material cards", () =>
   expect(state.quotedStatus).toHaveBeenLastCalledWith("confirmed");
 });
 
-it("offers Scan Slip beside New List on the job's material lists for members who receive orders", () => {
+it("offers Receive beside New List on the job's material lists for members who receive orders", () => {
   state.materialListId = null;
   state.can = { "orders.receive": true, "lists.edit": true };
   render(<JobsClient initialJobs={[]} />);
-  expect(screen.getAllByRole("button", { name: "Scan Slip" }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole("button", { name: "Receive" }).length).toBeGreaterThan(0);
   expect(screen.getByRole("button", { name: "New List" })).toBeTruthy();
   cleanup();
   state.can = { "orders.receive": false };
   render(<JobsClient initialJobs={[]} />);
-  expect(screen.queryByRole("button", { name: "Scan Slip" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Receive" })).toBeNull();
   state.materialListId = "list";
   state.can = { "orders.send": false, "quotes.create": false };
 });

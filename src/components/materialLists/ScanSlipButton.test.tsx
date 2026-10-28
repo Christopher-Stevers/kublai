@@ -48,7 +48,7 @@ it("saves a scan and opens its durable review without waiting for detection", as
   });
   vi.stubGlobal("fetch", fetcher);
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   await waitFor(() =>
     expect(push).toHaveBeenCalledWith("/jobs/job/receiving?document=doc"),
@@ -78,7 +78,7 @@ it("opens a saved slip in the same shared review", async () => {
     ),
   );
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Choose a saved slip instead" }),
   );
@@ -95,7 +95,7 @@ it("keeps a failed upload visible and never navigates as though it succeeded", a
     ),
   );
   render(<ScanSlipButton jobId="job" />);
-  fireEvent.click(screen.getByRole("button", { name: "Scan Slip" }));
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   await screen.findByText("Upload interrupted");
   expect(push).not.toHaveBeenCalled();
