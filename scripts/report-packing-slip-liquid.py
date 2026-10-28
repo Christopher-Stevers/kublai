@@ -18,6 +18,7 @@ def unit(v):
     u=key(v)
     return {"each":"ea","piece":"ea","pieces":"ea","pcs":"ea","foot":"ft","feet":"ft"}.get(u,u)
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def token_count(v):return f'{v:,}' if v is not None else 'not available'
 def write(p,v):
     p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
     p.write_text(v);p.chmod(0o600)
@@ -56,11 +57,12 @@ def main():
             "unreadShipped":sum(l["shipped"] is None for l in lines),"unknownUnit":sum(not l["unit"] for l in lines),
             "parentOrders":sum(bool(d.get("orderId")) for d in good),"matchedLines":sum(bool(l["orderItemId"]) for l in lines),
             "medianSeconds":round(statistics.median(durations),2) if durations else None,
-            "inputTokens":sum(d.get("usage",{}).get("inputTokens",0) for d in results),
-            "outputTokens":sum(d.get("usage",{}).get("outputTokens",0) for d in results),
-            "confidenceBins":{field:[sum(lo<=l["confidence"][field]["value"]<=hi for l in lines)
-                for lo,hi in [(0,.499999999),(.5,.799999999),(.8,.949999999),(.95,1)]] for field in ["part","quantity","match","overall"]}}
-    comparison={};conflicts=[]
+            "inputTokens":sum(d.get("usage",{}).get("inputTokens",0) for d in results) if any('inputTokens' in d.get('usage',{}) for d in results) else None,
+            "outputTokens":sum(d.get("usage",{}).get("outputTokens",0) for d in results) if any('outputTokens' in d.get('usage',{}) for d in results) else None,
+            "tokenUsageScope":"Recorded result calls only; use the separate cost audit for historical reader totals and retry overhead.",
+            "confidenceBins":{field:[sum(lo<=l["confidence"][field]["value"]<hi for l in lines)
+                for lo,hi in [(0,.5),(.5,.8),(.8,.95),(.95,1.000000001)]] for field in ["part","quantity","match","overall"]}}
+    comparison={};conflicts=[];order_conflicts=[];coverage=[]
     for other in READERS[:-1]:
         counts=collections.Counter()
         for c in cases:
@@ -69,6 +71,13 @@ def main():
             counts["comparableDocuments"]+=1
             if a.get("orderId") and b.get("orderId"):
                 counts["bothProposedOrder"]+=1;counts["sameProposedOrder"]+=a["orderId"]==b["orderId"]
+                if a["orderId"]!=b["orderId"]:
+                    order_conflicts.append({"caseId":c["source"]["caseId"],"other":other,
+                        "liquidOrderId":a["orderId"],"otherOrderId":b["orderId"],
+                        "liquidConfidence":a.get("orderConfidence"),"otherConfidence":b.get("orderConfidence")})
+            if other=="astra" and len(a["lines"])!=len(b["lines"]):
+                coverage.append({"caseId":c["source"]["caseId"],"liquidLines":len(a["lines"]),
+                    "astraLines":len(b["lines"]),"meaning":"Row-count difference; inspect coverage, duplicate rows and table boundaries. Neither reader is ground truth."})
             ga=collections.defaultdict(list);gb=collections.defaultdict(list)
             for l in a["lines"]:
                 if len(key(l.get("sku")))>=3:ga[(l["page"],key(l["sku"]))].append(l)
@@ -99,18 +108,60 @@ def main():
             else:gaps+=1
     sessions=[read(p) for p in sorted(args.liquid.glob("session-*.json"))]
     latest=sessions[-1] if sessions else {}
+    runtime_errors=[read(p) for p in sorted((args.liquid/'runtime-errors').glob('*.json'))]
+    schema_diagnostics=collections.Counter()
+    required_fields=['sku','description','ordered','shipped','backordered','unit','price','handwritten_quantity',
+        'evidence','box','part_confidence','quantity_confidence','unit_confidence','uncertainty','issues']
+    for p in (args.liquid/'calls').glob('*/page-*.json'):
+        if '.request.' in p.name:continue
+        call=read(p);data=call.get('parsed',{})
+        if call.get('error'):schema_diagnostics['failedPageResponses']+=1;continue
+        schema_diagnostics['parsedPages']+=1
+        if data.get('kind') not in ['delivery','return','credit','other','unclear']:
+            schema_diagnostics['outOfSchemaDocumentKind']+=1
+        for row in data.get('lines',[]):
+            if not isinstance(row,dict):schema_diagnostics['nonObjectRows']+=1;continue
+            schema_diagnostics['rawRows']+=1
+            for k in required_fields:
+                if k not in row:schema_diagnostics['missing_'+k]+=1
+            if 'unit_code' in row and 'unit' not in row:schema_diagnostics['unitCodeAliasInsteadOfUnit']+=1
+            if 'unit_price' in row and 'price' not in row:schema_diagnostics['unitPriceAliasInsteadOfPrice']+=1
+            box=row.get('box')
+            if isinstance(box,list) and any(type(v) in (float,int) and v>1 for v in box):
+                schema_diagnostics['boxOutsideFractionalCoordinates']+=1
     liquid_cost={"externalModelApiUsd":0,"sampledGpuBoardKwh":round(energy,6),"sampleGaps":gaps,
         "peakWholeGpuMemoryMiB":max((x["gpuMemoryMiB"] for x in telemetry),default=None),
         "peakProcessGpuAllocatedBytes":max((r.get("usage",{}).get("peakGpuAllocatedBytes",0) for r in by_reader["liquid"]),default=0),
-        "totalComputeCostUsd":None,"note":"GPU board power includes desktop/other GPU use. CPU, system power, hardware, labour and tariff are not measured. Zero API fee is not zero total cost."}
+        "totalComputeCostUsd":None,"failedRuntimeAttempts":len(runtime_errors),
+        "note":"GPU board power includes desktop/other GPU use. CPU, system power, hardware, labour and tariff are not measured. Zero API fee is not zero total cost. Failed runtime attempts may have uncounted tokens; setup pilots are excluded."}
     verified_count=sum(len(c["humanLabels"]) for c in cases)
     report={"schemaVersion":1,"generatedAt":dt.datetime.now(dt.timezone.utc).isoformat(),"runId":index["runId"],
         "cases":len(cases),"pages":sum(c["source"]["pages"] for c in cases),"summary":summary,"liquidVersus":comparison,
-        "quantityDisagreements":conflicts,"historicalCostAudit":costs,"liquidCost":liquid_cost,"liquidRuntime":latest,
+        "quantityDisagreements":conflicts,"orderDisagreements":order_conflicts,"coverageDisagreementsWithAstra":coverage,
+        "historicalCostAudit":costs,"liquidCost":liquid_cost,"liquidRuntime":latest,"liquidSessions":sessions,
+        "liquidSchemaDiagnostics":dict(schema_diagnostics),
         "humanLabelCount":verified_count if args.evaluation else None,"predictionHashes":hashes,
         "caveat":"Completeness and model agreement are not accuracy. Human verification, grouped holdouts and reviewed row alignment are required."}
     write(out/"five-reader-comparison.json",json.dumps(report,ensure_ascii=False,indent=2))
     write(out/"five-reader-learning.jsonl","".join(json.dumps(c,ensure_ascii=False)+"\n" for c in cases))
+    priority=[]
+    for c in cases:
+        liquid=c['predictions'].get('liquid')
+        if not liquid:continue
+        qs=[x for x in conflicts if x['caseId']==c['source']['caseId']]
+        os=[x for x in order_conflicts if x['caseId']==c['source']['caseId']]
+        high=sum(x['bothAtLeast90'] for x in qs)
+        unknown=sum(not x['unit'] for x in liquid['lines'])
+        malformed=sum(any('reference' in issue for issue in x['issues']) for x in liquid['lines'])
+        rowdiff=any(x['caseId']==c['source']['caseId'] for x in coverage)
+        priority.append({'caseId':c['source']['caseId'],'documentId':c['source']['documentId'],
+            'sourceSha256':c['source']['sha256'],'split':c['split'],
+            'priorityScore':10*(liquid['status']=='failed')+5*high+3*len(os)+2*rowdiff+bool(unknown)+bool(malformed),
+            'quantityDisagreements':qs,'orderDisagreements':os,'rowCountDiffersFromAstra':rowdiff,
+            'unknownUnits':unknown,'linesWithInvalidReferences':malformed,
+            'meaning':'Deterministic review priority, not error probability or a verified answer.'})
+    priority.sort(key=lambda x:(-x['priorityScore'],x['caseId']))
+    write(out/'five-reader-review-priority.jsonl',''.join(json.dumps(x,ensure_ascii=False)+'\n' for x in priority))
     lines=["ForemanHQ packing-slip comparison: five readers",report["generatedAt"],"",
         f"Same frozen Alma Phase #2 set: {len(cases)} PDFs / {report['pages']} pages.",
         "Fifth reader: LiquidAI/LFM3-VL-2B, pinned revision "+latest.get("revision","unknown")+".",
@@ -127,15 +178,16 @@ def main():
         "Jev: $3.48778836 known API-equivalent usage, a lower bound; 267 calls have unknown usage.",
         "Terra 6.1 Low: $14.74248660 hypothetical API equivalent using logged cache hits.",
         "Astra Max: $66.34738800 hypothetical API equivalent using logged cache hits.",
-        f"Liquid: $0 external model API. {summary['liquid']['inputTokens']:,} input tokens / {summary['liquid']['outputTokens']:,} output tokens.",
+        f"Liquid: $0 external model API. {token_count(summary['liquid']['inputTokens'])} input tokens / {token_count(summary['liquid']['outputTokens'])} output tokens.",
         f"Liquid sampled whole-GPU energy: {energy:.4f} kWh; peak board memory: {liquid_cost['peakWholeGpuMemoryMiB']} MiB.",
         "Local electricity cost = sampled kWh times the applicable electricity tariff, plus unmeasured system power. Hardware and maintenance also matter.",
         "Provider token accounting differs. Prior Terra/Astra totals include agent/tool conversations and follow-up audits, not an optimized one-call production pipeline.",
         f"Liquid median amortized processing seconds per completed PDF: {summary['liquid']['medianSeconds']}. Batched time is shared equally, not single-request latency.","",
+        f"Runtime failures/retries recorded: {len(runtime_errors)}. Their GPU energy is included where sampled; failed-attempt token counts can be unknown. Setup pilots are separate and excluded.",
         "Strict quantity agreement with Liquid: unique same-page SKU, both numeric, same known unit only"]
     for r,c in comparison.items():
         n=c.get("sameUnitNumericPairs",0);eq=c.get("equalQuantity",0)
-        lines.append(f"{LABELS[r]}: {eq}/{n} equal quantities; {c.get('highConfidenceDisagreements',0)} disagreements with both confidence scores >= 90%." )
+        lines.append(f"{LABELS[r]}: {eq}/{n} equal quantities; {c.get('highConfidenceDisagreements',0)} disagreements with both confidence scores >= 90%. Aligned SKU pairs: {c.get('uniqueSamePageSkuPairs',0)}; excluded for unknown/different units: {c.get('unitNotComparable',0)}; excluded for unread quantities: {c.get('quantityAbstention',0)}." )
     lines += ["These restricted agreements are not accuracy; omitted, duplicated, unmatched and unread rows are excluded from the pair denominator and remain separate review work.","",
         "Learning and next decisions",
         "1. Keep source transcription, candidate retrieval, order choice, item matching and normalization separate when assigning errors.",
@@ -148,6 +200,11 @@ def main():
         "Method: Liquid reads each page independently, with official image preprocessing. Deterministic retrieval scores every frozen job order and supplies full item details for the top eight, plus all order headers. Missing shortlist candidates can cause matching failures. Invalid/repeated item references are withheld and flagged; unread quantities and units are never supplied from the order.",
         "The setup pilots are retained separately and excluded from the fifth-reader aggregate. On case-001, the thinking pilot took about 242 seconds; the direct pilot about 50 seconds. This is a timing observation on one PDF, not a quality comparison.",
         "Learning bundle: five-reader-learning.jsonl. It retains every prediction and per-line confidence, source/version/hash, split/group and human labels separately. Machine-generated labels must not be promoted to verified truth.","",
+        "Review priorities: five-reader-review-priority.jsonl ranks cases with quantity conflicts, different parent orders, row-count differences, unknown units and invalid item references. It includes case/source identifiers and held-out status. A conflict is a reason to inspect the PDF, not proof that Liquid or another reader is wrong.",
+        f"Liquid/Astra row counts differ on {len(coverage)} completed PDFs. This is a coverage warning, not a count of missed rows.",
+        f"Structured-output diagnostic: {schema_diagnostics['missing_unit']}/{schema_diagnostics['rawRows']} raw rows omitted the requested unit key; {schema_diagnostics['unitCodeAliasInsteadOfUnit']} used unit_code instead. {schema_diagnostics['unitPriceAliasInsteadOfPrice']} used unit_price instead of price. {schema_diagnostics['outOfSchemaDocumentKind']} pages returned a document-kind value outside the requested enum; {schema_diagnostics['boxOutsideFractionalCoordinates']} row boxes were outside 0..1. These are interface/schema failures, not direct measurements of visual recognition accuracy.",
+        "Next Liquid experiment: constrain the exact JSON schema and test explicit unit/quantity crops. Preserve this baseline and compare the new adapter on the same development groups before a held-out evaluation. Do not silently turn omitted fields or out-of-range coordinates into confident readings.",
+        "Official model source: https://huggingface.co/LiquidAI/LFM3-VL-2B/tree/"+latest.get('revision','unknown'),"",
         "Historical four-reader report and detailed API assumptions follow unchanged.","="*72,"",(base/"trial-report.txt").read_text()]
     report_text="\n".join(lines)
     write(out/"five-reader-report.txt",report_text)
