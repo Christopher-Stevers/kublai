@@ -2,7 +2,15 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { CameraIcon, FileTextIcon, UploadIcon } from "lucide-react";
+import {
+  CameraIcon,
+  CheckIcon,
+  FileTextIcon,
+  ListIcon,
+  RefreshCwIcon,
+  UploadIcon,
+  XIcon,
+} from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
 import { Button } from "~/components/ui/button";
 import {
@@ -12,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { uploadPackingSlip } from "~/lib/packing-slip-upload";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import type { PackingSlipLink } from "~/server/documents/types";
@@ -95,6 +104,7 @@ export function ScanSlipButton({
   const files = useRef<HTMLInputElement>(null);
   const run = useRef(0);
   const retryScan = useRef<File | null>(null);
+  const [barHost, setBarHost] = useState<HTMLDivElement | null>(null);
 
   // The slip is checked on the list's parts, so open the list itself.
   const openList = (materialListId: string, orderId: string) =>
@@ -236,28 +246,35 @@ export function ScanSlipButton({
           if (!value && step.kind !== "scan") close();
         }}
       >
+        {/* A full page, not a pop-up: the camera gets the room, and every
+            button sits in the bottom bar. */}
         <DialogContent
-          showCloseButton={step.kind !== "scan"}
-          className="max-h-[90dvh] overflow-y-auto"
+          showCloseButton={false}
+          layerClassName="z-[70] p-0"
+          className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 flex h-dvh max-w-none flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
         >
-          <DialogHeader>
-            <DialogTitle>
-              {step.kind === "saved"
-                ? "Saved packing slips"
-                : step.kind === "pick"
-                  ? "Which order is this slip for?"
-                  : "Scan packing slip"}
-            </DialogTitle>
-            <DialogDescription>
-              {step.kind === "scan" || step.kind === "start"
-                ? "The slip is matched to its order from the products it lists, then read in full."
-                : step.kind === "saved"
-                  ? "Choose a slip already saved for this job."
+          <DialogHeader className="shrink-0 border-b bg-card px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 text-left sm:px-6">
+            <div className="mx-auto w-full max-w-2xl space-y-1">
+              <DialogTitle>
+                {step.kind === "saved"
+                  ? "Saved packing slips"
                   : step.kind === "pick"
-                    ? "The slip is saved in Documents → Packing Slips. Choose its order to read it."
-                    : "Saved in Documents → Packing Slips."}
-            </DialogDescription>
+                    ? "Which order is this slip for?"
+                    : "Scan packing slip"}
+              </DialogTitle>
+              <DialogDescription>
+                {step.kind === "scan" || step.kind === "start"
+                  ? "The slip is matched to its order from the products it lists, then read in full."
+                  : step.kind === "saved"
+                    ? "Choose a slip already saved for this job."
+                    : step.kind === "pick"
+                      ? "The slip is saved in Documents → Packing Slips. Choose its order to read it."
+                      : "Saved in Documents → Packing Slips."}
+              </DialogDescription>
+            </div>
           </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+            <div className="mx-auto grid w-full max-w-2xl gap-3">
           {/* Kept mounted so the scanner can offer an upload instead. */}
           <input
             ref={files}
@@ -273,36 +290,30 @@ export function ScanSlipButton({
           />
           {step.kind === "opening" && <p role="status">Opening scanner…</p>}
           {step.kind === "scan" && (
-            <>
-              <Button variant="outline" onClick={() => void loadSaved()}>
-                <FileTextIcon className="mr-2 size-4" />
-                Choose a saved slip instead
-              </Button>
-              <PackingSlipScanner
-                onSave={async (file) => {
-                  void identify({ file });
-                  return true;
-                }}
-                onUpload={() => files.current?.click()}
-                onCancel={close}
-              />
-            </>
+            <PackingSlipScanner
+              actionBar={barHost}
+              extraActions={
+                <Button key="saved" variant="outline" onClick={() => void loadSaved()}>
+                  <FileTextIcon />
+                  Saved slips
+                </Button>
+              }
+              onSave={async (file) => {
+                void identify({ file });
+                return true;
+              }}
+              onUpload={() => files.current?.click()}
+              onCancel={close}
+            />
           )}
           {step.kind === "start" && (
-            <div className="grid gap-2">
-              <Button onClick={() => files.current?.click()}>
-                <UploadIcon className="mr-2 size-4" />
-                Upload photo or PDF
-              </Button>
-              <Button variant="outline" onClick={() => void loadSaved()}>
-                <FileTextIcon className="mr-2 size-4" />
-                Choose a saved slip
-              </Button>
-            </div>
+            <p className="text-muted-foreground text-sm">
+              No camera found. Upload a photo or PDF of the slip, or choose one
+              already saved.
+            </p>
           )}
           {step.kind === "saved" && (
             <div className="grid gap-2">
-              {retryScan.current && <Button variant="outline" onClick={() => void identify({file: retryScan.current!})}>Retry captured scan</Button>}
               {!step.slips && !error && (
                 <p role="status">Loading saved packing slips…</p>
               )}
@@ -330,10 +341,6 @@ export function ScanSlipButton({
                   </span>
                 </button>
               ))}
-              <Button variant="ghost" onClick={() => void begin()}>
-                <CameraIcon className="mr-2 size-4" />
-                Scan a new slip
-              </Button>
             </div>
           )}
           {step.kind === "reading" && !error && (
@@ -342,34 +349,18 @@ export function ScanSlipButton({
             </p>
           )}
           {step.kind === "matched" && (
-            <div className="grid gap-3">
-              <div className="rounded-lg border p-3">
-                <p className="text-muted-foreground text-sm">Matched to</p>
-                <p className="font-medium">{orderLabel(step.order)}</p>
-                <p className="text-muted-foreground text-sm">
-                  {step.order.materialListName}
-                </p>
-              </div>
-              <Button
-                onClick={() => void link(step.found.documentId, step.order)}
-              >
-                Read slip now ({countdown})
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setStep({ kind: "pick", found: step.found, all: false })
-                }
-              >
-                Choose another order
-              </Button>
+            <div className="rounded-lg border p-3">
+              <p className="text-muted-foreground text-sm">Matched to</p>
+              <p className="font-medium">{orderLabel(step.order)}</p>
+              <p className="text-muted-foreground text-sm">
+                {step.order.materialListName}
+              </p>
             </div>
           )}
           {step.kind === "pick" && (
             <OrderPicker
               found={step.found}
               all={step.all}
-              onAll={() => setStep({ ...step, all: true })}
               onPick={(order) => void link(step.found.documentId, order)}
             />
           )}
@@ -378,34 +369,113 @@ export function ScanSlipButton({
               Starting the reading for {orderLabel(step.order)}…
             </p>
           )}
-          {error && (
-            <div role="alert" className="grid gap-2">
-              <p>{error}</p>
-              {step.kind === "reading" && <Button variant="outline" onClick={() => void loadSaved()}>Check saved packing slips</Button>}
-              {step.kind === "reading" && (
-                <Button
-                  disabled={busy && !error}
-                  onClick={() =>
-                    void identify(
-                      step.file
-                        ? { file: step.file }
-                        : { documentId: step.documentId! },
-                    )
-                  }
-                >
-                  Retry
-                </Button>
-              )}
-              {step.kind === "linking" && (
-                <Button variant="outline" onClick={() => void begin()}>
-                  Start over
-                </Button>
-              )}
-              {step.kind === "saved" && (
-                <Button onClick={() => void loadSaved()}>Retry loading</Button>
-              )}
+          {error && <p role="alert">{error}</p>}
             </div>
-          )}
+          </div>
+          <div
+            ref={setBarHost}
+            className="shrink-0 border-t bg-card px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 [&>*]:mx-auto [&>*]:max-w-2xl"
+          >
+            {step.kind !== "scan" && (
+              // Lowest priority first: the last action sits on the right.
+              <PriorityActionBar>
+                <Button key="cancel" variant="outline" onClick={close}>
+                  <XIcon />
+                  Cancel
+                </Button>
+                {step.kind === "start" && (
+                  <>
+                    <Button key="saved" variant="outline" onClick={() => void loadSaved()}>
+                      <FileTextIcon />
+                      Saved slips
+                    </Button>
+                    <Button key="upload" onClick={() => files.current?.click()}>
+                      <UploadIcon />
+                      Upload
+                    </Button>
+                  </>
+                )}
+                {step.kind === "saved" && (
+                  <>
+                    {retryScan.current && (
+                      <Button key="retry-scan" variant="outline" onClick={() => void identify({ file: retryScan.current! })}>
+                        <RefreshCwIcon />
+                        Retry captured scan
+                      </Button>
+                    )}
+                    <Button key="scan" variant={error ? "outline" : "default"} onClick={() => void begin()}>
+                      <CameraIcon />
+                      Scan a new slip
+                    </Button>
+                    {error && (
+                      <Button key="retry-load" onClick={() => void loadSaved()}>
+                        <RefreshCwIcon />
+                        Retry loading
+                      </Button>
+                    )}
+                  </>
+                )}
+                {step.kind === "reading" && error && (
+                  <>
+                    <Button key="check" variant="outline" onClick={() => void loadSaved()}>
+                      <FileTextIcon />
+                      Check saved packing slips
+                    </Button>
+                    <Button
+                      key="retry"
+                      onClick={() =>
+                        void identify(
+                          step.file
+                            ? { file: step.file }
+                            : { documentId: step.documentId! },
+                        )
+                      }
+                    >
+                      <RefreshCwIcon />
+                      Retry
+                    </Button>
+                  </>
+                )}
+                {step.kind === "matched" && (
+                  <>
+                    <Button
+                      key="other"
+                      variant="outline"
+                      onClick={() =>
+                        setStep({ kind: "pick", found: step.found, all: false })
+                      }
+                    >
+                      <ListIcon />
+                      Choose another order
+                    </Button>
+                    <Button
+                      key="read"
+                      onClick={() => void link(step.found.documentId, step.order)}
+                    >
+                      <CheckIcon />
+                      Read slip now ({countdown})
+                    </Button>
+                  </>
+                )}
+                {step.kind === "pick" &&
+                  !step.all &&
+                  step.found.orders.some(
+                    (o) => !step.found.candidates.includes(o.id),
+                  ) && (
+                    <Button key="all" onClick={() => setStep({ ...step, all: true })}>
+                      <ListIcon />
+                      Show all {step.found.orders.length} orders
+                    </Button>
+                  )}
+                {step.kind === "linking" && error && (
+                  <Button key="over" onClick={() => void begin()}>
+                    <RefreshCwIcon />
+                    Start over
+                  </Button>
+                )}
+              </PriorityActionBar>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
@@ -415,12 +485,10 @@ export function ScanSlipButton({
 function OrderPicker({
   found,
   all,
-  onAll,
   onPick,
 }: {
   found: Found;
   all: boolean;
-  onAll: () => void;
   onPick: (order: OrderOption) => void;
 }) {
   const closest = found.candidates
@@ -466,20 +534,15 @@ function OrderPicker({
         </p>
       )}
       {closest.map((o, k) => option(o, k === 0))}
-      {rest.length > 0 &&
-        (all ? (
-          lists.map((list) => (
-            <div key={list} className="grid gap-2">
-              <p className="pt-2 text-sm font-medium">{list}</p>
-              {rest
-                .filter((o) => o.materialListName === list)
-                .map((o) => option(o))}
-            </div>
-          ))
-        ) : (
-          <Button variant="outline" onClick={onAll}>
-            Show all {found.orders.length} orders
-          </Button>
+      {/* Show all is in the bottom bar. */}
+      {all &&
+        lists.map((list) => (
+          <div key={list} className="grid gap-2">
+            <p className="pt-2 text-sm font-medium">{list}</p>
+            {rest
+              .filter((o) => o.materialListName === list)
+              .map((o) => option(o))}
+          </div>
         ))}
     </div>
   );

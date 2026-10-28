@@ -1,6 +1,25 @@
 "use client";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+  CameraIcon,
+  CheckIcon,
+  CropIcon,
+  FilePlus2Icon,
+  RefreshCwIcon,
+  RotateCcwIcon,
+  Undo2Icon,
+  UploadIcon,
+  XIcon,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import {
   averageQuad,
   BLURRY,
@@ -58,6 +77,8 @@ export default function PackingSlipScanner({
   onCancel,
   onUpload,
   documentKind = "packing slip",
+  actionBar,
+  extraActions,
 }: {
   onSave: (file: File) => Promise<boolean>;
   onCancel: () => void;
@@ -65,6 +86,11 @@ export default function PackingSlipScanner({
   onUpload?: () => void;
   /** Reuse camera capture for ordinary job documents. */
   documentKind?: "packing slip" | "document";
+  /** Full-page use: the scanner's buttons go into this bottom bar instead
+   * of under the camera. */
+  actionBar?: HTMLElement | null;
+  /** Lowest-priority actions of the page, shown in the same bar. */
+  extraActions?: ReactNode;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [pages, setPages] = useState<string[]>([]),
@@ -364,8 +390,104 @@ export default function PackingSlipScanner({
     );
   };
 
+  const cancelScan = () => {
+    if (!pages.length || window.confirm("Discard these unsaved scan pages?"))
+      onCancel();
+  };
+  const retakeLast = () => {
+    setPages((old) => old.slice(0, -1));
+    pdf.current = null;
+    setShot(null);
+    setBlurry(false);
+    setMode("camera");
+  };
+  const adjustCorners = () => {
+    if (!shot) return;
+    setCorners(shot.quad);
+    setMode("adjust");
+  };
+  const cancelButton = mode !== "saving" && mode !== "saved" && (
+    <Button key="cancel" variant="outline" disabled={processing} onClick={cancelScan}>
+      <XIcon />
+      Cancel scan
+    </Button>
+  );
+  // Lowest priority first: the bar puts the last one on the right.
+  const barActions =
+    mode === "camera" ? (
+      <>
+        {extraActions}
+        {cancelButton}
+        {onUpload && !pages.length && (
+          <Button key="upload" variant="outline" disabled={processing} onClick={onUpload}>
+            <UploadIcon />
+            Upload
+          </Button>
+        )}
+        {pages.length > 0 && (
+          <Button key="finish" variant="outline" disabled={processing} onClick={() => setMode("review")}>
+            <CheckIcon />
+            Finish with {pages.length} pages
+          </Button>
+        )}
+        {error ? (
+          <Button key="restart" onClick={() => setRestart((n) => n + 1)}>
+            <RefreshCwIcon />
+            Restart camera
+          </Button>
+        ) : (
+          <Button key="capture" disabled={!ready || processing} onClick={() => capture.current?.()}>
+            <CameraIcon />
+            Capture
+          </Button>
+        )}
+      </>
+    ) : mode === "review" || mode === "saving" ? (
+      <>
+        {cancelButton}
+        {shot && (
+          <Button key="adjust" variant="outline" disabled={mode === "saving"} onClick={adjustCorners}>
+            <CropIcon />
+            Adjust corners
+          </Button>
+        )}
+        <Button key="retake" variant="outline" disabled={mode === "saving"} onClick={retakeLast}>
+          <RotateCcwIcon />
+          Retake last page
+        </Button>
+        <Button key="next" variant="outline" disabled={mode === "saving" || pages.length >= 20} onClick={() => setMode("camera")}>
+          <FilePlus2Icon />
+          Next page
+        </Button>
+        <Button key="done" disabled={mode === "saving"} onClick={() => void save()}>
+          <CheckIcon />
+          Done
+        </Button>
+      </>
+    ) : mode === "adjust" ? (
+      <>
+        {cancelButton}
+        <Button key="keep" variant="outline" disabled={processing} onClick={() => setMode("review")}>
+          <Undo2Icon />
+          Keep as is
+        </Button>
+        <Button key="corners" disabled={processing} onClick={() => void applyCorners()}>
+          <CropIcon />
+          {processing ? "Straightening…" : "Use these corners"}
+        </Button>
+      </>
+    ) : (
+      <Button key="close" onClick={onCancel}>
+        <XIcon />
+        Close
+      </Button>
+    );
+  const inline = !actionBar;
+
   return (
     <div className="space-y-3">
+      {actionBar &&
+        createPortal(<PriorityActionBar>{barActions}</PriorityActionBar>, actionBar)}
       {mode === "camera" && (
         <>
           <div className="relative mx-auto w-fit overflow-hidden rounded-lg bg-black">
@@ -379,15 +501,17 @@ export default function PackingSlipScanner({
           </div>
           <p role="status">{message}</p>
           <p className="text-muted-foreground text-sm">
-            {light} Pages capture automatically, or tap Capture now.
+            {light} Pages capture automatically, or tap {inline ? "Capture now" : "Capture"}.
           </p>
-          <Button
-            className="w-full"
-            disabled={!ready || processing || !!error}
-            onClick={() => capture.current?.()}
-          >
-            Capture now
-          </Button>
+          {inline && (
+            <Button
+              className="w-full"
+              disabled={!ready || processing || !!error}
+              onClick={() => capture.current?.()}
+            >
+              Capture now
+            </Button>
+          )}
         </>
       )}
       {(mode === "review" || mode === "saving") && (
@@ -414,7 +538,7 @@ export default function PackingSlipScanner({
           <p className="text-muted-foreground text-sm">
             {pages.length} page{pages.length === 1 ? "" : "s"} · not saved yet
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          {inline && <><div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               disabled={mode === "saving" || pages.length >= 20}
@@ -430,13 +554,7 @@ export default function PackingSlipScanner({
             <Button
               variant="ghost"
               disabled={mode === "saving"}
-              onClick={() => {
-                setPages((old) => old.slice(0, -1));
-                pdf.current = null;
-                setShot(null);
-                setBlurry(false);
-                setMode("camera");
-              }}
+              onClick={retakeLast}
             >
               Retake last page
             </Button>
@@ -444,15 +562,12 @@ export default function PackingSlipScanner({
               <Button
                 variant="ghost"
                 disabled={mode === "saving"}
-                onClick={() => {
-                  setCorners(shot.quad);
-                  setMode("adjust");
-                }}
+                onClick={adjustCorners}
               >
                 Adjust corners
               </Button>
             )}
-          </div>
+          </div></>}
         </>
       )}
       {mode === "adjust" && shot && corners && (
@@ -483,7 +598,7 @@ export default function PackingSlipScanner({
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          {inline && <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               disabled={processing}
@@ -494,7 +609,7 @@ export default function PackingSlipScanner({
             <Button disabled={processing} onClick={() => void applyCorners()}>
               {processing ? "Straightening…" : "Use these corners"}
             </Button>
-          </div>
+          </div>}
         </>
       )}
       {mode === "saved" && (
@@ -504,11 +619,11 @@ export default function PackingSlipScanner({
               ? "✓ PDF saved in Documents."
               : "✓ PDF saved in Documents → Packing Slips and linked to this order and material list."}
           </p>
-          <Button onClick={onCancel}>Close</Button>
+          {inline && <Button onClick={onCancel}>Close</Button>}
         </>
       )}
       {error && <p role="alert">{error}</p>}
-      {mode === "camera" && (error || onUpload) && (
+      {inline && mode === "camera" && (error || onUpload) && (
         <div className="flex flex-wrap gap-2">
           {error && (
             <Button
@@ -529,22 +644,16 @@ export default function PackingSlipScanner({
           )}
         </div>
       )}
-      {mode === "camera" && pages.length > 0 && (
+      {inline && mode === "camera" && pages.length > 0 && (
         <Button disabled={processing} onClick={() => setMode("review")}>
           Finish with {pages.length} captured pages
         </Button>
       )}
-      {mode !== "saving" && mode !== "saved" && (
+      {inline && mode !== "saving" && mode !== "saved" && (
         <Button
           variant="ghost"
           disabled={processing}
-          onClick={() => {
-            if (
-              !pages.length ||
-              window.confirm("Discard these unsaved scan pages?")
-            )
-              onCancel();
-          }}
+          onClick={cancelScan}
         >
           Cancel scan
         </Button>

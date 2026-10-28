@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -13,8 +14,16 @@ vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("~/components/ui/app-dialogs", () => ({ notify: vi.fn() }));
 vi.mock("next/dynamic", () => ({
   default: () =>
-    function Scanner({ onSave }: { onSave: (file: File) => Promise<boolean> }) {
+    function Scanner({
+      onSave,
+      extraActions,
+    }: {
+      onSave: (file: File) => Promise<boolean>;
+      extraActions?: ReactNode;
+    }) {
       return (
+        <>
+        {extraActions}
         <button
           onClick={() =>
             void onSave(
@@ -26,6 +35,7 @@ vi.mock("next/dynamic", () => ({
         >
           Done
         </button>
+        </>
       );
     },
 }));
@@ -80,7 +90,7 @@ it("opens a saved slip in the same shared review", async () => {
   render(<ScanSlipButton jobId="job" />);
   fireEvent.click(screen.getByRole("button", { name: "Receive" }));
   fireEvent.click(
-    await screen.findByRole("button", { name: "Choose a saved slip instead" }),
+    await screen.findByRole("button", { name: "Saved slips" }),
   );
   fireEvent.click(
     await screen.findByRole("button", { name: /Saved slip.pdf/ }),
@@ -99,4 +109,18 @@ it("keeps a failed upload visible and never navigates as though it succeeded", a
   fireEvent.click(await screen.findByRole("button", { name: "Done" }));
   await screen.findByText("Upload interrupted");
   expect(push).not.toHaveBeenCalled();
+});
+it("opens as a full page with its buttons in the bottom bar", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ slips: [] })));
+  render(<ScanSlipButton jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Saved slips" }),
+  );
+  const page = await screen.findByRole("dialog", { name: "Saved packing slips" });
+  expect(page.className).toContain("h-dvh");
+  const bar = page.querySelector("[data-action-bar]")!;
+  expect(
+    Array.from(bar.querySelectorAll("button"), (button) => button.textContent),
+  ).toEqual(["Cancel", "Scan a new slip"]);
 });

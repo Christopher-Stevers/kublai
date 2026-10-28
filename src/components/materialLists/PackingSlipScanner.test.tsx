@@ -221,3 +221,28 @@ it("saves ordinary documents with a document filename and destination message", 
   expect((save.mock.calls[0]![0] as File).name).toBe("Scanned document.pdf");
   expect(screen.queryByText(/linked to this order/)).not.toBeInTheDocument();
 });
+
+it("puts its buttons in the page's bottom bar when given one", async () => {
+  camera();
+  scanning.pageBlur.mockReturnValue(0.7);
+  const bar = document.createElement("div");
+  document.body.append(bar);
+  render(
+    <PackingSlipScanner
+      actionBar={bar}
+      extraActions={<button key="saved">Saved slips</button>}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onUpload={vi.fn()}
+    />,
+  );
+  const labels = () =>
+    Array.from(
+      bar.querySelectorAll("[data-action-bar-row] button"),
+      (button) => button.textContent,
+    );
+  expect(labels()).toEqual(["Cancel scan", "Upload", "Capture"]);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  expect(labels()).toEqual(["Retake last page", "Next page", "Done"]);
+  bar.remove();
+});
