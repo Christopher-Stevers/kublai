@@ -8,6 +8,7 @@ import {
   trialDisagreements,
   trialReaders,
   readerLabels,
+  readersInTrial,
   type TrialReader,
   type TrialResults,
   type TrialScore,
@@ -29,7 +30,11 @@ export type TrialSummary = {
 type Comparison = {
   runId: string;
   stale: boolean;
-  entry: { versionId: string; pages: number };
+  entry: {
+    versionId: string;
+    pages: number;
+    readers?: Partial<Record<TrialReader, string>>;
+  };
   results: TrialResults;
   sourceUrl: string;
 };
@@ -106,36 +111,38 @@ export function PackingSlipTrialSummary({
       className="mb-5 border-y py-4"
     >
       <h2 className="flex items-center gap-2 font-medium">
-        <FlaskConicalIcon className="h-4 w-4" /> Four-reader trial
+        <FlaskConicalIcon className="h-4 w-4" /> Reader comparison
       </h2>
       <p className="text-muted-foreground mt-1 text-sm">
         Every slip is read again, including previously approved slips. Open one
         to compare each part and its confidence. Your verification supplies the
         answer key.
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
-        {trialReaders.map((reader) => {
-          const c = trial.counts[reader];
-          return (
-            <div key={reader} className="min-w-0">
-              <span className="text-sm font-medium">
-                {readerLabels[reader]}
-              </span>
-              <p className="text-muted-foreground text-sm tabular-nums">
-                {c.complete} / {c.total} slips
-                {c.failed ? ` · ${c.failed} failed` : ""}
-              </p>
-              <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
-                <div
-                  className="bg-foreground/60 h-full"
-                  style={{
-                    width: `${c.total ? (c.complete / c.total) * 100 : 0}%`,
-                  }}
-                />
+      <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+        {trialReaders
+          .filter((r) => trial.counts[r]?.total > 0)
+          .map((reader) => {
+            const c = trial.counts[reader];
+            return (
+              <div key={reader} className="min-w-0">
+                <span className="text-sm font-medium">
+                  {readerLabels[reader]}
+                </span>
+                <p className="text-muted-foreground text-sm tabular-nums">
+                  {c.complete} / {c.total} slips
+                  {c.failed ? ` · ${c.failed} failed` : ""}
+                </p>
+                <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
+                  <div
+                    className="bg-foreground/60 h-full"
+                    style={{
+                      width: `${c.total ? (c.complete / c.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </section>
   );
@@ -177,7 +184,8 @@ export function PackingSlipTrialComparison({
         Reader comparison: {error}
       </p>
     ) : null;
-  const ready = trialReaders.filter(
+  const readers = readersInTrial(trial.entry.readers);
+  const ready = readers.filter(
     (r) => trial.results[r]?.status === "complete",
   ).length;
   const display = differencesOnly
@@ -186,7 +194,7 @@ export function PackingSlipTrialComparison({
   return (
     <section
       className="mb-5 overflow-hidden rounded-lg border"
-      aria-label="Four-reader comparison"
+      aria-label="Independent reader comparison"
     >
       <button
         type="button"
@@ -195,9 +203,9 @@ export function PackingSlipTrialComparison({
         aria-expanded={open}
       >
         <span>
-          <span className="font-medium">Compare four readers</span>
+          <span className="font-medium">Compare {readers.length} readers</span>
           <span className="text-muted-foreground ml-2 text-sm">
-            {ready}/4 ready
+            {ready}/{readers.length} ready
             {selectedReader
               ? ` · reviewing ${readerLabels[selectedReader]}`
               : ""}
@@ -255,7 +263,7 @@ export function PackingSlipTrialComparison({
               </a>
             </div>
             <p className="text-muted-foreground text-xs lg:hidden">
-              Swipe the table sideways to compare all four readers.
+              Swipe the table sideways to compare all readers.
             </p>
           </div>
           <div
@@ -264,10 +272,13 @@ export function PackingSlipTrialComparison({
             role="region"
             aria-label="Side-by-side reader results; scroll horizontally on small screens"
           >
-            <table className="w-full min-w-[900px] table-fixed border-collapse text-left text-sm">
+            <table
+              className="w-full table-fixed border-collapse text-left text-sm"
+              style={{ minWidth: readers.length * 225 }}
+            >
               <thead>
                 <tr>
-                  {trialReaders.map((reader) => {
+                  {readers.map((reader) => {
                     const result = trial.results[reader];
                     return (
                       <th
@@ -326,6 +337,7 @@ export function PackingSlipTrialComparison({
                       flags={flags}
                       anchor={anchor}
                       trial={trial}
+                      readers={readers}
                       showCrops={showCrops}
                     />
                   );
@@ -341,7 +353,7 @@ export function PackingSlipTrialComparison({
             </p>
           )}
           <div className="space-y-2 border-t px-4 py-3">
-            {trialReaders.map((reader) => {
+            {readers.map((reader) => {
               const warnings = trial.results[reader]?.warnings;
               return warnings?.length ? (
                 <details key={reader} className="text-sm">
@@ -367,18 +379,20 @@ function TrialComparisonRow({
   flags,
   anchor,
   trial,
+  readers,
   showCrops,
 }: {
   row: ReturnType<typeof alignTrialLines>[number];
   flags: string[];
   anchor: TrialLine;
   trial: Comparison;
+  readers: TrialReader[];
   showCrops: boolean;
 }) {
   return (
     <>
       <tr>
-        <td colSpan={4} className="bg-muted/20 border-t px-3 py-2">
+        <td colSpan={readers.length} className="bg-muted/20 border-t px-3 py-2">
           <p className="font-medium">
             Page {row.page} ·{" "}
             {anchor.description || anchor.evidence || "Unidentified part"}
@@ -401,7 +415,7 @@ function TrialComparisonRow({
         </td>
       </tr>
       <tr>
-        {trialReaders.map((reader) => {
+        {readers.map((reader) => {
           const line = row.lines[reader];
           return (
             <td

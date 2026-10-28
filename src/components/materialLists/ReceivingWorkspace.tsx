@@ -48,7 +48,7 @@ import {
   PackingSlipTrialSummary,
   type TrialSummary,
 } from "./PackingSlipTrial";
-import { trialReaders } from "~/lib/packing-slip-trial";
+import { trialReaders, readersInTrial } from "~/lib/packing-slip-trial";
 
 type Entry = {
   id: string;
@@ -639,7 +639,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                                 ?.readers?.[reader] === "complete",
                           ).length
                         }
-                        /4 readings ready
+                        /
+                        {
+                          readersInTrial(
+                            trial.cases.find((c) => c.documentId === d.id)
+                              ?.readers,
+                          ).length
+                        }{" "}
+                        readings ready
                       </span>
                     )}
                   </span>

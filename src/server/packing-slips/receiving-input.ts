@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { trialReaders } from "~/lib/packing-slip-trial";
 const text = z.string().trim();
 const qty = z
   .number()
@@ -20,7 +21,7 @@ export const receivingInput = z.discriminatedUnion("action", [
     ...base,
     action: z.literal("trialDraft"),
     runId: z.string().regex(/^[a-zA-Z0-9-]{8,80}$/),
-    reader: z.enum(["ocr", "jev", "terra", "astra"]),
+    reader: z.enum(trialReaders),
   }),
   z.object({
     ...base,

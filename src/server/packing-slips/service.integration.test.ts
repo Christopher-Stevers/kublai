@@ -41,7 +41,7 @@ import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
 import { reserveTerra } from "./production-cascade";
-import {jobOrders} from "./find-order-service";
+import { jobOrders } from "./find-order-service";
 import { saveDocumentVersion } from "../documents/service";
 import { assertDocumentAccess } from "../documents/access";
 import {
@@ -217,30 +217,91 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
 
   it("freezes the actual order unit and pack conversion in job matching candidates", async () => {
     const access = await assertDocumentAccess("receiver", job, db);
-    await db.update(schema.units).set({code: "ft"}).where(eq(schema.units.id, id(51)));
-    await db.update(schema.orderItems).set({uomId: id(51)}).where(eq(schema.orderItems.id, id(6)));
+    await db
+      .update(schema.units)
+      .set({ code: "ft" })
+      .where(eq(schema.units.id, id(51)));
+    await db
+      .update(schema.orderItems)
+      .set({ uomId: id(51) })
+      .where(eq(schema.orderItems.id, id(6)));
     expect((await jobOrders(access))[0]!.slip.items[0]!.unit).toBe("ft");
-    await db.update(schema.partDefinitions).set({piecesPerPack: 50, bulkUnit: "box", individualUnit: "ea"}).where(eq(schema.partDefinitions.id, id(5)));
-    expect((await jobOrders(access))[0]!.slip.items[0]).toMatchObject({unit: "box", piecesPerPack: 50, individualUnit: "ea"});
-    expect(await jobOrders({...access, job: {...access.job, id: id(999)}})).toEqual([]);
+    await db
+      .update(schema.partDefinitions)
+      .set({ piecesPerPack: 50, bulkUnit: "box", individualUnit: "ea" })
+      .where(eq(schema.partDefinitions.id, id(5)));
+    expect((await jobOrders(access))[0]!.slip.items[0]).toMatchObject({
+      unit: "box",
+      piecesPerPack: 50,
+      individualUnit: "ea",
+    });
+    expect(
+      await jobOrders({ ...access, job: { ...access.job, id: id(999) } }),
+    ).toEqual([]);
   });
 
   it("reserves Terra spending durably and never repeats an uncertain paid attempt", async () => {
     vi.stubEnv("PACKING_SLIP_TERRA_DAILY_USD", "1");
-    const scope = { runId: id(900), organizationId: org, jobId: job, documentId: id(901), versionId: id(902), sourceHash: "a".repeat(64) };
+    const scope = {
+      runId: id(900),
+      organizationId: org,
+      jobId: job,
+      documentId: id(901),
+      versionId: id(902),
+      sourceHash: "a".repeat(64),
+    };
     expect((await reserveTerra(scope, "request-1")).kind).toBe("reserved");
     expect((await reserveTerra(scope, "request-1")).kind).toBe("interrupted");
-    expect((await reserveTerra({ ...scope, runId: id(903) }, "request-2")).kind).toBe("budget-limited");
-    expect(Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity)).toBe(2);
+    expect(
+      (await reserveTerra({ ...scope, runId: id(903) }, "request-2")).kind,
+    ).toBe("budget-limited");
+    expect(
+      Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
+    ).toBe(2);
   });
 
   it("reuses a finished Terra call only for identical job, file and request inputs", async () => {
-    const scope = { runId: id(900), organizationId: org, jobId: job, documentId: id(901), versionId: id(902), sourceHash: "a".repeat(64) };
+    const scope = {
+      runId: id(900),
+      organizationId: org,
+      jobId: job,
+      documentId: id(901),
+      versionId: id(902),
+      sourceHash: "a".repeat(64),
+    };
     await reserveTerra(scope, "request-1");
-    await db.update(schema.packingSlipTerraCalls).set({ status: "done", budgetUsd: .02, result: { model: "gpt-6.1-terra", durationMs: 10, usage: null, output: { document: { kind: "delivery", supplierName: null, deliveryNumber: null, supplierOrderNumber: null, deliveryDate: null }, orderId: null, orderConfidence: 0, lines: [], warnings: [] } } }).where(eq(schema.packingSlipTerraCalls.id, scope.runId));
+    await db
+      .update(schema.packingSlipTerraCalls)
+      .set({
+        status: "done",
+        budgetUsd: 0.02,
+        result: {
+          model: "gpt-6.1-terra",
+          durationMs: 10,
+          usage: null,
+          output: {
+            document: {
+              kind: "delivery",
+              supplierName: null,
+              deliveryNumber: null,
+              supplierOrderNumber: null,
+              deliveryDate: null,
+            },
+            orderId: null,
+            orderConfidence: 0,
+            lines: [],
+            warnings: [],
+          },
+        },
+      })
+      .where(eq(schema.packingSlipTerraCalls.id, scope.runId));
     expect((await reserveTerra(scope, "request-1")).kind).toBe("cached");
-    expect((await reserveTerra({ ...scope, jobId: id(999) }, "request-1")).kind).toBe("interrupted");
-    expect((await reserveTerra(scope, "request-changed")).kind).toBe("interrupted");
+    expect(
+      (await reserveTerra({ ...scope, jobId: id(999) }, "request-1")).kind,
+    ).toBe("interrupted");
+    expect((await reserveTerra(scope, "request-changed")).kind).toBe(
+      "interrupted",
+    );
   });
 
   async function ready() {
@@ -793,100 +854,103 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   const finger = async (
     access: Awaited<ReturnType<typeof assertDocumentAccess>>,
   ) => orderFingerprint(await orderSnapshot(db, access, order));
-  it("imports a trial as proposals without changing receipts, and rejects stale or foreign matches", async () => {
-    const { access, doc } = await ready();
-    const document = (await workspace()).documents[0]!;
-    const score = {
-      value: 0.99,
-      basis: "self_assessed",
-      reason: "Fixture source",
-    };
-    const prediction = {
-      schemaVersion: 1,
-      caseId: "case-001",
-      reader: "astra",
-      model: "gpt-6-astra",
-      status: "complete",
-      sourceSha256: "a".repeat(64),
-      documentKind: "delivery",
-      orderId: order,
-      lines: [
-        {
-          lineId: "one",
-          page: 1,
-          box: null,
-          evidence: "Valve 4 ea",
-          description: "Valve",
-          sku: null,
-          ordered: 10,
-          shipped: 4,
-          backordered: 6,
-          unit: "ea",
-          unitPrice: null,
-          orderItemId: id(6),
-          confidence: {
-            part: score,
-            quantity: score,
-            match: score,
-            overall: score,
+  it.each(["astra", "liquid"] as const)(
+    "imports %s proposals without changing receipts, and rejects stale or foreign matches",
+    async (reader) => {
+      const { access, doc } = await ready();
+      const document = (await workspace()).documents[0]!;
+      const score = {
+        value: 0.99,
+        basis: "self_assessed",
+        reason: "Fixture source",
+      };
+      const prediction = {
+        schemaVersion: 1,
+        caseId: "case-001",
+        reader,
+        model: "gpt-6-astra",
+        status: "complete",
+        sourceSha256: "a".repeat(64),
+        documentKind: "delivery",
+        orderId: order,
+        lines: [
+          {
+            lineId: "one",
+            page: 1,
+            box: null,
+            evidence: "Valve 4 ea",
+            description: "Valve",
+            sku: null,
+            ordered: 10,
+            shipped: 4,
+            backordered: 6,
+            unit: "ea",
+            unitPrice: null,
+            orderItemId: id(6),
+            confidence: {
+              part: score,
+              quantity: score,
+              match: score,
+              overall: score,
+            },
+            issues: [],
           },
-          issues: [],
-        },
-      ],
-      warnings: [],
-    };
-    test.trial = {
-      runId: "trial-testing-001",
-      stale: false,
-      entry: { versionId: document.currentVersionId },
-      results: { astra: prediction },
-    };
-    await reviewAction(access, doc.documentId, {
-      action: "trialDraft",
-      runId: "trial-testing-001",
-      reader: "astra",
-    });
-    let review = (await workspace()).documents[0]!.receivingReview!;
-    expect(review.lines[0]!.quantity).toBe(4);
-    expect(review.lines[0]!.approved).toBeUndefined();
-    expect(review.lines[0]!.predictionSource?.reader).toBe("astra");
-    expect(review.orderConfirmed).toBe(false);
-    expect(Number((await item()).receivedQuantity)).toBe(2);
-    test.trial = { ...(test.trial as object), stale: true };
-    await expect(
-      reviewAction(access, doc.documentId, {
+        ],
+        warnings: [],
+      };
+      test.trial = {
+        runId: "trial-testing-001",
+        stale: false,
+        entry: { versionId: document.currentVersionId },
+        results: { [reader]: prediction },
+      };
+      await reviewAction(access, doc.documentId, {
         action: "trialDraft",
         runId: "trial-testing-001",
-        reader: "astra",
-      }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
-    test.trial = {
-      runId: "trial-testing-001",
-      stale: false,
-      results: {
-        astra: {
-          ...prediction,
-          lines: [{ ...prediction.lines[0], orderItemId: id(99) }],
+        reader,
+      });
+      let review = (await workspace()).documents[0]!.receivingReview!;
+      expect(review.lines[0]!.quantity).toBe(4);
+      expect(review.lines[0]!.approved).toBeUndefined();
+      expect(review.lines[0]!.predictionSource?.reader).toBe(reader);
+      expect(review.orderConfirmed).toBe(false);
+      expect(Number((await item()).receivedQuantity)).toBe(2);
+      test.trial = { ...(test.trial as object), stale: true };
+      await expect(
+        reviewAction(access, doc.documentId, {
+          action: "trialDraft",
+          runId: "trial-testing-001",
+          reader,
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      test.trial = {
+        runId: "trial-testing-001",
+        stale: false,
+        results: {
+          [reader]: {
+            ...prediction,
+            lines: [{ ...prediction.lines[0], orderItemId: id(99) }],
+          },
         },
-      },
-    };
-    await reviewAction(access, doc.documentId, {
-      action: "trialDraft",
-      runId: "trial-testing-001",
-      reader: "astra",
-    });
-    review = (await workspace()).documents[0]!.receivingReview!;
-    expect(review.lines[0]!.orderItemId).toBeNull();
-    expect(Number((await item()).receivedQuantity)).toBe(2);
-    test.receive = false;
-    await expect(
-      reviewAction(access, doc.documentId, {
+      };
+      await reviewAction(access, doc.documentId, {
         action: "trialDraft",
         runId: "trial-testing-001",
-        reader: "astra",
-      }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
+        reader,
+      });
+      review = (await workspace()).documents[0]!.receivingReview!;
+      expect(review.lines[0]!.orderItemId).toBeNull();
+      expect(Number((await item()).receivedQuantity)).toBe(2);
+      test.receive = false;
+      await expect(
+        reviewAction(access, doc.documentId, {
+          action: "trialDraft",
+          runId: "trial-testing-001",
+          reader,
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    },
+  );
   it("stages a development trial once without human labels, receipt changes or overwriting later edits", async () => {
     const { access, doc } = await ready();
     const score = { value: 0.9, basis: "self_assessed", reason: "Fixture" };

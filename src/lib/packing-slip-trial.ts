@@ -1,14 +1,23 @@
 import { z } from "zod";
 import { receiptUnit } from "./packing-slip-review";
 
-export const trialReaders = ["ocr", "jev", "terra", "astra"] as const;
+export const trialReaders = ["ocr", "jev", "terra", "astra", "liquid"] as const;
 export type TrialReader = (typeof trialReaders)[number];
 export const readerLabels: Record<TrialReader, string> = {
   ocr: "OCR only",
   jev: "Jev Image",
   terra: "Terra 6.1",
   astra: "Astra Max",
+  liquid: "Liquid LFM3 direct",
 };
+/** Older four-reader trials remain valid when a new reader is added. */
+export function readersInTrial(
+  readers?: Partial<Record<TrialReader, unknown>>,
+) {
+  return trialReaders.filter((reader) =>
+    readers ? readers[reader] !== undefined : reader !== "liquid",
+  );
+}
 const bounded = z.string().max(10000);
 export const trialScoreSchema = z.object({
   value: z.number().finite().min(0).max(1),
@@ -108,7 +117,7 @@ export const trialIndexSchema = z.object({
         pages: z.number().int().positive().max(100),
         name: z.string().max(1000),
         readers: z
-          .record(
+          .partialRecord(
             z.enum(trialReaders),
             z.enum(["pending", "complete", "failed"]),
           )
@@ -165,7 +174,7 @@ function proximity(a: TrialLine, b: TrialLine) {
 export function alignTrialLines(results: TrialResults): TrialRow[] {
   const rows: TrialRow[] = [];
   // Rich transcriptions form anchors; unmatched detections from every reader remain visible.
-  for (const reader of ["astra", "terra", "ocr", "jev"] as const) {
+  for (const reader of ["astra", "terra", "ocr", "jev", "liquid"] as const) {
     const lines = results[reader]?.lines ?? [];
     const pairs = lines
       .flatMap((line, i) =>

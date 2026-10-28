@@ -8,7 +8,7 @@ import { assertDocumentAccess } from "../src/server/documents/access";
 import { readWorkspace } from "../src/server/documents/service";
 import { trialIndex } from "../src/server/packing-slips/trial-store";
 import { importTrialReview } from "../src/server/packing-slips/receiving-service";
-import { trialReaders } from "../src/lib/packing-slip-trial";
+import { readersInTrial } from "../src/lib/packing-slip-trial";
 
 async function main() {
   const [jobArg, runArg, userId, flag] = process.argv.slice(2);
@@ -33,7 +33,11 @@ async function main() {
     preserved = 0,
     conflicts = 0;
   for (const entry of index.cases) {
-    if (trialReaders.some((r) => entry.readers?.[r] !== "complete")) {
+    if (
+      readersInTrial(entry.readers).some(
+        (r) => entry.readers?.[r] !== "complete",
+      )
+    ) {
       waiting++;
       continue;
     }

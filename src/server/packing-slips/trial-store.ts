@@ -139,7 +139,9 @@ export async function trialSummary(access: DocumentAccess) {
         complete: cases.filter((c) => c.readers?.[reader] === "complete")
           .length,
         failed: cases.filter((c) => c.readers?.[reader] === "failed").length,
-        total: cases.length,
+        total: cases.filter(
+          (c) => c.readers?.[reader] !== undefined || reader !== "liquid",
+        ).length,
       },
     ]),
   ) as Record<TrialReader, { complete: number; failed: number; total: number }>;

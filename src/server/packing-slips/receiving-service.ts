@@ -48,7 +48,7 @@ import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { canCreateFromSlip } from "./receiving-access";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
-import { trialReaders } from "~/lib/packing-slip-trial";
+import { readersInTrial } from "~/lib/packing-slip-trial";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -684,10 +684,12 @@ async function mutateReceivingImpl(
           );
         if (
           developmentImport &&
-          trialReaders.some((r) => trial!.results[r]?.status !== "complete")
+          readersInTrial(trial!.entry?.readers).some(
+            (r) => trial!.results[r]?.status !== "complete",
+          )
         )
           fail(
-            "All four readers must finish before importing the trial draft.",
+            "All readers in this trial must finish before importing the trial draft.",
             "CONFLICT",
           );
         const prediction = trial!.results[input.reader];

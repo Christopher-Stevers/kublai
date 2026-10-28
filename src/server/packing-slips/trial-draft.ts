@@ -37,7 +37,7 @@ export function trialDraft(input: {
     status: "ready",
     startedAt: new Date().toISOString(),
     completedAt: new Date().toISOString(),
-    readerVersion: "four-reader-trial.1",
+    readerVersion: "independent-reader-trial.2",
     model: readerLabels[input.reader],
     items: input.items,
     orderCandidates: result.orderId ? [result.orderId] : [],

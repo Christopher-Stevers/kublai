@@ -149,7 +149,7 @@ try {
       ? review.lines
           .filter(
             (l) =>
-              (l.checked || l.ignored) &&
+              (l.checked === true || Boolean(l.ignored)) &&
               (explicitlyChecked.has(
                 `${c.documentId}:${c.versionId}:${l.id}`,
               ) ||
@@ -227,7 +227,7 @@ try {
   );
   await writeFile(
     path.join(output, "README.txt"),
-    "Private job-scoped evaluation. All four readers remain separate. Confidence values are uncalibrated and their sources differ. Human labels require explicit source/version checks. Never use Astra output or inter-model agreement as ground truth. Check cross-reader row alignment before computing accuracy. Count missing lines, wrong orders, wrong units, returns and duplicates as distinct error types. Tune thresholds on development groups and test once on held-out groups. Related slips stay in the same split; regenerate splits after resolving duplicates, before training. No automatic training or deployment occurs.\n",
+    "Private job-scoped evaluation. All readers remain separate. Confidence values are uncalibrated and their sources differ. Human labels require explicit source/version checks. Never use Astra output or inter-model agreement as ground truth. Check cross-reader row alignment before computing accuracy. Count missing lines, wrong orders, wrong units, returns and duplicates as distinct error types. Tune thresholds on development groups and test once on held-out groups. Related slips stay in the same split; regenerate splits after resolving duplicates, before training. No automatic training or deployment occurs.\n",
     { mode: 0o600 },
   );
   console.log(

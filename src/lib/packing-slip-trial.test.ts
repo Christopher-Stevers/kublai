@@ -4,6 +4,8 @@ import {
   confidenceCalibration,
   trialDisagreements,
   trialResultSchema,
+  trialIndexSchema,
+  readersInTrial,
   type TrialLine,
   type TrialResult,
 } from "./packing-slip-trial";
@@ -43,6 +45,49 @@ function result(
   };
 }
 describe("packing-slip comparison", () => {
+  it("retains legacy four-reader manifests and includes Liquid only when registered", () => {
+    const statuses = {
+      ocr: "complete",
+      jev: "complete",
+      terra: "complete",
+      astra: "complete",
+    } as const;
+    const index = {
+      schemaVersion: 1,
+      runId: "trial-legacy-001",
+      jobId: "00000000-0000-4000-8000-000000000001",
+      organizationId: "00000000-0000-4000-8000-000000000002",
+      createdAt: "2026-10-27",
+      updatedAt: "2026-10-27",
+      cases: [
+        {
+          caseId: "case-001",
+          documentId: "00000000-0000-4000-8000-000000000003",
+          versionId: "00000000-0000-4000-8000-000000000004",
+          sha256: "a".repeat(64),
+          pages: 1,
+          name: "Slip",
+          readers: statuses,
+        },
+      ],
+    };
+    expect(trialIndexSchema.safeParse(index).success).toBe(true);
+    expect(readersInTrial(statuses)).toEqual(["ocr", "jev", "terra", "astra"]);
+    expect(readersInTrial({ ...statuses, liquid: "pending" })).toHaveLength(5);
+  });
+  it("retains Liquid-only detections and its own independent confidence", () => {
+    const liquid = result("liquid", [line({ shipped: 9, orderItemId: null })]);
+    expect(trialResultSchema.safeParse(liquid).success).toBe(true);
+    const results = { liquid, astra: result("astra", []) };
+    const before = JSON.stringify(results);
+    const rows = alignTrialLines(results);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.lines.liquid!.shipped).toBe(9);
+    expect(trialDisagreements(rows[0]!, results)).toContain(
+      "Some readers did not detect this line",
+    );
+    expect(JSON.stringify(results)).toBe(before);
+  });
   it("keeps OCR and Jev independent even when the readings agree", () => {
     const results = {
       ocr: result("ocr", [line()]),
