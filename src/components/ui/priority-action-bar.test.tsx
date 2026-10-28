@@ -142,3 +142,30 @@ it("retains custom action state when selecting it closes the overflow tray", () 
     "false",
   );
 });
+
+it("shows more actions on a wider bar", () => {
+  const width = vi
+    .spyOn(HTMLElement.prototype, "clientWidth", "get")
+    .mockReturnValue(700);
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  try {
+    render(<PriorityActionBar>{buttons(7)}</PriorityActionBar>);
+    const tab = screen.getByRole("button", { name: "More" });
+    expect(tab.getAttribute("data-count")).toBe("2");
+    expect(
+      screen
+        .getAllByRole("button")
+        .filter((b) => !b.closest("[data-action-bar-shelf]"))
+        .map((b) => b.textContent),
+    ).toEqual(["More", "Action 3", "Action 4", "Action 5", "Action 6", "Action 7"]);
+  } finally {
+    width.mockRestore();
+    vi.unstubAllGlobals();
+  }
+});

@@ -689,7 +689,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   gap: 0.375rem;
 }
 [data-action-bar-shelf] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 0.375rem;
   padding-bottom: 0.375rem;
   border-bottom: 1px dashed var(--border);
