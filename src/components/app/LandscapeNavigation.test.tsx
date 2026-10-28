@@ -42,7 +42,7 @@ it("honours iPad's physical orientation", () => {
   vi.stubGlobal("orientation", 90);
   expect(deviceIsLandscape()).toBe(true);
 });
-it("restores portrait chrome when rotated back", async () => {
+it("restores portrait chrome when rotated back", () => {
   media(true);
   function Layout() {
     const active = useLandscapeLayout();
@@ -51,7 +51,7 @@ it("restores portrait chrome when rotated back", async () => {
   render(<Layout />);
   expect(document.documentElement).toHaveAttribute("data-app-landscape");
   media(false);
-  await act(() => { window.dispatchEvent(new Event("resize")); });
+  act(() => { window.dispatchEvent(new Event("resize")); });
   expect(screen.getByText("portrait")).toBeInTheDocument();
   expect(document.documentElement).not.toHaveAttribute("data-app-landscape");
 });
