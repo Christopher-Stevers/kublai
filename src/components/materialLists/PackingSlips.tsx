@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { uploadPackingSlip } from "~/lib/packing-slip-upload";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import type { PackingSlipLink } from "~/server/documents/types";
 type Slip = {
@@ -149,26 +150,18 @@ export function PackingSlips({
       const form = new FormData();
       form.set("file", file);
       form.set("packingSlipOrderId", orderId);
-      const response = await fetch(
-        `/api/job-documents/upload?jobId=${encodeURIComponent(jobId)}`,
-        { method: "POST", body: form },
-      );
-      const result = (await response.json()) as {
-        error?: string;
-        documentId?:string;
+      const result = await uploadPackingSlip<{
+        documentId?: string;
         analysisError?: string;
-      };
-      if (!response.ok)
-        throw Error(
-          result.error ?? "Could not save packing slip. Please retry.",
-        );
+      }>(`/api/job-documents/upload?jobId=${encodeURIComponent(jobId)}`, form);
       setRetryFile(null);
       onChanged?.();
       setNotice(
         result.analysisError ??
           "Packing slip saved. It's being read now.",
       );
-      await load().catch(() =>
+      // Do not hold the scanner in Saving while refreshing the document list.
+      if (!result.documentId) void load().catch(() =>
         setError("Packing slip saved. Reopen this window to refresh the list."),
       );
       // Back to the list so the analysis can be watched as it runs.

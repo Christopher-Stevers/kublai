@@ -117,8 +117,13 @@ export async function POST(request: Request) {
         { name, size: bytes.length, mimeType, sha256 },
         () => writeDocumentBlob(access.job.organizationId, bytes),
       );
-      await startSlipAnalysis(access,saved.documentId);
-      return Response.json({documentId:saved.documentId,match:null,candidates:[],orders:[],queued:true},{headers});
+      let analysisError: string | undefined;
+      try {
+        await startSlipAnalysis(access, saved.documentId);
+      } catch {
+        analysisError = "Packing slip saved, but reading could not start. Open the saved slip to retry detection.";
+      }
+      return Response.json({documentId:saved.documentId,match:null,candidates:[],orders:[],queued:true,analysisError},{headers});
     }
     const body = action.parse(
       JSON.parse((await readBoundedBody(request, 8 * 1024)).toString("utf8")),

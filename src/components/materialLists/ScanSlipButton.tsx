@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { uploadPackingSlip } from "~/lib/packing-slip-upload";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import type { PackingSlipLink } from "~/server/documents/types";
 import { hasCamera } from "./PackingSlips";
@@ -35,6 +36,7 @@ type Found = {
   orders: OrderOption[];
   readError?: string;
   queued?: boolean;
+  analysisError?: string;
 };
 type SavedSlip = {
   id: string;
@@ -92,6 +94,7 @@ export function ScanSlipButton({
   const [countdown, setCountdown] = useState(AUTO_START);
   const files = useRef<HTMLInputElement>(null);
   const run = useRef(0);
+  const retryScan = useRef<File | null>(null);
 
   // The slip is checked on the list's parts, so open the list itself.
   const openList = (materialListId: string, orderId: string) =>
@@ -111,7 +114,7 @@ export function ScanSlipButton({
     setOpen(false);
   };
   const found = (result: Found) => {
-    if(result.queued){setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);return;}
+    if(result.queued){if(result.analysisError) notify(result.analysisError, "error");setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);return;}
     const order = result.orders.find((o) => o.id === result.match);
     setCountdown(AUTO_START);
     setStep(
@@ -125,22 +128,19 @@ export function ScanSlipButton({
     setError(null);
     setStep({ kind: "reading", ...input });
     try {
-      let response: Response;
+      let result: Found;
       if ("file" in input) {
+        retryScan.current = input.file;
         const form = new FormData();
         form.set("file", input.file);
-        response = await fetch(
+        result = await uploadPackingSlip<Found>(
           `/api/job-documents/packing-slips/find?jobId=${encodeURIComponent(jobId)}`,
-          { method: "POST", body: form },
+          form,
         );
       } else {
         setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${input.documentId}`);return;
       }
-      const result = await json<Found>(
-        response,
-        "Could not read this packing slip. Please retry.",
-      );
-      if (run.current === id) found(result);
+      if (run.current === id) { retryScan.current = null; found(result); }
     } catch (e) {
       if (run.current === id)
         setError(
@@ -302,6 +302,7 @@ export function ScanSlipButton({
           )}
           {step.kind === "saved" && (
             <div className="grid gap-2">
+              {retryScan.current && <Button variant="outline" onClick={() => void identify({file: retryScan.current!})}>Retry captured scan</Button>}
               {!step.slips && !error && (
                 <p role="status">Loading saved packing slips…</p>
               )}
@@ -380,6 +381,7 @@ export function ScanSlipButton({
           {error && (
             <div role="alert" className="grid gap-2">
               <p>{error}</p>
+              {step.kind === "reading" && <Button variant="outline" onClick={() => void loadSaved()}>Check saved packing slips</Button>}
               {step.kind === "reading" && (
                 <Button
                   disabled={busy && !error}

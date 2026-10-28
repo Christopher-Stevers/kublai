@@ -304,14 +304,21 @@ export default function PackingSlipScanner({
     };
   }, [mode, restart, documentKind]);
 
+  const [saveStage, setSaveStage] = useState("Preparing PDF…");
   const save = async () => {
     setMode("saving");
+    setSaveStage("Preparing PDF…");
     setError("");
+    let preparationTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      pdf.current ??= await scanPdf(
-        pages,
-        documentKind === "document" ? "Scanned document.pdf" : "Packing slip.pdf",
-      );
+      pdf.current ??= await Promise.race([
+        scanPdf(pages, documentKind === "document" ? "Scanned document.pdf" : "Packing slip.pdf"),
+        new Promise<never>((_, reject) => {
+          preparationTimer = setTimeout(() => reject(new Error("Preparing the PDF took too long. Your captured pages are still here; tap Done to retry.")), 30_000);
+        }),
+      ]);
+      clearTimeout(preparationTimer);
+      setSaveStage("Uploading PDF… Keep this window open until the save is confirmed.");
       if (await onSave(pdf.current)) {
         setMode("saved");
         setPages([]);
@@ -325,6 +332,8 @@ export default function PackingSlipScanner({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create PDF.");
       setMode("review");
+    } finally {
+      clearTimeout(preparationTimer);
     }
   };
 
@@ -386,7 +395,7 @@ export default function PackingSlipScanner({
           <p role="status">
             ✓ Page {pages.length} captured.{" "}
             {mode === "saving"
-              ? "Saving PDF…"
+              ? saveStage
               : `Check that the whole ${documentKind} is readable.`}
           </p>
           {/* Camera capture stays local until Done saves the PDF. */}
