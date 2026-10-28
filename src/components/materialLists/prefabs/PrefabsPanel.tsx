@@ -11,6 +11,7 @@ import { useState } from "react";
 import {
   ArrowLeftIcon,
   BoxesIcon,
+  ListPlusIcon,
   MinusIcon,
   MoreVerticalIcon,
   PencilIcon,
@@ -271,7 +272,7 @@ export function PrefabsPanel({
               </ul>
             )}
             <div className="sticky bottom-0 -mx-1 space-y-2 bg-canvas px-1 pt-1 pb-1">
-            <PriorityActionBar className="gap-2">
+            <PriorityActionBar>
               {canEdit && prefab.items.length > 0 && (
                 <Button
                   variant="outline"
@@ -286,6 +287,7 @@ export function PrefabsPanel({
                   className="w-full"
                   onClick={() => setAdding({ prefabId: prefab.id, multiplier: 1 })}
                 >
+                  <ListPlusIcon className="mr-2 h-4 w-4" />
                   Add to List
                 </Button>
               )}

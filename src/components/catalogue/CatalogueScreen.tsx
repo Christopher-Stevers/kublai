@@ -53,6 +53,7 @@ import {
   Ellipsis,
   Grid2X2,
   Images,
+  PackagePlus,
   Search,
   Upload,
 } from "lucide-react";
@@ -632,26 +633,30 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
         className="hidden"
         onChange={handleImportFile}
       />
-      <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-        {importProgress && (
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p role="status" className="text-muted-foreground min-w-0 text-xs">
-              {importProgress}
-            </p>
-            {isImporting && isPreparingImport && (
-              <Button variant="ghost" size="sm" onClick={cancelPreparation}>
-                Cancel preparation
-              </Button>
-            )}
-          </div>
-        )}
-        <PriorityActionBar moreButtonClassName={barButton}>
+      <div className="bg-card shrink-0 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+        <PriorityActionBar
+          label={
+            importProgress && (
+              <>
+                <p role="status" className="text-muted-foreground min-w-0">
+                  {importProgress}
+                </p>
+                {isImporting && isPreparingImport && (
+                  <Button variant="ghost" size="sm" className="ml-auto" onClick={cancelPreparation}>
+                    Cancel preparation
+                  </Button>
+                )}
+              </>
+            )
+          }
+        >
           {canCreateParts && !supplierMode && <Button
             type="button"
             variant="outline"
             className={barButton}
             onClick={() => setIsCreatePartDialogOpen(true)}
           >
+            <PackagePlus className="h-4 w-4 shrink-0" />
             Create Part
           </Button>}
           <div className="relative min-w-0">

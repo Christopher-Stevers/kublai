@@ -14,7 +14,7 @@ import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon, ArrowLeftRight } from "lucide-react";
+import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -1410,17 +1410,20 @@ export function AddPartDialog({
           )}
 
           {/* Bottom bar, laid out like the material list's */}
-          <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-1.5 sm:px-6 sm:pt-2 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
-            <div className="space-y-1.5">
-              {prefabView ? null : wizardStage === "review" ? (
-                <FinancialOnly><div className={`flex items-baseline gap-1.5 ${isToolRequest ? "hidden" : ""}`}>
-                  <span className="text-base text-muted-foreground sm:text-lg">Review Total</span>
-                  <span className="text-base font-bold sm:text-lg">
-                    ${reviewedPartsTotal.toFixed(2)}
-                  </span>
-                </div></FinancialOnly>
-              ) : null}
-              <PriorityActionBar moreButtonClassName={barButton}>
+          <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
+            <div>
+              <PriorityActionBar
+                label={
+                  !prefabView && wizardStage === "review" && !isToolRequest ? (
+                    <FinancialOnly>
+                      <span className="text-muted-foreground">Review Total</span>
+                      <span className="font-bold tabular-nums">
+                        ${reviewedPartsTotal.toFixed(2)}
+                      </span>
+                    </FinancialOnly>
+                  ) : undefined
+                }
+              >
                 {prefabView || wizardStage === "review" ? (
                   <Button
                     variant="outline"
@@ -1449,6 +1452,7 @@ export function AddPartDialog({
                         })
                       }
                     >
+                      <PackagePlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                       {isOnline ? "Create Part" : "Create (online)"}
                     </Button>}
                     <div className="relative min-w-0">
@@ -1481,6 +1485,7 @@ export function AddPartDialog({
                       disabled={pendingParts.length === 0}
                       data-tutorial="wizard-review-button"
                     >
+                      <ListChecksIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                       Review{pendingParts.length > 0 ? ` (${pendingParts.length})` : ""}
                     </Button>
                   </>

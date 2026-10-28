@@ -761,7 +761,7 @@ export function JobRoomsView({
             />
             {canUpload ? (
               <div className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-                <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName="h-12">
+                <PriorityActionBar className="mx-auto max-w-6xl">
                   <Button
                     onClick={() => setPickerOpen(true)}
                     size="lg"
@@ -1463,8 +1463,8 @@ export function JobRoomsView({
             </div>
           ) : null}
 
-          <div className="bg-card shrink-0 border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-            <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName="h-10">
+          <div className="bg-card shrink-0 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+            <PriorityActionBar className="mx-auto max-w-6xl">
               <Button
                 data-tutorial="room-list-toggle"
                 variant={isRoomListOpen ? "default" : "outline"}

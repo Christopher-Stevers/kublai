@@ -47,7 +47,7 @@ it("fails closed before permissions load", () => {
   render(<MaterialListActions {...base} />);
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
-it("uses More only for five or more permitted actions", () => {
+it("shelves all but the highest three permitted actions", () => {
   render(
     <MaterialListActions
       {...base}
@@ -63,6 +63,10 @@ it("uses More only for five or more permitted actions", () => {
     "Scan slip",
     "Add Part",
   ]);
+  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+    "data-count",
+    "2",
+  );
   fireEvent.click(screen.getByRole("button", { name: "More" }));
   fireEvent.click(screen.getByRole("button", { name: "Get Quote" }));
   expect(base.onQuote).toHaveBeenCalledOnce();

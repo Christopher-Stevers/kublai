@@ -673,3 +673,125 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding: 6px 8px;
 }
 .parts-sheet-cells > :last-child { border-right: 0; }
+
+/* The standard bottom bar (src/components/ui/priority-action-bar.tsx). Not in
+   a layer, so it wins over the sizes each screen gives its buttons: every bar
+   has the same button height, type and symbol size. The drawing viewer's
+   tool bar is ViewerActionBar and keeps its own. */
+[data-action-bar] {
+  --action-height: 2.75rem;
+  --action-inset: 0.5rem;
+  font-family: var(--font-action), var(--font-sans);
+}
+[data-action-bar-row],
+[data-action-bar-shelf] {
+  display: grid;
+  gap: 0.375rem;
+}
+[data-action-bar-shelf] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px dashed var(--border);
+}
+[data-action-bar-shelf][hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-action-bar-shelf] {
+    animation: action-shelf-rise 180ms ease-out;
+  }
+}
+@keyframes action-shelf-rise {
+  from { opacity: 0; transform: translateY(0.75rem); }
+}
+[data-action-slot] {
+  min-width: 0;
+  height: var(--action-height);
+}
+[data-action-slot] > *,
+[data-action-slot] > div > :is(button, a) {
+  width: 100%;
+  height: 100%;
+}
+[data-action-slot] :is(button, a) {
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
+}
+[data-action-slot] :is(button, a) > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+}
+[data-action-slot] input {
+  height: 100%;
+  font-size: 1rem;
+}
+[data-action-bar-label]:empty {
+  display: none;
+}
+[data-action-bar-label] {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+[data-action-bar-label],
+[data-action-bar-label] * {
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+[data-action-bar-tab] {
+  position: absolute;
+  bottom: calc(100% + var(--action-inset) - 0.25rem);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.5rem;
+  padding: 0 0.625rem 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* A larger touch target than the drawn tab. */
+[data-action-bar-tab]::before {
+  content: "";
+  position: absolute;
+  inset: -0.625rem -0.75rem -0.25rem;
+}
+[data-action-bar-tab]::after {
+  content: attr(data-count);
+  min-width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+  text-align: center;
+}
+[data-action-bar-tab] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: rotate 180ms ease-out;
+}
+[data-action-bar-tab][aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+[data-action-bar-tab]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

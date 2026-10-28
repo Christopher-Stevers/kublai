@@ -40,8 +40,12 @@ export function OrderReceiveActions({
 }) {
   const isOnline = useOnlineStatus();
   const style = MATERIAL_LIST_ACTION_CLASS;
-  const row = (
-    <PriorityActionBar moreButtonClassName={style}>
+  return (
+    <PriorityActionBar
+      role={label ? "group" : undefined}
+      aria-label={label ? "Receive order" : undefined}
+      label={label}
+    >
       {onMarkAllReceived && (
         <Button
           variant="outline"
@@ -70,15 +74,6 @@ export function OrderReceiveActions({
         </Button>
       )}
     </PriorityActionBar>
-  );
-  if (!label) return row;
-  return (
-    <div role="group" aria-label="Receive order" className="space-y-1.5">
-      <div className="flex items-baseline gap-1.5 text-sm sm:text-base">
-        {label}
-      </div>
-      {row}
-    </div>
   );
 }
 
@@ -170,18 +165,15 @@ export function MaterialListActions({
       </div>
     );
   const listActions = (
-    <div className="space-y-1.5">
-      <FinancialOnly>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-muted-foreground text-base sm:text-lg">
-            Material Total
-          </span>
-          <span className="text-base font-bold sm:text-lg">
-            ${total.toFixed(2)}
-          </span>
-        </div>
-      </FinancialOnly>
-      <PriorityActionBar moreButtonClassName={style}>
+    <div>
+      <PriorityActionBar
+        label={
+          <FinancialOnly>
+            <span className="text-muted-foreground">Material Total</span>
+            <span className="font-bold tabular-nums">${total.toFixed(2)}</span>
+          </FinancialOnly>
+        }
+      >
         {canQuote && (
           <Button
             variant="outline"

@@ -12,7 +12,7 @@ import { PriorityActionBar } from "./priority-action-bar";
 afterEach(cleanup);
 const buttons = (n: number) =>
   Array.from({ length: n }, (_, i) => <button key={i}>Action {i + 1}</button>);
-for (const n of [1, 2, 3, 4]) {
+for (const n of [1, 2, 3]) {
   it(`shows all ${n} actions in existing left-to-right priority order`, () => {
     render(<PriorityActionBar>{buttons(n)}</PriorityActionBar>);
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(
@@ -30,7 +30,36 @@ it("shows no bar for an empty permission set", () => {
   );
   expect(container).toBeEmptyDOMElement();
 });
-it("keeps the highest three on the right, with lower priorities in More", () => {
+it("shelves the lowest of four actions, never showing more than three", () => {
+  render(<PriorityActionBar>{buttons(4)}</PriorityActionBar>);
+  expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+    "More",
+    "Action 2",
+    "Action 3",
+    "Action 4",
+  ]);
+  const tab = screen.getByRole("button", { name: "More" });
+  expect(tab).toHaveAttribute("data-count", "1");
+  // A swipe up raises the shelf; a swipe down lowers it.
+  fireEvent.pointerDown(tab, { clientY: 100 });
+  fireEvent.pointerMove(tab, { clientY: 60 });
+  fireEvent.click(tab);
+  expect(tab).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("button", { name: "Action 1" })).toBeVisible();
+  fireEvent.pointerDown(tab, { clientY: 60 });
+  fireEvent.pointerMove(tab, { clientY: 100 });
+  fireEvent.click(tab);
+  expect(tab).toHaveAttribute("aria-expanded", "false");
+});
+it("shows its label above the buttons", () => {
+  render(
+    <PriorityActionBar label="Material Total $10.00">{buttons(2)}</PriorityActionBar>,
+  );
+  expect(screen.getByText("Material Total $10.00")).toHaveAttribute(
+    "data-action-bar-label",
+  );
+});
+it("keeps the highest three on the right, with lower priorities on the shelf", () => {
   render(<PriorityActionBar>{buttons(6)}</PriorityActionBar>);
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "More",
@@ -54,7 +83,7 @@ it("filters permissions and fragments before counting and responds to changes", 
   const actions = (allowed: boolean) => (
     <PriorityActionBar>
       <>
-        {buttons(3)}
+        {buttons(2)}
         {allowed && <button>Order</button>}
       </>
       <button>Add Part</button>
@@ -68,13 +97,13 @@ it("filters permissions and fragments before counting and responds to changes", 
   rerender(actions(true));
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "More",
-    "Action 3",
+    "Action 2",
     "Order",
     "Add Part",
   ]);
   rerender(actions(false));
   expect(screen.queryByText("Order")).not.toBeInTheDocument();
-  expect(screen.getAllByRole("button")).toHaveLength(4);
+  expect(screen.getAllByRole("button")).toHaveLength(3);
 });
 it("keeps temporarily disabled actions visible without activating them", () => {
   const run = vi.fn();

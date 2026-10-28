@@ -851,8 +851,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </div>
         )}
         {/* Bottom bar like Add Parts: filters menu, search, add drawings. */}
-        <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2">
-          <PriorityActionBar className="mx-auto max-w-6xl" moreButtonClassName={BAR_BUTTON}>
+        <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+          <PriorityActionBar className="mx-auto max-w-6xl">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -979,8 +979,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               }
               onClick={() => fileInput.current?.click()}
             >
-              {uploading && (
+              {uploading ? (
                 <Loader2Icon className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin" />
+              ) : (
+                <UploadIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
               )}
               {uploading ? "Adding…" : "Add Drawings"}
             </Button>}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useRef } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useOrderInView } from "./use-order-in-view";
 import {
   MaterialListActions,
@@ -151,6 +151,8 @@ it("shows one bar at a time, the order's in place of the list's", () => {
   ).not.toBeInTheDocument();
   // The list's bar is still there, sliding away, but cannot be used.
   expect(screen.getByText("Add Part").closest("[inert]")).not.toBeNull();
+  // Four receiving actions: the lowest waits on the shelf.
+  fireEvent.click(within(bar).getByRole("button", { name: "More" }));
   fireEvent.click(screen.getByRole("button", { name: /Mark all received/ }));
   fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark none received/ }));

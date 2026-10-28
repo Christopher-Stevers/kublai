@@ -220,7 +220,7 @@ export function JobMaterialListsView({
               </Button>
             </div>
           )}
-          <PriorityActionBar className="mx-auto max-w-6xl gap-2" moreButtonClassName="h-12">
+          <PriorityActionBar className="mx-auto max-w-6xl">
             <Button
               variant="outline"
               className="h-12 w-full px-2"

@@ -1,5 +1,5 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import { ViewerActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperEquipmentDialog } from "./SuperEquipmentDialog";
 import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
@@ -3356,7 +3356,7 @@ export function DrawingWorkspace({
             </div>
           </>
         )}
-        <PriorityActionBar
+        <ViewerActionBar
           role="toolbar"
           aria-label="Drawing tools"
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
@@ -3659,7 +3659,7 @@ export function DrawingWorkspace({
             <RulerIcon className="h-5 w-5" />
             Measure
           </Button>
-        </PriorityActionBar>
+        </ViewerActionBar>
       </div>
       </DrawingToolbarDock>}
       <Dialog

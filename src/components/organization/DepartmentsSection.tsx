@@ -5,6 +5,8 @@ import { useState } from "react";
 import {
   ArrowLeftIcon,
   Building2Icon,
+  CheckIcon,
+  Loader2Icon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -342,8 +344,8 @@ function DepartmentDetail({
         )}
       </div>
       {settings.viewer.canManageMembers && (
-        <footer className="bg-card/95 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 backdrop-blur">
-          <PriorityActionBar className="gap-2">
+        <footer className="bg-card/95 sticky bottom-0 z-10 rounded-b-2xl border-t px-5 pt-2 pb-3 backdrop-blur">
+          <PriorityActionBar className="ml-auto max-w-md">
           {department ? (
             <Button
               type="button"
@@ -378,9 +380,14 @@ function DepartmentDetail({
             type="submit"
             disabled={pending || !name.trim() || (!!department && !dirty)}
           >
+            {pending ? (
+              <Loader2Icon className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckIcon className="h-4 w-4" />
+            )}
             {pending ? "Saving…" : "Save department"}
           </Button>
-                  </PriorityActionBar>
+          </PriorityActionBar>
         </footer>
       )}
     </form>

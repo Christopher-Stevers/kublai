@@ -1,5 +1,5 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import { ViewerActionBar } from "~/components/ui/priority-action-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
@@ -607,7 +607,7 @@ export function ModelWorkspace({
                 <p className="bg-background/85 text-muted-foreground max-w-lg rounded px-3 py-1 text-center text-[11px]">
                   {toolInfo[tool]}
                 </p>
-                <PriorityActionBar
+                <ViewerActionBar
                   className="bg-background/95 max-w-xl gap-1 rounded-xl border p-1.5 shadow-lg"
                   role="toolbar"
                   aria-label="Construction tools"
@@ -671,7 +671,7 @@ export function ModelWorkspace({
                     <Bookmark className="size-4" />
                     Save view
                   </button>
-                </PriorityActionBar>
+                </ViewerActionBar>
                 {tool === "area" && (
                   <Button size="sm" onClick={() => scene?.finishMeasurement()}>
                     Finish area

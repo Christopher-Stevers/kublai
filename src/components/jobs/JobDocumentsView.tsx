@@ -1384,7 +1384,7 @@ export function JobDocumentsView({
         hidden={Boolean(selected || editorDocument)}
         className="bg-card fixed inset-x-0 bottom-0 z-30 pin-viewport-bottom border-t px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
       >
-        <PriorityActionBar className="mx-auto max-w-7xl items-center gap-2" moreButtonClassName="h-11">
+        <PriorityActionBar className="mx-auto max-w-7xl">
           <Button
             variant="outline"
             className="h-11 gap-1 px-2 text-xs sm:text-sm"

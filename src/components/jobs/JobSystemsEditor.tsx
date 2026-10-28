@@ -5,8 +5,10 @@ import { useEffect, useId, useState } from "react";
 import {
   AlertTriangleIcon,
   CheckIcon,
+  Loader2Icon,
   PlusIcon,
   Trash2Icon,
+  Undo2Icon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -891,14 +893,16 @@ export function JobSystemsEditor({
         </p>
       )}
       {canEdit && (
-        <div className="bg-background sticky bottom-0 flex items-center gap-2 border-t py-3">
-          <PriorityActionBar className="w-auto">
-          <Button
-            disabled={!dirty || save.isPending}
-            onClick={() => void submit()}
+        <div className="bg-background sticky bottom-0 border-t pt-2 pb-3">
+          {/* Save is the main action, so it sits on the right. */}
+          <PriorityActionBar
+            className="max-w-md"
+            label={
+              dirty && (
+                <span className="text-muted-foreground">Unsaved changes</span>
+              )
+            }
           >
-            {save.isPending ? "Saving…" : "Save system"}
-          </Button>
           <Button
             variant="outline"
             disabled={!dirty || save.isPending}
@@ -907,14 +911,21 @@ export function JobSystemsEditor({
               setError(null);
             }}
           >
+            <Undo2Icon />
             Discard changes
           </Button>
+          <Button
+            disabled={!dirty || save.isPending}
+            onClick={() => void submit()}
+          >
+            {save.isPending ? (
+              <Loader2Icon className="animate-spin" />
+            ) : (
+              <CheckIcon />
+            )}
+            {save.isPending ? "Saving…" : "Save system"}
+          </Button>
           </PriorityActionBar>
-          {dirty && (
-            <span className="text-muted-foreground text-xs">
-              Unsaved changes
-            </span>
-          )}
         </div>
       )}
     </section>

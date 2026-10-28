@@ -439,9 +439,17 @@ function PresetDetail({
         )}
       </div>
       {settings.viewer.canManageMembers && (
-        <footer className="bg-card/95 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 backdrop-blur">
-          {!preset && <span className="text-muted-foreground text-xs">Assign members after saving.</span>}
-          <PriorityActionBar className="gap-2">
+        <footer className="bg-card/95 sticky bottom-0 z-10 rounded-b-2xl border-t px-5 pt-2 pb-3 backdrop-blur">
+          <PriorityActionBar
+            className="ml-auto max-w-md"
+            label={
+              !preset && (
+                <span className="text-muted-foreground">
+                  Assign members after saving.
+                </span>
+              )
+            }
+          >
           {preset ? (
             <Button
               type="button"
@@ -475,7 +483,7 @@ function PresetDetail({
             )}{" "}
             Save preset
           </Button>
-                  </PriorityActionBar>
+          </PriorityActionBar>
         </footer>
       )}
     </form>

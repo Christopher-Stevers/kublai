@@ -8,6 +8,7 @@ import {
   Loader2Icon,
   SearchIcon,
   ShieldCheckIcon,
+  Undo2Icon,
   UsersIcon,
 } from "lucide-react";
 
@@ -664,12 +665,14 @@ function MemberDetail({
       {canManage && (!accessReadOnly || changed) && (
         <footer
           className={cn(
-            "bg-card/95 sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-2xl border-t px-5 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur transition-opacity",
+            "bg-card/95 sticky bottom-0 z-10 rounded-b-2xl border-t px-5 pt-2 pb-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur transition-opacity",
             changed ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
-          <span className="text-sm font-medium">Unsaved changes</span>
-          <PriorityActionBar className="w-auto gap-2">
+          <PriorityActionBar
+            className="ml-auto max-w-md"
+            label={<span className="font-medium">Unsaved changes</span>}
+          >
             <Button
               variant="outline"
               onClick={() => {
@@ -681,6 +684,7 @@ function MemberDetail({
               }}
               disabled={update.isPending}
             >
+              <Undo2Icon className="h-4 w-4" />
               Discard
             </Button>
             <Button
