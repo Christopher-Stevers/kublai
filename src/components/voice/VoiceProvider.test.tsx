@@ -43,10 +43,12 @@ async function start() {
     </VoiceProvider>,
   );
   expect(m.mic).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Start voice assistant" }).getAttribute("data-lit")).toBe("false");
   fireEvent.click(
     screen.getByRole("button", { name: "Start voice assistant" }),
   );
   await screen.findByText("Listening");
+  expect(screen.getAllByRole("button", { name: "End voice session" })[0]!.getAttribute("data-lit")).toBe("true");
 }
 it("starts only on a tap and releases the microphone on end", async () => {
   await start();
@@ -64,6 +66,7 @@ it("requires a separate screen tap to apply a proposal", async () => {
   });
   fireEvent.click(screen.getByLabelText("Send voice assistant message"));
   await screen.findByText("Create job Test");
+  expect(screen.getAllByRole("button", { name: "End voice session" })[0]!.getAttribute("data-lit")).toBe("false");
   expect(calls.some((c) => c.action === "confirm")).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Apply change" }));
   await screen.findByText("Saved.");
