@@ -1944,10 +1944,10 @@ it("keeps only the full-screen and layers corner controls in quick-wheel mode", 
   expect(onFullscreen).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: "Layers" }));
   expect(screen.getByRole("complementary", { name: "Drawing tools panel" })).toBeVisible();
-  fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
   fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
-  fireEvent.click(screen.getByRole("button", { name: "Measure", exact: true }));
-  expect(screen.queryByRole("button", { name: "Done", exact: true })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+  expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   expect(screen.getByRole("button", { name: "Full screen" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Layers" })).toBeVisible();
 });
