@@ -1903,19 +1903,35 @@ export function DrawingWorkspace({
         )}
       </div>
       <div className="relative flex min-h-0 flex-1">
-        {(bottomMode.measuring ||
-          bottomMode.pipe ||
-          (tool !== "pan" && tool !== "viewing" && tool !== "select")) && (
-          <Button
-            type="button"
-            variant="outline"
-            className="bg-background/60 border-border/60 hover:bg-background/80 absolute top-3 left-3 z-20 h-10 rounded-full px-4 shadow-md backdrop-blur-sm"
-            onClick={finishUsing}
-          >
-            <CheckIcon />
-            Done
-          </Button>
-        )}
+        <div className="pointer-events-none absolute top-3 left-3 z-20 flex gap-2 [&>*]:pointer-events-auto">
+          {/* In full screen the viewer's own exit button takes this spot. */}
+          {onFullscreen && !quickWheel && (
+            <Button
+              ref={fullscreenRef}
+              type="button"
+              variant="outline"
+              className="bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm in-data-[drawing-fullscreen=true]:invisible [&_svg]:size-5"
+              aria-label="Full screen"
+              title="Full screen"
+              onClick={onFullscreen}
+            >
+              <MaximizeIcon aria-hidden="true" />
+            </Button>
+          )}
+          {(bottomMode.measuring ||
+            bottomMode.pipe ||
+            (tool !== "pan" && tool !== "viewing" && tool !== "select")) && (
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-background/60 border-border/60 hover:bg-background/80 h-10 rounded-full px-4 shadow-md backdrop-blur-sm"
+              onClick={finishUsing}
+            >
+              <CheckIcon />
+              Done
+            </Button>
+          )}
+        </div>
         {entities.some(
           (e) =>
             e.kind === "issue" &&
@@ -3603,19 +3619,6 @@ export function DrawingWorkspace({
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-          {onFullscreen && (
-            <Button
-              ref={fullscreenRef}
-              type="button"
-              variant="outline"
-              className="size-10 rounded-lg p-0 [&_svg]:size-5"
-              aria-label="Full screen"
-              title="Full screen"
-              onClick={onFullscreen}
-            >
-              <MaximizeIcon aria-hidden="true" />
-            </Button>
           )}
           {data.canAnnotate !== false && <Button
             disabled={!writable}

@@ -1784,11 +1784,13 @@ it("leaves a completed measurement unselected after its asynchronous save finish
   });
 });
 
-it("overflows the lower-priority drawing actions when full screen adds a fifth button", () => {
-  render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={vi.fn()} />);
+it("keeps full screen on the drawing so Tools stays in the bar", () => {
+  const onFullscreen = vi.fn();
+  render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
-  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["More", "Full screen", "Markup", "Measure"]);
-  fireEvent.click(within(bar).getByRole("button", { name: "More" }));
+  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Drawing options", "Tools", "Markup", "Measure"]);
+  fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+  expect(onFullscreen).toHaveBeenCalled();
   fireEvent.keyDown(within(bar).getByRole("button", { name: "Drawing options" }), { key: "Enter" });
   expect(screen.getByRole("switch", { name: "Quickwheel mode" })).toBeVisible();
 });
