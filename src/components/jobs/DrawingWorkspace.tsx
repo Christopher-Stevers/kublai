@@ -2297,7 +2297,9 @@ export function DrawingWorkspace({
           <aside
             data-drawing-chrome={panel === "markups" ? undefined : true}
             aria-label="Drawing tools panel"
-            className="bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"
+            className={panel === "markups"
+              ? "bg-background/60 border-border/60 absolute top-16 right-3 bottom-3 z-30 flex w-[min(22rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-sm lg:w-80"
+              : "bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"}
           >
             <div className="flex items-center justify-between border-b p-3">
               <h2 className="font-semibold">

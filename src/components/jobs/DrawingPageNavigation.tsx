@@ -56,7 +56,7 @@ export function DrawingZoomReadout({
       ref={attachReadout}
       aria-label="Drawing zoom"
       title="Zoom (100% = fit to screen)"
-      className="bg-background/85 pointer-events-none absolute top-3 right-3 z-20 rounded-md px-3 py-1.5 text-base font-medium tabular-nums shadow-sm transition-opacity duration-500 data-[idle=true]:opacity-0"
+      className="bg-background/60 border-border/60 pointer-events-none absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full border px-3 py-1.5 text-base font-medium tabular-nums shadow-md backdrop-blur-sm transition-opacity duration-500 data-[idle=true]:opacity-0"
     >
       {Math.round(zoom * 100)}%
     </span>
