@@ -502,7 +502,7 @@ export function DrawingWorkspace({
       ? snapshot
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
-  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); setPanel(""); setForm(null); } }, [quickWheel]);
+  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
   const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
   const [superEquipmentOpen, setSuperEquipmentOpen] = useState(false);
