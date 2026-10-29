@@ -1961,8 +1961,8 @@ it("backs out of layers and then the active drawing tool before navigating to th
     return <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />;
   }
   render(<Host />);
-  fireEvent.click(screen.getByRole("button", {name: "Measure", exact: true}));
-  fireEvent.click(screen.getByRole("button", {name: "Layers", exact: true}));
+  fireEvent.click(screen.getByRole("button", {name: "Measure"}));
+  fireEvent.click(screen.getByRole("button", {name: "Layers"}));
   act(() => { runHeaderBackOverride(); });
   expect(screen.queryByRole("complementary", {name: "Drawing tools panel"})).toBeNull();
   expect(parent).not.toHaveBeenCalled();
@@ -1981,7 +1981,7 @@ it("closes the markup chooser before allowing page navigation", () => {
     return <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />;
   }
   render(<Host />);
-  fireEvent.click(screen.getByRole("button", {name: "Markup", exact: true}));
+  fireEvent.click(screen.getByRole("button", {name: "Markup"}));
   act(() => { runHeaderBackOverride(); });
   expect(parent).not.toHaveBeenCalled();
   act(() => { runHeaderBackOverride(); });
@@ -1997,7 +1997,7 @@ it("closes More before navigating away from a base-state drawing", () => {
   }
   render(<Host />); openMenu("More");
   act(() => { runHeaderBackOverride(); });
-  expect(screen.getByRole("button", { name: "More", exact: true })).toHaveAttribute("aria-expanded", "false");
+  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-expanded", "false");
   expect(parent).not.toHaveBeenCalled();
   act(() => { runHeaderBackOverride(); });
   expect(parent).toHaveBeenCalledOnce();
