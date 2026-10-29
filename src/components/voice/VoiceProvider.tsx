@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { microphone, pcm16, type MicCapture } from "./audio";
 import styles from "./voice.module.css";
+import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 type Phase =
   | "off"
@@ -466,62 +467,43 @@ export function VoiceCard() {
   const voice = useVoice();
   const sandbox = useTutorialSandbox();
   if (!voice || sandbox) return null;
-  const lit = voice.phase === "listening" || voice.phase === "review";
+  const lit = voice.phase === "listening";
   const active = voice.phase !== "off";
+  const toggle = active ? voice.stop : voice.start;
+  const description = lit
+    ? "Listening… Tap to end your session"
+    : active
+      ? `${voice.phase === "thinking" ? "Thinking…" : voice.phase === "speaking" ? "Speaking…" : "Voice is on"} Tap to end your session`
+      : "Find parts. Open drawings. Get things done.";
   return (
-    <div className={styles.cardWrap}>
-      <button
-        className={styles.card}
+    <div>
+      <Card
+        className={`${styles.card} cursor-pointer transition-shadow hover:shadow-md`}
+        role="button"
+        tabIndex={0}
         data-lit={lit}
-        data-active={active}
-        onClick={active ? voice.stop : voice.start}
+        onClick={toggle}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        }}
         aria-label={active ? "End voice session" : "Start voice assistant"}
         aria-pressed={active}
       >
-        <span className={styles.rings} aria-hidden="true">
-          <span />
-          <span />
-          <MicIcon size={27} />
-        </span>
-        <span className={styles.cardText}>
-          <span className={styles.eyebrow}>FOREMAN VOICE</span>
-          <strong>
-            {lit
-              ? "I’m listening."
-              : active
-                ? voice.phase === "thinking"
-                  ? "Thinking…"
-                  : voice.phase === "speaking"
-                    ? "Speaking…"
-                    : "Voice is on"
-                : "Your next move. Just ask."}
-          </strong>
-          <span>
-            {active
-              ? "Tap to end your session"
-              : "Find parts. Open drawings. Get things done."}
-          </span>
-        </span>
-        <span className={styles.wave} aria-hidden="true">
-          {Array.from({ length: 15 }, (_, i) => (
-            <i
-              key={i}
-              style={{
-                height: `${5 + (lit ? voice.level * 45 : 10) * (0.3 + Math.abs(Math.sin(i * 1.7)))}px`,
-                animationDelay: `${i * 60}ms`,
-              }}
-            />
-          ))}
-        </span>
-        <span className={styles.startLabel}>
-          {lit ? "LISTENING" : active ? "CONNECTED" : "TAP TO TALK"}
-          <span>↗</span>
-        </span>
-      </button>
+        <CardHeader>
+          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">Voice</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <MicIcon className="h-4 w-4 shrink-0" />
+            <span>{description}</span>
+          </div>
+        </CardContent>
+      </Card>
       {voice.error && !active && (
-        <p role="alert" className={styles.cardError}>
-          {voice.error}
-        </p>
+        <p role="alert" className={styles.cardError}>{voice.error}</p>
       )}
     </div>
   );
