@@ -367,8 +367,12 @@ const open = () =>
     <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
   );
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
-const openMenu = (name: string) =>
+const openMenu = (name: string) => {
+  if (name === "Drawing options" && !screen.queryByRole("button", { name })) {
+    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+  }
   fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
+};
 const panel = (name: string) => {
   openMenu("Drawing options");
   fireEvent.click(
@@ -963,7 +967,7 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("heading",{name:"Sheet details"})).toBeVisible();
     const button=within(toolbar).getByRole("button",{name:"Drawing options",pressed:true});
     fireEvent.click(button);expect(screen.queryByRole("heading",{name:"Sheet details"})).toBeNull();
-    expect(within(toolbar).getByRole("button",{name:"Drawing options"})).toBeVisible();
+    expect(within(toolbar).getByRole("button",{name:"More",exact:true})).toBeVisible();
   });
   it("retains active names when switching between markup, measure and pipe",()=>{
     open();chooseTool("line");const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
@@ -1788,10 +1792,10 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
   const onFullscreen = vi.fn();
   render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
-  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Drawing options", "Tools", "Markup", "Measure"]);
+  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["More", "Tools", "Markup", "Measure"]);
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
-  fireEvent.keyDown(within(bar).getByRole("button", { name: "Drawing options" }), { key: "Enter" });
+  openMenu("Drawing options");
   expect(screen.getByRole("switch", { name: "Quickwheel mode" })).toBeVisible();
 });
 

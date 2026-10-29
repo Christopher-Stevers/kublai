@@ -1,5 +1,5 @@
 "use client";
-import { ViewerActionBar } from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperEquipmentDialog } from "./SuperEquipmentDialog";
 import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
@@ -157,7 +157,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-12 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs has-[>svg]:px-1 font-medium whitespace-normal transition-colors [&_svg]:size-4";
+  "h-11 w-full gap-1.5 rounded-md px-2 text-sm font-medium whitespace-normal";
 export const tools: Array<[DrawingTool, string]> = [
   ["viewing", "Viewing"],
   ["select", "Select"],
@@ -3282,13 +3282,12 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {/* Bottom bar: More, Tools, Markup, Measure (Previous / Next sit
-          below it in the Drawings screen). */}
+      {/* Shared priority bar: Measure, Markup, Tools, then Options. */}
       {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div
         data-drawing-chrome
         data-bottom-menu
-        className="bg-card relative shrink-0 border-t px-3 pt-1 pb-0.5"
+        className="bg-card relative shrink-0 border-t px-3 pt-2 pb-0.5"
       >
         {markupOpen && (
           <>
@@ -3385,11 +3384,10 @@ export function DrawingWorkspace({
             </div>
           </>
         )}
-        <ViewerActionBar
+        <PriorityActionBar
           role="toolbar"
           aria-label="Drawing tools"
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
-          moreButtonClassName={BAR_BUTTON}
         >
           {panel && panel !== "selected" ? (
             <Button
@@ -3403,7 +3401,7 @@ export function DrawingWorkspace({
               }}
             >
               <MoreHorizontalIcon className="h-5 w-5" />
-              More
+              Options
             </Button>
           ) : (
             <DropdownMenu
@@ -3416,12 +3414,12 @@ export function DrawingWorkspace({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={moreOpen ? "default" : "ghost"}
+                  variant={moreOpen ? "default" : "outline"}
                   className={BAR_BUTTON}
                   aria-label="Drawing options"
                 >
                   <MoreHorizontalIcon className="h-5 w-5" />
-                  More
+                  Options
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -3560,7 +3558,7 @@ export function DrawingWorkspace({
               onClick={finishTool}
             >
               {tool === "viewing" ? <HandIcon className="hidden h-5 w-5 sm:block" /> : <WrenchIcon className="hidden h-5 w-5 sm:block" />}
-              <span className="min-w-0 break-words text-[11px] leading-3">{bottomMode.pipe ? "Pipe system" : toolLabel}</span>
+              <span className="min-w-0 break-words leading-tight">{bottomMode.pipe ? "Pipe system" : toolLabel}</span>
             </Button>
           ) : (
             <DropdownMenu
@@ -3573,7 +3571,7 @@ export function DrawingWorkspace({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={toolsOpen ? "default" : "ghost"}
+                  variant={toolsOpen ? "default" : "outline"}
                   className={BAR_BUTTON}
                   aria-label="Tools"
                 >
@@ -3638,7 +3636,7 @@ export function DrawingWorkspace({
             variant={
               markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
                 ? "default"
-                : "ghost"
+                : "outline"
             }
             className={BAR_BUTTON}
             aria-label={
@@ -3656,12 +3654,12 @@ export function DrawingWorkspace({
             }}
           >
             <PenLineIcon className={!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? "hidden h-5 w-5 sm:block" : "h-5 w-5"} />
-            <span className="min-w-0 break-words text-[11px] leading-3">
+            <span className="min-w-0 break-words leading-tight">
               {!OTHER_TOOLS.has(tool) && !bottomMode.measuring ? toolLabel : "Markup"}
             </span>
           </Button>}
           <Button
-            variant={bottomMode.measuring ? "default" : "ghost"}
+            variant={bottomMode.measuring ? "default" : "outline"}
             className={BAR_BUTTON}
             aria-label="Measure"
             aria-pressed={bottomMode.measuring}
@@ -3675,7 +3673,7 @@ export function DrawingWorkspace({
             <RulerIcon className="h-5 w-5" />
             Measure
           </Button>
-        </ViewerActionBar>
+        </PriorityActionBar>
       </div>
       </DrawingToolbarDock>}
       <Dialog
