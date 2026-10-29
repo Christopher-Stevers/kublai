@@ -98,6 +98,34 @@ export const createTRPCRouter = t.router;
 
 const SLOW_REQUEST_MS = 1500;
 
+const kb = (value: unknown) =>
+  Math.round(superjson.stringify(value ?? null).length / 1024);
+/** Total size, and the largest parts and markup kinds when it is large. */
+function drawingDataSize(data: unknown) {
+  const total = kb(data);
+  const workspace = ((data as { workspace?: unknown } | null)?.workspace ??
+    data) as Record<string, unknown> | null;
+  if (total < 256 || !workspace || typeof workspace !== "object")
+    return ` ${total} KB`;
+  const parts = Object.entries(workspace)
+    .map(([key, value]) => [key, kb(value)] as const)
+    .filter(([, size]) => size > 16)
+    .map(([key, size]) => `${key} ${size}`);
+  const kinds = new Map<string, { count: number; size: number }>();
+  for (const entity of (workspace.entities as Array<{ kind?: string; data?: { type?: string } }>) ?? []) {
+    const name = `${entity.kind}:${entity.data?.type ?? ""}`;
+    const entry = kinds.get(name) ?? { count: 0, size: 0 };
+    entry.count++;
+    entry.size += superjson.stringify(entity).length;
+    kinds.set(name, entry);
+  }
+  const top = [...kinds]
+    .sort((a, b) => b[1].size - a[1].size)
+    .slice(0, 6)
+    .map(([name, { count, size }]) => `${name} ${count}x ${Math.round(size / 1024)}`);
+  return ` ${total} KB [${parts.join(", ")}] [${top.join(", ")}]`;
+}
+
 // Logs duration and database round trips; `scripts/trpc-timing-report.mjs`
 // summarizes these lines from the service journal.
 const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
@@ -147,7 +175,7 @@ const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
   // Drawing data goes to phones on every open; its size is part of the wait.
   const size =
     result.ok && (path === "drawingsWorkspace.get" || path === "drawingsWorkspace.changes")
-      ? ` ${Math.round(superjson.stringify(result.data).length / 1024)} KB`
+      ? drawingDataSize(result.data)
       : "";
   const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)${size}`;
   if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
