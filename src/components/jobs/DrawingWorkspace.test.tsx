@@ -1866,3 +1866,24 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   fireEvent.click(layers);
   expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
 });
+
+it("keeps individual annotations out of Layers and remembers hidden drawing content after reopening", () => {
+  mocks.account = { userId: "tim", accountKey: `layers-${crypto.randomUUID()}`, store: null };
+  mocks.data!.entities = [existingMarkup()];
+  const first = open();
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  const sidebar = screen.getByRole("complementary", { name: "Drawing tools panel" });
+  expect(within(sidebar).queryByRole("button", { name: "rect private" })).toBeNull();
+  const details = within(sidebar).getByText("Markup", { selector: "summary span" }).closest("details")!;
+  fireEvent.click(details.querySelector("summary")!);
+  fireEvent.click(within(sidebar).getByRole("button", { name: "Rectangle layer" }));
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(0);
+  first.unmount();
+  open();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  const reopened = screen.getByText("Markup", { selector: "summary span" }).closest("details")!;
+  expect(reopened).not.toHaveAttribute("open");
+  fireEvent.click(reopened.querySelector("summary")!);
+  expect(screen.getByRole("button", { name: "Rectangle layer" })).toHaveAttribute("aria-pressed", "false");
+});
