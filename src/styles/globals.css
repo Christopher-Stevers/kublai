@@ -884,13 +884,13 @@ html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slo
 }
 
 /* Quick-wheel drawings use all available space. Navigation remains in the wheel. */
-:root:has([data-drawing-quick-wheel="true"]) {
+html:root:has([data-drawing-quick-wheel="true"]) {
   --app-header-height: 0px;
   --landscape-fallback-height: 0px;
 }
-:root:has([data-drawing-quick-wheel="true"]) [data-app-header],
-:root:has([data-drawing-quick-wheel="true"]) [data-landscape-fallback-bar] {
+html:root:has([data-drawing-quick-wheel="true"]) [data-app-header],
+html:root:has([data-drawing-quick-wheel="true"]) [data-landscape-fallback-bar] {
   display: none !important;
 }
-:root:has([data-drawing-quick-wheel="true"]) .app-below-header { bottom: 0; }
-:root:has([data-drawing-quick-wheel="true"]) [data-app-shell] > main { padding-bottom: 0; }
+html:root:has([data-drawing-quick-wheel="true"]) .app-below-header { bottom: 0; }
+html:root:has([data-drawing-quick-wheel="true"]) [data-app-shell] > main { padding-bottom: 0; }
