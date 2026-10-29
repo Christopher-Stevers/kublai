@@ -190,11 +190,16 @@ async function sheetMetadata(
     .limit(1);
   return row?.data ?? defaultDrawingMetadata(sheetId);
 }
-async function sheetEntities(reader: Reader, sheetId: string) {
+async function sheetEntities(reader: Reader, sheetId: string, forDisplay = false) {
   const rows = await reader
     .select()
     .from(entities)
-    .where(eq(entities.sheetId, sheetId))
+    .where(and(
+      eq(entities.sheetId, sheetId),
+      // Revision records power the drawing-history picker. Archived annotation
+      // bodies remain in storage for mutation/conflict checks, not page loads.
+      forDisplay ? sql`(${entities.entity}->>'visibility' <> 'archived' or ${entities.entity}->>'kind' = 'version')` : undefined,
+    ))
     .limit(MAX_ENTITIES + 1);
   if (rows.length > MAX_ENTITIES)
     throw new TRPCError({
@@ -481,9 +486,9 @@ export async function getDrawingWorkspace(
   // Read the token before the data: a concurrent write can cause an extra
   // refresh, but must never mark an older response as the newer revision.
   const revision = known?.revision ?? await workspaceRevision(ctx, access);
-  const [items, data, people, sheets, starred, events, watched] =
+  const [items, data, people, sheets, starred, events, watched, archivedIds] =
     await Promise.all([
-      sheetEntities(ctx.db, sheetId),
+      sheetEntities(ctx.db, sheetId, true),
       sheetMetadata(ctx.db, sheetId),
       members(ctx.db, access.actor.organizationId),
       jobSheets(
@@ -512,9 +517,16 @@ export async function getDrawingWorkspace(
           and(eq(watches.sheetId, sheetId), eq(watches.userId, ctx.userId)),
         )
         .limit(1),
+      // Keep permitted archive activity visible without fetching its large
+      // markup/link data. This matches canReadEntity's archived visibility rule.
+      ctx.db.select({ id: entities.id }).from(entities).where(and(
+        eq(entities.sheetId, sheetId),
+        sql`${entities.entity}->>'visibility' = 'archived'`,
+        sql`(${entities.entity}->>'authorId' = ${access.actor.id} or ${entities.entity}->>'archivedFrom' = 'published')`,
+      )),
     ]);
   const visible = items.filter((item) => canReadEntity(item, access.actor));
-  const ids = new Set(visible.map((item) => item.id));
+  const ids = new Set([...visible.map((item) => item.id), ...archivedIds.map(item => item.id)]);
   return {
     revision,
     sheetId,
@@ -549,6 +561,7 @@ async function workspaceRevision(ctx: DrawingContext, access: Awaited<ReturnType
   )`;
   const sheetScope = and(eq(jobDrawingSheets.jobId, sheet.jobId), eq(jobDrawingSheets.organizationId, actor.organizationId), sheet.documentVersionId ? eq(jobDrawingSheets.documentVersionId, sheet.documentVersionId) : isNull(jobDrawingSheets.documentVersionId))!;
   const [row] = await ctx.db.execute<{ revision: string }>(sql`select md5(json_build_array(
+    'active-annotations-v1'::text,
     ${ctx.userId}::text, ${sheet.id}::text, ${actor.canManage}::boolean, ${access.canAnnotate}::boolean,
     ${stamp(entities, entities.id, eq(entities.sheetId, sheet.id))},
     ${stamp(metadata, metadata.sheetId, eq(metadata.sheetId, sheet.id))},

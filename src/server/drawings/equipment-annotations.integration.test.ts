@@ -8,7 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { getTableColumns, getTableName } from "drizzle-orm";
+import { getTableColumns, getTableName, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "~/server/db/schema";
@@ -16,6 +16,8 @@ import {
   drawingWorkspaceEntities as entities,
   drawingWorkspaceMetadata as metadata,
   drawingWorkspaceActivity as activity,
+  drawingWorkspaceFavorites as favorites,
+  drawingWorkspaceWatches as watches,
 } from "~/server/db/drawing-workspace-schema";
 import { estimates } from "~/server/db/estimating-schema";
 vi.mock("~/server/db", () => ({ db: {} }));
@@ -38,7 +40,12 @@ vi.mock("~/server/drawings/revision-evidence", () => ({
   prepareRevisionEvidence: vi.fn(async () => undefined),
   revisionEvidence: vi.fn(async () => ({ scale: null, linework: null })),
 }));
-import { saveDrawingEntity, archiveDrawingEntity } from "./service";
+import {
+  saveDrawingEntity,
+  archiveDrawingEntity,
+  getDrawingWorkspace,
+  getDrawingWorkspaceChanges,
+} from "./service";
 import { defaultDrawingMetadata } from "./domain";
 import { revisionEvidence } from "./revision-evidence";
 const socket = process.env.PURCHASE_TEST_SOCKET;
@@ -69,6 +76,8 @@ const tables = [
   entities,
   metadata,
   activity,
+  favorites,
+  watches,
   estimates,
 ] as unknown as PgTable[];
 describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
@@ -79,7 +88,10 @@ describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
       const columns = Object.values(getTableColumns(table)).map(
         (c) => `"${c.name}" ${c.getSQLType()}`,
       );
-      const pk = table === metadata ? "sheetId" : "id";
+      const pk =
+        table === metadata || table === favorites || table === watches
+          ? "sheetId"
+          : "id";
       await conn.unsafe(
         `CREATE TABLE IF NOT EXISTS "${getTableName(table)}" (${columns.join(",")}, PRIMARY KEY ("${pk}"))`,
       );
@@ -284,5 +296,85 @@ describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
       2,
     );
     expect(rows).toHaveLength(3);
+  });
+  it("omits archived bodies while preserving authorized history and invalidating cached active data", async () => {
+    const first = await saveDrawingEntity(ctx, request());
+    const before = await getDrawingWorkspace(ctx, old);
+    expect(before.entities.map((e) => e.id)).toContain(first.id);
+    await archiveDrawingEntity(ctx, {
+      sheetId: old,
+      id: first.id,
+      expectedRevision: first.revision,
+    });
+    const changed = await getDrawingWorkspaceChanges(ctx, {
+      sheetId: old,
+      revision: before.revision,
+    });
+    expect(changed.workspace?.entities).toEqual([]);
+    expect(
+      changed.workspace?.activity.some(
+        (a) => a.entityId === first.id && a.action === "archived",
+      ),
+    ).toBe(true);
+    const [stored] = await db
+      .select()
+      .from(entities)
+      .where(eq(entities.id, first.id));
+    expect(stored?.entity.visibility).toBe("archived");
+    expect(stored?.entity.data).toEqual(first.data);
+    expect(
+      await getDrawingWorkspaceChanges(ctx, {
+        sheetId: old,
+        revision: changed.revision,
+      }),
+    ).toMatchObject({ workspace: null });
+    // Another member cannot see private archive history, even with management rights.
+    await db
+      .update(entities)
+      .set({ entity: { ...stored!.entity, authorId: "another-member" } })
+      .where(eq(entities.id, first.id));
+    expect(
+      (await getDrawingWorkspace(ctx, old)).activity.some(
+        (a) => a.entityId === first.id,
+      ),
+    ).toBe(false);
+    await db
+      .update(entities)
+      .set({
+        entity: {
+          ...stored!.entity,
+          authorId: "another-member",
+          archivedFrom: "published",
+        },
+      })
+      .where(eq(entities.id, first.id));
+    const published = await getDrawingWorkspace(ctx, old);
+    expect(published.entities).toEqual([]);
+    expect(
+      published.activity.some(
+        (a) => a.entityId === first.id && a.action === "archived",
+      ),
+    ).toBe(true);
+    // Superseded drawing-version records still populate the revision picker.
+    await db.insert(entities).values({
+      id: id(99),
+      sheetId: old,
+      jobId: job,
+      organizationId: org,
+      revision: 2,
+      entity: {
+        ...stored!.entity,
+        id: id(99),
+        kind: "version",
+        data: {
+          sourceSheetId: incoming,
+          label: "Previous revision",
+          description: "",
+        },
+      },
+    });
+    expect(
+      (await getDrawingWorkspace(ctx, old)).entities.map((e) => e.id),
+    ).toEqual([id(99)]);
   });
 });
