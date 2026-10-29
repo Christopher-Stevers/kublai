@@ -10,7 +10,6 @@ import {
 import {
   startSlipAnalysis,
   clearSlipAnalysis,
-  confirmSlipReceipt,
   refreshSlipReview,
 } from "~/server/packing-slips/service";
 export const runtime = "nodejs";

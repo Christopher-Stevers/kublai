@@ -574,7 +574,7 @@ export class ModelScene {
     this.updateVisibility(changed);
     this.invalidate();
   }
-  finishModel(modelId: string, elements: BimElement[]) {
+  finishModel(_modelId: string, elements: BimElement[]) {
     for (const info of elements) {
       const entry = this.elements.get(info.key);
       if (entry) entry.info = info;

@@ -239,7 +239,7 @@ export function detectDoorRooms(
   rooms.forEach((room, i) => { for (const s of room.spaces) roomOf[s] = i + 1; });
   const labels = new Int32Array(width * height);
   for (let p = 0; p < labels.length; p++) labels[p] = roomOf[label[p]!]!;
-  absorbWalls(labels, label, edge, width, height, Math.max(2, Math.round(doorSize * 0.3)));
+  absorbWalls(labels, label, edge, width, Math.max(2, Math.round(doorSize * 0.3)));
   return {
     rooms,
     labels,
@@ -257,7 +257,7 @@ export function detectDoorRooms(
  * pocket enclosed by a single room (door swings, columns, interior walls).
  * Never grows into the outside.
  */
-function absorbWalls(labels: Int32Array, space: Int32Array, edge: boolean[], width: number, height: number, reach: number) {
+function absorbWalls(labels: Int32Array, space: Int32Array, edge: boolean[], width: number, reach: number) {
   const N = labels.length;
   const blocked = (p: number) => edge[space[p]!] === true;
   let frontier: number[] = [];

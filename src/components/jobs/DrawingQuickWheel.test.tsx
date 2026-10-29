@@ -13,7 +13,6 @@ import {
   type DrawingWheelGroup,
 } from "./DrawingQuickWheel";
 import {
-  DrawingQuickWheelSetting,
   useDrawingQuickWheelMode,
 } from "./useDrawingQuickWheelMode";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
@@ -494,10 +493,10 @@ describe("drawing Quickwheel", () => {
 
   it("remembers the optional mode separately for each account", () => {
     function Setting() {
-      const { enabled } = useDrawingQuickWheelMode();
+      const { enabled, setEnabled } = useDrawingQuickWheelMode();
       return (
         <>
-          <DrawingQuickWheelSetting />
+          <input type="checkbox" role="switch" aria-label="Quickwheel mode" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
           <output>{enabled ? "wheel" : "bars"}</output>
         </>
       );

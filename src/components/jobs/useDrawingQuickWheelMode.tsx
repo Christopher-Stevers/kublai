@@ -69,25 +69,3 @@ export function useDrawingQuickWheelMode() {
   );
   return { enabled, setEnabled };
 }
-
-export function DrawingQuickWheelSetting() {
-  const { enabled, setEnabled } = useDrawingQuickWheelMode();
-  return (
-    <label className="flex items-center justify-between gap-3 px-2 py-3 text-sm">
-      <span>
-        Quickwheel mode
-        <span className="text-muted-foreground block text-xs">
-          Right-click or long press for drawing controls
-        </span>
-      </span>
-      <input
-        type="checkbox"
-        role="switch"
-        aria-label="Quickwheel mode"
-        checked={enabled}
-        onChange={(event) => setEnabled(event.target.checked)}
-        className="accent-primary size-5"
-      />
-    </label>
-  );
-}

@@ -4,7 +4,6 @@ import { conversationMessages } from "~/server/db/conversation-schema";
 import { publishConversationEvent } from "~/server/conversations/events";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import path from "node:path";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "~/server/db";
 import { superScaleJobs } from "~/server/db/super-scale-schema";

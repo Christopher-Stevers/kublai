@@ -87,14 +87,11 @@ export function ScanSlipButton({
   jobId,
   className,
   compact = false,
-  onLinked,
 }: {
   jobId: string;
   className?: string;
   /** Small icon, for the material list footer. */
   compact?: boolean;
-  /** Called with the slip's list and order instead of opening that list. */
-  onLinked?: (materialListId: string, orderId: string) => void;
 }) {
   const router = useRouter();
   const online = useOnlineStatus();
@@ -108,11 +105,6 @@ export function ScanSlipButton({
   const [barHost, setBarHost] = useState<HTMLDivElement | null>(null);
   const [waiting, setWaiting] = useState<number | null>(null);
 
-  // The slip is checked on the list's parts, so open the list itself.
-  const openList = (materialListId: string, orderId: string) =>
-    onLinked
-      ? onLinked(materialListId, orderId)
-      : router.push(`/jobs/material-lists/${materialListId}`);
   const begin = async () => {
     const id = ++run.current;
     setError(null);
@@ -280,7 +272,6 @@ export function ScanSlipButton({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matched, countdown, open]);
 
-  const busy = step.kind === "reading" || step.kind === "linking";
   return (
     <>
       <Button

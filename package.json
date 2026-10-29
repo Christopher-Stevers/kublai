@@ -74,7 +74,6 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.3",
     "@opennextjs/cloudflare": "^1.19.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.1.18",

@@ -12,7 +12,6 @@ import {
 } from "~/server/models/connection";
 import {
   verifyApsCredentials,
-  clearApsToken,
 } from "~/server/models/translation";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -88,7 +87,6 @@ export const modelsRouter = createTRPCRouter({
         });
       }
       const result = await storeApsCredentials(access, input.credentials);
-      clearApsToken(access.job.organizationId);
       return result;
     }),
   workspace: hasAppAccess

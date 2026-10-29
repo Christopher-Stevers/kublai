@@ -1,7 +1,11 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
-import { DrawingQuickWheelSetting, useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 vi.mock("./DrawingAccountProvider", () => ({ useDrawingAccount: () => ({ accountKey: "compact-test" }) }));
+beforeEach(() => {
+  const values = new Map<string, string>();
+  vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), clear: () => values.clear() });
+});
 function viewport(width: number, height: number, landscape: boolean, touch = true) {
   vi.stubGlobal("innerWidth", width);
   vi.stubGlobal("innerHeight", height);
@@ -10,8 +14,8 @@ function viewport(width: number, height: number, landscape: boolean, touch = tru
   window.dispatchEvent(new Event("resize"));
 }
 function Probe() {
-  const { enabled } = useDrawingQuickWheelMode();
-  return <><DrawingQuickWheelSetting /><output>{enabled ? "wheel" : "bars"}</output></>;
+  const { enabled, setEnabled } = useDrawingQuickWheelMode();
+  return <><input type="checkbox" role="switch" aria-label="Quickwheel mode" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} /><output>{enabled ? "wheel" : "bars"}</output></>;
 }
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 it("switches on for a rotated phone and restores the normal portrait preference", () => {

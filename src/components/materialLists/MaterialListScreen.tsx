@@ -522,11 +522,7 @@ export function MaterialListScreen({
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           packingSlips={canReceive && mlHeader.jobId && (verifyOrderId ? verifyOrder?.materialListId === id : hasReceivableOrder) ? (
-            <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
-              onLinked={(listId, orderId) => {
-                if (listId === id && (!verifyOrderId || verifyOrderId === orderId)) void slipDrafts.reload();
-                else router.push(`/jobs/material-lists/${listId}`);
-              }} />
+            <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
           ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
@@ -542,11 +538,7 @@ export function MaterialListScreen({
               }}
               onAdd={userData?.permissions.can["lists.edit"] ? openAddPartDialog : undefined}
               packingSlips={
-                <ScanSlipButton key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
-                  onLinked={(listId) => {
-                    if (listId === id) void slipDrafts.reload();
-                    else router.push(`/jobs/material-lists/${listId}`);
-                  }} />
+                <ScanSlipButton key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
               }
               onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderBarId })}
               onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderBarId, allReceived: false })}
