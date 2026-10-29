@@ -3309,22 +3309,22 @@ export function DrawingSheetViewer({
           (() => {
             const box = frame.current.getBoundingClientRect();
             const half = loupePx / 2;
-            // Reserve room for the grown lens so zooming alone never makes it
-            // jump from above the finger to below it halfway through the ramp.
+            const fingerX = loupe.x - box.left;
             const fingerY = loupe.y - box.top;
-            const roomAbove = fingerY - LOUPE_GAP_PX - 8;
-            const roomBelow = box.height - fingerY - LOUPE_GAP_PX - 8;
-            const above = loupe.y - box.top - LOUPE_GAP_PX - half;
-            const preferredTop =
-              roomAbove >= maxLoupePx || roomAbove >= roomBelow
-                ? above
-                : fingerY + LOUPE_GAP_PX + half;
+            // Stay above for as long as the current lens fits. At the top edge,
+            // park beside the finger on the roomier side, never below it.
+            const fitsAbove = fingerY - LOUPE_GAP_PX - loupePx >= 8;
+            const preferredLeft = fitsAbove
+              ? fingerX
+              : fingerX < box.width / 2
+                ? fingerX + LOUPE_GAP_PX + half
+                : fingerX - LOUPE_GAP_PX - half;
             const top = Math.min(
-              Math.max(preferredTop, half + 8),
+              Math.max(fitsAbove ? fingerY - LOUPE_GAP_PX - half : half + 8, half + 8),
               box.height - half - 8,
             );
             const left = Math.min(
-              Math.max(loupe.x - box.left, half + 8),
+              Math.max(preferredLeft, half + 8),
               box.width - half - 8,
             );
             return (

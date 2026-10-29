@@ -1447,7 +1447,7 @@ describe("adaptive measurement magnifier", () => {
     expect(zoom(frame)).toBe(2.5);
     expect(frame.querySelector("[data-measure-loupe-zoom]")).toHaveStyle({ width: "128px", height: "128px" });
     const initialTop = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!.style.top;
-    expect(parseFloat(initialTop)).toBeGreaterThan(220);
+    expect(parseFloat(initialTop)).toBe(36);
     advance(1900);
     expect(zoom(frame)).toBe(2.5);
     expect(frame.querySelector("[data-measure-loupe-zoom]")).toHaveStyle({ width: "128px", height: "128px" });
@@ -1460,7 +1460,7 @@ describe("adaptive measurement magnifier", () => {
     advance(6000);
     expect(zoom(frame)).toBe(20);
     expect(growing).toHaveStyle({ width: "384px", height: "384px" });
-    expect(parseFloat(growing.style.top) + 192).toBeGreaterThan(220);
+    expect(parseFloat(growing.style.top)).toBe(8);
   }
 
   it("keeps the finely adjusted position on release, including a final pointerup delta", () => {
@@ -1528,6 +1528,17 @@ describe("adaptive measurement magnifier", () => {
     expect(points(frame)).toBe("200,200 521,123");
     fireEvent.pointerUp(frame, { ...pointer(528, 254), buttons: 0 });
     expect(points(frame)).toBe("200,200 521,123");
+  });
+
+  it("keeps the lens above in the upper half, then beside the finger at the top", () => {
+    const { frame } = start();
+    fireEvent.pointerDown(frame, pointer(520, 260));
+    advance(260);
+    const lens = frame.querySelector<HTMLCanvasElement>("[data-measure-loupe-zoom]")!;
+    expect(lens).toHaveStyle({ top: "76px", left: "456px" });
+    fireEvent.pointerMove(frame, pointer(520, 120));
+    expect(lens).toHaveStyle({ top: "8px", left: "336px" });
+    fireEvent.pointerUp(frame, { ...pointer(520, 120), buttons: 0 });
   });
 
   it("keeps the enlarged lens inside the drawing viewport near either edge", () => {
