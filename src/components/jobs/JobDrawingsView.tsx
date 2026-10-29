@@ -567,6 +567,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       <div
         ref={full.surface}
         data-drawing-fullscreen={full.fullscreen}
+        data-drawing-quick-wheel={quickWheel}
         className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60] [&_[data-drawing-chrome]]:hidden" : "inset-x-0 app-below-header bottom-0 z-30"}`}
       >
         {full.fullscreen && (
@@ -608,7 +609,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             }}
           />
           </DrawingScrollPages>
-          <DrawingZoomReadout key={sheet.id} zoom={entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />
+          {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />}
         </div>
         <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
         {!quickWheel && <DrawingPageNavigation

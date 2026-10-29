@@ -1933,3 +1933,21 @@ it("explains an uncached offline hyperlink without attempting a network request"
   await screen.findByText(/These destinations are not saved offline/);
   expect(mocks.loadLink).not.toHaveBeenCalled();
 });
+
+
+it("keeps only the full-screen and layers corner controls in quick-wheel mode", () => {
+  vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+  const onFullscreen = vi.fn();
+  render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
+  expect(screen.queryByRole("toolbar", { name: "Drawing tools" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+  expect(onFullscreen).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  expect(screen.getByRole("complementary", { name: "Drawing tools panel" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+  fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
+  fireEvent.click(screen.getByRole("button", { name: "Measure", exact: true }));
+  expect(screen.queryByRole("button", { name: "Done", exact: true })).toBeNull();
+  expect(screen.getByRole("button", { name: "Full screen" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Layers" })).toBeVisible();
+});

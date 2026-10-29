@@ -1,10 +1,17 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { deviceIsLandscape } from "~/components/app/LandscapeNavigation";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 
 const EVENT = "foremanhq:drawing-quick-wheel-change";
 const memory = new Map<string, boolean>();
+const compactOverrides = new Map<string, boolean>();
+export function isCompactDrawingLandscape() {
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches &&
+    deviceIsLandscape() && window.innerHeight <= 500 && window.innerWidth <= 1000;
+}
 const keyFor = (account: string) => `foremanhq:drawing-quick-wheel:${account}`;
 
 /** Shared by the drawing workspace and its page navigation, scoped to the account. */
@@ -16,9 +23,22 @@ export function useDrawingQuickWheelMode() {
       const storage = (event: StorageEvent) => {
         if (!event.key || event.key === key) notify();
       };
+      const updateViewport = () => {
+        if (!isCompactDrawingLandscape()) compactOverrides.delete(key);
+        notify();
+      };
+      const pointer = window.matchMedia?.("(pointer: coarse)");
+      pointer?.addEventListener?.("change", updateViewport);
+      window.addEventListener("resize", updateViewport);
+      window.addEventListener("orientationchange", updateViewport);
+      window.screen.orientation?.addEventListener?.("change", updateViewport);
       window.addEventListener(EVENT, notify);
       window.addEventListener("storage", storage);
       return () => {
+        pointer?.removeEventListener?.("change", updateViewport);
+        window.removeEventListener("resize", updateViewport);
+        window.removeEventListener("orientationchange", updateViewport);
+        window.screen.orientation?.removeEventListener?.("change", updateViewport);
         window.removeEventListener(EVENT, notify);
         window.removeEventListener("storage", storage);
       };
@@ -26,6 +46,7 @@ export function useDrawingQuickWheelMode() {
     [key],
   );
   const read = useCallback(() => {
+    if (isCompactDrawingLandscape()) return compactOverrides.get(key) ?? true;
     try {
       return localStorage.getItem(key) === "on";
     } catch {
@@ -35,6 +56,7 @@ export function useDrawingQuickWheelMode() {
   const enabled = useSyncExternalStore(subscribe, read, () => false);
   const setEnabled = useCallback(
     (value: boolean) => {
+      if (isCompactDrawingLandscape()) compactOverrides.set(key, value);
       memory.set(key, value);
       try {
         localStorage.setItem(key, value ? "on" : "off");

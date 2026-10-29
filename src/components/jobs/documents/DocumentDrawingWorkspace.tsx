@@ -79,7 +79,9 @@ export function DocumentDrawingWorkspace({
   return (
     <div
       ref={surface}
-      className={`bg-background flex min-h-0 flex-1 flex-col ${fullscreen ? "fixed inset-0 z-[70] [&_[data-drawing-chrome]]:hidden" : "relative"}`}
+      data-drawing-fullscreen={fullscreen}
+      data-drawing-quick-wheel={quickWheel && Boolean(sheet)}
+      className={`bg-background flex min-h-0 flex-1 flex-col ${fullscreen ? "fixed inset-0 z-[70] [&_[data-drawing-chrome]]:hidden" : quickWheel && sheet ? "fixed inset-0 z-[60]" : "relative"}`}
       aria-label="Document drawing viewer"
     >
       {fullscreen && (
@@ -89,7 +91,7 @@ export function DocumentDrawingWorkspace({
           variant="outline"
           aria-label="Exit full screen"
           title="Exit full screen (Esc)"
-          className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-1/2 z-50 size-10 -translate-x-1/2 rounded-lg shadow-md"
+          className="bg-background/60 border-border/60 hover:bg-background/80 absolute top-[calc(0.75rem+env(safe-area-inset-top))] left-3 z-50 size-10 rounded-full shadow-md backdrop-blur-sm"
           onClick={exit}
         >
           <MinimizeIcon className="size-5" />
@@ -128,7 +130,7 @@ export function DocumentDrawingWorkspace({
               }}
             />
             </DrawingScrollPages>
-            <DrawingZoomReadout key={sheet.id} zoom={camera.zoom} zoomRef={zoomLabel} />
+            {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={camera.zoom} zoomRef={zoomLabel} />}
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
           {!quickWheel && <DrawingPageNavigation

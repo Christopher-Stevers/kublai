@@ -502,7 +502,7 @@ export function DrawingWorkspace({
       ? snapshot
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
-  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
+  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); setPanel(""); setForm(null); } }, [quickWheel]);
   const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
   const [superEquipmentOpen, setSuperEquipmentOpen] = useState(false);
@@ -1986,7 +1986,7 @@ export function DrawingWorkspace({
       <div className="relative flex min-h-0 flex-1">
         <div className="pointer-events-none absolute top-3 left-3 z-20 flex gap-2 [&>*]:pointer-events-auto">
           {/* In full screen the viewer's own exit button takes this spot. */}
-          {onFullscreen && !quickWheel && (
+          {onFullscreen && (
             <Button
               ref={fullscreenRef}
               type="button"
@@ -1999,7 +1999,7 @@ export function DrawingWorkspace({
               <MaximizeIcon aria-hidden="true" />
             </Button>
           )}
-          {(bottomMode.measuring ||
+          {!quickWheel && (bottomMode.measuring ||
             bottomMode.pipe ||
             (tool !== "pan" && tool !== "viewing" && tool !== "select")) && (
             <Button
@@ -2014,7 +2014,7 @@ export function DrawingWorkspace({
           )}
         </div>
         <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-2 [&>*]:pointer-events-auto">
-        {entities.some(
+        {!quickWheel && entities.some(
           (e) =>
             e.kind === "issue" &&
             e.visibility !== "archived" &&
