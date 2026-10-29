@@ -6,10 +6,10 @@ import {
   CameraIcon,
   CheckIcon,
   FileTextIcon,
+  InboxIcon,
   ListIcon,
   RefreshCwIcon,
   UploadIcon,
-  XIcon,
 } from "lucide-react";
 import { notify } from "~/components/ui/app-dialogs";
 import { Button } from "~/components/ui/button";
@@ -23,6 +23,7 @@ import {
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { uploadPackingSlip } from "~/lib/packing-slip-upload";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import type { PackingSlipLink } from "~/server/documents/types";
 import { hasCamera } from "./PackingSlips";
 const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
@@ -105,6 +106,7 @@ export function ScanSlipButton({
   const run = useRef(0);
   const retryScan = useRef<File | null>(null);
   const [barHost, setBarHost] = useState<HTMLDivElement | null>(null);
+  const [waiting, setWaiting] = useState<number | null>(null);
 
   // The slip is checked on the list's parts, so open the list itself.
   const openList = (materialListId: string, orderId: string) =>
@@ -123,6 +125,59 @@ export function ScanSlipButton({
     run.current++;
     setOpen(false);
   };
+  // The page sits under the app header; its back button leaves the page.
+  useHeaderBackOverride(open ? close : null);
+  // Slips waiting in this job's receiving queue, for the Queue button.
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    setWaiting(null);
+    void fetch(
+      `/api/job-documents/packing-slips/queue?${new URLSearchParams({ jobId })}`,
+      { cache: "no-store" },
+    )
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ documents?: { status: string }[] }>) : null,
+      )
+      .then((data) => {
+        if (live && data?.documents)
+          setWaiting(
+            data.documents.filter(
+              (d) => d.status === "review" || d.status === "processing",
+            ).length,
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [open, jobId]);
+  const queue = (leave: () => boolean = () => true) => (
+    <Button
+      key="queue"
+      variant="outline"
+      className="relative"
+      onClick={() => {
+        if (!leave()) return;
+        close();
+        router.push(`/jobs/${jobId}/receiving`);
+      }}
+    >
+      <InboxIcon />
+      Queue
+      {!!waiting && (
+        <>
+          <span
+            aria-hidden
+            className="bg-primary text-primary-foreground absolute -top-2 -right-2 min-w-5 rounded-full px-1.5 text-center text-xs leading-5 font-semibold"
+          >
+            {waiting}
+          </span>
+          <span className="sr-only">{`, ${waiting} waiting`}</span>
+        </>
+      )}
+    </Button>
+  );
   const found = (result: Found) => {
     if(result.queued){if(result.analysisError) notify(result.analysisError, "error");setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);return;}
     const order = result.orders.find((o) => o.id === result.match);
@@ -242,18 +297,21 @@ export function ScanSlipButton({
       </Button>
       <Dialog
         open={open}
+        // Not modal, so the app header above the page stays in use.
+        modal={false}
         onOpenChange={(value) => {
           if (!value && step.kind !== "scan") close();
         }}
       >
-        {/* A full page, not a pop-up: the camera gets the room, and every
-            button sits in the bottom bar. */}
+        {/* A full page under the app header, not a pop-up: the camera gets
+            the room, and every button sits in the bottom bar. */}
         <DialogContent
           showCloseButton={false}
-          layerClassName="z-[70] p-0"
-          className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 flex h-dvh max-w-none flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
+          layerClassName="app-below-header bottom-0 z-[49] p-0"
+          className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 flex h-full max-w-none flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
+          onInteractOutside={(event) => event.preventDefault()}
         >
-          <DialogHeader className="shrink-0 border-b bg-card px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 text-left sm:px-6">
+          <DialogHeader className="shrink-0 border-b bg-card px-4 py-3 text-left sm:px-6 [html[data-app-landscape]_&]:pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className="mx-auto w-full max-w-2xl space-y-1">
               <DialogTitle>
                 {step.kind === "saved"
@@ -298,6 +356,7 @@ export function ScanSlipButton({
                   Saved slips
                 </Button>
               }
+              pageAction={queue}
               onSave={async (file) => {
                 void identify({ file });
                 return true;
@@ -379,10 +438,7 @@ export function ScanSlipButton({
             {step.kind !== "scan" && (
               // Lowest priority first: the last action sits on the right.
               <PriorityActionBar>
-                <Button key="cancel" variant="outline" onClick={close}>
-                  <XIcon />
-                  Cancel
-                </Button>
+                {queue()}
                 {step.kind === "start" && (
                   <>
                     <Button key="saved" variant="outline" onClick={() => void loadSaved()}>

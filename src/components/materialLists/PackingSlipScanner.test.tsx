@@ -231,6 +231,7 @@ it("puts its buttons in the page's bottom bar when given one", async () => {
     <PackingSlipScanner
       actionBar={bar}
       extraActions={<button key="saved">Saved slips</button>}
+      pageAction={() => <button key="queue">Queue</button>}
       onSave={vi.fn()}
       onCancel={vi.fn()}
       onUpload={vi.fn()}
@@ -241,7 +242,8 @@ it("puts its buttons in the page's bottom bar when given one", async () => {
       bar.querySelectorAll("[data-action-bar-row] button"),
       (button) => button.textContent,
     );
-  expect(labels()).toEqual(["Cancel scan", "Upload", "Capture"]);
+  expect(labels()).toEqual(["Queue", "Upload", "Capture"]);
+  expect(screen.queryByRole("button", { name: "Cancel scan" })).toBeNull();
   await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
   expect(labels()).toEqual(["Retake last page", "Next page", "Done"]);
   bar.remove();

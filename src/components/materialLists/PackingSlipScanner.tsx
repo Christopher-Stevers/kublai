@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import {
   averageQuad,
   BLURRY,
@@ -79,6 +80,7 @@ export default function PackingSlipScanner({
   documentKind = "packing slip",
   actionBar,
   extraActions,
+  pageAction,
 }: {
   onSave: (file: File) => Promise<boolean>;
   onCancel: () => void;
@@ -91,6 +93,9 @@ export default function PackingSlipScanner({
   actionBar?: HTMLElement | null;
   /** Lowest-priority actions of the page, shown in the same bar. */
   extraActions?: ReactNode;
+  /** Full-page use: a way to another page, kept low in every mode. It
+   * calls `leave()` first, which asks before unsaved pages are lost. */
+  pageAction?: (leave: () => boolean) => ReactNode;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [pages, setPages] = useState<string[]>([]),
@@ -390,9 +395,10 @@ export default function PackingSlipScanner({
     );
   };
 
+  const leave = () =>
+    !pages.length || window.confirm("Discard these unsaved scan pages?");
   const cancelScan = () => {
-    if (!pages.length || window.confirm("Discard these unsaved scan pages?"))
-      onCancel();
+    if (leave()) onCancel();
   };
   const retakeLast = () => {
     setPages((old) => old.slice(0, -1));
@@ -406,18 +412,18 @@ export default function PackingSlipScanner({
     setCorners(shot.quad);
     setMode("adjust");
   };
-  const cancelButton = mode !== "saving" && mode !== "saved" && (
-    <Button key="cancel" variant="outline" disabled={processing} onClick={cancelScan}>
-      <XIcon />
-      Cancel scan
-    </Button>
+  // On a full page the app's back button leaves the scan, so it still asks
+  // before unsaved pages are lost.
+  useHeaderBackOverride(
+    actionBar && mode !== "saving" && mode !== "saved" ? cancelScan : null,
+    { priority: 1 },
   );
   // Lowest priority first: the bar puts the last one on the right.
   const barActions =
     mode === "camera" ? (
       <>
         {extraActions}
-        {cancelButton}
+        {pageAction?.(leave)}
         {onUpload && !pages.length && (
           <Button key="upload" variant="outline" disabled={processing} onClick={onUpload}>
             <UploadIcon />
@@ -444,7 +450,7 @@ export default function PackingSlipScanner({
       </>
     ) : mode === "review" || mode === "saving" ? (
       <>
-        {cancelButton}
+        {mode === "review" && pageAction?.(leave)}
         {shot && (
           <Button key="adjust" variant="outline" disabled={mode === "saving"} onClick={adjustCorners}>
             <CropIcon />
@@ -466,7 +472,7 @@ export default function PackingSlipScanner({
       </>
     ) : mode === "adjust" ? (
       <>
-        {cancelButton}
+        {pageAction?.(leave)}
         <Button key="keep" variant="outline" disabled={processing} onClick={() => setMode("review")}>
           <Undo2Icon />
           Keep as is

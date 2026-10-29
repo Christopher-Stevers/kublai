@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { runHeaderBackOverride } from "~/lib/header-back-events";
 import { ScanSlipButton } from "./ScanSlipButton";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -17,13 +18,16 @@ vi.mock("next/dynamic", () => ({
     function Scanner({
       onSave,
       extraActions,
+      pageAction,
     }: {
       onSave: (file: File) => Promise<boolean>;
       extraActions?: ReactNode;
+      pageAction?: (leave: () => boolean) => ReactNode;
     }) {
       return (
         <>
         {extraActions}
+        {pageAction?.(() => true)}
         <button
           onClick={() =>
             void onSave(
@@ -46,7 +50,8 @@ afterEach(() => {
 });
 
 it("saves a scan and opens its durable review without waiting for detection", async () => {
-  const fetcher = vi.fn(async (_url: string, options?: RequestInit) => {
+  const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
+    if (url.includes("/queue")) return Response.json({ documents: [] });
     expect(options?.body).toBeInstanceOf(FormData);
     return Response.json({
       documentId: "doc",
@@ -63,7 +68,9 @@ it("saves a scan and opens its durable review without waiting for detection", as
   await waitFor(() =>
     expect(push).toHaveBeenCalledWith("/jobs/job/receiving?document=doc"),
   );
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(
+    fetcher.mock.calls.filter(([url]) => !url.includes("/queue")),
+  ).toHaveLength(1);
 });
 it("opens a saved slip in the same shared review", async () => {
   vi.stubGlobal(
@@ -118,9 +125,45 @@ it("opens as a full page with its buttons in the bottom bar", async () => {
     await screen.findByRole("button", { name: "Saved slips" }),
   );
   const page = await screen.findByRole("dialog", { name: "Saved packing slips" });
-  expect(page.className).toContain("h-dvh");
+  // Under the app header, which stays in use.
+  expect(page.parentElement!.className).toContain("app-below-header");
+  expect(page.className).toContain("h-full");
   const bar = page.querySelector("[data-action-bar]")!;
   expect(
     Array.from(bar.querySelectorAll("button"), (button) => button.textContent),
-  ).toEqual(["Cancel", "Scan a new slip"]);
+  ).toEqual(["Queue", "Scan a new slip"]);
+});
+it("shows how many slips wait in the queue and opens it", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      url.includes("/queue")
+        ? Response.json({
+            documents: [
+              { status: "review" },
+              { status: "processing" },
+              { status: "complete" },
+            ],
+          })
+        : Response.json({ slips: [] }),
+    ),
+  );
+  render(<ScanSlipButton jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
+  const queue = await screen.findByRole("button", {
+    name: /^Queue\W+2 waiting$/,
+  });
+  fireEvent.click(queue);
+  expect(push).toHaveBeenCalledWith("/jobs/job/receiving");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+it("leaves the page with the app header's back button", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ slips: [] })));
+  render(<ScanSlipButton jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Receive" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Saved slips" }));
+  await screen.findByRole("dialog", { name: "Saved packing slips" });
+  await waitFor(() => expect(runHeaderBackOverride()).toBe(true));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(push).not.toHaveBeenCalled();
 });
