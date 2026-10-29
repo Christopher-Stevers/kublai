@@ -626,6 +626,24 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toBeNull();
     expect(select).not.toHaveBeenCalled();
   });
+  it("selects a scrolled touch option from its cone before reaching the tile", () => {
+    vi.stubGlobal("innerWidth", 400); vi.stubGlobal("innerHeight", 700);
+    const select = vi.fn();
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
+    steer(-40); dwell(600);
+    const tiles = [...wheel()!.querySelectorAll("foreignObject")]
+      .filter(el => el.getAttribute("opacity") === "1")
+      .map(el => ({ el, dx: Number(el.getAttribute("x")) + 52 - 330, dy: Number(el.getAttribute("y")) + 52 - 450 }))
+      .sort((a,b) => Math.hypot(b.dx,b.dy)-Math.hypot(a.dx,a.dy));
+    const tile = tiles[0]!;
+    const distance = Math.hypot(tile.dx,tile.dy);
+    expect(distance - 129).toBeGreaterThan(58);
+    aim(330 + tile.dx / distance * 129, 450 + tile.dy / distance * 129);
+    expect(wheel()).toHaveAttribute("data-scrolling", "false");
+    dwell();
+    expect(select).toHaveBeenCalledWith(Number(tile.el.textContent!.replace("Choice ", "")));
+  });
   it("keeps inward movement neutral and follows an outward pull without selecting", () => {
     vi.stubGlobal("innerWidth", 400); vi.stubGlobal("innerHeight", 700);
     const select = vi.fn();

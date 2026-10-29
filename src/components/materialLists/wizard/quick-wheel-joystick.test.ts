@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   joystickWheelArc,
   wheelCarousel,
+  wheelChoiceCone,
   wheelJoystickSpeed,
   wheelJoystickRadius,
   wheelJoystickMotion,
@@ -219,4 +220,21 @@ it("keeps every resting option ahead of the thumb anchor, outside the relocation
       ),
     );
   }
+});
+
+describe("live choice cones", () => {
+  const origin = { x: 300, y: 400 };
+  const tile = { x: 300, y: 100, id: "far choice" };
+  it("targets a distant tile immediately outside joystick reach", () => {
+    expect(wheelChoiceCone(origin, { x: 300, y: 272 }, 170, [tile])).toBeUndefined();
+    expect(wheelChoiceCone(origin, { x: 300, y: 271 }, 170, [tile])).toBe(tile);
+    expect(wheelChoiceCone(origin, { x: 315, y: 271 }, 170, [tile])).toBe(tile);
+    expect(wheelChoiceCone(origin, { x: 350, y: 271 }, 170, [tile])).toBeUndefined();
+  });
+  it("uses the current item directions after scrolling, without stale sectors", () => {
+    const moved = { ...tile, x: 600, y: 400 };
+    expect(wheelChoiceCone(origin, { x: 300, y: 271 }, 170, [moved])).toBeUndefined();
+    expect(wheelChoiceCone(origin, { x: 429, y: 400 }, 170, [moved])).toBe(moved);
+    expect(wheelChoiceCone(origin, { x: 171, y: 400 }, 170, [moved])).toBeUndefined();
+  });
 });

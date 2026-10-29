@@ -66,6 +66,32 @@ export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
   return Math.sign(dx) * (0.45 + 3.05 * strength * strength) * angleGain;
 }
 
+/** A ray from the hub through a visible tile defines its selection cone.
+ * Use the live tile positions, including after scrolling or moving the wheel.
+ */
+export function wheelChoiceCone<T extends Point>(
+  origin: Point, pointer: Point, radius: number, tiles: readonly T[],
+): T | undefined {
+  const dx = pointer.x - origin.x, dy = pointer.y - origin.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= wheelJoystickRadius(radius)) return undefined;
+  let closest: T | undefined;
+  let bestAngle = Infinity;
+  for (const tile of tiles) {
+    const tx = tile.x - origin.x, ty = tile.y - origin.y;
+    const length = Math.hypot(tx, ty);
+    if (!length) continue;
+    const angle = Math.acos(Math.max(-1, Math.min(1,
+      (dx * tx + dy * ty) / (distance * length))));
+    const halfCone = Math.asin(Math.min(1, (WHEEL_CHOICE_DIAMETER / 2 + 6) / length));
+    if (angle <= halfCone && angle < bestAngle) {
+      closest = tile;
+      bestAngle = angle;
+    }
+  }
+  return closest;
+}
+
 export type WheelArc = { radius: number; start: number; step: number };
 const onArc = (origin: Point, arc: WheelArc, position: number): Point => ({
   x: origin.x + Math.sin(arc.start + position * arc.step) * arc.radius,

@@ -21,7 +21,6 @@ import styles from "./QuickWheelPreview.module.css";
 import { cn } from "~/lib/utils";
 import {
   quickWheelLayout,
-  curvedChoiceAt,
   wheelDeadZoneRadius,
   WHEEL_CHOICE_DIAMETER,
   wheelChoiceRingRadius,
@@ -35,6 +34,7 @@ import {
   type WheelArc,
   joystickWheelArc,
   wheelCarousel,
+  wheelChoiceCone,
   wheelThumbAnchor,
   wheelJoystickAxes,
   wheelJoystickMotion,
@@ -783,11 +783,14 @@ export function QuickWheelSurface({
         current = { ...current, repositioning: false };
         update(current);
       }
-      // The enlarged invisible sensing area can overlap a visible choice.
-      // Aiming at that choice must still stop scrolling and allow selection.
+      const tiles = tilesFor(current).filter(
+        (tile) => tile.opacity >= 0.65 && !tile.entry.disabled,
+      );
+      // Direct hits remain available; beyond joystick reach, aim anywhere in
+      // the cone from the hub to a current tile without reaching its button.
       const target = !inHub && moved
-        ? tilesFor(current)
-            .filter((tile) => tile.opacity >= 0.65 && !tile.entry.disabled)
+        ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles)
+          ?? tiles
             .sort((a, b) =>
               Math.hypot(a.x - event.clientX, a.y - event.clientY) -
               Math.hypot(b.x - event.clientX, b.y - event.clientY))
@@ -799,27 +802,7 @@ export function QuickWheelSurface({
       scroll(speed);
       current = active.current!;
       if (speed) return;
-      const { layout, points } = geometryFor(current);
-      const entries = entriesFor(current);
-      let hovered: number | null = null;
-      if (moved && !inHub) {
-        hovered = target?.entry.sourceIndex ?? null;
-        // Preserve the original forgiving wedges before scrolling begins.
-        if (hovered === null && current.offset === 0) {
-          const slot =
-            layout.kind === "curved"
-              ? curvedChoiceAt(
-                  layout,
-                  event.clientX,
-                  event.clientY,
-                  current.x,
-                  current.y,
-                )
-              : wheelSector(dx, dy, points.length, current.radius);
-          if (slot !== null && !entries[slot]?.disabled)
-            hovered = entries[slot]?.sourceIndex ?? null;
-        }
-      }
+      const hovered = target?.entry.sourceIndex ?? null;
       if (hovered === current.hovered && moved === current.moved) {
         // The visual next centre matches where a confirmed choice will recenter.
         setPreview((value) =>
