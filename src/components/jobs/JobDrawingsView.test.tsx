@@ -13,6 +13,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const state = vi.hoisted(() => ({
+  warm: vi.fn(),
+  cancelWarm: vi.fn(),
   account: null as null | { accountKey: string; store: Record<string, ReturnType<typeof vi.fn>> },
   fetchSet: vi.fn(),
   fetchWorkspace: vi.fn(),
@@ -50,6 +52,7 @@ const state = vi.hoisted(() => ({
   refreshIdentities: vi.fn(),
   prefetch: vi.fn(async () => undefined),
 }));
+vi.mock("~/lib/background-work", () => ({ canWarmInBackground: () => true, scheduleBackgroundWork: state.warm }));
 vi.mock("~/trpc/react", () => {
   const mutation = (name: string) => ({
     useMutation: (
@@ -117,7 +120,8 @@ vi.mock("~/components/ui/app-dialogs", () => ({
   notify: vi.fn(),
 }));
 vi.mock("./DrawingWorkspace", () => ({
-  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange, onFullscreen, fullscreenRef }: {
+  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange, onFullscreen, fullscreenRef, onReady }: {
+    onReady?: () => void;
     sheet: { name: string };
     initialViewport?: { center: { x: number; y: number }; zoom: number } | null;
     onViewportChange?: (viewport: { center: { x: number; y: number }; zoom: number }) => void;
@@ -129,6 +133,7 @@ vi.mock("./DrawingWorkspace", () => ({
     <div>
       <span data-testid="mounted-view">{JSON.stringify(mountedView.current ?? null)}</span>
       <span>Viewing {sheet.name}</span>
+      <button onClick={onReady}>Drawing Ready</button>
       <span data-testid="inherited-view">{JSON.stringify(initialViewport ?? null)}</span>
       <button onClick={() => onViewportChange?.({ center: { x: 0.2, y: 0.7 }, zoom: 3 })}>Zoom and pan sample</button>
       {onFullscreen && <button ref={fullscreenRef} aria-label="Full screen" onClick={onFullscreen} />}
@@ -182,6 +187,9 @@ beforeEach(() => {
       sourceFilename: "m.pdf",
     },
   ];
+  state.warm.mockReset().mockReturnValue(state.cancelWarm);
+  state.cancelWarm.mockReset();
+  state.fetchWorkspace.mockReset().mockResolvedValue({});
   state.calls = [];
   state.prefetch.mockClear();
   state.upload.mockReset().mockResolvedValue([]);
@@ -200,6 +208,22 @@ describe("Drawings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
     return view;
   };
+
+  it("waits for the selected drawing before warming neighbours and aborts on switching", async () => {
+    openDrawing();
+    expect(state.warm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Drawing Ready" }));
+    expect(state.warm).toHaveBeenCalledTimes(1);
+    const fetchImage = vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob() });
+    vi.stubGlobal("fetch", fetchImage);
+    await act(async () => { await state.warm.mock.calls[0]![1](); });
+    expect(state.fetchWorkspace).toHaveBeenCalledWith({ sheetId: "s2", deferLinks: true }, { signal: expect.any(AbortSignal) });
+    const signal = state.fetchWorkspace.mock.calls[0]![1].signal as AbortSignal;
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(signal.aborted).toBe(true);
+    expect(state.cancelWarm).toHaveBeenCalled();
+    expect(state.warm).toHaveBeenCalledTimes(1);
+  });
 
   it("hides its page navigation when the account uses Quickwheel mode", () => {
     localStorage.setItem("foremanhq:drawing-quick-wheel:guest", "on");
@@ -538,11 +562,11 @@ describe("Drawings", () => {
   localStorage.removeItem("foremanhq:drawing-sheet-opens");
  });
 
- it("warms a focused sheet without opening or changing it", () => {
+ it("does not download tool data just because a gallery card has focus", () => {
   render(<JobDrawingsView jobId="job" />);
   fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
   fireEvent.focus(screen.getByRole("button", { name: "Open M-101" }));
-  expect(state.fetchWorkspace).toHaveBeenCalledWith({ sheetId: "s1", deferLinks: true });
+  expect(state.fetchWorkspace).not.toHaveBeenCalled();
   expect(screen.queryByText("Viewing M-101")).toBeNull();
  });
 

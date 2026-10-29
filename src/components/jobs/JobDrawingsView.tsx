@@ -3,6 +3,7 @@ import {
   BarSearchButton,
   PriorityActionBar,
 } from "~/components/ui/priority-action-bar";
+import { scheduleBackgroundWork, canWarmInBackground } from "~/lib/background-work";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
@@ -116,15 +117,16 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
   const workspacePrefetches = useRef(new Set<string>());
-  const prefetchWorkspace = async (sheetId: string) => {
+  const prefetchWorkspace = async (sheetId: string, signal?: AbortSignal) => {
     if (workspacePrefetches.current.has(sheetId) || utils.drawingsWorkspace.get.getData({ sheetId })) return;
     workspacePrefetches.current.add(sheetId);
     try {
-      const workspace = await utils.client.drawingsWorkspace.get.query({ sheetId, deferLinks: true });
-      utils.drawingsWorkspace.get.setData({ sheetId }, workspace);
+      const workspace = await utils.client.drawingsWorkspace.get.query({ sheetId, deferLinks: true }, { signal });
+      if (!signal?.aborted) utils.drawingsWorkspace.get.setData({ sheetId }, workspace);
     } catch { /* Opening the drawing shows any actual load error. */ }
     finally { workspacePrefetches.current.delete(sheetId); }
   };
+  const [readySheet, setReadySheet] = useState<string | null>(null);
   const [setId, setSetId] = usePageViewState<string | null>(
     `drawings:${jobId}:setId`,
     null,
@@ -142,6 +144,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
   const [destination, setDestination] = useState<{request:number;snapshot:SnapshotState|null}>({request:0,snapshot:null});
   const openSheet = (id: string | null, preserveViewport = false) => {
+    setReadySheet(null);
     setDestination(previous=>({...previous,snapshot:null}));
     setEntryViewport(preserveViewport ? lastViewport.current : null);
     if (!preserveViewport) lastViewport.current = null;
@@ -436,43 +439,28 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     setSnapshot.online &&
     Boolean(permissions.canDelete ?? flags?.canDelete ?? flags?.canManage);
 
-  // Paging should feel instant: warm the neighbouring sheets in the background.
+  // Speculation must never race the selected sheet's PDF and tool workspace.
   const neighbours = sheet
-    ? [sheets[sheetIndex - 1], sheets[sheetIndex + 1]]
+    ? [sheets[sheetIndex + 1], sheets[sheetIndex - 1]]
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
-        .map((item) => item.imageUrl)
-        .join("|")
-    : "";
+        .map(({ id, imageUrl }) => ({ id, imageUrl }))
+    : [];
+  const neighbourKey = JSON.stringify(neighbours);
   useEffect(() => {
-    if (!neighbours) return;
-    for (const url of neighbours.split("|")) {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = url;
-      const tiles = tileBase(url);
-      if (tiles)
-        void fetch(`${tiles}/manifest.json`, {
-          credentials: "same-origin",
-        }).catch(() => undefined);
-    }
-  }, [neighbours]);
-
-  const neighbourIds = sheet ? [sheets[sheetIndex + 1]?.id, sheets[sheetIndex - 1]?.id].filter(Boolean).join("|") : "";
-  useEffect(() => {
-    if (!neighbourIds || sandbox || !setSnapshot.online) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      void (async () => {
-        for (const id of neighbourIds.split("|")) {
-          if (cancelled) return;
-          // Cache is account scoped by the drawing provider. Normal mount still
-          // revalidates permissions; prefetch only removes the empty wait.
-          await prefetchWorkspace(id);
-        }
-      })().catch(() => undefined);
-    }, 500);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [neighbourIds, sandbox, setSnapshot.online, utils]);
+    if (!sheetId || readySheet !== sheetId || sandbox || !setSnapshot.online) return;
+    const controller = new AbortController();
+    const cancel = scheduleBackgroundWork(`drawing-neighbours:${jobId}`, async () => {
+      const targets = JSON.parse(neighbourKey) as Array<{ id: string; imageUrl: string }>;
+      for (const target of targets) {
+        if (controller.signal.aborted || !canWarmInBackground()) return;
+        await prefetchWorkspace(target.id, controller.signal);
+        if (controller.signal.aborted || !canWarmInBackground()) return;
+        const response = await fetch(target.imageUrl, { signal: controller.signal, credentials: "same-origin" });
+        if (response.ok) await response.blob();
+      }
+    });
+    return () => { cancel(); controller.abort(); };
+  }, [sheetId, readySheet, neighbourKey, sandbox, setSnapshot.online, jobId]);
 
   // The app bar back arrow steps out of a sheet, then out of a folder.
   useHeaderBackOverride(
@@ -595,6 +583,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             fullscreenRef={full.enterButton}
             onFullscreen={full.enter}
             key={`${sheet.id}:${destination.request}`}
+            onReady={() => setReadySheet(sheet.id)}
             initialSnapshot={destination.snapshot}
             jobId={jobId}
             sheet={sheet}
@@ -739,12 +728,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
                     : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
                 }
-                onPointerEnter={() => {
-                  if (!sandbox && setSnapshot.online) void prefetchWorkspace(item.id);
-                }}
-                onFocus={() => {
-                  if (!sandbox && setSnapshot.online) void prefetchWorkspace(item.id);
-                }}
                 onClick={() => openSheetFromList(item.id)}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget) return;
