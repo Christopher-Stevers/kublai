@@ -571,10 +571,32 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const done = screen.getByRole("button", { name: "Done" });
+    expect(done).toHaveAttribute("data-drawing-tool-done");
+    fireEvent.click(done);
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("idle");
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("button", { name: "Quickwheel mode off" }));
     expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBeInTheDocument();
-    expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
+  });
+
+  it.each([["Markup", "Rectangle"], ["Tools", "Pipe system"]])("suspends the wheel during %s / %s until Done", (group, action) => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    open();
+    const workspace = screen.getByLabelText("Drawing workspace");
+    fireEvent.keyDown(workspace, { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: group }));
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    fireEvent.keyDown(workspace, { key: "ContextMenu" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("idle");
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    fireEvent.keyDown(workspace, { key: "ContextMenu" });
+    expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
   });
 
   it("exposes page navigation and selected markup actions through the wheel", async () => {
@@ -1948,7 +1970,7 @@ it("keeps only the full-screen and layers corner controls in quick-wheel mode", 
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
   fireEvent.click(screen.getByRole("button", { name: "Measure" }));
-  expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Done" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Full screen" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Layers" })).toBeVisible();
 });

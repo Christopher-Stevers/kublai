@@ -555,6 +555,8 @@ export function DrawingWorkspace({
     if (tool === "viewing" || tool === "select") restTool.current = tool;
   }, [tool]);
   const finishUsing = () => {
+    finishInlineText.current(false);
+    setBottomMode({ measuring: false, pipe: false });
     setSelectedId(null);
     selectTool(restTool.current);
   };
@@ -1569,6 +1571,10 @@ export function DrawingWorkspace({
           : undefined),
     })) ?? [];
 
+  const toolInUse = bottomMode.measuring || bottomMode.pipe ||
+    modeRequest.mode !== "idle" || Boolean(inlineText) ||
+    (tool !== "pan" && tool !== "viewing" && tool !== "select");
+
   // Consume back at the nearest open drawing state before the host leaves a sheet.
   const dismissDrawingState =
     linkChooser ? () => setLinkChooser(null) :
@@ -1802,7 +1808,7 @@ export function DrawingWorkspace({
   );
 
   return (
-    <DrawingQuickWheel enabled={quickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
+    <DrawingQuickWheel enabled={quickWheel && !toolInUse} group={{ id: "drawing", title: source.name, items: wheelItems }}>
     <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
       id: "selected", title: capitalize(nameOf(selected)), priority: 50,
       items: [
@@ -2019,6 +2025,17 @@ export function DrawingWorkspace({
         )}
       </div>
       <div className="relative flex min-h-0 flex-1">
+        {quickWheel && toolInUse && (
+          <Button
+            type="button"
+            variant="outline"
+            data-drawing-tool-done
+            className="absolute bottom-4 left-1/2 z-30 h-12 -translate-x-1/2 rounded-full border-border/60 bg-background/90 px-6 shadow-md backdrop-blur-sm"
+            onClick={finishUsing}
+          >
+            <CheckIcon aria-hidden="true" />Done
+          </Button>
+        )}
         <div className="pointer-events-none absolute top-3 left-3 z-20 flex gap-2 [&>*]:pointer-events-auto">
           {/* In full screen the viewer's own exit button takes this spot. */}
           {onFullscreen && (
