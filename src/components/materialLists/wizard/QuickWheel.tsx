@@ -766,10 +766,13 @@ export function QuickWheelSurface({
       const tiles = tilesFor(current).filter(
         (tile) => tile.opacity >= 0.65 && !tile.entry.disabled,
       );
-      // Direct hits remain available; beyond joystick reach, aim anywhere in
-      // the cone from the hub to a current tile without reaching its button.
+      const { inward } = wheelJoystickAxes(current, current.thumbAnchor);
+      const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
+      // Inward selection starts at the visible hub edge, halfway through the
+      // joystick reach. Keep full reach sideways so scrolling remains available.
       const target = !inHub && moved
-        ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles)
+        ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles,
+            movingInward ? wheelHubRadius(current.radius) : undefined)
           ?? tiles
             .sort((a, b) =>
               Math.hypot(a.x - event.clientX, a.y - event.clientY) -
@@ -780,8 +783,6 @@ export function QuickWheelSurface({
         : undefined;
       // Freeze rotation along visible selection lanes even before the thumb
       // clears the joystick. Otherwise the target moves away on approach.
-      const { inward } = wheelJoystickAxes(current, current.thumbAnchor);
-      const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
       const approachingChoice = movingInward && wheelChoiceCone(
         current, pointerPosition.current, current.radius, tiles, 24,
       );
