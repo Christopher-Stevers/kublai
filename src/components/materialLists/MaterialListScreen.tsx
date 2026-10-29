@@ -12,9 +12,9 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { matchesMaterialOrderLine } from "~/lib/material-order-line";
 import { MaterialListSheet as MaterialListTableView } from "~/components/materialLists/MaterialListSheet";
-import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS, OrderReceiveActions } from "~/components/materialLists/MaterialListActions";
+import { MaterialListActions, MATERIAL_LIST_ACTION_CLASS, OrderReceiveActions, MaterialTotalLabel } from "~/components/materialLists/MaterialListActions";
 import { useOrderInView } from "~/components/materialLists/use-order-in-view";
-import { MaterialSectionHeading, materialSections } from "~/components/materialLists/MaterialSectionHeading";
+import { MaterialSectionHeading, materialSections, materialSectionTotal } from "~/components/materialLists/MaterialSectionHeading";
 import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrdersDialog } from "~/components/app/DeferredFeatures";
 
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
@@ -82,7 +82,7 @@ export function MaterialListScreen({
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const isBrowserOnline = useOnlineStatus();
 
-  const { materialList: mlHeader, items: unsortedItems, materialTotal, isLoading } =
+  const { materialList: mlHeader, items: unsortedItems, isLoading } =
     useReplicacheMaterialList(id);
   const { data: verifyOrder, isLoading: isLoadingVerifyOrder } =
     api.materialList.getOrderById.useQuery(
@@ -160,17 +160,6 @@ export function MaterialListScreen({
     ? items.filter((item) => verifyOrder?.items.some((orderItem) =>
         matchesMaterialOrderLine(item, orderItem, verifySupplierId)))
     : items;
-  const visibleMaterialTotal = visibleItems.reduce((sum, item) => {
-    const extendedPrice = item.extendedPrice
-      ? Number.parseFloat(item.extendedPrice)
-      : Number.NaN;
-    if (Number.isFinite(extendedPrice)) return sum + extendedPrice;
-
-    const quantity = Number.parseFloat(item.quantity);
-    const unitCost = item.unitCost ? Number.parseFloat(item.unitCost) : 0;
-    return sum + (Number.isFinite(quantity) ? quantity : 0) * unitCost;
-  }, 0);
-  const footerMaterialTotal = verifyOrderId ? visibleMaterialTotal : materialTotal;
   // Ordered parts are received right on the list, as on an order's verify view.
   const receivableOrder = (item: Pick<(typeof items)[number], "sentOrderItemId" | "sentOrder">) =>
     !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
@@ -193,11 +182,15 @@ export function MaterialListScreen({
     ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, hasReceivedItems: verifyOrder?.items.some((item) => Number(item.receivedQuantity) > 0) ?? false, items: visibleItems }]
     : materialSections(visibleItems, id);
   const listRef = useRef<HTMLDivElement>(null);
-  const orderInView = useOrderInView(
+  const focusedSectionKey = useOrderInView(
     listRef,
     [isLoading, !!mlHeader, viewMode, ...sections.map((section) => section.key)].join("|"),
-    !verifyOrderId && canReceive && !!mlHeader?.jobId,
+    !verifyOrderId,
+    "data-material-section",
   );
+  const focusedSection = sections.find(section => section.key === focusedSectionKey) ?? sections[0];
+  const orderInView = canReceive ? focusedSection?.orderId ?? null : null;
+  const footerMaterialTotal = materialSectionTotal(focusedSection?.items ?? []);
   // The last order shown stays in the bar while it slides away.
   const [lastOrderInView, setLastOrderInView] = useState<string | null>(null);
   if (orderInView && orderInView !== lastOrderInView) setLastOrderInView(orderInView);
@@ -387,7 +380,7 @@ export function MaterialListScreen({
                 <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
                   <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
-                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} />}
+                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
@@ -516,7 +509,8 @@ export function MaterialListScreen({
 
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-card px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-        <MaterialListActions total={footerMaterialTotal} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
+        <MaterialListActions total={footerMaterialTotal}
+          totalOrderLabel={verifyOrderId ? `Receiving ${verifyOrder?.orderNumber ?? "Order"}` : focusedSection?.ordered ? focusedSection.label : undefined} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           canAdd={!!sandbox || !!userData?.permissions.can["lists.edit"]}
           orderLabel={isToolRequest || (!userData?.permissions.can["orders.send"] && hasToolItems) ? "Request tools" : "Order"}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
@@ -531,7 +525,7 @@ export function MaterialListScreen({
           orderActive={!!orderInView && orderInView === orderBarId}
           orderActions={!verifyOrderId && canReceive && orderBarSection && orderBarId && mlHeader.jobId ? (
             <OrderReceiveActions
-              label={<span className="font-semibold">Receiving {orderBarSection.label}</span>}
+              label={<MaterialTotalLabel orderLabel={`Receiving ${orderBarSection.label}`} total={materialSectionTotal(orderBarSection.items)} />}
               onNotes={() => {
                 setListNotesOrderId(orderBarId);
                 setShowVerifyNotesDialog(true);

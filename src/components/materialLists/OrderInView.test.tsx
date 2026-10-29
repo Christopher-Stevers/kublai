@@ -44,15 +44,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function Harness({ headings }: { headings: string[] }) {
+function Harness({ headings, sectionFocus = false }: { headings: string[]; sectionFocus?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const active = useOrderInView(ref, headings.join("|"));
+  const active = useOrderInView(ref, headings.join("|"), true, sectionFocus ? "data-material-section" : "data-section-heading");
   return (
     <>
       <div ref={ref} data-testid="list">
         <div>
           {headings.map((id) => (
-            <div key={id} data-section-heading={id}>
+            <div key={id} data-section-heading={id} data-material-section={id || "not-ordered"}>
               {id || "Not ordered"}
             </div>
           ))}
@@ -165,6 +165,7 @@ it("keeps the verify page's bar on its own", () => {
   render(
     <MaterialListActions
       total={12}
+      totalOrderLabel="Receiving 184-Next"
       canGenerate
     canOrder
     canAdd
@@ -179,10 +180,23 @@ it("keeps the verify page's bar on its own", () => {
     screen.getByRole("button", { name: /Mark all received/ }),
   ).toBeEnabled();
   expect(
-    screen.queryByRole("button", { name: /Add Part/ }),
-  ).not.toBeInTheDocument();
+    screen.getByRole("button", { name: /Add Part/ }),
+  ).toBeInTheDocument();
   expect(
-    screen.queryByRole("group", { name: "Receive order" }),
-  ).not.toBeInTheDocument();
-  expect(screen.queryByText("Material Total")).not.toBeInTheDocument();
+    screen.getByRole("group", { name: "Receive order" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Material Total")).toBeInTheDocument();
+  expect(screen.getByText("$12.00")).toBeInTheDocument();
+});
+
+it("tracks the pending section as well as each order and returns when scrolling back", async () => {
+  spans = { "": at(0), a: at(500), b: at(1400) };
+  render(<Harness headings={["", "a", "b"]} sectionFocus />);
+  await screen.findByText("On screen: not-ordered");
+  scrollTo({ "": at(-300), a: at(200), b: at(1100) });
+  await screen.findByText("On screen: a");
+  scrollTo({ "": at(-1300), a: at(-800), b: at(100) });
+  await screen.findByText("On screen: b");
+  scrollTo({ "": at(0), a: at(500), b: at(1400) });
+  await screen.findByText("On screen: not-ordered");
 });

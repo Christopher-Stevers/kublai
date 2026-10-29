@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MaterialListSheet } from "./MaterialListSheet";
-import { materialSections } from "./MaterialSectionHeading";
+import { materialSections, materialSectionTotal } from "./MaterialSectionHeading";
 import type { MaterialListTableRowProps } from "./MaterialListTableRow";
 
 vi.mock("next/link", () => ({
@@ -219,4 +219,13 @@ it("puts the parts not ordered first, then a group per order", () => {
   expect(materialSections(plain, "m")).toEqual([
     { key: "all", label: null, ordered: false, items: plain },
   ]);
+});
+
+it("totals only focused section lines, respecting saved extended prices and zero prices", () => {
+  const pending = [{quantity:"3",unitCost:"4",extendedPrice:"10"}, {quantity:"5",unitCost:"99",extendedPrice:"0"}];
+  const ordered = [{quantity:"2",unitCost:"8",extendedPrice:"15"}];
+  expect(materialSectionTotal(pending)).toBe(10);
+  expect(materialSectionTotal(ordered)).toBe(15);
+  expect(materialSectionTotal([{quantity:"3",unitCost:"2"}, {quantity:"bad",unitCost:"2"}])).toBe(6);
+  expect(materialSectionTotal([])).toBe(0);
 });

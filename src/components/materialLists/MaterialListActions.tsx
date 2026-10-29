@@ -18,6 +18,16 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 export const MATERIAL_LIST_ACTION_CLASS =
   "h-9 min-h-9 w-full gap-1 px-1.5 py-1 text-[11px] leading-tight whitespace-normal [&_svg]:mr-0 sm:h-9 sm:text-xs";
 
+export function MaterialTotalLabel({ total, orderLabel }: { total: number; orderLabel?: ReactNode }) {
+  return <div className="flex w-full min-w-0 items-baseline justify-between gap-3">
+    {orderLabel && <span className="min-w-0 font-semibold">{orderLabel}</span>}
+    <FinancialOnly><span className={`flex flex-wrap items-baseline gap-x-1.5 ${orderLabel ? "ml-auto justify-end text-right" : ""}`}>
+      <span className="text-muted-foreground">Material Total</span>
+      <span className="font-bold tabular-nums">${total.toFixed(2)}</span>
+    </span></FinancialOnly>
+  </div>;
+}
+
 /** Receiving for one order: the verify page's bar, also shown on the
  * material list while that order's parts are on screen. */
 export function OrderReceiveActions({
@@ -110,6 +120,7 @@ function FooterLayer({
 
 export function MaterialListActions({
   total,
+  totalOrderLabel,
   canGenerate,
   blockedReason,
   canQuote = false,
@@ -130,6 +141,7 @@ export function MaterialListActions({
   orderActive = false,
 }: {
   total: number;
+  totalOrderLabel?: ReactNode;
   canGenerate: boolean;
   blockedReason?: string | null;
   /** Member may request quotes / send orders (permissions). */
@@ -163,6 +175,7 @@ export function MaterialListActions({
     return (
       <div className="mx-auto max-w-6xl">
         <OrderReceiveActions
+          label={<MaterialTotalLabel total={total} orderLabel={totalOrderLabel} />}
           onNotes={onNotes}
           onAdd={canAdd ? onAdd : undefined}
           packingSlips={packingSlips}
@@ -176,12 +189,7 @@ export function MaterialListActions({
   const listActions = (
     <div>
       <PriorityActionBar
-        label={
-          <FinancialOnly>
-            <span className="text-muted-foreground">Material Total</span>
-            <span className="font-bold tabular-nums">${total.toFixed(2)}</span>
-          </FinancialOnly>
-        }
+        label={<MaterialTotalLabel total={total} orderLabel={totalOrderLabel} />}
       >
         {canQuote && (
           <Button

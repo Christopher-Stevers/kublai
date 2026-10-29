@@ -35,6 +35,7 @@ export function useOrderInView(
   root: RefObject<HTMLElement | null>,
   key: string,
   enabled = true,
+  attribute = "data-section-heading",
 ) {
   const [active, setActive] = useState<string | null>(null);
   useEffect(() => {
@@ -45,14 +46,14 @@ export function useOrderInView(
       frame = 0;
       let next = "";
       for (const heading of box.querySelectorAll<HTMLElement>(
-        "[data-section-heading]",
+        `[${attribute}]`,
       )) {
         const clip = clipOf(heading, box);
         const line = clip.atEnd
           ? clip.bottom
           : clip.top + (clip.bottom - clip.top) * LINE;
         if (heading.getBoundingClientRect().top <= line)
-          next = heading.dataset.sectionHeading ?? "";
+          next = heading.getAttribute(attribute) ?? "";
       }
       setActive(next || null);
     };
@@ -77,6 +78,6 @@ export function useOrderInView(
       window.removeEventListener("resize", schedule);
       resize?.disconnect();
     };
-  }, [root, key, enabled]);
+  }, [root, key, enabled, attribute]);
   return enabled ? active : null;
 }

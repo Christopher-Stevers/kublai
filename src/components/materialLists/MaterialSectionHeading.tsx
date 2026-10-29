@@ -7,6 +7,7 @@ export function MaterialSectionHeading({
   href,
   count,
   orderId,
+  sectionKey,
   className = "",
 }: {
   label: string;
@@ -16,11 +17,13 @@ export function MaterialSectionHeading({
   /** The open order under this heading; the list swaps in its receiving bar
    * once the heading scrolls up. */
   orderId?: string;
+  sectionKey?: string;
   className?: string;
 }) {
   return (
     <div
       data-section-heading={orderId ?? ""}
+      data-material-section={sectionKey}
       className={`flex items-center gap-3 ${className}`}
     >
       <h2 className="text-sm font-semibold">
@@ -115,4 +118,14 @@ export function materialSections<T extends SectionItem>(
       : []),
     ...orders.values(),
   ];
+}
+
+/** Saved extended prices include packaging and order-time pricing. */
+export function materialSectionTotal(items: readonly { extendedPrice?: string | number | null; quantity: string | number; unitCost?: string | number | null }[]) {
+  return items.reduce((sum, item) => {
+    const extended = item.extendedPrice == null || item.extendedPrice === "" ? NaN : Number(item.extendedPrice);
+    if (Number.isFinite(extended)) return sum + extended;
+    const quantity = Number(item.quantity), cost = Number(item.unitCost ?? 0);
+    return sum + (Number.isFinite(quantity) && Number.isFinite(cost) ? quantity * cost : 0);
+  }, 0);
 }
