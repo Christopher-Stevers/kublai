@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { ArrowLeftIcon, CircleDotIcon, XIcon } from "lucide-react";
 import {
   QuickWheelSurface,
@@ -130,6 +131,10 @@ export function DrawingQuickWheel({
   const [path, setPath] = useState<string[]>([]);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [active, setActive] = useState(false);
+  useHeaderBackOverride(enabled && keyboardOpen ? () => {
+    if (path.length) setPath(value => value.slice(0, -1));
+    else setKeyboardOpen(false);
+  } : null, { priority: 130 });
   const gestures = useMemo(
     () => new Map<string, (event: PointerEvent | MouseEvent) => void>(),
     [],

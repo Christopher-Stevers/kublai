@@ -1,3 +1,4 @@
+import { runHeaderBackOverride } from "~/lib/header-back-events";
 import {
   act,
   cleanup,
@@ -519,4 +520,14 @@ describe("drawing Quickwheel", () => {
       screen.getByRole("switch", { name: "Quickwheel mode" }),
     ).toBeChecked();
   });
+});
+
+
+it("dismisses an open pointer wheel before back can reach the drawing", () => {
+  open({ id: "drawing", title: "A101", items: [{ id: "measure", label: "Measure" }] });
+  fireEvent.contextMenu(canvas(), {button: 2, clientX: 200, clientY: 400});
+  expect(wheel()).not.toBeNull();
+  act(() => { expect(runHeaderBackOverride()).toBe(true); });
+  expect(wheel()).toBeNull();
+  expect(runHeaderBackOverride()).toBe(false);
 });

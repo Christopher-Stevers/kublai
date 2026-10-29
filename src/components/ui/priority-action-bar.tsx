@@ -23,6 +23,7 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { Button } from "./button";
 import { Input } from "./input";
 import { cn } from "~/lib/utils";
@@ -119,8 +120,9 @@ export function PriorityActionBar({
   className,
   label,
   search,
+  dismissOnBack = false,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch }) {
+}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch; dismissOnBack?: boolean }) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = useActionLimit(root);
@@ -133,6 +135,10 @@ export function PriorityActionBar({
   const [searching, setSearching] = useState(() => !!search?.value);
   const searchButton = useRef(false);
   const expanded = open && shelved > 0 && !searching;
+  useHeaderBackOverride(dismissOnBack && (expanded || searching) ? () => {
+    setOpen(false);
+    setSearching(false);
+  } : null, { priority: 110 });
 
   useEffect(() => {
     // Back from the search: return focus to the Search button.

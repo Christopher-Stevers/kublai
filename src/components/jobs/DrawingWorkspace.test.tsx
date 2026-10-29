@@ -1,3 +1,4 @@
+import { runHeaderBackOverride, useHeaderBackOverride } from "~/lib/header-back-events";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { HYPERLINK_VISIT_EVENT } from "~/hooks/use-hyperlink-back";
 import {
@@ -1950,4 +1951,54 @@ it("keeps only the full-screen and layers corner controls in quick-wheel mode", 
   expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   expect(screen.getByRole("button", { name: "Full screen" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Layers" })).toBeVisible();
+});
+
+
+it("backs out of layers and then the active drawing tool before navigating to the parent", () => {
+  const parent = vi.fn();
+  function Host() {
+    useHeaderBackOverride(parent, { priority: 10 });
+    return <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />;
+  }
+  render(<Host />);
+  fireEvent.click(screen.getByRole("button", {name: "Measure", exact: true}));
+  fireEvent.click(screen.getByRole("button", {name: "Layers", exact: true}));
+  act(() => { runHeaderBackOverride(); });
+  expect(screen.queryByRole("complementary", {name: "Drawing tools panel"})).toBeNull();
+  expect(parent).not.toHaveBeenCalled();
+  expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
+  act(() => { runHeaderBackOverride(); });
+  expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("idle");
+  expect(parent).not.toHaveBeenCalled();
+  act(() => { runHeaderBackOverride(); });
+  expect(parent).toHaveBeenCalledOnce();
+});
+
+it("closes the markup chooser before allowing page navigation", () => {
+  const parent = vi.fn();
+  function Host() {
+    useHeaderBackOverride(parent);
+    return <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />;
+  }
+  render(<Host />);
+  fireEvent.click(screen.getByRole("button", {name: "Markup", exact: true}));
+  act(() => { runHeaderBackOverride(); });
+  expect(parent).not.toHaveBeenCalled();
+  act(() => { runHeaderBackOverride(); });
+  expect(parent).toHaveBeenCalledOnce();
+});
+
+
+it("closes More before navigating away from a base-state drawing", () => {
+  const parent = vi.fn();
+  function Host() {
+    useHeaderBackOverride(parent);
+    return <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />;
+  }
+  render(<Host />); openMenu("More");
+  act(() => { runHeaderBackOverride(); });
+  expect(screen.getByRole("button", { name: "More", exact: true })).toHaveAttribute("aria-expanded", "false");
+  expect(parent).not.toHaveBeenCalled();
+  act(() => { runHeaderBackOverride(); });
+  expect(parent).toHaveBeenCalledOnce();
 });

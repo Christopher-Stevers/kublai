@@ -8,6 +8,7 @@ import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
 import { LegendItemsDialog } from "./LegendItemsDialog";
 import { equipmentDrawingDestination, legacyEquipmentDocumentLink } from "~/lib/equipment-tags";
 import { measurementLayerNames } from "~/lib/measurement-layers";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { useDrawingPageMode } from "./DrawingPageMode";
@@ -1567,6 +1568,40 @@ export function DrawingWorkspace({
           ? "Original drawing"
           : undefined),
     })) ?? [];
+
+  // Consume back at the nearest open drawing state before the host leaves a sheet.
+  const dismissDrawingState =
+    linkChooser ? () => setLinkChooser(null) :
+    wheelStyleOpen ? () => setWheelStyleOpen(false) :
+    superScalePrompt ? () => setSuperScalePrompt(false) :
+    superScaleOpen ? () => setSuperScaleOpen(false) :
+    superSpecMaterialOpen ? () => setSuperSpecMaterialOpen(false) :
+    superEquipmentOpen ? () => setSuperEquipmentOpen(false) :
+    superLabelOpen ? () => setSuperLabelOpen(false) :
+    legendOpen ? () => setLegendOpen(false) :
+    autoHyperlinkOpen ? () => setAutoHyperlinkOpen(false) :
+    appearanceOpen ? () => setAppearanceOpen(false) :
+    overlayPickerOpen ? () => setOverlayPickerOpen(false) :
+    markupMenu ? () => setMarkupMenu(null) :
+    form ? () => setForm(null) :
+    panel ? () => setPanel("") :
+    toolsOpen ? () => setToolsOpen(false) :
+    markupOpen ? () => setMarkupOpen(false) :
+    inlineText ? () => finishInlineText.current(false) :
+    bottomMode.measuring || bottomMode.pipe || modeRequest.mode !== "idle" ||
+      (tool !== "pan" && tool !== "viewing" && tool !== "select")
+      ? finishUsing :
+    selectedId ? () => { setSelectedId(null); setEditReadyId(null); } :
+    compareIds ? () => setCompareIds(null) :
+    null;
+  useHeaderBackOverride(dismissDrawingState ? () => {
+    const menu = Array.from(document.querySelectorAll<HTMLElement>('[role="menu"][data-state="open"], [role="listbox"][data-state="open"]')).at(-1);
+    if (menu) {
+      menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      return;
+    }
+    dismissDrawingState();
+  } : null, { priority: 100, scope: sheet.id });
 
   if (query.data && boundUser && query.data.actor.id !== boundUser)
     return (
@@ -3502,6 +3537,7 @@ export function DrawingWorkspace({
           </>
         )}
         <PriorityActionBar
+          dismissOnBack
           role="toolbar"
           aria-label="Drawing tools"
           label={statusText !== "Saved" ? statusText : undefined}

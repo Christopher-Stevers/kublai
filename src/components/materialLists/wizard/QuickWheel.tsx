@@ -1,5 +1,6 @@
 "use client";
 
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import {
   createContext,
   useContext,
@@ -290,6 +291,8 @@ export function QuickWheelSurface({
     update(null);
     if (wasOpen) interaction.current.onActiveChange?.(false);
   };
+
+  useHeaderBackOverride(activation === "context" && wheel ? close : null, { priority: 120 });
 
   useLayoutEffect(() => {
     return registry.subscribe((choices) => {
