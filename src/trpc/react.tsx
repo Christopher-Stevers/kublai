@@ -1,7 +1,12 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { httpBatchStreamLink, loggerLink } from "@trpc/client";
+import {
+  httpBatchLink,
+  httpBatchStreamLink,
+  loggerLink,
+  splitLink,
+} from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useEffect, useState } from "react";
@@ -47,6 +52,20 @@ async function blockedServerFetch(
   }
   return response;
 }
+
+const COMPRESSED_PATHS = new Set([
+  "drawingsWorkspace.get",
+  "drawingsWorkspace.changes",
+]);
+const linkOptions = {
+  transformer: SuperJSON,
+  url: getBaseUrl() + "/api/trpc",
+  headers: () => {
+    const headers = new Headers();
+    headers.set("x-trpc-source", "nextjs-react");
+    return headers;
+  },
+};
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {
@@ -131,15 +150,13 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             );
           },
         }),
-        httpBatchStreamLink({
-          transformer: SuperJSON,
-          url: getBaseUrl() + "/api/trpc",
-          fetch: blockedServerFetch,
-          headers: () => {
-            const headers = new Headers();
-            headers.set("x-trpc-source", "nextjs-react");
-            return headers;
-          },
+        // Streamed batches are sent as application/jsonl, which the server
+        // does not compress. A drawing's data can be megabytes of repetitive
+        // JSON, so it comes as plain JSON and is gzipped on the way.
+        splitLink({
+          condition: (op) => COMPRESSED_PATHS.has(op.path),
+          true: httpBatchLink({ ...linkOptions, fetch: blockedServerFetch }),
+          false: httpBatchStreamLink({ ...linkOptions, fetch: blockedServerFetch }),
         }),
       ],
     }),
