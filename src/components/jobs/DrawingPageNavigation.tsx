@@ -83,7 +83,7 @@ export function DrawingPageNavigation({
       data-drawing-chrome
       className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-2">
+      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.3fr)] items-center gap-2">
         <Button
           variant="outline"
           className="h-9 min-w-0 rounded-lg px-2 text-sm"

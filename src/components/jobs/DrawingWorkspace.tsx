@@ -157,7 +157,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-10 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs has-[>svg]:px-1 font-medium whitespace-normal transition-colors [&_svg]:size-4";
+  "h-12 w-full flex-row gap-1.5 rounded-full px-1 py-1 text-xs has-[>svg]:px-1 font-medium whitespace-normal transition-colors [&_svg]:size-4";
 export const tools: Array<[DrawingTool, string]> = [
   ["viewing", "Viewing"],
   ["select", "Select"],
@@ -3390,7 +3390,7 @@ export function DrawingWorkspace({
               }}
             >
               <MoreHorizontalIcon className="h-5 w-5" />
-              Options
+              More
             </Button>
           ) : (
             <DropdownMenu
@@ -3408,7 +3408,7 @@ export function DrawingWorkspace({
                   aria-label="Drawing options"
                 >
                   <MoreHorizontalIcon className="h-5 w-5" />
-                  Options
+                  More
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
