@@ -144,7 +144,12 @@ const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
   }
 
   const duration = Date.now() - start;
-  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)`;
+  // Drawing data goes to phones on every open; its size is part of the wait.
+  const size =
+    result.ok && (path === "drawingsWorkspace.get" || path === "drawingsWorkspace.changes")
+      ? ` ${Math.round(superjson.stringify(result.data).length / 1024)} KB`
+      : "";
+  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)${size}`;
   if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
   else console.log(message);
 
