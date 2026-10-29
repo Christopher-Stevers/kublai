@@ -412,7 +412,7 @@ export function ChosenPartsView({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold sm:text-lg">
-            {isToolRequest ? "Chosen Tools" : "Chosen Parts"}
+            Basket
           </h3>
           <ViewToggle
             view={chosenView}
@@ -432,7 +432,7 @@ export function ChosenPartsView({
         )}
       </div>
 
-      {pendingParts.length === 0 && <p className="text-muted-foreground py-6 text-center">No parts chosen yet.</p>}
+      {pendingParts.length === 0 && <p className="text-muted-foreground py-6 text-center">Your basket is empty.</p>}
       {chosenView === "grid" ? (
         <div className={PART_TILE_GRID_CLASS}>
           {pendingParts.map((pendingPart) => {

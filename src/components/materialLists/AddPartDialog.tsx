@@ -639,7 +639,7 @@ export function AddPartDialog({
     supplierPartId?: string;
   }) => {
     // A newly created part must remain visible even without a supplier, or
-    // when the supplier lookup fails. Chosen Parts can resolve the supplier later.
+    // when the supplier lookup fails. The basket can resolve the supplier later.
     addToPendingList(part.id, { ...part, description: null }, part.supplierPartId);
     setCustomPartContext(null);
   };
@@ -1338,11 +1338,11 @@ export function AddPartDialog({
                     disabled={isAddingParts}
                     onClick={() => setShowChosenParts(shown => !shown)}>
                     <ListChecksIcon aria-hidden />
-                    {showChosenParts ? `Select ${isToolRequest ? "Tools" : "Parts"}` : `Chosen ${isToolRequest ? "Tools" : "Parts"} (${pendingParts.length})`}
+                    {showChosenParts ? `Select ${isToolRequest ? "Tools" : "Parts"}` : `Basket (${pendingParts.length})`}
                   </button>
                 ) : undefined}
                 label={!prefabView && showChosenParts && !isToolRequest ? (
-                  <FinancialOnly><span className="text-muted-foreground">Chosen Total</span><span className="font-bold tabular-nums">${chosenPartsTotal.toFixed(2)}</span></FinancialOnly>
+                  <FinancialOnly><span className="text-muted-foreground">Basket Total</span><span className="font-bold tabular-nums">${chosenPartsTotal.toFixed(2)}</span></FinancialOnly>
                 ) : undefined}
               >
                 {prefabView || showChosenParts ? (

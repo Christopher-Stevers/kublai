@@ -34,7 +34,7 @@ export function getTutorialGuide(
         return {
           target: "wizard-confirm",
           title: "Add the material to your list",
-          text: "Tap Add to put your selected parts on the list. Chosen Parts lets you change quantities and suppliers; Add opens it automatically if a supplier is missing.",
+          text: "Tap Add to put your selected parts on the list. Basket lets you change quantities and suppliers; Add opens it automatically if a supplier is missing.",
           allow: ["wizard-chosen-toggle", "wizard-chosen-quantity"],
         };
       const instructions: Record<string, [string, string]> = {
