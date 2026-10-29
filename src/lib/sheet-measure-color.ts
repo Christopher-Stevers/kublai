@@ -24,7 +24,7 @@ export const MEASURE_COLORS = [
 ] as const;
 
 /** Line widths offered for markups and measurements, thinnest first. */
-export const LINE_WIDTHS = [1, 2, 3, 4, 6, 8, 10, 12] as const;
+export const LINE_WIDTHS = [0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 6, 8, 10, 12] as const;
 
 export function validMeasureColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);

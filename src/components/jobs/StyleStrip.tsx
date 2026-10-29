@@ -90,6 +90,7 @@ export function StyleStrip({
               role="radio"
               aria-checked={width === option}
               aria-label={`Width ${option}`}
+              title={`Width ${option}`}
               disabled={disabled}
               className={`flex h-7 min-w-9 flex-1 shrink-0 items-center justify-center rounded-full transition-colors ${width === option ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
               onClick={() => onWidth(option)}
@@ -97,7 +98,7 @@ export function StyleStrip({
               <span
                 aria-hidden="true"
                 className="w-4 rounded-full"
-                style={{ height: Math.max(1, option * 0.9), backgroundColor: current }}
+                style={{ height: Math.max(0.1, option * 0.9), backgroundColor: current }}
               />
             </button>
           ))}
