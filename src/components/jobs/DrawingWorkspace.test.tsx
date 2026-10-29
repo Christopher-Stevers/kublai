@@ -599,23 +599,31 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
   });
 
-  it("shows live markup styling at the bottom in quick-wheel mode and removes it on Done", () => {
+  it("toggles quick-wheel markup styling and hides it again on Done", () => {
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     open();
     const workspace = screen.getByLabelText("Drawing workspace");
     fireEvent.keyDown(workspace, { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Markup" }));
     fireEvent.click(screen.getByRole("button", { name: "Pen" }));
+    expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tool Controls" }));
     const bar = screen.getByRole("toolbar", { name: "Markup controls" });
     fireEvent.click(within(bar).getByRole("radio", { name: "Width 0.1" }));
     expect(mocks.viewer.mock.lastCall?.[0].style.width).toBe(0.1);
     fireEvent.click(within(bar).getByRole("button", { name: "Blue" }));
     expect(mocks.viewer.mock.lastCall?.[0].style.stroke).toBe("#2563eb");
+    fireEvent.click(screen.getByRole("button", { name: "Tool Controls" }));
+    expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tool Controls" }));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
     fireEvent.keyDown(workspace, { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.toolbarHidden).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Tool Controls" }));
+    expect(mocks.viewer.mock.lastCall?.[0].toolControls.toolbarHidden).toBe(false);
   });
 
   it("exposes page navigation and selected markup actions through the wheel", async () => {

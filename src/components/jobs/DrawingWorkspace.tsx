@@ -64,6 +64,7 @@ import {
   HistoryIcon,
   InfoIcon,
   LayersIcon,
+  SlidersHorizontalIcon,
   Link2Icon,
   ListChecksIcon,
   MessageSquareMoreIcon,
@@ -450,6 +451,7 @@ export function DrawingWorkspace({
   pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
   const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
+  const [wheelToolbarOpen, setWheelToolbarOpen] = useState(false);
   const { scroll, setScroll } = useDrawingPageMode();
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
   const router = useRouter();
@@ -555,6 +557,7 @@ export function DrawingWorkspace({
     if (tool === "viewing" || tool === "select") restTool.current = tool;
   }, [tool]);
   const finishUsing = () => {
+    setWheelToolbarOpen(false);
     finishInlineText.current(false);
     setBottomMode({ measuring: false, pipe: false });
     setSelectedId(null);
@@ -1575,6 +1578,8 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
+  useEffect(() => { if (!toolInUse) setWheelToolbarOpen(false); }, [toolInUse]);
+
   // Consume back at the nearest open drawing state before the host leaves a sheet.
   const dismissDrawingState =
     linkChooser ? () => setLinkChooser(null) :
@@ -2071,6 +2076,13 @@ export function DrawingWorkspace({
         )}
       </div>
       <div data-drawing-tool-area className="relative flex min-h-0 flex-1">
+        {quickWheel && toolInUse && <Button
+          type="button" variant="outline" aria-label="Tool Controls" title="Tool Controls"
+          aria-expanded={wheelToolbarOpen}
+          style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
+          className="absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
+          onClick={() => setWheelToolbarOpen(open => !open)}
+        ><SlidersHorizontalIcon aria-hidden="true" /></Button>}
         {quickWheel && toolInUse && (
           <Button
             type="button"
@@ -2167,6 +2179,7 @@ export function DrawingWorkspace({
               }))}
               onEditDrawings={() => setOverlayPickerOpen(true)}
               toolControls={{
+                toolbarHidden: quickWheel && !wheelToolbarOpen,
                 measureRequest: 0,
                 pipeRequest: 0,
                 modeRequest,
@@ -2194,6 +2207,7 @@ export function DrawingWorkspace({
               appearance={appearance}
               key={source.id}
               toolControls={{
+                toolbarHidden: quickWheel && !wheelToolbarOpen,
                 measureRequest: 0,
                 pipeRequest: 0,
                 modeRequest,
@@ -3498,7 +3512,7 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {quickWheel && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
+      {quickWheel && wheelToolbarOpen && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
         (inlineText || !OTHER_TOOLS.has(tool)) && (
         <DrawingToolbarDock target={toolbarContainer}>
           <div data-drawing-chrome data-bottom-menu role="toolbar" aria-label="Markup controls"

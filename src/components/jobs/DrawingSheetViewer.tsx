@@ -217,6 +217,7 @@ export function DrawingSheetViewer({
    * a request number toggles that mode, and the idle Measure strip is hidden.
    */
   toolControls?: {
+    toolbarHidden?: boolean;
     measureRequest: number;
     pipeRequest: number;
     /** Atomic switch: finish a run before starting another mode. */
@@ -3342,7 +3343,7 @@ export function DrawingSheetViewer({
             );
           })()}
       </div>
-      <SheetMeasureBar
+      {!toolControls?.toolbarHidden && <SheetMeasureBar
         showAngles={showAngles}
         onShowAngles={show => setAngleSetting(show ? "on" : "off")}
         measurementLayer={measurementLayer}
@@ -3500,7 +3501,7 @@ export function DrawingSheetViewer({
         onColor={changeMeasureColor}
         lineWidth={measureWidth}
         onLineWidth={changeMeasureWidth}
-      />
+      />}
     </div>
   );
 }
