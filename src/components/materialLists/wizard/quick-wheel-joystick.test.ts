@@ -3,6 +3,7 @@ import {
   joystickWheelArc,
   wheelCarousel,
   wheelJoystickSpeed,
+  wheelJoystickMotion,
 } from "./quick-wheel-joystick";
 
 describe("Quickwheel joystick", () => {
@@ -128,5 +129,58 @@ describe("single thumb rail", () => {
         );
       }
     }
+  });
+});
+
+describe("screen-relative neutral and relocation", () => {
+  const centre = { x: 500, y: 400 };
+  it.each([
+    { x: 850, y: 600 },
+    { x: 150, y: 600 },
+    { x: 850, y: 150 },
+    { x: 150, y: 150 },
+  ])("points neutral toward screen centre from %j", (origin) => {
+    const dx = centre.x - origin.x,
+      dy = centre.y - origin.y,
+      d = Math.hypot(dx, dy);
+    const point = (forward: number, side: number) => ({
+      x: origin.x + (dx / d) * forward - (dy / d) * side,
+      y: origin.y + (dy / d) * forward + (dx / d) * side,
+    });
+    expect(wheelJoystickMotion(origin, point(40, 0), centre, 170)).toEqual({
+      relocate: false,
+      speed: 0,
+    });
+    const clockwise = wheelJoystickMotion(origin, point(15, 35), centre, 170);
+    const counterclockwise = wheelJoystickMotion(
+      origin,
+      point(15, -35),
+      centre,
+      170,
+    );
+    expect(clockwise.speed).toBeGreaterThan(0);
+    expect(counterclockwise.speed).toBeCloseTo(-clockwise.speed);
+    expect(wheelJoystickMotion(origin, point(-30, 0), centre, 170)).toEqual({
+      relocate: true,
+      speed: 0,
+    });
+    expect(
+      wheelJoystickMotion(origin, point(-1, 0), centre, 170, true),
+    ).toEqual({ relocate: true, speed: 0 });
+    expect(
+      wheelJoystickMotion(origin, point(1, 0), centre, 170, true).relocate,
+    ).toBe(false);
+    expect(wheelJoystickMotion(origin, point(140, 0), centre, 170)).toEqual({
+      relocate: false,
+      speed: 0,
+    });
+  });
+  it("does not drift with thumb jitter and has a stable axis exactly at screen centre", () => {
+    expect(
+      wheelJoystickMotion(centre, { x: 500, y: 404 }, centre, 170),
+    ).toEqual({ relocate: false, speed: 0 });
+    expect(
+      wheelJoystickMotion(centre, { x: 500, y: 360 }, centre, 170),
+    ).toEqual({ relocate: false, speed: 0 });
   });
 });

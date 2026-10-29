@@ -35,7 +35,8 @@ import {
   type WheelArc,
   joystickWheelArc,
   wheelCarousel,
-  wheelJoystickSpeed,
+  wheelJoystickAxes,
+  wheelJoystickMotion,
   wrapWheelIndex,
 } from "./quick-wheel-joystick";
 
@@ -103,6 +104,7 @@ type Wheel = Choices & {
   hand?: WheelHand;
   offset: number;
   scrolling: number;
+  repositioning?: boolean;
   hovered: number | null;
   moved: boolean;
   skipEntrance?: boolean;
@@ -130,6 +132,7 @@ function createGeometry(wheel: Wheel): {
       wheel.radius,
       count,
       wheel.hand,
+      wheel.screenCentre,
     );
     if (rail)
       return {
@@ -180,9 +183,68 @@ function geometryFor(wheel: Wheel) {
   let geometry = cache.get(key);
   if (!geometry) {
     geometry = createGeometry(wheel);
+    if (cache.size >= 8) cache.clear();
     cache.set(key, geometry);
   }
   return geometry;
+}
+/** Translate the whole rail while it fits; reflow only when reaching an edge. */
+function moveWheelOrigin(wheel: Wheel, x: number, y: number): Wheel {
+  const next = {
+    ...wheel,
+    x,
+    y,
+    startX: x,
+    startY: y,
+    hovered: null,
+    moved: false,
+    scrolling: 0,
+    repositioning: true,
+    skipEntrance: true,
+  };
+  const entries = entriesFor(wheel);
+  const previous = geometryFor(wheel);
+  const shift = (point: { x: number; y: number }) => ({
+    x: point.x + x - wheel.x,
+    y: point.y + y - wheel.y,
+  });
+  const points = previous.points.map(shift);
+  const padding = WHEEL_CHOICE_DIAMETER / 2;
+  if (
+    points.every(
+      (point) =>
+        point.x - padding >= wheel.bounds.left &&
+        point.x + padding <= wheel.bounds.right &&
+        point.y - padding >= wheel.bounds.top + 52 &&
+        point.y + padding <= wheel.bounds.bottom,
+    )
+  ) {
+    const layout: WheelLayout =
+      previous.layout.kind === "circle"
+        ? previous.layout
+        : {
+            ...previous.layout,
+            track: undefined,
+            choices: previous.layout.choices.map((choice) => ({
+              ...choice,
+              label: shift(choice.label),
+              polygon: choice.polygon.map(shift),
+            })),
+          };
+    const cache = geometryCache.get(wheel.bounds)!;
+    if (cache.size >= 8) cache.clear();
+    cache.set(
+      `${x}:${y}:${wheel.radius}:${wheel.hand}:${wheel.options.length}`,
+      { ...previous, layout, points },
+    );
+  }
+  entryCache.set(next.options, {
+    geometry: geometryFor(next),
+    usage: next.usage,
+    title: next.title,
+    entries,
+  });
+  return next;
 }
 const entryCache = new WeakMap<
   Choice[],
@@ -439,6 +501,7 @@ export function QuickWheelSurface({
           usage: orderUsage.current,
           offset: 0,
           scrolling: 0,
+          repositioning: false,
           hovered: null,
         });
       } else {
@@ -671,10 +734,37 @@ export function QuickWheelSurface({
       const dx = event.clientX - current.x,
         dy = event.clientY - current.y;
       const inHub = Math.hypot(dx, dy) <= wheelHubRadius(current.radius);
-      const speed =
-        current.options.length > 1
-          ? wheelJoystickSpeed(dx, dy, current.radius)
-          : 0;
+      const motion = wheelJoystickMotion(
+        current,
+        pointerPosition.current,
+        current.screenCentre,
+        current.radius,
+        current.repositioning,
+      );
+      if (motion.relocate) {
+        stopScrolling();
+        clearTimer();
+        selectionLatch.current = null;
+        update(
+          moveWheelOrigin(
+            current,
+            Math.max(
+              current.bounds.left,
+              Math.min(current.bounds.right, event.clientX),
+            ),
+            Math.max(
+              current.bounds.top,
+              Math.min(current.bounds.bottom, event.clientY),
+            ),
+          ),
+        );
+        return;
+      }
+      if (current.repositioning) {
+        current = { ...current, repositioning: false };
+        update(current);
+      }
+      const speed = current.options.length > 1 ? motion.speed : 0;
       scroll(speed);
       current = active.current!;
       if (speed) return;
@@ -782,6 +872,7 @@ export function QuickWheelSurface({
             startX: x,
             startY: y,
             scrolling: 0,
+            repositioning: false,
             skipEntrance: hadPreview,
             hovered: null,
             moved: false,
@@ -990,11 +1081,12 @@ function WheelDisplay({
   );
   const { layout, points } = geometryFor(wheel);
   const hub = wheelHubRadius(wheel.radius);
+  const axes = wheelJoystickAxes(wheel, wheel.screenCentre);
   const hint = selected
     ? "Hold to select"
     : wheel.scrolling
-      ? "Centre to stop"
-      : "← Slide to scroll →";
+      ? "Aim inward to stop"
+      : "Slide sideways";
   const tileClass = (entry: Entry) =>
     cn(
       "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center text-[13px] leading-tight font-semibold tracking-wide uppercase shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-[scale,background-color,color,box-shadow,border-color] duration-150 ease-out",
@@ -1065,7 +1157,7 @@ function WheelDisplay({
           <p className="text-muted-foreground mt-0.5 text-xs">
             {isPreview
               ? `Preview · keep holding ${pendingLabel ?? "your choice"}`
-              : "Slide left or right to scroll · move out and hold to choose"}
+              : "Slide sideways to scroll · pull away to move"}
           </p>
         </div>
         <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
@@ -1149,9 +1241,17 @@ function WheelDisplay({
           <circle
             data-wheel-stick=""
             cx={
-              wheel.x + (wheel.scrolling ? Math.sign(wheel.scrolling) * 18 : 0)
+              wheel.x +
+              axes.inward.x * (hub - 14) +
+              axes.sideways.x *
+                (wheel.scrolling ? Math.sign(wheel.scrolling) * 12 : 0)
             }
-            cy={wheel.y + 28}
+            cy={
+              wheel.y +
+              axes.inward.y * (hub - 14) +
+              axes.sideways.y *
+                (wheel.scrolling ? Math.sign(wheel.scrolling) * 12 : 0)
+            }
             r="4"
             className="fill-primary"
           />

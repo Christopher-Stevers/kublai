@@ -9,6 +9,37 @@ type Point = { x: number; y: number };
 export const wrapWheelIndex = (index: number, count: number) =>
   ((index % count) + count) % count;
 
+/** Neutral points into the screen, with clockwise/counter-clockwise either side. */
+export function wheelJoystickAxes(origin: Point, centre: Point) {
+  const dx = centre.x - origin.x,
+    dy = centre.y - origin.y;
+  const length = Math.hypot(dx, dy);
+  const inward =
+    length < 8 ? { x: 0, y: -1 } : { x: dx / length, y: dy / length };
+  return { inward, sideways: { x: -inward.y, y: inward.x } };
+}
+export function wheelJoystickMotion(
+  origin: Point,
+  pointer: Point,
+  centre: Point,
+  radius: number,
+  dragging = false,
+) {
+  const { inward, sideways } = wheelJoystickAxes(origin, centre);
+  const dx = pointer.x - origin.x,
+    dy = pointer.y - origin.y;
+  const forward = dx * inward.x + dy * inward.y;
+  const lateral = dx * sideways.x + dy * sideways.y;
+  // Pulling back moves the wheel; it must never arm an item or rotate it.
+  const relocate = dragging
+    ? forward <= 0
+    : forward < -8 && -forward >= Math.abs(lateral);
+  return {
+    relocate,
+    speed: relocate ? 0 : wheelJoystickSpeed(lateral, forward, radius),
+  };
+}
+
 /** Only the hub is a joystick. Outside it the pointer belongs to selection. */
 export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
   const hub = wheelHubRadius(radius);
@@ -34,9 +65,15 @@ export function joystickWheelArc(
   radius: number,
   count: number,
   hand: WheelHand,
+  centre?: Point,
 ) {
   const padding = WHEEL_CHOICE_DIAMETER / 2;
-  const away = hand === "right" ? -Math.PI / 4 : Math.PI / 4;
+  const inward = centre ? wheelJoystickAxes(origin, centre).inward : undefined;
+  const away = inward
+    ? Math.atan2(inward.x, -inward.y)
+    : hand === "right"
+      ? -Math.PI / 4
+      : Math.PI / 4;
   const angularDistance = (a: number, b: number) =>
     Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   for (

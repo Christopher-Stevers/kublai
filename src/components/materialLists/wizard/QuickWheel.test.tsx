@@ -62,6 +62,12 @@ const pointer = {
 const down = () => fireEvent.pointerDown(screen.getByTestId("blank"), pointer);
 const aim = (x = 200, y = 180) =>
   fireEvent.pointerMove(window, { ...pointer, clientX: x, clientY: y });
+const steer = (distance: number) => {
+  const root = wheel()!;
+  const x = Number(root.getAttribute("data-origin-x")), y = Number(root.getAttribute("data-origin-y"));
+  const dx = innerWidth/2-x, dy = innerHeight/2-y, length = Math.hypot(dx,dy);
+  aim(x + (length < 8 ? 1 : -dy/length)*distance, y + (length < 8 ? 0 : dx/length)*distance);
+};
 const dwell = (ms = 500) => act(() => vi.advanceTimersByTime(ms));
 const wheel = () => screen.queryByRole("status");
 beforeEach(() => {
@@ -171,20 +177,8 @@ describe("wizard quick wheel", () => {
         clientX: originX,
       });
       expect(wheel()).toHaveAttribute("data-layout", layout);
-      const choice = wheel()!.querySelector("foreignObject")!;
-      const x =
-        Number(choice.getAttribute("x")) +
-        Number(choice.getAttribute("width")) / 2;
-      const y =
-        Number(choice.getAttribute("y")) +
-        Number(choice.getAttribute("height")) / 2;
-      const length = Math.hypot(x - originX, y - pointer.clientY);
-      const slide = (distance: number) =>
-        aim(
-          originX + ((x - originX) * distance) / length,
-          pointer.clientY + ((y - pointer.clientY) * distance) / length,
-        );
-      slide(24);
+      const inwardLength = Math.hypot(innerWidth/2-originX, innerHeight/2-pointer.clientY);
+      aim(originX + (innerWidth/2-originX)/inwardLength*24, pointer.clientY + (innerHeight/2-pointer.clientY)/inwardLength*24);
       void dwell();
       expect(select).not.toHaveBeenCalled();
       const target = wheel()!.querySelector('[data-source-index="0"]')!;
@@ -383,7 +377,7 @@ describe("wizard quick wheel", () => {
     const labels = () => [...wheel()!.querySelectorAll("foreignObject")].map(tile => tile.textContent);
     expect(labels().sort()).toEqual([9, 10, 11, 12, 13, 14].map(i => `Choice ${i}`).sort());
     expect(wheel()).not.toHaveTextContent(/More|Previous/);
-    aim(150, 300);
+    steer(-50);
     dwell(1500);
     expect(labels()).not.toContain("Choice 14");
     expect(wheel()).toHaveAttribute("data-scrolling", "true");
@@ -393,7 +387,7 @@ describe("wizard quick wheel", () => {
     render(<QuickWheelSurface><Stage count={count} select={select}/></QuickWheelSurface>);
     down();
     const seen = new Set<string>();
-    aim(150, 300);
+    steer(-50);
     for (let tick = 0; tick < count * 5; tick++) {
       const labels = [...wheel()!.querySelectorAll("foreignObject")];
       expect(labels.length).toBeLessThanOrEqual(7);
@@ -568,13 +562,13 @@ describe("wizard quick wheel", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
     down();
-    aim(150, 300);
+    steer(-50);
     dwell(1000);
     const forward = Number(wheel()!.getAttribute("data-offset"));
     expect(forward).toBeGreaterThan(1);
     dwell(500);
     expect(Number(wheel()!.getAttribute("data-offset"))).toBeGreaterThan(forward);
-    aim(250, 300);
+    steer(50);
     dwell(500);
     expect(Number(wheel()!.getAttribute("data-offset"))).toBeCloseTo(forward, 1);
     aim(200, 300);
@@ -593,7 +587,7 @@ describe("wizard quick wheel", () => {
   it("freezes immediately on an outward selection, even without passing through centre", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
-    down(); aim(150, 300); dwell(800);
+    down(); steer(-50); dwell(800);
     const choice = [...wheel()!.querySelectorAll("foreignObject")].find(tile => tile.getAttribute("opacity") === "1")!;
     const index = Number(choice.getAttribute("data-source-index"));
     aim(Number(choice.getAttribute("x")) + 52, Number(choice.getAttribute("y")) + 52);
@@ -607,23 +601,54 @@ describe("wizard quick wheel", () => {
   it.each(["pointerup", "pointercancel", "blur", "resize"])("stops the animation and pending selections on %s", event => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
-    down(); aim(150, 300); dwell(500);
+    down(); steer(-50); dwell(500);
     if (event === "pointerup") fireEvent.pointerUp(window, pointer);
     else fireEvent(window, new Event(event));
     dwell(2000);
     expect(wheel()).toBeNull();
     expect(select).not.toHaveBeenCalled();
   });
+  it("keeps inward movement neutral and follows an outward pull without selecting", () => {
+    vi.stubGlobal("innerWidth", 400); vi.stubGlobal("innerHeight", 700);
+    const select = vi.fn();
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
+    aim(314.15,437.81); dwell(600);
+    expect(wheel()).toHaveAttribute("data-offset","0");
+    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    steer(-40); dwell(600);
+    const offset=wheel()!.getAttribute("data-offset");
+    expect(Number(offset)).toBeGreaterThan(0);
+    const tile=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
+    aim(Number(tile.getAttribute("x"))+52,Number(tile.getAttribute("y"))+52); dwell(250);
+    aim(350,465);
+    expect(wheel()).toHaveAttribute("data-origin-x","350");
+    expect(wheel()).toHaveAttribute("data-origin-y","465");
+    expect(wheel()).toHaveAttribute("data-scrolling","false");
+    aim(351,466);
+    expect(wheel()).toHaveAttribute("data-origin-x","351");
+    expect(wheel()).toHaveAttribute("data-origin-y","466");
+    dwell(1000);
+    expect(wheel()).toHaveAttribute("data-offset",offset);
+    expect(select).not.toHaveBeenCalled();
+    aim(335,454); dwell(600);
+    expect(wheel()).toHaveAttribute("data-origin-x","351");
+    expect(wheel()).toHaveAttribute("data-scrolling","false");
+    const target=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
+    const expected=Number(target.getAttribute("data-source-index"));
+    aim(Number(target.getAttribute("x"))+52,Number(target.getAttribute("y"))+52); dwell();
+    expect(select).toHaveBeenCalledExactlyOnceWith(expected);
+  });
   it("stops rotation when the available actions change or the wheel is disabled", () => {
     const select = vi.fn();
     const {rerender} = render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
-    down(); aim(150, 300); dwell(300);
+    down(); steer(-50); dwell(300);
     rerender(<QuickWheelSurface><Stage title="New Context" count={4} select={select}/></QuickWheelSurface>);
     expect(wheel()).toHaveAttribute("data-offset", "0");
     expect(wheel()).toHaveAttribute("data-scrolling", "false");
     dwell(800);
     expect(wheel()).toHaveAttribute("data-offset", "0");
-    aim(150,300); dwell(300);
+    steer(-50); dwell(300);
     rerender(<QuickWheelSurface enabled={false}><Stage title="New Context" count={4} select={select}/></QuickWheelSurface>);
     dwell(800);
     expect(wheel()).toBeNull(); expect(select).not.toHaveBeenCalled();
@@ -753,7 +778,7 @@ describe("anticipatory wheel previews",()=>{
   const select = vi.fn(), prepare = vi.fn(() => ({ title: "Next", kind: "wheel" as const, options: [{label: "Child"}] }));
   render(<QuickWheelSurface previewChoice={prepare}><Stage select={select}/></QuickWheelSurface>);
   down(); aim(); await advance(150); expect(preview()).not.toBeNull();
-  aim(150, 300); await advance(800);
+  steer(-50); await advance(800);
   expect(preview()).toBeNull(); expect(select).not.toHaveBeenCalled();
  });
  it.each(["pointerup","pointercancel","blur"])("removes the preview on %s without confirming",async(event)=>{
