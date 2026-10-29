@@ -23,6 +23,7 @@ import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-so
 
 const mocks = vi.hoisted(() => ({
   viewer: vi.fn(),
+  loadLink: vi.fn(),
   push: vi.fn(),
   account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
@@ -47,6 +48,7 @@ vi.mock("next/navigation", () => {
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({
+      client: { drawingsWorkspace: { link: { query: mocks.loadLink } } },
       drawingsWorkspace: {
         get: {
           invalidate: mocks.invalidate,
@@ -1887,4 +1889,47 @@ it("keeps individual annotations out of Layers and remembers hidden drawing cont
   expect(reopened).not.toHaveAttribute("open");
   fireEvent.click(reopened.querySelector("summary")!);
   expect(screen.getByRole("button", { name: "Rectangle layer" })).toHaveAttribute("aria-pressed", "false");
+});
+
+it("loads deferred destinations only when a link is opened, with recoverable errors", async () => {
+  const entity = existingMarkup();
+  if (entity.kind !== "markup") throw Error("fixture");
+  const full = { ...entity, data: { ...entity.data, type: "link" as const, links: [{label:"Saved destination", url:"/jobs"}] } };
+  const deferred = { ...full, data: { ...full.data, links: undefined, deferredLinks: {id:entity.id, revision:entity.revision, count:1} } };
+  mocks.data!.entities = [deferred];
+  mocks.loadLink.mockRejectedValueOnce(Error("Network interrupted"));
+  mocks.loadLink.mockResolvedValueOnce(full);
+  open();
+  expect(mocks.loadLink).not.toHaveBeenCalled();
+  act(() => mocks.viewer.mock.lastCall?.[0].onActivate(deferred.data));
+  await screen.findByText("Network interrupted");
+  fireEvent.click(screen.getByRole("button", {name:"Try Again"}));
+  await screen.findByRole("button", {name:"Saved destination"});
+  expect(mocks.loadLink).toHaveBeenLastCalledWith({sheetId, id:entity.id, revision:entity.revision});
+});
+
+it("resolves an unloaded link before saving style edits so destinations cannot be erased", async () => {
+  const entity = existingMarkup();
+  if (entity.kind !== "markup") throw Error("fixture");
+  const full = { ...entity, data: { ...entity.data, type: "link" as const, links: [{label:"Saved destination", url:"/jobs"}] } };
+  const deferred = { ...full, data: { ...full.data, links: undefined, deferredLinks: {id:entity.id, revision:entity.revision, count:1} } };
+  mocks.data!.entities = [deferred];
+  mocks.loadLink.mockResolvedValue(full);
+  open();
+  act(() => mocks.viewer.mock.lastCall?.[0].onUpdate(entity.id, { ...deferred.data, stroke:"#000000" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+  expect(mocks.save.mock.lastCall?.[0]).toMatchObject({data:{stroke:"#000000",links:full.data.links}});
+  expect((mocks.save.mock.lastCall?.[0] as {data:{deferredLinks?:unknown}}).data.deferredLinks).toBeUndefined();
+});
+
+it("explains an uncached offline hyperlink without attempting a network request", async () => {
+  const entity = existingMarkup();
+  if (entity.kind !== "markup") throw Error("fixture");
+  const deferred = { ...entity.data, type: "link" as const, deferredLinks: {id:entity.id, revision:entity.revision, count:1} };
+  mocks.data!.entities = [{...entity,data:deferred}];
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  open();
+  act(() => mocks.viewer.mock.lastCall?.[0].onActivate(deferred));
+  await screen.findByText(/These destinations are not saved offline/);
+  expect(mocks.loadLink).not.toHaveBeenCalled();
 });

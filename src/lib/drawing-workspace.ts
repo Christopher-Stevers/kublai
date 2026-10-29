@@ -110,6 +110,8 @@ export const drawingMarkupSchema = z
       .min(1, "Add at least one destination to the hyperlink.")
       .max(MAX_DRAWING_LINKS)
       .optional(),
+    /** Transport-only reference. Must be resolved before saving. */
+    deferredLinks: z.object({ id, revision: z.number().int().min(1), count: z.number().int().min(1).max(MAX_DRAWING_LINKS) }).optional(),
     linkAppearance: z.enum(["box", "highlight"]).optional(),
     equipmentTag: z.string().trim().min(2).max(40).optional(),
     hyperlinkReader: z.enum(["normal", "terra", "deepseek"]).optional(),

@@ -477,6 +477,18 @@ async function validateLinks(
     );
   }
 }
+/** On-demand destinations use the same sheet and per-entity access checks as the workspace. */
+export async function getDrawingLink(ctx: DrawingContext, input: { sheetId: string; id: string; revision: number }) {
+  const access = await accessSheet(ctx.db, ctx.userId, input.sheetId);
+  const [row] = await ctx.db.select().from(entities).where(and(eq(entities.sheetId, input.sheetId), eq(entities.id, input.id))).limit(1);
+  const entity = row?.entity;
+  if (!entity || !canReadEntity(entity, access.actor) || entity.visibility === "archived" || entity.kind !== "markup" || entity.data.type !== "link")
+    throw new TRPCError({ code: "NOT_FOUND", message: "Hyperlink is no longer available." });
+  if (entity.revision !== input.revision)
+    throw new TRPCError({ code: "CONFLICT", message: "This hyperlink changed. Refresh the drawing and try again." });
+  return entity;
+}
+
 export async function getDrawingWorkspace(
   ctx: DrawingContext,
   sheetId: string,
@@ -649,6 +661,8 @@ export async function saveDrawingEntity(
   ctx: DrawingContext,
   input: DrawingSave,
 ) {
+  if (input.kind === "markup" && input.data.deferredLinks)
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Load the hyperlink destinations before saving this annotation." });
   if (input.kind === "markup" && input.data.equipmentTag && input.data.links) {
     input = {
       ...input,

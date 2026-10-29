@@ -52,7 +52,7 @@ it("retains cached annotations on unchanged polls, applies changes and propagate
   expect(result.current.data).toEqual(before);
   expect(mocks.full).not.toHaveBeenCalled();
   expect(mocks.changes).toHaveBeenCalledWith(
-    { sheetId: "sheet", revision: "a" },
+    { sheetId: "sheet", revision: "a", deferLinks: true },
     expect.objectContaining({ signal: expect.anything() as AbortSignal }),
   );
   mocks.changes.mockResolvedValue({ revision: "b", workspace: after });

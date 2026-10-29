@@ -44,6 +44,7 @@ import {
   saveDrawingEntity,
   archiveDrawingEntity,
   getDrawingWorkspace,
+  getDrawingLink,
   getDrawingWorkspaceChanges,
 } from "./service";
 import { defaultDrawingMetadata } from "./domain";
@@ -185,6 +186,19 @@ describe.skipIf(!socket)("equipment annotations on isolated PostgreSQL", () => {
   });
   afterAll(async () => {
     await conn.end();
+  });
+
+  it("loads one authorized hyperlink, rejects wrong sheets and revisions, and refuses unresolved saves", async () => {
+    const entity = await saveDrawingEntity(ctx, request());
+    const link = await getDrawingLink(ctx, {sheetId:old, id:entity.id, revision:entity.revision});
+    expect(link.data.links?.length).toBeGreaterThan(0);
+    await expect(getDrawingLink(ctx, {sheetId:second, id:entity.id, revision:entity.revision})).rejects.toMatchObject({code:"NOT_FOUND"});
+    await expect(getDrawingLink(ctx, {sheetId:old, id:entity.id, revision:entity.revision+1})).rejects.toMatchObject({code:"CONFLICT"});
+    await expect(getDrawingLink({...ctx,userId:"unknown"}, {sheetId:old,id:entity.id,revision:entity.revision})).rejects.toBeDefined();
+    const input=request();
+    if(input.kind!=="markup") throw Error("fixture");
+    await expect(saveDrawingEntity(ctx,{...input,expectedRevision:entity.revision,data:{...input.data,links:undefined,deferredLinks:{id:entity.id,revision:entity.revision,count:1}}})).rejects.toMatchObject({code:"BAD_REQUEST"});
+    expect((await getDrawingLink(ctx,{sheetId:old,id:entity.id,revision:entity.revision})).data.links).toEqual(link.data.links);
   });
 
   const request = () =>

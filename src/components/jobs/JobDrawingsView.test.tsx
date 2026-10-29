@@ -69,7 +69,8 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), prefetch: state.prefetch, fetch: state.fetchWorkspace } },
+        client: { drawingsWorkspace: { get: { query: state.fetchWorkspace } } },
+        drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), getData: () => undefined, setData: vi.fn(), prefetch: state.prefetch, fetch: state.fetchWorkspace } },
         drawings: {
           listSets: { invalidate: vi.fn() },
           getSet: { invalidate: vi.fn(), fetch: state.fetchSet },
@@ -541,7 +542,7 @@ describe("Drawings", () => {
   render(<JobDrawingsView jobId="job" />);
   fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
   fireEvent.focus(screen.getByRole("button", { name: "Open M-101" }));
-  expect(state.prefetch).toHaveBeenCalledWith({ sheetId: "s1" }, { staleTime: 15_000 });
+  expect(state.fetchWorkspace).toHaveBeenCalledWith({ sheetId: "s1", deferLinks: true });
   expect(screen.queryByText("Viewing M-101")).toBeNull();
  });
 

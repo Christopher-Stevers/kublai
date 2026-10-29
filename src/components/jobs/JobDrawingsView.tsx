@@ -115,6 +115,16 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const permissions = useDrawingCapabilities();
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
+  const workspacePrefetches = useRef(new Set<string>());
+  const prefetchWorkspace = async (sheetId: string) => {
+    if (workspacePrefetches.current.has(sheetId) || utils.drawingsWorkspace.get.getData({ sheetId })) return;
+    workspacePrefetches.current.add(sheetId);
+    try {
+      const workspace = await utils.client.drawingsWorkspace.get.query({ sheetId, deferLinks: true });
+      utils.drawingsWorkspace.get.setData({ sheetId }, workspace);
+    } catch { /* Opening the drawing shows any actual load error. */ }
+    finally { workspacePrefetches.current.delete(sheetId); }
+  };
   const [setId, setSetId] = usePageViewState<string | null>(
     `drawings:${jobId}:setId`,
     null,
@@ -371,7 +381,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         setDownload(
           `Preparing drawing ${workspaces.length + 1} of ${sheets.length}…`,
         );
-        const workspace = await utils.drawingsWorkspace.get.fetch({
+        const workspace = await utils.client.drawingsWorkspace.get.query({
           sheetId: item.id,
         });
         workspaces.push(workspace);
@@ -457,7 +467,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           if (cancelled) return;
           // Cache is account scoped by the drawing provider. Normal mount still
           // revalidates permissions; prefetch only removes the empty wait.
-          await utils.drawingsWorkspace.get.prefetch({ sheetId: id }, { staleTime: 15_000 });
+          await prefetchWorkspace(id);
         }
       })().catch(() => undefined);
     }, 500);
@@ -729,10 +739,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
                 }
                 onPointerEnter={() => {
-                  if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
+                  if (!sandbox && setSnapshot.online) void prefetchWorkspace(item.id);
                 }}
                 onFocus={() => {
-                  if (!sandbox && setSnapshot.online) void utils.drawingsWorkspace.get.prefetch({ sheetId: item.id }, { staleTime: 15_000 });
+                  if (!sandbox && setSnapshot.online) void prefetchWorkspace(item.id);
                 }}
                 onClick={() => openSheetFromList(item.id)}
                 onKeyDown={(event) => {
@@ -784,7 +794,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     />
                   </Button>
                   <SheetOfflineButton iconOnly sheet={item} prepare={async (signal) => {
-                    const workspace = await utils.drawingsWorkspace.get.fetch({ sheetId: item.id });
+                    const workspace = await utils.client.drawingsWorkspace.get.query({ sheetId: item.id });
                     signal.throwIfAborted();
                     await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
                     if (setData) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);

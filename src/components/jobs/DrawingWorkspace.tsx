@@ -740,9 +740,14 @@ export function DrawingWorkspace({
   ]);
   useEffect(() => {
     if (serverData && account?.store)
-      void account.store
-        .saveSnapshot(`workspace:${sheet.id}`, serverData)
-        .catch(() => undefined);
+      void account.store.readSnapshot<Workspace>(`workspace:${sheet.id}`).then(saved => {
+        const entities = serverData.entities.map(entity => {
+          if (entity.kind !== "markup" || !entity.data.deferredLinks) return entity;
+          const full = saved?.entities.find(item => item.id === entity.id && item.revision === entity.revision);
+          return full?.kind === "markup" && !full.data.deferredLinks ? full : entity;
+        });
+        return account.store!.saveSnapshot(`workspace:${sheet.id}`, { ...serverData, entities });
+      }).catch(() => undefined);
   }, [serverData, account?.store, sheet.id]);
   useEffect(() => {
     if (!metadataDirty) {
@@ -826,6 +831,31 @@ export function DrawingWorkspace({
           }
         : old,
     );
+  const resolveMarkup = async (markup: DrawingMarkup): Promise<DrawingMarkup> => {
+    const ref = markup.deferredLinks;
+    if (!ref) return markup;
+    // Explicit offline downloads (and previously opened links) keep full records.
+    const saved = await account?.store?.readSnapshot<Workspace>(`workspace:${sheet.id}`);
+    const cached = saved?.entities.find(entity => entity.id === ref.id && entity.revision === ref.revision);
+    if (cached?.kind === "markup" && !cached.data.deferredLinks) return cached.data;
+    if (!online) throw new Error("These destinations are not saved offline. Connect once to open this link, or download the drawing for offline use.");
+    const entity = await utils.client.drawingsWorkspace.link.query({ sheetId: sheet.id, id: ref.id, revision: ref.revision });
+    patchEntity(entity);
+    return entity.data;
+  };
+  const [linkLoadError, setLinkLoadError] = useState<string | null>(null);
+  const [linkLoadAttempt, setLinkLoadAttempt] = useState(0);
+  useEffect(() => {
+    if (!linkChooser?.deferredLinks) return;
+    let cancelled = false;
+    setLinkLoadError(null);
+    void resolveMarkup(linkChooser).then(full => {
+      if (!cancelled) setLinkChooser(full);
+    }).catch(reason => {
+      if (!cancelled) setLinkLoadError(reason instanceof Error ? reason.message : "Could not load destinations.");
+    });
+    return () => { cancelled = true; };
+  }, [linkChooser, linkLoadAttempt, sheet.id, account?.accountKey, online]);
   const fail = (reason: unknown) => {
     const message =
       reason instanceof Error
@@ -1009,6 +1039,13 @@ export function DrawingWorkspace({
   });
   const save = async (value: DrawingSave, selectAfterSave = true) => {
     if (!data) return false;
+    if (value.kind === "markup" && value.data.deferredLinks) {
+      try {
+        const full = await resolveMarkup(value.data);
+        const { deferredLinks: _deferred, ...edited } = value.data;
+        value = { ...value, data: { ...edited, links: full.links, href: full.href, targetSheetId: full.targetSheetId } };
+      } catch (reason) { fail(reason); return false; }
+    }
     const queueable =
       isQueuedDrawingEdit(value) &&
       !data.entities.some(
@@ -1301,7 +1338,7 @@ export function DrawingWorkspace({
     (markup: DrawingMarkup) => {
       const links = drawingDestinationLinks(markup, sheet.id);
       // An equipment tag always offers every place it appears in the job.
-      if (markup.equipmentTag || links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
+      if (markup.deferredLinks || markup.equipmentTag || links.length > 1) { linkChoiceArmed.current = false; setLinkChooser(markup); }
       else if (links[0]) void openDestination(links[0]);
       else setError("Add a destination to this hyperlink.");
     },
@@ -2447,7 +2484,12 @@ export function DrawingWorkspace({
                       <div className="flex flex-wrap gap-2">
                         <Button
                           size="sm"
-                          onClick={() => selected.kind === "markup" && selected.data.type === "dimension" && selected.data.parents ? editMeasurement(selected.id) : setForm(toForm(selected))}
+                          onClick={() => {
+                            if (selected.kind === "markup" && selected.data.type === "dimension" && selected.data.parents) editMeasurement(selected.id);
+                            else if (selected.kind === "markup" && selected.data.deferredLinks) {
+                              void resolveMarkup(selected.data).then(full => setForm({ ...toForm(selected), kind: "markup", data: full })).catch(fail);
+                            } else setForm(toForm(selected));
+                          }}
                         >
                           Edit
                         </Button>
@@ -3256,7 +3298,10 @@ export function DrawingWorkspace({
                   store={account?.store}
                   resolveAssetUrl={resolveAssetUrl}
                   onOfflineSaved={async () => {
-                    if (data) await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
+                    if (data) {
+                      const full = online ? await utils.client.drawingsWorkspace.get.query({ sheetId: sheet.id }) : data;
+                      await account?.store?.saveSnapshot(`workspace:${sheet.id}`, full);
+                    }
                     await onPrepareOffline?.();
                   }}
                 />
@@ -3636,7 +3681,12 @@ export function DrawingWorkspace({
                 : "Choose a destination for this hyperlink."}
             </DialogDescription>
           </DialogHeader>
-          {linkChooser?.equipmentTag ? (
+          {linkChooser?.deferredLinks ? (
+            <div className="space-y-3">
+              <p role={linkLoadError ? "alert" : "status"}>{linkLoadError ?? "Loading hyperlink destinations…"}</p>
+              {linkLoadError && <Button onClick={() => setLinkLoadAttempt(n => n + 1)}>Try Again</Button>}
+            </div>
+          ) : linkChooser?.equipmentTag ? (
             <EquipmentTagDestinations
               sheetId={sheet.id}
               markup={linkChooser}

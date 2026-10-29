@@ -14,13 +14,13 @@ export function useDrawingWorkspaceQuery(sheetId: string, online: boolean) {
     queryFn: async ({ signal }) => {
       const cached = utils.drawingsWorkspace.get.getData({ sheetId });
       const result = await utils.client.drawingsWorkspace.changes.query(
-        { sheetId, revision: cached?.revision },
+        { sheetId, revision: cached?.revision, deferLinks: true },
         { signal },
       );
       if (result.workspace) return result.workspace;
       if (cached?.revision === result.revision) return cached;
       // A cache reset or an old persisted snapshot must recover with full data.
-      return utils.client.drawingsWorkspace.get.query({ sheetId }, { signal });
+      return utils.client.drawingsWorkspace.get.query({ sheetId, deferLinks: true }, { signal });
     },
     refetchInterval: online ? 15_000 : false,
     retry: 1,

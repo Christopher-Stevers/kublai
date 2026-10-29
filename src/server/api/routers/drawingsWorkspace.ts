@@ -1,3 +1,4 @@
+import { compactDrawingWorkspace } from "~/lib/drawing-workspace-payload";
 import { assertCan } from "~/server/auth/permissions";
 import { superLabelSettings, saveSuperLabelBoxes, applySuperLabel } from "~/server/drawings/service";
 import { superLabelSchema } from "~/lib/super-label";
@@ -28,6 +29,7 @@ import {
   commentDrawingEntity,
   favoriteDrawing,
   getDrawingWorkspace,
+  getDrawingLink,
   getDrawingWorkspaceChanges,
   listDrawingWorkspace,
   saveDrawingEntity,
@@ -125,12 +127,21 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   readNotification: hasAppAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(({ ctx, input }) => readDrawingNotification(ctx, input.id)),
+  link: hasAppAccess
+    .input(z.object({ sheetId, id: sheetId, revision: z.number().int().min(1) }))
+    .query(({ ctx, input }) => getDrawingLink(ctx, input)),
   get: hasAppAccess
-    .input(z.object({ sheetId }))
-    .query(({ ctx, input }) => getDrawingWorkspace(ctx, input.sheetId)),
+    .input(z.object({ sheetId, deferLinks: z.boolean().optional() }))
+    .query(async ({ ctx, input }) => {
+      const workspace = await getDrawingWorkspace(ctx, input.sheetId);
+      return input.deferLinks ? compactDrawingWorkspace(workspace) : workspace;
+    }),
   changes: hasAppAccess
-    .input(z.object({ sheetId, revision: z.string().max(64).optional() }))
-    .query(({ ctx, input }) => getDrawingWorkspaceChanges(ctx, input)),
+    .input(z.object({ sheetId, revision: z.string().max(64).optional(), deferLinks: z.boolean().optional() }))
+    .query(async ({ ctx, input }) => {
+      const result = await getDrawingWorkspaceChanges(ctx, input);
+      return input.deferLinks && result.workspace ? { ...result, workspace: compactDrawingWorkspace(result.workspace) } : result;
+    }),
   list: hasAppAccess
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => listDrawingWorkspace(ctx, input.jobId)),

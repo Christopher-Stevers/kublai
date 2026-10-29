@@ -56,6 +56,7 @@ async function blockedServerFetch(
 const COMPRESSED_PATHS = new Set([
   "drawingsWorkspace.get",
   "drawingsWorkspace.changes",
+  "drawingsWorkspace.link",
 ]);
 const linkOptions = {
   transformer: SuperJSON,
