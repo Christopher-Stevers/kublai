@@ -458,11 +458,12 @@ describe("drawing workspace workflows", () => {
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
     chooseTool("rect");
     const controls = screen.getByRole("button", { name: "Tool Controls" });
-    expect(controls).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(controls);
+    expect(controls).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("toolbar", { name: "Markup controls" })).toBeVisible();
     fireEvent.click(controls);
     expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
+    fireEvent.click(controls);
+    expect(screen.getByRole("toolbar", { name: "Markup controls" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("data-drawing-tool-done");
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "select");

@@ -451,7 +451,7 @@ export function DrawingWorkspace({
   pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
   const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
-  const [toolToolbarOpen, setToolToolbarOpen] = useState(false);
+  const [toolToolbarOpen, setToolToolbarOpen] = useState(!quickWheel);
   const { scroll, setScroll } = useDrawingPageMode();
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
   const router = useRouter();
@@ -557,7 +557,7 @@ export function DrawingWorkspace({
     if (tool === "viewing" || tool === "select") restTool.current = tool;
   }, [tool]);
   const finishUsing = () => {
-    setToolToolbarOpen(false);
+    setToolToolbarOpen(!quickWheel);
     finishInlineText.current(false);
     setBottomMode({ measuring: false, pipe: false });
     setSelectedId(null);
@@ -1578,7 +1578,7 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
-  useEffect(() => { if (!toolInUse) setToolToolbarOpen(false); }, [toolInUse]);
+  useEffect(() => { setToolToolbarOpen(!quickWheel); }, [toolInUse, quickWheel]);
 
   // Consume back at the nearest open drawing state before the host leaves a sheet.
   const dismissDrawingState =
