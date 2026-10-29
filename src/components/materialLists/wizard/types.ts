@@ -3,8 +3,7 @@ export type WizardStage =
   | "material"
   | "size"
   | "category"
-  | "part"
-  | "review";
+  | "part";
 
 export interface PendingSupplierPartSnapshot {
   id: string;

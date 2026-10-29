@@ -237,7 +237,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
   const editorCatalogKind = catalogOptions.find(catalog => catalog.id === editingCatalogId)?.kind === "assets" ? "assets" : catalogKind;
   const newPartCatalogKind = catalogOptions.find(catalog => catalog.id === selectedCatalogId)?.kind === "assets" ? "assets" : catalogKind;
   const isWizardSearchActive =
-    wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+    wizardSearchQuery.trim().length > 0;
   const centerOptionCards =
     !isWizardSearchActive &&
     ["catalog", "material", "size", "category"].includes(wizardStage);

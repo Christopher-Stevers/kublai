@@ -121,8 +121,9 @@ export function PriorityActionBar({
   label,
   search,
   dismissOnBack = false,
+  tabAction,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch; dismissOnBack?: boolean }) {
+}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch; dismissOnBack?: boolean; /** Replaces More for bars whose actions all fit. */ tabAction?: ReactNode }) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = useActionLimit(root);
@@ -196,7 +197,8 @@ export function PriorityActionBar({
         {...props}
         className={cn("relative w-full", className)}
       >
-        {shelved > 0 && !searching && (
+        {tabAction}
+        {!tabAction && shelved > 0 && !searching && (
           <button
             ref={tab}
             type="button"

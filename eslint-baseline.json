@@ -966,19 +966,19 @@
     "count": 1
   },
   {
-    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "file": "src/components/materialLists/wizard/ChosenPartsView.tsx",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
     "count": 2
   },
   {
-    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "file": "src/components/materialLists/wizard/ChosenPartsView.tsx",
     "rule": "@typescript-eslint/prefer-optional-chain",
     "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
     "count": 1
   },
   {
-    "file": "src/components/materialLists/wizard/ReviewStage.tsx",
+    "file": "src/components/materialLists/wizard/ChosenPartsView.tsx",
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 2

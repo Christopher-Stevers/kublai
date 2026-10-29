@@ -8,8 +8,7 @@ interface WizardProgressIndicatorProps {
     | "material"
     | "size"
     | "category"
-    | "part"
-    | "review";
+    | "part";
   onStageClick?: (
     stage: "catalog" | "material" | "size" | "category" | "part",
   ) => void;
@@ -54,8 +53,6 @@ export function WizardProgressIndicator({
         return 4;
       case "part":
         return 5;
-      case "review":
-        return 5;
       default:
         return 1;
     }
@@ -95,8 +92,7 @@ export function WizardProgressIndicator({
         const isCurrent = stage.step === currentStep;
         const isClickable =
           onStageClick &&
-          (isCompleted || isCurrent) &&
-          currentStage !== "review";
+          (isCompleted || isCurrent);
 
         return (
           <div

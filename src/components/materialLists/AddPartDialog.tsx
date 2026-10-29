@@ -4,7 +4,6 @@ import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabelContext } from "~/components/suppliers/SupplierLabel";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { findPreferredJobPrice, indexJobPrices, listedPartsFirst } from "~/lib/job-pricing";
-import { PackQuantityControls } from "./PackQuantityControls";
 import { packContents, packsFromPieces, individualUnitLabel } from "~/lib/pack-quantity";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
@@ -15,11 +14,11 @@ import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { AlertCircle, Plus, Minus, ChevronDown, ChevronUp, Search, XIcon, ArrowLeftIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
+import { AlertCircle, Search, XIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
-import type { PendingPart, PendingSupplierPartSnapshot, WizardStage } from "./wizard/types";
+import type { PendingPart, PendingSupplierPartSnapshot } from "./wizard/types";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
 import { QuickWheelSurface } from "./wizard/QuickWheel";
@@ -28,7 +27,7 @@ import { MaterialStage } from "./wizard/MaterialStage";
 import { SizeStage } from "./wizard/SizeStage";
 import { CategoryStage } from "./wizard/CategoryStage";
 import { PartStage } from "./wizard/PartStage";
-import { ReviewStage } from "./wizard/ReviewStage";
+import { ChosenPartsView } from "./wizard/ChosenPartsView";
 import { usePartWizard } from "./wizard/use-part-wizard";
 import { VerticalPickerOverlay } from "./wizard/VerticalPickerOverlay";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
@@ -77,7 +76,7 @@ export function AddPartDialog({
   const [isCreateCustomPartDialogOpen, setIsCreateCustomPartDialogOpen] =
     useState(false);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
-  const [isPendingTrayOpen, setIsPendingTrayOpen] = useState(false);
+  const [showChosenParts, setShowChosenParts] = useState(false);
   const [quantityPickerPreview, setQuantityPickerPreview] = useState<{
     partId: string;
     partName: string;
@@ -86,7 +85,6 @@ export function AddPartDialog({
     inputType?: string;
     quantity: number;
   } | null>(null);
-  const stageBeforeReviewRef = useRef<WizardStage>("catalog");
   const [isAddingParts, setIsAddingParts] = useState(false);
   const pickerSwitchLatchedRef = useRef(false);
   const pickerTouchYRef = useRef<number | null>(null);
@@ -103,7 +101,6 @@ export function AddPartDialog({
   const {
     wizardStage,
     previewQuickWheelChoice,
-    setWizardStage,
     selectedCatalogId,
     hasCatalogSelection,
     selectedMaterialId,
@@ -635,7 +632,7 @@ export function AddPartDialog({
     supplierPartId?: string;
   }) => {
     // A newly created part must remain visible even without a supplier, or
-    // when the supplier lookup fails. Review can resolve the supplier later.
+    // when the supplier lookup fails. Chosen Parts can resolve the supplier later.
     addToPendingList(part.id, { ...part, description: null }, part.supplierPartId);
     setCustomPartContext(null);
   };
@@ -757,13 +754,13 @@ export function AddPartDialog({
     setPendingParts((prev) => prev.filter((p) => p.partId !== partId));
   };
 
-  const handleReviewAndAdd = () => {
-    if (wizardStage !== "review") stageBeforeReviewRef.current = wizardStage;
-    setWizardStage("review");
-  };
 
   const handleAddToMaterialList = async () => {
-    if (pendingParts.length === 0) return;
+    if (pendingParts.length === 0 || isAddingParts) return;
+    if (!isToolRequest && pendingParts.some(part => !part.isTool && !part.supplierPartId)) {
+      setShowChosenParts(true);
+      return;
+    }
 
     setIsAddingParts(true);
 
@@ -936,7 +933,7 @@ export function AddPartDialog({
     return pendingParts.every((p) => p.isTool || !!p.supplierPartId);
   }, [pendingParts, isToolRequest]);
 
-  const reviewedPartsTotal = useMemo(() => {
+  const chosenPartsTotal = useMemo(() => {
     return pendingParts.reduce((sum, pendingPart) => {
       const selectedSupplierPart =
         pendingPart.supplierPartSnapshot ??
@@ -963,7 +960,7 @@ export function AddPartDialog({
 
     if (!open) {
       setPendingParts((prev) => (prev.length === 0 ? prev : []));
-      setIsPendingTrayOpen(false);
+      setShowChosenParts(false);
       setQuantityPickerPreview(null);
       setPrefabView(null);
       setPrefabTarget(null);
@@ -973,15 +970,10 @@ export function AddPartDialog({
     }
   }, [open, resetWizard, materialListId]);
 
-  useEffect(() => {
-    if (pendingParts.length === 0) {
-      setIsPendingTrayOpen(false);
-    }
-  }, [pendingParts.length]);
 
 
   const isWizardSearchActive =
-    wizardStage !== "review" && wizardSearchQuery.trim().length > 0;
+    !showChosenParts && wizardSearchQuery.trim().length > 0;
 
 
   const closeDialogAndCleanHistory = () => onOpenChange(false);
@@ -1020,12 +1012,13 @@ export function AddPartDialog({
     };
   }, [open]);
 
-  const showStepsBar = open && wizardStage !== "review" && !prefabView;
+  const showStepsBar = open && !showChosenParts && !prefabView;
   // Catalog/material/size/category: the "Select …" heading stays top left and
   // the cards sit in the middle of the space below it (the step fills the
   // scroll area and its grid takes my-auto); long lists still scroll.
   const centerOptionCards =
     !prefabView &&
+    !showChosenParts &&
     !isWizardSearchActive &&
     ["catalog", "material", "size", "category"].includes(wizardStage);
   useEffect(() => {
@@ -1038,7 +1031,9 @@ export function AddPartDialog({
 
   /** One step back inside Add Parts. Returns false at the first step. */
   const stepBack = () => {
+    if (isAddingParts) return true;
     if (quantityPickerPreview) { setQuantityPickerPreview(null); return true; }
+    if (showChosenParts) { setShowChosenParts(false); return true; }
     if (prefabTarget) {
       setPendingParts([]);
       resetWizard();
@@ -1049,10 +1044,6 @@ export function AddPartDialog({
     if (prefabView) {
       if (managePrefabs && prefabView.kind === "list") {closeDialogAndCleanHistory(); return true;}
       setPrefabView(prefabView.kind === "edit" ? { kind: "list" } : null);
-      return true;
-    }
-    if (wizardStage === "review") {
-      setWizardStage(stageBeforeReviewRef.current);
       return true;
     }
     if (wizardSearchQuery.trim()) {
@@ -1094,7 +1085,7 @@ export function AddPartDialog({
           role="region"
           aria-label={pageTitle}
           data-tutorial="add-part-dialog"
-          data-tutorial-stage={wizardStage}
+          data-tutorial-stage={showChosenParts ? "chosen" : wizardStage}
           data-tutorial-pending-count={pendingParts.length}
           data-landscape-scope
           className={`fixed inset-x-0 flex flex-col overflow-hidden bg-canvas ${keyboardViewport ? "z-[60]" : "app-below-header bottom-0 z-[45]"} ${quantityPickerPreview ? "touch-none" : ""}`}
@@ -1156,9 +1147,9 @@ export function AddPartDialog({
           )}
 
 
-          <QuickWheelSurface onBack={wizardStage === "catalog" ? undefined : () => { stepBack(); }} previewChoice={previewQuickWheelChoice} usage={orderWheelUsage} enabled={!prefabView && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage) && !quantityPickerPreview}
+          <QuickWheelSurface onBack={wizardStage === "catalog" ? undefined : () => { stepBack(); }} previewChoice={previewQuickWheelChoice} usage={orderWheelUsage} enabled={!prefabView && !showChosenParts && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage) && !quantityPickerPreview}
             data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
-            className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${wizardStage === "review" ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""} @container ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
+            className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${showChosenParts ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""} @container ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
           >
             {!isOnline && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
@@ -1199,7 +1190,7 @@ export function AddPartDialog({
                 }
               />
             ) : (<>
-            {isWizardSearchActive ? (
+            {!showChosenParts && <>{isWizardSearchActive ? (
               <PartStage
                 partsForSelection={filteredPartsForSelection}
                 pendingParts={pendingParts}
@@ -1309,8 +1300,9 @@ export function AddPartDialog({
                 }
               />
             )}
-            {!isWizardSearchActive && wizardStage === "review" && (
-              <ReviewStage
+            </>}
+            {showChosenParts && (
+              <ChosenPartsView
                 pendingParts={pendingParts}
                 supplierPartsData={supplierPartsData}
                 onUpdateQuantity={handleUpdateQuantity}
@@ -1328,115 +1320,28 @@ export function AddPartDialog({
             </>)}
           </QuickWheelSurface>
 
-          {/* Pending Parts Tray */}
-          {pendingParts.length > 0 && wizardStage !== "review" && !prefabView && (
-            <div className="shrink-0 border-t bg-muted/50">
-              <div className="flex w-full items-center justify-between gap-2 px-2 py-3 text-left sm:px-4 sm:py-4 md:px-6">
-                <button
-                  type="button"
-                  onClick={() => setIsPendingTrayOpen((open) => !open)}
-                  className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
-                >
-                  <div className="text-sm font-semibold sm:text-base">
-                    {isToolRequest ? "Pending Tools" : "Pending Parts"} ({pendingParts.length})
-                  </div>
-                  {isPendingTrayOpen ? (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-
-              <div
-                className={`grid transition-all duration-200 ease-out ${
-                  isPendingTrayOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                }`}
-              >
-                <div className="overflow-hidden">
-                  <div className="border-t px-2 pt-3 pb-3 sm:px-4 sm:pt-4 sm:pb-4 md:px-6">
-                    <div className="max-h-32 space-y-2 overflow-y-auto overscroll-contain">
-                      {pendingParts.map((pendingPart) => (
-                        <div
-                          key={pendingPart.partId}
-                          className="flex items-center gap-2 rounded border bg-card p-1.5 text-xs sm:p-2 sm:text-sm"
-                        >
-                          <div className="min-w-0 flex-1 truncate">
-                            {pendingPart.partDefinition.displayName}
-                          </div>
-                          {packContents(pendingPart.partDefinition.piecesPerPack) > 1 ? (
-                            <PackQuantityControls quantity={pendingPart.quantity} piecesPerPack={pendingPart.partDefinition.piecesPerPack!} bulkUnit={pendingPart.partDefinition.bulkUnit} individualUnit={pendingPart.partDefinition.individualUnit} minimum={packsFromPieces(1, pendingPart.partDefinition.piecesPerPack)} onChange={value => handleSetQuantity(pendingPart.partId, value)} />
-                          ) : (
-                          <div className="flex shrink-0 items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleUpdateQuantity(pendingPart.partId, -1)
-                              }
-                              className="h-6 w-6 p-0"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={pendingPart.quantity}
-                              onChange={(e) =>
-                                handleSetQuantity(
-                                  pendingPart.partId,
-                                  parseInt(e.target.value) || 1,
-                                )
-                              }
-                              className="h-6 w-12 [appearance:textfield] text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleUpdateQuantity(pendingPart.partId, 1)
-                              }
-                              className="h-6 w-6 p-0"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>                          )}
-
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Bottom bar, laid out like the material list's */}
           <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div>
               <PriorityActionBar
-                label={
-                  !prefabView && wizardStage === "review" && !isToolRequest ? (
-                    <FinancialOnly>
-                      <span className="text-muted-foreground">Review Total</span>
-                      <span className="font-bold tabular-nums">
-                        ${reviewedPartsTotal.toFixed(2)}
-                      </span>
-                    </FinancialOnly>
-                  ) : undefined
-                }
+                tabAction={!prefabView ? (
+                  <button type="button" data-action-bar-tab data-tutorial="wizard-chosen-toggle" className="whitespace-nowrap"
+                    aria-pressed={showChosenParts}
+                    disabled={isAddingParts}
+                    onClick={() => setShowChosenParts(shown => !shown)}>
+                    <ListChecksIcon aria-hidden />
+                    {showChosenParts ? `Select ${isToolRequest ? "Tools" : "Parts"}` : `Chosen ${isToolRequest ? "Tools" : "Parts"} (${pendingParts.length})`}
+                  </button>
+                ) : undefined}
+                label={!prefabView && showChosenParts && !isToolRequest ? (
+                  <FinancialOnly><span className="text-muted-foreground">Chosen Total</span><span className="font-bold tabular-nums">${chosenPartsTotal.toFixed(2)}</span></FinancialOnly>
+                ) : undefined}
               >
-                {prefabView || wizardStage === "review" ? (
-                  <Button
-                    variant="outline"
-                    className={barButton}
-                    onClick={closeDialogAndCleanHistory}
-                  >
-                    <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                    Cancel
+                {prefabView || showChosenParts ? (
+                  <Button variant="outline" className={barButton} onClick={closeDialogAndCleanHistory} disabled={isAddingParts}>
+                    <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />Cancel
                   </Button>
-                ) : (
-                  <>
+                ) : <>
                     {canCreateParts && <Button
                       variant="outline"
                       className={barButton}
@@ -1480,52 +1385,15 @@ export function AddPartDialog({
                         className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
                       />
                     </div>
-                    <Button
-                      variant={pendingParts.length > 0 ? "default" : "outline"}
-                      className={barButton}
-                      onClick={handleReviewAndAdd}
-                      disabled={pendingParts.length === 0}
-                      data-tutorial="wizard-review-button"
-                    >
-                      <ListChecksIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                      Review{pendingParts.length > 0 ? ` (${pendingParts.length})` : ""}
-                    </Button>
-                  </>
-                )}
-                {prefabView ? null : wizardStage === "review" ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      className={barButton}
-                      onClick={() => setWizardStage(stageBeforeReviewRef.current)}
-                    >
-                      <ArrowLeftIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                      Keep Picking
-                    </Button>
-                    <Button
-                      className={barButton}
-                      onClick={handleAddToMaterialList}
-                      data-tutorial="wizard-confirm"
-                      disabled={
-                        pendingParts.length === 0 ||
-                        !allPartsHaveSuppliers ||
-                        isAddingParts
-                      }
-                      title={
-                        !allPartsHaveSuppliers
-                          ? isOnline
-                            ? "Please select a supplier for all parts"
-                            : "Missing cached supplier mapping. Reconnect once or select a cached supplier."
-                          : undefined
-                      }
-                    >
-                      <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-                      {isAddingParts
-                        ? "Adding..."
-                        : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
-                    </Button>
-                  </>
-                ) : null}
+                </>}
+                {!prefabView && <Button
+                  className={barButton} onClick={handleAddToMaterialList}
+                  data-tutorial="wizard-confirm"
+                  disabled={pendingParts.length === 0 || isAddingParts}
+                >
+                  <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  {isAddingParts ? "Adding..." : `Add ${pendingParts.length} ${isToolRequest ? "Tool" : "Part"}${pendingParts.length !== 1 ? "s" : ""}${prefabTarget ? " to Prefab" : ""}`}
+                </Button>}
               </PriorityActionBar>
             </div>
           </div>

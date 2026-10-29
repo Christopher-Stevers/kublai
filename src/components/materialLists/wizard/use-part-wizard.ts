@@ -64,7 +64,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     const entry = currentSnapshotState()?.catalogue;
     return entry?.kind === catalogKind && entry.supplierId === supplierId && entry.scope === window.location.pathname ? entry : null;
   });
-  const [wizardStage, setWizardStage] = useState<WizardStage>(saved?.stage ?? "catalog");
+  const [wizardStage, setWizardStage] = useState<WizardStage>(saved?.stage === "review" ? "part" : saved?.stage ?? "catalog");
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     saved?.catalogId ?? null,
   );
@@ -633,9 +633,9 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
 
   /**
    * Going back to a step clears its choice and every later one, so the step
-   * shows nothing selected (picked parts in the pending tray stay).
+   * shows nothing selected (chosen parts stay).
    */
-  const returnToStage = useCallback((stage: Exclude<WizardStage, "review">) => {
+  const returnToStage = useCallback((stage: WizardStage) => {
     stepDirectionRef.current = "back";
     const order = ["catalog", "material", "size", "category", "part"] as const;
     const from = order.indexOf(stage);
@@ -658,7 +658,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     setWizardStage(stage);
   }, []);
 
-  const handleStageClick = (stage: Exclude<WizardStage, "review">) => {
+  const handleStageClick = (stage: WizardStage) => {
     if (stage === "catalog") {
       returnToStage("catalog");
     } else if (stage === "material" && hasCatalogSelection) {
@@ -801,7 +801,7 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     : null;
 
   const wizardSearchPlaceholder =
-    wizardStage === "review" ? "" : "Search part names...";
+    "Search part names...";
 
   return {
     previewQuickWheelChoice,

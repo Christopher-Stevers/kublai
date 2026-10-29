@@ -65,7 +65,7 @@ type OptimisticSupplierSelection = {
   packSize?: string | null;
 };
 
-export interface ReviewStageProps {
+export interface ChosenPartsViewProps {
   pendingParts: PendingPart[];
   supplierPartsData: Map<string, SupplierPartOption[]>;
   onUpdateQuantity: (partId: string, delta: number) => void;
@@ -121,7 +121,7 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
   );
 }
 
-function ReviewQuantityControls({
+function ChosenQuantityControls({
   partId,
   quantity,
   orderMultiple,
@@ -153,7 +153,7 @@ function ReviewQuantityControls({
     );
   return (
     <div
-      data-tutorial="wizard-review-quantity"
+      data-tutorial="wizard-chosen-quantity"
       className="flex items-center justify-center"
     >
       <Button
@@ -191,7 +191,7 @@ function ReviewQuantityControls({
   );
 }
 
-export function ReviewStage({
+export function ChosenPartsView({
   pendingParts,
   supplierPartsData,
   onUpdateQuantity,
@@ -200,13 +200,13 @@ export function ReviewStage({
   onRemovePendingPart,
   allPartsHaveSuppliers,
   isToolRequest = false,
-}: ReviewStageProps) {
+}: ChosenPartsViewProps) {
   const [supplierDialogPartId, setSupplierDialogPartId] = useState<
     string | null
   >(null);
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] =
     useState<number>(0);
-  const [reviewView, setReviewView] = useState<"grid" | "table">("table");
+  const [chosenView, setChosenView] = useState<"grid" | "table">("table");
   const [optimisticSupplierSelections, setOptimisticSupplierSelections] =
     useState<Record<string, OptimisticSupplierSelection>>({});
 
@@ -405,15 +405,15 @@ export function ReviewStage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-3 sm:space-y-4">
+    <div id="chosen-parts-content" className="mx-auto w-full max-w-6xl space-y-3 sm:space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold sm:text-lg">
-            {isToolRequest ? "Review Tools" : "Review Parts"}
+            {isToolRequest ? "Chosen Tools" : "Chosen Parts"}
           </h3>
           <ViewToggle
-            view={reviewView}
-            onViewChange={setReviewView}
+            view={chosenView}
+            onViewChange={setChosenView}
             showOnMobile
           />
         </div>
@@ -429,7 +429,8 @@ export function ReviewStage({
         )}
       </div>
 
-      {reviewView === "grid" ? (
+      {pendingParts.length === 0 && <p className="text-muted-foreground py-6 text-center">No parts chosen yet.</p>}
+      {chosenView === "grid" ? (
         <div className="space-y-2">
           {pendingParts.map((pendingPart) => {
             const isToolLine = isToolRequest || pendingPart.isTool;
@@ -489,7 +490,7 @@ export function ReviewStage({
                     </div>
 
                     <div className="flex h-10 min-w-0 items-center justify-center sm:h-11">
-                      <ReviewQuantityControls
+                      <ChosenQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
                         piecesPerPack={pendingPart.partDefinition.piecesPerPack}
@@ -567,7 +568,7 @@ export function ReviewStage({
                   </div>
 
                   <div className="flex h-8 min-w-0 items-center justify-center self-center">
-                    <ReviewQuantityControls
+                    <ChosenQuantityControls
                       partId={pendingPart.partId}
                       quantity={pendingPart.quantity}
                       piecesPerPack={pendingPart.partDefinition.piecesPerPack}

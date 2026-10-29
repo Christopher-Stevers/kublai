@@ -786,6 +786,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   position: absolute;
   inset: -0.625rem -0.75rem -0.25rem;
 }
+[data-action-bar-tab]:not([data-count])::after { display: none; }
 [data-action-bar-tab]::after {
   content: attr(data-count);
   min-width: 1.125rem;

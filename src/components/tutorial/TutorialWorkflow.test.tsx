@@ -119,8 +119,18 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     await screen.findByRole("heading", { name: "Select Category" });
     fireEvent.click(await screen.findByText("Fittings", { exact: true }));
     fireEvent.pointerUp(await screen.findByText('2" XFR 90', { exact: true }));
-    await clickTarget("wizard-review-button");
+
     await waitFor(() => expect(target("wizard-confirm")).toBeEnabled());
+    fireEvent.click(target("wizard-confirm"));
+    // Before supplier resolution finishes, Add opens Chosen Parts without writing.
+    await screen.findByRole("heading", { name: "Chosen Parts" });
+    expect(await runtime!.material.query(tx => tx.scan({ prefix: "materialListItem/" }).values().toArray())).toHaveLength(0);
+    expect(screen.queryByText(/Pending Parts/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Review/ })).not.toBeInTheDocument();
+    await screen.findByRole("button", { name: /Practice Plumbing Supply/ });
+    fireEvent.click(target("wizard-chosen-toggle"));
+    expect(await screen.findByRole("heading", { name: "Select Parts" })).toBeInTheDocument();
+    // Once the chosen part has a supplier, Add commits directly from selection.
     fireEvent.click(target("wizard-confirm"));
     await waitFor(() => expect(document.querySelector('[data-tutorial="add-part-dialog"]')).toBeNull());
     expect(await screen.findByText('2" XFR 90', { exact: true })).toBeInTheDocument();
@@ -187,8 +197,8 @@ describe("tutorial on the real ForemanHQ workflow", () => {
     fireEvent.click(await screen.findByText("Fittings", { exact: true }));
     await guide("Select a part");
     fireEvent.pointerUp(await screen.findByText('2" XFR 90', { exact: true }));
-    await guide("Review your selected parts");
-    await clickTarget("wizard-review-button");
+    await guide("Add the material to your list");
+    await clickTarget("wizard-chosen-toggle");
     await guide("Add the material to your list");
     expect(screen.getByRole("button", { name: "End tutorial" })).toBeInTheDocument();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity" }), { target: { value: "3" } });

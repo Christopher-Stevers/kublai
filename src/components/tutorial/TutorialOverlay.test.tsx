@@ -139,7 +139,7 @@ describe("guidance on real controls", () => {
           data-tutorial-pending-count="0"
         >
           <button data-tutorial="wizard-part">Fitting</button>
-          <button data-tutorial="wizard-review-button">Review</button>
+          <button data-tutorial="wizard-confirm">Add 1 Part</button>
         </div>
         <TutorialOverlay onFinish={finish} />
       </>,
@@ -151,7 +151,7 @@ describe("guidance on real controls", () => {
         ?.setAttribute("data-tutorial-pending-count", "1");
     });
     expect(
-      await screen.findByText("Review your selected parts"),
+      await screen.findByText("Add the material to your list"),
     ).toBeInTheDocument();
     view.rerender(
       <>

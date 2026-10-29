@@ -193,3 +193,13 @@ it("widens the search across the bar and shrinks it back with the X", () => {
   expect(screen.getByRole("button", { name: "Receive" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
 });
+
+it("renders a custom view toggle above the action row", () => {
+  const toggle = vi.fn();
+  render(<PriorityActionBar tabAction={<button data-action-bar-tab onClick={toggle}>Chosen Parts (2)</button>}>{buttons(3)}</PriorityActionBar>);
+  const tab = screen.getByRole("button", { name: "Chosen Parts (2)" });
+  expect(tab.closest("[data-action-bar-row]")).toBeNull();
+  expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
+  fireEvent.click(tab);
+  expect(toggle).toHaveBeenCalledOnce();
+});

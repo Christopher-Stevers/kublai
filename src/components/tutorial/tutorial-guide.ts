@@ -30,18 +30,12 @@ export function getTutorialGuide(
     if (wizard) {
       const stage = wizard.dataset.tutorialStage ?? "catalog";
       const pending = Number(wizard.dataset.tutorialPendingCount ?? 0);
-      if (stage === "review")
+      if (pending > 0 || stage === "chosen")
         return {
           target: "wizard-confirm",
           title: "Add the material to your list",
-          text: "Check the quantity and supplier here, then tap Add to put these parts on your list.",
-          allow: ["wizard-review-quantity"],
-        };
-      if (pending > 0)
-        return {
-          target: "wizard-review-button",
-          title: "Review your selected parts",
-          text: "Your part is selected. Open the review tray to check its quantity and supplier.",
+          text: "Tap Add to put your selected parts on the list. Chosen Parts lets you change quantities and suppliers; Add opens it automatically if a supplier is missing.",
+          allow: ["wizard-chosen-toggle", "wizard-chosen-quantity"],
         };
       const instructions: Record<string, [string, string]> = {
         catalog: ["Select a catalog", "Choose Plumbing from the part picker."],
