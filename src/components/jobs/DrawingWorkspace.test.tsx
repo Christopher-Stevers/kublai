@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
+  queryError: null as { message: string; data: { code: string } } | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
   metadata: vi.fn(),
   setScale: vi.fn(),
@@ -96,7 +97,7 @@ vi.mock("~/trpc/react", () => ({
   },
 }));
 vi.mock("~/hooks/use-drawing-workspace-query", () => ({
-  useDrawingWorkspaceQuery: () => ({ data: mocks.data, error: null, refetch: mocks.invalidate }),
+  useDrawingWorkspaceQuery: () => ({ data: mocks.data, error: mocks.queryError, refetch: mocks.invalidate }),
 }));
 
 vi.mock("./DrawingAccountProvider", () => ({
@@ -369,7 +370,7 @@ const open = () =>
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
   if (name === "More") {
-    const more = screen.getByRole("button", { name: "More", exact: true });
+    const more = screen.getByRole("button", { name: "More" });
     if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
     return;
   }
@@ -394,6 +395,7 @@ const chooseTool = (id: string) => {
   }
 };
 beforeEach(() => {
+  mocks.queryError = null;
   vi.clearAllMocks();
   mocks.setScale.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => ({
     ...mocks.data!.metadata, scale, revision: mocks.data!.metadata.revision + 1,
@@ -511,6 +513,7 @@ describe("drawing workspace workflows", () => {
     const next = vi.fn();
     render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext: next }} />);
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Page" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(next).toHaveBeenCalledOnce();
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
@@ -524,6 +527,34 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Loading drawing tools…");
     expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({ src: sheet.imageUrl });
+  });
+
+  it("does not show the drawing when access is revoked, even offline", () => {
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    mocks.data = null;
+    mocks.queryError = { message: "Drawing access denied", data: { code: "FORBIDDEN" } };
+    open();
+    expect(screen.queryByTestId("markup-editor")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("Drawing access denied");
+  });
+
+  it("keeps one viewer and shared toolbar mounted as tools finish loading", () => {
+    mocks.data = null;
+    const props = { jobId, sheet, onOpenSheet: vi.fn() };
+    const { rerender } = render(<DrawingWorkspace {...props} />);
+    const viewer = screen.getByTestId("markup-editor");
+    const toolbar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    const loading = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(loading.toolControls).toBeDefined();
+    expect(loading.onSavePipeComponent).toBeUndefined();
+    expect(screen.queryByRole("button", { name: "Markup" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pipe system" })).toBeNull();
+    mocks.data = fixture();
+    rerender(<DrawingWorkspace {...props} />);
+    expect(screen.getByTestId("markup-editor")).toBe(viewer);
+    expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBe(toolbar);
+    expect(screen.getByRole("button", { name: "Markup" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Saved");
   });
 
   it("lets More opt into Quickwheel mode, uses the same measurement command, and restores the bars from the wheel", () => {
@@ -1811,7 +1842,7 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
 
 it("opens layers directly from the drawing corner, including full screen", () => {
   open();
-  const layers = screen.getByRole("button", { name: "Layers", exact: true });
+  const layers = screen.getByRole("button", { name: "Layers" });
   expect(layers).toHaveClass("rounded-full", "size-10");
   fireEvent.click(layers);
   expect(layers).toHaveAttribute("aria-expanded", "true");

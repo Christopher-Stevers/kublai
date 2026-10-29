@@ -495,7 +495,7 @@ export function DrawingWorkspace({
       : null;
   const data =
     serverData ??
-    (!online &&
+    (!accessRevoked && !online &&
     snapshot?.sheetId === sheet.id &&
     (!boundUser || snapshot.actor.id === boundUser)
       ? snapshot
@@ -1560,64 +1560,26 @@ export function DrawingWorkspace({
         <Button onClick={() => window.location.reload()}>Reload session</Button>
       </div>
     );
-  // The drawing shows while its markups and tools load; errors and revoked
-  // access still replace it below.
+  // One workspace/viewer stays mounted while server tools arrive. Only real
+  // server or account-scoped cached data authorizes writes and enters caches.
   const loadingTools = !data && online && !query.error;
-  if (!data && (!online || loadingTools))
-    return (
-      <DrawingQuickWheel enabled={quickWheel} group={{ id: "offline", title: source.name, items: [
-        { id: "measure", label: "Measure", icon: <RulerIcon />, run: () => requestMode("measure") },
-        ...(pageNavigation ? [
-          { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
-          { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
-        ] : []),
-        { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
-        { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [{ id: "regular-controls", label: "Quickwheel mode off", run: () => setQuickWheel(false) }] },
-      ] }}>
-      <div className="relative flex h-full min-h-0 flex-col">
-        {loadingTools ? (
-          // Over the drawing, so it does not move when the tools arrive.
-          <p role="status" className="bg-background/90 pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-full border px-3 py-1 text-xs shadow-sm">
-            Loading drawing tools…
-          </p>
-        ) : (
-          <p className="bg-background p-2 text-xs">
-            Offline drawing · annotation data was not downloaded.
-          </p>
-        )}
-        <div className="min-h-0 flex-1">
-          <DrawingSheetViewer
-            toolControls={quickWheel ? { measureRequest: 0, pipeRequest: 0, modeRequest, onDone: () => requestMode("idle") } : undefined}
-            navigateTo={navigate}
-            scrollPages={scrollPages}
-            appearance={appearance}
-            src={resolved.src}
-            sourceSize={{ width: source.width, height: source.height }}
-            alt={source.name}
-            onPdfReady={onReady}
-            pdf={resolved.pdf}
-            tiles={tileBase(source.imageUrl)}
-            sheetKey={source.id}
-            initialViewport={viewport.current}
-            onViewportChange={updateViewport}
-            resolveAssetUrl={resolveAssetUrl}
-          />
-        </div>
-      </div>
-      </DrawingQuickWheel>
-    );
-  if (!data)
+  if (!data && (accessRevoked || (online && query.error)))
     return (
       <div className="grid h-full place-content-center gap-3 p-6 text-center">
-        <p>{query.error?.message ?? "Could not load the drawing."}</p>
-        {query.error && (
-          <Button onClick={() => void query.refetch()}>Try again</Button>
-        )}
+        <p role="alert">{query.error?.message ?? "Could not load the drawing."}</p>
+        <Button onClick={() => void query.refetch()}>Try again</Button>
       </div>
     );
+  const viewData: Workspace = data ?? {
+    sheetId: sheet.id, jobId, canAnnotate: false, canUseSheetTools: false,
+    canManage: false, actor: { id: boundUser ?? "", name: "" },
+    members: [], jobSheets: [source], entities: [], activity: [],
+    favorite: false, watching: false,
+    metadata: { revision: 0, currentSourceSheetId: source.id, number: "", title: "", discipline: "", tags: [], status: "draft", scale: null },
+  };
   if (
-    sourceOverride &&
-    !data.jobSheets.some((item) => item.id === sourceOverride)
+    data && sourceOverride &&
+    !viewData.jobSheets.some((item) => item.id === sourceOverride)
   )
     return (
       <div className="grid h-full place-content-center gap-3 p-6 text-center">
@@ -1630,7 +1592,7 @@ export function DrawingWorkspace({
       </div>
     );
   if (
-    compareIds &&
+    data && compareIds &&
     [
       compareIds.first,
       compareIds.second,
@@ -1646,7 +1608,9 @@ export function DrawingWorkspace({
       </div>
     );
 
-  const statusText = pending
+  const statusText = !data
+    ? loadingTools ? "Loading drawing tools…" : "Offline drawing · annotation data was not downloaded."
+    : pending
     ? "Saving…"
     : form || failedDrafts.length || metadataDirty
       ? "Unsaved changes"
@@ -1757,18 +1721,18 @@ export function DrawingWorkspace({
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
-      ...(!data.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !data.canUseSheetTools || !online, run: () => setLegendOpen(true) }] : []),
-      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !data.canUseSheetTools || !writable || !online, run: openAutoHyperlink },
+      ...(!viewData.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !viewData.canUseSheetTools || !online, run: () => setLegendOpen(true) }] : []),
+      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !viewData.canUseSheetTools || !writable || !online, run: openAutoHyperlink },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
       { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
-      ...(!data.documentSource ? [{ id: "super-equipment", label: "Super Equipment", disabled: !data.canUseSheetTools || !online, run: () => setSuperEquipmentOpen(true) }] : []),
-      ...(!data.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !canAccessSystems || !data.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
-      ...(!data.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
-      ...(!data.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !data.canUseSheetTools || !data.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
-      ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!data.documentSource || id !== "notifications")).map(([id, label]) => {
+      ...(!viewData.documentSource ? [{ id: "super-equipment", label: "Super Equipment", disabled: !viewData.canUseSheetTools || !online, run: () => setSuperEquipmentOpen(true) }] : []),
+      ...(!viewData.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !canAccessSystems || !viewData.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
+      ...(!viewData.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !viewData.canUseSheetTools || !viewData.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
+      ...(!viewData.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !viewData.canUseSheetTools || !viewData.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
+      ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
-        return { id, label, icon: <Icon />, run: () => { setPanel(id); setForm(null); } };
+        return { id, label, icon: <Icon />, disabled: !data && id !== "search", run: () => { setPanel(id); setForm(null); } };
       }),
       { id: "visibility", label: "Default visibility", children: [
         { id: "public", label: "Public · job team", selected: defaultMarkupVisibility === "published", run: () => setDefaultMarkupVisibility("published") },
@@ -1802,13 +1766,13 @@ export function DrawingWorkspace({
       aria-label="Drawing workspace"
       data-snapshot-source-title={source.name}
     >
-      {data.canUseSheetTools && legendOpen && <LegendItemsDialog sheetId={sheet.id} sourceId={sourceId} onClose={()=>setLegendOpen(false)}
+      {viewData.canUseSheetTools && legendOpen && <LegendItemsDialog sheetId={sheet.id} sourceId={sourceId} onClose={()=>setLegendOpen(false)}
         onSource={(id,box)=>{
-          const target=data.jobSheets.find(s=>s.id===id);
+          const target=viewData.jobSheets.find(s=>s.id===id);
           if(id===sourceId) setNavigate({center:{x:(box.left+box.right)/2,y:(box.top+box.bottom)/2},zoom:Math.min(50,0.8/Math.max(box.right-box.left,box.bottom-box.top)),requestId:crypto.randomUUID()});
           else if(target) openLinkUrl(equipmentDrawingDestination({jobId,setId:target.setId,sheetId:id,sourceSheetId:id,name:target.name,tag:"Legend",box:{...box,text:"Legend"}}).href);
         }}/>}
-      {data.canUseSheetTools && autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
+      {viewData.canUseSheetTools && autoHyperlinkOpen && <AutoHyperlinkDialog key={sourceId} sheetId={sheet.id} sourceId={sourceId} jobId={jobId} setId={source.setId} name={source.name} visibility={defaultMarkupVisibility} entities={entities}
         readWords={async () => {
           if (words.words.length) return words.words;
           if (!pdf) return [];
@@ -1817,7 +1781,7 @@ export function DrawingWorkspace({
           return index.words;
         }}
         save={async value => {
-          const entity = await autoHyperlinkSave.mutateAsync({ ...value, expectedUserId: data.actor.id });
+          const entity = await autoHyperlinkSave.mutateAsync({ ...value, expectedUserId: viewData.actor.id });
           patchEntity(entity);
           return entity;
         }}
@@ -1855,11 +1819,11 @@ export function DrawingWorkspace({
           </div>
         </DialogContent>
       </Dialog>
-      {data.canUseSheetTools && superEquipmentOpen && <SuperEquipmentDialog sheetId={sheet.id} jobId={jobId} onClose={()=>setSuperEquipmentOpen(false)}/>}
-      {data.canUseSheetTools && canAccessSystems && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
-      {data.canUseSheetTools && superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
-      {data.canUseSheetTools && superScaleOpen && (
-        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={data.metadata} sheets={data.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
+      {viewData.canUseSheetTools && superEquipmentOpen && <SuperEquipmentDialog sheetId={sheet.id} jobId={jobId} onClose={()=>setSuperEquipmentOpen(false)}/>}
+      {viewData.canUseSheetTools && canAccessSystems && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
+      {viewData.canUseSheetTools && superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
+      {viewData.canUseSheetTools && superScaleOpen && (
+        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={viewData.metadata} sheets={viewData.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
       {appearanceOpen && (
         <DrawingAppearanceDialog
@@ -1989,7 +1953,7 @@ export function DrawingWorkspace({
                               expectedRevision: 0,
                             },
                             undefined,
-                            data.actor.name,
+                            viewData.actor.name,
                           )
                           .then(() => queued.discard(record.operationId))
                           .catch(fail)
@@ -2139,7 +2103,7 @@ export function DrawingWorkspace({
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}
               annotations={viewerAnnotations}
-              loadPipeLegendReferences={!data.documentSource ? () => utils.drawingsWorkspace.pipeLegendReferences.fetch({sheetId:sourceId}) : undefined}
+              loadPipeLegendReferences={!viewData.documentSource ? () => utils.drawingsWorkspace.pipeLegendReferences.fetch({sheetId:sourceId}) : undefined}
               pipeMaterialList={{ jobId, sheetName: source.name }}
               pipeReviewAnnotations={entities.filter(entity => entity.visibility !== "archived" && !optimistic.some(draft => draft.id === entity.id))}
               measurementLayers={measurementLayers}
@@ -2154,14 +2118,14 @@ export function DrawingWorkspace({
               selectedId={selectedId}
               selectionMode={selectionMode}
               canEditAnnotation={canEditAnnotation}
-              sharedScale={current ? data.metadata.scale : null}
+              sharedScale={current ? viewData.metadata.scale : null}
               onScaleChange={
                 online && writable
                   ? async (scale) => {
                       if (superScaleCalibration.current === source.id) {
-                        if (!data.canManage || metadataDirty || pending > 0)
+                        if (!viewData.canManage || metadataDirty || pending > 0)
                           throw new Error("Finish saving sheet details before Super scale.");
-                        return saveMetadata({ ...data.metadata, scale });
+                        return saveMetadata({ ...viewData.metadata, scale });
                       }
                       return saveScale(scale);
                     }
@@ -2351,7 +2315,7 @@ export function DrawingWorkspace({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {panel && (
+        {panel && (data || panel === "markups" || panel === "search") && (
           <aside
             data-drawing-chrome={panel === "markups" ? undefined : true}
             aria-label="Drawing tools panel"
@@ -2412,7 +2376,7 @@ export function DrawingWorkspace({
                                   baseEntity: entities.find(
                                     (entity) => entity.id === form.id,
                                   ),
-                                  authorName: data.actor.name,
+                                  authorName: viewData.actor.name,
                                 })
                               ) {
                                 setPanel("");
@@ -2424,14 +2388,14 @@ export function DrawingWorkspace({
                           : undefined
                       }
                       pending={pending > 0 || equipmentBusy}
-                      workspace={data}
+                      workspace={viewData}
                       offline={!online}
                       responseOnly={
                         form.kind === "issue" &&
                         Boolean(
                           selected &&
-                          selected.authorId !== data.actor.id &&
-                          !data.canManage,
+                          selected.authorId !== viewData.actor.id &&
+                          !viewData.canManage,
                         )
                       }
                     />
@@ -2468,7 +2432,7 @@ export function DrawingWorkspace({
                         </p>
                         <p className="text-sm">
                           {selected.data.status.replaceAll("_", " ")} ·{" "}
-                          {data.members.find(
+                          {viewData.members.find(
                             (member) => member.id === selected.data.assigneeId,
                           )?.name ?? "Unassigned"}
                           {selected.data.dueDate
@@ -2511,8 +2475,8 @@ export function DrawingWorkspace({
                           !queued.records.some(
                             (record) => record.input.id === selected.id,
                           ) &&
-                          (data.canManage ||
-                            selected.authorId === data.actor.id) && (
+                          (viewData.canManage ||
+                            selected.authorId === viewData.actor.id) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -2525,7 +2489,7 @@ export function DrawingWorkspace({
                           !queued.records.some(
                             (record) => record.input.id === selected.id,
                           ) &&
-                          (data.canManage || selected.kind === "markup") &&
+                          (viewData.canManage || selected.kind === "markup") &&
                           selected.visibility === "private" && (
                             <Button
                               size="sm"
@@ -2925,7 +2889,7 @@ export function DrawingWorkspace({
                       {word.text}
                     </button>
                   ))}
-                  {data.canManage && words.words.length > 0 && (
+                  {viewData.canManage && words.words.length > 0 && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -2962,7 +2926,7 @@ export function DrawingWorkspace({
               )}
               {panel === "search" && (
                 <DrawingReferenceLinks
-                  workspace={data}
+                  workspace={viewData}
                   sourceSheetId={sourceId}
                   words={words.words}
                   online={online}
@@ -3025,13 +2989,13 @@ export function DrawingWorkspace({
                       void favoriteMutation
                         .mutateAsync({
                           sheetId: sheet.id,
-                          favorite: !data.favorite,
+                          favorite: !viewData.favorite,
                         })
                         .then(() => refresh())
                         .catch(fail)
                     }
                   >
-                    {data.favorite
+                    {viewData.favorite
                       ? "★ Favorited · remove"
                       : "☆ Add to favorites"}
                   </Button>
@@ -3041,7 +3005,7 @@ export function DrawingWorkspace({
                       label={key[0]!.toUpperCase() + key.slice(1)}
                     >
                       <Input
-                        disabled={!data.canManage || pending > 0}
+                        disabled={!viewData.canManage || pending > 0}
                         value={metadata[key]}
                         onChange={(e) =>
                           editMetadata({ [key]: e.target.value })
@@ -3051,7 +3015,7 @@ export function DrawingWorkspace({
                   ))}
                   <DrawingField label="Tags (comma separated)">
                     <Input
-                      disabled={!data.canManage || pending > 0}
+                      disabled={!viewData.canManage || pending > 0}
                       value={tagDraft}
                       onChange={(e) => {
                         setTagDraft(e.target.value);
@@ -3066,7 +3030,7 @@ export function DrawingWorkspace({
                   </DrawingField>
                   <DrawingField label="Status">
                     <select
-                      disabled={!data.canManage || pending > 0}
+                      disabled={!viewData.canManage || pending > 0}
                       className={drawingFieldClass}
                       value={metadata.status}
                       onChange={(e) =>
@@ -3084,7 +3048,7 @@ export function DrawingWorkspace({
                       )}
                     </select>
                   </DrawingField>
-                  {data.canManage && (
+                  {viewData.canManage && (
                     <>
                       <Button disabled={!online || pending > 0}>
                         Save details
@@ -3095,7 +3059,7 @@ export function DrawingWorkspace({
                           variant="outline"
                           onClick={() => {
                             setMetadataDirty(false);
-                            setMetadata(data.metadata);
+                            setMetadata(viewData.metadata);
                           }}
                         >
                           Reload saved details
@@ -3112,7 +3076,7 @@ export function DrawingWorkspace({
                         location.origin,
                       );
                       url.searchParams.set("drawingSheet", sheet.id);
-                      const owner = data.jobSheets.find(
+                      const owner = viewData.jobSheets.find(
                         (item) => item.id === sheet.id,
                       );
                       if (owner)
@@ -3129,7 +3093,7 @@ export function DrawingWorkspace({
               )}
               {panel === "history" && (
                 <>
-                  {data.canManage && (
+                  {viewData.canManage && (
                     <Button
                       size="sm"
                       disabled={!online}
@@ -3157,7 +3121,7 @@ export function DrawingWorkspace({
                     >
                       <p className="text-sm font-medium">
                         {version.label}
-                        {version.id === data.metadata.currentSourceSheetId
+                        {version.id === viewData.metadata.currentSourceSheetId
                           ? " · Current"
                           : ""}
                       </p>
@@ -3186,8 +3150,8 @@ export function DrawingWorkspace({
                         >
                           Compare
                         </Button>
-                        {data.canManage &&
-                          version.id !== data.metadata.currentSourceSheetId && (
+                        {viewData.canManage &&
+                          version.id !== viewData.metadata.currentSourceSheetId && (
                             <Button
                               size="sm"
                               disabled={!online || pending > 0}
@@ -3197,7 +3161,7 @@ export function DrawingWorkspace({
                                   .mutateAsync({
                                     sheetId: sheet.id,
                                     sourceSheetId: version.id,
-                                    expectedRevision: data.metadata.revision,
+                                    expectedRevision: viewData.metadata.revision,
                                   })
                                   .then(() => {
                                     setSourceOverride(null);
@@ -3227,7 +3191,7 @@ export function DrawingWorkspace({
                       }}
                     >
                       <option value="">Choose a sheet</option>
-                      {data.jobSheets
+                      {viewData.jobSheets
                         .filter((item) => item.id !== sourceId)
                         .map((item) => (
                           <option key={item.id} value={item.id}>
@@ -3244,7 +3208,7 @@ export function DrawingWorkspace({
               )}
               {panel === "reviews" && (
                 <>
-                  {data.canManage && (
+                  {viewData.canManage && (
                     <Button
                       size="sm"
                       disabled={!writable || !online}
@@ -3270,21 +3234,21 @@ export function DrawingWorkspace({
                             </p>
                             <p className="text-muted-foreground text-xs">
                               {entity.authorName} ·{" "}
-                              {data.members.find(
+                              {viewData.members.find(
                                 (member) =>
                                   member.id === entity.data.reviewerId,
                               )?.name ?? "Drawing manager"}
                             </p>
                             {entity.data.status === "pending" &&
                               entity.data.sourceSheetId ===
-                                data.metadata.currentSourceSheetId &&
+                                viewData.metadata.currentSourceSheetId &&
                               !entities.some(
                                 (item) =>
                                   item.kind === "review" &&
                                   item.data.requestId === entity.id,
                               ) &&
-                              (data.canManage ||
-                                entity.data.reviewerId === data.actor.id) && (
+                              (viewData.canManage ||
+                                entity.data.reviewerId === viewData.actor.id) && (
                                 <Button
                                   size="sm"
                                   disabled={!online}
@@ -3294,7 +3258,7 @@ export function DrawingWorkspace({
                                       kind: "review",
                                       visibility: "published",
                                       expectedMetadataRevision:
-                                        data.metadata.revision,
+                                        viewData.metadata.revision,
                                       data: {
                                         ...entity.data,
                                         requestId: entity.id,
@@ -3315,7 +3279,7 @@ export function DrawingWorkspace({
               )}
               {panel === "packages" && (
                 <>
-                  {data.canManage && (
+                  {viewData.canManage && (
                     <Button
                       size="sm"
                       disabled={!online}
@@ -3362,7 +3326,7 @@ export function DrawingWorkspace({
                               }))}
                               entities={[]}
                               store={
-                                data.documentSource ? null : account?.store
+                                viewData.documentSource ? null : account?.store
                               }
                               resolveAssetUrl={resolveAssetUrl}
                             />
@@ -3376,13 +3340,13 @@ export function DrawingWorkspace({
                   sheet={source}
                   workspaceSheetId={sheet.id}
                   jobId={jobId}
-                  sheets={data.jobSheets}
+                  sheets={viewData.jobSheets}
                   entities={visible}
-                  scale={current ? data.metadata.scale : null}
+                  scale={current ? viewData.metadata.scale : null}
                   store={account?.store}
                   resolveAssetUrl={resolveAssetUrl}
                   onOfflineSaved={async () => {
-                    await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
+                    if (data) await account?.store?.saveSnapshot(`workspace:${sheet.id}`, data);
                     await onPrepareOffline?.();
                   }}
                 />
@@ -3397,13 +3361,13 @@ export function DrawingWorkspace({
                       void watchMutation
                         .mutateAsync({
                           sheetId: sheet.id,
-                          watching: !data.watching,
+                          watching: !viewData.watching,
                         })
                         .then(() => refresh())
                         .catch(fail)
                     }
                   >
-                    {data.watching
+                    {viewData.watching
                       ? "Watching this drawing · stop"
                       : "Watch this drawing"}
                   </Button>
@@ -3432,7 +3396,7 @@ export function DrawingWorkspace({
                           setSelectedId(item.entityId);
                           setPanel("selected");
                         } else {
-                          const target = data.jobSheets.find(
+                          const target = viewData.jobSheets.find(
                             (entry) => entry.id === item.sheetId,
                           );
                           if (target) onOpenSheet(target);
@@ -3440,7 +3404,7 @@ export function DrawingWorkspace({
                       }}
                     >
                       <b>
-                        {data.jobSheets.find(
+                        {viewData.jobSheets.find(
                           (entry) => entry.id === item.sheetId,
                         )?.name ?? "Drawing"}
                       </b>
@@ -3465,7 +3429,7 @@ export function DrawingWorkspace({
                 </>
               )}
               {panel === "activity" &&
-                data.activity.map((item) => (
+                viewData.activity.map((item) => (
                   <div key={item.id} className="border-b pb-2 text-sm">
                     <b>{item.actorName}</b> · {item.action.replaceAll("_", " ")}
                     <span className="text-muted-foreground block text-xs">
@@ -3602,18 +3566,18 @@ export function DrawingWorkspace({
           {barAction("Fit to screen", ScanIcon, () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }))}
           {barAction("Overlay drawings", LayersIcon, () => setOverlayPickerOpen(true), overlayChoices.length < 2)}
           {barAction("Drawing appearance", PaletteIcon, () => setAppearanceOpen(true))}
-          {data.canUseSheetTools && data.canAnnotate !== false && barAction("Auto Hyperlink", Link2Icon, openAutoHyperlink, !writable || !online)}
-          {!data.documentSource && data.canUseSheetTools && <>
+          {viewData.canUseSheetTools && viewData.canAnnotate !== false && barAction("Auto Hyperlink", Link2Icon, openAutoHyperlink, !writable || !online)}
+          {!viewData.documentSource && viewData.canUseSheetTools && <>
             {barAction("Legend Items", BookOpenIcon, () => setLegendOpen(true), !online)}
             {barAction("Super Equipment", FileTextIcon, () => setSuperEquipmentOpen(true), !online)}
             {canAccessSystems && barAction("Super Spec Material", FileTextIcon, () => setSuperSpecMaterialOpen(true), !online)}
-            {data.canManage && barAction("Super Label", FileTextIcon, () => setSuperLabelOpen(true), !online)}
-            {data.canManage && barAction("Super scale", RulerIcon, () => setSuperScaleOpen(true), !online)}
+            {viewData.canManage && barAction("Super Label", FileTextIcon, () => setSuperLabelOpen(true), !online)}
+            {viewData.canManage && barAction("Super scale", RulerIcon, () => setSuperScaleOpen(true), !online)}
           </>}
           {onDocumentDetails && barAction("Document details", FileTextIcon, onDocumentDetails)}
           {onClose && barAction("Close document", XIcon, onClose)}
-          {panels.filter(([id]) => id !== "files" && (!data.documentSource || id !== "notifications")).map(([id, label]) =>
-            barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, false, panel === id)
+          {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
+            barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups" && id !== "search", panel === id)
           )}
           {bottomMode.pipe ||
           (!bottomMode.measuring && tool !== "pan" && OTHER_TOOLS.has(tool)) ? (
@@ -3698,7 +3662,7 @@ export function DrawingWorkspace({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {data.canAnnotate !== false && <Button
+          {viewData.canAnnotate !== false && <Button
             disabled={!writable}
             variant={
               markupOpen || (!OTHER_TOOLS.has(tool) && !bottomMode.measuring)
