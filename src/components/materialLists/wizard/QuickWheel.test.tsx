@@ -404,7 +404,7 @@ describe("wizard quick wheel", () => {
     steer(-50);
     for (let tick = 0; tick < count * 12; tick++) {
       const labels = [...wheel()!.querySelectorAll("foreignObject")];
-      expect(labels.length).toBeLessThanOrEqual(7);
+      expect(labels.length).toBeLessThanOrEqual(9);
       labels.filter(tile => Number(tile.getAttribute("opacity")) > 0.8).forEach(tile => seen.add(tile.textContent!));
       dwell(100);
     }

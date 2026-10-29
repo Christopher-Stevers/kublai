@@ -115,6 +115,14 @@ describe("Quickwheel joystick", () => {
 });
 
 describe("single thumb rail", () => {
+  it("includes partly off-screen choices instead of requiring full circles", () => {
+    const bounds = { left: 12, top: 88, right: 418, bottom: 838 };
+    const rail = joystickWheelArc({ x: 350, y: 520 }, bounds, 170, 20, "right")!;
+    expect(rail.points.length).toBeGreaterThanOrEqual(4);
+    expect(rail.points.some(p => p.x - 52 < bounds.left || p.x + 52 > bounds.right
+      || p.y - 52 < bounds.top + 52 || p.y + 52 > bounds.bottom)).toBe(true);
+  });
+
   it.each([
     [430, 850, 350, 520, "right"],
     [430, 850, 75, 520, "left"],
@@ -142,14 +150,14 @@ describe("single thumb rail", () => {
         false,
         rail.arc,
       );
-      expect(tiles.length).toBeLessThanOrEqual(7);
+      expect(tiles.length).toBeLessThanOrEqual(9);
       expect(new Set(tiles.map((tile) => tile.index)).size).toBe(tiles.length);
       const full = tiles.filter((tile) => tile.opacity === 1);
       full.forEach((tile, i) => {
-        expect(tile.x - 52).toBeGreaterThanOrEqual(bounds.left - 0.1);
-        expect(tile.x + 52).toBeLessThanOrEqual(bounds.right + 0.1);
-        expect(tile.y - 52).toBeGreaterThanOrEqual(bounds.top - 0.1);
-        expect(tile.y + 52).toBeLessThanOrEqual(bounds.bottom + 0.1);
+        expect(tile.x + 26).toBeGreaterThanOrEqual(bounds.left - 0.1);
+        expect(tile.x - 26).toBeLessThanOrEqual(bounds.right + 0.1);
+        expect(tile.y + 26).toBeGreaterThanOrEqual(bounds.top - 0.1);
+        expect(tile.y - 26).toBeLessThanOrEqual(bounds.bottom + 0.1);
         full
           .slice(i + 1)
           .forEach((other) =>
@@ -164,7 +172,7 @@ describe("single thumb rail", () => {
     const origin = { x: 150, y: 150 };
     const rail = joystickWheelArc(origin, { left: 0, top: 0, right: 300, bottom: 300 }, 170, 20, "right", { x: 300, y: 204 })!;
     expect(rail.arc.radius).toBe(208);
-    expect(rail.points).toHaveLength(1);
+    expect(rail.points.length).toBeGreaterThanOrEqual(1);
     for (const point of rail.points)
       expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(208);
   });

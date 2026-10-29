@@ -126,7 +126,7 @@ export function joystickWheelArc(
   const angularDistance = (a: number, b: number) =>
     Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   for (
-    let capacity = Math.min(6, count);
+    let capacity = Math.min(8, count);
     capacity >= 1;
     capacity--
   ) {
@@ -156,10 +156,12 @@ export function joystickWheelArc(
               (!inward ||
                 (p.x - origin.x) * inward.x + (p.y - origin.y) * inward.y >=
                   0) &&
-              p.x >= bounds.left + padding &&
-              p.x <= bounds.right - padding &&
-              p.y >= bounds.top + 52 + padding &&
-              p.y <= bounds.bottom - padding &&
+              // A quarter of an edge tile may already be visible. Do not
+              // wait for its entire circle to fit before extending the rail.
+              p.x >= bounds.left - padding / 2 &&
+              p.x <= bounds.right + padding / 2 &&
+              p.y >= bounds.top + 52 - padding / 2 &&
+              p.y <= bounds.bottom + padding / 2 &&
               thumbClearance(p.x, p.y, origin.x, origin.y, hand) >=
                 padding + 38,
           )
