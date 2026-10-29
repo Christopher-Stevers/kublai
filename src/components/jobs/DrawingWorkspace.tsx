@@ -2589,14 +2589,20 @@ export function DrawingWorkspace({
                             types: DrawingTool[],
                           ) => (
                             <details key={key} className="group/layers">
-                              <summary className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 text-sm font-medium hover:bg-muted/70">
-                                <MenuTile icon={icon} />
-                                <span className="flex-1">{label}</span>
-                                <span className="text-muted-foreground text-xs">{total(types) || ""}</span>
-                                <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
+                              <summary
+                                className="flex min-h-11 cursor-pointer items-center gap-1 rounded-lg text-sm font-medium hover:bg-muted/70"
+                                aria-label={`Expand ${label} Layers`}
+                                onClick={event => {
+                                  // The parent layer toggles visibility; only the disclosure toggles expansion.
+                                  if ((event.target as HTMLElement).closest("[data-layer-row]")) event.preventDefault();
+                                }}
+                              >
+                                <LayerRow label={label} icon={icon} count={total(types)} on={layers[key] !== false}
+                                  onToggle={() => setLayers(old => ({ ...old, [key]: old[key] === false }))} />
+                                <span className="grid size-11 shrink-0 place-items-center">
+                                  <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
+                                </span>
                               </summary>
-                              <LayerRow label={`All ${label}`} icon={icon} on={layers[key] !== false}
-                                onToggle={() => setLayers(old => ({ ...old, [key]: old[key] === false }))} />
                               {types.map(type => (
                                 <LayerRow key={type} child icon={MARKUP_ICONS[type] ?? TOOL_ICONS[type]}
                                   label={layerLabel(type)} count={counts.get(type)} on={!hidden.includes(type)}

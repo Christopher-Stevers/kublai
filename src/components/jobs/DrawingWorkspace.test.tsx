@@ -1850,10 +1850,11 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   expect(screen.getByRole("button", { name: "Arrow layer" })).not.toBeVisible();
   const markup = screen.getByText("Markup", { selector: "summary span" }).closest("details")!;
   expect(markup).not.toHaveAttribute("open");
-  fireEvent.click(markup.querySelector("summary")!);
-  const markups = screen.getByRole("button", { name: "All Markup layer" });
+  const markups = screen.getByRole("button", { name: "Markup layer" });
   fireEvent.click(markups);
   expect(markups).toHaveAttribute("aria-pressed", "false");
+  expect(markup).not.toHaveAttribute("open");
+  fireEvent.click(markup.querySelector("summary")!);
   const arrow = screen.getByRole("button", { name: "Arrow layer" });
   fireEvent.click(arrow);
   expect(arrow).toHaveAttribute("aria-pressed", "false");
