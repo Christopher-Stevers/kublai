@@ -115,25 +115,6 @@ describe("Quickwheel joystick", () => {
 });
 
 describe("single thumb rail", () => {
-  it("never leaves clipped choices opaque on any viewport edge", () => {
-    const bounds = { left: 0, top: 0, right: 400, bottom: 700 };
-    for (const point of [{ x: 20, y: 300 }, { x: 380, y: 300 }, { x: 200, y: 20 }, { x: 200, y: 680 }]) {
-      const [tile] = wheelCarousel(0, 1, [point], { x: 200, y: 350 }, false, undefined, bounds);
-      expect(tile!.opacity).toBeGreaterThan(0);
-      expect(tile!.opacity).toBeLessThan(.75);
-    }
-    expect(wheelCarousel(0, 1, [{ x: 200, y: 350 }], { x: 200, y: 350 }, false, undefined, bounds)[0]!.opacity).toBe(1);
-    expect(wheelCarousel(0, 1, [{ x: -60, y: 350 }], { x: 200, y: 350 }, false, undefined, bounds)).toEqual([]);
-  });
-
-  it("includes partly off-screen choices instead of requiring full circles", () => {
-    const bounds = { left: 12, top: 88, right: 418, bottom: 838 };
-    const rail = joystickWheelArc({ x: 350, y: 520 }, bounds, 170, 20, "right")!;
-    expect(rail.points.length).toBeGreaterThanOrEqual(4);
-    expect(rail.points.some(p => p.x - 52 < bounds.left || p.x + 52 > bounds.right
-      || p.y - 52 < bounds.top + 52 || p.y + 52 > bounds.bottom)).toBe(true);
-  });
-
   it.each([
     [430, 850, 350, 520, "right"],
     [430, 850, 75, 520, "left"],
@@ -163,12 +144,12 @@ describe("single thumb rail", () => {
       );
       expect(tiles.length).toBeLessThanOrEqual(9);
       expect(new Set(tiles.map((tile) => tile.index)).size).toBe(tiles.length);
-      const full = tiles.filter((tile) => tile.opacity === 1);
+      const full = tiles.filter((tile) => tile.opacity >= 0.75);
       full.forEach((tile, i) => {
-        expect(tile.x + 26).toBeGreaterThanOrEqual(bounds.left - 0.1);
-        expect(tile.x - 26).toBeLessThanOrEqual(bounds.right + 0.1);
-        expect(tile.y + 26).toBeGreaterThanOrEqual(bounds.top - 0.1);
-        expect(tile.y - 26).toBeLessThanOrEqual(bounds.bottom + 0.1);
+        expect(tile.x - 52).toBeGreaterThanOrEqual(bounds.left - 0.1);
+        expect(tile.x + 52).toBeLessThanOrEqual(bounds.right + 0.1);
+        expect(tile.y - 52).toBeGreaterThanOrEqual(bounds.top - 0.1);
+        expect(tile.y + 52).toBeLessThanOrEqual(bounds.bottom + 0.1);
         full
           .slice(i + 1)
           .forEach((other) =>

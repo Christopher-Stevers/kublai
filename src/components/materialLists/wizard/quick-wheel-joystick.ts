@@ -156,12 +156,12 @@ export function joystickWheelArc(
               (!inward ||
                 (p.x - origin.x) * inward.x + (p.y - origin.y) * inward.y >=
                   0) &&
-              // A quarter of an edge tile may already be visible. Do not
-              // wait for its entire circle to fit before extending the rail.
-              p.x >= bounds.left - padding / 2 &&
-              p.x <= bounds.right + padding / 2 &&
-              p.y >= bounds.top + 52 - padding / 2 &&
-              p.y <= bounds.bottom + padding / 2 &&
+              // Every position on the main rail must keep the entire tile
+              // visible. Only the fading extensions may leave the viewport.
+              p.x >= bounds.left + padding &&
+              p.x <= bounds.right - padding &&
+              p.y >= bounds.top + 52 + padding &&
+              p.y <= bounds.bottom - padding &&
               thumbClearance(p.x, p.y, origin.x, origin.y, hand) >=
                 padding + 38,
           )
@@ -217,7 +217,6 @@ export function wheelCarousel(
   origin: Point,
   circular: boolean,
   arc?: WheelArc,
-  bounds?: WheelBounds,
 ): CarouselTile[] {
   if (!count || !points.length) return [];
   const capacity = points.length;
@@ -266,15 +265,6 @@ export function wheelCarousel(
         points[lower + 1]!,
         position - lower,
       );
-    }
-    if (bounds) {
-      const edgeDistance = Math.min(point.x - bounds.left, bounds.right - point.x,
-        point.y - bounds.top, bounds.bottom - point.y);
-      const half = WHEEL_CHOICE_DIAMETER / 2;
-      // Begin before the circle reaches the viewport edge and fade continuously
-      // until it has left, regardless of its position along the arc.
-      const visibility = Math.max(0, Math.min(1, (edgeDistance + half) / (2 * half + 24)));
-      opacity *= visibility * visibility * (3 - 2 * visibility);
     }
     if (opacity > 0) tiles.push({ ...point, key, index, opacity });
   }

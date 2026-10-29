@@ -301,7 +301,6 @@ function tilesFor(wheel: Wheel) {
     wheel,
     layout.kind === "circle",
     arc,
-    wheel.bounds,
   ).map((tile) => ({ ...tile, entry: entries[tile.index]! }));
 }
 const interactive =
