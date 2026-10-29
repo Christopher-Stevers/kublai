@@ -83,3 +83,13 @@ it("hides receiving writes when the caller has no receive permission", () => {
     "Packing slips",
   ]);
 });
+it("prioritizes Add and Receive while keeping Mark none fifth", () => {
+  const add = vi.fn();
+  render(<OrderReceiveActions onNotes={vi.fn()} onAdd={add}
+    packingSlips={<button>Receive</button>} onMarkAllReceived={vi.fn()} onMarkNoneReceived={vi.fn()} />);
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["More", "Notes", "Receive", "Add"]);
+  fireEvent.click(screen.getByRole("button", { name: "Add", exact: true }));
+  expect(add).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["More", "Mark none received", "Mark all received", "Notes", "Receive", "Add"]);
+});

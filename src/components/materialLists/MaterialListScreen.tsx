@@ -521,18 +521,10 @@ export function MaterialListScreen({
           orderLabel={isToolRequest || (!userData?.permissions.can["orders.send"] && hasToolItems) ? "Request tools" : "Order"}
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
-          packingSlips={verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId ? (
-            <PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId}
-              buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
-              openOnMount={searchParams.get("slips") === "1"}
-              onOpened={() => router.replace(`${pathname}?orderId=${encodeURIComponent(verifyOrderId)}`, { scroll: false })}
-              onVerified={() => { void utils.materialList.invalidate(); }}
-              onChanged={() => { void slipDrafts.reload(); }}
-              onReviewOnList={slipDrafts.choose} />
-          ) : !verifyOrderId && hasReceivableOrder && canReceive && mlHeader.jobId ? (
+          packingSlips={canReceive && mlHeader.jobId && (verifyOrderId ? verifyOrder?.materialListId === id : hasReceivableOrder) ? (
             <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
-              onLinked={(listId) => {
-                if (listId === id) void slipDrafts.reload();
+              onLinked={(listId, orderId) => {
+                if (listId === id && (!verifyOrderId || verifyOrderId === orderId)) void slipDrafts.reload();
                 else router.push(`/jobs/material-lists/${listId}`);
               }} />
           ) : undefined}
@@ -548,12 +540,13 @@ export function MaterialListScreen({
                 setListNotesOrderId(orderBarId);
                 setShowVerifyNotesDialog(true);
               }}
+              onAdd={userData?.permissions.can["lists.edit"] ? openAddPartDialog : undefined}
               packingSlips={
-                <PackingSlips key={orderBarId} jobId={mlHeader.jobId} materialListId={id} orderId={orderBarId}
-                  buttonVariant="default" buttonClassName={MATERIAL_LIST_ACTION_CLASS}
-                  onVerified={() => { void utils.materialList.invalidate(); }}
-                  onChanged={() => { void slipDrafts.reload(); }}
-                  onReviewOnList={slipDrafts.choose} />
+                <ScanSlipButton key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS}
+                  onLinked={(listId) => {
+                    if (listId === id) void slipDrafts.reload();
+                    else router.push(`/jobs/material-lists/${listId}`);
+                  }} />
               }
               onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderBarId })}
               onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderBarId, allReceived: false })}
@@ -565,6 +558,16 @@ export function MaterialListScreen({
       </div>
 
       {markAllReceived.error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{markAllReceived.error.message}</p>}
+
+      {/* Preserve existing links that open an order's saved packing slips. */}
+      {verifyOrderId && verifyOrder?.materialListId === id && mlHeader.jobId && (
+        <PackingSlips jobId={mlHeader.jobId} materialListId={id} orderId={verifyOrderId}
+          buttonClassName="hidden" openOnMount={searchParams.get("slips") === "1"}
+          onOpened={() => router.replace(`${pathname}?orderId=${encodeURIComponent(verifyOrderId)}`, { scroll: false })}
+          onVerified={() => { void utils.materialList.invalidate(); }}
+          onChanged={() => { void slipDrafts.reload(); }}
+          onReviewOnList={slipDrafts.choose} />
+      )}
 
       {/* Modals and Sheets */}
       {mlHeader?.jobId && slipPartDraft && (

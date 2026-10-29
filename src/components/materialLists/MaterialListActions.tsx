@@ -23,6 +23,7 @@ export const MATERIAL_LIST_ACTION_CLASS =
 export function OrderReceiveActions({
   label,
   onNotes,
+  onAdd,
   packingSlips,
   onMarkAllReceived,
   onMarkNoneReceived,
@@ -32,6 +33,7 @@ export function OrderReceiveActions({
   /** Names the order when the bar sits on the material list. */
   label?: ReactNode;
   onNotes: () => void;
+  onAdd?: () => void;
   packingSlips?: ReactNode;
   onMarkAllReceived?: () => void;
   onMarkNoneReceived?: () => void;
@@ -46,6 +48,17 @@ export function OrderReceiveActions({
       aria-label={label ? "Receive order" : undefined}
       label={label}
     >
+      {onMarkNoneReceived && (
+        <Button
+          variant="outline"
+          className={style}
+          onClick={onMarkNoneReceived}
+          disabled={receiveDisabled || receivingAll || !isOnline}
+        >
+          <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+          Mark none received
+        </Button>
+      )}
       {onMarkAllReceived && (
         <Button
           variant="outline"
@@ -62,15 +75,10 @@ export function OrderReceiveActions({
         Notes
       </Button>
       {packingSlips}
-      {onMarkNoneReceived && (
-        <Button
-          variant="outline"
-          className={style}
-          onClick={onMarkNoneReceived}
-          disabled={receiveDisabled || receivingAll || !isOnline}
-        >
-          <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-          Mark none received
+      {onAdd && (
+        <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
+          <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
+          Add
         </Button>
       )}
     </PriorityActionBar>
@@ -156,6 +164,7 @@ export function MaterialListActions({
       <div className="mx-auto max-w-6xl">
         <OrderReceiveActions
           onNotes={onNotes}
+          onAdd={canAdd ? onAdd : undefined}
           packingSlips={packingSlips}
           onMarkAllReceived={onMarkAllReceived}
           onMarkNoneReceived={onMarkNoneReceived}
