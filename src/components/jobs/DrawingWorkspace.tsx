@@ -2080,19 +2080,21 @@ export function DrawingWorkspace({
           type="button" variant="outline" aria-label="Tool Controls" title="Tool Controls"
           aria-expanded={wheelToolbarOpen}
           style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
-          className="absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
+          className="drawing-corner-control absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
           onClick={() => setWheelToolbarOpen(open => !open)}
         ><SlidersHorizontalIcon aria-hidden="true" /></Button>}
         {quickWheel && toolInUse && (
           <Button
             type="button"
             variant="outline"
+            aria-label="Done"
+            title="Done"
             data-drawing-tool-done
             style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
-            className="absolute bottom-4 left-1/2 z-30 h-12 -translate-x-1/2 rounded-full border-border/60 bg-background/90 px-6 shadow-md backdrop-blur-sm"
+            className="drawing-corner-control absolute left-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
             onClick={finishUsing}
           >
-            <CheckIcon aria-hidden="true" />Done
+            <CheckIcon aria-hidden="true" />
           </Button>
         )}
         <div className="pointer-events-none absolute top-3 left-3 z-20 flex gap-2 [&>*]:pointer-events-auto">
@@ -2102,7 +2104,7 @@ export function DrawingWorkspace({
               ref={fullscreenRef}
               type="button"
               variant="outline"
-              className="bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm in-data-[drawing-fullscreen=true]:invisible [&_svg]:size-5"
+              className="drawing-corner-control bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm in-data-[drawing-fullscreen=true]:invisible [&_svg]:size-5"
               aria-label="Full screen"
               title="Full screen"
               onClick={onFullscreen}
@@ -2154,7 +2156,7 @@ export function DrawingWorkspace({
           <Button
             type="button"
             variant="outline"
-            className="bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
+            className="drawing-corner-control bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
             aria-label="Layers"
             title="Layers"
             aria-expanded={panel === "markups"}

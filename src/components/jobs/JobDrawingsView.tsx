@@ -565,7 +565,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             variant="outline"
             aria-label="Exit full screen"
             title="Exit full screen (Esc)"
-            className="bg-background/60 border-border/60 hover:bg-background/80 absolute top-[calc(0.75rem+env(safe-area-inset-top))] left-3 z-50 size-10 rounded-full shadow-md backdrop-blur-sm"
+            className="drawing-corner-control bg-background/60 border-border/60 hover:bg-background/80 absolute top-[calc(0.75rem+env(safe-area-inset-top))] left-3 z-50 size-10 rounded-full shadow-md backdrop-blur-sm"
             onClick={full.exit}
           >
             <MinimizeIcon className="size-5" aria-hidden="true" />
