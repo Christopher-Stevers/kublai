@@ -8,7 +8,7 @@
  * column is filled in by hand, signatures, dates, stamps and highlighter.
  * Camera: folds and curl, perspective, surface, shadow, light colour, focus
  * and noise. */
-import { createCanvas, type Canvas, type SKRSContext2D } from "@napi-rs/canvas";
+import { createCanvas, type SKRSContext2D } from "@napi-rs/canvas";
 import sharp from "sharp";
 import type { Pixels, Point, Quad } from "~/lib/scanning/page";
 import {
@@ -1473,14 +1473,4 @@ export async function photograph(
     corners: corners.map((p) => ({ x: p.x / w, y: p.y / h })) as Quad,
     options: o,
   };
-}
-
-/** A canvas-backed PNG of pixels, for looking at the synthetic pages. */
-export function pixelsPng(pixels: Pixels): Buffer {
-  const canvas: Canvas = createCanvas(pixels.width, pixels.height);
-  const ctx = canvas.getContext("2d");
-  const image = ctx.createImageData(pixels.width, pixels.height);
-  image.data.set(pixels.data);
-  ctx.putImageData(image, 0, 0);
-  return canvas.toBuffer("image/png");
 }

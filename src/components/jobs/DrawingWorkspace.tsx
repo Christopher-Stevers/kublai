@@ -1740,30 +1740,78 @@ export function DrawingWorkspace({
     }[];
   };
 
+  // One command definition per action; each surface keeps its existing layout
+  // and its existing hide-versus-disable presentation for unavailable actions.
+  const sheetTools = !viewData.documentSource && viewData.canUseSheetTools;
+  const sheetCommand = (label: string, Icon: LucideIcon, run: () => void, allowed = true) => ({
+    label, Icon, run, disabled: !viewData.canUseSheetTools || !allowed || !online,
+    barVisible: sheetTools && allowed, wheelVisible: !viewData.documentSource, wheelIcon: false,
+  });
+  const commands = {
+    fit: { label: "Fit to screen", Icon: ScanIcon, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
+    overlay: { label: "Overlay drawings", Icon: LayersIcon, run: () => setOverlayPickerOpen(true), disabled: overlayChoices.length < 2 },
+    appearance: { label: "Drawing appearance", Icon: PaletteIcon, run: () => setAppearanceOpen(true) },
+    "auto-hyperlink": { label: "Auto Hyperlink", Icon: Link2Icon, run: openAutoHyperlink, disabled: !viewData.canUseSheetTools || !writable || !online, barVisible: viewData.canUseSheetTools && viewData.canAnnotate !== false },
+    "legend-items": sheetCommand("Legend Items", BookOpenIcon, () => setLegendOpen(true)),
+    "super-equipment": sheetCommand("Super Equipment", FileTextIcon, () => setSuperEquipmentOpen(true)),
+    "super-spec-material": sheetCommand("Super Spec Material", FileTextIcon, () => setSuperSpecMaterialOpen(true), canAccessSystems),
+    "super-label": sheetCommand("Super Label", FileTextIcon, () => setSuperLabelOpen(true), Boolean(viewData.canManage)),
+    "super-scale": sheetCommand("Super scale", RulerIcon, () => setSuperScaleOpen(true), Boolean(viewData.canManage)),
+    "document-details": { label: "Document details", Icon: FileTextIcon, run: onDocumentDetails ?? (() => undefined), barVisible: Boolean(onDocumentDetails), wheelVisible: Boolean(onDocumentDetails), wheelIcon: false },
+    "close-document": { label: "Close document", Icon: XIcon, run: onClose ?? (() => undefined), barVisible: Boolean(onClose), wheelVisible: Boolean(onClose), wheelIcon: false },
+  };
+  type CommandId = keyof typeof commands;
+  type Command = { label: string; Icon: LucideIcon; run: () => void; disabled?: boolean; barVisible?: boolean; wheelVisible?: boolean; wheelIcon?: boolean };
+  const wheelCommands = (...ids: CommandId[]): DrawingWheelItem[] => ids.flatMap(id => {
+    const command: Command = commands[id];
+    return command.wheelVisible === false ? [] : [{ id, label: command.label, icon: command.wheelIcon === false ? undefined : <command.Icon />, disabled: command.disabled, run: command.run }];
+  });
+  const chooseDrawingTool = (id: DrawingTool) => {
+    selectTool(id);
+    setPanel("");
+    setHighlight(null);
+    if (quickWheel && !OTHER_TOOLS.has(id)) setSelectedId(null);
+  };
+  const measureCommand = () => {
+    setTool("pan");
+    setSelectedId(null);
+    if (quickWheel) setPanel("");
+    else setMarkupOpen(false);
+    requestMode(!quickWheel && bottomMode.measuring ? "idle" : "measure");
+  };
+  const pipeCommand = () => {
+    setTool("pan");
+    if (quickWheel) setSelectedId(null);
+    else setMarkupOpen(false);
+    requestMode("pipe");
+  };
+  const changeMarkupColor = (stroke: string) => setStyle(old => ({ ...old, stroke, fill: old.fill === "none" ? "none" : `${quickWheel ? stroke : stroke.slice(0, 7)}33` }));
+  const changeMarkupWidth = (width: number) => setStyle(old => ({ ...old, width }));
+  const toggleMarkupFill = () => setStyle(old => ({ ...old, fill: old.fill === "none" ? `${old.stroke.slice(0, 7)}33` : "none" }));
   const wheelStyle = drawingWheelStyleItems({
     color: style.stroke, width: style.width,
-    onColor: stroke => setStyle(old => ({ ...old, stroke, fill: old.fill === "none" ? "none" : `${stroke}33` })),
-    onWidth: width => setStyle(old => ({ ...old, width })),
+    onColor: changeMarkupColor,
+    onWidth: changeMarkupWidth,
     onCustom: () => setWheelStyleOpen(true),
   });
   const wheelItems: DrawingWheelItem[] = [
-    { id: "measure", label: "Measure", icon: <RulerIcon />, run: () => { setTool("pan"); setSelectedId(null); setPanel(""); requestMode("measure"); } },
+    { id: "measure", label: "Measure", icon: <RulerIcon />, run: measureCommand },
     { id: "markup", label: "Markup", icon: <PenLineIcon />, disabled: !writable, children: [
       ...tools.filter(([id]) => !OTHER_TOOLS.has(id)).map(([id, label]) => {
         const Icon = MARKUP_ICONS[id] ?? PenLineIcon;
-        return { id, label, icon: <Icon />, selected: tool === id, run: () => { selectTool(id); setPanel(""); setHighlight(null); setSelectedId(null); } };
+        return { id, label, icon: <Icon />, selected: tool === id, run: () => chooseDrawingTool(id) };
       }),
       { id: "style", label: "Markup style", icon: <PaletteIcon />, children: [
         ...wheelStyle,
-        { id: "fill", label: "Fill", selected: style.fill !== "none", run: () => setStyle(old => ({ ...old, fill: old.fill === "none" ? `${old.stroke.slice(0, 7)}33` : "none" })) },
+        { id: "fill", label: "Fill", selected: style.fill !== "none", run: toggleMarkupFill },
       ] },
     ] },
     { id: "tools", label: "Tools", icon: <WrenchIcon />, children: [
       ...tools.filter(([id]) => OTHER_TOOLS.has(id)).map(([id, label]) => {
         const Icon = TOOL_ICONS[id] ?? WrenchIcon;
-        return { id, label, icon: <Icon />, selected: tool === id, disabled: !writable && id !== "viewing", run: () => { selectTool(id); setPanel(""); setHighlight(null); } };
+        return { id, label, icon: <Icon />, selected: tool === id, disabled: !writable && id !== "viewing", run: () => chooseDrawingTool(id) };
       }),
-      { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: () => { setTool("pan"); setSelectedId(null); requestMode("pipe"); } },
+      { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: pipeCommand },
       { id: "pan", label: "Pan drawing", icon: <HandIcon />, run: finishTool },
     ] },
     { id: "page", label: "Page", icon: <FileTextIcon />, children: [
@@ -1771,21 +1819,15 @@ export function DrawingWorkspace({
         { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
         { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
       ] : []),
-      { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
+      ...wheelCommands("fit"),
       ...(onFullscreen ? [{ id: "full", label: "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),
       ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", run: () => setCompareIds(null) }] : []),
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
-      ...(!viewData.documentSource ? [{ id: "legend-items", label: "Legend Items", disabled: !viewData.canUseSheetTools || !online, run: () => setLegendOpen(true) }] : []),
-      { id: "auto-hyperlink", label: "Auto Hyperlink", icon: <Link2Icon />, disabled: !viewData.canUseSheetTools || !writable || !online, run: openAutoHyperlink },
+      ...wheelCommands("legend-items", "auto-hyperlink"),
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
-      { id: "overlay", label: "Overlay drawings", icon: <LayersIcon />, disabled: overlayChoices.length < 2, run: () => setOverlayPickerOpen(true) },
-      { id: "appearance", label: "Drawing appearance", icon: <PaletteIcon />, run: () => setAppearanceOpen(true) },
-      ...(!viewData.documentSource ? [{ id: "super-equipment", label: "Super Equipment", disabled: !viewData.canUseSheetTools || !online, run: () => setSuperEquipmentOpen(true) }] : []),
-      ...(!viewData.documentSource ? [{ id: "super-spec-material", label: "Super Spec Material", disabled: !canAccessSystems || !viewData.canUseSheetTools || !online, run: () => setSuperSpecMaterialOpen(true) }] : []),
-      ...(!viewData.documentSource ? [{ id: "super-label", label: "Super Label", disabled: !viewData.canUseSheetTools || !viewData.canManage || !online, run: () => setSuperLabelOpen(true) }] : []),
-      ...(!viewData.documentSource ? [{ id: "super-scale", label: "Super scale", disabled: !viewData.canUseSheetTools || !viewData.canManage || !online, run: () => setSuperScaleOpen(true) }] : []),
+      ...wheelCommands("overlay", "appearance", "super-equipment", "super-spec-material", "super-label", "super-scale"),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, disabled: !data && id !== "search", run: () => { setPanel(id); setForm(null); } };
@@ -1795,8 +1837,7 @@ export function DrawingWorkspace({
         { id: "private", label: "Private · only me", selected: defaultMarkupVisibility === "private", run: () => setDefaultMarkupVisibility("private") },
       ] },
       { id: "scroll", label: "Scroll between pages", selected: scroll, run: () => setScroll(!scroll) },
-      ...(onDocumentDetails ? [{ id: "document-details", label: "Document details", run: onDocumentDetails }] : []),
-      ...(onClose ? [{ id: "close-document", label: "Close document", run: onClose }] : []),
+      ...wheelCommands("document-details", "close-document"),
     ] },
   ];
 
@@ -1806,6 +1847,11 @@ export function DrawingWorkspace({
       <Icon aria-hidden="true" />{label}
     </Button>
   );
+
+  const commandButtons = (...ids: CommandId[]) => ids.map(id => {
+    const command: Command = commands[id];
+    return command.barVisible === false ? null : barAction(command.label, command.Icon, command.run, command.disabled);
+  });
 
   return (
     <DrawingQuickWheel enabled={quickWheel && !toolInUse} group={{ id: "drawing", title: source.name, items: wheelItems }}>
@@ -3495,12 +3541,7 @@ export function DrawingWorkspace({
                         className={`${MEASURE_TILE} h-14 text-center whitespace-normal`}
                         disabled={!writable}
                         aria-pressed={tool === id}
-                        onClick={() => {
-                          selectTool(id);
-                          setPanel("");
-                          setHighlight(null);
-                          setMarkupOpen(false);
-                        }}
+                        onClick={() => chooseDrawingTool(id)}
                       >
                         <Icon aria-hidden="true" />
                         <span className="line-clamp-2">{label}</span>
@@ -3514,19 +3555,10 @@ export function DrawingWorkspace({
                     color={style.stroke}
                     colorLabel="Markup colours"
                     customColorLabel="Markup color"
-                    onColor={(stroke) =>
-                      setStyle((old) => ({
-                        ...old,
-                        stroke,
-                        fill:
-                          old.fill === "none"
-                            ? "none"
-                            : `${stroke.slice(0, 7)}33`,
-                      }))
-                    }
+                    onColor={changeMarkupColor}
                     width={style.width}
                     widthLabel="Markup width"
-                    onWidth={(width) => setStyle((old) => ({ ...old, width }))}
+                    onWidth={changeMarkupWidth}
                     end={
                       <button
                         type="button"
@@ -3534,15 +3566,7 @@ export function DrawingWorkspace({
                         aria-label="Fill"
                         title="Fill"
                         className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
-                        onClick={() =>
-                          setStyle((old) => ({
-                            ...old,
-                            fill:
-                              old.fill === "none"
-                                ? `${old.stroke.slice(0, 7)}33`
-                                : "none",
-                          }))
-                        }
+                        onClick={toggleMarkupFill}
                       >
                         <PaintBucketIcon className="size-4" />
                       </button>
@@ -3571,19 +3595,7 @@ export function DrawingWorkspace({
             onClick={() => setDefaultMarkupVisibility(defaultMarkupVisibility === "private" ? "published" : "private")}>
             <PenLineIcon />{defaultMarkupVisibility === "private" ? "Private Markups" : "Public Markups"}
           </Button>
-          {barAction("Fit to screen", ScanIcon, () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }))}
-          {barAction("Overlay drawings", LayersIcon, () => setOverlayPickerOpen(true), overlayChoices.length < 2)}
-          {barAction("Drawing appearance", PaletteIcon, () => setAppearanceOpen(true))}
-          {viewData.canUseSheetTools && viewData.canAnnotate !== false && barAction("Auto Hyperlink", Link2Icon, openAutoHyperlink, !writable || !online)}
-          {!viewData.documentSource && viewData.canUseSheetTools && <>
-            {barAction("Legend Items", BookOpenIcon, () => setLegendOpen(true), !online)}
-            {barAction("Super Equipment", FileTextIcon, () => setSuperEquipmentOpen(true), !online)}
-            {canAccessSystems && barAction("Super Spec Material", FileTextIcon, () => setSuperSpecMaterialOpen(true), !online)}
-            {viewData.canManage && barAction("Super Label", FileTextIcon, () => setSuperLabelOpen(true), !online)}
-            {viewData.canManage && barAction("Super scale", RulerIcon, () => setSuperScaleOpen(true), !online)}
-          </>}
-          {onDocumentDetails && barAction("Document details", FileTextIcon, onDocumentDetails)}
-          {onClose && barAction("Close document", XIcon, onClose)}
+          {commandButtons("fit", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
             barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups" && id !== "search", panel === id)
           )}
@@ -3634,11 +3646,7 @@ export function DrawingWorkspace({
                         ? tool
                         : "pan"
                   }
-                  onValueChange={(value) => {
-                    selectTool(value as DrawingTool);
-                    setPanel("");
-                    setHighlight(null);
-                  }}
+                  onValueChange={(value) => chooseDrawingTool(value as DrawingTool)}
                 >
                   {tools
                     .filter(([id]) => OTHER_TOOLS.has(id))
@@ -3658,11 +3666,7 @@ export function DrawingWorkspace({
                 <DropdownMenuCheckboxItem
                   className={MENU_ITEM}
                   checked={bottomMode.pipe}
-                  onCheckedChange={() => {
-                    setTool("pan");
-                    setMarkupOpen(false);
-                    requestMode("pipe");
-                  }}
+                  onCheckedChange={pipeCommand}
                 >
                   <MenuTile icon={SplineIcon} />
                   Pipe system
@@ -3702,12 +3706,7 @@ export function DrawingWorkspace({
             className={BAR_BUTTON}
             aria-label="Measure"
             aria-pressed={bottomMode.measuring}
-            onClick={() => {
-              setMarkupOpen(false);
-              setTool("pan");
-              setSelectedId(null);
-              requestMode(bottomMode.measuring ? "idle" : "measure");
-            }}
+            onClick={measureCommand}
           >
             <RulerIcon className="h-5 w-5" />
             Measure

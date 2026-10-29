@@ -21,7 +21,6 @@ import styles from "./QuickWheelPreview.module.css";
 import { cn } from "~/lib/utils";
 import {
   quickWheelLayout,
-  wheelDeadZoneRadius,
   WHEEL_CHOICE_DIAMETER,
   wheelChoiceRingRadius,
   wheelVisibleLimit,
@@ -303,25 +302,6 @@ function tilesFor(wheel: Wheel) {
     layout.kind === "circle",
     arc,
   ).map((tile) => ({ ...tile, entry: entries[tile.index]! }));
-}
-export function wheelSector(
-  dx: number,
-  dy: number,
-  count: number,
-  radius: number,
-) {
-  const distance = Math.hypot(dx, dy);
-  if (
-    !count ||
-    distance <= wheelDeadZoneRadius(radius) ||
-    distance > radius * 1.65
-  )
-    return null;
-  const angle =
-    (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
-  return (
-    Math.floor((angle + Math.PI / count) / ((Math.PI * 2) / count)) % count
-  );
 }
 const interactive =
   'button, a, input, select, textarea, [role="button"], [role="slider"], [role="spinbutton"], [contenteditable="true"], [data-quick-wheel-ignore]';

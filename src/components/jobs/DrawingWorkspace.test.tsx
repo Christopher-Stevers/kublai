@@ -649,6 +649,17 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("button", { name: "Fit to screen" })).toBeEnabled();
   });
 
+  it("keeps restricted sheet commands disabled in the wheel rather than changing its layout", () => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    mocks.data!.canUseSheetTools = false;
+    open();
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    for (const name of ["Auto Hyperlink", "Legend Items", "Super Equipment", "Super Spec Material", "Super Label", "Super scale"])
+      expect(screen.getByRole("button", { name })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Drawing appearance" })).toBeEnabled();
+  });
+
   it("offers Super scale under More", () => {
     open();
     openMenu("More");
