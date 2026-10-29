@@ -1,4 +1,6 @@
 "use client";
+
+import { DrawingPdfMagnifier } from "~/lib/drawing-pdf-magnifier";
 import { PipeComponentSymbol } from "./PipeComponentSymbol";
 import { componentMarker, customComponentMarker, pipeComponentColor } from "~/lib/pipe-component-marker";
 import { useMeasurementLayers } from "./useMeasurementLayers";
@@ -305,6 +307,22 @@ export function DrawingSheetViewer({
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loupe, setLoupe] = useState<(Point & { zoom: number }) | null>(null);
   const loupeCanvas = useRef<HTMLCanvasElement>(null);
+  const pdfMagnifier = useRef<DrawingPdfMagnifier | null>(null);
+  const [, repaintMagnifier] = useState(0);
+  const magnifierUrl = loupe && !comparison ? pdf?.url : undefined;
+  const magnifierPage = pdf?.page;
+  useEffect(() => {
+    if (!magnifierUrl || magnifierPage === undefined) return;
+    const renderer = new DrawingPdfMagnifier(
+      { url: magnifierUrl, page: magnifierPage },
+      () => repaintMagnifier(value => value + 1),
+    );
+    pdfMagnifier.current = renderer;
+    return () => {
+      renderer.dispose();
+      if (pdfMagnifier.current === renderer) pdfMagnifier.current = null;
+    };
+  }, [magnifierUrl, magnifierPage]);
   const precision = useRef<MeasurePrecision | null>(null);
   const precisionFrame = useRef(0);
   const lastAim = useRef<MeasureAim | null>(null);
@@ -1776,8 +1794,8 @@ export function DrawingSheetViewer({
       (1 + (LOUPE_GROWTH - 1) * ((loupe?.zoom ?? 1) - 1) / (MAX_MEASURE_PRECISION_ZOOM - 1)),
     maxLoupePx,
   );
-  // Paint the magnifier from what is on screen: the saved image, any sharper
-  // tiles and the PDF redraw, magnified around the aimed point.
+  // Paint an immediate fallback, then replace it with a PDF crop rendered at
+  // the lens density. Reticles and measurement overlays stay above both.
   useEffect(() => {
     const canvas = loupeCanvas.current;
     const sheet = layer.current;
@@ -1848,6 +1866,21 @@ export function DrawingSheetViewer({
         );
       } catch {
         // An image that cannot be drawn is simply left out of the magnifier.
+      }
+    }
+    if (box.width > 0 && box.height > 0) {
+      const detail = pdfMagnifier.current?.request({
+        left: (src.left - box.left) / box.width,
+        top: (src.top - box.top) / box.height,
+        width: (src.right - src.left) / box.width,
+        height: (src.bottom - src.top) / box.height,
+        pixels: size,
+      });
+      if (detail) {
+        ctx.save();
+        ctx.filter = appearanceFilter ?? "none";
+        ctx.drawImage(detail, 0, 0, size, size);
+        ctx.restore();
       }
     }
     // Clip only overlays, preserving the drawing beneath the reticle center.
