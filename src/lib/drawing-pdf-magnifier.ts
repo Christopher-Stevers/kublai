@@ -46,7 +46,7 @@ export class DrawingPdfMagnifier {
       // Keep the pending render scheduled even while zoom changes every frame.
       // Restarting this timer would postpone detail until the gesture stopped.
     }
-    if (this.ready?.key === key) return this.ready.canvas;
+    if (this.ready && reusable(this.ready.crop, crop)) return this.ready.canvas;
     this.schedule();
     return null;
   }
@@ -72,7 +72,7 @@ export class DrawingPdfMagnifier {
       this.running ||
       this.timer ||
       !this.desired ||
-      this.ready?.key === this.desired.key
+      (this.ready && reusable(this.ready.crop, this.desired.crop))
     )
       return;
     this.timer = setTimeout(
@@ -104,7 +104,18 @@ export class DrawingPdfMagnifier {
       if (timeout) clearTimeout(timeout);
       if (this.disposed || !this.desired) return;
       // A network wait may span multiple pointer moves. Always use the latest aim.
-      const { key, crop } = this.desired;
+      const { key, crop: requested } = this.desired;
+      // Extra sharp pixels let a moving lens stay on the PDF instead of flashing
+      // back to its raster preview. Keep the backing buffer bounded on tablets.
+      const pixels = Math.min(2048, Math.ceil(requested.pixels * 1.5));
+      const factor = pixels / requested.pixels;
+      const crop = {
+        left: requested.left - requested.width * (factor - 1) / 2,
+        top: requested.top - requested.height * (factor - 1) / 2,
+        width: requested.width * factor,
+        height: requested.height * factor,
+        pixels,
+      };
       canvas.width = canvas.height = crop.pixels;
       const fullWidth = crop.pixels / crop.width;
       const fullHeight = crop.pixels / crop.height;
@@ -169,4 +180,13 @@ function contains(outer: MagnifierCrop, inner: MagnifierCrop) {
   return inner.left >= outer.left - epsilon && inner.top >= outer.top - epsilon &&
     inner.left + inner.width <= outer.left + outer.width + epsilon &&
     inner.top + inner.height <= outer.top + outer.height + epsilon;
+}
+
+function reusable(buffer: MagnifierCrop, requested: MagnifierCrop) {
+  // Refresh before reaching the buffer edge, and whenever zoom needs finer pixels.
+  const inset = 0.05;
+  return buffer.pixels / buffer.width >= requested.pixels / requested.width * 0.99 &&
+    contains({ ...buffer, left: buffer.left + buffer.width * inset,
+      top: buffer.top + buffer.height * inset,
+      width: buffer.width * (1 - 2 * inset), height: buffer.height * (1 - 2 * inset) }, requested);
 }

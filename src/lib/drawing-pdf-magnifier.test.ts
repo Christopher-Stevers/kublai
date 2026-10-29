@@ -54,10 +54,10 @@ it("renders at lens density with only a lens-sized backing canvas", async () => 
   expect(lens.request(crop)).toBeNull();
   await tick();
   const options = render.mock.calls[0]![0];
-  expect(options.canvas.width).toBe(400);
-  expect(options.canvas.height).toBe(400);
+  expect(options.canvas.width).toBe(600);
+  expect(options.canvas.height).toBe(600);
   expect(options.viewport.width).toBe(20000);
-  expect(options.transform).toEqual([1, 0, 0, 1, -8000, -3000]);
+  expect(options.transform).toEqual([1, 0, 0, 1, -7900, -2900]);
   pending[0]!.resolve();
   await tick();
   expect(lens.request(crop)).toBe(options.canvas);
@@ -108,8 +108,8 @@ it("uses the latest aim after PDF loading and bounds canvas memory", async () =>
     ReturnType<typeof loadPdfDocument>
   >);
   await tick();
-  expect(render.mock.calls[0]![0].canvas.width).toBe(1536);
-  expect(render.mock.calls[0]![0].transform[4]).toBe(768);
+  expect(render.mock.calls[0]![0].canvas.width).toBe(2048);
+  expect(render.mock.calls[0]![0].transform[4]).toBeCloseTo(1024);
 });
 it("cancels work on closing or changing sheets and never publishes stale detail", async () => {
   lens.request(crop);
@@ -148,11 +148,31 @@ it("starts immediately and publishes aligned detail while zoom is still changing
   lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, zoomed, 400);
   expect(drawImage).toHaveBeenCalledOnce();
   const args = drawImage.mock.calls[0]!;
-  expect(args[1]).toBeCloseTo(100);
-  expect(args[2]).toBeCloseTo(100);
+  expect(args[1]).toBeCloseTo(200);
+  expect(args[2]).toBeCloseTo(200);
   expect(args.slice(3)).toEqual([200, 200, 0, 0, 400, 400]);
   expect(render).toHaveBeenCalledTimes(2);
   drawImage.mockClear();
   lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, { ...zoomed, left: 0.8 }, 400);
   expect(drawImage).not.toHaveBeenCalled();
+});
+
+it("keeps full-density detail during small movements without rerendering each one", async () => {
+  lens.request(crop);
+  await tick(); pending[0]!.resolve(); await tick();
+  const cached = lens.request(crop);
+  const shifted = { ...crop, left: crop.left + crop.width * 0.1 };
+  expect(lens.request(shifted)).toBe(cached);
+  const drawImage = vi.fn();
+  lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, shifted, 400);
+  expect(drawImage).toHaveBeenCalledOnce();
+  expect(drawImage.mock.calls[0]![3]).toBeCloseTo(400);
+  await tick(); expect(render).toHaveBeenCalledOnce();
+  // Approaching the edge refreshes the buffer without losing existing sharp ink.
+  const nearEdge = { ...crop, left: crop.left + crop.width * 0.2 };
+  lens.request(nearEdge);
+  drawImage.mockClear();
+  lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, nearEdge, 400);
+  expect(drawImage).toHaveBeenCalledOnce();
+  await tick(); expect(render).toHaveBeenCalledTimes(2);
 });

@@ -44,9 +44,8 @@ for (const rotation of [0, 90]) {
       try {
         lens.request(crop);
         await rendered;
-        const canvas = lens.request(crop)!;
-        expect(canvas.width).toBe(200);
-        expect(canvas.height).toBe(200);
+        const canvas = createCanvas(200, 200);
+        lens.paint(canvas.getContext("2d") as unknown as CanvasRenderingContext2D, crop, 200);
         const pixels = canvas
           .getContext("2d")!
           .getImageData(0, 0, 200, 200).data;
