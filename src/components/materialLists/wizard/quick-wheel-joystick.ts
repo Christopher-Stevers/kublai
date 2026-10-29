@@ -92,6 +92,11 @@ export function wheelChoiceCone<T extends Point>(
   return closest;
 }
 
+// Reference spacing: about 232 CSS px from hub centre to option centre at
+// the standard size (64 px hub + 52 px option + 116 px clear gap).
+export const wheelMinimumArcRadius = (radius: number) =>
+  wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 116;
+
 export type WheelArc = { radius: number; start: number; step: number };
 const onArc = (origin: Point, arc: WheelArc, position: number): Point => ({
   x: origin.x + Math.sin(arc.start + position * arc.step) * arc.radius,
@@ -121,12 +126,12 @@ export function joystickWheelArc(
     Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   for (
     let capacity = Math.min(6, count);
-    capacity >= Math.min(2, count);
+    capacity >= 1;
     capacity--
   ) {
     let best: { points: Point[]; arc: WheelArc; score: number } | undefined;
     for (
-      let r = wheelHubRadius(radius) + padding + 18;
+      let r = wheelMinimumArcRadius(radius);
       r <=
       Math.min(
         420,
@@ -170,7 +175,25 @@ export function joystickWheelArc(
     }
     if (best) return best;
   }
-  return undefined;
+  if (!count) return undefined;
+  // On an exceptionally cramped viewport preserve spacing rather than falling
+  // back to the old compact ring. Prefer the least-clipped single option;
+  // dragging the hub toward an edge gives the rail room to expand again.
+  const r = wheelMinimumArcRadius(radius);
+  let fallback: { points: Point[]; arc: WheelArc; score: number } | undefined;
+  for (let degree = -180; degree < 180; degree += 5) {
+    const arc = { radius: r, start: degree * Math.PI / 180,
+      step: 2 * Math.asin((WHEEL_CHOICE_DIAMETER + 14) / (2 * r)) };
+    const point = onArc(origin, arc, 0);
+    if (inward && (point.x-origin.x)*inward.x + (point.y-origin.y)*inward.y < 0) continue;
+    const overflow = Math.max(0, bounds.left + padding - point.x)
+      + Math.max(0, point.x - bounds.right + padding)
+      + Math.max(0, bounds.top + 52 + padding - point.y)
+      + Math.max(0, point.y - bounds.bottom + padding);
+    const score = overflow * 100 + angularDistance(arc.start, away);
+    if (!fallback || score < fallback.score) fallback = { points: [point], arc, score };
+  }
+  return fallback;
 }
 
 export type CarouselTile = Point & {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   joystickWheelArc,
+  wheelMinimumArcRadius,
   wheelCarousel,
   wheelChoiceCone,
   wheelJoystickSpeed,
@@ -111,6 +112,7 @@ describe("single thumb rail", () => {
     const rail = joystickWheelArc(origin, bounds, 170, 20, hand);
     expect(rail).toBeDefined();
     if (!rail) return;
+    expect(rail.arc.radius).toBeGreaterThanOrEqual(wheelMinimumArcRadius(170));
     for (let offset = 0; offset < 20; offset += 0.25) {
       const tiles = wheelCarousel(
         offset,
@@ -137,6 +139,14 @@ describe("single thumb rail", () => {
           );
       });
     }
+  });
+  it("never falls back to a tight ring even when the viewport cannot fit the rail", () => {
+    const origin = { x: 150, y: 150 };
+    const rail = joystickWheelArc(origin, { left: 0, top: 0, right: 300, bottom: 300 }, 170, 20, "right", { x: 300, y: 204 })!;
+    expect(rail.arc.radius).toBe(232);
+    expect(rail.points).toHaveLength(1);
+    for (const point of rail.points)
+      expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(232);
   });
   it("keeps short lists unique across the gap beneath the thumb", () => {
     const origin = { x: 350, y: 520 },
