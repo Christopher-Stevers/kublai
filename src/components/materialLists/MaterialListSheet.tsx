@@ -1,5 +1,5 @@
 "use client";
-import { Fragment } from "react";
+import { MaterialFocusSection } from "./MaterialFocusSection";
 import { MaterialSectionHeading, materialSections } from "./MaterialSectionHeading";
 import { useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 import {
@@ -18,6 +18,7 @@ export function MaterialListSheet({
   suppliers,
   isReplicacheSyncing,
   className = "",
+  focusedSectionKey,
   isToolRequest = false,
   receiveFor,
 }: {
@@ -26,6 +27,7 @@ export function MaterialListSheet({
   suppliers: MaterialListTableRowProps["suppliers"];
   isReplicacheSyncing?: boolean;
   className?: string;
+  focusedSectionKey?: string;
   isToolRequest?: boolean;
   /** Receive controls for ordered parts, when the list is used to receive. */
   receiveFor?: (
@@ -56,7 +58,7 @@ export function MaterialListSheet({
   return (
     <div data-tutorial={items.length ? "material-items" : undefined} className={`parts-sheet-scroll ${className}`}>
       {sections.map((section, index) => (
-        <Fragment key={section.key}>
+        <MaterialFocusSection key={section.key} focused={focusedSectionKey === section.key}>
         {section.label && (
           <MaterialSectionHeading
             label={section.label}
@@ -98,7 +100,7 @@ export function MaterialListSheet({
             ))}
           </tbody>
         </table>
-        </Fragment>
+        </MaterialFocusSection>
       ))}
     </div>
   );

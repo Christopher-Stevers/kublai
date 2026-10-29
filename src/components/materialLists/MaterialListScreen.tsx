@@ -1,4 +1,5 @@
 "use client";
+import { MaterialFocusSection } from "./MaterialFocusSection";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
@@ -379,7 +380,7 @@ export function MaterialListScreen({
               {(verifyOrderId || viewMode === "grid") && (
                 <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
-                  <section key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
+                  <MaterialFocusSection focused={!verifyOrderId && section.key === focusedSection?.key} key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
                     {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
@@ -456,13 +457,14 @@ export function MaterialListScreen({
                         );
                       })}
                     </div>
-                  </section>
+                  </MaterialFocusSection>
                   ))}
                 </div>
               )}
               {/* Table View */}
               {!verifyOrderId && viewMode === "table" && (
                 <MaterialListTableView
+                  focusedSectionKey={focusedSection?.key}
                   items={visibleItems}
                   materialListId={id}
                   suppliers={suppliers}
