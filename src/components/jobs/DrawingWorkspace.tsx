@@ -451,7 +451,7 @@ export function DrawingWorkspace({
   pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
   const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
-  const [wheelToolbarOpen, setWheelToolbarOpen] = useState(false);
+  const [toolToolbarOpen, setToolToolbarOpen] = useState(false);
   const { scroll, setScroll } = useDrawingPageMode();
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
   const router = useRouter();
@@ -557,7 +557,7 @@ export function DrawingWorkspace({
     if (tool === "viewing" || tool === "select") restTool.current = tool;
   }, [tool]);
   const finishUsing = () => {
-    setWheelToolbarOpen(false);
+    setToolToolbarOpen(false);
     finishInlineText.current(false);
     setBottomMode({ measuring: false, pipe: false });
     setSelectedId(null);
@@ -1578,7 +1578,7 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
-  useEffect(() => { if (!toolInUse) setWheelToolbarOpen(false); }, [toolInUse]);
+  useEffect(() => { if (!toolInUse) setToolToolbarOpen(false); }, [toolInUse]);
 
   // Consume back at the nearest open drawing state before the host leaves a sheet.
   const dismissDrawingState =
@@ -2076,14 +2076,14 @@ export function DrawingWorkspace({
         )}
       </div>
       <div data-drawing-tool-area className="relative flex min-h-0 flex-1">
-        {quickWheel && toolInUse && <Button
+        {toolInUse && <Button
           type="button" variant="outline" aria-label="Tool Controls" title="Tool Controls"
-          aria-expanded={wheelToolbarOpen}
+          aria-expanded={toolToolbarOpen}
           style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
           className="drawing-corner-control absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
-          onClick={() => setWheelToolbarOpen(open => !open)}
+          onClick={() => setToolToolbarOpen(open => !open)}
         ><SlidersHorizontalIcon aria-hidden="true" /></Button>}
-        {quickWheel && toolInUse && (
+        {toolInUse && (
           <Button
             type="button"
             variant="outline"
@@ -2112,19 +2112,7 @@ export function DrawingWorkspace({
               <MaximizeIcon aria-hidden="true" />
             </Button>
           )}
-          {!quickWheel && (bottomMode.measuring ||
-            bottomMode.pipe ||
-            (tool !== "pan" && tool !== "viewing" && tool !== "select")) && (
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-background/60 border-border/60 hover:bg-background/80 h-10 rounded-full px-4 shadow-md backdrop-blur-sm"
-              onClick={finishUsing}
-            >
-              <CheckIcon />
-              Done
-            </Button>
-          )}
+
         </div>
         <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-2 [&>*]:pointer-events-auto">
         {!quickWheel && entities.some(
@@ -2181,7 +2169,7 @@ export function DrawingWorkspace({
               }))}
               onEditDrawings={() => setOverlayPickerOpen(true)}
               toolControls={{
-                toolbarHidden: quickWheel && !wheelToolbarOpen,
+                toolbarHidden: !toolToolbarOpen,
                 measureRequest: 0,
                 pipeRequest: 0,
                 modeRequest,
@@ -2209,7 +2197,7 @@ export function DrawingWorkspace({
               appearance={appearance}
               key={source.id}
               toolControls={{
-                toolbarHidden: quickWheel && !wheelToolbarOpen,
+                toolbarHidden: !toolToolbarOpen,
                 measureRequest: 0,
                 pipeRequest: 0,
                 modeRequest,
@@ -3514,7 +3502,7 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {quickWheel && wheelToolbarOpen && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
+      {toolToolbarOpen && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
         (inlineText || !OTHER_TOOLS.has(tool)) && (
         <DrawingToolbarDock target={toolbarContainer}>
           <div data-drawing-chrome data-bottom-menu role="toolbar" aria-label="Markup controls"
