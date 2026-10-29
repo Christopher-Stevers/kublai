@@ -1847,15 +1847,22 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   fireEvent.click(layers);
   expect(layers).toHaveAttribute("aria-expanded", "true");
   expect(screen.getByRole("complementary", { name: "Drawing tools panel" })).not.toHaveAttribute("data-drawing-chrome");
-  const markups = screen.getByRole("button", { name: "Markups layer" });
-  expect(markups).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Arrow layer" })).not.toBeVisible();
+  const markup = screen.getByText("Markup", { selector: "summary span" }).closest("details")!;
+  expect(markup).not.toHaveAttribute("open");
+  fireEvent.click(markup.querySelector("summary")!);
+  const markups = screen.getByRole("button", { name: "All Markup layer" });
   fireEvent.click(markups);
   expect(markups).toHaveAttribute("aria-pressed", "false");
   const arrow = screen.getByRole("button", { name: "Arrow layer" });
   fireEvent.click(arrow);
   expect(arrow).toHaveAttribute("aria-pressed", "false");
-  for (const name of ["Measurements", "Dimension", "Count", "Issues & RFIs", "RFI pin", "Hyperlink"])
-    expect(screen.getByRole("button", { name: `${name} layer` })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Measure layer" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByText("On this sheet")).toBeNull();
+  const toolGroup = screen.getByText("Tools", { selector: "summary span" }).closest("details")!;
+  expect(toolGroup).not.toHaveAttribute("open");
+  fireEvent.click(toolGroup.querySelector("summary")!);
+  expect(screen.getByRole("button", { name: "Hyperlink layer" })).toBeVisible();
   fireEvent.click(layers);
   expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
 });

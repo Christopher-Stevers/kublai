@@ -1,4 +1,5 @@
 "use client";
+import { useDrawingLayerVisibility } from "./useDrawingLayerVisibility";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperEquipmentDialog } from "./SuperEquipmentDialog";
@@ -6,7 +7,7 @@ import { SuperSpecMaterialDialog } from "./SuperSpecMaterialDialog";
 
 import { LegendItemsDialog } from "./LegendItemsDialog";
 import { equipmentDrawingDestination, legacyEquipmentDocumentLink } from "~/lib/equipment-tags";
-import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
+import { measurementLayerNames } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { useDrawingPageMode } from "./DrawingPageMode";
@@ -54,6 +55,7 @@ import {
   BellIcon,
   BookmarkIcon,
   CheckIcon,
+  ChevronRightIcon,
   CircleAlertIcon,
   DownloadIcon,
   FileTextIcon,
@@ -318,9 +320,6 @@ function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
 }
 const MEASUREMENT_TYPES: DrawingTool[] = [
   "dimension",
-  "area",
-  "angle",
-  "count",
 ];
 const MARKUP_TYPES: DrawingTool[] = [
   "freehand",
@@ -334,9 +333,11 @@ const MARKUP_TYPES: DrawingTool[] = [
   "polyline",
   "line",
   "arrow",
-  "link",
+  "area",
+  "angle",
+  "count",
 ];
-const PIN_TYPES: DrawingTool[] = ["issue", "rfi"];
+const PIN_TYPES: DrawingTool[] = ["link", "issue", "rfi"];
 const layerLabel = (type: DrawingTool) =>
   tools.find(([tool]) => tool === type)?.[1] ?? capitalize(type);
 /** One row in the Layers list: tap anywhere to show or hide it. */
@@ -576,21 +577,7 @@ export function DrawingWorkspace({
     width: 2,
     fill: "none",
   });
-  const [layers, setLayers] = useState<{
-    markups: boolean;
-    issues: boolean;
-    private: boolean;
-    published: boolean;
-    measurements?: boolean;
-    hidden?: string[];
-  }>(
-    entryDrawing?.layers ?? {
-      markups: true,
-      issues: true,
-      private: true,
-      published: true,
-    },
-  );
+  const [layers, setLayers] = useDrawingLayerVisibility(account?.accountKey, sheet.id, entryDrawing?.layers);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editReadyId, setEditReadyId] = useState<string | null>(null);
   // A mouse right-click is deliberate, so its menu doesn't wait for the shake.
@@ -1427,9 +1414,6 @@ export function DrawingWorkspace({
     });
     setPanel("");
   };
-  const [hiddenMeasurementLayers, setHiddenMeasurementLayers] = useState<
-    string[]
-  >([]);
   const measurementLayers = [
     ...new Set([
       "General",
@@ -1450,15 +1434,10 @@ export function DrawingWorkspace({
         (entity) =>
           entity.visibility !== "archived" &&
           sourceOf(entity) === sourceId &&
-          !(
-            entity.kind === "markup" &&
-            entity.data.type === "dimension" &&
-            !measurementLayerVisible(entity.data, hiddenMeasurementLayers)
-          ) &&
           (entity.kind === "markup"
             ? MEASUREMENT_TYPES.includes(entity.data.type)
               ? layers.measurements !== false
-              : layers.markups
+              : entity.data.type === "link" ? layers.issues : layers.markups
             : entity.kind === "issue"
               ? layers.issues
               : false) &&
@@ -1471,7 +1450,6 @@ export function DrawingWorkspace({
     [
       entities,
       sourceId,
-      hiddenMeasurementLayers,
       layers.markups,
       layers.measurements,
       layers.hidden,
@@ -2605,110 +2583,34 @@ export function DrawingWorkspace({
                                 : [...(old.hidden ?? []), type],
                             }));
                           const group = (
-                            key: "measurements" | "markups" | "issues",
+                            key: "markups" | "issues",
                             label: string,
                             icon: LucideIcon,
                             types: DrawingTool[],
-                            extra?: ReactNode,
-                          ) => {
-                            const on = layers[key] !== false;
-                            return (
-                              <div key={key} role="group" aria-label={label}>
-                                <LayerRow
-                                  icon={icon}
-                                  label={label}
-                                  count={total(types)}
-                                  on={on}
-                                  onToggle={() =>
-                                    setLayers((old) => ({
-                                      ...old,
-                                      [key]: old[key] === false,
-                                    }))
-                                  }
-                                />
-                                {extra}
-                                {types.map((type) => (
-                                  <LayerRow
-                                    key={type}
-                                    child
-                                    icon={
-                                      MARKUP_ICONS[type] ?? TOOL_ICONS[type]
-                                    }
-                                    label={layerLabel(type)}
-                                    count={counts.get(type)}
-                                    on={!hidden.includes(type)}
-                                    muted={!on}
-                                    onToggle={() => toggleType(type)}
-                                  />
-                                ))}
-                              </div>
-                            );
-                          };
+                          ) => (
+                            <details key={key} className="group/layers">
+                              <summary className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 text-sm font-medium hover:bg-muted/70">
+                                <MenuTile icon={icon} />
+                                <span className="flex-1">{label}</span>
+                                <span className="text-muted-foreground text-xs">{total(types) || ""}</span>
+                                <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
+                              </summary>
+                              <LayerRow label={`All ${label}`} icon={icon} on={layers[key] !== false}
+                                onToggle={() => setLayers(old => ({ ...old, [key]: old[key] === false }))} />
+                              {types.map(type => (
+                                <LayerRow key={type} child icon={MARKUP_ICONS[type] ?? TOOL_ICONS[type]}
+                                  label={layerLabel(type)} count={counts.get(type)} on={!hidden.includes(type)}
+                                  muted={layers[key] === false} onToggle={() => toggleType(type)} />
+                              ))}
+                            </details>
+                          );
                           return (
                             <>
-                              {group(
-                                "measurements",
-                                "Measurements",
-                                RulerIcon,
-                                MEASUREMENT_TYPES,
-                                measurementLayers.length > 1 &&
-                                  measurementLayers.map((name) => (
-                                    <LayerRow
-                                      key={`measurement:${name}`}
-                                      child
-                                      icon={LayersIcon}
-                                      label={name}
-                                      on={
-                                        !hiddenMeasurementLayers.includes(name)
-                                      }
-                                      muted={layers.measurements === false}
-                                      onToggle={() =>
-                                        setHiddenMeasurementLayers((old) =>
-                                          old.includes(name)
-                                            ? old.filter(
-                                                (item) => item !== name,
-                                              )
-                                            : [...old, name],
-                                        )
-                                      }
-                                    />
-                                  )),
-                              )}
-                              {group(
-                                "markups",
-                                "Markups",
-                                PenLineIcon,
-                                MARKUP_TYPES,
-                              )}
-                              {group(
-                                "issues",
-                                "Issues & RFIs",
-                                CircleAlertIcon,
-                                PIN_TYPES,
-                              )}
-                              <div className={MENU_SECTION}>Visibility</div>
-                              {(
-                                [
-                                  ["published", "Published"],
-                                  ["private", "Private"],
-                                ] as const
-                              ).map(([key, label]) => (
-                                <LayerRow
-                                  key={key}
-                                  icon={
-                                    key === "private" ? EyeOffIcon : SendIcon
-                                  }
-                                  label={label}
-                                  on={layers[key]}
-                                  onToggle={() =>
-                                    setLayers((old) => ({
-                                      ...old,
-                                      [key]: !old[key],
-                                    }))
-                                  }
-                                />
-                              ))}
-                              <div className={MENU_SECTION}>On this sheet</div>
+                              <LayerRow label="Measure" icon={RulerIcon} count={total(MEASUREMENT_TYPES)}
+                                on={layers.measurements !== false}
+                                onToggle={() => setLayers(old => ({ ...old, measurements: old.measurements === false }))} />
+                              {group("markups", "Markup", PenLineIcon, MARKUP_TYPES)}
+                              {group("issues", "Tools", WrenchIcon, PIN_TYPES)}
                             </>
                           );
                         })()}
@@ -2739,7 +2641,7 @@ export function DrawingWorkspace({
                       </Button>
                     </div>
                   )}
-                  {entities
+                  {panel === "issues" && entities
                     .filter(
                       (entity) =>
                         entity.visibility !== "archived" &&
