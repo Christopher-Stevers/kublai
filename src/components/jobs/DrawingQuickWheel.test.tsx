@@ -68,14 +68,10 @@ function aim(label: string) {
   const tiles = [...current.querySelectorAll("foreignObject")];
   const tile = tiles.find((item) => item.textContent === label)!;
   expect(tile, `wheel choice ${label}`).toBeDefined();
-  let x =
+  const x =
     Number(tile.getAttribute("x")) + Number(tile.getAttribute("width")) / 2;
-  let y =
+  const y =
     Number(tile.getAttribute("y")) + Number(tile.getAttribute("height")) / 2;
-  if (current.dataset.layout === "circle") {
-    x += Number(current.dataset.originX) - 170;
-    y += Number(current.dataset.originY) - 170;
-  }
   fireEvent.pointerMove(window, { ...pointer, clientX: x, clientY: y });
 }
 function open(group: DrawingWheelGroup, claim?: () => void, enabled = true) {

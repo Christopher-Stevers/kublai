@@ -26,8 +26,16 @@ import {
   WHEEL_CHOICE_DIAMETER,
   wheelChoiceRingRadius,
   wheelVisibleLimit,
+  wheelHubRadius,
   type WheelBounds,
 } from "./quick-wheel-layout";
+
+import {
+  joystickWheelArc,
+  wheelCarousel,
+  wheelJoystickSpeed,
+  wrapWheelIndex,
+} from "./quick-wheel-joystick";
 
 import {
   inwardSlots,
@@ -35,7 +43,13 @@ import {
   type WheelUsage,
 } from "./quick-wheel-usage";
 
-type Choice = { label: string; select: () => void; icon?: ReactNode; disabled?: boolean; dismiss?: boolean };
+type Choice = {
+  label: string;
+  select: () => void;
+  icon?: ReactNode;
+  disabled?: boolean;
+  dismiss?: boolean;
+};
 type Choices = { title: string; options: Choice[] };
 /** Mutable gesture registry; methods keep it separate from React render state. */
 class Registry {
@@ -85,14 +99,103 @@ type Wheel = Choices & {
   screenCentre: { x: number; y: number };
   usage: WheelUsage;
   hand?: WheelHand;
-  page: number;
+  offset: number;
+  scrolling: number;
   hovered: number | null;
   moved: boolean;
   skipEntrance?: boolean;
   latched?: boolean;
 };
-type Entry = Choice & { page?: number; sourceIndex?: number };
+type Entry = Choice & { sourceIndex: number };
+// Layout search is relatively expensive. Cache it for a fixed origin rather
+// than repeating the hand-aware geometry on every animation frame.
+const geometryCache = new WeakMap<
+  WheelBounds,
+  Map<string, ReturnType<typeof createGeometry>>
+>();
+function createGeometry(wheel: Wheel) {
+  const limit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
+  const count = wheel.options.length;
+  const capacity = Math.min(limit, count);
+  if (wheel.hand) {
+    const rail = joystickWheelArc(
+      wheel,
+      wheel.bounds,
+      wheel.radius,
+      count,
+      wheel.hand,
+    );
+    if (rail)
+      return {
+        layout: {
+          kind: "curved" as const,
+          choices: rail.points.map((label) => ({
+            label,
+            polygon: [],
+            path: "",
+          })),
+          deadZoneRadius: wheelHubRadius(wheel.radius),
+          labelsOnly: true,
+        },
+        points: rail.points,
+        arc: rail.arc,
+      };
+  }
+  const layout = quickWheelLayout(
+    wheel.x,
+    wheel.y,
+    wheel.radius,
+    capacity,
+    wheel.bounds,
+    wheel.hand,
+  );
+  const points =
+    layout.kind === "curved"
+      ? layout.choices.map((choice) => choice.label)
+      : Array.from({ length: capacity }, (_, index) => ({
+          x:
+            wheel.x +
+            Math.sin((index * Math.PI * 2) / capacity) *
+              wheelChoiceRingRadius(wheel.radius),
+          y:
+            wheel.y -
+            Math.cos((index * Math.PI * 2) / capacity) *
+              wheelChoiceRingRadius(wheel.radius),
+        }));
+  return { layout, points, arc: undefined };
+}
+function geometryFor(wheel: Wheel) {
+  let cache = geometryCache.get(wheel.bounds);
+  if (!cache) {
+    cache = new Map();
+    geometryCache.set(wheel.bounds, cache);
+  }
+  const key = `${wheel.x}:${wheel.y}:${wheel.radius}:${wheel.hand}:${wheel.options.length}`;
+  let geometry = cache.get(key);
+  if (!geometry) {
+    geometry = createGeometry(wheel);
+    cache.set(key, geometry);
+  }
+  return geometry;
+}
+const entryCache = new WeakMap<
+  Choice[],
+  {
+    geometry: ReturnType<typeof createGeometry>;
+    usage: WheelUsage;
+    title: string;
+    entries: Entry[];
+  }
+>();
 function entriesFor(wheel: Wheel): Entry[] {
+  const geometry = geometryFor(wheel);
+  const cached = entryCache.get(wheel.options);
+  if (
+    cached?.geometry === geometry &&
+    cached.usage === wheel.usage &&
+    cached.title === wheel.title
+  )
+    return cached.entries;
   const ranked = wheel.options.map((choice, sourceIndex) => ({
     ...choice,
     sourceIndex,
@@ -102,53 +205,32 @@ function entriesFor(wheel: Wheel): Entry[] {
   ranked.sort(
     (a, b) => frequency(b) - frequency(a) || a.sourceIndex - b.sourceIndex,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
-  const pageSize = visibleLimit - 2;
-  const pages = Math.ceil(ranked.length / pageSize);
-  const entries: Entry[] =
-    ranked.length <= visibleLimit
-      ? ranked
-      : [
-          ...ranked.slice(wheel.page * pageSize, (wheel.page + 1) * pageSize),
-          {
-            label: "Previous",
-            select: () => undefined,
-            page: (wheel.page + pages - 1) % pages,
-          },
-          {
-            label: "More",
-            select: () => undefined,
-            page: (wheel.page + 1) % pages,
-          },
-        ];
-  if (!ranked.some((entry) => frequency(entry) > 0)) return entries;
-  const layout = quickWheelLayout(
-    wheel.x,
-    wheel.y,
-    wheel.radius,
-    entries.length,
-    wheel.bounds,
-    wheel.hand,
-  );
-  const points =
-    layout.kind === "curved"
-      ? layout.choices.map((choice) => choice.label)
-      : entries.map((_, index) => ({
-          x:
-            wheel.x +
-            Math.sin((index * Math.PI * 2) / entries.length) *
-              wheelChoiceRingRadius(wheel.radius),
-          y:
-            wheel.y -
-            Math.cos((index * Math.PI * 2) / entries.length) *
-              wheelChoiceRingRadius(wheel.radius),
-        }));
-  const slots = inwardSlots(points, wheel.screenCentre);
-  const arranged: Entry[] = [];
-  entries.forEach((entry, index) => {
-    arranged[slots[index]!] = entry;
+  const entries = [...ranked];
+  if (ranked.some((entry) => frequency(entry) > 0)) {
+    const slots = inwardSlots(geometry.points, wheel.screenCentre);
+    ranked.slice(0, slots.length).forEach((entry, index) => {
+      entries[slots[index]!] = entry;
+    });
+  }
+  entryCache.set(wheel.options, {
+    geometry,
+    usage: wheel.usage,
+    title: wheel.title,
+    entries,
   });
-  return arranged;
+  return entries;
+}
+function tilesFor(wheel: Wheel) {
+  const { layout, points, arc } = geometryFor(wheel);
+  const entries = entriesFor(wheel);
+  return wheelCarousel(
+    wheel.offset,
+    entries.length,
+    points,
+    wheel,
+    layout.kind === "circle",
+    arc,
+  ).map((tile) => ({ ...tile, entry: entries[tile.index]! }));
 }
 export function wheelSector(
   dx: number,
@@ -183,10 +265,24 @@ function guardRemainingLift(pointerId: number) {
     window.removeEventListener("blur", cleanup);
     clearTimeout(expiry);
   };
-  const release = (event: PointerEvent) => { if (event.pointerId === pointerId) { event.preventDefault(); event.stopImmediatePropagation(); } };
-  const touch = (event: TouchEvent) => { event.preventDefault(); event.stopImmediatePropagation(); };
-  const click = (event: MouseEvent) => { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); };
-  const next = (event: PointerEvent) => { if (event.isPrimary !== false) cleanup(); };
+  const release = (event: PointerEvent) => {
+    if (event.pointerId === pointerId) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
+  const touch = (event: TouchEvent) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  const click = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cleanup();
+  };
+  const next = (event: PointerEvent) => {
+    if (event.isPrimary !== false) cleanup();
+  };
   const expiry = setTimeout(cleanup, 5000);
   window.addEventListener("pointerup", release, true);
   window.addEventListener("pointercancel", release, true);
@@ -226,9 +322,21 @@ export function QuickWheelSurface({
     label: string,
   ) => WheelPreview | undefined | Promise<WheelPreview | undefined>;
 }) {
-  const interaction = useRef({ activation, activationSelector, onActivate, onActiveChange, showBackBar });
+  const interaction = useRef({
+    activation,
+    activationSelector,
+    onActivate,
+    onActiveChange,
+    showBackBar,
+  });
   useLayoutEffect(() => {
-    interaction.current = { activation, activationSelector, onActivate, onActiveChange, showBackBar };
+    interaction.current = {
+      activation,
+      activationSelector,
+      onActivate,
+      onActiveChange,
+      showBackBar,
+    };
   });
   const backAction = useRef(onBack);
   useLayoutEffect(() => {
@@ -254,7 +362,12 @@ export function QuickWheelSurface({
   const active = useRef<Wheel | null>(null);
   const [wheel, setWheel] = useState<Wheel | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pageLatch = useRef<number | null>(null);
+  const selectionLatch = useRef<number | null>(null);
+  const animation = useRef<number | null>(null);
+  const stopScrolling = () => {
+    if (animation.current !== null) cancelAnimationFrame(animation.current);
+    animation.current = null;
+  };
   const suppressClick = useRef(false);
   // The wheel may disappear before its initiating finger leaves the screen.
   const heldPointer = useRef<number | null>(null);
@@ -277,6 +390,7 @@ export function QuickWheelSurface({
     setPreview(null);
   };
   const close = () => {
+    stopScrolling();
     const wasOpen = active.current !== null;
     const pointerId = active.current?.pointerId;
     if (
@@ -287,12 +401,14 @@ export function QuickWheelSurface({
     clearTimer();
     backLatched.current = false;
     setBackHovered(false);
-    pageLatch.current = null;
+    selectionLatch.current = null;
     update(null);
     if (wasOpen) interaction.current.onActiveChange?.(false);
   };
 
-  useHeaderBackOverride(activation === "context" && wheel ? close : null, { priority: 120 });
+  useHeaderBackOverride(activation === "context" && wheel ? close : null, {
+    priority: 120,
+  });
 
   useLayoutEffect(() => {
     return registry.subscribe((choices) => {
@@ -300,17 +416,23 @@ export function QuickWheelSurface({
       if (!current) return;
       const changed =
         choices.title !== current.title ||
-        JSON.stringify(choices.options.map((o) => [o.label, Boolean(o.disabled)])) !==
-          JSON.stringify(current.options.map((o) => [o.label, Boolean(o.disabled)]));
+        JSON.stringify(
+          choices.options.map((o) => [o.label, Boolean(o.disabled)]),
+        ) !==
+          JSON.stringify(
+            current.options.map((o) => [o.label, Boolean(o.disabled)]),
+          );
       if (changed) {
+        stopScrolling();
         clearTimer();
         // Leave the selected direction before arming another choice.
-        pageLatch.current = current.hovered;
+        selectionLatch.current = current.hovered;
         update({
           ...current,
           ...choices,
           usage: orderUsage.current,
-          page: 0,
+          offset: 0,
+          scrolling: 0,
           hovered: null,
         });
       } else {
@@ -322,19 +444,37 @@ export function QuickWheelSurface({
   useEffect(() => {
     const element = surface.current;
     if (!element) return;
-    let pending: { event: PointerEvent; timer: ReturnType<typeof setTimeout> } | null = null;
-    const clearPending = () => { if (pending) clearTimeout(pending.timer); pending = null; };
+    let pending: {
+      event: PointerEvent;
+      timer: ReturnType<typeof setTimeout>;
+    } | null = null;
+    const clearPending = () => {
+      if (pending) clearTimeout(pending.timer);
+      pending = null;
+    };
     const eligible = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
       const control = target.closest(interactive);
       // Annotation SVGs are accessible buttons, but remain part of the drawing.
-      if (control && !(interaction.current.activation === "context" && control.hasAttribute("data-annotation-id"))) return false;
-      return !interaction.current.activationSelector || Boolean(target.closest(interaction.current.activationSelector));
+      if (
+        control &&
+        !(
+          interaction.current.activation === "context" &&
+          control.hasAttribute("data-annotation-id")
+        )
+      )
+        return false;
+      return (
+        !interaction.current.activationSelector ||
+        Boolean(target.closest(interaction.current.activationSelector))
+      );
     };
     function open(event: PointerEvent | MouseEvent, latched = false) {
       if (!wheelEnabled.current) return;
       if (
-        !latched && event instanceof PointerEvent && event.isPrimary === false
+        !latched &&
+        event instanceof PointerEvent &&
+        event.isPrimary === false
       )
         return;
       const choices = registry.current;
@@ -350,7 +490,9 @@ export function QuickWheelSurface({
         );
       const top = Math.max(viewportTop + 12, bounds.top + 8),
         bottom = Math.min(
-          viewportTop + (viewport?.height ?? innerHeight) - (interaction.current.showBackBar ? 88 : 12),
+          viewportTop +
+            (viewport?.height ?? innerHeight) -
+            (interaction.current.showBackBar ? 88 : 12),
           bounds.bottom - 8,
         );
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
@@ -364,7 +506,7 @@ export function QuickWheelSurface({
       suppressClick.current = true;
       heldPointer.current = latched ? null : pointerId;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
-      pageLatch.current = null;
+      selectionLatch.current = null;
       update({
         ...choices,
         hand:
@@ -389,7 +531,8 @@ export function QuickWheelSurface({
           y: viewportTop + (viewport?.height ?? innerHeight) / 2,
         },
         usage: orderUsage.current,
-        page: 0,
+        offset: 0,
+        scrolling: 0,
         hovered: null,
         moved: false,
       });
@@ -400,25 +543,93 @@ export function QuickWheelSurface({
       if (active.current) {
         if (active.current.latched) {
           if (event.button !== 0) return;
-          heldPointer.current = event.pointerId; suppressClick.current = true;
-          event.preventDefault(); event.stopImmediatePropagation(); close();
-        }
-        else if (event.pointerId !== active.current.pointerId) close();
+          heldPointer.current = event.pointerId;
+          suppressClick.current = true;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          close();
+        } else if (event.pointerId !== active.current.pointerId) close();
         return;
       }
       clearPending();
-      if (event.button !== 0 || event.isPrimary === false || !eligible(event.target)) return;
+      if (
+        event.button !== 0 ||
+        event.isPrimary === false ||
+        !eligible(event.target)
+      )
+        return;
       if (interaction.current.activation === "context") {
         if (event.pointerType !== "touch") return;
-        pending = { event, timer: setTimeout(() => { pending = null; open(event); }, 500) };
+        pending = {
+          event,
+          timer: setTimeout(() => {
+            pending = null;
+            open(event);
+          }, 500),
+        };
       } else open(event);
     }
-    function move(event: PointerEvent) {
-      if (pending && (event.pointerId !== pending.event.pointerId || Math.hypot(event.clientX - pending.event.clientX, event.clientY - pending.event.clientY) > 8)) clearPending();
+    function scroll(speed: number) {
       const current = active.current;
-      if (!current || (!current.latched && event.pointerId !== current.pointerId)) return;
+      if (!current) return;
+      if (!speed) {
+        stopScrolling();
+        if (current.scrolling) update({ ...current, scrolling: 0 });
+        return;
+      }
+      clearTimer();
+      selectionLatch.current = null;
+      update({
+        ...current,
+        scrolling: speed,
+        hovered: null,
+        skipEntrance: true,
+      });
+      if (animation.current !== null) return;
+      let last = performance.now();
+      const tick = (now: number) => {
+        const live = active.current;
+        if (!live || !live.scrolling) {
+          animation.current = null;
+          return;
+        }
+        // No catch-up jump after a stalled frame. Right deflection moves tiles
+        // clockwise/right, and left reverses, without momentum after release.
+        const dt = Math.min(50, Math.max(0, now - last)) / 1000;
+        last = now;
+        update({
+          ...live,
+          offset: wrapWheelIndex(
+            live.offset - live.scrolling * dt,
+            geometryFor(live).arc &&
+              live.options.length <= geometryFor(live).points.length
+              ? live.options.length + 1
+              : live.options.length,
+          ),
+        });
+        animation.current = requestAnimationFrame(tick);
+      };
+      animation.current = requestAnimationFrame(tick);
+    }
+    function move(event: PointerEvent) {
+      if (
+        pending &&
+        (event.pointerId !== pending.event.pointerId ||
+          Math.hypot(
+            event.clientX - pending.event.clientX,
+            event.clientY - pending.event.clientY,
+          ) > 8)
+      )
+        clearPending();
+      let current = active.current;
+      if (
+        !current ||
+        (!current.latched && event.pointerId !== current.pointerId)
+      )
+        return;
       event.preventDefault();
-      if (interaction.current.activation === "context") event.stopImmediatePropagation();
+      if (interaction.current.activation === "context")
+        event.stopImmediatePropagation();
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       const backBounds =
         backAction.current || backLatched.current
@@ -431,11 +642,13 @@ export function QuickWheelSurface({
         event.clientY >= backBounds.top &&
         event.clientY <= backBounds.bottom;
       if (overBack) {
+        scroll(0);
+        current = active.current!;
         clearTimer();
         setBackHovered(true);
         if (!backLatched.current) {
           backLatched.current = true;
-          pageLatch.current = null;
+          selectionLatch.current = null;
           update({ ...current, hovered: null, moved: false });
           backAction.current?.();
         }
@@ -449,31 +662,50 @@ export function QuickWheelSurface({
           event.clientX - current.startX,
           event.clientY - current.startY,
         ) > 12;
-      const layout = quickWheelLayout(
-        current.x,
-        current.y,
-        current.radius,
-        entriesFor(current).length,
-        current.bounds,
-        current.hand,
-      );
-      let hovered = moved
-        ? layout.kind === "curved"
-          ? curvedChoiceAt(
-              layout,
-              event.clientX,
-              event.clientY,
-              current.x,
-              current.y,
-            )
-          : wheelSector(
-              event.clientX - current.x,
-              event.clientY - current.y,
-              entriesFor(current).length,
-              current.radius,
-            )
-        : null;
-      if (hovered !== null && entriesFor(current)[hovered]?.disabled) hovered = null;
+      const dx = event.clientX - current.x,
+        dy = event.clientY - current.y;
+      const inHub = Math.hypot(dx, dy) <= wheelHubRadius(current.radius);
+      const speed =
+        current.options.length > 1
+          ? wheelJoystickSpeed(dx, dy, current.radius)
+          : 0;
+      scroll(speed);
+      current = active.current!;
+      if (speed) return;
+      const { layout, points } = geometryFor(current);
+      const entries = entriesFor(current);
+      let hovered: number | null = null;
+      if (moved && !inHub) {
+        const tiles = tilesFor(current);
+        const target = tiles
+          .filter((tile) => tile.opacity >= 0.65 && !tile.entry.disabled)
+          .sort(
+            (a, b) =>
+              Math.hypot(a.x - event.clientX, a.y - event.clientY) -
+              Math.hypot(b.x - event.clientX, b.y - event.clientY),
+          )
+          .find(
+            (tile) =>
+              Math.hypot(tile.x - event.clientX, tile.y - event.clientY) <=
+              WHEEL_CHOICE_DIAMETER / 2 + 6,
+          );
+        hovered = target?.entry.sourceIndex ?? null;
+        // Preserve the original forgiving wedges before scrolling begins.
+        if (hovered === null && current.offset === 0) {
+          const slot =
+            layout.kind === "curved"
+              ? curvedChoiceAt(
+                  layout,
+                  event.clientX,
+                  event.clientY,
+                  current.x,
+                  current.y,
+                )
+              : wheelSector(dx, dy, points.length, current.radius);
+          if (slot !== null && !entries[slot]?.disabled)
+            hovered = entries[slot]?.sourceIndex ?? null;
+        }
+      }
       if (hovered === current.hovered && moved === current.moved) {
         // The visual next centre matches where a confirmed choice will recenter.
         setPreview((value) =>
@@ -482,31 +714,21 @@ export function QuickWheelSurface({
         return;
       }
       clearTimer();
-      if (hovered !== pageLatch.current) pageLatch.current = null;
+      if (hovered !== selectionLatch.current) selectionLatch.current = null;
       const next = { ...current, hovered, moved };
       update(next);
-      const entry = hovered === null ? null : entriesFor(next)[hovered];
-      if (entry && pageLatch.current === null) {
+      const entry =
+        hovered === null
+          ? null
+          : entriesFor(next).find((entry) => entry.sourceIndex === hovered);
+      if (entry && selectionLatch.current === null) {
         const version = previewVersion.current;
         const deadline = Date.now() + 500;
-        if (entry.page !== undefined || preparePreview.current) {
+        if (preparePreview.current) {
           previewTimer.current = setTimeout(() => {
             previewTimer.current = null;
             void Promise.resolve()
-              .then(() =>
-                entry.page !== undefined
-                  ? {
-                      title: next.title,
-                      kind: "wheel" as const,
-                      options: next.options.map((option) => ({
-                        label: option.label,
-                        icon: option.icon,
-                        disabled: option.disabled,
-                      })),
-                      page: entry.page,
-                    }
-                  : preparePreview.current?.(next.title, entry.label),
-              )
+              .then(() => preparePreview.current?.(next.title, entry.label))
               .then((value) => {
                 if (
                   !value ||
@@ -539,35 +761,30 @@ export function QuickWheelSurface({
           if (
             !current ||
             current.hovered !== hovered ||
-            current.page !== next.page ||
+            current.offset !== next.offset ||
             current.title !== next.title
           )
             return;
           // Start the next choice directly under the finger, even when it
           // moved within the same sector during the dwell timer.
           const { x, y } = pointerPosition.current;
-          pageLatch.current = null;
+          selectionLatch.current = null;
           update({
             ...current,
             x,
             y,
             startX: x,
             startY: y,
-            page: entry.page ?? current.page,
+            scrolling: 0,
             skipEntrance: hadPreview,
             hovered: null,
             moved: false,
           });
-          if (entry.page === undefined) {
-            // Use the latest callbacks after query or pending-quantity changes.
-            const choice =
-              entry.sourceIndex === undefined
-                ? undefined
-                : registry.current?.options[entry.sourceIndex];
-            if (choice && !choice.disabled) {
-              choice.select();
-              if (choice.dismiss) close();
-            }
+          // Use the latest callbacks after query or pending-quantity changes.
+          const choice = registry.current?.options[entry.sourceIndex];
+          if (choice && !choice.disabled) {
+            choice.select();
+            if (choice.dismiss) close();
           }
         }, 500);
       }
@@ -619,20 +836,35 @@ export function QuickWheelSurface({
       }
     }
     function context(event: MouseEvent) {
-      if (interaction.current.activation === "context" && wheelEnabled.current && eligible(event.target)) {
+      if (
+        interaction.current.activation === "context" &&
+        wheelEnabled.current &&
+        eligible(event.target)
+      ) {
         const touchPress = pending?.event;
         clearPending();
-        event.preventDefault(); event.stopImmediatePropagation();
-        if (touchPress) { open(touchPress); return; }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (touchPress) {
+          open(touchPress);
+          return;
+        }
         // Android may emit a context-menu while its initiating touch is held.
-        if ((event as PointerEvent).pointerType === "touch" || heldPointer.current !== null) return;
+        if (
+          (event as PointerEvent).pointerType === "touch" ||
+          heldPointer.current !== null
+        )
+          return;
         if (active.current) close();
         else open(event, true);
       } else if (active.current) event.preventDefault();
     }
     element.addEventListener("pointerdown", start, true);
     window.addEventListener("pointerdown", resetClick, true);
-    window.addEventListener("pointermove", move, { passive: false, capture: true });
+    window.addEventListener("pointermove", move, {
+      passive: false,
+      capture: true,
+    });
     window.addEventListener("pointerup", end, true);
     window.addEventListener("touchend", finishTouch, {
       capture: true,
@@ -650,8 +882,13 @@ export function QuickWheelSurface({
     element.addEventListener("click", click, true);
     element.addEventListener("contextmenu", context, true);
     return () => {
-      if (heldPointer.current !== null && interaction.current.activation === "context") guardRemainingLift(heldPointer.current);
+      if (
+        heldPointer.current !== null &&
+        interaction.current.activation === "context"
+      )
+        guardRemainingLift(heldPointer.current);
       clearPending();
+      stopScrolling();
       clearTimer();
       const pointerId = active.current?.pointerId;
       if (pointerId !== undefined && element.hasPointerCapture?.(pointerId))
@@ -686,25 +923,31 @@ export function QuickWheelSurface({
         {children}
         {wheel && (
           <>
-            <WheelDisplay wheel={wheel} preview={preview} showBackdrop={showBackdrop} />
-            {showBackBar && <button
-              ref={backTarget}
-              type="button"
-              data-quick-wheel-back=""
-              data-active={backHovered}
-              aria-label="Back one step"
-              disabled={!onBack}
-              onClick={() => backAction.current?.()}
-              className={cn(
-                "pointer-events-none fixed inset-x-0 bottom-0 z-[101] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-center gap-2 border-t pb-[env(safe-area-inset-bottom)] text-base font-semibold shadow-lg transition-colors",
-                backHovered && onBack
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-card-foreground",
-                !onBack && "text-muted-foreground",
-              )}
-            >
-              <ArrowLeftIcon className="size-5" /> Back
-            </button>}
+            <WheelDisplay
+              wheel={wheel}
+              preview={preview}
+              showBackdrop={showBackdrop}
+            />
+            {showBackBar && (
+              <button
+                ref={backTarget}
+                type="button"
+                data-quick-wheel-back=""
+                data-active={backHovered}
+                aria-label="Back one step"
+                disabled={!onBack}
+                onClick={() => backAction.current?.()}
+                className={cn(
+                  "pointer-events-none fixed inset-x-0 bottom-0 z-[101] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-center gap-2 border-t pb-[env(safe-area-inset-bottom)] text-base font-semibold shadow-lg transition-colors",
+                  backHovered && onBack
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-card-foreground",
+                  !onBack && "text-muted-foreground",
+                )}
+              >
+                <ArrowLeftIcon className="size-5" /> Back
+              </button>
+            )}
           </>
         )}
       </div>
@@ -713,7 +956,7 @@ export function QuickWheelSurface({
 }
 
 type PendingPreview = {
-  value: WheelPreview & { page?: number };
+  value: WheelPreview;
   x: number;
   y: number;
   duration: number;
@@ -735,38 +978,24 @@ function WheelDisplay({
   duration?: number;
   showBackdrop?: boolean;
 }) {
-  const entries = entriesFor(wheel);
-  const selected = wheel.hovered === null ? undefined : entries[wheel.hovered];
-  const layout = quickWheelLayout(
-    wheel.x,
-    wheel.y,
-    wheel.radius,
-    entries.length,
-    wheel.bounds,
-    wheel.hand,
+  const tiles = tilesFor(wheel);
+  const selected = tiles.find(
+    (tile) => tile.entry.sourceIndex === wheel.hovered,
   );
-  const visibleLimit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
-  const pages = Math.ceil(wheel.options.length / (visibleLimit - 2));
+  const { layout, points } = geometryFor(wheel);
+  const hub = wheelHubRadius(wheel.radius);
   const hint = selected
-    ? selected.page !== undefined
-      ? "Hold to browse"
-      : "Hold to select"
-    : "Slide to choose";
-  const labelOf = (entry: Entry) =>
-    entry.page !== undefined
-      ? entry.label === "More"
-        ? "More →"
-        : "← Previous"
-      : entry.label;
-  const tileClass = (index: number, entry: Entry) =>
+    ? "Hold to select"
+    : wheel.scrolling
+      ? "Centre to stop"
+      : "← Slide to scroll →";
+  const tileClass = (entry: Entry) =>
     cn(
-      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center leading-tight font-semibold tracking-wide uppercase shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-[scale,background-color,color,box-shadow,border-color] duration-150 ease-out",
+      "quick-wheel-tile flex h-full w-full items-center justify-center rounded-full border p-1.5 text-center text-[13px] leading-tight font-semibold tracking-wide uppercase shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-[scale,background-color,color,box-shadow,border-color] duration-150 ease-out",
       entry.disabled && "opacity-40",
-      wheel.hovered === index
+      wheel.hovered === entry.sourceIndex
         ? "bg-primary text-primary-foreground border-primary ring-primary/25 scale-110 shadow-lg ring-4"
-        : entry.page !== undefined
-          ? "bg-muted/90 text-muted-foreground border-dashed border-muted-foreground/40 backdrop-blur-sm"
-          : "bg-card text-card-foreground border-primary/25 dark:border-primary/35",
+        : "bg-card text-card-foreground border-primary/25 dark:border-primary/35",
     );
   return (
     <div
@@ -786,10 +1015,13 @@ function WheelDisplay({
       }
       data-layout={layout.kind}
       data-hand={wheel.hand}
+      data-offset={wheel.offset}
+      data-scrolling={Boolean(wheel.scrolling)}
       data-origin-x={wheel.x}
       data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}
       role={isPreview ? undefined : "status"}
+      aria-live={isPreview || wheel.scrolling ? "off" : "polite"}
     >
       {!isPreview && showBackdrop && (
         <div
@@ -827,210 +1059,113 @@ function WheelDisplay({
           <p className="text-muted-foreground mt-0.5 text-xs">
             {isPreview
               ? `Preview · keep holding ${pendingLabel ?? "your choice"}`
-              : "Slide to a choice and hold to pick it"}
+              : "Slide left or right to scroll · move out and hold to choose"}
           </p>
         </div>
-        {layout.kind === "curved" ? (
-          (() => {
-            const points = layout.choices.map((choice) => choice.label);
-            const width = WHEEL_CHOICE_DIAMETER,
-              height = width;
-            // Keep room for feedback text; activation starts closer to the finger.
-            const hub = (wheel.radius * 64) / 170;
-            const target =
-              wheel.hovered === null ? undefined : points[wheel.hovered];
-            return (
-              <>
-                <svg
-                  className="absolute inset-0 h-full w-full"
-                  aria-hidden="true"
-                >
-                  <path
-                    data-wheel-track=""
-                    d={layout.track ?? smoothCurve(points)}
-                    fill="none"
-                    className="stroke-primary/30 dark:stroke-primary/40"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  <circle
-                    data-wheel-hub=""
-                    cx={wheel.x}
-                    cy={wheel.y}
-                    r={hub}
-                    className="fill-card stroke-border drop-shadow-lg"
-                    strokeWidth="1.5"
-                  />
-                  <circle
-                    cx={wheel.x}
-                    cy={wheel.y}
-                    r="4"
-                    className="fill-primary"
-                  />
-                  <HighlightArc
-                    cx={wheel.x}
-                    cy={wheel.y}
-                    radius={hub + 12}
-                    angle={
-                      target
-                        ? Math.atan2(target.x - wheel.x, wheel.y - target.y)
-                        : null
-                    }
-                  />
-                  {layout.choices.map((choice, index) => (
-                    <foreignObject
-                      key={`${wheel.page}-${index}`}
-                      data-wheel-choice={index}
-                      x={choice.label.x - width / 2}
-                      y={choice.label.y - height / 2}
-                      width={width}
-                      height={height}
-                      className="overflow-visible"
-                    >
-                      <div
-                        className={cn(
-                          tileClass(index, entries[index]!),
-                          "text-[13px]",
-                        )}
-                        style={{
-                          // Tiles fly out from under the finger.
-                          ...({
-                            "--from-x": `${wheel.x - choice.label.x}px`,
-                            "--from-y": `${wheel.y - choice.label.y}px`,
-                          } as React.CSSProperties),
-                          animationDelay: `${index * 25}ms`,
-                          animation:
-                            isPreview || wheel.skipEntrance
-                              ? "none"
-                              : undefined,
-                        }}
-                      >
-                        <span className={entries[index]!.icon ? "flex flex-col items-center gap-1 px-1 text-xs [&_svg]:size-5" : "whitespace-nowrap"}>
-                          {entries[index]!.icon}
-                          {labelOf(entries[index]!)}
-                        </span>
-                      </div>
-                    </foreignObject>
-                  ))}
-                </svg>
-                <div
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
-                  style={{ left: wheel.x, top: wheel.y - 22, width: hub * 1.5 }}
-                >
-                  <span
-                    className={cn(
-                      "line-clamp-2 text-sm leading-tight font-semibold uppercase",
-                      selected ? "text-primary" : "text-foreground",
-                    )}
-                  >
-                    {selected ? labelOf(selected) : wheel.title}
-                  </span>
-                  <span className="text-muted-foreground text-[10px] leading-tight">
-                    {hint}
-                  </span>
-                </div>
-              </>
-            );
-          })()
-        ) : (
-          <div
-            className="absolute"
-            style={{
-              left: wheel.x - wheel.radius,
-              top: wheel.y - wheel.radius,
-              width: wheel.radius * 2,
-              height: wheel.radius * 2,
-            }}
-          >
-            {(() => {
-              // Tiles keep a readable size on screen whatever the wheel's scale.
-              const scale = wheel.radius / 170;
-              const ring = wheelChoiceRingRadius(wheel.radius) / scale;
-              const step = (Math.PI * 2) / entries.length;
-              const width = WHEEL_CHOICE_DIAMETER / scale,
-                height = width;
-              return (
-                <svg
-                  viewBox="0 0 340 340"
-                  className="h-full w-full overflow-visible"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="170"
-                    cy="170"
-                    r={ring}
-                    fill="none"
-                    className="stroke-border"
-                    strokeWidth={2 / scale}
-                  />
-                  <circle
-                    cx="170"
-                    cy="170"
-                    r="56"
-                    className="fill-card stroke-border drop-shadow-lg"
-                    strokeWidth={1.5 / scale}
-                  />
-                  <HighlightArc
-                    cx={170}
-                    cy={170}
-                    radius={70}
-                    strokeWidth={6 / scale}
-                    angle={wheel.hovered === null ? null : wheel.hovered * step}
-                  />
-                  {entries.map((entry, index) => {
-                    const angle = index * step;
-                    const lift = wheel.hovered === index ? 6 / scale : 0;
-                    return (
-                      <foreignObject
-                        key={`${wheel.page}-${index}`}
-                        x={170 + Math.sin(angle) * (ring + lift) - width / 2}
-                        y={170 - Math.cos(angle) * (ring + lift) - height / 2}
-                        width={width}
-                        height={height}
-                        className="overflow-visible"
-                      >
-                        <div
-                          className={tileClass(index, entry)}
-                          style={{
-                            fontSize: 14 / scale,
-                            animationDelay: `${index * 20}ms`,
-                            animation:
-                              isPreview || wheel.skipEntrance
-                                ? "none"
-                                : undefined,
-                          }}
-                        >
-                          <span className={entry.icon ? "flex flex-col items-center gap-1 px-1 text-xs [&_svg]:size-5" : "whitespace-nowrap"}>
-                            {entry.icon}
-                            {labelOf(entry)}
-                          </span>
-                        </div>
-                      </foreignObject>
-                    );
-                  })}
-                </svg>
-              );
-            })()}
-            <div className="absolute top-1/2 left-1/2 flex w-[28%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center">
-              <span
-                className={cn(
-                  "line-clamp-3 text-base leading-tight font-semibold uppercase",
-                  selected ? "text-primary" : "text-foreground",
-                )}
+        <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+          {layout.kind === "circle" ? (
+            <circle
+              cx={wheel.x}
+              cy={wheel.y}
+              r={wheelChoiceRingRadius(wheel.radius)}
+              fill="none"
+              className="stroke-primary/30"
+              strokeWidth="2"
+            />
+          ) : (
+            <path
+              data-wheel-track=""
+              d={layout.track ?? smoothCurve(points)}
+              fill="none"
+              className="stroke-primary/30 dark:stroke-primary/40"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          )}
+          {tiles.map(({ key, x, y, opacity, entry }, index) => (
+            <foreignObject
+              key={`${wheel.title}:${key}`}
+              data-wheel-choice={index}
+              data-source-index={entry.sourceIndex}
+              x={x - WHEEL_CHOICE_DIAMETER / 2}
+              y={y - WHEEL_CHOICE_DIAMETER / 2}
+              width={WHEEL_CHOICE_DIAMETER}
+              height={WHEEL_CHOICE_DIAMETER}
+              className="overflow-visible"
+              opacity={opacity}
+            >
+              <div
+                className={tileClass(entry)}
+                style={{
+                  ...({
+                    "--from-x": `${wheel.x - x}px`,
+                    "--from-y": `${wheel.y - y}px`,
+                  } as React.CSSProperties),
+                  animationDelay: `${index * 25}ms`,
+                  animationName:
+                    isPreview || wheel.skipEntrance || wheel.offset !== 0
+                      ? "none"
+                      : undefined,
+                }}
               >
-                {selected ? labelOf(selected) : wheel.title}
-              </span>
-              <span className="text-muted-foreground text-[10px] leading-tight">
-                {hint}
-              </span>
-              {wheel.options.length > visibleLimit && (
-                <span className="text-muted-foreground/80 text-[10px] tabular-nums">
-                  {wheel.page + 1} / {pages}
+                <span
+                  className={
+                    entry.icon
+                      ? "flex flex-col items-center gap-1 px-1 text-xs [&_svg]:size-5"
+                      : "whitespace-nowrap"
+                  }
+                >
+                  {entry.icon}
+                  {entry.label}
                 </span>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            </foreignObject>
+          ))}
+          {/* Painted last: options disappear underneath the thumb, not over it. */}
+          <circle
+            data-wheel-hub=""
+            cx={wheel.x}
+            cy={wheel.y}
+            r={hub}
+            className="fill-card stroke-border drop-shadow-lg"
+            strokeWidth="1.5"
+          />
+          <HighlightArc
+            cx={wheel.x}
+            cy={wheel.y}
+            radius={hub + 12}
+            angle={
+              selected
+                ? Math.atan2(selected.x - wheel.x, wheel.y - selected.y)
+                : null
+            }
+          />
+          <circle
+            data-wheel-stick=""
+            cx={
+              wheel.x + (wheel.scrolling ? Math.sign(wheel.scrolling) * 18 : 0)
+            }
+            cy={wheel.y + 28}
+            r="4"
+            className="fill-primary"
+          />
+        </svg>
+        <div
+          className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-center"
+          style={{ left: wheel.x, top: wheel.y - 8, width: hub * 1.65 }}
+        >
+          <span
+            className={cn(
+              "line-clamp-2 text-sm leading-tight font-semibold uppercase",
+              selected ? "text-primary" : "text-foreground",
+            )}
+          >
+            {selected?.entry.label ?? wheel.title}
+          </span>
+          <span className="text-muted-foreground text-[10px] leading-tight">
+            {hint}
+          </span>
+        </div>
       </div>
       {preview &&
         (preview.value.kind === "wheel" && preview.value.options.length ? (
@@ -1050,7 +1185,8 @@ function WheelDisplay({
               })),
               x: preview.x,
               y: preview.y,
-              page: preview.value.page ?? 0,
+              offset: 0,
+              scrolling: 0,
               hovered: null,
               moved: false,
             }}
