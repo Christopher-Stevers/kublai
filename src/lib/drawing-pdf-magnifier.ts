@@ -14,7 +14,7 @@ export type MagnifierCrop = {
 /** Render a tiny sheet-space crop at lens resolution, never a giant page bitmap. */
 export class DrawingPdfMagnifier {
   private desired: { key: string; crop: MagnifierCrop } | null = null;
-  private ready: { key: string; canvas: HTMLCanvasElement } | null = null;
+  private ready: { key: string; crop: MagnifierCrop; canvas: HTMLCanvasElement } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private task: RenderTask | null = null;
   private running = false;
@@ -43,13 +43,27 @@ export class DrawingPdfMagnifier {
     if (this.desired?.key !== key) {
       this.desired = { key, crop };
       this.retryAt = 0;
-      // Finish useful work, but never display a crop for the wrong aim point.
-      if (this.timer) clearTimeout(this.timer);
-      this.timer = null;
+      // Keep the pending render scheduled even while zoom changes every frame.
+      // Restarting this timer would postpone detail until the gesture stopped.
     }
     if (this.ready?.key === key) return this.ready.canvas;
     this.schedule();
     return null;
+  }
+
+  /** Reproject completed detail as zoom advances; never show a different aim. */
+  paint(context: CanvasRenderingContext2D, crop: MagnifierCrop, size: number) {
+    const ready = this.ready;
+    if (!ready || !contains(ready.crop, crop)) return;
+    const scaleX = ready.canvas.width / ready.crop.width;
+    const scaleY = ready.canvas.height / ready.crop.height;
+    context.drawImage(
+      ready.canvas,
+      (crop.left - ready.crop.left) * scaleX,
+      (crop.top - ready.crop.top) * scaleY,
+      crop.width * scaleX, crop.height * scaleY,
+      0, 0, size, size,
+    );
   }
 
   private schedule() {
@@ -66,7 +80,7 @@ export class DrawingPdfMagnifier {
         this.timer = null;
         void this.render();
       },
-      Math.max(40, this.retryAt - Date.now()),
+      Math.max(0, this.retryAt - Date.now()),
     );
   }
 
@@ -122,9 +136,10 @@ export class DrawingPdfMagnifier {
       });
       timeout = setTimeout(() => this.task?.cancel(), 30_000);
       await this.task.promise;
-      if (this.disposed || this.desired.key !== key) return;
+      if (this.disposed || !contains(crop, this.desired.crop)) return;
+      if (this.ready?.key === this.desired.key && key !== this.desired.key) return;
       if (this.ready) this.ready.canvas.width = this.ready.canvas.height = 0;
-      this.ready = { key, canvas };
+      this.ready = { key, crop, canvas };
       this.retryAt = 0;
       this.onReady();
     } catch {
@@ -147,4 +162,11 @@ export class DrawingPdfMagnifier {
     this.ready = null;
     this.desired = null;
   }
+}
+
+function contains(outer: MagnifierCrop, inner: MagnifierCrop) {
+  const epsilon = 1e-10;
+  return inner.left >= outer.left - epsilon && inner.top >= outer.top - epsilon &&
+    inner.left + inner.width <= outer.left + outer.width + epsilon &&
+    inner.top + inner.height <= outer.top + outer.height + epsilon;
 }

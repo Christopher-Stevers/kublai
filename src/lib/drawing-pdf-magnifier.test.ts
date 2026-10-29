@@ -134,3 +134,25 @@ it("leaves fallback available after a failure and retries without a busy loop", 
   await vi.advanceTimersByTimeAsync(150);
   expect(render).toHaveBeenCalledTimes(2);
 });
+
+it("starts immediately and publishes aligned detail while zoom is still changing", async () => {
+  lens.request(crop);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(render).toHaveBeenCalledOnce();
+  const zoomed = { ...crop, left: 0.405, top: 0.31, width: 0.01, height: 0.02 };
+  lens.request(zoomed);
+  pending[0]!.resolve();
+  await tick();
+  expect(ready).toHaveBeenCalledOnce();
+  const drawImage = vi.fn();
+  lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, zoomed, 400);
+  expect(drawImage).toHaveBeenCalledOnce();
+  const args = drawImage.mock.calls[0]!;
+  expect(args[1]).toBeCloseTo(100);
+  expect(args[2]).toBeCloseTo(100);
+  expect(args.slice(3)).toEqual([200, 200, 0, 0, 400, 400]);
+  expect(render).toHaveBeenCalledTimes(2);
+  drawImage.mockClear();
+  lens.paint({ drawImage } as unknown as CanvasRenderingContext2D, { ...zoomed, left: 0.8 }, 400);
+  expect(drawImage).not.toHaveBeenCalled();
+});

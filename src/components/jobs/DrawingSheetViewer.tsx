@@ -1869,19 +1869,18 @@ export function DrawingSheetViewer({
       }
     }
     if (box.width > 0 && box.height > 0) {
-      const detail = pdfMagnifier.current?.request({
+      const crop = {
         left: (src.left - box.left) / box.width,
         top: (src.top - box.top) / box.height,
         width: (src.right - src.left) / box.width,
         height: (src.bottom - src.top) / box.height,
         pixels: size,
-      });
-      if (detail) {
-        ctx.save();
-        ctx.filter = appearanceFilter ?? "none";
-        ctx.drawImage(detail, 0, 0, size, size);
-        ctx.restore();
-      }
+      };
+      pdfMagnifier.current?.request(crop);
+      ctx.save();
+      ctx.filter = appearanceFilter ?? "none";
+      pdfMagnifier.current?.paint(ctx, crop, size);
+      ctx.restore();
     }
     // Clip only overlays, preserving the drawing beneath the reticle center.
     const target = map(centre);
