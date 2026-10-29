@@ -387,6 +387,8 @@ function PassiveDocumentPdfPreview({
         {backing?.page === page && (
           <DrawingSheetViewer
             key={`${url}:${page}`}
+            // Passive comparisons use the renderer without its standalone tool launcher.
+            toolControls={{ measureRequest: 0, pipeRequest: 0 }}
             src={backing.src}
             alt={`${title}, page ${page}`}
             pdf={{ url, page }}

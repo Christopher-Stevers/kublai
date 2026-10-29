@@ -77,6 +77,8 @@ it("uses the shared drawing renderer with the authenticated source and only decl
     url: "/api/job-documents/files/private?jobId=job",
     page: 1,
   });
+  expect(state.props?.toolControls).toEqual({ measureRequest: 0, pipeRequest: 0 });
+  expect(state.props?.onCreate).toBeUndefined();
   expect(ready).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("Render shared drawing"));
   expect(ready).toHaveBeenCalledOnce();

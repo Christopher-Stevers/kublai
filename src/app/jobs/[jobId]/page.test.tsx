@@ -13,6 +13,7 @@ vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("~/hooks/use-job-room-count", () => ({ useJobRoomCount: () => ({ count: 12, loading: false }) }));
 vi.mock("~/components/jobs/JobEditDialog", () => ({ JobEditDialog: () => null }));
 vi.mock("~/components/jobs/DrawingAccountProvider", () => ({ useDrawingAccount: () => null }));
+vi.mock("~/components/permissions/SystemsAccess", () => ({ useSystemsAccess: () => true }));
 vi.mock("~/components/permissions/DrawingsAccess", () => ({ useDrawingsAccess: () => true }));
 vi.mock("~/lib/job-workspace-last-option", () => ({ setLastJobWorkspaceLocation: vi.fn() }));
 afterEach(cleanup);

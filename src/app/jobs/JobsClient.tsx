@@ -1,6 +1,7 @@
 "use client";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { VoiceCard } from "~/components/voice/VoiceProvider";
+import { JobOverviewHeading } from "~/components/jobs/JobOverviewHeading";
 import { JobOfflineNotice } from "~/components/jobs/JobOfflineNotice";
 import { formatLocationAddress, type JobLocationDisplay } from "~/lib/location-address";
 import { useScrollToTop } from "~/hooks/use-remembered-scroll";
@@ -19,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,  } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
-import { BriefcaseIcon, UserIcon, MapPinIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, } from "lucide-react";
+import { BriefcaseIcon, UserIcon, MapPinIcon, MoreVerticalIcon, PackageIcon, PlusIcon, TrashIcon, } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Badge } from "~/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,  } from "~/components/ui/dropdown-menu";
@@ -204,7 +205,6 @@ export function JobsClient({
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
-    const jobLocationAddress = formatLocationAddress(offlineJob?.location);
 
     return (
       <div className="px-4 pt-6 pb-24 sm:px-6 sm:py-8">
@@ -215,42 +215,7 @@ export function JobsClient({
             <>
               {/* Job details only on the job overview, not inside Rooms or Material Lists. */}
               {offlineJobView === "options" && (
-                <div className="mb-6">
-                  <div className="mb-2 flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                      {offlineJob.name}
-                    </h1>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowOfflineJobEditDialog(true)}
-                      className="h-8 w-8 p-0"
-                      aria-label="Edit job"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    {jobLocationAddress && (
-                      <div className="flex items-center gap-2">
-                        <MapPinIcon className="h-4 w-4" />
-                        <span>{jobLocationAddress}</span>
-                      </div>
-                    )}
-                    {offlineJob.foremanName && (
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4" />
-                        <span>{offlineJob.foremanName}</span>
-                      </div>
-                    )}
-                    {offlineJob.poNumber && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">PO#:</span>
-                        <span>{offlineJob.poNumber}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <JobOverviewHeading job={offlineJob} onEdit={() => setShowOfflineJobEditDialog(true)} />
               )}
 
               {offlineJobView === "options" ? (
