@@ -3,6 +3,7 @@ import {
   joystickWheelArc,
   wheelCarousel,
   wheelJoystickSpeed,
+  wheelJoystickRadius,
   wheelJoystickMotion,
   wheelThumbAnchor,
 } from "./quick-wheel-joystick";
@@ -18,8 +19,17 @@ describe("Quickwheel joystick", () => {
       -wheelJoystickSpeed(48, 0, 170),
     );
     expect(wheelJoystickSpeed(0, 50, 170)).toBe(0);
-    expect(wheelJoystickSpeed(80, 0, 170)).toBe(0);
-    expect(wheelJoystickSpeed(50, 50, 170)).toBe(0);
+    expect(wheelJoystickSpeed(80, 0, 170)).toBeGreaterThan(0);
+    expect(wheelJoystickSpeed(50, 50, 170)).toBeGreaterThan(0);
+    expect(wheelJoystickRadius(170)).toBe(128);
+    expect(wheelJoystickSpeed(128, 0, 170)).toBeCloseTo(3.5 * 1.75);
+    expect(wheelJoystickSpeed(-128, 0, 170)).toBeCloseTo(-3.5 * 1.75);
+    expect(wheelJoystickSpeed(129, 0, 170)).toBe(0);
+    expect(wheelJoystickSpeed(0, 128, 170)).toBe(0);
+    const diagonal = 128 / Math.sqrt(2);
+    expect(wheelJoystickSpeed(diagonal, diagonal, 170)).toBeCloseTo(
+      3.5 * 1.75 / Math.sqrt(2),
+    );
   });
   const origin = { x: 300, y: 300 };
   const points = [

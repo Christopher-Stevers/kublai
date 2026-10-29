@@ -51,13 +51,19 @@ export function wheelJoystickMotion(
   };
 }
 
-/** Only the hub is a joystick. Outside it the pointer belongs to selection. */
+/** Invisible reach is independent of the rendered hub and choice layout. */
+export const wheelJoystickRadius = (radius: number) => wheelHubRadius(radius) * 2;
+
+/** Sideways deflection controls rotation; visible choices take precedence. */
 export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
-  const hub = wheelHubRadius(radius);
-  if (Math.hypot(dx, dy) > hub || Math.abs(dx) <= 8) return 0;
-  // A steady deflection keeps browsing; returning to centre stops immediately.
-  const strength = Math.min(1, (Math.abs(dx) - 8) / Math.max(1, hub - 8));
-  return Math.sign(dx) * (0.45 + 3.05 * strength * strength);
+  const reach = wheelJoystickRadius(radius);
+  const extension = Math.hypot(dx, dy);
+  if (extension > reach || Math.abs(dx) <= 8) return 0;
+  // Extension controls strength; the sideways component scales from zero on
+  // the neutral axis to 1.75 times the old speed at a perpendicular push.
+  const strength = Math.min(1, Math.max(0, extension - 8) / Math.max(1, reach - 8));
+  const angleGain = Math.abs(dx) / extension * 1.75;
+  return Math.sign(dx) * (0.45 + 3.05 * strength * strength) * angleGain;
 }
 
 export type WheelArc = { radius: number; start: number; step: number };

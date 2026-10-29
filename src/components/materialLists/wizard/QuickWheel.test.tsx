@@ -371,6 +371,19 @@ describe("wizard quick wheel", () => {
     expect(select).toHaveBeenCalledWith(2);
     expect(readWheelUsage()[wheelUsageId("Catalog", "Choice 2")]).toBe(12);
   });
+  it("senses beyond the unchanged visual hub and still selects overlapping choices", () => {
+    const select = vi.fn();
+    render(<QuickWheelSurface><Stage count={2} select={select} /></QuickWheelSurface>);
+    down();
+    expect(wheel()!.querySelector('circle[r="64"]')).not.toBeNull();
+    steer(80);
+    expect(wheel()).toHaveAttribute("data-scrolling", "true");
+    // A visible choice inside the expanded reach takes priority over rotation.
+    aim(200, 180);
+    expect(wheel()).toHaveAttribute("data-scrolling", "false");
+    dwell();
+    expect(select).toHaveBeenCalledOnce();
+  });
   it("starts with frequent choices and scrolls to the rest without paging controls", () => {
     const usage = Object.fromEntries(Array.from({ length: 15 }, (_, i) => [wheelUsageId("Catalog", `Choice ${i}`), i + 1]));
     render(<QuickWheelSurface usage={usage}><Stage count={15} select={vi.fn()} /></QuickWheelSurface>);
@@ -379,7 +392,7 @@ describe("wizard quick wheel", () => {
     expect(labels().sort()).toEqual([9, 10, 11, 12, 13, 14].map(i => `Choice ${i}`).sort());
     expect(wheel()).not.toHaveTextContent(/More|Previous/);
     steer(-50);
-    dwell(1500);
+    dwell(4000);
     expect(labels()).not.toContain("Choice 14");
     expect(wheel()).toHaveAttribute("data-scrolling", "true");
   });
@@ -389,7 +402,7 @@ describe("wizard quick wheel", () => {
     down();
     const seen = new Set<string>();
     steer(-50);
-    for (let tick = 0; tick < count * 5; tick++) {
+    for (let tick = 0; tick < count * 12; tick++) {
       const labels = [...wheel()!.querySelectorAll("foreignObject")];
       expect(labels.length).toBeLessThanOrEqual(7);
       labels.filter(tile => Number(tile.getAttribute("opacity")) > 0.8).forEach(tile => seen.add(tile.textContent!));

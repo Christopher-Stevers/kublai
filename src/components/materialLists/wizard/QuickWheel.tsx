@@ -783,7 +783,19 @@ export function QuickWheelSurface({
         current = { ...current, repositioning: false };
         update(current);
       }
-      const speed = current.options.length > 1 ? motion.speed : 0;
+      // The enlarged invisible sensing area can overlap a visible choice.
+      // Aiming at that choice must still stop scrolling and allow selection.
+      const target = !inHub && moved
+        ? tilesFor(current)
+            .filter((tile) => tile.opacity >= 0.65 && !tile.entry.disabled)
+            .sort((a, b) =>
+              Math.hypot(a.x - event.clientX, a.y - event.clientY) -
+              Math.hypot(b.x - event.clientX, b.y - event.clientY))
+            .find((tile) =>
+              Math.hypot(tile.x - event.clientX, tile.y - event.clientY) <=
+              WHEEL_CHOICE_DIAMETER / 2 + 6)
+        : undefined;
+      const speed = current.options.length > 1 && !target ? motion.speed : 0;
       scroll(speed);
       current = active.current!;
       if (speed) return;
@@ -791,19 +803,6 @@ export function QuickWheelSurface({
       const entries = entriesFor(current);
       let hovered: number | null = null;
       if (moved && !inHub) {
-        const tiles = tilesFor(current);
-        const target = tiles
-          .filter((tile) => tile.opacity >= 0.65 && !tile.entry.disabled)
-          .sort(
-            (a, b) =>
-              Math.hypot(a.x - event.clientX, a.y - event.clientY) -
-              Math.hypot(b.x - event.clientX, b.y - event.clientY),
-          )
-          .find(
-            (tile) =>
-              Math.hypot(tile.x - event.clientX, tile.y - event.clientY) <=
-              WHEEL_CHOICE_DIAMETER / 2 + 6,
-          );
         hovered = target?.entry.sourceIndex ?? null;
         // Preserve the original forgiving wedges before scrolling begins.
         if (hovered === null && current.offset === 0) {
