@@ -36,6 +36,40 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it.each(["touch", "mouse", "pen"])("places the arrow tip above touch only (%s)", pointerType => {
+    const onCreate = vi.fn();
+    const { frame } = open({ tool: "arrow", onCreate });
+    const pointer = { pointerId: 1, button: 0, pointerType };
+    fireEvent.pointerDown(frame, { ...pointer, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(frame, { ...pointer, clientX: 600, clientY: 400 });
+    fireEvent.pointerUp(frame, { ...pointer, clientX: 600, clientY: 400 });
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ type: "arrow",
+      points: [{ x: .25, y: .25 }, { x: .75, y: pointerType === "touch" ? .63 : .75 }] }));
+  });
+  it("offsets a touched existing arrow tip and preserves its tail", async () => {
+    const entity = markup({ type: "arrow" });
+    const onUpdate = vi.fn();
+    const { frame } = open({ tool: "select", annotations: [entity], selectedId: entity.id, onUpdate });
+    await hold();
+    const tip = frame.querySelector('[data-annotation-handle="1"]')!;
+    expect(tip).not.toBeNull();
+    const pointer = { pointerId: 1, button: 0, pointerType: "touch" };
+    fireEvent.pointerDown(tip, { ...pointer, clientX: 400, clientY: 300 });
+    fireEvent.pointerMove(frame, { ...pointer, clientX: 600, clientY: 400 });
+    fireEvent.pointerUp(frame, { ...pointer, clientX: 600, clientY: 400 });
+    expect(onUpdate).toHaveBeenCalledWith(entity.id, expect.objectContaining({
+      points: [{ x: .25, y: .25 }, { x: .75, y: .63 }],
+    }));
+  });
+  it("does not turn a stationary arrow touch into a drag", () => {
+    const onCreate = vi.fn();
+    const { frame } = open({ tool: "arrow", onCreate });
+    const pointer = { pointerId: 1, button: 0, pointerType: "touch", clientX: 200, clientY: 200 };
+    fireEvent.pointerDown(frame, pointer);
+    fireEvent.pointerUp(frame, pointer);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   it.each(["rect", "dimension", "link"] as const)("Viewing pans over %s without selecting, editing, or opening it", async type => {
     const entity = markup({ type });
     const onSelect = vi.fn(), onUpdate = vi.fn(), onDelete = vi.fn(), onActivate = vi.fn(), onContextMenu = vi.fn(), onDone = vi.fn();

@@ -293,6 +293,7 @@ export function DrawingSheetViewer({
     link: DrawingPdfLink;
   } | null>(null);
   const pointers = useRef(new Map<number, Point>());
+  const arrowTouch = useRef<(Point & { moved: boolean }) | null>(null);
   const middlePan = useRef<{ pointerId: number; x: number; y: number } | null>(
     null,
   );
@@ -852,6 +853,18 @@ export function DrawingSheetViewer({
       fit,
       live.current,
     );
+  };
+  // Keep touch placement clear of the finger in screen pixels, independent of zoom.
+  const arrowPointFromClient = (x: number, y: number) => {
+    const touch = arrowTouch.current;
+    if (!touch) return pointFromClient(x, y);
+    touch.moved ||= Math.hypot(x - touch.x, y - touch.y) > 6;
+    if (!touch.moved) return pointFromClient(x, y);
+    const bounds = frame.current?.getBoundingClientRect();
+    const sheetTop = bounds && fit && frame.current
+      ? bounds.top + frame.current.clientHeight / 2 + live.current.y - fit.height * live.current.scale / 2
+      : 0;
+    return pointFromClient(x, Math.max((bounds?.top ?? 0) + 8, sheetTop, y - 48));
   };
   const pointToClient = (point: SheetPoint): Point | undefined => {
     const el = frame.current;
@@ -2318,6 +2331,15 @@ export function DrawingSheetViewer({
         }}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
+          const handle = event.target instanceof Element
+            ? event.target.closest<SVGElement>("[data-annotation-handle]") : null;
+          const entityId = handle?.closest<SVGElement>("[data-annotation-id]")?.dataset.annotationId;
+          const arrow = editorProps.annotations?.find(item => item.id === entityId);
+          const movingArrowTip = annotationTool === "select" && editorProps.selectionMode !== "move"
+            && arrow?.kind === "markup" && arrow.data.type === "arrow"
+            && Number(handle?.dataset.annotationHandle) === arrow.data.points.length - 1;
+          arrowTouch.current = event.pointerType === "touch" && (annotationTool === "arrow" || movingArrowTip)
+            ? { x: event.clientX, y: event.clientY, moved: false } : null;
           stopAnimation();
           event.currentTarget.setPointerCapture(event.pointerId);
           pointers.current.set(event.pointerId, {
@@ -2576,9 +2598,9 @@ export function DrawingSheetViewer({
               (() => {
                 const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
                 for (const sample of samples)
-                  editor.move(pointFromClient(sample.clientX, sample.clientY));
+                  editor.move(arrowPointFromClient(sample.clientX, sample.clientY));
                 return editor.move(
-                  pointFromClient(event.clientX, event.clientY),
+                  arrowPointFromClient(event.clientX, event.clientY),
                 );
               })()
             )
@@ -2730,7 +2752,8 @@ export function DrawingSheetViewer({
             !measuring &&
             !pipeMode &&
             wasSingle &&
-            editor.up(pointFromClient(event.clientX, event.clientY));
+            editor.up(arrowPointFromClient(event.clientX, event.clientY));
+          arrowTouch.current = null;
           const measuredAim =
             measuring && tap && !tap.moved && wasSingle
               ? releaseAim({ x: event.clientX, y: event.clientY })
