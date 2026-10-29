@@ -65,7 +65,7 @@ const aim = (x = 200, y = 180) =>
 const steer = (distance: number) => {
   const root = wheel()!;
   const x = Number(root.getAttribute("data-origin-x")), y = Number(root.getAttribute("data-origin-y"));
-  const dx = innerWidth/2-x, dy = innerHeight/2-y, length = Math.hypot(dx,dy);
+  const dx = x-Number(root.getAttribute("data-anchor-x")), dy = y-Number(root.getAttribute("data-anchor-y")), length = Math.hypot(dx,dy);
   aim(x + (length < 8 ? 1 : -dy/length)*distance, y + (length < 8 ? 0 : dx/length)*distance);
 };
 const dwell = (ms = 700) => act(() => vi.advanceTimersByTime(ms));
@@ -143,7 +143,7 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toHaveAttribute("data-origin-x", "200");
     expect(wheel()).toHaveAttribute("data-origin-y", "180");
     const choice = document.querySelector<HTMLElement>(
-      '[data-wheel-choice="1"]',
+      '[data-wheel-choice="0"]',
     )!;
     const x =
       Number(choice.getAttribute("x")) +
@@ -177,8 +177,9 @@ describe("wizard quick wheel", () => {
         clientX: originX,
       });
       expect(wheel()).toHaveAttribute("data-layout", layout);
-      const inwardLength = Math.hypot(innerWidth/2-originX, innerHeight/2-pointer.clientY);
-      aim(originX + (innerWidth/2-originX)/inwardLength*24, pointer.clientY + (innerHeight/2-pointer.clientY)/inwardLength*24);
+      const ax = Number(wheel()!.getAttribute("data-anchor-x")), ay = Number(wheel()!.getAttribute("data-anchor-y"));
+      const inwardLength = Math.hypot(originX-ax,pointer.clientY-ay);
+      aim(originX + (originX-ax)/inwardLength*24, pointer.clientY + (pointer.clientY-ay)/inwardLength*24);
       void dwell();
       expect(select).not.toHaveBeenCalled();
       const target = wheel()!.querySelector('[data-source-index="0"]')!;
@@ -431,15 +432,19 @@ describe("wizard quick wheel", () => {
     fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
     const labels = Array.from(wheel()!.querySelectorAll("foreignObject"));
     expect(labels.map((n) => n.textContent)).toEqual(["All", '4"', '4" x 2"']);
-    const combo = labels[2]!;
-    aim(
-      Number(combo.getAttribute("x")) +
-        Number(combo.getAttribute("width")) / 2 +
-        30,
-      Number(combo.getAttribute("y")) +
-        Number(combo.getAttribute("height")) / 2 +
-        130,
-    );
+    // Rotate the combination onto the inward side, away from the drag zone.
+    steer(-50);
+    let combo: Element | undefined;
+    for (let frame = 0; frame < 100; frame++) {
+      dwell(50);
+      const root = wheel()!;
+      const x=Number(root.getAttribute("data-origin-x")), y=Number(root.getAttribute("data-origin-y"));
+      const ax=Number(root.getAttribute("data-anchor-x")), ay=Number(root.getAttribute("data-anchor-y"));
+      combo=[...root.querySelectorAll("foreignObject")].find(el=>el.textContent==='4" x 2"' && (Number(el.getAttribute("x"))+52-x)*(x-ax)+(Number(el.getAttribute("y"))+52-y)*(y-ay)>0);
+      if (combo) break;
+    }
+    expect(combo).toBeDefined();
+    aim(Number(combo!.getAttribute("x"))+52,Number(combo!.getAttribute("y"))+52);
     dwell();
     expect(select).toHaveBeenCalledExactlyOnceWith({
       nominal: 4,
@@ -613,7 +618,9 @@ describe("wizard quick wheel", () => {
     const select = vi.fn();
     render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
     fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
-    aim(314.15,437.81); dwell(600);
+    expect(wheel()).toHaveAttribute("data-anchor-x","400");
+    expect(wheel()).toHaveAttribute("data-anchor-y","604");
+    aim(321.72,431.79); dwell(600);
     expect(wheel()).toHaveAttribute("data-offset","0");
     expect(wheel()).toHaveAttribute("data-origin-x","330");
     steer(-40); dwell(600);
@@ -621,18 +628,20 @@ describe("wizard quick wheel", () => {
     expect(Number(offset)).toBeGreaterThan(0);
     const tile=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
     aim(Number(tile.getAttribute("x"))+52,Number(tile.getAttribute("y"))+52); dwell(250);
-    aim(350,465);
-    expect(wheel()).toHaveAttribute("data-origin-x","350");
-    expect(wheel()).toHaveAttribute("data-origin-y","465");
+    aim(340,472);
+    expect(wheel()).toHaveAttribute("data-origin-x","340");
+    expect(wheel()).toHaveAttribute("data-origin-y","472");
     expect(wheel()).toHaveAttribute("data-scrolling","false");
-    aim(351,466);
-    expect(wheel()).toHaveAttribute("data-origin-x","351");
-    expect(wheel()).toHaveAttribute("data-origin-y","466");
+    aim(341,473);
+    expect(wheel()).toHaveAttribute("data-origin-x","341");
+    expect(wheel()).toHaveAttribute("data-origin-y","473");
+    expect(wheel()).toHaveAttribute("data-anchor-x","400");
+    expect(wheel()).toHaveAttribute("data-anchor-y","604");
     dwell(1000);
     expect(wheel()).toHaveAttribute("data-offset",offset);
     expect(select).not.toHaveBeenCalled();
-    aim(335,454); dwell(600);
-    expect(wheel()).toHaveAttribute("data-origin-x","351");
+    aim(333,455); dwell(600);
+    expect(wheel()).toHaveAttribute("data-origin-x","341");
     expect(wheel()).toHaveAttribute("data-scrolling","false");
     const target=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
     const expected=Number(target.getAttribute("data-source-index"));

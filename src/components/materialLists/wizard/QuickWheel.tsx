@@ -35,6 +35,7 @@ import {
   type WheelArc,
   joystickWheelArc,
   wheelCarousel,
+  wheelThumbAnchor,
   wheelJoystickAxes,
   wheelJoystickMotion,
   wrapWheelIndex,
@@ -100,6 +101,7 @@ type Wheel = Choices & {
   bounds: WheelBounds;
   overlayTop: number;
   screenCentre: { x: number; y: number };
+  thumbAnchor: { x: number; y: number };
   usage: WheelUsage;
   hand?: WheelHand;
   offset: number;
@@ -132,7 +134,7 @@ function createGeometry(wheel: Wheel): {
       wheel.radius,
       count,
       wheel.hand,
-      wheel.screenCentre,
+      wheel.thumbAnchor,
     );
     if (rail)
       return {
@@ -210,9 +212,11 @@ function moveWheelOrigin(wheel: Wheel, x: number, y: number): Wheel {
   });
   const points = previous.points.map(shift);
   const padding = WHEEL_CHOICE_DIAMETER / 2;
+  const inward = wheelJoystickAxes(next, next.thumbAnchor).inward;
   if (
     points.every(
       (point) =>
+        (point.x - x) * inward.x + (point.y - y) * inward.y >= 0 &&
         point.x - padding >= wheel.bounds.left &&
         point.x + padding <= wheel.bounds.right &&
         point.y - padding >= wheel.bounds.top + 52 &&
@@ -576,16 +580,31 @@ export function QuickWheelSurface({
       heldPointer.current = latched ? null : pointerId;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       selectionLatch.current = null;
+      const hand =
+        "pointerType" in event && event.pointerType === "touch"
+          ? learnWheelHand(
+              event.clientX,
+              viewportLeft,
+              viewport?.width ?? innerWidth,
+            )
+          : undefined;
+      const anchorHand =
+        hand ??
+        (event.clientX < viewportLeft + (viewport?.width ?? innerWidth) / 2
+          ? "left"
+          : "right");
       update({
         ...choices,
-        hand:
-          "pointerType" in event && event.pointerType === "touch"
-            ? learnWheelHand(
-                event.clientX,
-                viewportLeft,
-                viewport?.width ?? innerWidth,
-              )
-            : undefined,
+        hand,
+        thumbAnchor: wheelThumbAnchor(
+          {
+            left: viewportLeft,
+            top: viewportTop,
+            right: viewportLeft + (viewport?.width ?? innerWidth),
+            bottom: viewportTop + (viewport?.height ?? innerHeight),
+          },
+          anchorHand,
+        ),
         pointerId,
         latched,
         x: event.clientX,
@@ -737,7 +756,7 @@ export function QuickWheelSurface({
       const motion = wheelJoystickMotion(
         current,
         pointerPosition.current,
-        current.screenCentre,
+        current.thumbAnchor,
         current.radius,
         current.repositioning,
       );
@@ -1081,7 +1100,7 @@ function WheelDisplay({
   );
   const { layout, points } = geometryFor(wheel);
   const hub = wheelHubRadius(wheel.radius);
-  const axes = wheelJoystickAxes(wheel, wheel.screenCentre);
+  const axes = wheelJoystickAxes(wheel, wheel.thumbAnchor);
   const hint = selected
     ? "Hold to select"
     : wheel.scrolling
@@ -1115,6 +1134,8 @@ function WheelDisplay({
       data-hand={wheel.hand}
       data-offset={wheel.offset}
       data-scrolling={Boolean(wheel.scrolling)}
+      data-anchor-x={wheel.thumbAnchor.x}
+      data-anchor-y={wheel.thumbAnchor.y}
       data-origin-x={wheel.x}
       data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}

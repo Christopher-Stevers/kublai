@@ -4,6 +4,7 @@ import {
   wheelCarousel,
   wheelJoystickSpeed,
   wheelJoystickMotion,
+  wheelThumbAnchor,
 } from "./quick-wheel-joystick";
 
 describe("Quickwheel joystick", () => {
@@ -132,16 +133,16 @@ describe("single thumb rail", () => {
   });
 });
 
-describe("screen-relative neutral and relocation", () => {
+describe("thumb-anchor neutral and relocation", () => {
   const centre = { x: 500, y: 400 };
   it.each([
     { x: 850, y: 600 },
     { x: 150, y: 600 },
     { x: 850, y: 150 },
     { x: 150, y: 150 },
-  ])("points neutral toward screen centre from %j", (origin) => {
-    const dx = centre.x - origin.x,
-      dy = centre.y - origin.y,
+  ])("points neutral away from the anchor through %j", (origin) => {
+    const dx = origin.x - centre.x,
+      dy = origin.y - centre.y,
       d = Math.hypot(dx, dy);
     const point = (forward: number, side: number) => ({
       x: origin.x + (dx / d) * forward - (dy / d) * side,
@@ -183,4 +184,29 @@ describe("screen-relative neutral and relocation", () => {
       wheelJoystickMotion(centre, { x: 500, y: 360 }, centre, 170),
     ).toEqual({ relocate: false, speed: 0 });
   });
+});
+
+it("anchors to the thumb side one CSS inch above the visible bottom", () => {
+  const viewport = { left: 12, top: 30, right: 412, bottom: 830 };
+  expect(wheelThumbAnchor(viewport, "right")).toEqual({ x: 412, y: 734 });
+  expect(wheelThumbAnchor(viewport, "left")).toEqual({ x: 12, y: 734 });
+  expect(
+    wheelThumbAnchor({ left: 0, top: 0, right: 700, bottom: 400 }, "right"),
+  ).toEqual({ x: 700, y: 304 });
+});
+
+it("keeps every resting option ahead of the thumb anchor, outside the relocation zone", () => {
+  for (const hand of ["left", "right"] as const) {
+    const viewport = { left: 0, top: 0, right: 430, bottom: 850 };
+    const anchor = wheelThumbAnchor(viewport, hand);
+    const origin = { x: hand === "right" ? 350 : 75, y: 520 };
+    const bounds = { left: 12, top: 88, right: 418, bottom: 838 };
+    const rail = joystickWheelArc(origin, bounds, 170, 20, hand, anchor)!;
+    expect(rail).toBeDefined();
+    rail.points.forEach((point) =>
+      expect(wheelJoystickMotion(origin, point, anchor, 170).relocate).toBe(
+        false,
+      ),
+    );
+  }
 });

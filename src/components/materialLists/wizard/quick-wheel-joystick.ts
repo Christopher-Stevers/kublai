@@ -9,10 +9,21 @@ type Point = { x: number; y: number };
 export const wrapWheelIndex = (index: number, count: number) =>
   ((index % count) + count) % count;
 
-/** Neutral points into the screen, with clockwise/counter-clockwise either side. */
-export function wheelJoystickAxes(origin: Point, centre: Point) {
-  const dx = centre.x - origin.x,
-    dy = centre.y - origin.y;
+/** Approximate one CSS inch above the visible bottom, fixed for the gesture. */
+export function wheelThumbAnchor(
+  viewport: WheelBounds,
+  hand: WheelHand,
+): Point {
+  return {
+    x: hand === "right" ? viewport.right : viewport.left,
+    y: Math.max(viewport.top, viewport.bottom - 96),
+  };
+}
+
+/** Neutral continues from the thumb-side anchor through the hub, away from the hand. */
+export function wheelJoystickAxes(origin: Point, anchor: Point) {
+  const dx = origin.x - anchor.x,
+    dy = origin.y - anchor.y;
   const length = Math.hypot(dx, dy);
   const inward =
     length < 8 ? { x: 0, y: -1 } : { x: dx / length, y: dy / length };
@@ -21,11 +32,11 @@ export function wheelJoystickAxes(origin: Point, centre: Point) {
 export function wheelJoystickMotion(
   origin: Point,
   pointer: Point,
-  centre: Point,
+  anchor: Point,
   radius: number,
   dragging = false,
 ) {
-  const { inward, sideways } = wheelJoystickAxes(origin, centre);
+  const { inward, sideways } = wheelJoystickAxes(origin, anchor);
   const dx = pointer.x - origin.x,
     dy = pointer.y - origin.y;
   const forward = dx * inward.x + dy * inward.y;
@@ -65,10 +76,10 @@ export function joystickWheelArc(
   radius: number,
   count: number,
   hand: WheelHand,
-  centre?: Point,
+  anchor?: Point,
 ) {
   const padding = WHEEL_CHOICE_DIAMETER / 2;
-  const inward = centre ? wheelJoystickAxes(origin, centre).inward : undefined;
+  const inward = anchor ? wheelJoystickAxes(origin, anchor).inward : undefined;
   const away = inward
     ? Math.atan2(inward.x, -inward.y)
     : hand === "right"
@@ -104,6 +115,9 @@ export function joystickWheelArc(
         if (
           !samples.every(
             (p) =>
+              (!inward ||
+                (p.x - origin.x) * inward.x + (p.y - origin.y) * inward.y >=
+                  0) &&
               p.x >= bounds.left + padding &&
               p.x <= bounds.right - padding &&
               p.y >= bounds.top + 52 + padding &&
