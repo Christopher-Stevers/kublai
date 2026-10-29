@@ -1,7 +1,7 @@
-import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
+import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
 import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
 import { useQuickWheelOptions } from "./QuickWheel";
-import { packContents, packsFromPieces, formatPackQuantity } from "~/lib/pack-quantity";
+import { packContents, packsFromPieces } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
 import {
   useState,
@@ -20,8 +20,6 @@ import { useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { WizardOptionPagination } from "./WizardOptionGrid";
 
-const PART_TILE_GRID_CLASS =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(1.5in,100%),2in))] justify-center justify-items-center gap-3";
 
 type PartStageActionMode = "select" | "edit";
 
@@ -346,7 +344,7 @@ function PartCard({
           else onPartSelect(part);
         }
       }}
-      className={`relative w-full max-w-[2in] gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:shadow-md ${
+      className={`${PART_TILE_CARD_CLASS} transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       style={{
@@ -365,44 +363,7 @@ function PartCard({
       }}
     >
       <CardContent className="p-0">
-        <div className="flex w-full flex-col p-3">
-          <div className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted">
-            {part.imageUrl ? (
-              <Image
-                src={part.imageUrl}
-                alt={part.displayName}
-                fill
-                className="part-photo object-cover"
-                draggable={false}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground/70">
-                <AlertCircle className="h-8 w-8" />
-              </div>
-            )}
-
-            <div className="absolute top-2 right-2 flex justify-end">
-              {pendingQuantity > 0 && (
-                <div className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground shadow-sm sm:h-7 sm:min-w-7 sm:text-sm">
-                  {formatPackQuantity(pendingQuantity, part.piecesPerPack)}
-                </div>
-              )}
-            </div>
-            <QuotedBadge status={part.jobPriceStatus} onPhoto />
-            {part.imageApprovalStatus === "suggested" && (
-              <div className="absolute right-2 bottom-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-semibold text-white shadow">
-                Needs approval
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col items-center justify-center gap-1 text-center text-foreground">
-            <h4 className="line-clamp-4 text-sm leading-snug font-medium">
-              {part.displayName}
-            </h4>
-            {details}
-          </div>
-        </div>
+        <PartTileContent part={part} quantity={pendingQuantity} details={details} />
       </CardContent>
     </Card>
   );

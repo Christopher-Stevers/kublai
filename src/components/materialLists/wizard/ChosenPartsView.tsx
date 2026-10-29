@@ -1,3 +1,4 @@
+import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
 import { supplierVersionLabel } from "~/lib/supplier-label";
 import { buildSupplierChoices } from "~/lib/supplier-choices";
 import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
@@ -154,13 +155,13 @@ function ChosenQuantityControls({
   return (
     <div
       data-tutorial="wizard-chosen-quantity"
-      className="flex items-center justify-center"
+      className="flex w-full min-w-0 items-center justify-center"
     >
       <Button
         variant="outline"
         size="sm"
         onClick={() => onUpdateQuantity(partId, -1)}
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 shrink-0 p-0"
         aria-label="Decrease quantity"
       >
         <Minus className="h-4 w-4" />
@@ -170,7 +171,7 @@ function ChosenQuantityControls({
         min="0"
         value={quantity}
         onChange={(e) => onSetQuantity(partId, parseInt(e.target.value) || 0)}
-        className="h-8 w-16 [appearance:textfield] rounded-none border-x-0 text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="h-8 min-w-0 flex-1 [appearance:textfield] rounded-none border-x-0 text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         aria-label="Quantity"
       />
       {purchaseQuantity(quantity, orderMultiple) !== quantity && (
@@ -182,7 +183,7 @@ function ChosenQuantityControls({
         variant="outline"
         size="sm"
         onClick={() => onUpdateQuantity(partId, 1)}
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 shrink-0 p-0"
         aria-label="Increase quantity"
       >
         <Plus className="h-4 w-4" />
@@ -206,7 +207,7 @@ export function ChosenPartsView({
   >(null);
   const [supplierCountBeforeDialog, setSupplierCountBeforeDialog] =
     useState<number>(0);
-  const [chosenView, setChosenView] = useState<"grid" | "table">("table");
+  const [chosenView, setChosenView] = useState<"grid" | "table">("grid");
   const [optimisticSupplierSelections, setOptimisticSupplierSelections] =
     useState<Record<string, OptimisticSupplierSelection>>({});
 
@@ -396,7 +397,7 @@ export function ChosenPartsView({
       variant={variant === "card" ? "ghost" : "outline"}
       size="sm"
       onClick={() => onRemovePendingPart(partId)}
-      className={variant === "card" ? "h-10 w-10 p-0" : "h-8 w-8 p-0"}
+      className={variant === "card" ? "h-7 w-7 rounded-full border bg-background/90 p-0" : "h-8 w-8 p-0"}
       aria-label="Remove part"
       title="Remove part"
     >
@@ -431,7 +432,7 @@ export function ChosenPartsView({
 
       {pendingParts.length === 0 && <p className="text-muted-foreground py-6 text-center">No parts chosen yet.</p>}
       {chosenView === "grid" ? (
-        <div className="space-y-2">
+        <div className={PART_TILE_GRID_CLASS}>
           {pendingParts.map((pendingPart) => {
             const isToolLine = isToolRequest || pendingPart.isTool;
             const supplierSelection = getSupplierSelection(pendingPart);
@@ -450,77 +451,30 @@ export function ChosenPartsView({
             return (
               <Card
                 key={pendingPart.partId}
-                className={
-                  isMissingSupplier
-                    ? "border-amber-300 bg-amber-50/50"
-                    : undefined
-                }
+                className={`${PART_TILE_CARD_CLASS} ${isMissingSupplier ? "border-amber-500" : ""}`}
               >
-                <CardContent className="p-3 sm:p-4">
-                  <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_2.5rem] gap-1.5 sm:grid-cols-[4rem_minmax(0,1fr)_9.5rem_13rem_2.75rem] sm:items-center sm:gap-4">
-                    <div className="col-span-3 min-w-0 sm:contents">
-                      <div className="flex min-w-0 items-start gap-3 sm:contents">
-                        <div className="h-14 w-14 shrink-0 sm:h-16 sm:w-16">
-                          <PartImage part={pendingPart.partDefinition} />
-                        </div>
-
-                        <div className="min-w-0 flex-1 sm:block">
-                          <h3 className="text-foreground line-clamp-2 text-sm font-semibold sm:truncate sm:text-base">
-                            {pendingPart.partDefinition.displayName}
-                          </h3>
-                          <FinancialOnly>
-                            <div
-                              className={`text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs ${isToolLine ? "hidden" : ""}`}
-                            >
-                              <span>
-                                Total:{" "}
-                                <span className="text-foreground font-semibold">
-                                  ${lineTotal.toFixed(2)}
-                                </span>
-                              </span>
-                            </div>
-                          </FinancialOnly>
-                          {pendingPart.partDefinition.material && (
-                            <p className="text-muted-foreground mt-0.5 hidden truncate text-xs sm:block">
-                              {pendingPart.partDefinition.material}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex h-10 min-w-0 items-center justify-center sm:h-11">
+                <CardContent className="flex h-full flex-col p-0">
+                  <PartTileContent
+                    part={pendingPart.partDefinition}
+                    quantity={pendingPart.quantity}
+                    photoAction={renderRemoveButton(pendingPart.partId, "card")}
+                    details={!isToolLine && <FinancialOnly><span className="text-muted-foreground text-xs">Total: ${lineTotal.toFixed(2)}</span></FinancialOnly>}
+                  />
+                  <div className="mt-auto space-y-2 px-3 pb-3">
+                    <div className="flex min-w-0 items-center justify-between gap-1">
                       <ChosenQuantityControls
                         partId={pendingPart.partId}
                         quantity={pendingPart.quantity}
                         piecesPerPack={pendingPart.partDefinition.piecesPerPack}
                         bulkUnit={pendingPart.partDefinition.bulkUnit}
-                        individualUnit={
-                          pendingPart.partDefinition.individualUnit
-                        }
-                        orderMultiple={
-                          isToolLine
-                            ? null
-                            : supplierSelection.selectedSupplierPart?.packSize
-                        }
+                        individualUnit={pendingPart.partDefinition.individualUnit}
+                        orderMultiple={isToolLine ? null : supplierSelection.selectedSupplierPart?.packSize}
                         onUpdateQuantity={onUpdateQuantity}
                         onSetQuantity={onSetQuantity}
                       />
                     </div>
-
-                    <div className="flex h-10 min-w-0 items-center sm:h-11">
-                      {isToolLine ? (
-                        <span className="text-muted-foreground text-sm">
-                          Tool room
-                        </span>
-                      ) : (
-                        renderSupplierPicker(pendingPart, isMissingSupplier)
-                      )}
-                    </div>
-
-                    <div className="flex h-10 items-center justify-center sm:h-11">
-                      {renderRemoveButton(pendingPart.partId, "card")}
-                    </div>
+                    {isToolLine ? <span className="text-muted-foreground text-sm">Tool room</span>
+                      : renderSupplierPicker(pendingPart, isMissingSupplier)}
                   </div>
                 </CardContent>
               </Card>

@@ -29,6 +29,7 @@ export interface PendingPart {
     bulkUnit?: string | null;
     individualUnit?: string | null;
     imageUrl: string | null;
+    jobPriceStatus?: string;
     material: string | null;
     size: string | null;
   };
