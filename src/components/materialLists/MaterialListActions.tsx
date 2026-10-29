@@ -78,7 +78,7 @@ export function OrderReceiveActions({
       {onAdd && (
         <Button variant="outline" className={style} onClick={onAdd} data-tutorial="add-part">
           <PlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
-          Add
+          Add Part
         </Button>
       )}
     </PriorityActionBar>
