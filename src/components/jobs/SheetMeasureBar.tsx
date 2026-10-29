@@ -12,7 +12,7 @@ import {
   Undo2Icon,
   XIcon,
 } from "lucide-react";
-import { useId, useState, type PointerEvent, type ReactNode } from "react";
+import { useId, useState, useLayoutEffect, useRef, type PointerEvent, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -140,6 +140,22 @@ function RegularSheetMeasureBar({
   gapMessage,
   onGap,
 }: SheetMeasureBarProps) {
+  const toolbar = useRef<HTMLElement>(null);
+  const visible = !hideIdle || measuring || Boolean(pipePanel);
+  useLayoutEffect(() => {
+    const bar = toolbar.current;
+    const area = bar?.closest<HTMLElement>("[data-drawing-tool-area]");
+    if (!bar || !area) return;
+    const update = () => {
+      const clearance = Math.max(0, area.getBoundingClientRect().bottom - bar.getBoundingClientRect().top);
+      area.style.setProperty("--drawing-toolbar-clearance", `${clearance}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    observer.observe(area);
+    return () => { observer.disconnect(); area.style.removeProperty("--drawing-toolbar-clearance"); };
+  }, [visible]);
   const stop = (event: PointerEvent) => event.stopPropagation();
   if (hideIdle && !measuring && !pipePanel) return null;
   const toggle = (
@@ -162,6 +178,7 @@ function RegularSheetMeasureBar({
   );
   return (
     <section
+      ref={toolbar}
       data-drawing-chrome
       aria-label="Drawing tool options"
       data-snapping={snapping ? "ready" : undefined}

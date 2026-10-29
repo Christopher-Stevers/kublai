@@ -58,10 +58,10 @@ export const wheelJoystickRadius = (radius: number) => wheelHubRadius(radius) * 
 export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
   const reach = wheelJoystickRadius(radius);
   const extension = Math.hypot(dx, dy);
-  if (extension > reach || Math.abs(dx) <= 8) return 0;
+  if (extension > reach || Math.abs(dx) <= 24) return 0;
   // Extension controls strength; the sideways component scales from zero on
   // the neutral axis to 1.75 times the old speed at a perpendicular push.
-  const strength = Math.min(1, Math.max(0, extension - 8) / Math.max(1, reach - 8));
+  const strength = Math.min(1, Math.max(0, extension - 24) / Math.max(1, reach - 24));
   const angleGain = Math.abs(dx) / extension * 1.75;
   return Math.sign(dx) * (0.45 + 3.05 * strength * strength) * angleGain;
 }
@@ -71,10 +71,11 @@ export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
  */
 export function wheelChoiceCone<T extends Point>(
   origin: Point, pointer: Point, radius: number, tiles: readonly T[],
+  minimumDistance = wheelJoystickRadius(radius),
 ): T | undefined {
   const dx = pointer.x - origin.x, dy = pointer.y - origin.y;
   const distance = Math.hypot(dx, dy);
-  if (distance <= wheelJoystickRadius(radius)) return undefined;
+  if (distance <= minimumDistance) return undefined;
   let closest: T | undefined;
   let bestAngle = Infinity;
   for (const tile of tiles) {

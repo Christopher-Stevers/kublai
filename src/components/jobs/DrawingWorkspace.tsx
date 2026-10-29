@@ -2070,12 +2070,13 @@ export function DrawingWorkspace({
           </div>
         )}
       </div>
-      <div className="relative flex min-h-0 flex-1">
+      <div data-drawing-tool-area className="relative flex min-h-0 flex-1">
         {quickWheel && toolInUse && (
           <Button
             type="button"
             variant="outline"
             data-drawing-tool-done
+            style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
             className="absolute bottom-4 left-1/2 z-30 h-12 -translate-x-1/2 rounded-full border-border/60 bg-background/90 px-6 shadow-md backdrop-blur-sm"
             onClick={finishUsing}
           >
@@ -3497,6 +3498,22 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
+      {quickWheel && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
+        (inlineText || !OTHER_TOOLS.has(tool)) && (
+        <DrawingToolbarDock target={toolbarContainer}>
+          <div data-drawing-chrome data-bottom-menu role="toolbar" aria-label="Markup controls"
+            className="bg-card shrink-0 border-t px-3 py-2">
+            <MarkupStyleRow
+              data={inlineText?.data ?? { sourceSheetId: sourceId, type: "line", points: [], ...style }}
+              disabled={!writable}
+              onChange={patch => {
+                setStyle(old => ({ ...old, ...patch }));
+                setInlineText(current => current ? { ...current, data: { ...current.data, ...patch } } : null);
+              }}
+            />
+          </div>
+        </DrawingToolbarDock>
+      )}
       {/* Shared priority bar: Measure, Markup and Tools first; all other actions on its shelf. */}
       {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div

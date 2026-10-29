@@ -12,10 +12,10 @@ import {
 
 describe("Quickwheel joystick", () => {
   it("has a neutral deadband, symmetric variable speed, and no rotation in the selection ring", () => {
-    for (const dx of [-8, 0, 8]) expect(wheelJoystickSpeed(dx, 0, 170)).toBe(0);
-    expect(wheelJoystickSpeed(12, 0, 170)).toBeGreaterThan(0);
+    for (const dx of [-24, -8, 0, 8, 24]) expect(wheelJoystickSpeed(dx, 0, 170)).toBe(0);
+    expect(wheelJoystickSpeed(28, 0, 170)).toBeGreaterThan(0);
     expect(wheelJoystickSpeed(48, 0, 170)).toBeGreaterThan(
-      wheelJoystickSpeed(12, 0, 170),
+      wheelJoystickSpeed(28, 0, 170),
     );
     expect(wheelJoystickSpeed(-48, 0, 170)).toBe(
       -wheelJoystickSpeed(48, 0, 170),
@@ -32,6 +32,17 @@ describe("Quickwheel joystick", () => {
     expect(wheelJoystickSpeed(diagonal, diagonal, 170)).toBeCloseTo(
       3.5 * 1.75 / Math.sqrt(2),
     );
+  });
+  it("protects a visible choice approach before arming selection", () => {
+    const origin = { x: 0, y: 0 };
+    const tile = { x: 180, y: -180 };
+    for (const distance of [30, 60, 100, 128]) {
+      const pointer = { x: distance / Math.sqrt(2), y: -distance / Math.sqrt(2) };
+      expect(wheelChoiceCone(origin, pointer, 170, [tile], 24)).toBe(tile);
+      expect(wheelChoiceCone(origin, pointer, 170, [tile])).toBeUndefined();
+    }
+    expect(wheelChoiceCone(origin, { x: 80, y: 0 }, 170, [tile], 24)).toBeUndefined();
+    expect(wheelChoiceCone(origin, { x: 100, y: -100 }, 170, [tile])).toBe(tile);
   });
   const origin = { x: 300, y: 300 };
   const points = [

@@ -778,7 +778,15 @@ export function QuickWheelSurface({
               Math.hypot(tile.x - event.clientX, tile.y - event.clientY) <=
               WHEEL_CHOICE_DIAMETER / 2 + 6)
         : undefined;
-      const speed = current.options.length > 1 && !target ? motion.speed : 0;
+      // Freeze rotation along visible selection lanes even before the thumb
+      // clears the joystick. Otherwise the target moves away on approach.
+      const { inward } = wheelJoystickAxes(current, current.thumbAnchor);
+      const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
+      const approachingChoice = movingInward && wheelChoiceCone(
+        current, pointerPosition.current, current.radius, tiles, 24,
+      );
+      const speed = current.options.length > 1 && !target && !approachingChoice
+        ? motion.speed : 0;
       scroll(speed);
       current = active.current!;
       if (speed) return;

@@ -576,6 +576,31 @@ describe("wizard quick wheel", () => {
     });
     expect(wheel()).toBeNull();
   });
+  it("does not rotate while approaching an inward visible choice", () => {
+    const select = vi.fn();
+    render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
+    down();
+    const root = wheel()!;
+    const x = Number(root.getAttribute("data-origin-x"));
+    const y = Number(root.getAttribute("data-origin-y"));
+    const ax = x - Number(root.getAttribute("data-anchor-x"));
+    const ay = y - Number(root.getAttribute("data-anchor-y"));
+    const tiles = [...root.querySelectorAll("foreignObject")].map(el => ({
+      x: Number(el.getAttribute("x")) + 52,
+      y: Number(el.getAttribute("y")) + 52,
+    })).sort((a,b) => ((b.x-x)*ax+(b.y-y)*ay) - ((a.x-x)*ax+(a.y-y)*ay));
+    const tile = tiles[0]!;
+    const length = Math.hypot(tile.x-x, tile.y-y);
+    for (const distance of [30, 60, 100]) {
+      aim(x+(tile.x-x)*distance/length, y+(tile.y-y)*distance/length);
+      dwell(200);
+      expect(Number(wheel()!.getAttribute("data-offset"))).toBe(0);
+      expect(select).not.toHaveBeenCalled();
+    }
+    aim(tile.x, tile.y);
+    dwell();
+    expect(select).toHaveBeenCalled();
+  });
   it("scrolls continuously, reverses, stops at centre and selects the visible item", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
