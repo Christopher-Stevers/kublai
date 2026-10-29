@@ -130,7 +130,6 @@ export function DrawingQuickWheel({
   );
   const [path, setPath] = useState<string[]>([]);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [active, setActive] = useState(false);
   useHeaderBackOverride(enabled && keyboardOpen ? () => {
     if (path.length) setPath(value => value.slice(0, -1));
     else setKeyboardOpen(false);
@@ -256,7 +255,6 @@ export function DrawingQuickWheel({
           gestures.forEach((cancel) => cancel(event));
         }}
         onActiveChange={(value) => {
-          setActive(value);
           if (!value) setPath([]);
         }}
         className="relative flex h-full min-h-0 flex-col"
@@ -284,20 +282,6 @@ export function DrawingQuickWheel({
       >
         <Options title={title} items={choices} choose={choose} />
         {children}
-        {enabled && !active && (
-          <span
-            className="bg-card/90 text-card-foreground pointer-events-none absolute top-3 left-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full border px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm"
-            data-drawing-wheel-hint=""
-          >
-            {root.title} ·{" "}
-            <span className="hidden [@media(pointer:fine)]:inline">
-              Right-click for controls
-            </span>
-            <span className="[@media(pointer:fine)]:hidden">
-              Hold for controls
-            </span>
-          </span>
-        )}
         <Dialog open={enabled && keyboardOpen} onOpenChange={setKeyboardOpen}>
           <DialogContent layerClassName="z-[110]">
             <DialogHeader>
