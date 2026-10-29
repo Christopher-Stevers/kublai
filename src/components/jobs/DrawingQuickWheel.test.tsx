@@ -58,7 +58,7 @@ function Canvas({ claim = () => undefined }: { claim?: () => void }) {
 }
 const canvas = () => screen.getByTestId("canvas");
 const wheel = () => document.querySelector<HTMLElement>("[data-quick-wheel]");
-const dwell = (ms = 500): void => {
+const dwell = (ms = 700): void => {
   void act(() => {
     vi.advanceTimersByTime(ms);
   });
@@ -250,13 +250,13 @@ describe("drawing Quickwheel", () => {
     });
     expect(wheel()).not.toBeNull();
     aim("Tools");
-    dwell(499);
+    dwell(699);
     expect(wheel()).toHaveAttribute("aria-label", "A101 quick wheel");
     dwell(1);
     expect(wheel()).toHaveAttribute("aria-label", "Tools quick wheel");
     expect(run).not.toHaveBeenCalled();
     aim("Select");
-    dwell(499);
+    dwell(699);
     expect(run).not.toHaveBeenCalled();
     dwell(1);
     expect(run).toHaveBeenCalledOnce();
@@ -281,7 +281,7 @@ describe("drawing Quickwheel", () => {
       </DrawingQuickWheel>,
     );
     fireEvent.pointerDown(canvas(), pointer);
-    dwell(499);
+    dwell(699);
     expect(wheel()).toBeNull();
     expect(claim).not.toHaveBeenCalled();
     dwell(1);

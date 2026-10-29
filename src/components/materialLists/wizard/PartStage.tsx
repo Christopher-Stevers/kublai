@@ -274,7 +274,7 @@ function PartCard({
         passive: false,
       });
       window.addEventListener("pointercancel", handleWindowPointerCancel);
-    }, 100);
+    }, 200);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {

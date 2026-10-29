@@ -634,7 +634,7 @@ export function QuickWheelSurface({
           timer: setTimeout(() => {
             pending = null;
             open(event);
-          }, 500),
+          }, 700),
         };
       } else open(event);
     }
@@ -819,7 +819,7 @@ export function QuickWheelSurface({
           : entriesFor(next).find((entry) => entry.sourceIndex === hovered);
       if (entry && selectionLatch.current === null) {
         const version = previewVersion.current;
-        const deadline = Date.now() + 500;
+        const deadline = Date.now() + 700;
         if (preparePreview.current) {
           previewTimer.current = setTimeout(() => {
             previewTimer.current = null;
@@ -883,7 +883,7 @@ export function QuickWheelSurface({
             choice.select();
             if (choice.dismiss) close();
           }
-        }, 500);
+        }, 700);
       }
     }
     function end(event: PointerEvent) {

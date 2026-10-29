@@ -12,7 +12,9 @@ it('holding the switch for one second changes units without releasing the pointe
  const card=screen.getByRole('button',{name:'Clip box'});
  Object.assign(card,{setPointerCapture:vi.fn(),hasPointerCapture:()=>false});
  fireEvent.pointerDown(card,{clientY:300,button:0});
- act(()=>vi.advanceTimersByTime(120));
+ act(()=>vi.advanceTimersByTime(199));
+ expect(preview).not.toHaveBeenCalled();
+ act(()=>vi.advanceTimersByTime(1));
  fireEvent.pointerMove(window,{clientY:102});
  expect(preview).toHaveBeenLastCalledWith({partId:'clips',partName:'Clip box',quantity:-1,mode:undefined});
  act(()=>vi.advanceTimersByTime(999));
@@ -35,7 +37,7 @@ it('releasing over the switch early does not change quantity',()=>{
  const card=screen.getByRole('button',{name:'Clip box'});
  Object.assign(card,{setPointerCapture:vi.fn(),hasPointerCapture:()=>false});
  fireEvent.pointerDown(card,{clientY:300,button:0});
- act(()=>vi.advanceTimersByTime(120));
+ act(()=>vi.advanceTimersByTime(220));
  fireEvent.pointerMove(window,{clientY:102});
  act(()=>vi.advanceTimersByTime(500));
  fireEvent.pointerUp(window);
@@ -54,7 +56,7 @@ it('switches back to bulk units in the same continuous gesture',()=>{
  const card=screen.getByRole('button',{name:'Clip box'});
  Object.assign(card,{setPointerCapture:vi.fn(),hasPointerCapture:()=>false});
  fireEvent.pointerDown(card,{clientY:300,button:0});
- act(()=>vi.advanceTimersByTime(120));
+ act(()=>vi.advanceTimersByTime(220));
  fireEvent.pointerMove(window,{clientY:102});
  expect(preview).toHaveBeenLastCalledWith({partId:'clips',partName:'Clip box',quantity:-1,mode:undefined});
  act(()=>vi.advanceTimersByTime(999));

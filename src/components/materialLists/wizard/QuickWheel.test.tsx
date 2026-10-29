@@ -68,7 +68,7 @@ const steer = (distance: number) => {
   const dx = innerWidth/2-x, dy = innerHeight/2-y, length = Math.hypot(dx,dy);
   aim(x + (length < 8 ? 1 : -dy/length)*distance, y + (length < 8 ? 0 : dx/length)*distance);
 };
-const dwell = (ms = 500) => act(() => vi.advanceTimersByTime(ms));
+const dwell = (ms = 700) => act(() => vi.advanceTimersByTime(ms));
 const wheel = () => screen.queryByRole("status");
 beforeEach(() => {
   const stored = new Map<string, string>();
@@ -127,12 +127,12 @@ describe("wizard quick wheel", () => {
     expect(label).toHaveAttribute("width", "104");
     expect(label.querySelector("span")).toHaveClass("whitespace-nowrap");
   });
-  it("selects after 500 ms and continues through stages without releasing", () => {
+  it("selects after 700 ms and continues through stages without releasing", () => {
     const select = vi.fn();
     render(<Harness select={select} />);
     down();
     aim();
-    dwell(499);
+    dwell(699);
     expect(select).not.toHaveBeenCalled();
     dwell(1);
     expect(select).toHaveBeenCalledTimes(1);
@@ -183,7 +183,7 @@ describe("wizard quick wheel", () => {
       expect(select).not.toHaveBeenCalled();
       const target = wheel()!.querySelector('[data-source-index="0"]')!;
       aim(Number(target.getAttribute("x")) + 52, Number(target.getAttribute("y")) + 52);
-      void dwell(499);
+      void dwell(699);
       expect(select).not.toHaveBeenCalled();
       void dwell(1);
       expect(select).toHaveBeenCalledExactlyOnceWith(0);
@@ -203,7 +203,7 @@ describe("wizard quick wheel", () => {
     aim();
     dwell(300);
     aim(215, 170);
-    dwell(200);
+    dwell(400);
     expect(select).toHaveBeenCalledTimes(1);
     expect(wheel()).toHaveAttribute("data-layout", "curved");
     expect(wheel()).toHaveAttribute("data-origin-x", "215");
@@ -566,10 +566,10 @@ describe("wizard quick wheel", () => {
     dwell(1000);
     const forward = Number(wheel()!.getAttribute("data-offset"));
     expect(forward).toBeGreaterThan(1);
-    dwell(500);
+    dwell(700);
     expect(Number(wheel()!.getAttribute("data-offset"))).toBeGreaterThan(forward);
     steer(50);
-    dwell(500);
+    dwell(700);
     expect(Number(wheel()!.getAttribute("data-offset"))).toBeCloseTo(forward, 1);
     aim(200, 300);
     const stopped = wheel()!.getAttribute("data-offset");
@@ -592,7 +592,7 @@ describe("wizard quick wheel", () => {
     const index = Number(choice.getAttribute("data-source-index"));
     aim(Number(choice.getAttribute("x")) + 52, Number(choice.getAttribute("y")) + 52);
     const stopped = wheel()!.getAttribute("data-offset");
-    dwell(499);
+    dwell(699);
     expect(wheel()).toHaveAttribute("data-offset", stopped);
     expect(select).not.toHaveBeenCalled();
     dwell(1);
@@ -601,7 +601,7 @@ describe("wizard quick wheel", () => {
   it.each(["pointerup", "pointercancel", "blur", "resize"])("stops the animation and pending selections on %s", event => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
-    down(); steer(-50); dwell(500);
+    down(); steer(-50); dwell(700);
     if (event === "pointerup") fireEvent.pointerUp(window, pointer);
     else fireEvent(window, new Event(event));
     dwell(2000);
@@ -712,7 +712,7 @@ describe("wizard quick wheel", () => {
     down();
     aim();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(700);
     });
     expect(wheel()).toBeNull();
     const part = screen.getByText("Part");
@@ -751,20 +751,20 @@ describe("wizard quick wheel", () => {
 describe("anticipatory wheel previews",()=>{
  const advance=async(ms:number)=>act(()=>vi.advanceTimersByTimeAsync(ms));
  const preview=()=>document.querySelector('[data-wheel-preview]');
- it("fades in the next step early while the original step owns input until 500 ms",async()=>{
+ it("fades in the next step early while the original step owns input until 700 ms",async()=>{
   const select=vi.fn(), prepare=vi.fn(()=>({title:"Stage 1",kind:"wheel" as const,options:[{label:"Next A"},{label:"Next B"}]}));
   function Steps(){const[step,setStep]=useState(0);return <QuickWheelSurface previewChoice={prepare}><Stage title={`Stage ${step}`} select={index=>{select(index);setStep(step+1);}}/></QuickWheelSurface>;}
   render(<Steps/>);down();aim();await advance(49);expect(preview()).toBeNull();
   await advance(1);expect(preview()).toHaveAttribute("aria-hidden","true");expect(preview()!.className).toContain("preview");
   expect(wheel()).toHaveAttribute("aria-label","Stage 0 quick wheel");expect(prepare).toHaveBeenCalledExactlyOnceWith("Stage 0","Choice 0");
-  await advance(449);expect(select).not.toHaveBeenCalled();expect(wheel()).toHaveAttribute("aria-label","Stage 0 quick wheel");
+  await advance(649);expect(select).not.toHaveBeenCalled();expect(wheel()).toHaveAttribute("aria-label","Stage 0 quick wheel");
   await advance(1);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();expect(wheel()).toHaveAttribute("aria-label","Stage 1 quick wheel");
  });
  it("keeps hit testing the original step, restarting anticipation when its choice changes",async()=>{
   const select=vi.fn(), prepare=vi.fn((_title:string,label:string)=>({title:label,kind:"wheel" as const,options:[{label:"Inactive next option"}]}));
   render(<QuickWheelSurface previewChoice={prepare}><Stage select={select}/></QuickWheelSurface>);down();aim();await advance(100);
   expect(preview()).not.toBeNull();aim(300,360);expect(preview()).toBeNull();await advance(50);
-  expect(prepare).toHaveBeenLastCalledWith("Catalog","Choice 1");await advance(449);expect(select).not.toHaveBeenCalled();
+  expect(prepare).toHaveBeenLastCalledWith("Catalog","Choice 1");await advance(649);expect(select).not.toHaveBeenCalled();
   await advance(1);expect(select).toHaveBeenCalledExactlyOnceWith(1);
  });
  it("discards cancelled and late previews and tolerates preload failures",async()=>{
@@ -772,7 +772,7 @@ describe("anticipatory wheel previews",()=>{
   const select=vi.fn(), prepare=vi.fn(()=>new Promise<{title:string;kind:"wheel";options:{label:string}[]}>(r=>{resolve=r;}));
   render(<QuickWheelSurface previewChoice={prepare}><Stage select={select}/></QuickWheelSurface>);down();aim();await advance(50);
   aim(200,300);await act(async()=>resolve({title:"Stale",kind:"wheel",options:[{label:"Stale"}]}));expect(preview()).toBeNull();
-  prepare.mockImplementation(()=>{throw Error("Could not preload");});aim();await advance(500);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();
+  prepare.mockImplementation(()=>{throw Error("Could not preload");});aim();await advance(700);expect(select).toHaveBeenCalledExactlyOnceWith(0);expect(preview()).toBeNull();
  });
  it("cancels anticipation when the pointer returns to joystick scrolling", async () => {
   const select = vi.fn(), prepare = vi.fn(() => ({ title: "Next", kind: "wheel" as const, options: [{label: "Child"}] }));

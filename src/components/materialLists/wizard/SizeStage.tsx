@@ -180,7 +180,7 @@ function SizeCard({
       window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
       window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
       window.addEventListener("pointercancel", handleWindowPointerCancel);
-    }, 100);
+    }, 200);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
