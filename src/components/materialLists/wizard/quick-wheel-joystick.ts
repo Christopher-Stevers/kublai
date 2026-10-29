@@ -194,7 +194,7 @@ export function wheelCarousel(
 ): CarouselTile[] {
   if (!count || !points.length) return [];
   const capacity = points.length;
-  // A thumb arc has a hidden gap at its hub even for a short list.
+  // A thumb arc has a hidden wraparound slot even for a short list.
   const overflowing = count > capacity || Boolean(arc);
   const period = arc && count <= capacity ? count + 1 : count;
   const base = Math.floor(offset);
@@ -215,11 +215,10 @@ export function wheelCarousel(
       const entrance = position < 0;
       const progress = entrance ? position + 1 : capacity - position;
       if (progress <= 0) continue;
-      // Fade into the hub before loading/unloading, leaving digits and labels
-      // fully opaque everywhere a user can select them.
+      // Continue past the rail endpoint while fading; never dive into the hub.
       opacity = progress * progress * (3 - 2 * progress);
-      point = lerp(origin, points[entrance ? 0 : capacity - 1]!, progress);
-    } else if (arc) {
+    }
+    if (arc) {
       point = onArc(origin, arc, position);
     } else if (circular) {
       const ring = Math.hypot(points[0]!.x - origin.x, points[0]!.y - origin.y);
@@ -229,10 +228,11 @@ export function wheelCarousel(
         y: origin.y - Math.cos(angle) * ring,
       };
     } else {
-      const lower = Math.floor(position);
-      point = lerp(
-        points[wrapWheelIndex(lower, capacity)]!,
-        points[wrapWheelIndex(lower + 1, capacity)]!,
+      // Extend the end segment for non-circular fallback rails as well.
+      const lower = Math.max(0, Math.min(capacity - 2, Math.floor(position)));
+      point = capacity === 1 ? points[0]! : lerp(
+        points[lower]!,
+        points[lower + 1]!,
         position - lower,
       );
     }

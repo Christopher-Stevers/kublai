@@ -52,10 +52,10 @@ describe("Quickwheel joystick", () => {
     ).toEqual([1, 2, 3]);
     expect(wheelCarousel(0.5, 10000, points, origin, false)).toHaveLength(4);
   });
-  it("moves entering and leaving tiles toward the thumb and fades them there", () => {
+  it("continues past each rail endpoint while fading", () => {
     const tiles = wheelCarousel(0.5, 12, points, origin, false);
-    expect(tiles[0]).toMatchObject({ x: 210, y: 230, opacity: 0.5 });
-    expect(tiles.at(-1)).toMatchObject({ x: 350, y: 230, opacity: 0.5 });
+    expect(tiles[0]).toMatchObject({ x: 55, y: 190, opacity: 0.5 });
+    expect(tiles.at(-1)).toMatchObject({ x: 475, y: 190, opacity: 0.5 });
     expect(tiles[1]?.opacity).toBe(1);
     for (let offset = 0; offset < 15; offset += 0.05) {
       const frame = wheelCarousel(offset, 12, points, origin, false);
@@ -64,6 +64,23 @@ describe("Quickwheel joystick", () => {
         expect(tile.opacity).toBeGreaterThan(0);
         expect(tile.opacity).toBeLessThanOrEqual(1);
       });
+    }
+  });
+  it("keeps fading thumb options on the arc radius in both directions", () => {
+    const arc = { radius: 240, start: -0.6, step: 0.5 };
+    const rail = Array.from({ length: 3 }, (_, i) => ({
+      x: origin.x + Math.sin(arc.start + i * arc.step) * arc.radius,
+      y: origin.y - Math.cos(arc.start + i * arc.step) * arc.radius,
+    }));
+    for (const offset of [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75]) {
+      const frame = wheelCarousel(offset, 12, rail, origin, false, arc);
+      const fading = frame.filter(tile => tile.opacity < 1);
+      expect(fading).toHaveLength(2);
+      for (const tile of fading) {
+        expect(Math.hypot(tile.x - origin.x, tile.y - origin.y)).toBeCloseTo(240);
+        const angle = Math.atan2(tile.x - origin.x, origin.y - tile.y);
+        expect(angle < arc.start || angle > arc.start + 2 * arc.step).toBe(true);
+      }
     }
   });
   it("rotates small lists without introducing pagination or duplicate choices", () => {
