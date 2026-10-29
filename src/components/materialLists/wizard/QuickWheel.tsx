@@ -28,9 +28,11 @@ import {
   wheelVisibleLimit,
   wheelHubRadius,
   type WheelBounds,
+  type WheelLayout,
 } from "./quick-wheel-layout";
 
 import {
+  type WheelArc,
   joystickWheelArc,
   wheelCarousel,
   wheelJoystickSpeed,
@@ -113,7 +115,11 @@ const geometryCache = new WeakMap<
   WheelBounds,
   Map<string, ReturnType<typeof createGeometry>>
 >();
-function createGeometry(wheel: Wheel) {
+function createGeometry(wheel: Wheel): {
+  layout: WheelLayout;
+  points: { x: number; y: number }[];
+  arc?: WheelArc;
+} {
   const limit = wheelVisibleLimit(wheel.bounds, wheel.hand, wheel);
   const count = wheel.options.length;
   const capacity = Math.min(limit, count);
