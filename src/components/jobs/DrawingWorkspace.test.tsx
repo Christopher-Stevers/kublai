@@ -518,6 +518,14 @@ describe("drawing workspace workflows", () => {
     expect(stored.get("foremanhq:drawing-quick-wheel:guest")).toBe("off");
   });
 
+  it("shows the drawing while its tools are still loading", () => {
+    mocks.data = null;
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    expect(screen.getByTestId("markup-editor")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading drawing tools…");
+    expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({ src: sheet.imageUrl });
+  });
+
   it("lets More opt into Quickwheel mode, uses the same measurement command, and restores the bars from the wheel", () => {
     const stored = new Map<string, string>();
     vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });

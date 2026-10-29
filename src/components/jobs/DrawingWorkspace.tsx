@@ -1473,7 +1473,10 @@ export function DrawingWorkspace({
         <Button onClick={() => window.location.reload()}>Reload session</Button>
       </div>
     );
-  if (!data && !online)
+  // The drawing shows while its markups and tools load; errors and revoked
+  // access still replace it below.
+  const loadingTools = !data && online && !query.error;
+  if (!data && (!online || loadingTools))
     return (
       <DrawingQuickWheel enabled={quickWheel} group={{ id: "offline", title: source.name, items: [
         { id: "measure", label: "Measure", icon: <RulerIcon />, run: () => requestMode("measure") },
@@ -1484,10 +1487,17 @@ export function DrawingWorkspace({
         { id: "fit", label: "Fit to screen", icon: <ScanIcon />, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
         { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [{ id: "regular-controls", label: "Quickwheel mode off", run: () => setQuickWheel(false) }] },
       ] }}>
-      <div className="flex h-full min-h-0 flex-col">
-        <p className="bg-background p-2 text-xs">
-          Offline drawing · annotation data was not downloaded.
-        </p>
+      <div className="relative flex h-full min-h-0 flex-col">
+        {loadingTools ? (
+          // Over the drawing, so it does not move when the tools arrive.
+          <p role="status" className="bg-background/90 pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-full border px-3 py-1 text-xs shadow-sm">
+            Loading drawing tools…
+          </p>
+        ) : (
+          <p className="bg-background p-2 text-xs">
+            Offline drawing · annotation data was not downloaded.
+          </p>
+        )}
         <div className="min-h-0 flex-1">
           <DrawingSheetViewer
             toolControls={quickWheel ? { measureRequest: 0, pipeRequest: 0, modeRequest, onDone: () => requestMode("idle") } : undefined}
@@ -1512,7 +1522,7 @@ export function DrawingWorkspace({
   if (!data)
     return (
       <div className="grid h-full place-content-center gap-3 p-6 text-center">
-        <p>{query.error ? query.error.message : "Loading drawing tools…"}</p>
+        <p>{query.error?.message ?? "Could not load the drawing."}</p>
         {query.error && (
           <Button onClick={() => void query.refetch()}>Try again</Button>
         )}
