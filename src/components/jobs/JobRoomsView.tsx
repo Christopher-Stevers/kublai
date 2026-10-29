@@ -2,9 +2,7 @@
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { DrawingThumbnail } from "./DrawingThumbnail";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { SheetOfflineButton } from "./SheetOfflineButton";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
-import { useDrawingAccount } from "./DrawingAccountProvider";
 import {
   roomOverviewKey,
   roomFloorKey,
@@ -350,7 +348,6 @@ export function JobRoomsView({
     setDetectError(job.error || "Room detection failed");
   }, [detectStatus.data, detectRooms.isPending, jobId, refreshRooms]);
 
-  const account = useDrawingAccount();
   const roomSnapshot = useDrawingSnapshot(
     roomOverviewKey(jobId),
     roomsQuery.data,
@@ -386,22 +383,6 @@ export function JobRoomsView({
     selectedSummary && detail?.id === selectedFloorId
       ? { ...detail, ...selectedSummary, rooms: detail.rooms }
       : null;
-  const prepareFloorOffline = async (floorId: string, signal: AbortSignal) => {
-    const store = account?.store;
-    if (!store || !data)
-      throw new Error("Drawing data is not ready. Please try again.");
-    const floor = online
-      ? await utils.client.rooms.getFloorRooms.query(
-          { jobId, floorId },
-          { signal },
-        )
-      : await readRoomFloorSnapshot(store, roomFloorKey(jobId, floorId));
-    signal.throwIfAborted();
-    if (!floor)
-      throw new Error("This drawing's rooms have not been saved offline.");
-    await store.saveSnapshot(roomFloorKey(jobId, floorId), floor);
-    await store.saveSnapshot(roomOverviewKey(jobId), data);
-  };
   const queuedFloors = floors.filter(
     (floor) => floor.detection?.status === "queued",
   ).length;
@@ -909,13 +890,6 @@ export function JobRoomsView({
                         </span>
                       ) : null}
                     </div>
-                    <SheetOfflineButton
-                      iconOnly
-                      sheet={floor}
-                      prepare={(signal) =>
-                        prepareFloorOffline(floor.id, signal)
-                      }
-                    />
                     {canManage || canDelete ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1491,12 +1465,6 @@ export function JobRoomsView({
                 <PencilIcon className="mr-1 h-4 w-4 shrink-0" />
                 {editMenuOpen ? "Done" : "Edit"}
               </Button>}
-              <SheetOfflineButton
-                sheet={selectedFloor}
-                prepare={(signal) =>
-                  prepareFloorOffline(selectedFloor.id, signal)
-                }
-              />
             </PriorityActionBar>
           </div>
         </div>
