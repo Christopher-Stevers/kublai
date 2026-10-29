@@ -689,6 +689,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   gap: 0.375rem;
 }
 [data-action-bar-shelf] {
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin-bottom: 0.375rem;
   padding-bottom: 0.375rem;
   border-bottom: 1px dashed var(--border);

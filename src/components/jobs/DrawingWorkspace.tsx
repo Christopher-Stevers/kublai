@@ -9,9 +9,9 @@ import { equipmentDrawingDestination, legacyEquipmentDocumentLink } from "~/lib/
 import { measurementLayerNames, measurementLayerVisible } from "~/lib/measurement-layers";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
-import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
+import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingQuickWheel, DrawingWheelRegistration, type DrawingWheelItem } from "./DrawingQuickWheel";
-import { DrawingQuickWheelSetting, useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
+import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { drawingWheelStyleItems } from "./drawing-wheel-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
@@ -429,8 +429,7 @@ export function DrawingWorkspace({
       ? snapshot
       : null);
   const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
-  const [moreOpen, setMoreOpen] = useState(false);
-  useEffect(() => { if (quickWheel) { setMoreOpen(false); setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
+  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
   const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
   const [superEquipmentOpen, setSuperEquipmentOpen] = useState(false);
@@ -490,7 +489,6 @@ export function DrawingWorkspace({
   const openAutoHyperlink = () => {
     selectTool("pan");
     setAutoHyperlinkOpen(true);
-    setMoreOpen(false);
     setToolsOpen(false);
     setPanel("");
     setHighlight(null);
@@ -1684,6 +1682,13 @@ export function DrawingWorkspace({
       ...(onClose ? [{ id: "close-document", label: "Close document", run: onClose }] : []),
     ] },
   ];
+
+  const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean) => (
+    <Button key={label} variant={pressed ? "default" : "outline"} className={BAR_BUTTON}
+      disabled={disabled} aria-pressed={pressed} onClick={() => { finishTool(); run(); }}>
+      <Icon aria-hidden="true" />{label}
+    </Button>
+  );
 
   return (
     <DrawingQuickWheel enabled={quickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
@@ -3282,7 +3287,7 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {/* Shared priority bar: Measure, Markup, Tools, then Options. */}
+      {/* Shared priority bar: Measure, Markup and Tools first; all other actions on its shelf. */}
       {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div
         data-drawing-chrome
@@ -3387,166 +3392,35 @@ export function DrawingWorkspace({
         <PriorityActionBar
           role="toolbar"
           aria-label="Drawing tools"
+          label={statusText !== "Saved" ? statusText : undefined}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
         >
-          {panel && panel !== "selected" ? (
-            <Button
-              variant="default"
-              className={BAR_BUTTON}
-              aria-label="Drawing options"
-              aria-pressed={true}
-              onClick={() => {
-                setPanel("");
-                setForm(null);
-              }}
-            >
-              <MoreHorizontalIcon className="h-5 w-5" />
-              Options
-            </Button>
-          ) : (
-            <DropdownMenu
-              modal={false}
-              open={moreOpen}
-              onOpenChange={(open) => {
-                setMoreOpen(open);
-                if (open) finishTool();
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={moreOpen ? "default" : "outline"}
-                  className={BAR_BUTTON}
-                  aria-label="Drawing options"
-                >
-                  <MoreHorizontalIcon className="h-5 w-5" />
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                align="start"
-                className={`${MENU_CLASS} max-h-[70dvh] overflow-y-auto`}
-              >
-                <DrawingQuickWheelSetting />
-                <DrawingPageModeSetting />
-                <DropdownMenuLabel className={MENU_SECTION}>
-                  Default markup visibility
-                </DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  aria-label="Default markup visibility"
-                  value={defaultMarkupVisibility}
-                  onValueChange={(value) => {
-                    if (value === "published" || value === "private")
-                      setDefaultMarkupVisibility(value);
-                  }}
-                >
-                  <DropdownMenuRadioItem
-                    value="published"
-                    className="min-h-11"
-                  >
-                    Public · job team
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="private" className="min-h-11">
-                    Private · only me
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator className="my-1.5" />
-                {statusText !== "Saved" && (
-                  <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
-                    {statusText}
-                  </DropdownMenuLabel>
-                )}
-                <DropdownMenuLabel className={MENU_SECTION}>
-                  View
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  className={MENU_ITEM}
-                  onSelect={() =>
-                    setNavigate({
-                      center: { x: 0.5, y: 0.5 },
-                      zoom: 1,
-                      requestId: crypto.randomUUID(),
-                    })
-                  }
-                >
-                  <MenuTile icon={ScanIcon} />
-                  Fit to screen
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={MENU_ITEM}
-                  disabled={overlayChoices.length < 2}
-                  onSelect={() => setOverlayPickerOpen(true)}
-                >
-                  <MenuTile icon={LayersIcon} />
-                  Overlay drawings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={MENU_ITEM}
-                  onSelect={() => setAppearanceOpen(true)}
-                >
-                  <MenuTile icon={PaletteIcon} />
-                  Drawing appearance
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1.5" />
-                <DropdownMenuLabel className={MENU_SECTION}>
-                  Sheet
-                </DropdownMenuLabel>
-                <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !writable || !online} onSelect={openAutoHyperlink}>
-                  <MenuTile icon={Link2Icon} />
-                  Auto Hyperlink
-                </DropdownMenuItem>
-                {!data.documentSource && <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setLegendOpen(true);}}>
-                  <MenuTile icon={BookOpenIcon} />
-                  Legend Items
-                </DropdownMenuItem>}
-                {!data.documentSource && (
-                  <>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setSuperEquipmentOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Equipment</DropdownMenuItem>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!canAccessSystems || !data.canUseSheetTools || !online} onSelect={()=>{setMoreOpen(false);setSuperSpecMaterialOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Spec Material</DropdownMenuItem>
-                  <DropdownMenuItem className={MENU_ITEM} disabled={!data.canUseSheetTools || !data.canManage || !online} onSelect={()=>{setMoreOpen(false);setSuperLabelOpen(true);}}><MenuTile icon={FileTextIcon}/>Super Label</DropdownMenuItem>
-                  <DropdownMenuItem className={MENU_ITEM}
-                    disabled={!data.canUseSheetTools || !data.canManage || !online}
-                    onSelect={() => { setMoreOpen(false); setSuperScaleOpen(true); }}>
-                    <MenuTile icon={RulerIcon} />
-                    Super scale
-                  </DropdownMenuItem>
-                  </>
-                )}
-                {onDocumentDetails && (
-                  <DropdownMenuItem
-                    className={MENU_ITEM}
-                    onSelect={onDocumentDetails}
-                  >
-                    <MenuTile icon={FileTextIcon} />
-                    Document details
-                  </DropdownMenuItem>
-                )}
-                {onClose && (
-                  <DropdownMenuItem className={MENU_ITEM} onSelect={onClose}>
-                    <MenuTile icon={XIcon} />
-                    Close document
-                  </DropdownMenuItem>
-                )}
-                {panels
-                  .filter(
-                    ([id]) => id !== "files" && (!data.documentSource || id !== "notifications"),
-                  )
-                  .map(([id, label]) => (
-                    <DropdownMenuItem
-                      key={id}
-                      className={MENU_ITEM}
-                      onSelect={() => {
-                        setMoreOpen(false);
-                        setPanel(id);
-                        setForm(null);
-                      }}
-                    >
-                      <MenuTile icon={PANEL_ICONS[id]} />
-                      {label}
-                    </DropdownMenuItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <Button variant="outline" className={BAR_BUTTON} role="switch" aria-label="Quickwheel mode" aria-checked={quickWheel} onClick={() => { finishTool(); setQuickWheel(!quickWheel); }}>
+            <MousePointer2Icon />Quickwheel Mode
+          </Button>
+          <Button variant={scroll ? "default" : "outline"} className={BAR_BUTTON} role="switch" aria-label="Scroll between pages" aria-checked={scroll} onClick={() => setScroll(!scroll)}>
+            <FileTextIcon />Scroll Between Pages
+          </Button>
+          <Button variant={defaultMarkupVisibility === "private" ? "default" : "outline"} className={BAR_BUTTON}
+            aria-label="Default markup visibility" aria-pressed={defaultMarkupVisibility === "private"}
+            onClick={() => setDefaultMarkupVisibility(defaultMarkupVisibility === "private" ? "published" : "private")}>
+            <PenLineIcon />{defaultMarkupVisibility === "private" ? "Private Markups" : "Public Markups"}
+          </Button>
+          {barAction("Fit to screen", ScanIcon, () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }))}
+          {barAction("Overlay drawings", LayersIcon, () => setOverlayPickerOpen(true), overlayChoices.length < 2)}
+          {barAction("Drawing appearance", PaletteIcon, () => setAppearanceOpen(true))}
+          {data.canUseSheetTools && data.canAnnotate !== false && barAction("Auto Hyperlink", Link2Icon, openAutoHyperlink, !writable || !online)}
+          {!data.documentSource && data.canUseSheetTools && <>
+            {barAction("Legend Items", BookOpenIcon, () => setLegendOpen(true), !online)}
+            {barAction("Super Equipment", FileTextIcon, () => setSuperEquipmentOpen(true), !online)}
+            {canAccessSystems && barAction("Super Spec Material", FileTextIcon, () => setSuperSpecMaterialOpen(true), !online)}
+            {data.canManage && barAction("Super Label", FileTextIcon, () => setSuperLabelOpen(true), !online)}
+            {data.canManage && barAction("Super scale", RulerIcon, () => setSuperScaleOpen(true), !online)}
+          </>}
+          {onDocumentDetails && barAction("Document details", FileTextIcon, onDocumentDetails)}
+          {onClose && barAction("Close document", XIcon, onClose)}
+          {panels.filter(([id]) => id !== "files" && (!data.documentSource || id !== "notifications")).map(([id, label]) =>
+            barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, false, panel === id)
           )}
           {bottomMode.pipe ||
           (!bottomMode.measuring && tool !== "pan" && OTHER_TOOLS.has(tool)) ? (

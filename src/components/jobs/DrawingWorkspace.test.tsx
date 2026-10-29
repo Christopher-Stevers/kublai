@@ -368,18 +368,18 @@ const open = () =>
   );
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
-  if (name === "Drawing options" && !screen.queryByRole("button", { name })) {
-    fireEvent.click(screen.getByRole("button", { name: "More", exact: true }));
+  if (name === "More") {
+    const more = screen.getByRole("button", { name: "More", exact: true });
+    if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
+    return;
   }
   fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
 };
 const panel = (name: string) => {
-  openMenu("Drawing options");
-  fireEvent.click(
-    screen.getByRole("menuitem", {
-      name: panels.find(([id]) => id === name)![1],
-    }),
-  );
+  openMenu("More");
+  fireEvent.click(within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole("button", {
+    name: panels.find(([id]) => id === name)![1],
+  }));
 };
 const chooseTool = (id: string) => {
   const label = tools.find(([tool]) => tool === id)![1];
@@ -521,7 +521,7 @@ describe("drawing workspace workflows", () => {
   it("lets More opt into Quickwheel mode, uses the same measurement command, and restores the bars from the wheel", () => {
     const stored = new Map<string, string>();
     vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
-    open(); openMenu("Drawing options");
+    open(); openMenu("More");
     const toggle = screen.getByRole("switch", { name: "Quickwheel mode" });
     expect(toggle).not.toBeChecked(); fireEvent.click(toggle);
     expect(screen.queryByRole("toolbar", { name: "Drawing tools" })).toBeNull();
@@ -557,8 +557,8 @@ describe("drawing workspace workflows", () => {
   it("prompts to calibrate before Super scale, then continues only after a saved calibration", () => {
     open();
     const start = () => {
-      openMenu("Drawing options");
-      fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+      openMenu("More");
+      fireEvent.click(screen.getByRole("button", { name: "Super scale" }));
       fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
       expect(screen.getByRole("heading", { name: "Super scale — set scale first" })).toBeInTheDocument();
       expect(screen.queryByText("Super scale grid matching")).toBeNull();
@@ -575,25 +575,25 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
   });
 
-  it("disables every Sheet tool when permission is denied, while keeping drawing controls", () => {
+  it("hides every Sheet tool when permission is denied, while keeping drawing controls", () => {
     mocks.data!.canUseSheetTools = false;
     open();
-    openMenu("Drawing options");
+    openMenu("More");
     for (const name of ["Auto Hyperlink", "Legend Items", "Super Spec Material", "Super Label", "Super scale"]) {
-      expect(screen.getByRole("menuitem", { name })).toHaveAttribute("data-disabled");
+      expect(screen.queryByRole("button", { name })).toBeNull();
     }
-    expect(screen.getByRole("menuitem", { name: "Fit to screen" })).not.toHaveAttribute("data-disabled");
+    expect(screen.getByRole("button", { name: "Fit to screen" })).toBeEnabled();
   });
 
   it("offers Super scale under More", () => {
     open();
-    openMenu("Drawing options");
-    expect(screen.getByRole("menuitem", { name: "Super scale" })).toBeInTheDocument();
+    openMenu("More");
+    expect(screen.getByRole("button", { name: "Super scale" })).toBeInTheDocument();
     for (const name of ["Super scale results", "Snapshot", "Download / offline", "Available offline"]) {
       expect(screen.queryByRole("menuitem", {name})).toBeNull();
       expect(screen.queryByRole("button", {name})).toBeNull();
     }
-    fireEvent.click(screen.getByRole("menuitem", {name:"Super scale"}));
+    fireEvent.click(screen.getByRole("button", {name:"Super scale"}));
     expect(screen.getByText("Super scale grid matching")).toBeInTheDocument();
   });
 
@@ -910,8 +910,8 @@ describe("drawing workspace workflows", () => {
       })),
     );
     open();
-    openMenu("Drawing options");
-    fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
+    openMenu("More");
+    fireEvent.click(screen.getByRole("button", { name: "Overlay drawings" }));
     document
       .querySelectorAll("details")
       .forEach((group) => (group.open = true));
@@ -953,7 +953,7 @@ describe("drawing workspace workflows", () => {
   });
   it("keeps chooser names while open and closes them from the same button",()=>{
     open(); const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
-    for(const name of ["Drawing options","Tools","Markup"]) {
+    for(const name of ["Tools","Markup"]) {
       if(name==="Markup")fireEvent.click(within(toolbar).getByRole("button",{name}));else openMenu(name);
       const button=within(toolbar).getByRole("button",{name});
       expect(button).toHaveClass("bg-primary");expect(button).toHaveAttribute("aria-expanded","true");
@@ -962,12 +962,14 @@ describe("drawing workspace workflows", () => {
       expect(button).not.toHaveClass("bg-primary");
     }
   });
-  it("keeps Drawing options named consistently while a panel is open and closes it from that button",()=>{
-    open(); panel("details");const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
-    expect(screen.getByRole("heading",{name:"Sheet details"})).toBeVisible();
-    const button=within(toolbar).getByRole("button",{name:"Drawing options",pressed:true});
-    fireEvent.click(button);expect(screen.queryByRole("heading",{name:"Sheet details"})).toBeNull();
-    expect(within(toolbar).getByRole("button",{name:"More",exact:true})).toBeVisible();
+  it("shows individual actions directly in More and toggles panels from their own buttons", () => {
+    open(); panel("details");
+    expect(screen.getByRole("heading", { name: "Sheet details" })).toBeVisible();
+    openMenu("More");
+    expect(screen.queryByRole("button", { name: /options/i })).toBeNull();
+    const toolbar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Sheet details", pressed: true }));
+    expect(screen.queryByRole("heading", { name: "Sheet details" })).toBeNull();
   });
   it("retains active names when switching between markup, measure and pipe",()=>{
     open();chooseTool("line");const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
@@ -1004,8 +1006,8 @@ describe("drawing workspace workflows", () => {
         onViewportChange={onViewportChange}
       />,
     );
-    openMenu("Drawing options");
-    fireEvent.click(screen.getByRole("menuitem", { name: "Overlay drawings" }));
+    openMenu("More");
+    fireEvent.click(screen.getByRole("button", { name: "Overlay drawings" }));
     document
       .querySelectorAll("details")
       .forEach((group) => (group.open = true));
@@ -1238,9 +1240,9 @@ describe("drawing workspace workflows", () => {
   it("uses the personal Private default for new shapes, text and hyperlink drafts", async () => {
     mocks.data!.canManage = false;
     open();
-    openMenu("Drawing options");
+    openMenu("More");
     fireEvent.click(
-      screen.getByRole("menuitemradio", { name: "Private · only me" }),
+      screen.getByRole("button", { name: "Default markup visibility" }),
     );
     expect(mocks.save).not.toHaveBeenCalled();
     chooseTool("rect");
@@ -1268,9 +1270,9 @@ describe("drawing workspace workflows", () => {
   it("uses Private for a new measurement while preserving an existing public markup on edit", async () => {
     mocks.data!.entities = [existingMarkup("published")];
     open();
-    openMenu("Drawing options");
+    openMenu("More");
     fireEvent.click(
-      screen.getByRole("menuitemradio", { name: "Private · only me" }),
+      screen.getByRole("button", { name: "Default markup visibility" }),
     );
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(
@@ -1493,8 +1495,8 @@ describe("drawing workspace workflows", () => {
     render(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
-    openMenu("Drawing options");
-    fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+    openMenu("More");
+    fireEvent.click(screen.getByRole("button", { name: "Super scale" }));
       fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
@@ -1518,8 +1520,8 @@ describe("drawing workspace workflows", () => {
     render(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
-    openMenu("Drawing options");
-    fireEvent.click(screen.getByRole("menuitem", { name: "Super scale" }));
+    openMenu("More");
+    fireEvent.click(screen.getByRole("button", { name: "Super scale" }));
       fireEvent.click(screen.getByRole("button", { name: "Start new Super scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Set scale" }));
     fireEvent.click(screen.getByRole("button", { name: "Calibrate sample" }));
@@ -1795,7 +1797,7 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
   expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["More", "Tools", "Markup", "Measure"]);
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
-  openMenu("Drawing options");
+  openMenu("More");
   expect(screen.getByRole("switch", { name: "Quickwheel mode" })).toBeVisible();
 });
 
