@@ -93,10 +93,10 @@ export function wheelChoiceCone<T extends Point>(
   return closest;
 }
 
-// Reference spacing: about 232 CSS px from hub centre to option centre at
-// the standard size (64 px hub + 52 px option + 116 px clear gap).
+// Reference spacing: about 208 CSS px from hub centre to option centre at
+// the standard size (64 px hub + 52 px option + 92 px clear gap).
 export const wheelMinimumArcRadius = (radius: number) =>
-  wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 116;
+  wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92;
 
 export type WheelArc = { radius: number; start: number; step: number };
 const onArc = (origin: Point, arc: WheelArc, position: number): Point => ({
@@ -243,6 +243,10 @@ export function wheelCarousel(
       opacity = progress * progress * (3 - 2 * progress);
     }
     if (arc) {
+      // Start fading inside the rail, including at rest, so its ends never
+      // suggest that the continuous list has run out of choices.
+      const edgeDistance = Math.min(position, capacity - 1 - position);
+      opacity *= 0.75 + 0.25 * Math.max(0, Math.min(1, edgeDistance * 2));
       point = onArc(origin, arc, position);
     } else if (circular) {
       const ring = Math.hypot(points[0]!.x - origin.x, points[0]!.y - origin.y);

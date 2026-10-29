@@ -86,12 +86,21 @@ describe("Quickwheel joystick", () => {
     }));
     for (const offset of [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75]) {
       const frame = wheelCarousel(offset, 12, rail, origin, false, arc);
-      const fading = frame.filter(tile => tile.opacity < 1);
+      const fading = frame.filter(tile => tile.opacity < 0.75);
       expect(fading).toHaveLength(2);
       for (const tile of fading) {
         expect(Math.hypot(tile.x - origin.x, tile.y - origin.y)).toBeCloseTo(240);
         const angle = Math.atan2(tile.x - origin.x, origin.y - tile.y);
         expect(angle < arc.start || angle > arc.start + 2 * arc.step).toBe(true);
+      }
+    }
+  });
+  it("keeps a fade cue at rest and throughout scrolling", () => {
+    const arc = { radius: 208, start: -.6, step: .5 };
+    for (const count of [2, 3, 12]) {
+      for (let offset = 0; offset < count + 1; offset += .125) {
+        const tiles = wheelCarousel(offset, count, points.slice(0, Math.min(count, 3)), origin, false, arc);
+        expect(tiles.some(tile => tile.opacity > 0 && tile.opacity < 1)).toBe(true);
       }
     }
   });
@@ -154,10 +163,10 @@ describe("single thumb rail", () => {
   it("never falls back to a tight ring even when the viewport cannot fit the rail", () => {
     const origin = { x: 150, y: 150 };
     const rail = joystickWheelArc(origin, { left: 0, top: 0, right: 300, bottom: 300 }, 170, 20, "right", { x: 300, y: 204 })!;
-    expect(rail.arc.radius).toBe(232);
+    expect(rail.arc.radius).toBe(208);
     expect(rail.points).toHaveLength(1);
     for (const point of rail.points)
-      expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(232);
+      expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(208);
   });
   it("keeps short lists unique across the gap beneath the thumb", () => {
     const origin = { x: 350, y: 520 },

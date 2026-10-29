@@ -576,7 +576,7 @@ describe("wizard quick wheel", () => {
     });
     expect(wheel()).toBeNull();
   });
-  it("starts inward selection just outside the hub without rotating", () => {
+  it("starts inward selection inside the hub without rotating", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
     down();
@@ -591,13 +591,13 @@ describe("wizard quick wheel", () => {
     })).sort((a,b) => ((b.x-x)*ax+(b.y-y)*ay) - ((a.x-x)*ax+(a.y-y)*ay));
     const tile = tiles[0]!;
     const length = Math.hypot(tile.x-x, tile.y-y);
-    for (const distance of [30, 60]) {
+    for (const distance of [30, 44]) {
       aim(x+(tile.x-x)*distance/length, y+(tile.y-y)*distance/length);
       dwell(200);
       expect(Number(wheel()!.getAttribute("data-offset"))).toBe(0);
       expect(select).not.toHaveBeenCalled();
     }
-    aim(x+(tile.x-x)*72/length, y+(tile.y-y)*72/length);
+    aim(x+(tile.x-x)*56/length, y+(tile.y-y)*56/length);
     dwell();
     expect(select).toHaveBeenCalled();
   });

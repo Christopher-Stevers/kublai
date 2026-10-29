@@ -732,7 +732,8 @@ export function QuickWheelSurface({
         ) > 12;
       const dx = event.clientX - current.x,
         dy = event.clientY - current.y;
-      const inHub = Math.hypot(dx, dy) <= wheelHubRadius(current.radius);
+      const selectionRadius = wheelHubRadius(current.radius) * 0.75;
+      const inHub = Math.hypot(dx, dy) <= selectionRadius;
       const motion = wheelJoystickMotion(
         current,
         pointerPosition.current,
@@ -768,11 +769,11 @@ export function QuickWheelSurface({
       );
       const { inward } = wheelJoystickAxes(current, current.thumbAnchor);
       const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
-      // Inward selection starts at the visible hub edge, halfway through the
+      // Inward selection starts inside the visible hub, before the full
       // joystick reach. Keep full reach sideways so scrolling remains available.
       const target = !inHub && moved
         ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles,
-            movingInward ? wheelHubRadius(current.radius) : undefined)
+            movingInward ? selectionRadius : undefined)
           ?? tiles
             .sort((a, b) =>
               Math.hypot(a.x - event.clientX, a.y - event.clientY) -
