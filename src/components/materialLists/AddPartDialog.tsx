@@ -482,6 +482,11 @@ export function AddPartDialog({
     });
   };
 
+  const quantityPickerParts = useMemo(() => [
+    ...filteredPartsForSelection,
+    ...pendingParts.map(p => ({ ...p.partDefinition, description: null })),
+  ], [filteredPartsForSelection, pendingParts]);
+
   // Handler for editing a part. Catalogue/part editing is an online-only management flow.
   const handleEditPart = (partId: string) => {
     if (!isOnline) return;
@@ -536,7 +541,7 @@ export function AddPartDialog({
 
         return {
           ...prev,
-          quantity: packContents(filteredPartsForSelection.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
+          quantity: packContents(quantityPickerParts.find(part => part.id === prev.partId)?.piecesPerPack) > 1 ? Math.max(-1, prev.quantity + stepDelta) : clampQuantity(prev.quantity + stepDelta),
         };
       });
     };
@@ -544,7 +549,7 @@ export function AddPartDialog({
     const handleTouchEnd = (event: TouchEvent) => {
       event.preventDefault();
 
-      const matchingPart = filteredPartsForSelection.find(
+      const matchingPart = quantityPickerParts.find(
         (part) => part.id === quantityPickerPreview.partId,
       );
 
@@ -567,7 +572,7 @@ export function AddPartDialog({
       window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("touchcancel", handleTouchCancel);
     };
-  }, [filteredPartsForSelection, quantityPickerPreview]);
+  }, [quantityPickerParts, quantityPickerPreview]);
 
   useEffect(() => {
     if (quantityPickerPreview?.quantity !== -1) pickerSwitchLatchedRef.current = false;
@@ -1075,7 +1080,7 @@ export function AddPartDialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  const pickerPart = filteredPartsForSelection.find(part => part.id === quantityPickerPreview?.partId);
+  const pickerPart = quantityPickerParts.find(part => part.id === quantityPickerPreview?.partId);
   const bulkUnit = pickerPart?.bulkUnit || "pack";
   const bulkPlural = ({box: "boxes", pack: "packs", roll: "rolls", coil: "coils", length: "lengths"} as Record<string, string>)[bulkUnit] || bulkUnit;
   const pickerContents = packContents(pickerPart?.piecesPerPack);
@@ -1305,6 +1310,7 @@ export function AddPartDialog({
             </>}
             {showChosenParts && (
               <ChosenPartsView
+                onQuantityPickerPreviewChange={setQuantityPickerPreview}
                 pendingParts={pendingParts}
                 supplierPartsData={supplierPartsData}
                 onUpdateQuantity={handleUpdateQuantity}

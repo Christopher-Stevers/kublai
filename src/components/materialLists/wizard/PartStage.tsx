@@ -23,7 +23,9 @@ import { WizardOptionPagination } from "./WizardOptionGrid";
 
 type PartStageActionMode = "select" | "edit";
 
-interface PartCardProps {
+export interface PartCardProps {
+  footer?: ReactNode;
+  photoAction?: ReactNode;
   details?: ReactNode;
   part: {
     id: string;
@@ -88,7 +90,7 @@ interface PartCardProps {
   emptyMessage?: string;
 }
 
-function PartCard({
+export function PartCard({
   part,
   isPending,
   pendingQuantity = 0,
@@ -98,6 +100,8 @@ function PartCard({
   onEditPart,
   actionMode = "select",
   details,
+  footer,
+  photoAction,
 }: PartCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -363,7 +367,9 @@ function PartCard({
       }}
     >
       <CardContent className="p-0">
-        <PartTileContent part={part} quantity={pendingQuantity} details={details} />
+        <PartTileContent part={part} quantity={pendingQuantity} details={details}
+          photoAction={photoAction && <div onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{photoAction}</div>} />
+        {footer && <div className="px-3 pb-3" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{footer}</div>}
       </CardContent>
     </Card>
   );

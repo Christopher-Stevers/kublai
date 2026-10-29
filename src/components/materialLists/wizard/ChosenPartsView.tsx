@@ -1,4 +1,5 @@
-import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
+import { PartCard, type PartCardProps } from "./PartStage";
+import { PART_TILE_GRID_CLASS } from "./PartTileContent";
 import { supplierVersionLabel } from "~/lib/supplier-label";
 import { buildSupplierChoices } from "~/lib/supplier-choices";
 import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
@@ -39,7 +40,6 @@ import Image from "next/image";
 import type { PendingPart, PendingSupplierPartSnapshot } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ViewToggle } from "~/components/ui/view-toggle";
-import { Card, CardContent } from "~/components/ui/card";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 
@@ -67,6 +67,7 @@ type OptimisticSupplierSelection = {
 };
 
 export interface ChosenPartsViewProps {
+  onQuantityPickerPreviewChange?: PartCardProps["onQuantityPickerPreviewChange"];
   pendingParts: PendingPart[];
   supplierPartsData: Map<string, SupplierPartOption[]>;
   onUpdateQuantity: (partId: string, delta: number) => void;
@@ -197,6 +198,7 @@ export function ChosenPartsView({
   supplierPartsData,
   onUpdateQuantity,
   onSetQuantity,
+  onQuantityPickerPreviewChange,
   onUpdateSupplier,
   onRemovePendingPart,
   allPartsHaveSuppliers,
@@ -449,35 +451,22 @@ export function ChosenPartsView({
               !isToolLine && !supplierSelection.hasSupplier;
 
             return (
-              <Card
+              <PartCard
                 key={pendingPart.partId}
-                className={`${PART_TILE_CARD_CLASS} ${isMissingSupplier ? "border-amber-500" : ""}`}
-              >
-                <CardContent className="flex h-full flex-col p-0">
-                  <PartTileContent
-                    part={pendingPart.partDefinition}
-                    quantity={pendingPart.quantity}
-                    photoAction={renderRemoveButton(pendingPart.partId, "card")}
-                    details={!isToolLine && <FinancialOnly><span className="text-muted-foreground text-xs">Total: ${lineTotal.toFixed(2)}</span></FinancialOnly>}
-                  />
-                  <div className="mt-auto space-y-2 px-3 pb-3">
-                    <div className="flex min-w-0 items-center justify-between gap-1">
-                      <ChosenQuantityControls
-                        partId={pendingPart.partId}
-                        quantity={pendingPart.quantity}
-                        piecesPerPack={pendingPart.partDefinition.piecesPerPack}
-                        bulkUnit={pendingPart.partDefinition.bulkUnit}
-                        individualUnit={pendingPart.partDefinition.individualUnit}
-                        orderMultiple={isToolLine ? null : supplierSelection.selectedSupplierPart?.packSize}
-                        onUpdateQuantity={onUpdateQuantity}
-                        onSetQuantity={onSetQuantity}
-                      />
-                    </div>
-                    {isToolLine ? <span className="text-muted-foreground text-sm">Tool room</span>
-                      : renderSupplierPicker(pendingPart, isMissingSupplier)}
-                  </div>
-                </CardContent>
-              </Card>
+                part={{ ...pendingPart.partDefinition, description: null }}
+                isPending
+                pendingQuantity={pendingPart.quantity}
+                onPartSelect={() => onUpdateQuantity(pendingPart.partId, 1)}
+                onPartQuantitySet={(_, quantity) => quantity <= 0
+                  ? onRemovePendingPart(pendingPart.partId)
+                  : onSetQuantity(pendingPart.partId, quantity)}
+                onQuantityPickerPreviewChange={onQuantityPickerPreviewChange}
+                onEditPart={() => undefined}
+                photoAction={renderRemoveButton(pendingPart.partId, "card")}
+                details={!isToolLine && <FinancialOnly><span className="text-muted-foreground text-xs">Total: ${lineTotal.toFixed(2)}</span></FinancialOnly>}
+                footer={isToolLine ? <span className="text-muted-foreground text-sm">Tool room</span>
+                  : renderSupplierPicker(pendingPart, isMissingSupplier)}
+              />
             );
           })}
         </div>
