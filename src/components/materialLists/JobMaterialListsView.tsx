@@ -3,7 +3,6 @@ import {
   BarSearchButton,
   PriorityActionBar,
 } from "~/components/ui/priority-action-bar";
-import Link from "next/link";
 import { useState, type ComponentProps } from "react";
 import { PlusIcon } from "lucide-react";
 import { matchesMaterialListPart } from "~/lib/material-list-part-search";
@@ -122,7 +121,6 @@ export function JobMaterialListsView({
   return (
     <>
       <PageHeader level="section" title="Material Lists" />
-      {canReceive && <Link href={`/jobs/${jobId}/receiving`} className="mb-4 inline-flex py-2 text-sm underline">Receiving review queue</Link>}
 
       {search.trim() && lists && (
         <p role="status" className="text-muted-foreground mb-4 text-sm">
