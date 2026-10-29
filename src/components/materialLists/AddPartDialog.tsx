@@ -1341,7 +1341,7 @@ export function AddPartDialog({
                     {showChosenParts ? `Select ${isToolRequest ? "Tools" : "Parts"}` : `Basket (${pendingParts.length})`}
                   </button>
                 ) : undefined}
-                label={!prefabView && showChosenParts && !isToolRequest ? (
+                label={!prefabView && !isToolRequest ? (
                   <FinancialOnly><span className="text-muted-foreground">Basket Total</span><span className="font-bold tabular-nums">${chosenPartsTotal.toFixed(2)}</span></FinancialOnly>
                 ) : undefined}
               >
