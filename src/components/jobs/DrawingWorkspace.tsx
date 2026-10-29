@@ -96,6 +96,8 @@ import {
   TypeIcon,
   WaypointsIcon,
   XIcon,
+  EyeIcon,
+  EyeOffIcon,
   type LucideIcon,
 } from "lucide-react";
 import { MEASURE_TILE } from "./SheetMeasureBar";
@@ -314,6 +316,76 @@ function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
     </span>
   );
 }
+const MEASUREMENT_TYPES: DrawingTool[] = [
+  "dimension",
+  "area",
+  "angle",
+  "count",
+];
+const MARKUP_TYPES: DrawingTool[] = [
+  "freehand",
+  "highlight",
+  "text",
+  "callout",
+  "cloud",
+  "polycloud",
+  "rect",
+  "ellipse",
+  "polyline",
+  "line",
+  "arrow",
+  "link",
+];
+const PIN_TYPES: DrawingTool[] = ["issue", "rfi"];
+const layerLabel = (type: DrawingTool) =>
+  tools.find(([tool]) => tool === type)?.[1] ?? capitalize(type);
+/** One row in the Layers list: tap anywhere to show or hide it. */
+function LayerRow({
+  icon: Icon,
+  label,
+  count,
+  on,
+  muted,
+  child,
+  onToggle,
+}: {
+  icon?: LucideIcon;
+  label: string;
+  count?: number;
+  on: boolean;
+  muted?: boolean;
+  child?: boolean;
+  onToggle: () => void;
+}) {
+  const Eye = on ? EyeIcon : EyeOffIcon;
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label={`${label} layer`}
+      data-layer-row
+      onClick={onToggle}
+      className={`hover:bg-muted/70 flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors ${child ? "pl-5.5" : "font-medium"} ${on && !muted ? "" : "text-muted-foreground"}`}
+    >
+      <span
+        aria-hidden
+        className={`grid shrink-0 place-items-center rounded-lg ${child ? "size-7" : "size-8"} ${on && !muted ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+      >
+        {Icon && <Icon className="size-4" />}
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {count}
+        </span>
+      )}
+      <Eye
+        aria-hidden
+        className={`size-4 shrink-0 ${on ? "text-foreground/70" : "text-muted-foreground/70"}`}
+      />
+    </button>
+  );
+}
 const nameOf = (entity: DrawingEntity) =>
   entity.kind === "issue"
     ? entity.data.title
@@ -504,7 +576,14 @@ export function DrawingWorkspace({
     width: 2,
     fill: "none",
   });
-  const [layers, setLayers] = useState(
+  const [layers, setLayers] = useState<{
+    markups: boolean;
+    issues: boolean;
+    private: boolean;
+    published: boolean;
+    measurements?: boolean;
+    hidden?: string[];
+  }>(
     entryDrawing?.layers ?? {
       markups: true,
       issues: true,
@@ -1377,10 +1456,16 @@ export function DrawingWorkspace({
             !measurementLayerVisible(entity.data, hiddenMeasurementLayers)
           ) &&
           (entity.kind === "markup"
-            ? layers.markups
+            ? MEASUREMENT_TYPES.includes(entity.data.type)
+              ? layers.measurements !== false
+              : layers.markups
             : entity.kind === "issue"
               ? layers.issues
               : false) &&
+          !(
+            (entity.kind === "markup" || entity.kind === "issue") &&
+            layers.hidden?.includes(entity.data.type)
+          ) &&
           (entity.visibility === "private" ? layers.private : layers.published),
       ),
     [
@@ -1388,6 +1473,8 @@ export function DrawingWorkspace({
       sourceId,
       hiddenMeasurementLayers,
       layers.markups,
+      layers.measurements,
+      layers.hidden,
       layers.issues,
       layers.private,
       layers.published,
@@ -2526,46 +2613,142 @@ export function DrawingWorkspace({
               {(panel === "markups" || panel === "issues") && (
                 <>
                   {panel === "markups" && (
-                    <fieldset className="grid grid-cols-2 gap-2 rounded border p-2">
-                      <legend className="px-1 text-xs">Visible layers</legend>
-                      {measurementLayers.map((name) => (
-                        <label
-                          key={`measurement:${name}`}
-                          className="flex gap-2 text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!hiddenMeasurementLayers.includes(name)}
-                            onChange={(event) =>
-                              setHiddenMeasurementLayers((old) =>
-                                event.target.checked
-                                  ? old.filter((item) => item !== name)
-                                  : [...old, name],
-                              )
-                            }
-                          />
-                          {name}
-                        </label>
-                      ))}
-                      {Object.entries(layers).map(([key, value]) => (
-                        <label
-                          className="flex gap-2 text-sm capitalize"
-                          key={key}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={value}
-                            onChange={(e) =>
-                              setLayers((old) => ({
-                                ...old,
-                                [key]: e.target.checked,
-                              }))
-                            }
-                          />
-                          {key}
-                        </label>
-                      ))}
-                    </fieldset>
+                      <div data-layers-list className="-mx-1 grid gap-0.5">
+                        {(() => {
+                          const counts = new Map<string, number>();
+                          for (const entity of entities)
+                            if (
+                              (entity.kind === "markup" ||
+                                entity.kind === "issue") &&
+                              entity.visibility !== "archived" &&
+                              sourceOf(entity) === sourceId
+                            )
+                              counts.set(
+                                entity.data.type,
+                                (counts.get(entity.data.type) ?? 0) + 1,
+                              );
+                          const total = (types: DrawingTool[]) =>
+                            types.reduce(
+                              (sum, type) => sum + (counts.get(type) ?? 0),
+                              0,
+                            );
+                          const hidden = layers.hidden ?? [];
+                          const toggleType = (type: string) =>
+                            setLayers((old) => ({
+                              ...old,
+                              hidden: old.hidden?.includes(type)
+                                ? old.hidden.filter((item) => item !== type)
+                                : [...(old.hidden ?? []), type],
+                            }));
+                          const group = (
+                            key: "measurements" | "markups" | "issues",
+                            label: string,
+                            icon: LucideIcon,
+                            types: DrawingTool[],
+                            extra?: ReactNode,
+                          ) => {
+                            const on = layers[key] !== false;
+                            return (
+                              <div key={key} role="group" aria-label={label}>
+                                <LayerRow
+                                  icon={icon}
+                                  label={label}
+                                  count={total(types)}
+                                  on={on}
+                                  onToggle={() =>
+                                    setLayers((old) => ({
+                                      ...old,
+                                      [key]: old[key] === false,
+                                    }))
+                                  }
+                                />
+                                {extra}
+                                {types.map((type) => (
+                                  <LayerRow
+                                    key={type}
+                                    child
+                                    icon={
+                                      MARKUP_ICONS[type] ?? TOOL_ICONS[type]
+                                    }
+                                    label={layerLabel(type)}
+                                    count={counts.get(type)}
+                                    on={!hidden.includes(type)}
+                                    muted={!on}
+                                    onToggle={() => toggleType(type)}
+                                  />
+                                ))}
+                              </div>
+                            );
+                          };
+                          return (
+                            <>
+                              {group(
+                                "measurements",
+                                "Measurements",
+                                RulerIcon,
+                                MEASUREMENT_TYPES,
+                                measurementLayers.length > 1 &&
+                                  measurementLayers.map((name) => (
+                                    <LayerRow
+                                      key={`measurement:${name}`}
+                                      child
+                                      icon={LayersIcon}
+                                      label={name}
+                                      on={
+                                        !hiddenMeasurementLayers.includes(name)
+                                      }
+                                      muted={layers.measurements === false}
+                                      onToggle={() =>
+                                        setHiddenMeasurementLayers((old) =>
+                                          old.includes(name)
+                                            ? old.filter(
+                                                (item) => item !== name,
+                                              )
+                                            : [...old, name],
+                                        )
+                                      }
+                                    />
+                                  )),
+                              )}
+                              {group(
+                                "markups",
+                                "Markups",
+                                PenLineIcon,
+                                MARKUP_TYPES,
+                              )}
+                              {group(
+                                "issues",
+                                "Issues & RFIs",
+                                CircleAlertIcon,
+                                PIN_TYPES,
+                              )}
+                              <div className={MENU_SECTION}>Visibility</div>
+                              {(
+                                [
+                                  ["published", "Published"],
+                                  ["private", "Private"],
+                                ] as const
+                              ).map(([key, label]) => (
+                                <LayerRow
+                                  key={key}
+                                  icon={
+                                    key === "private" ? EyeOffIcon : SendIcon
+                                  }
+                                  label={label}
+                                  on={layers[key]}
+                                  onToggle={() =>
+                                    setLayers((old) => ({
+                                      ...old,
+                                      [key]: !old[key],
+                                    }))
+                                  }
+                                />
+                              ))}
+                              <div className={MENU_SECTION}>On this sheet</div>
+                            </>
+                          );
+                        })()}
+                      </div>
                   )}
                   {panel === "issues" && (
                     <div className="flex gap-2">

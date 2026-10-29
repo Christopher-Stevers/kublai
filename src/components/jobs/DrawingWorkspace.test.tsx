@@ -1816,7 +1816,15 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   fireEvent.click(layers);
   expect(layers).toHaveAttribute("aria-expanded", "true");
   expect(screen.getByRole("complementary", { name: "Drawing tools panel" })).not.toHaveAttribute("data-drawing-chrome");
-  expect(screen.getByText("Visible layers")).toBeVisible();
+  const markups = screen.getByRole("button", { name: "Markups layer" });
+  expect(markups).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(markups);
+  expect(markups).toHaveAttribute("aria-pressed", "false");
+  const arrow = screen.getByRole("button", { name: "Arrow layer" });
+  fireEvent.click(arrow);
+  expect(arrow).toHaveAttribute("aria-pressed", "false");
+  for (const name of ["Measurements", "Dimension", "Count", "Issues & RFIs", "RFI pin", "Hyperlink"])
+    expect(screen.getByRole("button", { name: `${name} layer` })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(layers);
   expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
 });
