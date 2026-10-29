@@ -26,7 +26,12 @@ import { documentActor, type DocumentAccess } from "~/server/documents/access";
 import { accessibleDocument } from "~/server/documents/domain";
 import { readWorkspace } from "~/server/documents/service";
 import { extractSlip } from "./extract";
-import { askWhichOrder, findOrder, type SlipOrder } from "./find-order";
+import {
+  askWhichOrder,
+  findOrder,
+  suggestedOrder,
+  type SlipOrder,
+} from "./find-order";
 import { askJev, type VisionAsk } from "./vision";
 
 export type OrderOption = {
@@ -242,12 +247,10 @@ export async function identifySlipOrder(
       const closest = ranked
         .slice(0, 6)
         .map((r) => slips.find((s) => s.id === r.orderId)!);
-      const answer = await askWhichOrder(
-        extracted.pages[0],
-        closest,
-        ask,
-      ).catch(() => null);
-      pick = answer?.orderId ?? null;
+      const answer = await askWhichOrder(extracted.pages, closest, ask).catch(
+        () => null,
+      );
+      pick = answer && answer.confidence >= 0.5 ? answer.orderId : null;
       const guess = ranked.find((r) => r.orderId === pick);
       if (
         answer &&
@@ -260,13 +263,16 @@ export async function identifySlipOrder(
       )
         match = pick;
     }
+    const suggestion = match ?? pick ?? suggestedOrder(ranked);
     const candidates = [
       ...new Set([
-        ...(pick ? [pick] : []),
-        ...ranked.filter((r) => r.score > 0).map((r) => r.orderId),
+        ...(suggestion ? [suggestion] : []),
+        ...ranked
+          .filter((r) => r.found >= 1 && r.score >= 0.35)
+          .map((r) => r.orderId),
       ]),
     ].slice(0, 4);
-    return { documentId, match, candidates, orders: orderOptions };
+    return { documentId, match, suggestion, candidates, orders: orderOptions };
   } finally {
     running--;
   }

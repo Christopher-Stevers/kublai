@@ -5,6 +5,7 @@ import {
   askWhichOrder,
   findOrder,
   supplierNamed,
+  suggestedOrder,
   type SlipOrder,
 } from "./find-order";
 
@@ -153,10 +154,12 @@ describe("askWhichOrder", () => {
     );
     let asked = "";
     const answer = await askWhichOrder(
-      png,
+      [png, png],
       [fasteners, pipe],
       async (inputs, questions) => {
         asked = String(inputs.orders);
+        expect(inputs).toHaveProperty("slip_page_2");
+        expect(asked).toContain("ordered 10 ea");
         expect(
           Object.keys((questions.order as { criteria: object }).criteria),
         ).toEqual(["o1", "o2", "none"]);
@@ -174,5 +177,57 @@ describe("askWhichOrder", () => {
       "Order 2: supplier Next; products: CUL34 Copper pipe",
     );
     expect(answer).toEqual({ orderId: "175", confidence: 0.9 });
+  });
+});
+
+it("suggests overlapping products without requiring automatic-match certainty", () => {
+  const result = findOrder(
+    rows("Next", "CUL34 Copper pipe type L 3/4 x 12 ft"),
+    [pipe, fasteners],
+  );
+  expect(result.confident).toBe(false);
+  expect(suggestedOrder(result.ranked)).toBe(pipe.id);
+  expect(
+    suggestedOrder(findOrder(rows("Next", "UNRELATED PAINT"), [pipe]).ranked),
+  ).toBeNull();
+});
+
+it("uses only ordered quantity cells to distinguish otherwise identical products", () => {
+  const row = (y: number, cells: Array<[string, number]>) => ({
+    page: 1,
+    text: cells.map((c) => c[0]).join(" "),
+    words: cells.map(([text, x]) => ({
+      text,
+      x,
+      y,
+      width: 0.04,
+      height: 0.012,
+      confidence: 95,
+    })),
+  });
+  const slip = [
+    row(0.2, [
+      ["Description", 0.1],
+      ["Ordered", 0.5],
+      ["Shipped", 0.7],
+      ["Unit", 0.85],
+    ]),
+    row(0.25, [
+      ["CUL34", 0.1],
+      ["4.00", 0.5],
+      ["2.00", 0.7],
+      ["EA", 0.85],
+    ]),
+  ];
+  const four = order("four", "Next", [{ ...pipe.items[0]!, ordered: 4 }]);
+  const two = order("two", "Next", [{ ...pipe.items[0]!, ordered: 2 }]);
+  const result = findOrder(slip, [two, four]);
+  expect(result.ranked[0]).toMatchObject({
+    orderId: "four",
+    quantityMatches: 1,
+  });
+  expect(result.ranked[1]).toMatchObject({
+    orderId: "two",
+    quantityMatches: 0,
   });
 });

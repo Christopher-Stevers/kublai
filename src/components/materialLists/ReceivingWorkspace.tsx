@@ -1215,6 +1215,12 @@ function Identity({
           </p>
         )}
       </div>
+      {!linked && detail.document.packingSlipAnalysis?.orderCandidates?.[0] && (
+        <p className="mb-3 text-sm" role="status">
+          Suggested Order: <strong>{detail.orders.find(o => o.id === detail.document.packingSlipAnalysis?.orderCandidates?.[0])?.name ?? "Choose from the suggested matches below"}</strong>.
+          {" "}Confirm the order below; individual item differences still need review.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Label name="Order in this job">
           <select
@@ -1230,7 +1236,11 @@ function Identity({
               Choose order
             </option>
             {[...detail.orders]
-              .sort((a, b) => Number(suggested(b.id)) - Number(suggested(a.id)))
+              .sort((a, b) => {
+                const candidates = detail.document.packingSlipAnalysis?.orderCandidates ?? [];
+                const rank = (id: string) => candidates.includes(id) ? candidates.indexOf(id) : Number.MAX_SAFE_INTEGER;
+                return rank(a.id) - rank(b.id);
+              })
               .map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name} · {detail.lists.find((l) => l.id === o.listId)?.name}

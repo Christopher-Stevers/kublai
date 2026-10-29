@@ -587,7 +587,7 @@ async function performSlipTask(
       linkedOrderId: task.orderId,
       identified,
     });
-    let suggested = identified?.orders.find((o) => o.id === identified.match);
+    let suggested = identified?.orders.find((o) => o.id === (identified.match ?? ("suggestion" in identified ? identified.suggestion : null)));
     if (suggested) {
       const { db } = await import("~/server/db");
       task.analysis.items = await orderSnapshot(db, access, suggested.id);
@@ -730,6 +730,8 @@ async function performSlipTask(
         );
       }
     }
+    if (suggested && !task.orderId && !identified?.match && !result.suggestedOrderId)
+      result.warnings.push(`Suggested order: ${suggested.orderNumber}. Confirm the order in Slip details; item discrepancies remain separate review flags.`);
     await recordPipelineStage("final-reading", result);
     await mutateWorkspace(
       access.user.id,
@@ -745,7 +747,7 @@ async function performSlipTask(
           doc.packingSlipAnalysis?.runId !== task.analysis.runId
         )
           return;
-        if (suggested) {
+        if (suggested && (identified?.match === suggested.id || result.suggestedOrderId === suggested.id)) {
           const chosen = await orderFor(tx, fresh, suggested.id);
           doc.packingSlip = {
             orderId: chosen.id,
