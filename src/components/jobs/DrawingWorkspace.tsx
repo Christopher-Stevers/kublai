@@ -1932,6 +1932,7 @@ export function DrawingWorkspace({
             </Button>
           )}
         </div>
+        <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-2 [&>*]:pointer-events-auto">
         {entities.some(
           (e) =>
             e.kind === "issue" &&
@@ -1940,7 +1941,7 @@ export function DrawingWorkspace({
             e.data.status !== "closed",
         ) && (
           <Button
-            className="absolute top-3 right-3 z-20 shadow-md"
+            className="shadow-md"
             size="sm"
             onClick={() => setPanel("impacts")}
           >
@@ -1958,6 +1959,18 @@ export function DrawingWorkspace({
             )
           </Button>
         )}
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
+            aria-label="Layers"
+            title="Layers"
+            aria-expanded={panel === "markups"}
+            onClick={() => { setPanel(panel === "markups" ? "" : "markups"); setForm(null); }}
+          >
+            <LayersIcon aria-hidden="true" />
+          </Button>
+        </div>
 
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
@@ -2238,7 +2251,7 @@ export function DrawingWorkspace({
         )}
         {panel && (
           <aside
-            data-drawing-chrome
+            data-drawing-chrome={panel === "markups" ? undefined : true}
             aria-label="Drawing tools panel"
             className="bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"
           >

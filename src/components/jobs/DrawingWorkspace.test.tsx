@@ -1794,3 +1794,15 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
   fireEvent.keyDown(within(bar).getByRole("button", { name: "Drawing options" }), { key: "Enter" });
   expect(screen.getByRole("switch", { name: "Quickwheel mode" })).toBeVisible();
 });
+
+it("opens layers directly from the drawing corner, including full screen", () => {
+  open();
+  const layers = screen.getByRole("button", { name: "Layers", exact: true });
+  expect(layers).toHaveClass("rounded-full", "size-10");
+  fireEvent.click(layers);
+  expect(layers).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("complementary", { name: "Drawing tools panel" })).not.toHaveAttribute("data-drawing-chrome");
+  expect(screen.getByText("Visible layers")).toBeVisible();
+  fireEvent.click(layers);
+  expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
+});
