@@ -217,6 +217,7 @@ export function wheelCarousel(
   origin: Point,
   circular: boolean,
   arc?: WheelArc,
+  bounds?: WheelBounds,
 ): CarouselTile[] {
   if (!count || !points.length) return [];
   const capacity = points.length;
@@ -266,7 +267,16 @@ export function wheelCarousel(
         position - lower,
       );
     }
-    tiles.push({ ...point, key, index, opacity });
+    if (bounds) {
+      const edgeDistance = Math.min(point.x - bounds.left, bounds.right - point.x,
+        point.y - bounds.top, bounds.bottom - point.y);
+      const half = WHEEL_CHOICE_DIAMETER / 2;
+      // Begin before the circle reaches the viewport edge and fade continuously
+      // until it has left, regardless of its position along the arc.
+      const visibility = Math.max(0, Math.min(1, (edgeDistance + half) / (2 * half + 24)));
+      opacity *= visibility * visibility * (3 - 2 * visibility);
+    }
+    if (opacity > 0) tiles.push({ ...point, key, index, opacity });
   }
   return tiles;
 }
