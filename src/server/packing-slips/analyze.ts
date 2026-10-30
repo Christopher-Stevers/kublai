@@ -894,6 +894,7 @@ export async function analyzeSlip(
     if (!headers.length) headers = vision.headers;
   } else if (
     images?.models !== false &&
+    !deterministic &&
     !table.layouts.length &&
     (process.env.TYPESAFE_API_KEY || run !== evaluate)
   ) {
