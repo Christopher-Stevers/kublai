@@ -1,6 +1,7 @@
 "use client";
 import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
 
+import { NewWindowButton } from "~/components/app/NewWindowButton";
 import { DrawingDownloadStatus } from "~/components/jobs/DrawingDownloadStatus";
 import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
 import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
@@ -330,6 +331,7 @@ function HeaderFrame({
       </div>
 
       <div className="ml-2 flex shrink-0 items-center gap-2">
+        {!sandbox && !simulation && <NewWindowButton className="hidden lg:inline-flex" />}
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           {tabAccess.dashboard && (
             <Button
@@ -444,6 +446,7 @@ function HeaderFrame({
               </div>
               <nav className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-1">
+                  {!sandbox && !simulation && <NewWindowButton className="h-12 w-full justify-start px-3 text-base" />}
                   {tabAccess.dashboard && (
                     <button
                       type="button"
