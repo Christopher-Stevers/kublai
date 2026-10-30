@@ -242,6 +242,17 @@ it("confirms the matched order in one tap and only then compares lines", async (
     confirmed: true,
   });
 });
+it("leaves out a line that was not delivered in one tap", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Valve" }));
+  fireEvent.click(screen.getByRole("button", { name: "Not delivered" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "ignore",
+    lineId: "0",
+    reason: "Not delivered.",
+  });
+});
 it("warns about a repeat scan first and records what it is", async () => {
   state.duplicates = [
     {
@@ -280,11 +291,23 @@ it("lists lines to review first and confirms a line as checked", async () => {
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
   ).toEqual(["Unclear pipe", "Valve"]);
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
-  expect(screen.getByText("Quantity unclear")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Confirm line" })).toBeDisabled();
+  expect(
+    screen.getByText("The reading is unsure. Check it against the slip."),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Quantity unclear")).not.toBeVisible();
+  expect(screen.getByLabelText("Quantity")).toHaveValue(null);
+  expect(
+    screen.getByRole("button", { name: "Save and confirm" }),
+  ).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Valve" }));
   expect(screen.queryByText("Quantity unclear")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm line" }));
+  expect(screen.getByText("Slip says").nextSibling).toHaveTextContent("6 ea");
+  expect(screen.getByText("Order needs").nextSibling).toHaveTextContent(
+    "8 ea",
+  );
+  expect(screen.getByText("2 ea short")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Quantity")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({
     action: "line",

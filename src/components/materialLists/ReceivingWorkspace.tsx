@@ -1651,9 +1651,12 @@ function LineReview({
     ),
     [item, setItem] = useState(l.orderItemId ?? ""),
     [checked, setChecked] = useState(l.checked ?? false),
-    [excluding, setExcluding] = useState(false),
+    [part, setPart] = useState(false),
     [reason, setReason] = useState(""),
-    [part, setPart] = useState(false);
+    // Lines missing a quantity or an order part open straight into editing.
+    [editing, setEditing] = useState(
+      !l.orderItemId || l.quantity === null || !l.unit,
+    );
   const a = detail.document.packingSlipAnalysis,
     source =
       l.sourceIndex === undefined || detail.review.analysisRunId !== a?.runId
@@ -1683,6 +1686,41 @@ function LineReview({
       checked: asChecked,
     });
   const complete = !!item && quantity !== "" && !!unit.trim();
+  // What arrived against what the order still needs, in the same unit.
+  const orderItem = detail.items.find((i) => i.id === item),
+    due = orderItem
+      ? Math.max(0, qtyRound(orderItem.ordered - orderItem.received))
+      : 0,
+    sameUnit =
+      !!orderItem &&
+      orderItem.unit.trim().toLowerCase() === unit.trim().toLowerCase(),
+    got = Number(quantity),
+    verdict =
+      !orderItem || quantity === "" || l.approved
+        ? null
+        : !sameUnit
+          ? {
+              ok: false,
+              label: `Different unit. The order counts in ${orderItem.unit}.`,
+              text: amber.text,
+            }
+          : got === due
+            ? {
+                ok: true,
+                label: "Matches the order",
+                text: "text-emerald-700 dark:text-emerald-300",
+              }
+            : got < due
+              ? {
+                  ok: false,
+                  label: `${qtyRound(due - got)} ${orderItem.unit} short`,
+                  text: amber.text,
+                }
+              : {
+                  ok: false,
+                  label: `${qtyRound(got - due)} ${orderItem.unit} more than needed`,
+                  text: amber.text,
+                };
   return (
     <li className={open ? "bg-muted/30" : undefined}>
       <div className="relative flex items-start gap-3 px-4 py-3">
@@ -1768,7 +1806,7 @@ function LineReview({
         )}
       </div>
       {open && !l.ignored && (
-        <div className="space-y-4 px-4 pb-4 sm:pl-13">
+        <div className="space-y-3 px-4 pb-4 sm:pl-13">
           {sourceBox && (
             <SlipLineImage
               url={detail.sourceUrl}
@@ -1777,162 +1815,212 @@ function LineReview({
               label={`Source for line ${index + 1}`}
             />
           )}
-          <p className="text-muted-foreground text-xs">
-            Line {index + 1} · page {l.page} · “{l.evidence}”
-            {l.readingSource && (
-              <span title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
-                {" · "}
-                {l.readingSource.reader === "terra"
-                  ? "Terra assisted"
-                  : l.readingSource.reader === "jev"
-                    ? "Jev image reading"
-                    : "OCR reading"}
-                {l.readingSource.confidence &&
-                  ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
-              </span>
-            )}
-          </p>
-          {l.issues.length > 0 && (
-            <ul className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-              {l.issues.map((s, i) => (
-                <li key={i} className="flex gap-2">
-                  <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-                  {s}
-                </li>
-              ))}
-            </ul>
+          <dl className="bg-card grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border px-3 py-2.5 text-sm">
+            <dt className="text-muted-foreground">Slip says</dt>
+            <dd className="font-semibold tabular-nums">
+              {quantity === "" ? (
+                <span className={amber.text}>Not read</span>
+              ) : (
+                `${quantity} ${unit}`
+              )}
+            </dd>
+            <dt className="text-muted-foreground">Order needs</dt>
+            <dd className="min-w-0">
+              {orderItem ? (
+                <>
+                  <span className="font-semibold tabular-nums">
+                    {due} {orderItem.unit}
+                  </span>
+                  <span className="text-muted-foreground block truncate">
+                    {orderItem.description}
+                  </span>
+                </>
+              ) : (
+                <span className={amber.text}>Not on the order</span>
+              )}
+            </dd>
+          </dl>
+          {verdict && (
+            <p className={`flex items-center gap-2 text-sm font-medium ${verdict.text}`}>
+              {verdict.ok ? (
+                <CheckCircle2Icon className="size-4 shrink-0" />
+              ) : (
+                <AlertTriangleIcon className="size-4 shrink-0" />
+              )}
+              {verdict.label}
+            </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
-            <Label name="Matched order part">
-              <select
-                className={field}
-                value={item}
-                disabled={!!l.approved}
-                onChange={(e) => {
-                  setItem(e.target.value);
-                  const i = detail.items.find((i) => i.id === e.target.value);
-                  if (i) setUnit(i.unit);
-                  setChecked(false);
-                }}
-              >
-                <option value="">Unmatched</option>
-                {detail.items.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.description} · due{" "}
-                    {Math.max(0, qtyRound(i.ordered - i.received))} {i.unit}
-                  </option>
-                ))}
-              </select>
-            </Label>
-            <Label
-              name={
-                (kind || detail.review.kind) === "delivery"
-                  ? "Quantity"
-                  : "Return quantity"
-              }
-            >
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="any"
-                className={field}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </Label>
-            <Label name="Unit">
-              <input
-                className={field}
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="ea, ft…"
-              />
-            </Label>
-          </div>
-          {!l.orderItemId && detail.canCreate && (
-            <div className="-mt-1 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="-ml-3"
-                onClick={() => setPart(!part)}
-              >
-                <SearchIcon />
-                Find or create part
-              </Button>
-              {l.partId && detail.document.packingSlip && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void run({ action: "extra", lineId: l.id, confirmed: true })
+          {l.issues.length > 0 && !l.checked && (
+            <p className="text-sm">
+              {sourceBox
+                ? "The reading is unsure. Check the slip image above."
+                : "The reading is unsure. Check it against the slip."}
+            </p>
+          )}
+          {editing && (
+            <div className="space-y-3 border-t pt-3">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
+                <Label name="Matched order part">
+                  <select
+                    className={field}
+                    value={item}
+                    disabled={!!l.approved}
+                    onChange={(e) => {
+                      setItem(e.target.value);
+                      const i = detail.items.find(
+                        (i) => i.id === e.target.value,
+                      );
+                      if (i) setUnit(i.unit);
+                      setChecked(false);
+                    }}
+                  >
+                    <option value="">Unmatched</option>
+                    {detail.items.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.description} · due{" "}
+                        {Math.max(0, qtyRound(i.ordered - i.received))} {i.unit}
+                      </option>
+                    ))}
+                  </select>
+                </Label>
+                <Label
+                  name={
+                    (kind || detail.review.kind) === "delivery"
+                      ? "Quantity"
+                      : "Return quantity"
                   }
                 >
-                  Approve additional order line
-                </Button>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    className={field}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </Label>
+                <Label name="Unit">
+                  <input
+                    className={field}
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    placeholder="ea, ft…"
+                  />
+                </Label>
+              </div>
+              {!l.orderItemId && detail.canCreate && (
+                <div className="-mt-1 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="-ml-3"
+                    onClick={() => setPart(!part)}
+                  >
+                    <SearchIcon />
+                    Find or create part
+                  </Button>
+                  {l.partId && detail.document.packingSlip && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void run({
+                          action: "extra",
+                          lineId: l.id,
+                          confirmed: true,
+                        })
+                      }
+                    >
+                      Approve additional order line
+                    </Button>
+                  )}
+                </div>
               )}
+              {part && (
+                <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
+              )}
+              <details className="group text-sm">
+                <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+                  More fields
+                  <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                </summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Label name="Description">
+                    <input
+                      className={field}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </Label>
+                  <Label name="Line type">
+                    <select
+                      className={field}
+                      value={kind}
+                      onChange={(e) =>
+                        setKind(e.target.value as ReceiptKind | "")
+                      }
+                    >
+                      <option value="">Use document type</option>
+                      <option value="delivery">Delivery</option>
+                      <option value="return-replacement">
+                        Return for replacement
+                      </option>
+                      <option value="return-credit">Return for credit</option>
+                    </select>
+                  </Label>
+                  <Label name="Supplier code">
+                    <input
+                      className={field}
+                      value={sku}
+                      onChange={(e) => setSku(e.target.value)}
+                    />
+                  </Label>
+                  <Label name="Printed ordered quantity">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className={field}
+                      value={ordered}
+                      onChange={(e) => setOrdered(e.target.value)}
+                    />
+                  </Label>
+                  <Label name="Price per order unit (optional)">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className={field}
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </Label>
+                  {(!l.approved || l.approved.quantity === 0) && (
+                    <div className="flex flex-wrap gap-2 sm:col-span-2">
+                      <input
+                        aria-label="Reason for excluding line"
+                        className={`${field} flex-1 basis-56`}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Other reason to leave it out: totals, duplicate…"
+                      />
+                      <Button
+                        variant="outline"
+                        className="h-11"
+                        disabled={reason.trim().length < 3}
+                        onClick={() =>
+                          void run({ action: "ignore", lineId: l.id, reason })
+                        }
+                      >
+                        Exclude with reason
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           )}
-          {part && (
-            <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
-          )}
-          <details className="group text-sm">
-            <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-              More fields
-              <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Label name="Description">
-                <input
-                  className={field}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Label>
-              <Label name="Line type">
-                <select
-                  className={field}
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value as ReceiptKind | "")}
-                >
-                  <option value="">Use document type</option>
-                  <option value="delivery">Delivery</option>
-                  <option value="return-replacement">
-                    Return for replacement
-                  </option>
-                  <option value="return-credit">Return for credit</option>
-                </select>
-              </Label>
-              <Label name="Supplier code">
-                <input
-                  className={field}
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                />
-              </Label>
-              <Label name="Printed ordered quantity">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  className={field}
-                  value={ordered}
-                  onChange={(e) => setOrdered(e.target.value)}
-                />
-              </Label>
-              <Label name="Price per order unit (optional)">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  className={field}
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
-              </Label>
-            </div>
-          </details>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               disabled={!complete}
@@ -1941,48 +2029,72 @@ function LineReview({
               }}
             >
               <CheckIcon />
-              Confirm line
+              {editing ? "Save and confirm" : "Looks right"}
             </Button>
-            <Button variant="outline" onClick={() => void save(checked)}>
-              Save changes
-            </Button>
+            {editing ? (
+              <Button variant="outline" onClick={() => void save(checked)}>
+                Save changes
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setEditing(true)}>
+                Change
+              </Button>
+            )}
             {(!l.approved || l.approved.quantity === 0) && (
               <Button
                 variant="ghost"
                 className="text-muted-foreground ml-auto"
-                aria-expanded={excluding}
-                onClick={() => setExcluding(!excluding)}
+                onClick={() =>
+                  void run({
+                    action: "ignore",
+                    lineId: l.id,
+                    reason: "Not delivered.",
+                  })
+                }
               >
-                Exclude line
+                Not delivered
               </Button>
             )}
           </div>
-          <p className="text-muted-foreground -mt-2 text-xs">
-            {complete
-              ? "Confirm once the product, quantity and unit match the source."
-              : "Match a part and enter the quantity to confirm this line."}
-          </p>
-          {excluding && (
-            <div className="flex flex-wrap gap-2">
-              <input
-                aria-label="Reason for excluding line"
-                className={`${field} flex-1 basis-56`}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why? Totals, duplicate, nothing delivered…"
-              />
-              <Button
-                variant="outline"
-                className="h-11"
-                disabled={reason.trim().length < 3}
-                onClick={() =>
-                  void run({ action: "ignore", lineId: l.id, reason })
-                }
-              >
-                Exclude with reason
-              </Button>
-            </div>
+          {!complete && (
+            <p className="text-muted-foreground -mt-1 text-xs">
+              Match a part and enter the quantity to confirm this line.
+            </p>
           )}
+          <details className="group text-sm">
+            <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+              Reading notes
+              {l.issues.length > 0 && ` (${l.issues.length})`}
+              <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+            </summary>
+            <div className="mt-2 space-y-2">
+              {l.issues.length > 0 && (
+                <ul className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                  {l.issues.map((s, i) => (
+                    <li key={i} className="flex gap-2">
+                      <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-muted-foreground text-xs">
+                Line {index + 1} · page {l.page} · “{l.evidence}”
+                {l.readingSource && (
+                  <span title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
+                    {" · "}
+                    {l.readingSource.reader === "terra"
+                      ? "Terra assisted"
+                      : l.readingSource.reader === "jev"
+                        ? "Jev image reading"
+                        : "OCR reading"}
+                    {l.readingSource.confidence &&
+                      ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
+                  </span>
+                )}
+              </p>
+            </div>
+          </details>
         </div>
       )}
     </li>
