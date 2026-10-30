@@ -2,6 +2,7 @@ import { recordModelCall, recordPipelineStage } from "./trace";
 import { z } from "zod";
 import {
   convertSlipQuantity,
+  slipReading,
   type ReceiptOrderItem,
   type SlipBox,
   type SlipLine,
@@ -17,6 +18,7 @@ import {
 import { matchLines } from "./match";
 import { recoverProductRows } from "./recover-rows";
 import { readSlipImages, VISION_MODEL, type VisionAsk } from "./vision";
+import { sameLine } from "./cascade-policy";
 type Question = {
   type: "choice";
   instructions: unknown;
@@ -859,6 +861,13 @@ export async function analyzeSlip(
       "The slip images could not be checked; lines were read from text only.",
     );
   if (vision?.lines.length) {
+    // Keep the OCR reading beside Jev's when both read the same row.
+    for (const v of vision.lines) {
+      const own = slipReading(v),
+        ocr = lines.filter((l) => sameLine(l, v));
+      if (own.reader !== "ocr" && ocr.length === 1)
+        v.readings = [slipReading(ocr[0]!), own];
+    }
     lines = vision.lines;
     model = vision.model;
     warnings.push(...vision.warnings);

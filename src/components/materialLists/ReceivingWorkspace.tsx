@@ -41,6 +41,7 @@ import type {
   ReceiptKind,
 } from "~/lib/receiving-review";
 import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
+import { lineReadings } from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import type { JobDocument } from "~/server/documents/types";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -53,6 +54,7 @@ import {
   trialReaders,
   readersInTrial,
   readerLabels,
+  type TrialReader,
   type TrialResults,
 } from "~/lib/packing-slip-trial";
 
@@ -1610,21 +1612,63 @@ function DuplicateReview({
   );
 }
 const percent = (v: number) => `${Math.round(v * 100)}%`;
-/** Who read a slip line and how sure they were. */
-function lineReading(l: ReceivingLine) {
-  if (l.predictionSource)
-    return {
-      reader: l.predictionSource.reader,
-      label: readerLabels[l.predictionSource.reader],
-      confidence: l.predictionSource.confidence.overall.value,
-    };
-  if (!l.readingSource) return null;
+/** The analysis row a review line was drafted from, while still current. */
+function sourceLine(l: ReceivingLine, detail: Detail) {
+  const a = detail.document.packingSlipAnalysis;
+  return l.sourceIndex === undefined || detail.review.analysisRunId !== a?.runId
+    ? undefined
+    : a?.lines[l.sourceIndex];
+}
+type ModelReading = {
+  reader: TrialReader;
+  shipped: number | null;
+  unit: string | null;
+  match: number | null;
+  quantity: number | null;
+};
+/** Each reader that read a slip line, with its part match and quantity confidence. */
+function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
+  if (l.predictionSource) {
+    const c = l.predictionSource.confidence;
+    return [
+      {
+        reader: l.predictionSource.reader,
+        shipped: l.humanEdited ? null : l.quantity,
+        unit: l.unit,
+        match: c.match.value,
+        quantity: c.quantity.value,
+      },
+    ];
+  }
+  const source = sourceLine(l, detail);
+  if (source)
+    return lineReadings(source).map((r) => ({
+      ...r,
+      shipped: r.shipped === null ? null : Math.abs(r.shipped),
+    }));
+  if (!l.readingSource) return [];
   const c = l.readingSource.confidence;
-  return {
-    reader: l.readingSource.reader,
-    label: readerLabels[l.readingSource.reader],
-    confidence: c ? (c.overall ?? Math.min(c.part, c.quantity)) : null,
-  };
+  return [
+    {
+      reader: l.readingSource.reader,
+      shipped: l.humanEdited ? null : l.quantity,
+      unit: l.unit,
+      match: c ? (c.match ?? c.part) : null,
+      quantity: c ? c.quantity : null,
+    },
+  ];
+}
+function Confidence({ name, value }: { name: string; value: number | null }) {
+  return value === null ? null : (
+    <span>
+      {name}{" "}
+      <span
+        className={`font-medium tabular-nums ${unsure(value) ? amber.text : "text-foreground"}`}
+      >
+        {percent(value)}
+      </span>
+    </span>
+  );
 }
 /** Terra checked this row and did not back the earlier reading. */
 function terraCheck(l: ReceivingLine, detail: Detail) {
@@ -1635,11 +1679,8 @@ function terraCheck(l: ReceivingLine, detail: Detail) {
     l.readingSource?.reader === "terra"
   )
     return null;
-  const a = detail.document.packingSlipAnalysis,
-    source =
-      l.sourceIndex === undefined || detail.review.analysisRunId !== a?.runId
-        ? undefined
-        : a?.lines[l.sourceIndex];
+  const source = sourceLine(l, detail);
+  if (source?.readings?.some((r) => r.reader === "terra")) return null;
   if (
     source?.terraFoundNothing ||
     l.issues.some((s) => s.startsWith("Terra found no product"))
@@ -1778,12 +1819,14 @@ function OrderComparison({
             due = item
               ? Math.max(0, qtyRound(item.ordered - item.received))
               : 0,
-            readings = live.flatMap((x) => {
-              const reading = lineReading(x.line);
-              return reading ? [{ ...reading, line: x.line }] : [];
-            }),
+            readings = live.flatMap((x) =>
+              modelReadings(x.line, detail).map((reading, i) => ({
+                ...reading,
+                key: `${x.line.id}:${i}`,
+              })),
+            ),
             trialReadings = item
-              ? others(item.id, new Set(readings.map((x) => x.reader)))
+              ? others(item.id, new Set<string>(readings.map((x) => x.reader)))
               : [],
             quantities = live.map((x) => x.line.quantity),
             title = item ? item.description : lines[0]!.line.description,
@@ -1844,6 +1887,12 @@ function OrderComparison({
                         ) : (
                           `${qtyRound(quantities.reduce<number>((a, q) => a + (q ?? 0), 0))} ${live[0]!.line.unit}`
                         )}
+                        {live.some((x) => x.line.humanEdited) && (
+                          <span className="text-muted-foreground text-xs font-normal">
+                            {" "}
+                            · edited
+                          </span>
+                        )}
                       </p>
                       {slipText.map((d, i) => (
                         <p
@@ -1878,20 +1927,15 @@ function OrderComparison({
                       className="text-muted-foreground mt-1 space-y-0.5 text-xs"
                     >
                       {readings.map((x) => (
-                        <li key={x.line.id}>
-                          {x.label}
-                          {x.line.humanEdited
-                            ? " · edited"
-                            : x.line.quantity !== null &&
-                              ` · ${x.line.quantity} ${x.line.unit}`}
-                          {x.confidence !== null && " "}
-                          {x.confidence !== null && (
-                            <span
-                              className={`font-medium tabular-nums ${unsure(x.confidence) ? amber.text : "text-foreground"}`}
-                            >
-                              {percent(x.confidence)}
-                            </span>
-                          )}
+                        <li key={x.key}>
+                          <span className="text-foreground">
+                            {readerLabels[x.reader]}
+                          </span>
+                          {` · ${x.shipped ?? "?"} ${x.unit ?? ""}`}
+                          <span className="flex flex-wrap gap-x-2">
+                            <Confidence name="part" value={x.match} />
+                            <Confidence name="qty" value={x.quantity} />
+                          </span>
                         </li>
                       ))}
                       {live.flatMap((x) => {
@@ -1906,13 +1950,22 @@ function OrderComparison({
                       })}
                       {trialReadings.map(({ reader, t }) => (
                         <li key={`${reader}:${t.lineId}`}>
-                          {readerLabels[reader]} · {t.shipped ?? "?"}{" "}
-                          {t.unit ?? ""}{" "}
+                          <span className="text-foreground">
+                            {readerLabels[reader]}
+                          </span>
+                          {` · ${t.shipped ?? "?"} ${t.unit ?? ""}`}
                           <span
                             title={`${t.confidence.overall.basis}: ${t.confidence.overall.reason}`}
-                            className={`font-medium tabular-nums ${unsure(t.confidence.overall.value) ? amber.text : "text-foreground"}`}
+                            className="flex flex-wrap gap-x-2"
                           >
-                            {percent(t.confidence.overall.value)}
+                            <Confidence
+                              name="part"
+                              value={t.confidence.match.value}
+                            />
+                            <Confidence
+                              name="qty"
+                              value={t.confidence.quantity.value}
+                            />
                           </span>
                         </li>
                       ))}

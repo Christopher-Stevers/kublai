@@ -308,7 +308,9 @@ it("lists every order item beside the slip reading and its reader", async () => 
   expect(valve).toHaveTextContent("Needs 8 ea");
   expect(valve).toHaveTextContent("6 ea");
   expect(valve).toHaveTextContent("2 ea short");
-  expect(valve).toHaveTextContent("Terra 6.1 · 6 ea 97%");
+  expect(valve).toHaveTextContent("Terra 6.1 · 6 ea");
+  expect(valve).toHaveTextContent("part 99%");
+  expect(valve).toHaveTextContent("qty 97%");
   const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
   expect(elbow).toHaveTextContent("Needs 4 ea");
   expect(elbow).toHaveTextContent("Not on the slip");
@@ -415,6 +417,63 @@ it("puts suggested order matches first and can restore newest-first order", asyn
     screen.getByText("Suggested order match · needs confirmation"),
   ).toBeInTheDocument();
 });
+it("shows every reader's part match and quantity confidence", async () => {
+  Object.assign(state.review, { analysisRunId: "run" });
+  Object.assign(state.review.lines[0]!, { sourceIndex: 0 });
+  Object.assign(state.document.packingSlipAnalysis, {
+    lines: [
+      {
+        page: 1,
+        evidence: "6 EA Valve",
+        orderItemId: "item",
+        shipped: 6,
+        backordered: null,
+        unit: "ea",
+        proposed: null,
+        issues: [],
+        source: "terra",
+        readings: [
+          {
+            reader: "ocr",
+            shipped: 5,
+            unit: "ea",
+            orderItemId: "item",
+            match: 0.4,
+            quantity: 0.55,
+          },
+          {
+            reader: "jev",
+            shipped: 6,
+            unit: "ea",
+            orderItemId: "item",
+            match: 0.9,
+            quantity: 0.7,
+          },
+          {
+            reader: "terra",
+            shipped: 6,
+            unit: "ea",
+            orderItemId: "item",
+            match: 0.98,
+            quantity: 0.96,
+          },
+        ],
+      },
+    ],
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  const readers = [
+    ...valve.querySelectorAll('[aria-label="Readers"] > li'),
+  ].map((li) => li.textContent);
+  expect(readers).toEqual([
+    "OCR only · 5 eapart 40%qty 55%",
+    "Jev Image · 6 eapart 90%qty 70%",
+    "Terra 6.1 · 6 eapart 98%qty 96%",
+  ]);
+});
 it("says when Terra found no product on a row and leaves it out in one tap", async () => {
   Object.assign(state.review.lines[1]!, {
     readingSource: {
@@ -430,7 +489,7 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
   const pipe = (
     await screen.findByRole("heading", { name: "Unclear pipe" })
   ).closest("li")!;
-  expect(pipe).toHaveTextContent("Jev Image 63%");
+  expect(pipe).toHaveTextContent("Jev Image · ? eapart 63%qty 63%");
   expect(pipe).toHaveTextContent("Terra 6.1 · found no product here");
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
   fireEvent.click(

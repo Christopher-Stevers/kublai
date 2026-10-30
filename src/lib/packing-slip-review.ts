@@ -62,12 +62,42 @@ export type SlipLine = {
   quantityClear?: boolean;
   /** Terra was asked to check this row and read nothing anywhere near it. */
   terraFoundNothing?: boolean;
+  /** Every reader that read this row, earliest first. */
+  readings?: SlipReading[];
   /** Matched to an order item by the user at confirmation. */
   linked?: "user";
   /** Quantity handwritten on the line; offered to the user, never prefilled. */
   handwritten?: number;
 };
 export type SlipBox = { x: number; y: number; width: number; height: number };
+/** One reader's view of a row, kept when a later reader replaces it. */
+export type SlipReading = {
+  reader: "ocr" | "jev" | "terra";
+  shipped: number | null;
+  unit: string | null;
+  orderItemId: string | null;
+  /** Uncalibrated 0–1 estimates. */
+  match: number | null;
+  quantity: number | null;
+};
+export const slipReader = (l: SlipLine): SlipReading["reader"] =>
+  l.source === "terra"
+    ? "terra"
+    : l.source === "vision" || l.source === "assistant"
+      ? "jev"
+      : "ocr";
+export function slipReading(l: SlipLine): SlipReading {
+  const c = l.confidenceDetails;
+  return {
+    reader: slipReader(l),
+    shipped: l.shipped,
+    unit: l.unit,
+    orderItemId: l.orderItemId,
+    match: c ? (c.match ?? c.part) : null,
+    quantity: c ? c.quantity : null,
+  };
+}
+export const lineReadings = (l: SlipLine) => l.readings ?? [slipReading(l)];
 export type SlipProgress = {
   stage: "extracting" | "matching" | "checking";
   message: string;

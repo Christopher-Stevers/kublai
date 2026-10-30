@@ -110,4 +110,50 @@ describe("production escalation policy", () => {
     expect(result.lines[0]!.issues.join()).toMatch(/found no product/);
     expect(result.lines[0]!.terraFoundNothing).toBe(true);
   });
+  it("keeps the earlier reading beside Terra's", () => {
+    const result = mergeAssistedLines(
+      [
+        line({
+          source: "vision",
+          confidenceDetails: {
+            part: 0.5,
+            match: 0.6,
+            quantity: 0.4,
+            basis: "provider_composite",
+          },
+        }),
+      ],
+      [
+        line({
+          shipped: 7,
+          source: "terra",
+          confidenceDetails: {
+            part: 0.9,
+            match: 0.95,
+            quantity: 0.92,
+            basis: "model_estimate",
+          },
+        }),
+      ],
+      [0],
+    );
+    expect(result.lines[0]!.readings).toEqual([
+      {
+        reader: "jev",
+        shipped: 6,
+        unit: "ea",
+        orderItemId: "a",
+        match: 0.6,
+        quantity: 0.4,
+      },
+      {
+        reader: "terra",
+        shipped: 7,
+        unit: "ea",
+        orderItemId: "a",
+        match: 0.95,
+        quantity: 0.92,
+      },
+    ]);
+  });
 });

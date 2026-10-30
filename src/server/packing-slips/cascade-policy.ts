@@ -1,5 +1,9 @@
 import type { SlipLine } from "~/lib/packing-slip-review";
-import { receiptUnit } from "~/lib/packing-slip-review";
+import {
+  receiptUnit,
+  lineReadings,
+  slipReading,
+} from "~/lib/packing-slip-review";
 
 export const CASCADE_POLICY = "ocr-jev-terra-2026-10-27.1";
 export type CheapReading = {
@@ -66,7 +70,7 @@ function overlap(a: SlipLine, b: SlipLine) {
     ) / Math.max(0.0001, Math.min(a.box.height, b.box.height))
   );
 }
-function sameLine(a: SlipLine, b: SlipLine) {
+export function sameLine(a: SlipLine, b: SlipLine) {
   if (a.page !== b.page) return false;
   if (overlap(a, b) >= 0.5) return true;
   if (norm(a.sku) && norm(a.sku) === norm(b.sku)) return true;
@@ -112,12 +116,15 @@ export function mergeAssistedLines(
           ],
           proposed: null,
           quantityClear: false,
+          readings: [...lineReadings(old), slipReading(candidate)],
         };
       if (conflict(old, candidate))
         lines[i].issues.push(
             "Readers disagree. Check this line against the source before approving.",
           );
-      } else if (conflict(old, candidate)) {
+      } else {
+        lines[i]!.readings = [...lineReadings(old), slipReading(candidate)];
+        if (!conflict(old, candidate)) continue;
         lines[i]!.issues.push(
           "Terra disagrees with the earlier reading. Check the source before approving.",
         );
