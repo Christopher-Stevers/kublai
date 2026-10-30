@@ -237,6 +237,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [accounted, setAccounted] = useState(false),
     [openLine, setOpenLine] = useState<string | null>(null),
     [trialResults, setTrialResults] = useState<TrialResults | null>(null),
+    [viewer, setViewer] = useState(false),
     [changingOrder, setChangingOrder] = useState(false);
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
@@ -494,7 +495,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               onClick={() => setSource(!source)}
             >
               {source ? <EyeOffIcon /> : <EyeIcon />}
-              <span className="hidden sm:inline">
+              <span>
                 {source ? "Hide source" : "View source"}
               </span>
             </Button>
@@ -795,6 +796,21 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               <p>This slip was replaced.</p>
             </Callout>
           )}
+          <Dialog open={viewer} onOpenChange={setViewer}>
+            <DialogContent className="flex h-[90dvh] max-w-[calc(100%-1rem)] flex-col gap-2 p-2 sm:max-w-5xl">
+              <DialogHeader className="px-2 pt-1 pr-10">
+                <DialogTitle className="truncate">
+                  {detail.document.name}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  The packing slip as it was scanned.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+                <SourceView detail={detail} />
+              </div>
+            </DialogContent>
+          </Dialog>
           <div
             className={`grid gap-5 ${source ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}
           >
@@ -802,21 +818,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               <aside
                 className={`${card} h-[55vh] overflow-hidden xl:sticky xl:top-20 xl:h-[75vh]`}
               >
-                {detail.sourceMimeType?.startsWith("image/") ? (
-                  <a href={detail.sourceUrl} target="_blank" rel="noreferrer">
-                    <img
-                      src={detail.sourceUrl}
-                      alt={detail.document.name}
-                      className="h-full w-full object-contain"
-                    />
-                  </a>
-                ) : (
-                  <DocumentPdfPreview
-                    url={detail.sourceUrl}
-                    title={detail.document.name}
-                    fillHeight
-                  />
-                )}
+                <SourceView detail={detail} />
               </aside>
             )}
             <div className="min-w-0 space-y-4">
@@ -890,6 +892,18 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 <Step
                   n={3}
                   title="Compare with the order"
+                  action={
+                    !linesWaiting && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewer(true)}
+                      >
+                        <FileTextIcon />
+                        View slip
+                      </Button>
+                    )
+                  }
                   state={
                     linesWaiting
                       ? "waiting"
@@ -936,6 +950,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           openRow={openLine}
                           setOpenRow={setOpenLine}
                           trial={trialResults}
+                          onViewSource={() => setViewer(true)}
                         />
                       )}
                       {r.lines.length === 0 && (
@@ -1752,6 +1767,7 @@ function OrderComparison({
   openRow,
   setOpenRow,
   trial,
+  onViewSource,
 }: {
   detail: Detail;
   jobId: string;
@@ -1759,6 +1775,7 @@ function OrderComparison({
   openRow: string | null;
   setOpenRow: (row: string | null) => void;
   trial: TrialResults | null;
+  onViewSource: () => void;
 }) {
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
@@ -1995,6 +2012,7 @@ function OrderComparison({
                       jobId={jobId}
                       run={run}
                       onDone={() => setOpenRow(null)}
+                      onViewSource={onViewSource}
                     />
                   </div>
                 ))}
@@ -2005,6 +2023,23 @@ function OrderComparison({
     </div>
   );
 }
+function SourceView({ detail }: { detail: Detail }) {
+  return detail.sourceMimeType?.startsWith("image/") ? (
+    <a href={detail.sourceUrl} target="_blank" rel="noreferrer">
+      <img
+        src={detail.sourceUrl}
+        alt={detail.document.name}
+        className="h-full w-full object-contain"
+      />
+    </a>
+  ) : (
+    <DocumentPdfPreview
+      url={detail.sourceUrl}
+      title={detail.document.name}
+      fillHeight
+    />
+  );
+}
 function LineReview({
   line: l,
   index,
@@ -2012,6 +2047,7 @@ function LineReview({
   jobId,
   run,
   onDone,
+  onViewSource,
 }: {
   line: ReceivingLine;
   index: number;
@@ -2019,6 +2055,7 @@ function LineReview({
   jobId: string;
   run: (a: Action) => Promise<boolean>;
   onDone: () => void;
+  onViewSource: () => void;
 }) {
   const [name, setName] = useState(l.description),
     [kind, setKind] = useState(l.kind ?? ""),
@@ -2097,6 +2134,15 @@ function LineReview({
               label={`Source for line ${index + 1}`}
             />
           )}
+          <Button
+            variant="link"
+            size="sm"
+            className="-my-1 h-auto px-0"
+            onClick={onViewSource}
+          >
+            <FileTextIcon />
+            View whole slip
+          </Button>
           {terra ? (
             <div className="space-y-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
               <p>{terra.text}</p>
