@@ -152,7 +152,7 @@ it("opens the slip in the documents viewer from step 3", async () => {
   });
   expect(within(step).getByRole("link", { name: "View slip" })).toHaveAttribute(
     "href",
-    "/jobs/job/documents?document=doc",
+    "/jobs/job/documents?document=doc&from=receiving",
   );
 });
 it("previews and approves only ready lines, retaining unresolved lines", async () => {

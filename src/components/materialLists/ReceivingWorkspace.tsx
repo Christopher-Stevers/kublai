@@ -2002,7 +2002,7 @@ function OrderComparison({
   );
 }
 const slipViewerHref = (jobId: string, detail: Detail) =>
-  `/jobs/${jobId}/documents?document=${detail.document.id}`;
+  `/jobs/${jobId}/documents?document=${detail.document.id}&from=receiving`;
 function SourceView({ detail }: { detail: Detail }) {
   return detail.sourceMimeType?.startsWith("image/") ? (
     <a href={detail.sourceUrl} target="_blank" rel="noreferrer">

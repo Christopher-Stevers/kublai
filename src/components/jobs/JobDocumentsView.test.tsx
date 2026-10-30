@@ -21,6 +21,8 @@ vi.mock("next/dynamic", () => ({
   },
 }));
 
+const router = vi.hoisted(() => ({ back: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn(async () => true),
   notify: vi.fn(),
@@ -283,6 +285,12 @@ describe("job documents workspace", () => {
     expect(
       screen.getByRole("button", { name: "Open Agreement.docx" }),
     ).toBeInTheDocument();
+  });
+  it("closes a slip opened from receiving back to receiving", async () => {
+    window.history.replaceState(null, "", "/?document=doc-1&from=receiving");
+    render(<JobDocumentsView jobId="job-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Close" }));
+    expect(router.back).toHaveBeenCalledTimes(1);
   });
   it("does not expose a missing or inaccessible document from a drawing link", async () => {
     window.history.replaceState(null, "", "/?document=hidden");

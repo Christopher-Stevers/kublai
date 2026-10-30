@@ -4,6 +4,7 @@ import {
   PriorityActionBar,
 } from "~/components/ui/priority-action-bar";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 const DocumentScanner = dynamic(
   () => import("~/components/materialLists/PackingSlipScanner"),
@@ -252,6 +253,21 @@ export function JobDocumentsView({
   const loadedJobId = useRef<string | null>(null);
   const openedDocumentLink = useRef<string | null>(null);
   const [documentLinkHref, setDocumentLinkHref] = useState<string | null>(null);
+  const router = useRouter();
+  // A slip opened from receiving closes back to receiving.
+  const closeSelected = () => {
+    const link = new URL(documentLinkHref ?? window.location.href);
+    if (
+      link.searchParams.get("from") === "receiving" &&
+      link.searchParams.get("document") === selectedId
+    ) {
+      setSelectedId(null);
+      if (window.history.length > 1) router.back();
+      else router.replace(`/jobs/${jobId}/receiving?document=${selectedId}`);
+      return;
+    }
+    setSelectedId(null);
+  };
   useEffect(() => {
     const linked = (event: Event) => {
       const href = event instanceof CustomEvent && typeof event.detail === "string" ? event.detail : window.location.href;
@@ -423,7 +439,7 @@ export function JobDocumentsView({
     editorDocument
       ? null
       : selectedId
-        ? () => setSelectedId(null)
+        ? closeSelected
         : folderId
           ? () => setFolderId(currentFolder?.parentId ?? null)
           : view !== "files"
@@ -1366,7 +1382,7 @@ export function JobDocumentsView({
           jobId={jobId}
           mutable={mutable}
           busy={processing}
-          onClose={() => setSelectedId(null)}
+          onClose={closeSelected}
           onDialog={(kind) => openModal({ kind, documentIds: [selected.id] })}
           onUpload={() => pickFiles(selected)}
           onReview={() => {
