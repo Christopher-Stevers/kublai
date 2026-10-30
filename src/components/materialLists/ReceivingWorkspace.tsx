@@ -1,4 +1,5 @@
 "use client";
+import { OrderMatchPreview } from "./OrderMatchPreview";
 import { PackingSlipActivity, type ProcessingJob } from "./PackingSlipActivity";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import {
@@ -869,6 +870,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     <Identity
                       key={`${id}:${r!.revision}`}
                       detail={detail}
+                      jobId={jobId}
                       run={run}
                       onCancel={
                         orderConfirmed ? () => setChangingOrder(false) : undefined
@@ -1299,11 +1301,13 @@ const orderSummary = (detail: Detail) => {
  * with the slip's details when the match is wrong or missing. */
 function Identity({
   detail,
+  jobId,
   run,
   onCancel,
   onDone,
 }: {
   detail: Detail;
+  jobId: string;
   run: (a: Action) => Promise<boolean>;
   /** Leaves an order that was already confirmed as it was. */
   onCancel?: () => void;
@@ -1331,6 +1335,11 @@ function Identity({
   // until the reviewer explicitly chooses a value; polling must not erase edits.
   const link = linkChoice ?? (linked || match?.id || "");
   const supplier = supplierChoice ?? r.supplierId ?? match?.supplierId ?? "";
+  const comparison = link ? <OrderMatchPreview
+    jobId={jobId} documentId={detail.document.id} orderId={link}
+    readingKey={`${analysis?.runId}:${analysis?.status}:${analysis?.progress?.completed}:${analysis?.completedAt}`}
+    sourceUrl={detail.sourceUrl}
+  /> : null;
   const suggested = (orderId: string) =>
     analysis?.orderCandidates?.includes(orderId) ?? false;
   const confirm = async () => {
@@ -1382,6 +1391,7 @@ function Identity({
               .join(" · ")}
           </p>
         </div>
+        {comparison}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void confirm()}>
             <CheckIcon />
@@ -1477,6 +1487,7 @@ function Identity({
           />
         </Label>
       </div>
+      <div className="mt-4">{comparison}</div>
       <label className="mt-3 flex items-start gap-2 text-sm">
         <input
           type="checkbox"

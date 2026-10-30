@@ -52,6 +52,8 @@ import { canCreateFromSlip } from "./receiving-access";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
+import { comparisonRows } from "./order-comparison";
+import type { OrderMatchComparison } from "~/lib/order-match-comparison";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -118,6 +120,39 @@ function duplicateList(state: DocumentState, doc: JobDocument) {
         : [];
     });
 }
+/** Preview only: never links an order, changes quantities, or invokes a reader. */
+export async function receivingOrderComparison(
+  access: DocumentAccess,
+  documentId: string,
+  orderId: string,
+): Promise<OrderMatchComparison> {
+  receiveAccess(access);
+  const state = await readWorkspace(access);
+  const doc = accessibleDocument(state, documentActor(access, []), documentId);
+  const { order, items } = await db.transaction(async (tx) => {
+    const order = await orderFor(tx, access, orderId);
+    return { order, items: await orderSnapshot(tx, access, order.id) };
+  });
+  const analysis = doc.packingSlipAnalysis;
+  return {
+    orderId: order.id,
+    orderNumber: order.orderNumber ?? order.id,
+    orderDate: order.sentAt?.toISOString() ?? null,
+    slipDate:
+      doc.receivingReview?.deliveryDate ||
+      analysis?.cascade?.document?.deliveryDate ||
+      null,
+    rows: comparisonRows(
+      items,
+      analysis?.versionId === doc.currentVersionId
+        ? analysis.status === "processing"
+          ? (analysis.progress?.lines ?? analysis.lines)
+          : analysis.lines
+        : [],
+    ),
+  };
+}
+
 export async function receivingQueue(
   access: DocumentAccess,
   documentId?: string,
@@ -919,13 +954,19 @@ async function mutateReceivingImpl(
         );
         review.lines.forEach((l, index) => {
           delete l.approved;
-          l.orderItemId =
-            matches[index]?.confidence === "high"
-              ? matches[index].itemId
-              : null;
+          // Confirming the suggested order keeps valid saved detections. Only
+          // re-align a line locally when its old item belongs to another order.
+          const retainedItem = freshItems.find(
+            (item) => item.id === l.orderItemId,
+          );
+          if (!retainedItem)
+            l.orderItemId =
+              matches[index]?.confidence === "high"
+                ? matches[index].itemId
+                : null;
           l.checked = false;
           const item = freshItems.find((i) => i.id === l.orderItemId);
-          if (item) {
+          if (item && !retainedItem) {
             const converted =
               l.quantity === null
                 ? null

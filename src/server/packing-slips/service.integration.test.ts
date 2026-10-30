@@ -40,7 +40,11 @@ vi.mock("~/server/auth/permissions", () => ({
 }));
 import * as schema from "~/server/db/schema";
 import { assertManualReceiptEditable } from "./manual-receiving";
-import { mutateReceiving, importTrialReview } from "./receiving-service";
+import {
+  mutateReceiving,
+  importTrialReview,
+  receivingOrderComparison,
+} from "./receiving-service";
 import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
 import { orderSnapshot, orderFingerprint } from "./service";
@@ -415,6 +419,54 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     } finally {
       release();
       await running;
+    }
+  });
+  it("previews saved detections and confirms the same order without a new reader call", async () => {
+    const { access, doc } = await ready();
+    const before = (await workspace()).documents[0]!;
+    const analysis = before.packingSlipAnalysis!;
+    const original = structuredClone(before.receivingReview!);
+    const reader = vi.spyOn(await import("./analyze"), "analyzeSlip");
+    reader.mockClear();
+    try {
+      const preview = await receivingOrderComparison(
+        access,
+        doc.documentId,
+        order,
+      );
+      expect(preview.rows[0]?.slip?.quantity).toBe(6);
+      expect(preview.rows[0]?.order?.quantity).toBe(10);
+      expect((await workspace()).documents[0]).toEqual(before);
+      await mutateReceiving(access, {
+        action: "link",
+        documentId: doc.documentId,
+        jobId: job,
+        orderId: order,
+        revision: original.revision,
+        requestId: randomUUID(),
+        confirmed: true,
+      });
+      const after = (await workspace()).documents[0]!;
+      expect(after.packingSlipAnalysis?.runId).toBe(analysis.runId);
+      expect(after.packingSlipAnalysis?.lines).toEqual(analysis.lines);
+      expect(after.receivingReview?.lines[0]?.orderItemId).toBe(
+        original.lines[0]?.orderItemId,
+      );
+      expect(after.receivingReview?.lines[0]?.quantity).toBe(
+        original.lines[0]?.quantity,
+      );
+      expect(reader).not.toHaveBeenCalled();
+      expect(Number((await item()).receivedQuantity)).toBe(2);
+      test.receive = false;
+      await expect(
+        receivingOrderComparison(access, doc.documentId, order),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      test.receive = true;
+      await expect(
+        receivingOrderComparison(access, doc.documentId, id(987)),
+      ).rejects.toThrow();
+    } finally {
+      reader.mockRestore();
     }
   });
   it("recovers an expired claim and rejects writes from the previous owner", async () => {

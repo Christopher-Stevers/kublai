@@ -10,6 +10,7 @@ import { receivingInput } from "~/server/packing-slips/receiving-input";
 import {
   mutateReceiving,
   receivingQueue,
+  receivingOrderComparison,
 } from "~/server/packing-slips/receiving-service";
 import { startSlipAnalysis } from "~/server/packing-slips/service";
 export const runtime = "nodejs";
@@ -25,6 +26,15 @@ export async function GET(request: Request) {
         .parse(q.get("documentId") ?? undefined);
     const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, jobId);
+    if (q.has("compareOrderId")) {
+      const orderId = z.uuid().parse(q.get("compareOrderId"));
+      if (!documentId)
+        throw new Error("A packing slip is required for comparison.");
+      return Response.json(
+        await receivingOrderComparison(access, documentId, orderId),
+        { headers },
+      );
+    }
     return Response.json(
       await receivingQueue(
         access,
