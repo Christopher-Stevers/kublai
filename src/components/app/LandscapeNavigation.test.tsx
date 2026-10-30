@@ -26,9 +26,9 @@ function media(landscape: boolean, touch = false) {
     removeEventListener: vi.fn(),
   }));
 }
-it("uses window orientation on desktop", () => {
+it("keeps the portrait navigation layout on wide desktop windows", () => {
   media(true);
-  expect(deviceIsLandscape()).toBe(true);
+  expect(deviceIsLandscape()).toBe(false);
   media(false);
   expect(deviceIsLandscape()).toBe(false);
 });
@@ -43,14 +43,16 @@ it("honours iPad's physical orientation", () => {
   expect(deviceIsLandscape()).toBe(true);
 });
 it("restores portrait chrome when rotated back", () => {
-  media(true);
+  media(true, true);
+  vi.stubGlobal("orientation", 90);
   function Layout() {
     const active = useLandscapeLayout();
     return <output>{active ? "landscape" : "portrait"}</output>;
   }
   render(<Layout />);
   expect(document.documentElement).toHaveAttribute("data-app-landscape");
-  media(false);
+  media(false, true);
+  vi.stubGlobal("orientation", 0);
   act(() => { window.dispatchEvent(new Event("resize")); });
   expect(screen.getByText("portrait")).toBeInTheDocument();
   expect(document.documentElement).not.toHaveAttribute("data-app-landscape");

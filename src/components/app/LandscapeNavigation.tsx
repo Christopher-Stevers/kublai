@@ -8,8 +8,8 @@ const useClientLayoutEffect =
 const SLOT = "[data-landscape-navigation-slot]";
 
 /** A phone keyboard can make a portrait viewport wider than it is tall.
- * Prefer physical orientation on touch devices; desktop windows use their
- * layout orientation. */
+ * Prefer physical orientation on touch devices. Desktop keeps the portrait
+ * navigation layout even when its window is wider than it is tall. */
 export function deviceIsLandscape() {
   if (typeof window.matchMedia !== "function") return false;
   if (window.matchMedia("(pointer: coarse)").matches) {
@@ -19,8 +19,9 @@ export function deviceIsLandscape() {
     if (type) return type.startsWith("landscape");
     if (window.screen.width && window.screen.height)
       return window.screen.width > window.screen.height;
+    return window.matchMedia("(orientation: landscape)").matches;
   }
-  return window.matchMedia("(orientation: landscape)").matches;
+  return false;
 }
 
 export function useLandscapeLayout() {
