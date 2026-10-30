@@ -157,7 +157,6 @@ const approvable = (l: ReceivingLine, k: ReceiptKind) =>
   !!l.orderItemId &&
   l.quantity !== null &&
   (l.quantity > 0 || !!l.approved) &&
-  !!l.unit &&
   (l.checked === true || !l.issues.length) &&
   changed(l, k);
 type LineStatus =
@@ -1713,7 +1712,7 @@ function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
     return { ok: false, label: "Quantity not read", text: amber.text };
   if (
     pending.some(
-      (l) => l.unit.trim().toLowerCase() !== item.unit.trim().toLowerCase(),
+      (l) => !!l.unit.trim() && l.unit.trim().toLowerCase() !== item.unit.trim().toLowerCase(),
     )
   )
     return {
@@ -2054,7 +2053,7 @@ function LineReview({
     [reason, setReason] = useState(""),
     // Lines missing a quantity or an order part open straight into editing.
     [editing, setEditing] = useState(
-      !l.orderItemId || l.quantity === null || !l.unit,
+      !l.orderItemId || l.quantity === null,
     );
   const a = detail.document.packingSlipAnalysis,
     source =
@@ -2080,7 +2079,7 @@ function LineReview({
       orderItemId: item || null,
       checked: asChecked,
     });
-  const complete = !!item && quantity !== "" && !!unit.trim();
+  const complete = !!item && quantity !== "";
   if (l.ignored)
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
@@ -2185,12 +2184,12 @@ function LineReview({
                     onChange={(e) => setQuantity(e.target.value)}
                   />
                 </Label>
-                <Label name="Unit">
+                <Label name="Unit (Optional)">
                   <input
                     className={field}
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    placeholder="ea, ft…"
+                    placeholder={detail.items.find((i) => i.id === item)?.unit ?? "Order unit"}
                   />
                 </Label>
               </div>

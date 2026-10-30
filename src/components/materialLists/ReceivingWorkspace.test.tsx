@@ -513,3 +513,12 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
     reason: "Not a product line.",
   });
 });
+
+it("allows a matched quantity to reach approval without entering a unit", async () => {
+  state.review.lines[0]!.unit = "";
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Review & approve" }));
+  expect(screen.getByRole("heading", { name: "Approve 1 line" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
+  await waitFor(() => expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }));
+});

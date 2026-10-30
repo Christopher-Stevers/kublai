@@ -5,6 +5,7 @@ import {
   hasReturnEvidence,
   initialReview,
   readyLine,
+  defaultReviewUnit,
 } from "./receiving-review";
 describe("receiving accounting", () => {
   it("keeps return credit separate from physical receiving", () => {
@@ -79,4 +80,22 @@ describe("receiving accounting", () => {
       ),
     ).toBe(null);
   });
+});
+
+
+it("defaults an omitted reviewer unit to the matched order without changing quantity", () => {
+  const line = { id: "1", page: 1, evidence: "valve 5", description: "valve", sku: "", unit: "", quantity: 5, ordered: 5, unitPrice: null, orderItemId: "i", issues: ["Quantity unit is not printed. Confirm the unit before receiving."] };
+  defaultReviewUnit(line, "ea");
+  expect(line.unit).toBe("ea");
+  expect(line.quantity).toBe(5);
+  expect(readyLine(line)).toBe(true);
+});
+it("preserves explicit units and unrelated quantity warnings", () => {
+  const line = { id: "1", page: 1, evidence: "pipe", description: "pipe", sku: "", unit: "ft", quantity: 5, ordered: 5, unitPrice: null, orderItemId: "i", issues: ["Check shipped quantity against the slip; the print is unclear."] };
+  defaultReviewUnit(line, "ea");
+  expect(line.unit).toBe("ft");
+  expect(readyLine(line)).toBe(false);
+  line.unit = "";
+  defaultReviewUnit(line, "ea");
+  expect(readyLine(line)).toBe(false);
 });

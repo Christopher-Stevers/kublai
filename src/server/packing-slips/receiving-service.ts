@@ -28,6 +28,7 @@ import { mutateWorkspace, readWorkspace } from "~/server/documents/service";
 import type { JobDocument, DocumentState } from "~/server/documents/types";
 import {
   initialReview,
+  defaultReviewUnit,
   lineKind,
   duplicateEvidence,
   normalizedIdentity,
@@ -188,6 +189,11 @@ export async function receivingQueue(
   const linked = doc.packingSlip
     ? await orderSnapshot(db, access, doc.packingSlip.orderId)
     : [];
+  for (const line of review.lines)
+    defaultReviewUnit(
+      line,
+      linked.find((i) => i.id === line.orderItemId)?.unit,
+    );
   const [
     supplierOptions,
     catalogOptions,
@@ -801,6 +807,7 @@ async function mutateReceivingImpl(
           fail(
             "An approved line cannot be moved to another product. Correct its quantity to zero, then add the correct line.",
           );
+        let quantityUnit = input.unit;
         if (input.orderItemId) {
           if (!doc.packingSlip) fail("Choose an order first.");
           const items = await orderSnapshot(
@@ -810,10 +817,15 @@ async function mutateReceivingImpl(
           );
           const item = items.find((i) => i.id === input.orderItemId);
           if (!item) fail("Choose a line on this job’s linked order.");
-          if (receiptUnit(input.unit) !== receiptUnit(item!.unit))
+          quantityUnit = input.unit.trim() || item!.unit;
+          if (receiptUnit(quantityUnit) !== receiptUnit(item!.unit))
             fail(
               `Enter the quantity in ${item!.unit}, the order’s unit. Convert packs or lengths explicitly.`,
             );
+        }
+        if (!input.unit.trim()) {
+          l.unit = "";
+          defaultReviewUnit(l, quantityUnit);
         }
         if (input.kind === null) delete l.kind;
         else if (input.kind !== undefined) l.kind = input.kind;
@@ -823,7 +835,7 @@ async function mutateReceivingImpl(
           sku: input.sku,
           quantity: input.quantity,
           ordered: input.ordered,
-          unit: input.unit,
+          unit: quantityUnit,
           unitPrice: input.unitPrice,
           orderItemId: input.orderItemId,
           checked: input.checked,
@@ -1244,6 +1256,10 @@ async function mutateReceivingImpl(
           .where(eq(orderItems.orderId, order.id))
           .for("update");
         for (const l of selected) {
+          defaultReviewUnit(
+            l,
+            snapshot.find((i) => i.id === l.orderItemId)?.unit,
+          );
           if (l.ignored || !l.orderItemId || l.quantity === null)
             fail("Every selected line needs a matched part and a quantity.");
           if (!l.checked && l.issues.length)

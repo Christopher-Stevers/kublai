@@ -1,5 +1,5 @@
 import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
-import { receiptUnit } from "./packing-slip-review";
+
 export type ReceiptKind = "delivery" | "return-replacement" | "return-credit";
 export type ReceivingLine = {
   readingSource?: {
@@ -113,8 +113,19 @@ export function initialReview(
     lines: (analysis?.lines ?? []).map((l, i) => {
       const draft = reviewLine(l, i),
         item = analysis?.items.find((x) => x.id === l.orderItemId);
-      if (analysis) draft.readingSource = { analysisRunId: analysis.runId, reader: l.source === "terra" ? "terra" : l.source === "vision" || l.source === "assistant" ? "jev" : "ocr", confidence: l.confidenceDetails };
+      if (analysis)
+        draft.readingSource = {
+          analysisRunId: analysis.runId,
+          reader:
+            l.source === "terra"
+              ? "terra"
+              : l.source === "vision" || l.source === "assistant"
+                ? "jev"
+                : "ocr",
+          confidence: l.confidenceDetails,
+        };
       if (l.proposed !== null && item) draft.unit = item.unit;
+      defaultReviewUnit(draft, item?.unit);
       if (
         (analysis?.lines.some((line) => (line.shipped ?? 0) < 0) ?? false) &&
         (l.shipped ?? 0) > 0
@@ -153,6 +164,21 @@ export function reviewLine(line: SlipLine, i: number): ReceivingLine {
     checked: false,
   };
 }
+/** A reviewer quantity is in the matched order's unit unless explicitly changed.
+ * This defaults a missing unit; it never converts a supplied unit or quantity. */
+export function defaultReviewUnit(
+  line: ReceivingLine,
+  orderUnit: string | undefined,
+) {
+  if (line.unit.trim() || !line.orderItemId || !orderUnit?.trim()) return;
+  line.unit = orderUnit;
+  line.issues = line.issues.filter(
+    (issue) =>
+      !/^(?:Earlier reading: )?(?:No unit could be read on the slip\.|Quantity unit is not printed\.|Printed unit is missing or unclear\.|Quantity unit missing or ambiguous\.?$)/i.test(
+        issue,
+      ),
+  );
+}
 export function readyLine(l: ReceivingLine) {
   return (
     !l.approved &&
@@ -161,7 +187,6 @@ export function readyLine(l: ReceivingLine) {
     l.quantity !== null &&
     Number.isFinite(l.quantity) &&
     l.quantity > 0 &&
-    !!receiptUnit(l.unit) &&
     (l.checked === true || l.issues.length === 0)
   );
 }
