@@ -519,7 +519,7 @@ async function performSlipTask(
         "Analysis was interrupted repeatedly. Retry or verify manually.",
       );
     let progressTail = Promise.resolve();
-    const report = (progress: SlipProgress) => {
+    const report = (progress: SlipProgress, orderCandidates?: string[]) => {
       const snapshot = structuredClone(progress);
       progressTail = progressTail.then(async () => {
         await mutateWorkspace(
@@ -537,6 +537,8 @@ async function performSlipTask(
               return;
             if (task.orderId) await orderFor(tx, fresh, task.orderId);
             doc.packingSlipAnalysis.progress = snapshot;
+            if (orderCandidates !== undefined)
+              doc.packingSlipAnalysis.orderCandidates = [...orderCandidates];
             const { message, completed, total } = snapshot;
             const activity = doc.packingSlipAnalysis.activity ?? [];
             const previous = activity.at(-1);
@@ -611,13 +613,6 @@ async function performSlipTask(
           onProgress: (message) => report({ stage: "matching", message }),
         })
       : null;
-    await report({
-      stage: "matching",
-      message:
-        task.orderId || identified?.match
-          ? "Order matched. Checking product rows and quantities…"
-          : "Order match is uncertain. Checking product rows and candidate orders…",
-    });
     await recordPipelineStage("order-match", {
       linkedOrderId: task.orderId,
       identified,
@@ -627,6 +622,21 @@ async function performSlipTask(
         o.id ===
         (identified.match ??
           ("suggestion" in identified ? identified.suggestion : null)),
+    );
+    const orderLabel = task.orderId
+      ? `linked order ${options.find((o) => o.option.id === task.orderId)?.option.orderNumber ?? ""}`.trim()
+      : suggested
+        ? `suggested order ${suggested.orderNumber}`
+        : null;
+    // Publish the suggestion before line checking, without linking or confirming it.
+    await report(
+      {
+        stage: "matching",
+        message: orderLabel
+          ? `Checking product rows and quantities against ${orderLabel}${task.orderId ? "…" : ". Order confirmation is still required."}`
+          : "No order suggestion yet. Reading printed rows and quantities…",
+      },
+      identified?.candidates,
     );
     if (suggested) {
       const { db } = await import("~/server/db");
@@ -653,7 +663,19 @@ async function performSlipTask(
       extracted.rows,
       task.analysis.items,
       undefined,
-      { pages: extracted.pages, memory, onProgress: report },
+      {
+        pages: extracted.pages,
+        memory,
+        onProgress: (progress) =>
+          report({
+            ...progress,
+            message: progress.message.includes("the order")
+              ? orderLabel
+                ? progress.message.replaceAll("the order", orderLabel)
+                : "Reading printed lines and quantities; no order selected…"
+              : progress.message,
+          }),
+      },
     ).catch(async () => {
       const fallback = await analyzeSlip(
         extracted.rows,

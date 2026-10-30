@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest";
 import postgres from "postgres";
+import type { SlipProgress } from "~/lib/packing-slip-review";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableName, getTableColumns, eq, SQL, sql } from "drizzle-orm";
 import { PgDialect, type PgTable } from "drizzle-orm/pg-core";
@@ -21,6 +22,9 @@ const test = vi.hoisted(() => ({
   extractionFails: false,
   extractionStarted: false,
   extractionGate: null as Promise<void> | null,
+  lineGate: null as Promise<void> | null,
+  lineStarted: false,
+  suggestedOrder: null as string | null,
 }));
 vi.mock("~/server/db", () => ({
   db: {
@@ -65,26 +69,57 @@ vi.mock("./extract", () => ({
   },
 }));
 vi.mock("./analyze", () => ({
-  analyzeSlip: async () => ({
-    model: "test-fixture",
-    warnings: [],
-    lines: [
-      {
-        page: 1,
-        evidence: "Valve 6 ea",
-        orderItemId: "00000000-0000-4000-8000-000000000006",
-        shipped: 6,
-        backordered: 4,
-        unit: "ea",
-        proposed: 6,
-        issues: [],
-      },
-    ],
-  }),
+  analyzeSlip: async (
+    _rows: unknown,
+    _items: unknown,
+    _ask: unknown,
+    options?: { onProgress?: (p: SlipProgress) => Promise<void> },
+  ) => {
+    await options?.onProgress?.({
+      stage: "matching",
+      message: "Checking each printed line against the order…",
+    });
+    test.lineStarted = true;
+    await test.lineGate;
+    return {
+      model: "test-fixture",
+      warnings: [],
+      lines: [
+        {
+          page: 1,
+          evidence: "Valve 6 ea",
+          orderItemId: "00000000-0000-4000-8000-000000000006",
+          shipped: 6,
+          backordered: 4,
+          unit: "ea",
+          proposed: 6,
+          issues: [],
+        },
+      ],
+    };
+  },
 }));
 vi.mock("~/server/material-list-events", () => ({
   publishMaterialListEvent: vi.fn(),
 }));
+vi.mock("./find-order-service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./find-order-service")>();
+  return {
+    ...actual,
+    identifySlipOrder: async (
+      ...args: Parameters<typeof actual.identifySlipOrder>
+    ) =>
+      test.suggestedOrder
+        ? {
+            documentId: args[1],
+            match: null,
+            suggestion: test.suggestedOrder,
+            candidates: [test.suggestedOrder],
+            orders: (await actual.jobOrders(args[0])).map((o) => o.option),
+          }
+        : actual.identifySlipOrder(...args),
+  };
+});
 import { emptyDocumentState } from "../documents/domain";
 const socket = process.env.PURCHASE_TEST_SOCKET;
 const conn = postgres({
@@ -159,6 +194,9 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     test.extractionFails = false;
     test.extractionStarted = false;
     test.extractionGate = null;
+    test.lineGate = null;
+    test.lineStarted = false;
+    test.suggestedOrder = null;
     for (const table of [...tables].reverse())
       await conn.unsafe(`TRUNCATE "${getTableName(table)}"`);
     await db.insert(schema.users).values({
@@ -343,6 +381,41 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(
       Number((await db.select().from(schema.orderItems))[0]!.receivedQuantity),
     ).toBe(2);
+  });
+  it("publishes an unconfirmed order suggestion before checking lines", async () => {
+    vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");
+    const access = await assertDocumentAccess("receiver", job, db);
+    const saved = await saveUnmatchedSlip(
+      access,
+      {
+        name: "unmatched.pdf",
+        mimeType: "application/pdf",
+        size: 100,
+        sha256: "c".repeat(64),
+      },
+      async () => undefined,
+    );
+    await startSlipAnalysis(access, saved.documentId);
+    test.suggestedOrder = order;
+    let release!: () => void;
+    test.lineGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = dispatchPackingSlips();
+    try {
+      await vi.waitFor(() => expect(test.lineStarted).toBe(true));
+      const doc = (await workspace()).documents[0]!;
+      expect(doc.packingSlip).toBeUndefined();
+      expect(doc.packingSlipAnalysis?.status).toBe("processing");
+      expect(doc.packingSlipAnalysis?.orderCandidates).toEqual([order]);
+      expect(doc.packingSlipAnalysis?.progress?.message).toBe(
+        "Checking each printed line against suggested order PO-123…",
+      );
+      expect(doc.receivingReview?.orderConfirmed).not.toBe(true);
+    } finally {
+      release();
+      await running;
+    }
   });
   it("recovers an expired claim and rejects writes from the previous owner", async () => {
     vi.stubEnv("FOREMANHQ_BACKGROUND_MODE", "separate");

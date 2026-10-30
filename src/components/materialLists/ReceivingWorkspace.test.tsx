@@ -28,9 +28,12 @@ function fixture() {
       name: "Packing slip.pdf",
       createdAt: "2026-10-27",
       currentVersionId: "v",
-      packingSlip: { orderId: "order", orderNumber: "PO-155" },
+      packingSlip: { orderId: "order", orderNumber: "PO-155" } as
+        | { orderId: string; orderNumber: string }
+        | undefined,
       packingSlipAnalysis: {
         progress: undefined as SlipAnalysis["progress"],
+        orderCandidates: [] as string[],
         runId: "run",
         versionId: "v",
         status: "ready" as SlipAnalysis["status"],
@@ -190,7 +193,9 @@ it("keeps the activity log visible when detailed progress is hidden", async () =
   await screen.findAllByText("Reading the scanned pages…");
   fireEvent.click(screen.getByRole("button", { name: "Hide progress" }));
   expect(
-    within(screen.getByRole("region", { name: "Processing activity" })).getByText("Reading the scanned pages…"),
+    within(
+      screen.getByRole("region", { name: "Processing activity" }),
+    ).getByText("Reading the scanned pages…"),
   ).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
@@ -517,8 +522,79 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
 it("allows a matched quantity to reach approval without entering a unit", async () => {
   state.review.lines[0]!.unit = "";
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Review & approve" }));
-  expect(screen.getByRole("heading", { name: "Approve 1 line" })).toBeInTheDocument();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review & approve" }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Approve 1 line" }),
+  ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
-  await waitFor(() => expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }));
+  await waitFor(() =>
+    expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }),
+  );
 });
+
+it("shows a suggestion arriving after mount and confirms that order explicitly", async () => {
+  state.document.packingSlip = undefined;
+  state.document.packingSlipAnalysis.status = "processing";
+  state.review.orderConfirmed = false;
+  state.review.kindConfirmed = false;
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText("Finding the order while the slip is read…");
+  state.document.packingSlipAnalysis.orderCandidates = ["order"];
+  await screen.findByText("Suggested order", {}, { timeout: 6000 });
+  expect(screen.getByText("PO-155")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Yes, this order" }),
+  ).toBeDisabled();
+  expect(screen.queryByText(/lines? ready to approve/)).not.toBeInTheDocument();
+  state.document.packingSlipAnalysis.status = "ready";
+  await screen.findByText("Order confirmation required", {}, { timeout: 6000 });
+  expect(posts).toEqual([]);
+  expect(
+    screen.getByRole("button", { name: "Review & approve" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Yes, this order" }));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[0]).toMatchObject({
+    action: "link",
+    orderId: "order",
+    confirmed: true,
+  });
+  expect(posts[1]).toMatchObject({
+    action: "header",
+    supplierId: "supplier",
+    confirmed: true,
+  });
+}, 15000);
+
+it("preserves a manual order choice when a suggestion arrives during polling", async () => {
+  state.document.packingSlip = undefined;
+  state.review.orderConfirmed = false;
+  state.review.kindConfirmed = false;
+  state.orders.push({
+    id: "manual",
+    name: "Manual order",
+    supplierId: "other",
+  });
+  state.suppliers.push({ id: "other", name: "Other supplier" });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.change(await screen.findByLabelText("Order in this job"), {
+    target: { value: "manual" },
+  });
+  fireEvent.change(screen.getByLabelText("Delivery / packing slip number"), {
+    target: { value: "my-slip" },
+  });
+  state.document.packingSlipAnalysis.orderCandidates = ["order"];
+  await screen.findByRole(
+    "option",
+    { name: /Suggested match/ },
+    { timeout: 6000 },
+  );
+  expect(screen.getByLabelText("Order in this job")).toHaveValue("manual");
+  expect(screen.getByLabelText("Supplier")).toHaveValue("other");
+  expect(screen.getByLabelText("Delivery / packing slip number")).toHaveValue(
+    "my-slip",
+  );
+  expect(posts).toEqual([]);
+}, 10000);

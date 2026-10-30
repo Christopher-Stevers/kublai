@@ -1076,8 +1076,13 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 sm:px-2">
               <div className="min-w-0 text-sm">
                 <p className="font-semibold tabular-nums">
-                  {ready.length} {ready.length === 1 ? "line" : "lines"} ready
-                  to approve
+                  {canApprove
+                    ? `${ready.length} ${ready.length === 1 ? "line" : "lines"} ready to approve`
+                    : a?.status === "processing"
+                      ? "Reading the slip"
+                      : !orderConfirmed
+                        ? "Order confirmation required"
+                        : "Approval not ready"}
                 </p>
                 <p className="text-muted-foreground truncate">{hint}</p>
               </div>
@@ -1310,18 +1315,22 @@ function Identity({
     match = detail.orders.find(
       (o) => o.id === (linked || analysis?.orderCandidates?.[0]),
     ),
-    [form, setForm] = useState(!match || !!onCancel),
+    [form, setForm] = useState(!!onCancel),
     [kind, setKind] = useState(r.kind),
-    [supplier, setSupplier] = useState(r.supplierId ?? match?.supplierId ?? ""),
+    [supplierChoice, setSupplier] = useState<string | null>(null),
     [delivery, setDelivery] = useState(r.deliveryNumber),
     [orderNum, setOrderNum] = useState(r.supplierOrderNumber),
     [date, setDate] = useState(r.deliveryDate),
-    [link, setLink] = useState(linked || (match?.id ?? "")),
+    [linkChoice, setLink] = useState<string | null>(null),
     [newSupplier, setNewSupplier] = useState(false),
     [name, setName] = useState(r.supplierName),
     [email, setEmail] = useState(r.supplierEmail ?? ""),
     [phone, setPhone] = useState(r.supplierPhone ?? ""),
     [accounted, setAccounted] = useState(r.documentChecked ?? false);
+  // Background results can arrive after this form mounts. Follow fresh defaults
+  // until the reviewer explicitly chooses a value; polling must not erase edits.
+  const link = linkChoice ?? (linked || match?.id || "");
+  const supplier = supplierChoice ?? r.supplierId ?? match?.supplierId ?? "";
   const suggested = (orderId: string) =>
     analysis?.orderCandidates?.includes(orderId) ?? false;
   const confirm = async () => {
@@ -1385,7 +1394,7 @@ function Identity({
       </div>
     );
   return (
-    <div className="p-4">
+    <div className="p-4" onChange={() => setForm(true)}>
       {!match && (
         <p className="mb-3 text-sm">No order matched this slip. Choose it here.</p>
       )}
