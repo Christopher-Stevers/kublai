@@ -180,18 +180,18 @@ it("previews and approves only ready lines, retaining unresolved lines", async (
   );
   expect(screen.getByText("Unclear pipe")).toBeInTheDocument();
 });
-it("keeps actual processing visible and lets the member hide it", async () => {
+it("keeps the activity log visible when detailed progress is hidden", async () => {
   state.document.packingSlipAnalysis.status = "processing";
   state.document.packingSlipAnalysis.progress = {
     stage: "extracting",
     message: "Reading the scanned pages…",
   };
   render(<ReceivingWorkspace jobId="job" />);
-  await screen.findByText("Reading the scanned pages…");
+  await screen.findAllByText("Reading the scanned pages…");
   fireEvent.click(screen.getByRole("button", { name: "Hide progress" }));
   expect(
-    screen.queryByText("Reading the scanned pages…"),
-  ).not.toBeInTheDocument();
+    within(screen.getByRole("region", { name: "Processing activity" })).getByText("Reading the scanned pages…"),
+  ).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
   ).toBeDisabled();

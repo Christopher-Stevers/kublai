@@ -106,7 +106,14 @@ export type SlipProgress = {
   /** Provisional readings: never used to receive stock. */
   lines?: SlipLine[];
 };
+export type SlipActivity = {
+  at: string;
+  message: string;
+  completed?: number;
+  total?: number;
+};
 export type SlipAnalysis = {
+  activity?: SlipActivity[];
   cascade?: {
     policy: string;
     status:

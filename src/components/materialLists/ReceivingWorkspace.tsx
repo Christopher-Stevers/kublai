@@ -1,4 +1,5 @@
 "use client";
+import { PackingSlipActivity, type ProcessingJob } from "./PackingSlipActivity";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import {
   useCallback,
@@ -82,6 +83,7 @@ type Part = {
   individualUnit: string | null;
 };
 type Detail = {
+  processingJob?: ProcessingJob | null;
   documents: Entry[];
   document: JobDocument;
   review: ReceivingReview;
@@ -237,6 +239,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [openLine, setOpenLine] = useState<string | null>(null),
     [trialResults, setTrialResults] = useState<TrialResults | null>(null),
     [changingOrder, setChangingOrder] = useState(false);
+  const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
     // Chained decisions (link, then confirm) need the revision the first one produced.
@@ -253,6 +256,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     if (!res.ok) throw Error(data.error ?? "Could not load receiving.");
     if (scope.current !== selected) return;
     revision.current = data.review?.revision ?? 0;
+    setReceivedAt(Date.now());
     setDocs(data.documents);
     setDetail(id ? data : null);
   }, [jobId, id]);
@@ -510,6 +514,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           </Button>
         </div>
       </header>
+      {detail && <PackingSlipActivity analysis={a} job={detail.processingJob} online={online} receivedAt={receivedAt} />}
       {!online && (
         <p
           role="status"

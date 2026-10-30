@@ -4,6 +4,7 @@ import { and, eq, ilike, sql, desc } from "drizzle-orm";
 import { db } from "~/server/db";
 import {
   orders,
+  packingSlipJobs,
   orderItems,
   partDefinitions,
   supplierParts,
@@ -300,6 +301,23 @@ export async function receivingQueue(
           .then((r) => r.suggestions.slice(0, 8))
           .catch(() => [])
       : [];
+  const [processingJob] = doc.packingSlipAnalysis
+    ? await db
+        .select({
+          status: packingSlipJobs.status,
+          updatedAt: packingSlipJobs.updatedAt,
+          leaseUntil: packingSlipJobs.leaseUntil,
+        })
+        .from(packingSlipJobs)
+        .where(
+          and(
+            eq(packingSlipJobs.id, doc.packingSlipAnalysis.runId),
+            eq(packingSlipJobs.organizationId, access.job.organizationId),
+            eq(packingSlipJobs.documentId, doc.id),
+          ),
+        )
+        .limit(1)
+    : [];
   const duplicates = duplicateList(state, doc).map((d) => ({
     ...d,
     name: visible.some((v) => v.id === d.id) ? d.name : "Another saved slip",
@@ -315,6 +333,7 @@ export async function receivingQueue(
   }
   return {
     documents: docs,
+    processingJob: processingJob ?? null,
     document: doc,
     review,
     items: linked,

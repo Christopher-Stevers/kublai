@@ -332,6 +332,14 @@ export async function startSlipAnalysis(
         copy.runId = randomUUID();
         copy.versionId = version.id;
         copy.startedAt = new Date().toISOString();
+        copy.completedAt = copy.startedAt;
+        copy.activity = [
+          {
+            at: copy.startedAt,
+            message:
+              "Reused a previous reading of this file. No new model processing was needed.",
+          },
+        ];
         copy.items = order ? await orderSnapshot(tx, fresh, order.id) : [];
         copy.warnings.push(
           "Repeated source file: review the duplicate before receiving.",
@@ -529,6 +537,21 @@ async function performSlipTask(
               return;
             if (task.orderId) await orderFor(tx, fresh, task.orderId);
             doc.packingSlipAnalysis.progress = snapshot;
+            const { message, completed, total } = snapshot;
+            const activity = doc.packingSlipAnalysis.activity ?? [];
+            const previous = activity.at(-1);
+            if (
+              previous?.message !== message ||
+              previous?.completed !== completed ||
+              previous?.total !== total
+            )
+              activity.push({
+                at: new Date().toISOString(),
+                message,
+                completed,
+                total,
+              });
+            doc.packingSlipAnalysis.activity = activity.slice(-120);
             assertStateBounds(state);
           },
         );
@@ -577,12 +600,24 @@ async function performSlipTask(
       warnings: extracted.warnings,
       pageCount: extracted.pages.length,
     });
+    await report({
+      stage: "matching",
+      message: "OCR finished. Checking the text against this job’s orders…",
+    });
     const identified = !task.orderId
       ? await identifySlipOrder(access, documentId, undefined, {
           orders: options,
           extracted,
+          onProgress: (message) => report({ stage: "matching", message }),
         })
       : null;
+    await report({
+      stage: "matching",
+      message:
+        task.orderId || identified?.match
+          ? "Order matched. Checking product rows and quantities…"
+          : "Order match is uncertain. Checking product rows and candidate orders…",
+    });
     await recordPipelineStage("order-match", {
       linkedOrderId: task.orderId,
       identified,
@@ -630,6 +665,10 @@ async function performSlipTask(
         "Jev could not finish the image reading; the OCR result was preserved.",
       );
       return fallback;
+    });
+    await report({
+      stage: "checking",
+      message: `Row checks finished using ${cheap.model || "OCR"}. Checking whether any uncertainty needs a higher-tier reader…`,
     });
     const result = await productionCascade({
       scope: {
@@ -787,6 +826,13 @@ async function performSlipTask(
         doc.packingSlipAnalysis = {
           ...task.analysis,
           ...result,
+          activity: [
+            ...(doc.packingSlipAnalysis.activity ?? []),
+            {
+              at: new Date().toISOString(),
+              message: "Processing finished. Results are ready for review.",
+            },
+          ].slice(-120),
           readerVersion: READER_VERSION,
           usage: traceUsage(),
           orderCandidates: identified?.candidates,
@@ -861,7 +907,15 @@ async function performSlipTask(
         ) {
           doc.packingSlipAnalysis = {
             ...task.analysis,
+            activity: [
+              ...(doc.packingSlipAnalysis.activity ?? []),
+              {
+                at: new Date().toISOString(),
+                message: "Processing failed. See the error below.",
+              },
+            ].slice(-120),
             status: "failed",
+            completedAt: new Date().toISOString(),
             error:
               error instanceof Error
                 ? error.message.slice(0, 250)

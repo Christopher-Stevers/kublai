@@ -192,6 +192,7 @@ export async function identifySlipOrder(
   documentId: string,
   ask: VisionAsk = askJev,
   prepared?: {
+    onProgress?: (message: string) => Promise<void>;
     orders: Awaited<ReturnType<typeof jobOrders>>;
     extracted: Awaited<ReturnType<typeof extractSlip>>;
   },
@@ -244,6 +245,9 @@ export async function identifySlipOrder(
     let match = confident ? ranked[0]!.orderId : null;
     let pick: string | null = null;
     if (!match && extracted.pages[0]) {
+      await prepared?.onProgress?.(
+        "OCR order match is uncertain. Jev is checking the order identity…",
+      );
       const closest = ranked
         .slice(0, 6)
         .map((r) => slips.find((s) => s.id === r.orderId)!);
