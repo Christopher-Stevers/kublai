@@ -165,6 +165,7 @@ export function PackingSlipTrialComparison({
   busy,
   selectedReader,
   onUse,
+  onTrial,
 }: {
   jobId: string;
   documentId: string;
@@ -172,8 +173,13 @@ export function PackingSlipTrialComparison({
   busy: boolean;
   selectedReader?: TrialReader;
   onUse: (reader: TrialReader, runId: string) => Promise<void>;
+  /** Receives the current readings, or null when there are none. */
+  onTrial?: (results: TrialResults | null) => void;
 }) {
   const { trial, error } = useTrial<Comparison>(jobId, documentId, online);
+  useEffect(() => {
+    onTrial?.(trial && !trial.stale ? trial.results : null);
+  }, [trial, onTrial]);
   const [open, setOpen] = useState(false),
     [differencesOnly, setDifferencesOnly] = useState(false),
     [showCrops, setShowCrops] = useState(false);

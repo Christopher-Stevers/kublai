@@ -49,7 +49,12 @@ import {
   PackingSlipTrialSummary,
   type TrialSummary,
 } from "./PackingSlipTrial";
-import { trialReaders, readersInTrial } from "~/lib/packing-slip-trial";
+import {
+  trialReaders,
+  readersInTrial,
+  readerLabels,
+  type TrialResults,
+} from "~/lib/packing-slip-trial";
 
 type Entry = {
   id: string;
@@ -229,6 +234,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [over, setOver] = useState(false),
     [accounted, setAccounted] = useState(false),
     [openLine, setOpenLine] = useState<string | null>(null),
+    [trialResults, setTrialResults] = useState<TrialResults | null>(null),
     [changingOrder, setChangingOrder] = useState(false);
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
@@ -403,15 +409,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     : ready.length
                       ? "Everything else is done"
                       : "Every line is approved or excluded";
-  const lines = r
-    ? r.lines
-        .map((line, index) => ({ line, index, status: lineStatus(line, r) }))
-        .sort(
-          (x, y) =>
-            statusOrder.indexOf(x.status) - statusOrder.indexOf(y.status) ||
-            x.index - y.index,
-        )
-    : [];
   // Approval preview: running totals per order line, as the server applies them.
   const totals = new Map<string, { received: number; credit: number }>();
   const approvals = r
@@ -696,6 +693,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             online={online}
             busy={busy}
             selectedReader={r?.sourceTrial?.reader}
+            onTrial={setTrialResults}
             onUse={async (reader, runId) => {
               await run({ action: "trialDraft", reader, runId });
             }}
@@ -889,7 +887,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 </Step>
                 <Step
                   n={3}
-                  title="Compare lines"
+                  title="Compare with the order"
                   state={
                     linesWaiting
                       ? "waiting"
@@ -928,24 +926,18 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           />
                         </div>
                       )}
-                      {lines.length > 0 ? (
-                        <ul className="divide-y">
-                          {lines.map(({ line: l, index, status }) => (
-                            <LineReview
-                              key={`${id}:${l.id}:${r!.revision}`}
-                              line={l}
-                              index={index}
-                              status={status}
-                              detail={detail}
-                              jobId={jobId}
-                              run={run}
-                              open={openLine === l.id}
-                              setOpen={(open) => setOpenLine(open ? l.id : null)}
-                            />
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="px-4 py-8 text-center text-sm">
+                      {(detail.items.length > 0 || r.lines.length > 0) && (
+                        <OrderComparison
+                          detail={detail}
+                          jobId={jobId}
+                          run={run}
+                          openRow={openLine}
+                          setOpenRow={setOpenLine}
+                          trial={trialResults}
+                        />
+                      )}
+                      {r.lines.length === 0 && (
+                        <div className="border-t px-4 py-8 text-center text-sm">
                           <p className="text-muted-foreground">
                             Read this slip to propose lines, or add a line from the
                             source.
@@ -965,7 +957,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           variant="ghost"
                           size="sm"
                           onClick={async () => {
-                            added.current = new Set(r!.lines.map((l) => l.id));
+                            added.current = new Set(r.lines.map((l) => l.id));
                             if (
                               !(await run({
                                 action: "addLine",
@@ -1605,7 +1597,7 @@ function DuplicateReview({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => decide("supporting")}>
-          Same slip, don't receive
+          Same slip, don’t receive
         </Button>
         <Button variant="outline" onClick={() => decide("additional")}>
           Different delivery
@@ -1617,24 +1609,324 @@ function DuplicateReview({
     </div>
   );
 }
-function LineReview({
-  line: l,
-  index,
-  status,
+const percent = (v: number) => `${Math.round(v * 100)}%`;
+/** Who read a slip line and how sure they were. */
+function lineReading(l: ReceivingLine) {
+  if (l.predictionSource)
+    return {
+      reader: l.predictionSource.reader,
+      label: readerLabels[l.predictionSource.reader],
+      confidence: l.predictionSource.confidence.overall.value,
+    };
+  if (!l.readingSource) return null;
+  const c = l.readingSource.confidence;
+  return {
+    reader: l.readingSource.reader,
+    label: readerLabels[l.readingSource.reader],
+    confidence: c ? (c.overall ?? Math.min(c.part, c.quantity)) : null,
+  };
+}
+const unsure = (confidence: number | null) =>
+  confidence !== null && confidence < 0.8;
+/** The slip lines against one order item, in the order's unit. */
+function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
+  const due = Math.max(0, qtyRound(item.ordered - item.received)),
+    live = lines.filter((l) => !l.ignored),
+    pending = live.filter((l) => !l.approved);
+  if (!live.length)
+    return lines.length
+      ? { ok: true, label: "Left out", text: "text-muted-foreground" }
+      : null;
+  if (!pending.length)
+    return {
+      ok: true,
+      label: "Received",
+      text: "text-emerald-700 dark:text-emerald-300",
+    };
+  if (pending.some((l) => l.quantity === null))
+    return { ok: false, label: "Quantity not read", text: amber.text };
+  if (
+    pending.some(
+      (l) => l.unit.trim().toLowerCase() !== item.unit.trim().toLowerCase(),
+    )
+  )
+    return {
+      ok: false,
+      label: `Different unit. The order counts in ${item.unit}.`,
+      text: amber.text,
+    };
+  const got = qtyRound(pending.reduce((n, l) => n + (l.quantity ?? 0), 0));
+  return got === due
+    ? {
+        ok: true,
+        label: "Matches the order",
+        text: "text-emerald-700 dark:text-emerald-300",
+      }
+    : got < due
+      ? {
+          ok: false,
+          label: `${qtyRound(due - got)} ${item.unit} short`,
+          text: amber.text,
+        }
+      : {
+          ok: false,
+          label: `${qtyRound(got - due)} ${item.unit} more than needed`,
+          text: amber.text,
+        };
+}
+/** Step 3: every order item beside what the slip says arrived for it. */
+function OrderComparison({
   detail,
   jobId,
   run,
-  open,
-  setOpen,
+  openRow,
+  setOpenRow,
+  trial,
 }: {
-  line: ReceivingLine;
-  index: number;
-  status: LineStatus;
   detail: Detail;
   jobId: string;
   run: (a: Action) => Promise<boolean>;
-  open: boolean;
-  setOpen: (open: boolean) => void;
+  openRow: string | null;
+  setOpenRow: (row: string | null) => void;
+  trial: TrialResults | null;
+}) {
+  const r = detail.review,
+    slip = r.lines.map((line, index) => ({ line, index }));
+  const known = new Set(detail.items.map((i) => i.id));
+  const rows = [
+    ...detail.items.map((item, n) => ({
+      key: `item:${item.id}`,
+      n,
+      item,
+      lines: slip.filter((x) => x.line.orderItemId === item.id),
+    })),
+    ...slip
+      .filter(
+        (x) => !x.line.orderItemId || !known.has(x.line.orderItemId),
+      )
+      .map((x, i) => ({
+        key: x.line.id,
+        n: detail.items.length + i,
+        item: undefined,
+        lines: [x],
+      })),
+  ];
+  // Independent trial readers, when this slip was part of a comparison.
+  const others = (itemId: string, skip: Set<string>) =>
+    trial
+      ? readersInTrial(trial)
+          .filter((reader) => !skip.has(reader))
+          .flatMap((reader) =>
+            trial[reader]?.status === "complete"
+              ? trial[reader].lines
+                  .filter((t) => t.orderItemId === itemId)
+                  .map((t) => ({ reader, t }))
+              : [],
+          )
+      : [];
+  return (
+    <div>
+      <div className="text-muted-foreground grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] gap-x-3 border-b px-4 py-2 text-xs font-medium">
+        <span />
+        <span>On the order</span>
+        <span>Read from the slip</span>
+        <span />
+      </div>
+      <ul className="divide-y">
+        {rows.map(({ key, n, item, lines }) => {
+          const open = openRow === key,
+            live = lines.filter((x) => !x.line.ignored),
+            status = lines
+              .map((x) => lineStatus(x.line, r))
+              .sort((x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y))[0],
+            tone = status ? statusStyle[status] : undefined,
+            verdict = item
+              ? compareToOrder(
+                  item,
+                  lines.map((x) => x.line),
+                )
+              : null,
+            due = item
+              ? Math.max(0, qtyRound(item.ordered - item.received))
+              : 0,
+            readings = live.flatMap((x) => {
+              const reading = lineReading(x.line);
+              return reading ? [{ ...reading, line: x.line }] : [];
+            }),
+            trialReadings = item
+              ? others(item.id, new Set(readings.map((x) => x.reader)))
+              : [],
+            quantities = live.map((x) => x.line.quantity),
+            title = item ? item.description : lines[0]!.line.description,
+            slipText = live
+              .map((x) => x.line.description)
+              .filter(
+                (d) =>
+                  d.trim().toLowerCase() !==
+                  item?.description.trim().toLowerCase(),
+              );
+          return (
+            <li key={key} className={open ? "bg-muted/30" : undefined}>
+              <div className="relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] items-start gap-x-3 px-4 py-3">
+                <span
+                  aria-hidden
+                  className={`mt-0.5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                >
+                  {status === "approved" ? (
+                    <CheckIcon className="size-3.5" />
+                  ) : (
+                    n + 1
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-medium break-words">
+                    {lines.length ? (
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        onClick={() => setOpenRow(open ? null : key)}
+                        className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
+                      >
+                        {title}
+                      </button>
+                    ) : (
+                      title
+                    )}
+                  </h3>
+                  <p className="text-muted-foreground mt-0.5 text-sm break-words">
+                    {item ? (
+                      <>
+                        {due > 0 ? `Needs ${due} ${item.unit}` : "All received"}
+                        {item.sku && ` · ${item.sku}`}
+                      </>
+                    ) : (
+                      <span className={amber.text}>Not on the order</span>
+                    )}
+                  </p>
+                </div>
+                <div className="min-w-0 text-sm">
+                  {lines.length === 0 ? (
+                    <p className="text-muted-foreground">Not on the slip</p>
+                  ) : live.length ? (
+                    <>
+                      <p className="font-semibold tabular-nums">
+                        {quantities.some((q) => q === null) ? (
+                          <span className={amber.text}>Not read</span>
+                        ) : (
+                          `${qtyRound(quantities.reduce<number>((a, q) => a + (q ?? 0), 0))} ${live[0]!.line.unit}`
+                        )}
+                      </p>
+                      {slipText.map((d, i) => (
+                        <p
+                          key={i}
+                          className="text-muted-foreground truncate text-xs"
+                        >
+                          “{d}”
+                        </p>
+                      ))}
+                    </>
+                  ) : null}
+                  {verdict && (
+                    <p
+                      className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${verdict.text}`}
+                    >
+                      {verdict.ok ? (
+                        <CheckCircle2Icon className="size-3.5 shrink-0" />
+                      ) : (
+                        <AlertTriangleIcon className="size-3.5 shrink-0" />
+                      )}
+                      {verdict.label}
+                    </p>
+                  )}
+                  {!item && tone && (
+                    <p className={`mt-0.5 text-xs font-medium ${tone.text}`}>
+                      {tone.label}
+                    </p>
+                  )}
+                  {(readings.length > 0 || trialReadings.length > 0) && (
+                    <ul
+                      aria-label="Readers"
+                      className="text-muted-foreground mt-1 space-y-0.5 text-xs"
+                    >
+                      {readings.map((x) => (
+                        <li key={x.line.id}>
+                          {x.label}
+                          {x.line.humanEdited
+                            ? " · edited"
+                            : x.line.quantity !== null &&
+                              ` · ${x.line.quantity} ${x.line.unit}`}
+                          {x.confidence !== null && " "}
+                          {x.confidence !== null && (
+                            <span
+                              className={`font-medium tabular-nums ${unsure(x.confidence) ? amber.text : "text-foreground"}`}
+                            >
+                              {percent(x.confidence)}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                      {trialReadings.map(({ reader, t }) => (
+                        <li key={`${reader}:${t.lineId}`}>
+                          {readerLabels[reader]} · {t.shipped ?? "?"}{" "}
+                          {t.unit ?? ""}{" "}
+                          <span
+                            title={`${t.confidence.overall.basis}: ${t.confidence.overall.reason}`}
+                            className={`font-medium tabular-nums ${unsure(t.confidence.overall.value) ? amber.text : "text-foreground"}`}
+                          >
+                            {percent(t.confidence.overall.value)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {lines.length > 0 && (
+                  <ChevronDownIcon
+                    aria-hidden
+                    className={`text-muted-foreground mt-1 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                  />
+                )}
+              </div>
+              {open &&
+                lines.map(({ line, index }) => (
+                  <div key={line.id}>
+                    {lines.length > 1 && (
+                      <p className="text-muted-foreground px-4 pb-1 text-xs font-medium">
+                        Slip line {index + 1}
+                      </p>
+                    )}
+                    <LineReview
+                      key={`${line.id}:${r.revision}`}
+                      line={line}
+                      index={index}
+                      detail={detail}
+                      jobId={jobId}
+                      run={run}
+                      onDone={() => setOpenRow(null)}
+                    />
+                  </div>
+                ))}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+function LineReview({
+  line: l,
+  index,
+  detail,
+  jobId,
+  run,
+  onDone,
+}: {
+  line: ReceivingLine;
+  index: number;
+  detail: Detail;
+  jobId: string;
+  run: (a: Action) => Promise<boolean>;
+  onDone: () => void;
 }) {
   const [name, setName] = useState(l.description),
     [kind, setKind] = useState(l.kind ?? ""),
@@ -1666,11 +1958,6 @@ function LineReview({
     detail.review.versionId === detail.document.currentVersionId
       ? (l.sourceBox ?? source?.box)
       : undefined;
-  const tone = statusStyle[status],
-    match = l.orderItemId
-      ? (detail.items.find((i) => i.id === l.orderItemId)?.description ??
-        "Order part")
-      : null;
   const save = (asChecked: boolean) =>
     run({
       action: "line",
@@ -1686,127 +1973,29 @@ function LineReview({
       checked: asChecked,
     });
   const complete = !!item && quantity !== "" && !!unit.trim();
-  // What arrived against what the order still needs, in the same unit.
-  const orderItem = detail.items.find((i) => i.id === item),
-    due = orderItem
-      ? Math.max(0, qtyRound(orderItem.ordered - orderItem.received))
-      : 0,
-    sameUnit =
-      !!orderItem &&
-      orderItem.unit.trim().toLowerCase() === unit.trim().toLowerCase(),
-    got = Number(quantity),
-    verdict =
-      !orderItem || quantity === "" || l.approved
-        ? null
-        : !sameUnit
-          ? {
-              ok: false,
-              label: `Different unit. The order counts in ${orderItem.unit}.`,
-              text: amber.text,
-            }
-          : got === due
-            ? {
-                ok: true,
-                label: "Matches the order",
-                text: "text-emerald-700 dark:text-emerald-300",
-              }
-            : got < due
-              ? {
-                  ok: false,
-                  label: `${qtyRound(due - got)} ${orderItem.unit} short`,
-                  text: amber.text,
-                }
-              : {
-                  ok: false,
-                  label: `${qtyRound(got - due)} ${orderItem.unit} more than needed`,
-                  text: amber.text,
-                };
-  return (
-    <li className={open ? "bg-muted/30" : undefined}>
-      <div className="relative flex items-start gap-3 px-4 py-3">
-        <span
-          aria-hidden
-          className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone.badge}`}
-        >
-          {status === "approved" ? (
-            <CheckIcon className="size-3.5" />
-          ) : (
-            index + 1
-          )}
+  if (l.ignored)
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
+        <span className="text-muted-foreground min-w-0 flex-1 break-words">
+          Left out: {l.ignored.reason}
         </span>
-        <div className="min-w-0 flex-1">
-          <h3
-            className={`font-medium break-words ${l.ignored ? "text-muted-foreground line-through" : ""}`}
-          >
-            {l.ignored ? (
-              l.description
-            ) : (
-              <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpen(!open)}
-                className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
-              >
-                {l.description}
-              </button>
-            )}
-          </h3>
-          <p className="text-muted-foreground mt-0.5 text-sm break-words">
-            {l.ignored ? (
-              l.ignored.reason
-            ) : (
-              <>
-                {match ? (
-                  match.trim().toLowerCase() ===
-                  l.description.trim().toLowerCase() ? (
-                    "Matched to order"
-                  ) : (
-                    match
-                  )
-                ) : (
-                  <span className={amber.text}>Not matched to the order</span>
-                )}
-                {l.sku && ` · ${l.sku}`}
-              </>
-            )}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          {!l.ignored && (
-            <p className="font-semibold tabular-nums">
-              {l.quantity ?? <span className={amber.text}>?</span>}{" "}
-              <span className="text-muted-foreground text-xs font-normal">
-                {l.unit}
-              </span>
-            </p>
-          )}
-          <p className={`text-xs font-medium ${tone.text}`}>{tone.label}</p>
-          {l.ignored && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative z-10 -mr-2"
-              onClick={() =>
-                void run({
-                  action: "restoreLine",
-                  lineId: l.id,
-                  reason: "Reviewer restored excluded line",
-                })
-              }
-            >
-              Restore line
-            </Button>
-          )}
-        </div>
-        {!l.ignored && (
-          <ChevronDownIcon
-            aria-hidden
-            className={`text-muted-foreground mt-1 size-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-          />
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            void run({
+              action: "restoreLine",
+              lineId: l.id,
+              reason: "Reviewer restored excluded line",
+            })
+          }
+        >
+          Restore line
+        </Button>
       </div>
-      {open && !l.ignored && (
-        <div className="space-y-3 px-4 pb-4 sm:pl-13">
+    );
+  return (
+    <div className="space-y-3 px-4 pb-4">
           {sourceBox && (
             <SlipLineImage
               url={detail.sourceUrl}
@@ -1814,41 +2003,6 @@ function LineReview({
               box={sourceBox}
               label={`Source for line ${index + 1}`}
             />
-          )}
-          <dl className="bg-card grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border px-3 py-2.5 text-sm">
-            <dt className="text-muted-foreground">Slip says</dt>
-            <dd className="font-semibold tabular-nums">
-              {quantity === "" ? (
-                <span className={amber.text}>Not read</span>
-              ) : (
-                `${quantity} ${unit}`
-              )}
-            </dd>
-            <dt className="text-muted-foreground">Order needs</dt>
-            <dd className="min-w-0">
-              {orderItem ? (
-                <>
-                  <span className="font-semibold tabular-nums">
-                    {due} {orderItem.unit}
-                  </span>
-                  <span className="text-muted-foreground block truncate">
-                    {orderItem.description}
-                  </span>
-                </>
-              ) : (
-                <span className={amber.text}>Not on the order</span>
-              )}
-            </dd>
-          </dl>
-          {verdict && (
-            <p className={`flex items-center gap-2 text-sm font-medium ${verdict.text}`}>
-              {verdict.ok ? (
-                <CheckCircle2Icon className="size-4 shrink-0" />
-              ) : (
-                <AlertTriangleIcon className="size-4 shrink-0" />
-              )}
-              {verdict.label}
-            </p>
           )}
           {l.issues.length > 0 && !l.checked && (
             <p className="text-sm">
@@ -2025,7 +2179,7 @@ function LineReview({
             <Button
               disabled={!complete}
               onClick={async () => {
-                if (await save(true)) setOpen(false);
+                if (await save(true)) onDone();
               }}
             >
               <CheckIcon />
@@ -2095,9 +2249,7 @@ function LineReview({
               </p>
             </div>
           </details>
-        </div>
-      )}
-    </li>
+    </div>
   );
 }
 function PartDraft({

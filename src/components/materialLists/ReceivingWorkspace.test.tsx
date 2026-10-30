@@ -230,7 +230,7 @@ it("confirms the matched order in one tap and only then compares lines", async (
   expect(order).toHaveTextContent("Matched order");
   expect(order).toHaveTextContent("PO-155");
   expect(
-    screen.getByRole("region", { name: "Step 3: Compare lines" }),
+    screen.getByRole("region", { name: "Step 3: Compare with the order" }),
   ).toHaveTextContent("After the order is confirmed.");
   expect(screen.queryByRole("heading", { name: "Valve" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Yes, this order" }));
@@ -284,12 +284,39 @@ it("warns about a repeat scan first and records what it is", async () => {
     otherDocumentId: "old",
   });
 });
-it("lists lines to review first and confirms a line as checked", async () => {
+it("lists every order item beside the slip reading and its reader", async () => {
+  Object.assign(state.review.lines[0]!, {
+    readingSource: {
+      analysisRunId: "run",
+      reader: "terra",
+      confidence: { part: 0.99, quantity: 0.97, basis: "model_estimate" },
+    } satisfies ReceivingLine["readingSource"],
+  });
+  state.items.push({
+    id: "item-2",
+    description: "Elbow",
+    unit: "ea",
+    ordered: 4,
+    received: 0,
+  });
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByRole("heading", { name: "Valve" });
   expect(
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
-  ).toEqual(["Unclear pipe", "Valve"]);
+  ).toEqual(["Valve", "Elbow", "Unclear pipe"]);
+  const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
+  expect(valve).toHaveTextContent("Needs 8 ea");
+  expect(valve).toHaveTextContent("6 ea");
+  expect(valve).toHaveTextContent("2 ea short");
+  expect(valve).toHaveTextContent("Terra 6.1 · 6 ea 97%");
+  const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
+  expect(elbow).toHaveTextContent("Needs 4 ea");
+  expect(elbow).toHaveTextContent("Not on the slip");
+  const pipe = screen
+    .getByRole("heading", { name: "Unclear pipe" })
+    .closest("li")!;
+  expect(pipe).toHaveTextContent("Not on the order");
+  expect(pipe).toHaveTextContent("Not read");
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
   expect(
     screen.getByText("The reading is unsure. Check it against the slip."),
@@ -301,11 +328,6 @@ it("lists lines to review first and confirms a line as checked", async () => {
   ).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Valve" }));
   expect(screen.queryByText("Quantity unclear")).not.toBeInTheDocument();
-  expect(screen.getByText("Slip says").nextSibling).toHaveTextContent("6 ea");
-  expect(screen.getByText("Order needs").nextSibling).toHaveTextContent(
-    "8 ea",
-  );
-  expect(screen.getByText("2 ea short")).toBeInTheDocument();
   expect(screen.queryByLabelText("Quantity")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   await waitFor(() => expect(posts).toHaveLength(1));
