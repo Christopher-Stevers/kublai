@@ -200,7 +200,10 @@ it("links a newly chosen order before confirming the slip details", async () => 
   state.orders.push({ id: "order-2", name: "PO-156", supplierId: "other" });
   state.suppliers.push({ id: "other", name: "Other supplier" });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.change(await screen.findByLabelText("Order in this job"), {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Choose another order" }),
+  );
+  fireEvent.change(screen.getByLabelText("Order in this job"), {
     target: { value: "order-2" },
   });
   expect(screen.getByLabelText("Supplier")).toHaveValue("other");
@@ -217,6 +220,57 @@ it("links a newly chosen order before confirming the slip details", async () => 
     confirmed: true,
     documentChecked: false,
     revision: 2,
+  });
+});
+it("confirms the matched order in one tap and only then compares lines", async () => {
+  state.review.orderConfirmed = false;
+  state.review.kindConfirmed = false;
+  render(<ReceivingWorkspace jobId="job" />);
+  const order = await screen.findByRole("region", { name: "Step 2: Order" });
+  expect(order).toHaveTextContent("Matched order");
+  expect(order).toHaveTextContent("PO-155");
+  expect(
+    screen.getByRole("region", { name: "Step 3: Compare lines" }),
+  ).toHaveTextContent("After the order is confirmed.");
+  expect(screen.queryByRole("heading", { name: "Valve" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Yes, this order" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "header",
+    kind: "delivery",
+    supplierId: "supplier",
+    confirmed: true,
+  });
+});
+it("warns about a repeat scan first and records what it is", async () => {
+  state.duplicates = [
+    {
+      id: "old",
+      name: "Earlier slip.jpg",
+      reason: "The uploaded file is identical.",
+      key: "old:v1",
+      received: true,
+    },
+  ] as typeof state.duplicates;
+  render(<ReceivingWorkspace jobId="job" />);
+  const check = await screen.findByRole("region", {
+    name: "Step 1: Duplicate check",
+  });
+  expect(check).toHaveTextContent("This slip may have been scanned before.");
+  expect(check).toHaveTextContent("Earlier slip.jpg");
+  expect(check).toHaveTextContent("It has already been received.");
+  expect(
+    screen.getByRole("region", { name: "Step 2: Order" }),
+  ).toHaveTextContent("After the duplicate check.");
+  expect(
+    screen.getByRole("button", { name: "Review & approve" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Different delivery" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "duplicate",
+    decision: "additional",
+    otherDocumentId: "old",
   });
 });
 it("lists lines to review first and confirms a line as checked", async () => {

@@ -228,7 +228,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [reason, setReason] = useState(""),
     [over, setOver] = useState(false),
     [accounted, setAccounted] = useState(false),
-    [openLine, setOpenLine] = useState<string | null>(null);
+    [openLine, setOpenLine] = useState<string | null>(null),
+    [changingOrder, setChangingOrder] = useState(false);
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
     // Chained decisions (link, then confirm) need the revision the first one produced.
@@ -254,6 +255,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     setError("");
     setNotice("");
     setOpenLine(null);
+    setChangingOrder(false);
     void load().catch((e: unknown) => setError(errorMessage(e)));
   }, [load]);
   useEffect(() => {
@@ -367,6 +369,15 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   );
   const blocked =
     sourceChanged || !!r?.retiredBy || supporting || a?.status === "processing";
+  // The review runs in three steps: is it a repeat, which order, then lines.
+  const orderConfirmed = !!r?.kindConfirmed && !!r.orderConfirmed;
+  const orderStep =
+    repeat || supporting
+      ? "waiting"
+      : orderConfirmed && !changingOrder
+        ? "done"
+        : "active";
+  const linesWaiting = !orderConfirmed || repeat || supporting;
   const canApprove =
     !!r?.kindConfirmed &&
     !!r.orderConfirmed &&
@@ -383,13 +394,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           ? "This slip was replaced"
           : supporting
             ? "Supporting file · nothing to receive"
-            : !r?.kindConfirmed
-              ? "Confirm the slip details first"
-              : !r.orderConfirmed
-                ? "Link an order first"
-                : repeat
-                  ? "Decide on the possible repeat first"
-                  : remaining - ready.length > 0
+            : repeat
+              ? "Finish the duplicate check first"
+              : !r?.kindConfirmed || !r.orderConfirmed
+                ? "Confirm the order first"
+                : remaining - ready.length > 0
                     ? `${remaining - ready.length} still to review`
                     : ready.length
                       ? "Everything else is done"
@@ -815,95 +824,165 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 disabled={busy || !online || blocked}
                 className="min-w-0 space-y-4 disabled:opacity-70"
               >
-                <Identity
-                  key={`${id}:${r!.revision}`}
-                  detail={detail}
-                  run={run}
-                />
-                {detail.duplicates.length > 0 && (
-                  <DuplicateReview detail={detail} run={run} />
-                )}
-                <section className={`${card} overflow-hidden`}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pt-3 pb-2.5">
-                    <h2 className="font-semibold">Slip lines</h2>
-                    <p className="text-muted-foreground text-sm tabular-nums">
-                      {[
-                        active - remaining && `${active - remaining} approved`,
-                        ready.length && `${ready.length} ready`,
-                        remaining - ready.length &&
-                          `${remaining - ready.length} to review`,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || "No lines yet"}
-                    </p>
-                  </div>
-                  {active > 0 && (
-                    <div aria-hidden className="bg-muted flex h-1">
-                      <div
-                        className="bg-emerald-500 transition-[width] motion-reduce:transition-none"
-                        style={{
-                          width: `${((active - remaining) / active) * 100}%`,
-                        }}
-                      />
-                      <div
-                        className="bg-sky-500 transition-[width] motion-reduce:transition-none"
-                        style={{ width: `${(ready.length / active) * 100}%` }}
-                      />
-                    </div>
-                  )}
-                  {lines.length > 0 ? (
-                    <ul className="divide-y">
-                      {lines.map(({ line: l, index, status }) => (
-                        <LineReview
-                          key={`${id}:${l.id}:${r!.revision}`}
-                          line={l}
-                          index={index}
-                          status={status}
-                          detail={detail}
-                          jobId={jobId}
-                          run={run}
-                          open={openLine === l.id}
-                          setOpen={(open) => setOpenLine(open ? l.id : null)}
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="border-t px-4 py-8 text-center text-sm">
-                      <p className="text-muted-foreground">
-                        Read this slip to propose lines, or add a line from the
-                        source.
-                      </p>
+                <Step
+                  n={1}
+                  title="Duplicate check"
+                  state={
+                    repeat ||
+                    (a?.status === "processing" && !detail.duplicates.length)
+                      ? "active"
+                      : "done"
+                  }
+                  warn={repeat}
+                  meta={
+                    repeat
+                      ? "This slip may have been scanned before."
+                      : r?.replaces
+                        ? "Checked. It replaces an earlier scan."
+                        : !detail.duplicates.length
+                          ? a?.status === "processing"
+                            ? "Checking while the slip is read…"
+                            : "Not scanned before."
+                          : supporting
+                            ? "A repeat scan. Kept as a file only."
+                            : "Checked. A different delivery."
+                  }
+                >
+                  {repeat && <DuplicateReview detail={detail} run={run} />}
+                </Step>
+                <Step
+                  n={2}
+                  title="Order"
+                  state={orderStep}
+                  meta={
+                    orderStep === "waiting"
+                      ? supporting
+                        ? "Not needed for a repeat scan."
+                        : "After the duplicate check."
+                      : orderStep === "done"
+                        ? orderSummary(detail)
+                        : undefined
+                  }
+                  action={
+                    orderStep === "done" && (
                       <Button
-                        className="mt-3"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => void run({ action: "prepare" })}
+                        onClick={() => setChangingOrder(true)}
                       >
-                        Read slip
+                        Change
                       </Button>
-                    </div>
+                    )
+                  }
+                >
+                  {orderStep === "active" && (
+                    <Identity
+                      key={`${id}:${r!.revision}`}
+                      detail={detail}
+                      run={run}
+                      onCancel={
+                        orderConfirmed ? () => setChangingOrder(false) : undefined
+                      }
+                      onDone={() => setChangingOrder(false)}
+                    />
                   )}
-                  <div className="border-t px-2 py-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        added.current = new Set(r!.lines.map((l) => l.id));
-                        if (
-                          !(await run({
-                            action: "addLine",
-                            page: 1,
-                            description: "New slip line",
-                          }))
-                        )
-                          added.current = null;
-                      }}
-                    >
-                      <PlusIcon />
-                      Add missing line
-                    </Button>
-                  </div>
-                </section>
+                </Step>
+                <Step
+                  n={3}
+                  title="Compare lines"
+                  state={
+                    linesWaiting
+                      ? "waiting"
+                      : active && !remaining
+                        ? "done"
+                        : "active"
+                  }
+                  meta={
+                    linesWaiting
+                      ? supporting
+                        ? "Not needed for a repeat scan."
+                        : "After the order is confirmed."
+                      : [
+                      active - remaining && `${active - remaining} approved`,
+                      ready.length && `${ready.length} ready`,
+                      remaining - ready.length &&
+                        `${remaining - ready.length} to review`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "No lines yet"
+                  }
+                >
+                  {!linesWaiting && (
+                    <>
+                      {active > 0 && (
+                        <div aria-hidden className="bg-muted flex h-1">
+                          <div
+                            className="bg-emerald-500 transition-[width] motion-reduce:transition-none"
+                            style={{
+                              width: `${((active - remaining) / active) * 100}%`,
+                            }}
+                          />
+                          <div
+                            className="bg-sky-500 transition-[width] motion-reduce:transition-none"
+                            style={{ width: `${(ready.length / active) * 100}%` }}
+                          />
+                        </div>
+                      )}
+                      {lines.length > 0 ? (
+                        <ul className="divide-y">
+                          {lines.map(({ line: l, index, status }) => (
+                            <LineReview
+                              key={`${id}:${l.id}:${r!.revision}`}
+                              line={l}
+                              index={index}
+                              status={status}
+                              detail={detail}
+                              jobId={jobId}
+                              run={run}
+                              open={openLine === l.id}
+                              setOpen={(open) => setOpenLine(open ? l.id : null)}
+                            />
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="px-4 py-8 text-center text-sm">
+                          <p className="text-muted-foreground">
+                            Read this slip to propose lines, or add a line from the
+                            source.
+                          </p>
+                          <Button
+                            className="mt-3"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void run({ action: "prepare" })}
+                          >
+                            Read slip
+                          </Button>
+                        </div>
+                      )}
+                      <div className="border-t px-2 py-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            added.current = new Set(r!.lines.map((l) => l.id));
+                            if (
+                              !(await run({
+                                action: "addLine",
+                                page: 1,
+                                description: "New slip line",
+                              }))
+                            )
+                              added.current = null;
+                          }}
+                        >
+                          <PlusIcon />
+                          Add missing line
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </Step>
                 {!detail.document.packingSlip && detail.canCreate && (
                   <Reconstruct
                     key={`reconstruct:${r!.revision}`}
@@ -1152,74 +1231,169 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     </div>
   );
 }
+/** One step of the slip review: a numbered card whose body shows while it is
+ * the step to work on. */
+function Step({
+  n,
+  title,
+  state,
+  meta,
+  warn = false,
+  action,
+  children,
+}: {
+  n: number;
+  title: string;
+  state: "done" | "active" | "waiting";
+  meta?: ReactNode;
+  warn?: boolean;
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <section
+      aria-label={`Step ${n}: ${title}`}
+      className={`${card} overflow-hidden ${warn ? "border-amber-300/70 dark:border-amber-500/40" : ""} ${state === "waiting" ? "opacity-60" : ""}`}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span
+          aria-hidden
+          className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+            state === "done"
+              ? "bg-emerald-600 text-white"
+              : state === "waiting"
+                ? "bg-muted text-muted-foreground"
+                : warn
+                  ? "bg-amber-500 text-white"
+                  : "bg-primary text-primary-foreground"
+          }`}
+        >
+          {state === "done" ? <CheckIcon className="size-3.5" /> : n}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">{title}</h2>
+          {meta && (
+            <p className="text-muted-foreground truncate text-sm tabular-nums">
+              {meta}
+            </p>
+          )}
+        </div>
+        {action}
+      </div>
+      {children && <div className="border-t">{children}</div>}
+    </section>
+  );
+}
+const orderSummary = (detail: Detail) => {
+  const r = detail.review;
+  return [
+    detail.document.packingSlip?.orderNumber ?? "No order linked",
+    typeLabel(r.kind),
+    detail.suppliers.find((s) => s.id === r.supplierId)?.name ??
+      r.supplierName,
+    r.deliveryNumber && `Slip ${r.deliveryNumber}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+};
+/** Step 2: the order the slip was matched to, confirmed in one tap, or chosen
+ * with the slip's details when the match is wrong or missing. */
 function Identity({
   detail,
   run,
+  onCancel,
+  onDone,
 }: {
   detail: Detail;
   run: (a: Action) => Promise<boolean>;
+  /** Leaves an order that was already confirmed as it was. */
+  onCancel?: () => void;
+  onDone: () => void;
 }) {
   const r = detail.review,
+    analysis = detail.document.packingSlipAnalysis,
     linked = detail.document.packingSlip?.orderId ?? "",
-    confirmed = r.kindConfirmed && !!r.orderConfirmed,
-    [editing, setEditing] = useState(!confirmed),
+    match = detail.orders.find(
+      (o) => o.id === (linked || analysis?.orderCandidates?.[0]),
+    ),
+    [form, setForm] = useState(!match || !!onCancel),
     [kind, setKind] = useState(r.kind),
-    [supplier, setSupplier] = useState(r.supplierId ?? ""),
+    [supplier, setSupplier] = useState(r.supplierId ?? match?.supplierId ?? ""),
     [delivery, setDelivery] = useState(r.deliveryNumber),
     [orderNum, setOrderNum] = useState(r.supplierOrderNumber),
     [date, setDate] = useState(r.deliveryDate),
-    [link, setLink] = useState(linked),
+    [link, setLink] = useState(linked || (match?.id ?? "")),
     [newSupplier, setNewSupplier] = useState(false),
     [name, setName] = useState(r.supplierName),
     [email, setEmail] = useState(r.supplierEmail ?? ""),
     [phone, setPhone] = useState(r.supplierPhone ?? ""),
     [accounted, setAccounted] = useState(r.documentChecked ?? false);
   const suggested = (orderId: string) =>
-    detail.document.packingSlipAnalysis?.orderCandidates?.includes(orderId) ??
-    false;
-  if (!editing)
+    analysis?.orderCandidates?.includes(orderId) ?? false;
+  const confirm = async () => {
+    // Linking rematches the lines, so it goes first; the details then confirm on top.
+    if (
+      link &&
+      link !== linked &&
+      !(await run({ action: "link", orderId: link, confirmed: true }))
+    )
+      return;
+    if (
+      await run({
+        action: "header",
+        kind,
+        supplierId: supplier || null,
+        supplierName:
+          detail.suppliers.find((s) => s.id === supplier)?.name ?? name,
+        deliveryNumber: delivery,
+        supplierOrderNumber: orderNum,
+        deliveryDate: date,
+        confirmed: true,
+        documentChecked: accounted,
+      })
+    )
+      onDone();
+  };
+  if (!match && analysis?.status === "processing")
     return (
-      <section className={`${card} flex items-center gap-3 px-4 py-3`}>
-        <CheckCircle2Icon className="size-5 shrink-0 text-emerald-600" />
-        <div className="min-w-0 flex-1 text-sm">
-          <p className="font-medium">
-            {detail.document.packingSlip?.orderNumber ?? "No order linked"} ·{" "}
-            {typeLabel(r.kind)}
+      <p role="status" className="text-muted-foreground p-4 text-sm">
+        Finding the order while the slip is read…
+      </p>
+    );
+  if (!form && match)
+    return (
+      <div className="space-y-3 p-4">
+        <div className="rounded-lg border p-3">
+          <p className="text-muted-foreground text-sm">
+            {linked ? "Matched order" : "Suggested order"}
           </p>
-          <p className="text-muted-foreground truncate">
+          <p className="font-medium">{match.name ?? "Order"}</p>
+          <p className="text-muted-foreground text-sm">
             {[
-              detail.suppliers.find((s) => s.id === r.supplierId)?.name ??
+              detail.lists.find((l) => l.id === match.listId)?.name,
+              detail.suppliers.find((s) => s.id === supplier)?.name ??
                 r.supplierName,
-              r.deliveryNumber && `Slip ${r.deliveryNumber}`,
-              r.supplierOrderNumber && `Ref ${r.supplierOrderNumber}`,
-              r.deliveryDate,
+              typeLabel(kind),
             ]
               .filter(Boolean)
               .join(" · ")}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-          Edit
-        </Button>
-      </section>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void confirm()}>
+            <CheckIcon />
+            Yes, this order
+          </Button>
+          <Button variant="outline" onClick={() => setForm(true)}>
+            Choose another order
+          </Button>
+        </div>
+      </div>
     );
   return (
-    <section className={`${card} p-4`}>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
-        <h2 className="font-semibold">Slip details</h2>
-        {!confirmed && (
-          <p className={`text-xs ${amber.text}`}>
-            {r.kindConfirmed
-              ? "Link an order to approve lines"
-              : "Confirm before approving"}
-          </p>
-        )}
-      </div>
-      {!linked && detail.document.packingSlipAnalysis?.orderCandidates?.[0] && (
-        <p className="mb-3 text-sm" role="status">
-          Suggested Order: <strong>{detail.orders.find(o => o.id === detail.document.packingSlipAnalysis?.orderCandidates?.[0])?.name ?? "Choose from the suggested matches below"}</strong>.
-          {" "}Confirm the order below; individual item differences still need review.
-        </p>
+    <div className="p-4">
+      {!match && (
+        <p className="mb-3 text-sm">No order matched this slip. Choose it here.</p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Label name="Order in this job">
@@ -1310,35 +1484,16 @@ function Identity({
         All source pages and item lines are accounted for.
       </label>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          onClick={async () => {
-            // Linking rematches the lines, so it goes first; the details then confirm on top.
-            if (
-              link &&
-              link !== linked &&
-              !(await run({ action: "link", orderId: link, confirmed: true }))
-            )
-              return;
-            await run({
-              action: "header",
-              kind,
-              supplierId: supplier || null,
-              supplierName:
-                detail.suppliers.find((s) => s.id === supplier)?.name ?? name,
-              deliveryNumber: delivery,
-              supplierOrderNumber: orderNum,
-              deliveryDate: date,
-              confirmed: true,
-              documentChecked: accounted,
-            });
-          }}
-        >
+        <Button onClick={() => void confirm()}>
           <CheckIcon />
           Confirm details
         </Button>
-        {confirmed && (
-          <Button variant="ghost" onClick={() => setEditing(false)}>
-            Cancel
+        {(onCancel ?? match) && (
+          <Button
+            variant="ghost"
+            onClick={() => (onCancel ? onCancel() : setForm(false))}
+          >
+            {onCancel ? "Cancel" : "Back"}
           </Button>
         )}
         {detail.canCreate && (
@@ -1390,9 +1545,15 @@ function Identity({
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
+const duplicateReasons = {
+  supporting: "Marked as a repeat scan.",
+  additional: "Marked as a different delivery.",
+  replace: "Marked as replacing the earlier scan.",
+} as const;
+/** Step 1: an earlier scan that looks the same, and what this one is. */
 function DuplicateReview({
   detail,
   run,
@@ -1400,52 +1561,27 @@ function DuplicateReview({
   detail: Detail;
   run: (a: Action) => Promise<boolean>;
 }) {
-  const [reason, setReason] = useState(""),
-    [comparison, setComparison] = useState("");
+  const [other, setOther] = useState("");
   const unresolved = detail.duplicates.filter(
     (d) => !detail.review.duplicateChecked?.includes(d.key),
   );
-  if (!unresolved.length)
-    return (
-      <p className="text-muted-foreground px-1 text-sm">
-        Duplicate reviewed:{" "}
-        {detail.review.duplicateDecision?.action === "supporting"
-          ? "supporting document, no receiving"
-          : "explicit additional delivery or replacement"}
-        .
-      </p>
-    );
+  const earlier = unresolved.find((d) => d.id === other) ?? unresolved[0];
+  if (!earlier) return null;
+  const decide = (decision: keyof typeof duplicateReasons) =>
+    void run({
+      action: "duplicate",
+      decision,
+      otherDocumentId: earlier.id,
+      reason: duplicateReasons[decision],
+    });
   return (
-    <section className="rounded-xl border border-amber-300/70 bg-amber-50/60 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
-      <h3 className="flex items-center gap-2 font-semibold">
-        <AlertTriangleIcon className="size-4 text-amber-600" />
-        Possible repeated slip
-      </h3>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Review before receiving. A matching supplier order number alone is not a
-        duplicate.
-      </p>
-      {unresolved.map((d) => (
-        <div key={d.id} className="mt-3 text-sm">
-          <Link className="font-medium underline" href={`?document=${d.id}`}>
-            {d.name}
-          </Link>
-          <p className="text-muted-foreground">
-            {d.reason}
-            {d.received ? " It already has approved quantities." : ""}
-          </p>
-        </div>
-      ))}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Label name="Compare with this saved slip">
+    <div className="space-y-3 p-4 text-sm">
+      {unresolved.length > 1 && (
+        <Label name="Earlier scan">
           <select
             className={field}
-            value={
-              unresolved.some((d) => d.id === comparison)
-                ? comparison
-                : unresolved[0]!.id
-            }
-            onChange={(e) => setComparison(e.target.value)}
+            value={earlier.id}
+            onChange={(e) => setOther(e.target.value)}
           >
             {unresolved.map((d) => (
               <option key={d.id} value={d.id}>
@@ -1454,45 +1590,31 @@ function DuplicateReview({
             ))}
           </select>
         </Label>
-        <Label name="Reason for your decision">
-          <input
-            className={field}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </Label>
+      )}
+      <div className="rounded-lg border border-amber-300/70 bg-amber-50/60 p-3 dark:border-amber-500/40 dark:bg-amber-500/10">
+        <p className="flex items-center gap-2 font-medium">
+          <AlertTriangleIcon className="size-4 shrink-0 text-amber-600" />
+          <Link className="underline" href={`?document=${earlier.id}`}>
+            {earlier.name}
+          </Link>
+        </p>
+        <p className="text-muted-foreground mt-1">
+          {earlier.reason}
+          {earlier.received ? " It has already been received." : ""}
+        </p>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(["supporting", "additional", "replace"] as const).map((choice) => (
-          <Button
-            key={choice}
-            variant="outline"
-            size="sm"
-            disabled={reason.trim().length < 3}
-            onClick={() =>
-              void run({
-                action: "duplicate",
-                decision: choice,
-                otherDocumentId: unresolved.some((d) => d.id === comparison)
-                  ? comparison
-                  : unresolved[0]!.id,
-                reason,
-              })
-            }
-          >
-            {choice === "supporting"
-              ? "Keep file only"
-              : choice === "additional"
-                ? "Separate delivery"
-                : "Replace original"}
-          </Button>
-        ))}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => decide("supporting")}>
+          Same slip, don't receive
+        </Button>
+        <Button variant="outline" onClick={() => decide("additional")}>
+          Different delivery
+        </Button>
+        <Button variant="ghost" onClick={() => decide("replace")}>
+          Replace the earlier scan
+        </Button>
       </div>
-      <p className="text-muted-foreground mt-2 text-xs">
-        Leave this review to cancel receiving. The saved scan stays in the
-        queue.
-      </p>
-    </section>
+    </div>
   );
 }
 function LineReview({
