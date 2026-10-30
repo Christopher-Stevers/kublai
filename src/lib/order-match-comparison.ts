@@ -57,3 +57,13 @@ export function comparisonDates(
           : `${Math.abs(difference)} ${Math.abs(difference) === 1 ? "day" : "days"} ${difference > 0 ? "after" : "before"} order`,
   };
 }
+
+export type RankedOrderMatch = {
+  orderId: string;
+  orderNumber: string;
+  supplier: string | null;
+  listName: string;
+  sentAt: string | null;
+  found: number;
+  weak: boolean;
+};

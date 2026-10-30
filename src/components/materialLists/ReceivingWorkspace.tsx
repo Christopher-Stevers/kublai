@@ -1,4 +1,5 @@
 "use client";
+import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
 import { PackingSlipActivity, type ProcessingJob } from "./PackingSlipActivity";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
@@ -1335,9 +1336,18 @@ function Identity({
   // until the reviewer explicitly chooses a value; polling must not erase edits.
   const link = linkChoice ?? (linked || match?.id || "");
   const supplier = supplierChoice ?? r.supplierId ?? match?.supplierId ?? "";
+  const readingKey = `${analysis?.runId}:${analysis?.status}:${analysis?.progress?.completed}:${analysis?.completedAt}`;
+  const chooseOrder = (id: string) => {
+    setLink(id);
+    setForm(true);
+    const order = detail.orders.find((o) => o.id === id);
+    setSupplier(order?.supplierId ?? "");
+  };
+  const candidates = <OrderMatchCandidates jobId={jobId} documentId={detail.document.id}
+    readingKey={readingKey} selectedId={link} onSelect={chooseOrder} />;
   const comparison = link ? <OrderMatchPreview
     jobId={jobId} documentId={detail.document.id} orderId={link}
-    readingKey={`${analysis?.runId}:${analysis?.status}:${analysis?.progress?.completed}:${analysis?.completedAt}`}
+    readingKey={readingKey}
     sourceUrl={detail.sourceUrl}
   /> : null;
   const suggested = (orderId: string) =>
@@ -1391,6 +1401,7 @@ function Identity({
               .join(" · ")}
           </p>
         </div>
+        {candidates}
         {comparison}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void confirm()}>
@@ -1405,6 +1416,7 @@ function Identity({
     );
   return (
     <div className="p-4" onChange={() => setForm(true)}>
+      <div className="mb-4">{candidates}</div>
       {!match && (
         <p className="mb-3 text-sm">No order matched this slip. Choose it here.</p>
       )}
@@ -1413,11 +1425,7 @@ function Identity({
           <select
             className={field}
             value={link}
-            onChange={(e) => {
-              setLink(e.target.value);
-              const order = detail.orders.find((o) => o.id === e.target.value);
-              if (order?.supplierId) setSupplier(order.supplierId);
-            }}
+            onChange={(e) => chooseOrder(e.target.value)}
           >
             <option value="" disabled={!!linked}>
               Choose order

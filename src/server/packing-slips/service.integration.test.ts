@@ -44,6 +44,7 @@ import {
   mutateReceiving,
   importTrialReview,
   receivingOrderComparison,
+  receivingOrderCandidates,
 } from "./receiving-service";
 import { receivingInput } from "./receiving-input";
 import { randomUUID } from "node:crypto";
@@ -434,6 +435,10 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         doc.documentId,
         order,
       );
+      const ranked = await receivingOrderCandidates(access, doc.documentId);
+      expect(ranked.length).toBeGreaterThan(0);
+      expect(ranked.length).toBeLessThanOrEqual(5);
+      expect(ranked[0]?.orderId).toBe(order);
       expect(preview.rows[0]?.slip?.quantity).toBe(6);
       expect(preview.rows[0]?.order?.quantity).toBe(10);
       expect((await workspace()).documents[0]).toEqual(before);
@@ -458,6 +463,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       expect(reader).not.toHaveBeenCalled();
       expect(Number((await item()).receivedQuantity)).toBe(2);
       test.receive = false;
+      await expect(receivingOrderCandidates(access, doc.documentId)).rejects.toMatchObject({code: "FORBIDDEN"});
       await expect(
         receivingOrderComparison(access, doc.documentId, order),
       ).rejects.toMatchObject({ code: "FORBIDDEN" });

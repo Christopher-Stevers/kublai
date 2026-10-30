@@ -11,6 +11,7 @@ import {
   mutateReceiving,
   receivingQueue,
   receivingOrderComparison,
+  receivingOrderCandidates,
 } from "~/server/packing-slips/receiving-service";
 import { startSlipAnalysis } from "~/server/packing-slips/service";
 export const runtime = "nodejs";
@@ -26,6 +27,13 @@ export async function GET(request: Request) {
         .parse(q.get("documentId") ?? undefined);
     const { userId } = await getRequestIdentity(request.headers, { request });
     const access = await assertDocumentAccess(userId, jobId);
+    if (q.get("rankOrders") === "1") {
+      if (!documentId)
+        throw new Error("A packing slip is required for ranking.");
+      return Response.json(await receivingOrderCandidates(access, documentId), {
+        headers,
+      });
+    }
     if (q.has("compareOrderId")) {
       const orderId = z.uuid().parse(q.get("compareOrderId"));
       if (!documentId)

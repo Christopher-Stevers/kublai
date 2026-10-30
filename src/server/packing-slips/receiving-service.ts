@@ -53,7 +53,9 @@ import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
 import { comparisonRows } from "./order-comparison";
-import type { OrderMatchComparison } from "~/lib/order-match-comparison";
+import { jobOrders } from "./find-order-service";
+import { findOrder } from "./find-order";
+import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -120,6 +122,44 @@ function duplicateList(state: DocumentState, doc: JobDocument) {
         : [];
     });
 }
+/** Rank the current saved reading locally; no OCR, model call, or write. */
+export async function receivingOrderCandidates(
+  access: DocumentAccess,
+  documentId: string,
+): Promise<RankedOrderMatch[]> {
+  receiveAccess(access);
+  const state = await readWorkspace(access);
+  const doc = accessibleDocument(state, documentActor(access, []), documentId);
+  const analysis = doc.packingSlipAnalysis;
+  if (!analysis || analysis.versionId !== doc.currentVersionId) return [];
+  const lines = analysis.status === "processing"
+    ? analysis.progress?.lines ?? analysis.lines
+    : analysis.lines;
+  if (!lines.length) return [];
+  const orders = await jobOrders(access);
+  const rows = lines.map((line) => ({
+    page: line.page,
+    text: [line.sku, line.description, line.evidence].filter(Boolean).join(" "),
+  }));
+  // Only a supplier actually read from the slip adds evidence. The currently
+  // selected order's supplier must not bias its own rank.
+  const supplier = analysis.cascade?.document?.supplierName;
+  if (supplier) rows.push({ page: -1, text: supplier });
+  const { ranked } = findOrder(rows, orders.map((order) => order.slip));
+  return ranked.slice(0, 5).map((rank) => {
+    const order = orders.find((order) => order.option.id === rank.orderId)!.option;
+    return {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      supplier: order.supplier,
+      listName: order.materialListName,
+      sentAt: order.sentAt,
+      found: rank.found,
+      weak: rank.found < 1 || rank.score < 0.35,
+    };
+  });
+}
+
 /** Preview only: never links an order, changes quantities, or invokes a reader. */
 export async function receivingOrderComparison(
   access: DocumentAccess,
