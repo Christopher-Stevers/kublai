@@ -163,7 +163,13 @@ const analyze = (
   items = [item],
   pages = [page],
   memory?: { known: Record<string, string[]>; expectFooter: boolean },
-) => analyzeSlip(rows, items, noAssistant, { pages, ask, memory });
+) =>
+  analyzeSlip(rows, items, noAssistant, {
+    pages,
+    ask,
+    memory,
+    forceImageReading: true,
+  });
 /** The same item without a SKU, so no printed code settles the product. */
 const uncoded = { ...item, sku: null };
 
@@ -1261,4 +1267,35 @@ it("sets a quantity column under the OCR's words for its heading", () => {
   // Nor is a box with no heading words over it.
   const bare = { ...heading, left: 0.4, right: 0.45 };
   expect(snapColumns({ ordered: bare }, words).ordered).toBe(bare);
+});
+
+it("finishes clear 98% OCR without calling either model", async () => {
+  const ask = vi.fn<VisionAsk>();
+  const evaluate = vi.fn<Evaluator>();
+  const result = await analyzeSlip([header, line], [item], evaluate, {
+    pages: [page],
+    ask,
+  });
+  expect(result.lines[0]?.proposed).toBe(6);
+  expect(result.model).toBe("table reader");
+  expect(ask).not.toHaveBeenCalled();
+  expect(evaluate).not.toHaveBeenCalled();
+});
+
+it("checks only the uncertain OCR row and preserves the clear row", async () => {
+  const clear = row(["DEF456", "Copper tee", "10", "6", "4", "ea"], 0.3);
+  const uncertain = structuredClone(line);
+  uncertain.words[3]!.confidence = 40;
+  const other = { ...item, id: "b", sku: "DEF456", description: "Copper tee" };
+  const { ask, calls } = fakeJev({});
+  const result = await analyzeSlip(
+    [header, uncertain, clear],
+    [item, other],
+    noAssistant,
+    { pages: [page], ask },
+  );
+  expect(calls.filter((c) => c === "main")).toHaveLength(1);
+  expect(calls).not.toContain("items");
+  expect(result.lines.find((l) => l.orderItemId === "b")?.source).toBe("table");
+  expect(result.lines.find((l) => l.orderItemId === "b")?.proposed).toBe(6);
 });

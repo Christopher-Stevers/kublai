@@ -74,7 +74,7 @@ export function traceUsage() {
       "https://typesafe.ai/blog/introducing-system-one-models-and-jev ; https://developers.openai.com/api/docs/models/gpt-6.1-terra",
   };
 }
-export const READER_VERSION = "receiving-2026-10-27.3";
+export const READER_VERSION = "receiving-2026-10-30.1";
 /** Always freeze the complete reference input, including cheap-only readings. */
 export async function captureDetectionInput(
   input: Omit<

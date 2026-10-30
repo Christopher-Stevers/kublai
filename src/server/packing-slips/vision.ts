@@ -716,6 +716,8 @@ export async function readSlipImages(input: {
   items: ReceiptOrderItem[];
   /** Lines from the OCR table reader, used for where each line is. */
   tableLines: SlipLine[];
+  /** Only these uncertain OCR rows need line-level image checks. */
+  targets?: SlipLine[];
   ask?: VisionAsk;
   /** Order item id → supplier codes confirmed on earlier deliveries. */
   known?: Record<string, string[]>;
@@ -806,7 +808,8 @@ export async function readSlipImages(input: {
   // Without printed totals it checks every slip. With totals it found nothing
   // more and cost a third more output tokens in testing, so there it only
   // stands in when the totals cannot be squared.
-  const itemChecks = footer ? Promise.resolve(null) : readItems();
+  const itemChecks =
+    footer || input.targets ? Promise.resolve(null) : readItems();
   // Photos often defeat the table reader, which then finds only some lines.
   // Where Jev counts more lines starting on a page, Jev finds them all. A
   // count it is unsure of only stands in when there is no table at all.
@@ -830,6 +833,10 @@ export async function readSlipImages(input: {
         );
   for (const info of pageInfo) {
     const own = tableBands.filter((b) => b.page === info.page);
+    if (input.targets) {
+      bands.push(...own);
+      continue;
+    }
     const count = choice(info.answers.count);
     const n = lineCount(count) ?? 0;
     if (count?.choice === "unclear" && !own.length)
@@ -917,8 +924,12 @@ export async function readSlipImages(input: {
     completed: 0,
     total: bands.length,
   });
+  const selectedBands = bands.filter(
+    (band) =>
+      !input.targets || (band.table && input.targets.includes(band.table)),
+  );
   const readings = await limited(
-    bands.map((band, index) => async (): Promise<Reading> => {
+    selectedBands.map((band, index) => async (): Promise<Reading> => {
       const info = pageInfo[band.page - 1]!;
       const png = pages[band.page - 1]!;
       const titled = headingsFor(info),
@@ -1225,10 +1236,32 @@ export async function readSlipImages(input: {
     total: readings.length,
     lines,
   });
+  if (input.targets) {
+    const count = choice(last?.answers.lines);
+    const expectedCount =
+      count && count.confidence >= COUNT_MIN ? lineCount(count) : null;
+    if (expectedCount !== null && expectedCount !== input.tableLines.length)
+      warnings.push(
+        "The printed line count does not match the OCR rows. Check for split or missing lines.",
+      );
+    if (
+      last?.total?.value != null &&
+      last.total.confidence >= TOTAL_MIN &&
+      input.tableLines.every((l) => l.shipped !== null) &&
+      Math.abs(
+        input.tableLines.reduce((sum, l) => sum + l.shipped!, 0) -
+          last.total.value,
+      ) > 0.001
+    )
+      warnings.push(
+        "The printed total shipped does not match the OCR rows. Check quantities and row coverage.",
+      );
+  }
   let checks = await itemChecks;
-  const { problems, countOff, counted, shipped } = last
-    ? totalsProblems(lines, readings, last.answers, last.total)
-    : { problems: [], countOff: false, counted: false, shipped: null };
+  const { problems, countOff, counted, shipped } =
+    last && !input.targets
+      ? totalsProblems(lines, readings, last.answers, last.total)
+      : { problems: [], countOff: false, counted: false, shipped: null };
   const total =
     last?.total?.value != null && last.total.confidence >= TOTAL_MIN
       ? last.total.value

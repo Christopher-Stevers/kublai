@@ -5,7 +5,7 @@ import {
   slipReading,
 } from "~/lib/packing-slip-review";
 
-export const CASCADE_POLICY = "ocr-jev-terra-2026-10-27.1";
+export const CASCADE_POLICY = "ocr-jev-terra-2026-10-30.1";
 export type CheapReading = {
   lines: SlipLine[];
   warnings: string[];
@@ -118,8 +118,8 @@ export function mergeAssistedLines(
           quantityClear: false,
           readings: [...lineReadings(old), slipReading(candidate)],
         };
-      if (conflict(old, candidate))
-        lines[i].issues.push(
+        if (conflict(old, candidate))
+          lines[i].issues.push(
             "Readers disagree. Check this line against the source before approving.",
           );
       } else {
@@ -136,8 +136,7 @@ export function mergeAssistedLines(
       base.some((l) => overlap(l, candidate) > 0.15)
     ) {
       base.forEach((l, i) => {
-        if (matches.includes(i) || overlap(l, candidate) > 0.15)
-          touched.add(i);
+        if (matches.includes(i) || overlap(l, candidate) > 0.15) touched.add(i);
       });
       warnings.push(
         `Page ${candidate.page}: another reading could not be aligned safely; check for split or missing lines.`,

@@ -154,3 +154,35 @@ it("records an assisted reading but never produces an approved receipt", async (
   expect(input.base.lines[0]!.shipped).toBeNull();
   expect(result.lines[0]!.issues.join()).toMatch(/Verify the source/);
 });
+
+it("asks only about unresolved rows and ignores unsolicited clear-row rereadings", async () => {
+  const input = args();
+  const clear = { ...source, page: 2, shipped: 8, proposed: 8, issues: [] };
+  input.base.lines.push(clear);
+  const result = await productionCascade(input);
+  expect(mocks.read.mock.calls[0]?.[1].targetLineIndexes).toEqual([0]);
+  expect(result.lines[1]).toEqual(clear);
+});
+
+it("order uncertainty alone never rereads already resolved rows", async () => {
+  const input = args();
+  input.base.lines = [{ ...source, shipped: 8, proposed: 8, issues: [] }];
+  input.unresolvedOrder = true;
+  const result = await productionCascade(input);
+  expect(mocks.read.mock.calls[0]?.[1].targetLineIndexes).toEqual([]);
+  expect(result.lines).toEqual(input.base.lines);
+});
+
+it("replaces uncertain row segmentation instead of retaining phantom continuation rows", async () => {
+  const input = args();
+  input.base.warnings.push("OCR line count does not match the printed total.");
+  input.base.lines.push({
+    ...source,
+    evidence: "description continuation",
+    sku: null,
+  });
+  const result = await productionCascade(input);
+  expect(mocks.read.mock.calls[0]?.[1].targetLineIndexes).toBeNull();
+  expect(result.lines).toHaveLength(1);
+  expect(result.lines[0]?.proposed).toBeNull();
+});

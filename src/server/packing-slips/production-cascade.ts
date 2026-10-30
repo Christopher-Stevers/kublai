@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import {
   escalationPlan,
+  sameLine,
   mergeAssistedLines,
   type CheapReading,
 } from "./cascade-policy";
@@ -12,7 +13,7 @@ import {
   type FallbackInput,
 } from "./terra-fallback";
 import { packingSlipTerraCalls } from "./terra-call-schema";
-import type { SlipAnalysis } from "~/lib/packing-slip-review";
+import { lineReadings, type SlipAnalysis } from "~/lib/packing-slip-review";
 import { recordPipelineStage } from "./trace";
 type Scope = {
   runId: string;
@@ -78,19 +79,17 @@ export async function reserveTerra(scope: Scope, requestHash: string) {
         limit("PACKING_SLIP_TERRA_DAILY_CALLS", 50, 500)
     )
       return { kind: "budget-limited" as const };
-    await tx
-      .insert(packingSlipTerraCalls)
-      .values({
-        id: scope.runId,
-        organizationId: scope.organizationId,
-        jobId: scope.jobId,
-        documentId: scope.documentId,
-        versionId: scope.versionId,
-        sourceHash: scope.sourceHash,
-        requestHash,
-        status: "reserved",
-        budgetUsd: 1,
-      });
+    await tx.insert(packingSlipTerraCalls).values({
+      id: scope.runId,
+      organizationId: scope.organizationId,
+      jobId: scope.jobId,
+      documentId: scope.documentId,
+      versionId: scope.versionId,
+      sourceHash: scope.sourceHash,
+      requestHash,
+      status: "reserved",
+      budgetUsd: 1,
+    });
     return { kind: "reserved" as const };
   });
 }
@@ -128,7 +127,16 @@ export async function productionCascade<T extends CheapReading>(args: {
   let reserved = false;
   try {
     await args.assertCurrent();
-    const context = await args.context();
+    const fullReading =
+      !args.base.lines.length ||
+      plan.reasons.includes("Page coverage or totals need another reading");
+    const targets = fullReading
+      ? args.base.lines.map((_, i) => i)
+      : plan.lineIndexes;
+    const context: FallbackInput = {
+      ...(await args.context()),
+      targetLineIndexes: fullReading ? null : targets,
+    };
     if (
       Buffer.byteLength(JSON.stringify(context)) > 120000 ||
       !args.pages.length ||
@@ -180,17 +188,32 @@ export async function productionCascade<T extends CheapReading>(args: {
         .where(eq(packingSlipTerraCalls.id, args.scope.runId));
       reserved = false;
     }
-    const targets =
-      args.unresolvedOrder || !args.base.lines.length
-        ? args.base.lines.map((_, i) => i)
-        : plan.lineIndexes;
-    const merged = mergeAssistedLines(
-      args.base.lines,
-      fallbackLines(assisted.output),
-      targets,
+    // Ignore unsolicited rereadings of clear rows. An order-only question
+    // must not turn into another full-slip reading through the merge path.
+    const assistedLines = fallbackLines(assisted.output).filter(
+      (line) =>
+        fullReading || targets.some((i) => sameLine(args.base.lines[i]!, line)),
     );
-    result.lines = merged.lines;
-    result.warnings.push(...merged.warnings, ...assisted.output.warnings);
+    const merged = mergeAssistedLines(args.base.lines, assistedLines, targets);
+    // When row segmentation itself failed, do not retain spurious OCR
+    // continuation fragments alongside the newly resolved product rows.
+    // These are provisional predictions; saved human decisions live separately.
+    result.lines =
+      fullReading && assistedLines.length
+        ? assistedLines.map((line) => ({
+            ...line,
+            readings: [
+              ...args.base.lines
+                .filter((old) => sameLine(old, line))
+                .flatMap(lineReadings),
+              ...lineReadings(line),
+            ],
+          }))
+        : merged.lines;
+    result.warnings.push(
+      ...(fullReading ? [] : merged.warnings),
+      ...assisted.output.warnings,
+    );
     result.model = `${args.base.model || "OCR"} → ${assisted.model}`;
     result.suggestedOrderId = assisted.output.orderId;
     cascade.status = "completed";

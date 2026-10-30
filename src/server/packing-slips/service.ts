@@ -587,12 +587,19 @@ async function performSlipTask(
       linkedOrderId: task.orderId,
       identified,
     });
-    let suggested = identified?.orders.find((o) => o.id === (identified.match ?? ("suggestion" in identified ? identified.suggestion : null)));
+    let suggested = identified?.orders.find(
+      (o) =>
+        o.id ===
+        (identified.match ??
+          ("suggestion" in identified ? identified.suggestion : null)),
+    );
     if (suggested) {
       const { db } = await import("~/server/db");
       task.analysis.items = await orderSnapshot(db, access, suggested.id);
     }
     const readingOrderId = task.orderId ?? suggested?.id;
+    const unresolvedOrder =
+      !task.orderId && !identified?.match && !!identified?.orders.length;
     const memory =
       readingOrderId && extracted.pages.length
         ? await import("~/server/db")
@@ -635,7 +642,7 @@ async function performSlipTask(
       },
       base: cheap,
       pages: extracted.pages,
-      unresolvedOrder: !readingOrderId && !!identified?.orders.length,
+      unresolvedOrder,
       assertCurrent: async () => {
         const current = await mutateWorkspace(
           access.user.id,
@@ -657,14 +664,16 @@ async function performSlipTask(
       progress: (message) =>
         report({ stage: "checking", message, lines: cheap.lines }),
       context: async () => {
-        const ids = readingOrderId
-          ? [readingOrderId]
-          : (identified?.candidates ?? []);
+        const ids =
+          readingOrderId && !unresolvedOrder
+            ? [readingOrderId]
+            : (identified?.candidates ?? []);
         // Include all candidates when bounded; otherwise use the cheap reader's
         // shortlist and explicitly permit abstention for an incomplete pool.
-        let candidates = readingOrderId
-          ? options.filter((o) => ids.includes(o.option.id))
-          : options;
+        let candidates =
+          readingOrderId && !unresolvedOrder
+            ? options.filter((o) => ids.includes(o.option.id))
+            : options;
         const data = () =>
           candidates.map((o) => ({
             id: o.option.id,
@@ -687,11 +696,8 @@ async function performSlipTask(
         return {
           orders: data(),
           candidatePoolComplete: candidates.length === options.length,
-          linkedOrderId: readingOrderId ?? null,
-          reasons: escalationPlan(
-            cheap,
-            !readingOrderId && !!identified?.orders.length,
-          ).reasons,
+          linkedOrderId: unresolvedOrder ? null : (readingOrderId ?? null),
+          reasons: escalationPlan(cheap, unresolvedOrder).reasons,
           earlierLines: cheap.lines.map(
             ({
               page,
@@ -718,20 +724,38 @@ async function performSlipTask(
         };
       },
     });
-    if (!readingOrderId && result.suggestedOrderId) {
+    if (!task.orderId && result.suggestedOrderId) {
       suggested = identified?.orders.find(
         (o) => o.id === result.suggestedOrderId,
       );
       if (suggested) {
         const { db } = await import("~/server/db");
         task.analysis.items = await orderSnapshot(db, access, suggested.id);
+        // An order-only answer cannot carry item IDs from a different order.
+        const allowed = new Set(task.analysis.items.map((i) => i.id));
+        for (const line of result.lines) {
+          if (line.orderItemId && !allowed.has(line.orderItemId)) {
+            line.orderItemId = null;
+            line.proposed = null;
+            line.issues.push(
+              "Order suggestion changed. Match this product to the suggested order before approving.",
+            );
+          }
+        }
         result.warnings.push(
           "Terra suggested this order. Confirm the order identity against the source before approving.",
         );
       }
     }
-    if (suggested && !task.orderId && !identified?.match && !result.suggestedOrderId)
-      result.warnings.push(`Suggested order: ${suggested.orderNumber}. Confirm the order in Slip details; item discrepancies remain separate review flags.`);
+    if (
+      suggested &&
+      !task.orderId &&
+      !identified?.match &&
+      !result.suggestedOrderId
+    )
+      result.warnings.push(
+        `Suggested order: ${suggested.orderNumber}. Confirm the order in Slip details; item discrepancies remain separate review flags.`,
+      );
     await recordPipelineStage("final-reading", result);
     await mutateWorkspace(
       access.user.id,
@@ -747,7 +771,11 @@ async function performSlipTask(
           doc.packingSlipAnalysis?.runId !== task.analysis.runId
         )
           return;
-        if (suggested && (identified?.match === suggested.id || result.suggestedOrderId === suggested.id)) {
+        if (
+          suggested &&
+          (identified?.match === suggested.id ||
+            result.suggestedOrderId === suggested.id)
+        ) {
           const chosen = await orderFor(tx, fresh, suggested.id);
           doc.packingSlip = {
             orderId: chosen.id,

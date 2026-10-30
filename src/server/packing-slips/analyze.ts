@@ -1,3 +1,4 @@
+import { ocrTotalsWarnings } from "./ocr-totals";
 import { recordModelCall, recordPipelineStage } from "./trace";
 import { z } from "zod";
 import {
@@ -18,7 +19,7 @@ import {
 import { matchLines } from "./match";
 import { recoverProductRows } from "./recover-rows";
 import { readSlipImages, VISION_MODEL, type VisionAsk } from "./vision";
-import { sameLine } from "./cascade-policy";
+import { sameLine, escalationPlan } from "./cascade-policy";
 type Question = {
   type: "choice";
   instructions: unknown;
@@ -776,7 +777,7 @@ export async function analyzeSlip(
   rows: SlipRow[],
   items: ReceiptOrderItem[],
   run: Evaluator = evaluate,
-  /** Page images (PNG, page order): Jev then reads every line from them. */
+  /** Page images (PNG, page order), used only when OCR leaves uncertainty. */
   images?: {
     onProgress?: (progress: SlipProgress) => Promise<void>;
     pages: Buffer[];
@@ -784,6 +785,8 @@ export async function analyzeSlip(
     /** What earlier deliveries from this supplier taught. */
     memory?: { known: Record<string, string[]>; expectFooter: boolean };
     models?: boolean;
+    /** Explicit reader comparison only; production always uses the cascade. */
+    forceImageReading?: boolean;
   },
 ) {
   if (items.length > 200)
@@ -820,22 +823,30 @@ export async function analyzeSlip(
     images?.pages.length &&
     (images.ask ?? process.env.TYPESAFE_API_KEY),
   );
-  const deterministic =
-    lines.length > 0 &&
-    table.unread.length === 0 &&
-    rows.every((r) => r.words.every((w) => w.confidence === 100)) &&
-    lines.every(
-      (l) =>
-        l.orderItemId &&
-        l.proposed !== null &&
-        !l.issues.length &&
-        l.sku &&
-        items.some(
-          (i) =>
-            i.id === l.orderItemId &&
-            i.sku?.trim().toUpperCase() === l.sku!.trim().toUpperCase(),
-        ),
-    );
+  // OCR confidence is measured on product fields, not every word on the
+  // page (addresses and footer noise must not trigger paid rereading).
+  for (const page of new Set(rows.map((r) => r.page))) {
+    if (
+      !table.layouts.some((l) => l.page === page) &&
+      table.unread.filter(
+        (r) =>
+          r.page === page && numberCandidates(r).length && r.words.length >= 2,
+      ).length >= 3
+    )
+      warnings.push(
+        `Page ${page} has no item table that could be read. Check it by hand.`,
+      );
+  }
+  warnings.push(...ocrTotalsWarnings(rows, lines));
+  const plan = escalationPlan({ lines, warnings, model });
+  const deterministic = !images?.forceImageReading && plan.reasons.length === 0;
+  const targets = plan.lineIndexes.map((i) => lines[i]!);
+  const targeted =
+    !images?.forceImageReading &&
+    targets.length > 0 &&
+    table.layouts.length > 0 &&
+    targets.every((l) => !!l.box) &&
+    !plan.reasons.includes("Page coverage or totals need another reading");
   const vision =
     images && canRead && !deterministic
       ? await readSlipImages({
@@ -844,6 +855,7 @@ export async function analyzeSlip(
           rows,
           items,
           tableLines: lines,
+          targets: targeted ? targets : undefined,
           ask: images.ask,
           known: images.memory?.known,
           expectFooter: images.memory?.expectFooter,
@@ -868,8 +880,16 @@ export async function analyzeSlip(
       if (own.reader !== "ocr" && ocr.length === 1)
         v.readings = [slipReading(ocr[0]!), own];
     }
-    lines = vision.lines;
+    // A targeted check cannot overwrite an already clear OCR row.
+    lines = targeted
+      ? lines.map((line) => {
+          if (!targets.includes(line)) return line;
+          const candidates = vision.lines.filter((v) => sameLine(line, v));
+          return candidates.length === 1 ? candidates[0]! : line;
+        })
+      : vision.lines;
     model = vision.model;
+    if (!targeted) warnings.length = 0; // Full image coverage supersedes OCR routing warnings.
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
   } else if (
