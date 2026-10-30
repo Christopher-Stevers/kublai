@@ -18,7 +18,6 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   EyeIcon,
-  EyeOffIcon,
   FileTextIcon,
   Loader2Icon,
   PlusIcon,
@@ -35,7 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { DocumentPdfPreview } from "~/components/jobs/documents/DocumentPdfPreview";
 import { SlipLineImage } from "./SlipLineImage";
 import { SlipProcessingProgress } from "./SlipProcessingProgress";
 import type {
@@ -233,7 +231,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [search, setSearch] = useState(""),
     [notice, setNotice] = useState(""),
     [progress, setProgress] = useState(true),
-    [source, setSource] = useState(false),
     [preview, setPreview] = useState(false),
     [reason, setReason] = useState(""),
     [over, setOver] = useState(false),
@@ -263,7 +260,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     setDetail(id ? data : null);
   }, [jobId, id]);
   useEffect(() => {
-    setSource(window.matchMedia?.("(min-width: 1280px)").matches ?? false);
     setDetail(null);
     setError("");
     setNotice("");
@@ -491,17 +487,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             </Button>
           )}
           {detail && (
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={source ? "Hide source" : "View source"}
-              aria-pressed={source}
-              onClick={() => setSource(!source)}
-            >
-              {source ? <EyeOffIcon /> : <EyeIcon />}
-              <span>
-                {source ? "Hide source" : "View source"}
-              </span>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={slipViewerHref(jobId, detail)}>
+                <EyeIcon />
+                View source
+              </Link>
             </Button>
           )}
           <Button
@@ -801,16 +791,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               <p>This slip was replaced.</p>
             </Callout>
           )}
-          <div
-            className={`grid gap-5 ${source ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}
-          >
-            {source && (
-              <aside
-                className={`${card} h-[55vh] overflow-hidden xl:sticky xl:top-20 xl:h-[75vh]`}
-              >
-                <SourceView detail={detail} />
-              </aside>
-            )}
+          <div className="grid gap-5">
             <div className="min-w-0 space-y-4">
               <fieldset
                 disabled={busy || !online || blocked}
@@ -2035,23 +2016,6 @@ function OrderComparison({
 }
 const slipViewerHref = (jobId: string, detail: Detail) =>
   `/jobs/${jobId}/documents?document=${detail.document.id}&from=receiving`;
-function SourceView({ detail }: { detail: Detail }) {
-  return detail.sourceMimeType?.startsWith("image/") ? (
-    <a href={detail.sourceUrl} target="_blank" rel="noreferrer">
-      <img
-        src={detail.sourceUrl}
-        alt={detail.document.name}
-        className="h-full w-full object-contain"
-      />
-    </a>
-  ) : (
-    <DocumentPdfPreview
-      url={detail.sourceUrl}
-      title={detail.document.name}
-      fillHeight
-    />
-  );
-}
 function LineReview({
   line: l,
   index,

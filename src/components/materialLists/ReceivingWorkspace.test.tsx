@@ -145,8 +145,10 @@ it("shows source issues and never receives automatically", async () => {
   await screen.findByRole("heading", { name: "Valve" });
   expect(screen.getByText("Unclear pipe")).toBeInTheDocument();
   expect(posts).toEqual([]);
-  fireEvent.click(screen.getByRole("button", { name: "View source" }));
-  expect(screen.getByText("Source PDF")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "View source" })).toHaveAttribute(
+    "href",
+    "/jobs/job/documents?document=doc&from=receiving",
+  );
 });
 it("opens the slip in the documents viewer from step 3", async () => {
   render(<ReceivingWorkspace jobId="job" />);
