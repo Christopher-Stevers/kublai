@@ -145,14 +145,15 @@ it("shows source issues and never receives automatically", async () => {
   fireEvent.click(screen.getByRole("button", { name: "View source" }));
   expect(screen.getByText("Source PDF")).toBeInTheDocument();
 });
-it("opens the whole slip from step 3", async () => {
+it("opens the slip in the documents viewer from step 3", async () => {
   render(<ReceivingWorkspace jobId="job" />);
   const step = await screen.findByRole("region", {
     name: "Step 3: Compare with the order",
   });
-  fireEvent.click(within(step).getByRole("button", { name: "View slip" }));
-  const dialog = await screen.findByRole("dialog");
-  expect(within(dialog).getByText("Source PDF")).toBeInTheDocument();
+  expect(within(step).getByRole("link", { name: "View slip" })).toHaveAttribute(
+    "href",
+    "/jobs/job/documents?document=doc",
+  );
 });
 it("previews and approves only ready lines, retaining unresolved lines", async () => {
   render(<ReceivingWorkspace jobId="job" />);
