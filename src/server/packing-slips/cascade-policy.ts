@@ -90,7 +90,8 @@ export function mergeAssistedLines(
 ) {
   const lines = structuredClone(base),
     warnings: string[] = [];
-  const used = new Set<number>();
+  const used = new Set<number>(),
+    touched = new Set<number>();
   for (const candidate of assisted) {
     const matches = base.flatMap((l, i) => (sameLine(l, candidate) ? [i] : []));
     if (
@@ -127,6 +128,10 @@ export function mergeAssistedLines(
       matches.length ||
       base.some((l) => overlap(l, candidate) > 0.15)
     ) {
+      base.forEach((l, i) => {
+        if (matches.includes(i) || overlap(l, candidate) > 0.15)
+          touched.add(i);
+      });
       warnings.push(
         `Page ${candidate.page}: another reading could not be aligned safely; check for split or missing lines.`,
       );
@@ -143,9 +148,17 @@ export function mergeAssistedLines(
     }
   }
   for (const i of targets)
-    if (!used.has(i) && base[i])
-      lines[i]!.issues.push(
-        "Terra could not resolve this row. The earlier reading was kept for manual review.",
-      );
+    if (!used.has(i) && base[i]) {
+      // Nothing Terra read lies on this row: likely a carton, total or note.
+      if (!touched.has(i)) {
+        lines[i]!.terraFoundNothing = true;
+        lines[i]!.issues.push(
+          "Terra found no product on this row. It may be a carton, total or note line.",
+        );
+      } else
+        lines[i]!.issues.push(
+          "Terra could not resolve this row. The earlier reading was kept for manual review.",
+        );
+    }
   return { lines, warnings: [...new Set(warnings)] };
 }

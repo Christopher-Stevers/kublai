@@ -1626,6 +1626,35 @@ function lineReading(l: ReceivingLine) {
     confidence: c ? (c.overall ?? Math.min(c.part, c.quantity)) : null,
   };
 }
+/** Terra checked this row and did not back the earlier reading. */
+function terraCheck(l: ReceivingLine, detail: Detail) {
+  if (
+    l.ignored ||
+    l.approved ||
+    l.predictionSource ||
+    l.readingSource?.reader === "terra"
+  )
+    return null;
+  const a = detail.document.packingSlipAnalysis,
+    source =
+      l.sourceIndex === undefined || detail.review.analysisRunId !== a?.runId
+        ? undefined
+        : a?.lines[l.sourceIndex];
+  if (
+    source?.terraFoundNothing ||
+    l.issues.some((s) => s.startsWith("Terra found no product"))
+  )
+    return {
+      reader: "found no product here",
+      text: "Terra found no product on this row. It may be a carton, total or note line.",
+    };
+  if (l.issues.some((s) => s.startsWith("Terra could not resolve this row")))
+    return {
+      reader: "could not confirm it",
+      text: "Terra checked this row and could not confirm a product. It may be a carton, total or note line.",
+    };
+  return null;
+}
 const unsure = (confidence: number | null) =>
   confidence !== null && confidence < 0.8;
 /** The slip lines against one order item, in the order's unit. */
@@ -1865,6 +1894,16 @@ function OrderComparison({
                           )}
                         </li>
                       ))}
+                      {live.flatMap((x) => {
+                        const check = terraCheck(x.line, detail);
+                        return check
+                          ? [
+                              <li key={`terra:${x.line.id}`} className={amber.text}>
+                                {readerLabels.terra} · {check.reader}
+                              </li>,
+                            ]
+                          : [];
+                      })}
                       {trialReadings.map(({ reader, t }) => (
                         <li key={`${reader}:${t.lineId}`}>
                           {readerLabels[reader]} · {t.shipped ?? "?"}{" "}
@@ -1958,6 +1997,7 @@ function LineReview({
     detail.review.versionId === detail.document.currentVersionId
       ? (l.sourceBox ?? source?.box)
       : undefined;
+  const terra = terraCheck(l, detail);
   const save = (asChecked: boolean) =>
     run({
       action: "line",
@@ -2004,7 +2044,24 @@ function LineReview({
               label={`Source for line ${index + 1}`}
             />
           )}
-          {l.issues.length > 0 && !l.checked && (
+          {terra ? (
+            <div className="space-y-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+              <p>{terra.text}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  void run({
+                    action: "ignore",
+                    lineId: l.id,
+                    reason: "Not a product line.",
+                  })
+                }
+              >
+                Not a product, leave it out
+              </Button>
+            </div>
+          ) : l.issues.length > 0 && !l.checked && (
             <p className="text-sm">
               {sourceBox
                 ? "The reading is unsure. Check the slip image above."

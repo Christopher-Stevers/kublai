@@ -415,3 +415,31 @@ it("puts suggested order matches first and can restore newest-first order", asyn
     screen.getByText("Suggested order match · needs confirmation"),
   ).toBeInTheDocument();
 });
+it("says when Terra found no product on a row and leaves it out in one tap", async () => {
+  Object.assign(state.review.lines[1]!, {
+    readingSource: {
+      analysisRunId: "run",
+      reader: "jev",
+      confidence: { part: 0.63, quantity: 0.63, basis: "model_estimate" },
+    } satisfies ReceivingLine["readingSource"],
+    issues: [
+      "Terra found no product on this row. It may be a carton, total or note line.",
+    ],
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const pipe = (
+    await screen.findByRole("heading", { name: "Unclear pipe" })
+  ).closest("li")!;
+  expect(pipe).toHaveTextContent("Jev Image 63%");
+  expect(pipe).toHaveTextContent("Terra 6.1 · found no product here");
+  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Not a product, leave it out" }),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "ignore",
+    lineId: "1",
+    reason: "Not a product line.",
+  });
+});

@@ -95,6 +95,8 @@ describe("production escalation policy", () => {
     const result = mergeAssistedLines([line()], [line(), line()], [0]);
     expect(result.lines).toHaveLength(1);
     expect(result.warnings.join()).toMatch(/aligned safely/);
+    expect(result.lines[0]!.issues.join()).toMatch(/could not resolve/);
+    expect(result.lines[0]!.terraFoundNothing).toBeUndefined();
   });
   it("adds missing rows for human verification and retains absent older rows", () => {
     const extra = line({
@@ -105,6 +107,7 @@ describe("production escalation policy", () => {
     const result = mergeAssistedLines([line()], [extra], [0]);
     expect(result.lines).toHaveLength(2);
     expect(result.lines[1]!.proposed).toBeNull();
-    expect(result.lines[0]!.issues.join()).toMatch(/could not resolve/);
+    expect(result.lines[0]!.issues.join()).toMatch(/found no product/);
+    expect(result.lines[0]!.terraFoundNothing).toBe(true);
   });
 });

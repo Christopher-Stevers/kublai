@@ -60,6 +60,8 @@ export type SlipLine = {
   source?: "table" | "assistant" | "vision" | "terra";
   /** Shipped was read clearly and agrees with the other columns. */
   quantityClear?: boolean;
+  /** Terra was asked to check this row and read nothing anywhere near it. */
+  terraFoundNothing?: boolean;
   /** Matched to an order item by the user at confirmation. */
   linked?: "user";
   /** Quantity handwritten on the line; offered to the user, never prefilled. */
