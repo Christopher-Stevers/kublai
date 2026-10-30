@@ -104,23 +104,25 @@ export function OrderMatchPreview({
               aria-label="Order and slip quantities"
             >
               <colgroup>
-                <col className="w-[32%]" />
-                <col className="w-[18%]" />
-                <col className="w-[32%]" />
-                <col className="w-[18%]" />
+                <col className="w-[29%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[29%]" />
+                <col className="w-[14%]" />
               </colgroup>
               <thead className="bg-muted/60">
                 <tr>
                   {[
                     "Order Description",
                     "Order Qty",
+                    "Match",
                     "Slip Description",
                     "Slip Qty",
                   ].map((heading, index) => (
                     <th
                       key={heading}
                       scope="col"
-                      className={`p-2 text-left align-top font-medium ${index === 2 ? "border-l" : ""}`}
+                      className={`px-1 py-2 align-top font-medium sm:px-2 ${index === 2 ? "text-center" : "text-left"}`}
                     >
                       {heading}
                     </th>
@@ -128,48 +130,79 @@ export function OrderMatchPreview({
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row, index) => (
-                  <tr key={index} className="border-t align-top">
-                    <td className="p-2 break-words">
-                      {row.order?.description ?? (
-                        <span className="text-muted-foreground">
-                          No clear match
+                {data.rows.map((row, index) => {
+                  const score = Number.isFinite(row.matchScore)
+                    ? Math.round(Math.max(0, Math.min(100, row.matchScore)))
+                    : null;
+                  const hue = score === null ? null : score * 1.2;
+                  return (
+                    <tr
+                      key={index}
+                      className="border-t align-top"
+                      style={
+                        hue === null
+                          ? undefined
+                          : { backgroundColor: `hsl(${hue} 75% 40% / 0.12)` }
+                      }
+                    >
+                      <td className="px-1 py-2 break-words sm:px-2">
+                        {row.order?.description ?? (
+                          <span className="text-muted-foreground">
+                            No clear match
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-1 py-2 break-words tabular-nums sm:px-2">
+                        {row.order ? (
+                          <>
+                            {row.order.quantity} {row.order.unit}
+                            {row.order.piecesPerPack &&
+                            row.order.piecesPerPack > 1 ? (
+                              <span className="text-muted-foreground block text-xs">
+                                {row.order.piecesPerPack} per {row.order.unit}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-0.5 py-2 text-center align-middle">
+                        <span
+                          className="inline-flex size-9 items-center justify-center rounded-full border border-white/20 text-xs font-semibold text-white tabular-nums shadow-sm sm:size-10"
+                          style={{
+                            backgroundColor:
+                              hue === null ? "#52525b" : `hsl(${hue} 75% 28%)`,
+                          }}
+                          aria-label={
+                            score === null
+                              ? "Match score unavailable"
+                              : `Product match score: ${score} out of 100`
+                          }
+                          title="Product similarity from saved text and codes; not a probability or quantity check."
+                        >
+                          {score ?? "—"}
                         </span>
-                      )}
-                    </td>
-                    <td className="p-2 break-words tabular-nums">
-                      {row.order ? (
-                        <>
-                          {row.order.quantity} {row.order.unit}
-                          {row.order.piecesPerPack &&
-                          row.order.piecesPerPack > 1 ? (
-                            <span className="text-muted-foreground block text-xs">
-                              {row.order.piecesPerPack} per {row.order.unit}
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="border-l p-2 break-words">
-                      {row.slip?.description ?? (
-                        <span className="text-muted-foreground">
-                          No matched slip line
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-2 break-words tabular-nums">
-                      {row.slip ? (
-                        <>
-                          {row.slip.quantity ?? "Unread"} {row.slip.unit}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-1 py-2 break-words sm:px-2">
+                        {row.slip?.description ?? (
+                          <span className="text-muted-foreground">
+                            No matched slip line
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-1 py-2 break-words tabular-nums sm:px-2">
+                        {row.slip ? (
+                          <>
+                            {row.slip.quantity ?? "Unread"} {row.slip.unit}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {!data.rows.length && (
@@ -179,8 +212,9 @@ export function OrderMatchPreview({
             )}
           </div>
           <p className="text-muted-foreground text-xs">
-            Quick order comparison. Check and edit individual lines in the next
-            step.
+            Match scores: 0 (deep red) to 100 (green). These estimate product
+            similarity, not accuracy or quantity agreement. Check and edit
+            individual lines in the next step.
           </p>
         </>
       )}

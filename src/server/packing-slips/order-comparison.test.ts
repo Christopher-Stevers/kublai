@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { lineScorer } from "./match";
 import { comparisonRows } from "./order-comparison";
 import { comparisonDates } from "~/lib/order-match-comparison";
 import type { ReceiptOrderItem, SlipLine } from "~/lib/packing-slip-review";
@@ -30,6 +31,7 @@ it("preserves printed quantities and missing units instead of inferring a pack c
   const before = JSON.stringify({ item, line });
   expect(comparisonRows([item], [line])).toEqual([
     {
+      matchScore: expect.any(Number),
       order: {
         description: "Rod hanger",
         quantity: 10,
@@ -84,4 +86,38 @@ it("does not invent a date when it is missing or invalid", () => {
     order: "Not available",
     slip: "Not read",
   });
+});
+
+it("uses the existing local scorer for the displayed pair, without treating a saved link as certainty", () => {
+  const expected = lineScorer([item])({
+    code: "",
+    text: `${line.description} ${line.evidence}`,
+  })[0]!.score;
+  expect(comparisonRows([item], [line])[0]!.matchScore).toBe(
+    Math.round(expected * 100),
+  );
+  const unrelated = {
+    ...line,
+    description: "Electric drill",
+    evidence: "Electric drill",
+  };
+  expect(comparisonRows([item], [unrelated])[0]!.matchScore).toBe(0);
+});
+it("scores missing sides as zero and keeps quantities separate from product similarity", () => {
+  const unmatched = comparisonRows(
+    [item],
+    [
+      {
+        ...line,
+        orderItemId: null,
+        description: "Electric drill",
+        evidence: "Electric drill",
+      },
+    ],
+  );
+  expect(unmatched.every((row) => row.matchScore === 0)).toBe(true);
+  const original = comparisonRows([item], [line])[0]!;
+  const changed = comparisonRows([item], [{ ...line, shipped: 999 }])[0]!;
+  expect(changed.matchScore).toBe(original.matchScore);
+  expect(changed.slip!.quantity).toBe(999);
 });

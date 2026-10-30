@@ -4,6 +4,8 @@ export type OrderMatchComparison = {
   orderDate: string | null;
   slipDate: string | null;
   rows: Array<{
+    /** Local product similarity, 0–100; not a calibrated probability. */
+    matchScore: number;
     order: {
       description: string;
       quantity: number;

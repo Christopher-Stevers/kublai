@@ -13,6 +13,7 @@ const data: OrderMatchComparison = {
   slipDate: "2026-10-29",
   rows: [
     {
+      matchScore: 89,
       order: {
         description: "Rod hanger box",
         quantity: 10,
@@ -23,7 +24,7 @@ const data: OrderMatchComparison = {
     },
   ],
 };
-it("shows four read-only columns, date proximity, packaging and source access", async () => {
+it("shows read-only pairs with a central score, date proximity, packaging and source access", async () => {
   const fetcher = vi.fn(async (_url: string) => Response.json(data));
   vi.stubGlobal("fetch", fetcher);
   render(
@@ -40,9 +41,18 @@ it("shows four read-only columns, date proximity, packaging and source access", 
     within(table)
       .getAllByRole("columnheader")
       .map((x) => x.textContent),
-  ).toEqual(["Order Description", "Order Qty", "Slip Description", "Slip Qty"]);
+  ).toEqual([
+    "Order Description",
+    "Order Qty",
+    "Match",
+    "Slip Description",
+    "Slip Qty",
+  ]);
   expect(screen.getByText("1 day after order")).toBeInTheDocument();
   expect(screen.getByText("25 per box")).toBeInTheDocument();
+  expect(
+    screen.getByLabelText("Product match score: 89 out of 100"),
+  ).toHaveTextContent("89");
   expect(screen.getByText("250")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "View Slip" })).toHaveAttribute(
     "href",
@@ -84,4 +94,39 @@ it("loads an alternate comparison without posting or changing the slip", async (
   await screen.findByRole("table");
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(fetcher.mock.calls[1]?.[0]).toContain("compareOrderId=alternate");
+});
+
+it("distinguishes unmatched and unknown scores without inventing confidence", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        ...data,
+        rows: [
+          { ...data.rows[0], matchScore: 0, order: null },
+          { ...data.rows[0], matchScore: undefined },
+          { ...data.rows[0], matchScore: 100 },
+        ],
+      }),
+    ),
+  );
+  render(
+    <OrderMatchPreview
+      jobId="job"
+      documentId="doc"
+      orderId="order"
+      readingKey="saved"
+      sourceUrl="/source.pdf"
+    />,
+  );
+  await screen.findByRole("table");
+  expect(
+    screen.getByLabelText("Product match score: 0 out of 100"),
+  ).toHaveTextContent("0");
+  expect(
+    screen.getByLabelText("Product match score: 100 out of 100"),
+  ).toHaveTextContent("100");
+  expect(screen.getByLabelText("Match score unavailable")).toHaveTextContent(
+    "—",
+  );
 });
