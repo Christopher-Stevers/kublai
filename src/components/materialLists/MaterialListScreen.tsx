@@ -296,7 +296,7 @@ export function MaterialListScreen({
   return (
     <div data-landscape-scope className="flex h-[var(--app-content-height)] flex-col">
       {/* Title and view controls scroll with the parts, like the lists page. */}
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-6" data-material-list-heading>
             {!isBrowserOnline && (

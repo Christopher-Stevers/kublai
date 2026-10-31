@@ -101,7 +101,7 @@ export default async function JobsLayout({
                     >
                       <div
                         data-app-shell
-                        className="bg-canvas flex min-h-screen flex-col"
+                        className="bg-canvas flex min-h-dvh flex-col"
                       >
                         <AppKeyboardNavigation />
                         <ViewportBottomSync />
