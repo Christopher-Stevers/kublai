@@ -450,7 +450,9 @@ export function DrawingWorkspace({
   fullscreenRef?: Ref<HTMLButtonElement>;
   pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
-  const { enabled: quickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
+  const { enabled: savedQuickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
+  const [temporaryQuickWheel, setTemporaryQuickWheel] = useState(false);
+  const quickWheel = savedQuickWheel || temporaryQuickWheel;
   const [toolToolbarOpen, setToolToolbarOpen] = useState(!quickWheel);
   const { scroll, setScroll } = useDrawingPageMode();
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
@@ -1859,7 +1861,9 @@ export function DrawingWorkspace({
   });
 
   return (
-    <DrawingQuickWheel enabled={quickWheel && !toolInUse} group={{ id: "drawing", title: source.name, items: wheelItems }}>
+    <DrawingQuickWheel enabled={quickWheel && !toolInUse}
+      allowItemHold={!savedQuickWheel && !toolInUse && tool !== "viewing" && !compareIds}
+      onTemporaryChange={setTemporaryQuickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
     <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
       id: "selected", title: capitalize(nameOf(selected)), priority: 50,
       items: [

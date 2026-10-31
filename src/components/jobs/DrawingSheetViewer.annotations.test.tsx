@@ -497,3 +497,15 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(container.querySelector("[data-annotation-id]")).toBeNull();
   });
 });
+
+
+it("leaves text closed until a tap releases, so a hold can open its wheel", () => {
+  const entity = markup({ type: "text", text: "Note" });
+  const onSelect = vi.fn();
+  const { frame, container } = open({ annotations: [entity], tool: "pan", onSelect, onQuickWheelSelect: vi.fn() });
+  const target = container.querySelector('[data-annotation-id="markup"]')!;
+  fireEvent.pointerDown(target, { clientX: 300, clientY: 250, pointerId: 1, button: 0, pointerType: "touch" });
+  expect(onSelect).not.toHaveBeenCalled();
+  fireEvent.pointerUp(frame, { clientX: 300, clientY: 250, pointerId: 1, button: 0, pointerType: "touch" });
+  expect(onSelect).toHaveBeenCalledWith("markup");
+});

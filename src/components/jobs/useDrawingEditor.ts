@@ -88,7 +88,10 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     if (!existing) {
       selectionLock.current = { id: entity.id, until: Date.now() + MARKUP_SHAKE_MS };
       setHeldId(entity.id);
-      props.onSelect?.(entity.id);
+      // A text tap opens its editor on release, leaving a stationary hold
+      // available for the annotation wheel before any keyboard opens.
+      if (!(entity.kind === "markup" && entity.data.type === "text" && props.onQuickWheelSelect))
+        props.onSelect?.(entity.id);
     }
     const arm = () => {
       active.holdTimer = undefined;
@@ -235,6 +238,8 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     setPreview([]);
     if (!point) { setEditing(null); return true; }
     if (active.entity) {
+      if (!active.moved && active.entity.kind === "markup" && active.entity.data.type === "text" && props.onQuickWheelSelect)
+        props.onSelect?.(active.entity.id);
       // Links and issue pins activate on release; ordinary markups were selected on press.
       if (active.activate && !active.moved) {
         if (active.entity.kind === "markup" && active.entity.data.type === "link") props.onActivate?.(active.entity.data);

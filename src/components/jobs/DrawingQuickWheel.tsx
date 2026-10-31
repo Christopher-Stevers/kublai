@@ -116,13 +116,19 @@ function Options({
 
 export function DrawingQuickWheel({
   enabled,
+  allowItemHold = false,
+  onTemporaryChange,
   group,
   children,
 }: {
   enabled: boolean;
+  /** Regular controls may borrow the wheel for an existing annotation only. */
+  allowItemHold?: boolean;
+  onTemporaryChange?: (active: boolean) => void;
   group: DrawingWheelGroup;
   children: ReactNode;
 }) {
+  const temporary = useRef(false);
   const groups = useRef(new Map<string, DrawingWheelGroup>());
   const signatures = useRef(new Map<string, string>());
   const [registeredGroups, setRegisteredGroups] = useState<DrawingWheelGroup[]>(
@@ -226,9 +232,9 @@ export function DrawingQuickWheel({
   return (
     <Context.Provider value={registry}>
       <QuickWheelSurface
-        enabled={enabled}
+        enabled={enabled || allowItemHold}
         activation="context"
-        activationSelector="[data-drawing-wheel-canvas]"
+        activationSelector={enabled ? "[data-drawing-wheel-canvas]" : "[data-drawing-wheel-canvas] [data-annotation-id]"}
         showBackBar={false}
         showBackdrop={false}
         previewChoice={(_, label) => {
@@ -252,10 +258,20 @@ export function DrawingQuickWheel({
             : undefined;
         }}
         onActivate={(event) => {
+          if (!enabled && allowItemHold) {
+            temporary.current = true;
+            onTemporaryChange?.(true);
+          }
           gestures.forEach((cancel) => cancel(event));
         }}
         onActiveChange={(value) => {
-          if (!value) setPath([]);
+          if (!value) {
+            setPath([]);
+            if (temporary.current) {
+              temporary.current = false;
+              onTemporaryChange?.(false);
+            }
+          }
         }}
         className="relative flex h-full min-h-0 flex-col"
         onKeyDownCapture={(event) => {

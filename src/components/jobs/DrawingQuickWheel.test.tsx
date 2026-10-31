@@ -18,6 +18,7 @@ import {
 } from "./useDrawingQuickWheelMode";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { useState } from "react";
+import type { DrawingEntity } from "~/lib/drawing-workspace";
 
 const identity = vi.hoisted(() => ({ key: "tim" }));
 vi.mock("./DrawingAccountProvider", () => ({
@@ -102,6 +103,96 @@ afterEach(() => {
 });
 
 describe("drawing Quickwheel", () => {
+  it("borrows the wheel for an annotation hold and restores regular controls after selection or dismissal", () => {
+    const action = vi.fn(), changed = vi.fn();
+    function RegularDrawing() {
+      const [temporary, setTemporary] = useState(false);
+      const [selected, setSelected] = useState(false);
+      return <DrawingQuickWheel enabled={temporary} allowItemHold
+        onTemporaryChange={value => { changed(value); setTemporary(value); }}
+        group={{ id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] }}>
+        <DrawingWheelRegistration group={selected ? {
+          id: "selected", title: "Saved dimension", priority: 50,
+          items: [{ id: "edit", label: "Edit dimension", run: action }],
+        } : null} />
+        <Canvas claim={() => setSelected(true)} />
+        {!temporary && <span>Regular toolbar</span>}
+      </DrawingQuickWheel>;
+    }
+    render(<RegularDrawing />);
+    fireEvent.pointerDown(canvas(), pointer);
+    dwell();
+    expect(wheel()).toBeNull();
+    fireEvent.pointerUp(window, pointer);
+    const target = screen.getByRole("button", { name: "Markup" });
+    // A normal tap or a pan never changes modes.
+    fireEvent.pointerDown(target, pointer);
+    dwell(100);
+    fireEvent.pointerUp(window, pointer);
+    fireEvent.pointerDown(target, pointer);
+    fireEvent.pointerMove(window, { ...pointer, clientX: 230 });
+    dwell();
+    fireEvent.pointerUp(window, pointer);
+    expect(changed).not.toHaveBeenCalled();
+    fireEvent.pointerDown(target, pointer);
+    dwell();
+    expect(wheel()).toHaveAttribute("aria-label", "Saved dimension quick wheel");
+    expect(screen.queryByText("Regular toolbar")).toBeNull();
+    aim("Edit dimension");
+    dwell();
+    expect(action).toHaveBeenCalledOnce();
+    expect(wheel()).toBeNull();
+    expect(screen.getByText("Regular toolbar")).toBeVisible();
+    fireEvent.pointerUp(window, pointer);
+    fireEvent.pointerDown(target, pointer);
+    dwell();
+    expect(wheel()).not.toBeNull();
+    fireEvent.pointerCancel(window, pointer);
+    expect(wheel()).toBeNull();
+    expect(changed.mock.calls).toEqual([[true], [false], [true], [false]]);
+    expect(localStorage.getItem("foremanhq:drawing-quick-wheel:tim")).toBeNull();
+  });
+
+  it.each(["rect", "dimension", "text", "link"] as const)("opens temporary controls on a real %s without editing or activating it", type => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+    HTMLElement.prototype.setPointerCapture = () => undefined;
+    HTMLElement.prototype.releasePointerCapture = () => undefined;
+    const save = vi.fn(), activate = vi.fn(), select = vi.fn();
+    const entity: DrawingEntity = {
+      id: "item", sheetId: "sheet", kind: "markup", revision: 1,
+      visibility: "published", authorId: "user", authorName: "Tim",
+      createdAt: "", updatedAt: "", comments: [],
+      data: { sourceSheetId: "sheet", type, text: "Note",
+        points: [{ x: .25, y: .25 }, { x: .5, y: .5 }], stroke: "#ef4444", width: 2 },
+    };
+    function Drawing() {
+      const [temporary, setTemporary] = useState(false);
+      const [selected, setSelected] = useState<string | null>(null);
+      return <DrawingQuickWheel enabled={temporary} allowItemHold onTemporaryChange={setTemporary}
+        group={{ id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] }}>
+        <DrawingWheelRegistration group={selected ? { id: "item", title: "Selected item", priority: 50,
+          items: [{ id: "style", label: "Style" }] } : null} />
+        <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="sheet" tool="pan"
+          annotations={[entity]} selectedId={selected} onUpdate={save} onActivate={activate}
+          onSelect={select} onQuickWheelSelect={setSelected} />
+      </DrawingQuickWheel>;
+    }
+    render(<Drawing />);
+    const image = screen.getByAltText("Sheet");
+    const frame = screen.getByRole("region", { name: "Sheet viewer" });
+    Object.defineProperties(image, { naturalWidth: { value: 1000 }, naturalHeight: { value: 1000 } });
+    Object.defineProperties(frame, { clientWidth: { value: 400 }, clientHeight: { value: 700 } });
+    fireEvent.load(image);
+    fireEvent.pointerDown(frame.querySelector('[data-annotation-id="item"]')!, pointer);
+    if (type === "text") expect(select).not.toHaveBeenCalled();
+    dwell();
+    expect(wheel()).toHaveAttribute("aria-label", "Selected item quick wheel");
+    fireEvent.pointerUp(window, pointer);
+    expect(wheel()).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+    expect(activate).not.toHaveBeenCalled();
+  });
+
   it("opens over accessible markup targets while leaving ordinary buttons alone", () => {
     open({
       id: "drawing",
