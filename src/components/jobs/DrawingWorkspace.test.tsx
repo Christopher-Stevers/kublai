@@ -1508,6 +1508,34 @@ describe("drawing workspace workflows", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(mocks.save).not.toHaveBeenCalled();
   });
+  it("shows only the selected shape's style after drawing, then restores drawing controls on deselect", async () => {
+    open();
+    chooseTool("ellipse");
+    expect(screen.getByRole("toolbar", { name: "Markup controls" })).toBeVisible();
+    const markup = existingMarkup();
+    if (markup.kind !== "markup") throw Error("Expected a markup");
+    const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(() => {
+      viewer().onCreate?.({ ...markup.data, type: "ellipse" });
+    });
+    const selectedActions = await screen.findByRole("toolbar", { name: "Selected markup actions" });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+    expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
+    await within(selectedActions).findByRole("group", { name: "Markup style" });
+    expect(screen.getAllByRole("group", { name: "Markup style" })).toHaveLength(1);
+    fireEvent.click(within(selectedActions).getByRole("button", { name: "Blue" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
+    expect(mocks.save.mock.lastCall?.[0]).toMatchObject({
+      id: mocks.save.mock.calls[0]![0].id,
+      data: { type: "ellipse", stroke: "#2563eb" },
+    });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+    act(() => viewer().onSelect?.(null));
+    expect(screen.queryByRole("toolbar", { name: "Selected markup actions" })).toBeNull();
+    expect(screen.getByRole("toolbar", { name: "Markup controls" })).toBeVisible();
+    expect(screen.getAllByRole("group", { name: "Markup style" })).toHaveLength(1);
+  });
+
   it("offers a selected markup's drawing style and saves a change", async () => {
     mocks.data!.entities = [existingMarkup("published")];
     open();

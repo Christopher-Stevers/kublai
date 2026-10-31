@@ -1580,6 +1580,10 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
+  const showSelectedMarkupActions = !quickWheel && selected?.kind === "markup" &&
+    selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
+    !form && !compareIds;
+
   useEffect(() => { setToolToolbarOpen(!quickWheel); }, [toolInUse, quickWheel]);
 
   // Consume back at the nearest open drawing state before the host leaves a sheet.
@@ -2336,11 +2340,7 @@ export function DrawingWorkspace({
             />
           )}
         </div>
-        {!quickWheel && selected?.kind === "markup" &&
-          selected.visibility !== "archived" &&
-          sourceOf(selected) === sourceId &&
-          !form &&
-          !compareIds && (
+        {showSelectedMarkupActions && (
             <div
               role="toolbar"
               aria-label="Selected markup actions"
@@ -3506,7 +3506,7 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {toolToolbarOpen && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
+      {toolToolbarOpen && !showSelectedMarkupActions && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
         (inlineText || !OTHER_TOOLS.has(tool)) && (
         <DrawingToolbarDock target={toolbarContainer}>
           <div data-drawing-chrome data-bottom-menu role="toolbar" aria-label="Markup controls"
