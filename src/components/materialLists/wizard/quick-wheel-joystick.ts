@@ -98,10 +98,25 @@ export function wheelChoiceCone<T extends Point>(
 export const wheelMinimumArcRadius = (radius: number) =>
   wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92;
 
-export type WheelArc = { radius: number; start: number; step: number };
+export type WheelArc = {
+  radius: number; start: number; step: number;
+  /** Curvature centre relative to the hub; follows the hub when repositioned. */
+  offset?: Point;
+};
+function shallowArc(distance: number, start: number, capacity: number): WheelArc {
+  const radius = distance * 1.6;
+  const step = 2 * Math.asin((WHEEL_CHOICE_DIAMETER + 14) / (2 * radius));
+  const middle = start + step * (capacity - 1) / 2;
+  // Keep the closest part of the wider circle at the existing thumb reach.
+  const behind = radius - distance;
+  return { radius, start, step, offset: {
+    x: -Math.sin(middle) * behind,
+    y: Math.cos(middle) * behind,
+  } };
+}
 const onArc = (origin: Point, arc: WheelArc, position: number): Point => ({
-  x: origin.x + Math.sin(arc.start + position * arc.step) * arc.radius,
-  y: origin.y - Math.cos(arc.start + position * arc.step) * arc.radius,
+  x: origin.x + (arc.offset?.x ?? 0) + Math.sin(arc.start + position * arc.step) * arc.radius,
+  y: origin.y + (arc.offset?.y ?? 0) - Math.cos(arc.start + position * arc.step) * arc.radius,
 });
 
 /** Find one continuous rail, rather than moving between concentric thumb fans.
@@ -140,10 +155,9 @@ export function joystickWheelArc(
       );
       r += 16
     ) {
-      const step = 2 * Math.asin((WHEEL_CHOICE_DIAMETER + 14) / (2 * r));
       for (let degree = -180; degree < 180; degree += 5) {
-        const arc = { radius: r, start: (degree * Math.PI) / 180, step };
-        const middle = arc.start + (step * (capacity - 1)) / 2;
+        const arc = shallowArc(r, (degree * Math.PI) / 180, capacity);
+        const middle = arc.start + (arc.step * (capacity - 1)) / 2;
         const score = r + angularDistance(middle, away) * 50;
         if (best && score >= best.score) continue;
         const samples = Array.from(
@@ -185,8 +199,7 @@ export function joystickWheelArc(
   const r = wheelMinimumArcRadius(radius);
   let fallback: { points: Point[]; arc: WheelArc; score: number } | undefined;
   for (let degree = -180; degree < 180; degree += 5) {
-    const arc = { radius: r, start: degree * Math.PI / 180,
-      step: 2 * Math.asin((WHEEL_CHOICE_DIAMETER + 14) / (2 * r)) };
+    const arc = shallowArc(r, degree * Math.PI / 180, 1);
     const point = onArc(origin, arc, 0);
     if (inward && (point.x-origin.x)*inward.x + (point.y-origin.y)*inward.y < 0) continue;
     const overflow = Math.max(0, bounds.left + padding - point.x)
