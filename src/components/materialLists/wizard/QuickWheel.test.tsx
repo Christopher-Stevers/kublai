@@ -675,8 +675,8 @@ describe("wizard quick wheel", () => {
     render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
     fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
     expect(wheel()).toHaveAttribute("data-anchor-x","400");
-    expect(wheel()).toHaveAttribute("data-anchor-y","604");
-    aim(321.72,431.79); dwell(600);
+    expect(wheel()).toHaveAttribute("data-anchor-y","508");
+    aim(314.60,437.24); dwell(600);
     expect(wheel()).toHaveAttribute("data-offset","0");
     expect(wheel()).toHaveAttribute("data-origin-x","330");
     steer(-40); dwell(600);
@@ -692,7 +692,7 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toHaveAttribute("data-origin-x","341");
     expect(wheel()).toHaveAttribute("data-origin-y","473");
     expect(wheel()).toHaveAttribute("data-anchor-x","400");
-    expect(wheel()).toHaveAttribute("data-anchor-y","604");
+    expect(wheel()).toHaveAttribute("data-anchor-y","508");
     dwell(1000);
     expect(wheel()).toHaveAttribute("data-offset",offset);
     expect(select).not.toHaveBeenCalled();

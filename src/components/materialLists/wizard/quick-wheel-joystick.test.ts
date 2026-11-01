@@ -244,13 +244,13 @@ describe("thumb-anchor neutral and relocation", () => {
   });
 });
 
-it("anchors to the thumb side one CSS inch above the visible bottom", () => {
+it("anchors to the thumb side two CSS inches above the visible bottom", () => {
   const viewport = { left: 12, top: 30, right: 412, bottom: 830 };
-  expect(wheelThumbAnchor(viewport, "right")).toEqual({ x: 412, y: 734 });
-  expect(wheelThumbAnchor(viewport, "left")).toEqual({ x: 12, y: 734 });
+  expect(wheelThumbAnchor(viewport, "right")).toEqual({ x: 412, y: 638 });
+  expect(wheelThumbAnchor(viewport, "left")).toEqual({ x: 12, y: 638 });
   expect(
     wheelThumbAnchor({ left: 0, top: 0, right: 700, bottom: 400 }, "right"),
-  ).toEqual({ x: 700, y: 304 });
+  ).toEqual({ x: 700, y: 208 });
 });
 
 it("keeps every resting option ahead of the thumb anchor, outside the relocation zone", () => {
