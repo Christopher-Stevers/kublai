@@ -3,6 +3,8 @@ import {
   joystickWheelArc,
   wheelMinimumArcRadius,
   wheelCarousel,
+  viewportWheelArc,
+  wheelCarouselPeriod,
   wheelChoiceCone,
   wheelJoystickSpeed,
   wheelJoystickRadius,
@@ -305,5 +307,40 @@ describe("live choice cones", () => {
     expect(wheelChoiceCone(origin, { x: 300, y: 271 }, 170, [moved])).toBeUndefined();
     expect(wheelChoiceCone(origin, { x: 429, y: 400 }, 170, [moved])).toBe(moved);
     expect(wheelChoiceCone(origin, { x: 171, y: 400 }, 170, [moved])).toBeUndefined();
+  });
+});
+
+
+describe("viewport-edge fading", () => {
+  it("stays opaque right up to contact, then fades only while crossing the edge", () => {
+    const origin = { x: 200, y: 300 };
+    const arc = { radius: 200, start: 0, step: .5 };
+    const points = [{ x: 200, y: 100 }];
+    for (const [top, expected] of [[48, 1], [49, null], [100, .5], [152, 0]] as const) {
+      const visible = viewportWheelArc(origin, arc, 1, { left: 0, top, right: 500, bottom: 700 });
+      const tile = wheelCarousel(0, 20, points, origin, false, visible).find(tile => tile.key === 0);
+      if (expected === 0) expect(tile).toBeUndefined();
+      else if (expected === null) expect(tile!.opacity).toBeLessThan(1);
+      else expect(tile!.opacity).toBeCloseTo(expected);
+    }
+  });
+  it.each([[430,850,350,520], [1195,545,960,210]])("keeps every fully visible item opaque on %ix%i", (width,height,x,y) => {
+    const origin = { x, y }, bounds = { left: 0, top: 0, right: width, bottom: height };
+    for (const count of [1,2,20,10000]) {
+      const rail = joystickWheelArc(origin, bounds, 170, count, "right", wheelThumbAnchor(bounds, "right"))!;
+      const arc = viewportWheelArc(origin, rail.arc, rail.points.length, bounds);
+      const period = wheelCarouselPeriod(count, rail.points.length, arc);
+      for (let offset = 0; offset < Math.min(period, 30); offset += .25) {
+        const tiles = wheelCarousel(offset, count, rail.points, origin, false, arc);
+        expect(new Set(tiles.map(tile => tile.index)).size).toBe(tiles.length);
+        expect(tiles.length).toBeLessThan(30);
+        for (const tile of tiles) {
+          const fullyInside = tile.x - 52 >= bounds.left && tile.x + 52 <= bounds.right
+            && tile.y - 52 >= bounds.top && tile.y + 52 <= bounds.bottom;
+          if (fullyInside) expect(tile.opacity).toBe(1);
+          else expect(tile.opacity).toBeLessThan(1);
+        }
+      }
+    }
   });
 });

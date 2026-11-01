@@ -103,6 +103,7 @@ export type WheelArc = {
   radius: number; start: number; step: number;
   /** Curvature centre relative to the hub; follows the hub when repositioned. */
   offset?: Point;
+  window?: { first: number; last: number; bounds: WheelBounds };
 };
 function shallowArc(distance: number, start: number, capacity: number): WheelArc {
   const radius = distance * 1.6;
@@ -119,6 +120,36 @@ const onArc = (origin: Point, arc: WheelArc, position: number): Point => ({
   x: origin.x + (arc.offset?.x ?? 0) + Math.sin(arc.start + position * arc.step) * arc.radius,
   y: origin.y + (arc.offset?.y ?? 0) - Math.cos(arc.start + position * arc.step) * arc.radius,
 });
+
+/** Extend the visible segment until its tiles have actually left the viewport. */
+export function viewportWheelArc(origin: Point, arc: WheelArc, capacity: number, bounds: WheelBounds): WheelArc {
+  const padding = WHEEL_CHOICE_DIAMETER / 2;
+  const intersects = (position: number) => {
+    const p = onArc(origin, arc, position);
+    return p.x + padding > bounds.left && p.x - padding < bounds.right
+      && p.y + padding > bounds.top && p.y - padding < bounds.bottom;
+  };
+  let first = 0, last = capacity - 1;
+  // Never draw a second revolution; this also bounds work for huge catalogues.
+  let remaining = Math.max(0, Math.floor(2 * Math.PI / arc.step) - capacity - 2);
+  while (remaining > 0 && (intersects(first) || intersects(last))) {
+    if (intersects(first)) { first--; remaining--; }
+    if (remaining > 0 && intersects(last)) { last++; remaining--; }
+  }
+  return { ...arc, window: { first, last, bounds } };
+}
+export function wheelCarouselPeriod(count: number, capacity: number, arc?: WheelArc) {
+  if (arc?.window) return Math.max(count, arc.window.last - arc.window.first + 2);
+  return arc && count <= capacity ? count + 1 : count;
+}
+function viewportOpacity(point: Point, bounds: WheelBounds) {
+  const radius = WHEEL_CHOICE_DIAMETER / 2;
+  const overflow = Math.max(0, bounds.left - (point.x - radius),
+    point.x + radius - bounds.right, bounds.top - (point.y - radius),
+    point.y + radius - bounds.bottom);
+  const visible = Math.max(0, 1 - overflow / WHEEL_CHOICE_DIAMETER);
+  return visible * visible * (3 - 2 * visible);
+}
 
 /** Find one continuous rail, rather than moving between concentric thumb fans.
  * Sample the entire rail so interpolated positions fit as well as resting tiles.
@@ -236,13 +267,13 @@ export function wheelCarousel(
   const capacity = points.length;
   // A thumb arc has a hidden wraparound slot even for a short list.
   const overflowing = count > capacity || Boolean(arc);
-  const period = arc && count <= capacity ? count + 1 : count;
+  const period = wheelCarouselPeriod(count, capacity, arc);
   const base = Math.floor(offset);
   const fraction = offset - base;
   const tiles: CarouselTile[] = [];
   for (
-    let slot = overflowing ? -1 : 0;
-    slot < capacity + (overflowing ? 1 : 0);
+    let slot = arc?.window?.first ?? (overflowing ? -1 : 0);
+    slot <= (arc?.window?.last ?? (capacity + (overflowing ? 1 : 0) - 1));
     slot++
   ) {
     const position = slot - fraction;
@@ -251,7 +282,7 @@ export function wheelCarousel(
     if (index >= count) continue;
     let point: Point;
     let opacity = 1;
-    if (overflowing && (position < 0 || position > capacity - 1)) {
+    if (!arc?.window && overflowing && (position < 0 || position > capacity - 1)) {
       const entrance = position < 0;
       const progress = entrance ? position + 1 : capacity - position;
       if (progress <= 0) continue;
@@ -259,11 +290,13 @@ export function wheelCarousel(
       opacity = progress * progress * (3 - 2 * progress);
     }
     if (arc) {
-      // Start fading inside the rail, including at rest, so its ends never
-      // suggest that the continuous list has run out of choices.
-      const edgeDistance = Math.min(position, capacity - 1 - position);
-      opacity *= 0.75 + 0.25 * Math.max(0, Math.min(1, edgeDistance * 2));
       point = onArc(origin, arc, position);
+      if (arc.window) opacity = viewportOpacity(point, arc.window.bounds);
+      else {
+        // Legacy rails without a viewport retain their endpoint transition.
+        const edgeDistance = Math.min(position, capacity - 1 - position);
+        opacity *= 0.75 + 0.25 * Math.max(0, Math.min(1, edgeDistance * 2));
+      }
     } else if (circular) {
       const ring = Math.hypot(points[0]!.x - origin.x, points[0]!.y - origin.y);
       const angle = (position * Math.PI * 2) / capacity;

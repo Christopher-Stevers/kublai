@@ -678,9 +678,14 @@ describe("wizard quick wheel", () => {
     render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
     fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
     steer(-40); dwell(600);
+    const ax = 330 - Number(wheel()!.getAttribute("data-anchor-x"));
+    const ay = 450 - Number(wheel()!.getAttribute("data-anchor-y"));
     const tiles = [...wheel()!.querySelectorAll("foreignObject")]
       .filter(el => el.getAttribute("opacity") === "1")
       .map(el => ({ el, dx: Number(el.getAttribute("x")) + 52 - 330, dy: Number(el.getAttribute("y")) + 52 - 450 }))
+      // Edge extensions can now be visible beside the hub. Select along an
+      // inward lane; a sideways continuation deliberately keeps scrolling.
+      .filter(tile => (tile.dx * ax + tile.dy * ay) / Math.hypot(ax, ay) > Math.hypot(tile.dx, tile.dy) * .25)
       .sort((a,b) => Math.hypot(b.dx,b.dy)-Math.hypot(a.dx,a.dy));
     const tile = tiles[0]!;
     const distance = Math.hypot(tile.dx,tile.dy);

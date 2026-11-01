@@ -33,6 +33,8 @@ import {
   type WheelArc,
   joystickWheelArc,
   wheelCarousel,
+  wheelCarouselPeriod,
+  viewportWheelArc,
   wheelChoiceCone,
   wheelThumbAnchor,
   wheelJoystickAxes,
@@ -98,6 +100,7 @@ type Wheel = Choices & {
   startY: number;
   radius: number;
   bounds: WheelBounds;
+  viewBounds: WheelBounds;
   overlayTop: number;
   screenCentre: { x: number; y: number };
   thumbAnchor: { x: number; y: number };
@@ -148,7 +151,7 @@ function createGeometry(wheel: Wheel): {
           labelsOnly: true,
         },
         points: rail.points,
-        arc: rail.arc,
+        arc: viewportWheelArc(wheel, rail.arc, rail.points.length, wheel.viewBounds),
       };
   }
   const layout = quickWheelLayout(
@@ -238,7 +241,8 @@ function moveWheelOrigin(wheel: Wheel, x: number, y: number): Wheel {
     if (cache.size >= 8) cache.clear();
     cache.set(
       `${x}:${y}:${wheel.radius}:${wheel.hand}:${wheel.options.length}`,
-      { ...previous, layout, points },
+      { ...previous, layout, points, arc: previous.arc
+        ? viewportWheelArc(next, previous.arc, points.length, wheel.viewBounds) : undefined },
     );
   }
   entryCache.set(next.options, {
@@ -593,6 +597,12 @@ export function QuickWheelSurface({
         startY: event.clientY,
         radius,
         bounds: { left, top, right, bottom },
+        viewBounds: {
+          left: Math.max(viewportLeft, bounds.left),
+          top: Math.max(viewportTop, bounds.top),
+          right: Math.min(viewportLeft + (viewport?.width ?? innerWidth), bounds.right),
+          bottom: Math.min(viewportTop + (viewport?.height ?? innerHeight) - (interaction.current.showBackBar ? 88 : 0), bounds.bottom),
+        },
         overlayTop: Math.max(viewportTop, bounds.top),
         screenCentre: {
           x: viewportLeft + (viewport?.width ?? innerWidth) / 2,
@@ -669,10 +679,7 @@ export function QuickWheelSurface({
           ...live,
           offset: wrapWheelIndex(
             live.offset - live.scrolling * dt,
-            geometryFor(live).arc &&
-              live.options.length <= geometryFor(live).points.length
-              ? live.options.length + 1
-              : live.options.length,
+            wheelCarouselPeriod(live.options.length, geometryFor(live).points.length, geometryFor(live).arc),
           ),
         });
         animation.current = requestAnimationFrame(tick);
@@ -1156,7 +1163,8 @@ function WheelDisplay({
               : "Slide sideways to scroll · pull away to move"}
           </p>
         </div>
-        <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+        <svg className="absolute inset-0 h-full w-full" aria-hidden="true"
+          style={{ clipPath: `inset(${wheel.viewBounds.top}px calc(100% - ${wheel.viewBounds.right}px) calc(100% - ${wheel.viewBounds.bottom}px) ${wheel.viewBounds.left}px)` }}>
           {layout.kind === "circle" ? (
             <circle
               cx={wheel.x}
