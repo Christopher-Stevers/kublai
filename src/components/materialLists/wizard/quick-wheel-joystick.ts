@@ -35,16 +35,19 @@ export function wheelJoystickMotion(
   anchor: Point,
   radius: number,
   dragging = false,
+  relocationArmed = true,
 ) {
   const { inward, sideways } = wheelJoystickAxes(origin, anchor);
   const dx = pointer.x - origin.x,
     dy = pointer.y - origin.y;
   const forward = dx * inward.x + dy * inward.y;
   const lateral = dx * sideways.x + dy * sideways.y;
-  // Pulling back moves the wheel; it must never arm an item or rotate it.
+  // Require a substantial, straight outward pull. The gesture owner also
+  // requires this pull to start deliberately from the centre.
   const relocate = dragging
     ? forward <= 0
-    : forward < -8 && -forward >= Math.abs(lateral);
+    : relocationArmed && forward <= -wheelHubRadius(radius) * 0.75
+      && Math.abs(lateral) <= -forward * Math.tan(Math.PI / 9);
   return {
     relocate,
     speed: relocate ? 0 : wheelJoystickSpeed(lateral, forward, radius),

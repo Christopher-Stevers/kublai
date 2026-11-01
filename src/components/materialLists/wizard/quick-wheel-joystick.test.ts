@@ -234,6 +234,9 @@ describe("thumb-anchor neutral and relocation", () => {
       relocate: false,
       speed: 0,
     });
+    expect(wheelJoystickMotion(origin, point(-30, 0), centre, 170).relocate).toBe(false);
+    expect(wheelJoystickMotion(origin, point(-60, 30), centre, 170).relocate).toBe(false);
+    expect(wheelJoystickMotion(origin, point(-60, 0), centre, 170, false, false).relocate).toBe(false);
     const clockwise = wheelJoystickMotion(origin, point(15, 35), centre, 170);
     const counterclockwise = wheelJoystickMotion(
       origin,
@@ -243,7 +246,7 @@ describe("thumb-anchor neutral and relocation", () => {
     );
     expect(clockwise.speed).toBeGreaterThan(0);
     expect(counterclockwise.speed).toBeCloseTo(-clockwise.speed);
-    expect(wheelJoystickMotion(origin, point(-30, 0), centre, 170)).toEqual({
+    expect(wheelJoystickMotion(origin, point(-60, 0), centre, 170)).toEqual({
       relocate: true,
       speed: 0,
     });

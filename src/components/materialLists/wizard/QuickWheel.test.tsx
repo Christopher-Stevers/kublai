@@ -711,24 +711,46 @@ describe("wizard quick wheel", () => {
     const tile=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
     aim(Number(tile.getAttribute("x"))+52,Number(tile.getAttribute("y"))+52); dwell(250);
     aim(350,439);
-    expect(wheel()).toHaveAttribute("data-origin-x","350");
-    expect(wheel()).toHaveAttribute("data-origin-y","439");
+    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    aim(330,450); dwell(260);
+    aim(375,425);
+    expect(wheel()).toHaveAttribute("data-origin-x","375");
+    expect(wheel()).toHaveAttribute("data-origin-y","425");
     expect(wheel()).toHaveAttribute("data-scrolling","false");
-    aim(351,438);
-    expect(wheel()).toHaveAttribute("data-origin-x","351");
-    expect(wheel()).toHaveAttribute("data-origin-y","438");
+    aim(376,424);
+    expect(wheel()).toHaveAttribute("data-origin-x","376");
+    expect(wheel()).toHaveAttribute("data-origin-y","424");
     expect(wheel()).toHaveAttribute("data-anchor-x","400");
     expect(wheel()).toHaveAttribute("data-anchor-y","412");
     dwell(1000);
     expect(wheel()).toHaveAttribute("data-offset",offset);
     expect(select).not.toHaveBeenCalled();
-    aim(333,448); dwell(600);
-    expect(wheel()).toHaveAttribute("data-origin-x","351");
+    aim(358,434); dwell(600);
+    expect(wheel()).toHaveAttribute("data-origin-x","376");
     expect(wheel()).toHaveAttribute("data-scrolling","false");
     const target=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
     const expected=Number(target.getAttribute("data-source-index"));
     aim(Number(target.getAttribute("x"))+52,Number(target.getAttribute("y"))+52); dwell();
     expect(select).toHaveBeenCalledExactlyOnceWith(expected);
+  });
+  it("does not reposition when reversing scroll through or behind the centre", () => {
+    vi.stubGlobal("innerWidth", 400); vi.stubGlobal("innerHeight", 700);
+    const select = vi.fn();
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
+    steer(-60); dwell(300);
+    aim(330,450); dwell(50);
+    // Reversal drifts well into the outward half before reaching the other side.
+    aim(380,423);
+    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    steer(60); dwell(300);
+    expect(wheel()).toHaveAttribute("data-scrolling","true");
+    expect(wheel()).toHaveAttribute("data-origin-y","450");
+    // A wide reversal which never crosses the hub is equally safe.
+    aim(380,423); steer(-60); dwell(300);
+    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    expect(wheel()).toHaveAttribute("data-scrolling","true");
+    expect(select).not.toHaveBeenCalled();
   });
   it("stops rotation when the available actions change or the wheel is disabled", () => {
     const select = vi.fn();

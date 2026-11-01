@@ -432,6 +432,9 @@ export function QuickWheelSurface({
     wheelEnabled.current = enabled;
   }, [enabled]);
   const pointerPosition = useRef({ x: 0, y: 0 });
+  const relocation = useRef<{ armed: boolean; centreSince: number | null }>({
+    armed: false, centreSince: null,
+  });
   const update = (value: Wheel | null) => {
     active.current = value;
     setWheel(value);
@@ -564,6 +567,7 @@ export function QuickWheelSurface({
       heldPointer.current = latched ? null : pointerId;
       pointerPosition.current = { x: event.clientX, y: event.clientY };
       selectionLatch.current = null;
+      relocation.current = { armed: true, centreSince: Date.now() };
       const hand =
         "pointerType" in event && event.pointerType === "touch"
           ? learnWheelHand(
@@ -741,12 +745,32 @@ export function QuickWheelSurface({
         dy = event.clientY - current.y;
       const selectionRadius = wheelHubRadius(current.radius) * 0.75;
       const inHub = Math.hypot(dx, dy) <= selectionRadius;
+      const { inward, sideways } = wheelJoystickAxes(current, current.thumbAnchor);
+      const forward = dx * inward.x + dy * inward.y;
+      const lateral = dx * sideways.x + dy * sideways.y;
+      if (!current.repositioning) {
+        const intent = relocation.current;
+        const now = Date.now();
+        // Crossing the hub while reversing scroll direction must not arm a
+        // move. Pause in its centre, then pull straight away from the arc.
+        if (Math.hypot(dx, dy) <= 18) {
+          intent.centreSince ??= now;
+        }
+        if (intent.centreSince !== null && now - intent.centreSince >= 250)
+          intent.armed = true;
+        if (Math.hypot(dx, dy) > 18) {
+          intent.centreSince = null;
+          if (forward >= 0 || Math.abs(lateral) > -forward * Math.tan(Math.PI / 9))
+            intent.armed = false;
+        }
+      }
       const motion = wheelJoystickMotion(
         current,
         pointerPosition.current,
         current.thumbAnchor,
         current.radius,
         current.repositioning,
+        relocation.current.armed,
       );
       if (motion.relocate) {
         stopScrolling();
@@ -768,13 +792,13 @@ export function QuickWheelSurface({
         return;
       }
       if (current.repositioning) {
+        relocation.current = { armed: false, centreSince: null };
         current = { ...current, repositioning: false };
         update(current);
       }
       const tiles = tilesFor(current).filter(
         (tile) => tile.opacity >= 0.65 && !tile.entry.disabled,
       );
-      const { inward } = wheelJoystickAxes(current, current.thumbAnchor);
       const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
       // Inward selection starts inside the visible hub, before the full
       // joystick reach. Keep full reach sideways so scrolling remains available.
@@ -866,6 +890,7 @@ export function QuickWheelSurface({
           // moved within the same sector during the dwell timer.
           const { x, y } = pointerPosition.current;
           selectionLatch.current = null;
+          relocation.current = { armed: true, centreSince: Date.now() };
           update({
             ...current,
             x,
