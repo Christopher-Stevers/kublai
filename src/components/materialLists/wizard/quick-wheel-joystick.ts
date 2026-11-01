@@ -58,7 +58,8 @@ export const wheelJoystickRadius = (radius: number) => wheelHubRadius(radius) * 
 export function wheelJoystickSpeed(dx: number, dy: number, radius: number) {
   const reach = wheelJoystickRadius(radius);
   const extension = Math.hypot(dx, dy);
-  if (extension > reach || Math.abs(dx) <= 24) return 0;
+  if (Math.abs(dx) <= 24) return 0;
+  // Clamp at full speed beyond the reach instead of cutting scrolling off.
   // Extension controls strength; the sideways component scales from zero on
   // the neutral axis to 1.75 times the old speed at a perpendicular push.
   const strength = Math.min(1, Math.max(0, extension - 24) / Math.max(1, reach - 24));

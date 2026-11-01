@@ -11,7 +11,7 @@ import {
 } from "./quick-wheel-joystick";
 
 describe("Quickwheel joystick", () => {
-  it("has a neutral deadband, symmetric variable speed, and no rotation in the selection ring", () => {
+  it("has a neutral deadband and symmetric speed capped beyond full extension", () => {
     for (const dx of [-24, -8, 0, 8, 24]) expect(wheelJoystickSpeed(dx, 0, 170)).toBe(0);
     expect(wheelJoystickSpeed(28, 0, 170)).toBeGreaterThan(0);
     expect(wheelJoystickSpeed(48, 0, 170)).toBeGreaterThan(
@@ -26,7 +26,11 @@ describe("Quickwheel joystick", () => {
     expect(wheelJoystickRadius(170)).toBe(128);
     expect(wheelJoystickSpeed(128, 0, 170)).toBeCloseTo(3.5 * 1.75);
     expect(wheelJoystickSpeed(-128, 0, 170)).toBeCloseTo(-3.5 * 1.75);
-    expect(wheelJoystickSpeed(129, 0, 170)).toBe(0);
+    for (const distance of [129, 200, 500]) {
+      expect(wheelJoystickSpeed(distance, 0, 170)).toBeCloseTo(3.5 * 1.75);
+      expect(wheelJoystickSpeed(-distance, 0, 170)).toBeCloseTo(-3.5 * 1.75);
+      expect(wheelJoystickSpeed(0, distance, 170)).toBe(0);
+    }
     expect(wheelJoystickSpeed(0, 128, 170)).toBe(0);
     const diagonal = 128 / Math.sqrt(2);
     expect(wheelJoystickSpeed(diagonal, diagonal, 170)).toBeCloseTo(

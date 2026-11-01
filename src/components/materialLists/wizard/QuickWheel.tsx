@@ -771,7 +771,10 @@ export function QuickWheelSurface({
       const movingInward = dx * inward.x + dy * inward.y > Math.hypot(dx, dy) * 0.25;
       // Inward selection starts inside the visible hub, before the full
       // joystick reach. Keep full reach sideways so scrolling remains available.
-      const target = !inHub && moved
+      // Continuing sideways keeps the scrolling gesture even beyond joystick
+      // reach. Turning inward hands control back to the visible choice lanes.
+      const extendingScroll = Boolean(current.hand && current.scrolling) && !movingInward && motion.speed !== 0;
+      const target = !extendingScroll && !inHub && moved
         ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles,
             movingInward ? selectionRadius : undefined)
           ?? tiles

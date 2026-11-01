@@ -601,6 +601,27 @@ describe("wizard quick wheel", () => {
     dwell();
     expect(select).toHaveBeenCalled();
   });
+  it("keeps scrolling a touch arc past full sideways extension and still stops at centre", () => {
+    vi.stubGlobal("innerWidth", 430); vi.stubGlobal("innerHeight", 850);
+    const select = vi.fn();
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), { ...pointer, pointerType: "touch", clientX: 330, clientY: 450 });
+    steer(-120); dwell(200);
+    for (const distance of [-129, -180, -240, 180]) {
+      steer(distance);
+      expect(wheel(), `sideways distance ${distance}`).toHaveAttribute("data-scrolling", "true");
+      const before = wheel()!.getAttribute("data-offset");
+      dwell(200);
+      expect(wheel()!.getAttribute("data-offset")).not.toBe(before);
+      expect(select).not.toHaveBeenCalled();
+    }
+    aim(330, 450);
+    expect(wheel()).toHaveAttribute("data-scrolling", "false");
+    const before = wheel()!.getAttribute("data-offset");
+    dwell(700);
+    expect(wheel()).toHaveAttribute("data-offset", before);
+    expect(select).not.toHaveBeenCalled();
+  });
   it("scrolls continuously, reverses, stops at centre and selects the visible item", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);
