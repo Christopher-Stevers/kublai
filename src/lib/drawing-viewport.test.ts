@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  drawingViewLead,
   keepDrawingPatchDuringPan,
   MAX_DRAWING_PATCH_EDGE,
   MAX_DRAWING_PATCH_PIXELS,
   patchCoversView,
   patchScreenCoverage,
   planDrawingPatch,
+  shiftDrawingView,
   visibleDrawingRect,
 } from "./drawing-viewport";
 
@@ -105,6 +107,50 @@ describe("drawing viewport geometry", () => {
     )!;
     expect(corner.left).toBe(0);
     expect(corner.top).toBe(0);
+  });
+
+  it("spends the guard band ahead of a pan without losing what is visible now", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const view = { scale: 4, x: 0, y: 0 };
+    const ahead = planDrawingPatch(fit, frame, view, 1, { x: 0.1, y: -0.01 })!;
+    // The shift is capped at one margin, so the current view stays covered.
+    expect(ahead.left).toBeCloseTo(0.45);
+    expect(ahead.width).toBeCloseTo(0.15);
+    expect(ahead.top).toBeCloseTo(0.3775);
+    expect(patchCoversView(ahead, fit, frame, view, 1)).toBe(true);
+    // Further along the pan, only the patch drawn ahead still covers the view.
+    const later = { ...view, x: -150 };
+    expect(patchCoversView(ahead, fit, frame, later, 1)).toBe(true);
+    expect(
+      patchCoversView(planDrawingPatch(fit, frame, view, 1)!, fit, frame, later, 1),
+    ).toBe(false);
+    expect(planDrawingPatch(fit, frame, view, 1, null)).toEqual(
+      planDrawingPatch(fit, frame, view, 1),
+    );
+    expect(
+      planDrawingPatch(fit, frame, view, 1, { x: Number.NaN, y: Infinity }),
+    ).toEqual(planDrawingPatch(fit, frame, view, 1));
+  });
+
+  it("predicts where the visible centre is heading from recent camera motion", () => {
+    const fit = { width: 1000, height: 500 };
+    // Panning left at 1 screen px/ms: the centre moves right through the sheet.
+    const samples = [0, 16, 32, 48, 64].map((at) => ({ scale: 4, x: -at, y: 0, at }));
+    const lead = drawingViewLead(samples, fit, 70, 100)!;
+    expect(lead.x).toBeCloseTo(100 / 4000);
+    expect(lead.y).toBeCloseTo(0);
+    expect(shiftDrawingView(samples[0]!, fit, lead)).toEqual({ scale: 4, x: -100, y: 0 });
+    // An old fast flick no longer counts once the camera has slowed.
+    const slowed = [{ scale: 4, x: 5000, y: 0, at: 0 }, ...samples.map((s) => ({ ...s, at: s.at + 200 }))];
+    expect(drawingViewLead(slowed, fit, 270, 100)!.x).toBeCloseTo(100 / 4000);
+    // Zooming about the centre does not move it.
+    const zoom = [{ scale: 4, x: 0, y: 0, at: 0 }, { scale: 6, x: 0, y: 0, at: 30 }];
+    expect(drawingViewLead(zoom, fit, 30, 100)).toEqual({ x: 0, y: 0 });
+    // At rest, or with too little history, there is nothing to predict.
+    expect(drawingViewLead(samples, fit, 200, 100)).toBeNull();
+    expect(drawingViewLead(samples.slice(-1), fit, 64, 100)).toBeNull();
+    expect(drawingViewLead([], fit, 0, 100)).toBeNull();
   });
 
   it("requires new detail after zooming in but reuses a capped-resolution patch without an endless redraw", () => {

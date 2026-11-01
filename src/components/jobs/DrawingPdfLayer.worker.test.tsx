@@ -2,20 +2,36 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drawingPdfRaster } from "~/lib/drawing-pdf-raster-client";
 import { loadPdfDocument } from "~/lib/pdf-client";
-import type { DrawingPatch } from "~/lib/drawing-viewport";
+import {
+  planDrawingPatch,
+  type DrawingPatch,
+  type DrawingView,
+} from "~/lib/drawing-viewport";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 
+const strain = vi.hoisted(() => ({ strained: false }));
+vi.mock("~/lib/drawing-render-strain", () => ({
+  createDrawingRenderStrain: () => ({
+    frame: () => undefined,
+    get strained() {
+      return strain.strained;
+    },
+  }),
+}));
 vi.mock("~/lib/pdf-client", () => ({ loadPdfDocument: vi.fn(), discardPdfDocument: vi.fn() }));
 vi.mock("~/lib/drawing-performance", () => ({ recordDrawingPerformance: vi.fn() }));
 vi.mock("~/lib/drawing-pdf-raster-client", () => ({
   canRasterDrawingOffThread: () => true,
   drawingPdfRaster: vi.fn(),
+  isRasterCancel: (error: unknown) =>
+    error instanceof DOMException && error.name === "AbortError",
 }));
 
 type Job = {
   patch: DrawingPatch;
   resolve: (value: { bitmap: ImageBitmap; renderMs: number }) => void;
   reject: (reason: Error) => void;
+  cancel: ReturnType<typeof vi.fn>;
 };
 const jobs: Job[] = [];
 const release = vi.fn();
@@ -28,8 +44,9 @@ const raster = {
       resolve = done;
       reject = fail;
     });
-    jobs.push({ patch, resolve, reject });
-    return { promise, cancel: vi.fn() };
+    const cancel = vi.fn();
+    jobs.push({ patch, resolve, reject, cancel });
+    return { promise, cancel };
   }),
 };
 const transferFromImageBitmap = vi.fn();
@@ -55,6 +72,7 @@ const tick = () =>
 beforeEach(() => {
   vi.useFakeTimers();
   jobs.length = 0;
+  strain.strained = false;
   vi.mocked(drawingPdfRaster).mockReturnValue(
     raster as unknown as ReturnType<typeof drawingPdfRaster>,
   );
@@ -142,5 +160,91 @@ describe("PDF detail drawn by the background worker", () => {
     render(<DrawingPdfLayer {...props} pdf={{ url: "/plain.pdf", page: 1 }} />);
     await tick();
     expect(raster.render).toHaveBeenCalledWith("/plain.pdf", 1, expect.anything());
+  });
+
+  it("draws ahead of a pan while it is moving and drops that render once the view settles elsewhere", async () => {
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/pan.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    const first = jobs[0]!;
+    await act(async () => {
+      first.resolve({ bitmap: bitmapFor(first.patch).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    await tick();
+    expect(jobs).toHaveLength(1);
+
+    // The live camera pans each frame without React seeing a new view.
+    let x = 0;
+    for (let frame = 0; frame < 6 && jobs.length === 1; frame++) {
+      x -= 16;
+      act(() => paintRef.current!({ ...props.view, x }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16);
+      });
+    }
+    expect(jobs).toHaveLength(2);
+    const ahead = jobs[1]!.patch;
+    const centred = planDrawingPatch(props.fit, props.frameSize, { ...props.view, x }, props.dpr)!;
+    expect(ahead.left).toBeGreaterThan(centred.left);
+
+    // The pan comes to rest somewhere that render does not cover.
+    const rest = { ...props.view, x: x - 2000 };
+    act(() => paintRef.current!(rest));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} view={rest} />);
+    expect(jobs[1]!.cancel).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      jobs[1]!.reject(new DOMException("cancelled", "AbortError"));
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(jobs).toHaveLength(3);
+    expect(jobs[2]!.patch).toEqual(
+      planDrawingPatch(props.fit, props.frameSize, rest, props.dpr),
+    );
+    expect(loadPdfDocument).not.toHaveBeenCalled();
+  });
+
+  it("moves to the main thread when the worker drops a render the layer still wanted", async () => {
+    render(<DrawingPdfLayer {...props} pdf={{ url: "/closed.pdf", page: 1 }} />);
+    await tick();
+    await act(async () => {
+      jobs[0]!.reject(new DOMException("closed", "AbortError"));
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await tick();
+    expect(jobs).toHaveLength(1);
+    expect(loadPdfDocument).toHaveBeenCalledWith("/closed.pdf");
+  });
+
+  it("keeps to settled refills on a device that misses frames for each new bitmap", async () => {
+    strain.strained = true;
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/slow.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    await act(async () => {
+      jobs[0]!.resolve({ bitmap: bitmapFor(jobs[0]!.patch).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    let x = 0;
+    for (let frame = 0; frame < 6; frame++) {
+      x -= 16;
+      act(() => paintRef.current!({ ...props.view, x }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16);
+      });
+    }
+    // Most of the bitmap is still on screen; it moves instead of redrawing.
+    expect(jobs).toHaveLength(1);
+    const far = { ...props.view, x: -300 };
+    act(() => paintRef.current!(far));
+    await tick();
+    expect(jobs).toHaveLength(2);
+    expect(jobs[1]!.patch).toEqual(
+      planDrawingPatch(props.fit, props.frameSize, far, props.dpr),
+    );
   });
 });

@@ -17,6 +17,7 @@ import {
 import {
   canRasterDrawingOffThread,
   drawingPdfRaster,
+  isRasterCancel,
 } from "~/lib/drawing-pdf-raster-client";
 import {
   drawingPdfOperationsFilter,
@@ -25,11 +26,15 @@ import {
 import type { PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
+import { createDrawingRenderStrain } from "~/lib/drawing-render-strain";
 import {
+  drawingViewLead,
   keepDrawingPatchDuringPan,
   patchCoversView,
   patchScreenCoverage,
   planDrawingPatch,
+  shiftDrawingView,
+  type DrawingCameraSample,
   type DrawingPatch,
   type DrawingSize,
   type DrawingView,
@@ -53,6 +58,10 @@ type Props = {
 type Snapshot = { index: number; patch: DrawingPatch; scale: number };
 /** Pages the background renderer could not draw stay on the main thread. */
 const mainThreadPages = new Set<string>();
+/** Frames between a finished bitmap and it reaching the screen. */
+const HANDOFF_MS = 33;
+/** Whether this device misses frames while detail is drawn during motion. */
+const strain = createDrawingRenderStrain();
 /**
  * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
@@ -72,6 +81,9 @@ export function DrawingPdfLayer(props: Props) {
   const request = useRef<() => void>(() => undefined);
   const patches = useRef<Array<DrawingPatch | null>>([null, null]);
   const camera = useRef(props.view);
+  // Recent live camera positions, used to draw detail where a pan is heading.
+  const motion = useRef<DrawingCameraSample[]>([]);
+  const follow = useRef<() => void>(() => undefined);
   const position = (index: number, view: DrawingView) => {
     const canvas = canvases.current[index];
     const patch = patches.current[index];
@@ -107,7 +119,17 @@ export function DrawingPdfLayer(props: Props) {
       position(1, view);
     };
     paint(props.view);
-    if (props.paintRef) props.paintRef.current = paint;
+    if (props.paintRef)
+      props.paintRef.current = (view) => {
+        // The frame's own time, the same for every callback in that frame.
+        const frameTime = document.timeline?.currentTime;
+        const at = typeof frameTime === "number" ? frameTime : performance.now();
+        const samples = motion.current;
+        samples.push({ ...view, at });
+        while (samples.length > 2 && at - samples[0]!.at > 150) samples.shift();
+        paint(view);
+        follow.current();
+      };
     return () => {
       if (props.paintRef) props.paintRef.current = null;
     };
@@ -120,6 +142,13 @@ export function DrawingPdfLayer(props: Props) {
     let stopPreparation: (() => void) | undefined;
     let current: Snapshot | null = null;
     let task: { cancel: () => void } | null = null;
+    let inflight: { patch: DrawingPatch; cancel: () => void } | null = null;
+    // Set when this layer drops a render the camera has moved away from.
+    let superseded = false;
+    let shownAt = Number.NEGATIVE_INFINITY;
+    let watching: number | null = null;
+    // Typical time for a background render to reach the screen.
+    let expectedMs = 120;
     const raster = offThread ? drawingPdfRaster() : null;
     if (offThread && !raster) {
       rerender();
@@ -164,6 +193,46 @@ export function DrawingPdfLayer(props: Props) {
         : null;
     const warmTimer = idle === null ? setTimeout(warm, 500) : null;
 
+    // Off the main thread, detail follows the live camera and is drawn where
+    // the view is heading. The main-thread renderer keeps to settled views.
+    const viewNow = () => (raster ? camera.current : latest.current.view);
+    const careful = () => !raster || strain.strained;
+    const leadNow = () =>
+      latest.current.moving && !careful()
+        ? drawingViewLead(
+            motion.current,
+            latest.current.fit,
+            performance.now(),
+            expectedMs + HANDOFF_MS,
+          )
+        : null;
+    const covers = (
+      patch: DrawingPatch,
+      view: DrawingView,
+      lead: { x: number; y: number } | null,
+    ) => {
+      const { fit, frameSize, dpr } = latest.current;
+      return (
+        patchCoversView(patch, fit, frameSize, view, dpr) &&
+        (!lead ||
+          patchCoversView(patch, fit, frameSize, shiftDrawingView(view, fit, lead), dpr))
+      );
+    };
+    const needsDetail = (view: DrawingView, lead: { x: number; y: number } | null) => {
+      if (!current) return true;
+      if (covers(current.patch, view, lead)) return false;
+      // A small pan should move the existing bitmap, not start another large
+      // PDF raster on the same thread as touch input, or on a device that
+      // misses frames for each new one. Refill during a long pan only when
+      // most of that bitmap has left the screen; settling always requests
+      // full detail immediately.
+      const p = latest.current;
+      return !(
+        careful() &&
+        keepDrawingPatchDuringPan(current.patch, current.scale, p.fit,
+          p.frameSize, view, p.moving)
+      );
+    };
     const schedule = (delay = 0) => {
       if (disposed || rendering || nextTimer !== null) return;
       nextTimer = setTimeout(() => {
@@ -180,31 +249,16 @@ export function DrawingPdfLayer(props: Props) {
         Date.now() < retryAfter
       )
         return;
-      if (!planDrawingPatch(start.fit, start.frameSize, start.view, start.dpr))
-        return;
-      if (
-        current &&
-        patchCoversView(
-          current.patch,
-          start.fit,
-          start.frameSize,
-          start.view,
-          start.dpr,
-        )
-      )
-        return;
-      // A small pan should move the existing bitmap, not start another large
-      // PDF raster on the same thread as touch input. Refill during a long pan
-      // only when most of that bitmap has left the screen; settling always
-      // requests full detail immediately.
-      if (
-        current && keepDrawingPatchDuringPan(current.patch, current.scale,
-          start.fit, start.frameSize, start.view, start.moving)
-      ) return;
+      const view = viewNow();
+      if (!planDrawingPatch(start.fit, start.frameSize, view, start.dpr)) return;
+      const lead = leadNow();
+      if (!needsDetail(view, lead)) return;
       const index = current?.index === 0 ? 1 : 0;
       const canvas = buffers[index];
       if (!canvas) return;
       rendering = true;
+      superseded = false;
+      let renderedScale = view.scale;
       const loadingAt = performance.now();
       let renderingAt = loadingAt;
       let pixels = 0;
@@ -214,14 +268,16 @@ export function DrawingPdfLayer(props: Props) {
         let patch: DrawingPatch | null;
         let page: PDFPageProxy | null = null;
         if (raster) {
-          patch = planDrawingPatch(ready.fit, ready.frameSize, ready.view, ready.dpr);
+          patch = planDrawingPatch(ready.fit, ready.frameSize, view, ready.dpr, lead);
           if (!patch) return;
           pixels = patch.pixelWidth * patch.pixelHeight;
           const job = raster.render(source.url, source.page, patch);
           task = job;
+          inflight = { patch, cancel: job.cancel };
           stalledTimer = setTimeout(job.cancel, 30_000);
           ({ bitmap } = await job.promise);
           if (disposed) return;
+          expectedMs = expectedMs * 0.6 + (performance.now() - loadingAt) * 0.4;
         } else {
           const loading = loadPdfDocument(source.url);
           page = await Promise.race([
@@ -242,6 +298,7 @@ export function DrawingPdfLayer(props: Props) {
           // newest view, not the one captured before the network/worker wait.
           ready = latest.current;
           if (!ready.enabled) return;
+          renderedScale = ready.view.scale;
           patch = planDrawingPatch(
             ready.fit,
             ready.frameSize,
@@ -290,14 +347,15 @@ export function DrawingPdfLayer(props: Props) {
           if (recordFullPage) rememberPdfBounds(page);
         }
         const now = latest.current;
+        const nowView = viewNow();
         const coverage = patchScreenCoverage(
           patch,
           now.fit,
           now.frameSize,
-          now.view,
+          nowView,
         );
         const oldCoverage = current
-          ? patchScreenCoverage(current.patch, now.fit, now.frameSize, now.view)
+          ? patchScreenCoverage(current.patch, now.fit, now.frameSize, nowView)
           : 0;
         // A render can finish after a fast fling. Do not replace good detail
         // with an obsolete patch covering less of the view; refill the latest.
@@ -311,6 +369,7 @@ export function DrawingPdfLayer(props: Props) {
             bitmap = null;
           }
           patches.current[index] = patch;
+          shownAt = performance.now();
           position(index, camera.current);
           canvas.style.visibility = "visible";
           if (current) {
@@ -323,12 +382,12 @@ export function DrawingPdfLayer(props: Props) {
               patches.current[current.index] = null;
             }
           }
-          current = { index, patch, scale: ready.view.scale };
+          current = { index, patch, scale: renderedScale };
           latest.current.onReady?.();
         }
         const sharp =
           current?.index === index &&
-          patchCoversView(patch, now.fit, now.frameSize, now.view, now.dpr);
+          patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr);
         recordDrawingPerformance({
           loadMs: renderingAt - loadingAt,
           renderMs: performance.now() - renderingAt,
@@ -346,6 +405,8 @@ export function DrawingPdfLayer(props: Props) {
         retryAfter = 0;
         failures = 0;
       } catch (error) {
+        // Superseded by a newer view; the next draw starts straight away.
+        if (raster && !disposed && superseded && isRasterCancel(error)) return;
         // The background renderer could not draw this page. Draw it here.
         if (raster && !disposed) {
           disposed = true;
@@ -374,12 +435,35 @@ export function DrawingPdfLayer(props: Props) {
         bitmap?.close();
         if (!disposed && current?.index !== index) free(canvas);
         task = null;
+        inflight = null;
         rendering = false;
         if (!disposed) schedule(Math.max(0, retryAfter - Date.now()));
       }
     };
+    // Every frame of a gesture, so a frame with no camera change is not
+    // mistaken for a missed one. A new bitmap is composited the frame after.
+    const watch = (time: number) => {
+      watching = null;
+      if (disposed || !latest.current.moving) return;
+      strain.frame(time, rendering || time - shownAt < 50);
+      watching = requestAnimationFrame(watch);
+    };
+    follow.current = () => {
+      if (!raster || disposed || rendering || nextTimer !== null || !current) return;
+      if (!latest.current.enabled) return;
+      if (needsDetail(camera.current, leadNow()))
+        schedule(Math.max(0, retryAfter - Date.now()));
+    };
     request.current = () => {
       const p = latest.current;
+      if (raster && p.moving && watching === null)
+        watching = requestAnimationFrame(watch);
+      // A render planned for a view the gesture has left would only delay the
+      // one for where it came to rest.
+      if (inflight && !p.moving && !covers(inflight.patch, camera.current, null)) {
+        superseded = true;
+        inflight.cancel();
+      }
       const key = `${p.view.scale}:${p.view.x}:${p.view.y}:${p.frameSize.width}:${p.frameSize.height}:${p.fit.width}:${p.fit.height}:${p.dpr}:${p.moving}`;
       if (key !== requestedView) {
         // A fresh settled view gets an immediate retry after a transient failure.
@@ -411,6 +495,8 @@ export function DrawingPdfLayer(props: Props) {
       if (stalledTimer !== null) clearTimeout(stalledTimer);
       disposed = true;
       request.current = () => undefined;
+      follow.current = () => undefined;
+      if (watching !== null) cancelAnimationFrame(watching);
       task?.cancel();
       stopPreparation?.();
       if (nextTimer !== null) clearTimeout(nextTimer);

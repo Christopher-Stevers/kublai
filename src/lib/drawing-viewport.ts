@@ -73,11 +73,16 @@ export function visibleDrawingRect(
   };
   return rect.right > rect.left && rect.bottom > rect.top ? rect : null;
 }
+/**
+ * `lead` is how far the visible centre is expected to travel, in sheet
+ * fractions, before the patch is ready. The guard band is spent on that side.
+ */
 export function planDrawingPatch(
   fit: DrawingSize,
   frame: DrawingSize,
   view: DrawingView,
   dpr: number,
+  lead?: { x: number; y: number } | null,
 ): DrawingPatch | null {
   const visible = visibleDrawingRect(fit, frame, view);
   if (!visible) return null;
@@ -103,13 +108,18 @@ export function planDrawingPatch(
   const marginX = (frame.width / (fit.width * view.scale)) * 0.25;
   const marginY = (frame.height / (fit.height * view.scale)) * 0.25;
   const rectangle = (guard: number) => {
-    const left = Math.max(0, visible.left - marginX * guard);
-    const top = Math.max(0, visible.top - marginY * guard);
+    // Shifting by at most one margin keeps everything visible now covered.
+    const shift = (by: number | undefined, margin: number) =>
+      Number.isFinite(by) ? Math.max(-margin, Math.min(margin, by!)) : 0;
+    const shiftX = shift(lead?.x, marginX * guard);
+    const shiftY = shift(lead?.y, marginY * guard);
+    const left = Math.max(0, visible.left - marginX * guard + shiftX);
+    const top = Math.max(0, visible.top - marginY * guard + shiftY);
     return {
       left,
       top,
-      width: Math.min(1, visible.right + marginX * guard) - left,
-      height: Math.min(1, visible.bottom + marginY * guard) - top,
+      width: Math.min(1, visible.right + marginX * guard + shiftX) - left,
+      height: Math.min(1, visible.bottom + marginY * guard + shiftY) - top,
     };
   };
   const fitsBudget = (guard: number) => {
@@ -194,6 +204,51 @@ export function patchCoversView(
     patch.fullWidth >= target.fullWidth * 0.95 &&
     patch.fullHeight >= target.fullHeight * 0.95
   );
+}
+
+export type DrawingCameraSample = DrawingView & { at: number };
+/** Camera samples older than this no longer describe the current motion. */
+const MOTION_WINDOW_MS = 100;
+
+/**
+ * How far the visible centre will travel in `ms`, in sheet fractions, if the
+ * camera keeps its recent speed. Null when the camera is at rest.
+ */
+export function drawingViewLead(
+  samples: readonly DrawingCameraSample[],
+  fit: DrawingSize,
+  now: number,
+  ms: number,
+): { x: number; y: number } | null {
+  const last = samples.at(-1);
+  if (!last || now - last.at > 50) return null;
+  const first = samples.find((sample) => last.at - sample.at <= MOTION_WINDOW_MS)!;
+  const elapsed = last.at - first.at;
+  if (elapsed < 8) return null;
+  // The visible centre, so zooming about a point and panning predict alike.
+  const centre = (sample: DrawingCameraSample) => ({
+    x: -sample.x / (fit.width * sample.scale),
+    y: -sample.y / (fit.height * sample.scale),
+  });
+  const from = centre(first),
+    to = centre(last);
+  const lead = {
+    x: ((to.x - from.x) / elapsed) * ms,
+    y: ((to.y - from.y) / elapsed) * ms,
+  };
+  return Number.isFinite(lead.x) && Number.isFinite(lead.y) ? lead : null;
+}
+/** The same camera with its visible centre moved by `lead` sheet fractions. */
+export function shiftDrawingView(
+  view: DrawingView,
+  fit: DrawingSize,
+  lead: { x: number; y: number },
+): DrawingView {
+  return {
+    scale: view.scale,
+    x: view.x - lead.x * fit.width * view.scale,
+    y: view.y - lead.y * fit.height * view.scale,
+  };
 }
 
 /** Keep useful sharp pixels while the finger moves. Long pans refill at the
