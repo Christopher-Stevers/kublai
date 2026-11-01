@@ -190,9 +190,12 @@
 /* Keep mobile browser pinches from scaling app navigation, including portalled
    dialogs and nested scrollers. Low specificity preserves viewer/quick-wheel
    touch-action: none and pan-y rules; custom pinch handlers remain in control.
-   Browser menu/keyboard zoom and public pages remain available. */
+   Browser menu/keyboard zoom and public pages remain available. The shell
+   covers itself before hydration; AppTouchGestures flags <html> for the rest.
+   No html:has() here: it rechecks every element's style on each DOM change,
+   which cost drawing zooms a frame per tile. */
 @layer base {
-  :where(html:has([data-app-shell]), html:has([data-app-shell]) body, html:has([data-app-shell]) body *) {
+  :where([data-app-shell], [data-app-shell] *, html[data-app-touch], html[data-app-touch] body, html[data-app-touch] body *) {
     touch-action: pan-x pan-y;
   }
 }
@@ -883,17 +886,18 @@ html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slo
   text-transform: capitalize;
 }
 
-/* Quick-wheel drawings use all available space. Navigation remains in the wheel. */
-html:root:has([data-drawing-quick-wheel="true"]) {
+/* Quick-wheel drawings use all available space. Navigation remains in the wheel.
+   The viewer flags <html>; see useRootFlag. */
+html:root[data-drawing-quick-wheel-page] {
   --app-header-height: 0px;
   --landscape-fallback-height: 0px;
 }
-html:root:has([data-drawing-quick-wheel="true"]) [data-app-header],
-html:root:has([data-drawing-quick-wheel="true"]) [data-landscape-fallback-bar] {
+html:root[data-drawing-quick-wheel-page] [data-app-header],
+html:root[data-drawing-quick-wheel-page] [data-landscape-fallback-bar] {
   display: none !important;
 }
-html:root:has([data-drawing-quick-wheel="true"]) .app-below-header { bottom: 0; }
-html:root:has([data-drawing-quick-wheel="true"]) [data-app-shell] > main { padding-bottom: 0; }
+html:root[data-drawing-quick-wheel-page] .app-below-header { bottom: 0; }
+html:root[data-drawing-quick-wheel-page] [data-app-shell] > main { padding-bottom: 0; }
 
 /* A dark icon with a light outline stays legible over either drawing colour. */
 .drawing-corner-control svg {

@@ -4,6 +4,7 @@ import { AppTouchGestures } from "./AppTouchGestures";
 
 it("blocks Safari page magnification without swallowing viewer gestures, and cleans up", () => {
   const view = render(<AppTouchGestures />);
+  expect(document.documentElement).toHaveAttribute("data-app-touch");
   const observer = vi.fn();
   document.addEventListener("gesturechange", observer);
   const pinch = new Event("gesturechange", { bubbles: true, cancelable: true });
@@ -17,6 +18,7 @@ it("blocks Safari page magnification without swallowing viewer gestures, and cle
     expect(event.defaultPrevented).toBe(false);
   }
   view.unmount();
+  expect(document.documentElement).not.toHaveAttribute("data-app-touch");
   const after = new Event("gesturestart", { cancelable: true });
   document.dispatchEvent(after);
   expect(after.defaultPrevented).toBe(false);

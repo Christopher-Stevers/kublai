@@ -227,9 +227,13 @@ describe("Drawings", () => {
 
   it("hides its page navigation when the account uses Quickwheel mode", () => {
     localStorage.setItem("foremanhq:drawing-quick-wheel:guest", "on");
-    openDrawing();
+    const view = openDrawing();
     expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    // The app bars give way through a flag on <html>.
+    expect(document.documentElement).toHaveAttribute("data-drawing-quick-wheel-page");
+    view.unmount();
+    expect(document.documentElement).not.toHaveAttribute("data-drawing-quick-wheel-page");
   });
 
   const nativeFullscreen = () => {

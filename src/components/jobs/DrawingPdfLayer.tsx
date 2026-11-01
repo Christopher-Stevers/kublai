@@ -162,11 +162,13 @@ export function DrawingPdfLayer(props: Props) {
       return;
     }
     const release = raster?.acquire();
-    // Bitmap canvases let go of their pixels through their own context.
+    // Bitmap canvases let go of their pixels through their own context. A null
+    // transfer makes a blank bitmap the canvas's size, which at full size held
+    // the main thread for about a frame on every detail swap; empty it first.
     const free = (canvas: HTMLCanvasElement) => {
-      if (raster) canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(null);
       canvas.width = 0;
       canvas.height = 0;
+      if (raster) canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(null);
     };
     let nextTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAfter = 0;

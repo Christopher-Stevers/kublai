@@ -5,6 +5,7 @@ import { DrawingScrollPages } from "../DrawingScrollPages";
 import { useEffect, useRef, useState } from "react";
 import { MinimizeIcon } from "lucide-react";
 import { api } from "~/trpc/react";
+import { useRootFlag } from "~/hooks/use-root-flag";
 import { Button } from "~/components/ui/button";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
@@ -63,6 +64,7 @@ export function DocumentDrawingWorkspace({
   }, [jobId, versionId, mutate]);
   const actualIndex = Math.min(index, Math.max(0, (sheets?.length ?? 1) - 1));
   const sheet = sheets?.[actualIndex];
+  useRootFlag("data-drawing-quick-wheel-page", quickWheel && Boolean(sheet));
   useSnapshotSource("pdf", () => ({
     page: actualIndex + 1,
     zoom: viewport.current.zoom,

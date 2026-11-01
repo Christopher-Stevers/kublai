@@ -51,6 +51,8 @@ const raster = {
   }),
 };
 const transferFromImageBitmap = vi.fn();
+// Canvas size at each release: a null transfer at full size costs a frame.
+const releasedAt: number[][] = [];
 const renderPage = vi.fn(() => ({ promise: new Promise<void>(() => undefined), cancel: vi.fn() }));
 const bitmapFor = (patch: DrawingPatch) => {
   const close = vi.fn();
@@ -77,8 +79,19 @@ beforeEach(() => {
   vi.mocked(drawingPdfRaster).mockReturnValue(
     raster as unknown as ReturnType<typeof drawingPdfRaster>,
   );
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(((type: string) =>
-    type === "bitmaprenderer" ? { transferFromImageBitmap } : null) as unknown as HTMLCanvasElement["getContext"]);
+  releasedAt.length = 0;
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (
+    this: HTMLCanvasElement,
+    type: string,
+  ) {
+    if (type !== "bitmaprenderer") return null;
+    return {
+      transferFromImageBitmap: (bitmap: ImageBitmap | null) => {
+        if (!bitmap) releasedAt.push([this.width, this.height]);
+        transferFromImageBitmap(bitmap);
+      },
+    };
+  } as unknown as HTMLCanvasElement["getContext"]);
   const page = {
     getViewport: ({ scale }: { scale: number }) => ({ width: 1000 * scale, height: 750 * scale }),
     render: renderPage,
@@ -247,6 +260,7 @@ describe("PDF detail drawn by the background worker", () => {
     expect(coarse.style.zIndex).toBe("1");
 
     // Coming to rest where the new detail covers the screen lets the old go.
+    const released = releasedAt.length;
     const rest = {
       scale: (ahead.fullWidth / (props.fit.width * props.dpr * 1.1)) * 1.02,
       x: 0,
@@ -258,6 +272,8 @@ describe("PDF detail drawn by the background worker", () => {
     await tick();
     expect(visible()).toEqual([sharp]);
     expect(jobs).toHaveLength(2);
+    expect(releasedAt.length).toBeGreaterThan(released);
+    expect(releasedAt.slice(released)).toEqual(releasedAt.slice(released).map(() => [0, 0]));
   });
 
   it("moves to the main thread when the worker drops a render the layer still wanted", async () => {

@@ -11,6 +11,7 @@ import { DrawingScrollPages } from "./DrawingScrollPages";
 import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "./DrawingPageNavigation";
 import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
+import { useRootFlag } from "~/hooks/use-root-flag";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -429,6 +430,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   };
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
+  useRootFlag("data-drawing-quick-wheel-page", quickWheel && Boolean(sheet));
   const flags = setId ? setData : setsData;
   const canUpload =
     !sandbox &&
