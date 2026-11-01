@@ -9,14 +9,14 @@ type Point = { x: number; y: number };
 export const wrapWheelIndex = (index: number, count: number) =>
   ((index % count) + count) % count;
 
-/** Approximate two CSS inches above the visible bottom, fixed for the gesture. */
+/** Approximate three CSS inches above the visible bottom, fixed for the gesture. */
 export function wheelThumbAnchor(
   viewport: WheelBounds,
   hand: WheelHand,
 ): Point {
   return {
     x: hand === "right" ? viewport.right : viewport.left,
-    y: Math.max(viewport.top, viewport.bottom - 192),
+    y: Math.max(viewport.top, viewport.bottom - 288),
   };
 }
 
