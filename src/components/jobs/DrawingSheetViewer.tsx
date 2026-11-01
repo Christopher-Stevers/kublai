@@ -125,6 +125,7 @@ export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 50;
+const ZOOM_LIMITS = { min: MIN_ZOOM, max: MAX_ZOOM };
 /** A tap this close to a line, in screen pixels, lands on that line. */
 const SNAP_PX = 18;
 /** A finger can grab an existing point within this screen-space radius. */
@@ -2976,6 +2977,7 @@ export function DrawingSheetViewer({
             onReady={onPdfReady}
             onError={onPdfError}
             paintRef={pdfPaint}
+            zoom={ZOOM_LIMITS}
             appearanceFilter={appearanceFilter}
           />
         )}

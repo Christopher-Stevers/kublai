@@ -28,6 +28,8 @@ import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import { createDrawingRenderStrain } from "~/lib/drawing-render-strain";
 import {
+  drawingPatchSharpness,
+  drawingPatchStackCoverage,
   drawingViewLead,
   keepDrawingPatchDuringPan,
   patchCoversView,
@@ -35,6 +37,7 @@ import {
   planDrawingPatch,
   shiftDrawingView,
   type DrawingCameraSample,
+  type DrawingLead,
   type DrawingPatch,
   type DrawingSize,
   type DrawingView,
@@ -54,6 +57,8 @@ type Props = {
   screenSpace?: boolean;
   appearanceFilter?: string;
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
+  /** The scales the camera can reach, so detail is not drawn beyond them. */
+  zoom?: { min: number; max: number };
 };
 type Snapshot = { index: number; patch: DrawingPatch; scale: number };
 /** Pages the background renderer could not draw stay on the main thread. */
@@ -67,6 +72,8 @@ const strain = createDrawingRenderStrain();
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
  * Comparison callers can still use sheet-relative placement.
  * Motion never erases it or cancels useful work; only changing sheets does.
+ * Off the main thread both buffers can show during motion: the denser patch
+ * on top, the other filling in where it does not reach.
  */
 export function DrawingPdfLayer(props: Props) {
   // Detail is drawn by a background worker where the browser allows it; the
@@ -204,23 +211,29 @@ export function DrawingPdfLayer(props: Props) {
             latest.current.fit,
             performance.now(),
             expectedMs + HANDOFF_MS,
+            latest.current.zoom,
           )
         : null;
-    const covers = (
-      patch: DrawingPatch,
-      view: DrawingView,
-      lead: { x: number; y: number } | null,
-    ) => {
+    const covers = (patch: DrawingPatch, view: DrawingView) => {
       const { fit, frameSize, dpr } = latest.current;
-      return (
-        patchCoversView(patch, fit, frameSize, view, dpr) &&
-        (!lead ||
-          patchCoversView(patch, fit, frameSize, shiftDrawingView(view, fit, lead), dpr))
-      );
+      return patchCoversView(patch, fit, frameSize, view, dpr);
     };
-    const needsDetail = (view: DrawingView, lead: { x: number; y: number } | null) => {
+    const needsDetail = (view: DrawingView, lead: DrawingLead | null) => {
       if (!current) return true;
-      if (covers(current.patch, view, lead)) return false;
+      if (lead) {
+        // In motion, what counts is the screen when a render started now
+        // could arrive: sharp where the camera is heading, and nothing
+        // missing on the way there.
+        const { fit, frameSize, dpr } = latest.current;
+        const stack = [current.patch, patches.current[1 - current.index]].filter(
+          (patch): patch is DrawingPatch => !!patch,
+        );
+        return !(
+          drawingPatchSharpness(stack, fit, frameSize, shiftDrawingView(view, fit, lead), dpr) >=
+            0.9999 && drawingPatchStackCoverage(stack, fit, frameSize, view) >= 0.9999
+        );
+      }
+      if (covers(current.patch, view)) return false;
       // A small pan should move the existing bitmap, not start another large
       // PDF raster on the same thread as touch input, or on a device that
       // misses frames for each new one. Refill during a long pan only when
@@ -232,6 +245,62 @@ export function DrawingPdfLayer(props: Props) {
         keepDrawingPatchDuringPan(current.patch, current.scale, p.fit,
           p.frameSize, view, p.moving)
       );
+    };
+    // How sharp a stack of patches makes the screen now, and where the camera
+    // is heading.
+    const worth = (stack: Array<DrawingPatch | null | undefined>) => {
+      const { fit, frameSize, dpr } = latest.current;
+      const view = camera.current;
+      const shown = stack.filter((patch): patch is DrawingPatch => !!patch);
+      const sharpness = (at: DrawingView) =>
+        drawingPatchSharpness(shown, fit, frameSize, at, dpr);
+      const lead = leadNow();
+      return (
+        sharpness(view) +
+        (lead ? sharpness(shiftDrawingView(view, fit, lead)) : sharpness(view))
+      );
+    };
+    // The buffer a finished background patch replaces, or null when keeping
+    // what is on screen is better. It stays with the newest earlier patch,
+    // unless the older one shows more.
+    const place = (patch: DrawingPatch) => {
+      if (!(worth([patch]) > 0)) return null;
+      if (!current) return 0;
+      const other = 1 - current.index;
+      const under = patches.current[other];
+      const keepNewest = { index: other, value: worth([patch, current.patch]) };
+      const keepOlder = under
+        ? { index: current.index, value: worth([patch, under]) }
+        : null;
+      const best =
+        keepOlder && keepOlder.value > keepNewest.value + 1e-6 ? keepOlder : keepNewest;
+      return best.value + 1e-6 >= worth([current.patch, under]) ? best.index : null;
+    };
+    // The patch underneath goes once the newest shows all it did, and always
+    // on a device that misses frames for each one.
+    const prune = () => {
+      if (!current) return;
+      const other = 1 - current.index;
+      const under = patches.current[other];
+      if (!under) return;
+      if (!careful() && worth([current.patch]) + 1e-6 < worth([current.patch, under]))
+        return;
+      const canvas = buffers[other];
+      if (canvas) {
+        canvas.style.visibility = "hidden";
+        free(canvas);
+      }
+      patches.current[other] = null;
+    };
+    // Denser detail on top, the newest on a tie: the order sharpness assumes.
+    const restack = () => {
+      if (!current) return;
+      const under = patches.current[1 - current.index];
+      const newestOnTop = !under || current.patch.fullWidth >= under.fullWidth;
+      const top = buffers[current.index],
+        bottom = buffers[1 - current.index];
+      if (top) top.style.zIndex = newestOnTop ? "2" : "1";
+      if (bottom) bottom.style.zIndex = newestOnTop ? "1" : "2";
     };
     const schedule = (delay = 0) => {
       if (disposed || rendering || nextTimer !== null) return;
@@ -348,46 +417,61 @@ export function DrawingPdfLayer(props: Props) {
         }
         const now = latest.current;
         const nowView = viewNow();
-        const coverage = patchScreenCoverage(
-          patch,
-          now.fit,
-          now.frameSize,
-          nowView,
-        );
-        const oldCoverage = current
-          ? patchScreenCoverage(current.patch, now.fit, now.frameSize, nowView)
-          : 0;
-        // A render can finish after a fast fling. Do not replace good detail
-        // with an obsolete patch covering less of the view; refill the latest.
-        if (coverage > 0 && (coverage + 0.001 >= oldCoverage || !current)) {
-          if (bitmap) {
+        let shown = false;
+        if (bitmap) {
+          const slot = place(patch);
+          const target = slot === null ? null : buffers[slot];
+          if (slot !== null && target) {
             // Handing the worker's bitmap to the canvas moves it; no pixels are
             // copied. The size keeps toDataURL (markup snapshots) working.
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(bitmap);
+            target.width = bitmap.width;
+            target.height = bitmap.height;
+            target.getContext("bitmaprenderer")?.transferFromImageBitmap(bitmap);
             bitmap = null;
+            patches.current[slot] = patch;
+            shownAt = performance.now();
+            position(slot, camera.current);
+            target.style.visibility = "visible";
+            current = { index: slot, patch, scale: renderedScale };
+            prune();
+            restack();
+            shown = true;
+            latest.current.onReady?.();
           }
-          patches.current[index] = patch;
-          shownAt = performance.now();
-          position(index, camera.current);
-          canvas.style.visibility = "visible";
-          if (current) {
-            const previous = buffers[current.index];
-            if (previous) {
-              previous.style.visibility = "hidden";
-              // Safari retains hidden canvas backing stores. Free the old
-              // bitmap only after the replacement is ready and visible.
-              free(previous);
-              patches.current[current.index] = null;
+        } else {
+          const coverage = patchScreenCoverage(
+            patch,
+            now.fit,
+            now.frameSize,
+            nowView,
+          );
+          const oldCoverage = current
+            ? patchScreenCoverage(current.patch, now.fit, now.frameSize, nowView)
+            : 0;
+          // A render can finish after a fast fling. Do not replace good detail
+          // with an obsolete patch covering less of the view; refill the latest.
+          if (coverage > 0 && (coverage + 0.001 >= oldCoverage || !current)) {
+            patches.current[index] = patch;
+            shownAt = performance.now();
+            position(index, camera.current);
+            canvas.style.visibility = "visible";
+            if (current) {
+              const previous = buffers[current.index];
+              if (previous) {
+                previous.style.visibility = "hidden";
+                // Safari retains hidden canvas backing stores. Free the old
+                // bitmap only after the replacement is ready and visible.
+                free(previous);
+                patches.current[current.index] = null;
+              }
             }
+            current = { index, patch, scale: renderedScale };
+            shown = true;
+            latest.current.onReady?.();
           }
-          current = { index, patch, scale: renderedScale };
-          latest.current.onReady?.();
         }
         const sharp =
-          current?.index === index &&
-          patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr);
+          shown && patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr);
         recordDrawingPerformance({
           loadMs: renderingAt - loadingAt,
           renderMs: performance.now() - renderingAt,
@@ -432,8 +516,9 @@ export function DrawingPdfLayer(props: Props) {
         if (stalledTimer !== null) clearTimeout(stalledTimer);
         stalledTimer = null;
         // Failed and obsolete work must not retain a second large bitmap.
+        // A background render never touched its canvas, which may be showing.
         bitmap?.close();
-        if (!disposed && current?.index !== index) free(canvas);
+        if (!raster && !disposed && current?.index !== index) free(canvas);
         task = null;
         inflight = null;
         rendering = false;
@@ -460,10 +545,11 @@ export function DrawingPdfLayer(props: Props) {
         watching = requestAnimationFrame(watch);
       // A render planned for a view the gesture has left would only delay the
       // one for where it came to rest.
-      if (inflight && !p.moving && !covers(inflight.patch, camera.current, null)) {
+      if (inflight && !p.moving && !covers(inflight.patch, camera.current)) {
         superseded = true;
         inflight.cancel();
       }
+      if (raster && !p.moving) prune();
       const key = `${p.view.scale}:${p.view.x}:${p.view.y}:${p.frameSize.width}:${p.frameSize.height}:${p.fit.width}:${p.fit.height}:${p.dpr}:${p.moving}`;
       if (key !== requestedView) {
         // A fresh settled view gets an immediate retry after a transient failure.

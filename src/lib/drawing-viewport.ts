@@ -22,6 +22,11 @@ export type DrawingPatch = {
 export const MAX_DRAWING_PATCH_PIXELS = 8 * 1024 * 1024;
 const BASE_DRAWING_PATCH_PIXELS = 4 * 1024 * 1024;
 export const MAX_DRAWING_PATCH_EDGE = 4096;
+export type DrawingLead = { x: number; y: number; zoom?: number };
+/** A scale change smaller than this stays within the density tolerance. */
+const ZOOM_LEAD_MIN = 1.05;
+/** Detail is drawn at most this far ahead of the current scale. */
+const MAX_ZOOM_LEAD = 2;
 
 function valid(fit: DrawingSize, frame: DrawingSize, view: DrawingView) {
   return (
@@ -74,16 +79,26 @@ export function visibleDrawingRect(
   return rect.right > rect.left && rect.bottom > rect.top ? rect : null;
 }
 /**
- * `lead` is how far the visible centre is expected to travel, in sheet
- * fractions, before the patch is ready. The guard band is spent on that side.
+ * `lead` is where the camera is expected to be when the patch is ready: how
+ * far the visible centre travels, in sheet fractions, and the scale change.
+ * A pan spends the guard band on the side it is heading. A zoom is drawn for
+ * the area it will show, at the density that will need.
  */
 export function planDrawingPatch(
   fit: DrawingSize,
   frame: DrawingSize,
   view: DrawingView,
   dpr: number,
-  lead?: { x: number; y: number } | null,
+  lead?: DrawingLead | null,
 ): DrawingPatch | null {
+  if (
+    lead &&
+    Number.isFinite(lead.x) &&
+    Number.isFinite(lead.y) &&
+    Number.isFinite(lead.zoom) &&
+    Math.abs(Math.log(lead.zoom!)) > Math.log(ZOOM_LEAD_MIN)
+  )
+    return planDrawingPatch(fit, frame, shiftDrawingView(view, fit, lead), dpr);
   const visible = visibleDrawingRect(fit, frame, view);
   if (!visible) return null;
   // Slight oversampling keeps fine lines/text crisp through fractional CSS
@@ -211,44 +226,145 @@ export type DrawingCameraSample = DrawingView & { at: number };
 const MOTION_WINDOW_MS = 100;
 
 /**
- * How far the visible centre will travel in `ms`, in sheet fractions, if the
- * camera keeps its recent speed. Null when the camera is at rest.
+ * Where the camera will be in `ms` if it keeps its recent motion: how far the
+ * visible centre travels, in sheet fractions, and the scale change, which
+ * stops at the viewer's `zoom` limits. Null when the camera is at rest.
  */
 export function drawingViewLead(
   samples: readonly DrawingCameraSample[],
   fit: DrawingSize,
   now: number,
   ms: number,
-): { x: number; y: number } | null {
+  zoom?: { min: number; max: number },
+): DrawingLead | null {
   const last = samples.at(-1);
   if (!last || now - last.at > 50) return null;
   const first = samples.find((sample) => last.at - sample.at <= MOTION_WINDOW_MS)!;
   const elapsed = last.at - first.at;
   if (elapsed < 8) return null;
-  // The visible centre, so zooming about a point and panning predict alike.
-  const centre = (sample: DrawingCameraSample) => ({
-    x: -sample.x / (fit.width * sample.scale),
-    y: -sample.y / (fit.height * sample.scale),
+  const scale = Math.min(
+    zoom?.max ?? Number.POSITIVE_INFINITY,
+    Math.max(
+      zoom?.min ?? 0,
+      last.scale *
+        Math.min(
+          MAX_ZOOM_LEAD,
+          Math.max(1 / MAX_ZOOM_LEAD, (last.scale / first.scale) ** (ms / elapsed)),
+        ),
+    ),
+  );
+  // A zoom keeps one point of the sheet under the cursor or fingers, so the
+  // offset changes in step with the scale. A pan is the limit of no zoom.
+  const ratio =
+    last.scale === first.scale
+      ? ms / elapsed
+      : (scale - last.scale) / (last.scale - first.scale);
+  const centre = (view: DrawingView) => ({
+    x: -view.x / (fit.width * view.scale),
+    y: -view.y / (fit.height * view.scale),
   });
-  const from = centre(first),
-    to = centre(last);
-  const lead = {
-    x: ((to.x - from.x) / elapsed) * ms,
-    y: ((to.y - from.y) / elapsed) * ms,
-  };
-  return Number.isFinite(lead.x) && Number.isFinite(lead.y) ? lead : null;
+  const from = centre(last);
+  const to = centre({
+    scale,
+    x: last.x + (last.x - first.x) * ratio,
+    y: last.y + (last.y - first.y) * ratio,
+  });
+  const lead = { x: to.x - from.x, y: to.y - from.y, zoom: scale / last.scale };
+  return Number.isFinite(lead.x) && Number.isFinite(lead.y) && Number.isFinite(lead.zoom)
+    ? lead
+    : null;
 }
-/** The same camera with its visible centre moved by `lead` sheet fractions. */
+/** The camera after `lead`: its visible centre moved and its scale changed. */
 export function shiftDrawingView(
   view: DrawingView,
   fit: DrawingSize,
-  lead: { x: number; y: number },
+  lead: DrawingLead,
 ): DrawingView {
+  const zoom = lead.zoom ?? 1;
+  const scale = view.scale * zoom;
   return {
-    scale: view.scale,
-    x: view.x - lead.x * fit.width * view.scale,
-    y: view.y - lead.y * fit.height * view.scale,
+    scale,
+    x: view.x * zoom - lead.x * fit.width * scale,
+    y: view.y * zoom - lead.y * fit.height * scale,
   };
+}
+
+/** Share of the visible sheet a stack of patches shows, each point weighted
+ * by the `quality` of the top patch there; the densest patch is on top. */
+function stackShare(
+  patches: readonly DrawingPatch[],
+  visible: DrawingRect,
+  quality: (patch: DrawingPatch) => number,
+) {
+  const stack = [...patches].sort((a, b) => b.fullWidth - a.fullWidth);
+  // Split the visible rectangle along every patch edge; each cell then shows
+  // a single patch, or none.
+  const cuts = (from: number, to: number, edges: number[]) =>
+    [...new Set([from, to, ...edges.filter((edge) => edge > from && edge < to)])].sort(
+      (a, b) => a - b,
+    );
+  const xs = cuts(
+    visible.left,
+    visible.right,
+    stack.flatMap((patch) => [patch.left, patch.left + patch.width]),
+  );
+  const ys = cuts(
+    visible.top,
+    visible.bottom,
+    stack.flatMap((patch) => [patch.top, patch.top + patch.height]),
+  );
+  let shown = 0;
+  for (let i = 1; i < xs.length; i++) {
+    for (let j = 1; j < ys.length; j++) {
+      const x = (xs[i - 1]! + xs[i]!) / 2,
+        y = (ys[j - 1]! + ys[j]!) / 2;
+      const top = stack.find(
+        (patch) =>
+          x >= patch.left &&
+          x <= patch.left + patch.width &&
+          y >= patch.top &&
+          y <= patch.top + patch.height,
+      );
+      if (top)
+        shown += (xs[i]! - xs[i - 1]!) * (ys[j]! - ys[j - 1]!) * quality(top);
+    }
+  }
+  return (
+    shown /
+    ((visible.right - visible.left) * (visible.bottom - visible.top))
+  );
+}
+/**
+ * How much of the visible sheet a stack of patches shows at the density the
+ * screen needs, from 0 to 1. A point shown at half that density counts half.
+ */
+export function drawingPatchSharpness(
+  patches: readonly DrawingPatch[],
+  fit: DrawingSize,
+  frame: DrawingSize,
+  view: DrawingView,
+  dpr: number,
+) {
+  const visible = visibleDrawingRect(fit, frame, view);
+  const target = planDrawingPatch(fit, frame, view, dpr);
+  if (!visible || !target) return 1;
+  return stackShare(patches, visible, (patch) =>
+    Math.min(
+      1,
+      patch.fullWidth / (target.fullWidth * 0.95),
+      patch.fullHeight / (target.fullHeight * 0.95),
+    ),
+  );
+}
+/** How much of the visible sheet a stack of patches shows at any density. */
+export function drawingPatchStackCoverage(
+  patches: readonly DrawingPatch[],
+  fit: DrawingSize,
+  frame: DrawingSize,
+  view: DrawingView,
+) {
+  const visible = visibleDrawingRect(fit, frame, view);
+  return visible ? stackShare(patches, visible, () => 1) : 1;
 }
 
 /** Keep useful sharp pixels while the finger moves. Long pans refill at the

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  drawingPatchSharpness,
   drawingViewLead,
   keepDrawingPatchDuringPan,
   MAX_DRAWING_PATCH_EDGE,
@@ -144,13 +145,73 @@ describe("drawing viewport geometry", () => {
     // An old fast flick no longer counts once the camera has slowed.
     const slowed = [{ scale: 4, x: 5000, y: 0, at: 0 }, ...samples.map((s) => ({ ...s, at: s.at + 200 }))];
     expect(drawingViewLead(slowed, fit, 270, 100)!.x).toBeCloseTo(100 / 4000);
-    // Zooming about the centre does not move it.
+    // Zooming about the centre does not move it, and the predicted scale
+    // change is capped.
     const zoom = [{ scale: 4, x: 0, y: 0, at: 0 }, { scale: 6, x: 0, y: 0, at: 30 }];
-    expect(drawingViewLead(zoom, fit, 30, 100)).toEqual({ x: 0, y: 0 });
+    expect(drawingViewLead(zoom, fit, 30, 100)).toEqual({ x: 0, y: 0, zoom: 2 });
     // At rest, or with too little history, there is nothing to predict.
     expect(drawingViewLead(samples, fit, 200, 100)).toBeNull();
     expect(drawingViewLead(samples.slice(-1), fit, 64, 100)).toBeNull();
     expect(drawingViewLead([], fit, 0, 100)).toBeNull();
+  });
+
+  it("predicts a zoom about the point under the cursor, off centre", () => {
+    const fit = { width: 1000, height: 500 };
+    // The sheet point 100px right of the frame centre stays put on screen.
+    const at = (scale: number) => ({ scale, x: 100 - 20 * scale, y: -10 + 5 * scale });
+    const samples = [0, 16, 32, 48, 64].map((t) => ({ ...at(4 * Math.exp(0.004 * t)), at: t }));
+    const lead = drawingViewLead(samples, fit, 64, 100)!;
+    expect(lead.zoom).toBeCloseTo(Math.exp(0.4));
+    const ahead = shiftDrawingView(samples.at(-1)!, fit, lead);
+    const expected = at(samples.at(-1)!.scale * Math.exp(0.4));
+    expect(ahead.scale).toBeCloseTo(expected.scale);
+    expect(ahead.x).toBeCloseTo(expected.x);
+    expect(ahead.y).toBeCloseTo(expected.y);
+    // The camera cannot zoom past its limits, so neither does the prediction,
+    // and the point under the cursor still stays put.
+    const capped = drawingViewLead(samples, fit, 64, 100, { min: 1, max: 5 })!;
+    const stopped = shiftDrawingView(samples.at(-1)!, fit, capped);
+    expect(stopped.scale).toBeCloseTo(5);
+    expect(stopped.x).toBeCloseTo(at(5).x);
+    expect(stopped.y).toBeCloseTo(at(5).y);
+    expect(drawingViewLead([...samples].reverse().map((s, i) => ({ ...s, at: i * 16 })), fit, 64, 100, { min: 4, max: 50 })!.zoom).toBeCloseTo(1);
+  });
+
+  it("draws a zoom for the view it is heading to, a pan around the view it is in", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const view = { scale: 4, x: 0, y: 0 };
+    const inward = planDrawingPatch(fit, frame, view, 1, { x: 0, y: 0, zoom: 2 })!;
+    expect(inward).toEqual(planDrawingPatch(fit, frame, { ...view, scale: 8 }, 1));
+    expect(patchCoversView(inward, fit, frame, { ...view, scale: 8 }, 1)).toBe(true);
+    const outward = planDrawingPatch(fit, frame, view, 1, { x: 0.01, y: 0, zoom: 0.5 })!;
+    expect(outward).toEqual(planDrawingPatch(fit, frame, { scale: 2, x: -20, y: 0 }, 1));
+    // A few percent of zoom is within the density tolerance.
+    expect(planDrawingPatch(fit, frame, view, 1, { x: 0.1, y: -0.01, zoom: 1.03 })).toEqual(
+      planDrawingPatch(fit, frame, view, 1, { x: 0.1, y: -0.01 }),
+    );
+  });
+
+  it("scores a stack of patches by how much of the screen shows at full detail", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const view = { scale: 4, x: 0, y: 0 };
+    const sharpness = (...patches: Parameters<typeof drawingPatchSharpness>[0]) =>
+      drawingPatchSharpness(patches, fit, frame, view, 1);
+    const exact = planDrawingPatch(fit, frame, view, 1)!;
+    const coarse = planDrawingPatch(fit, frame, { ...view, scale: 2 }, 1)!;
+    const dense = planDrawingPatch(fit, frame, { ...view, scale: 8 }, 1)!;
+    expect(sharpness()).toBe(0);
+    expect(sharpness(exact)).toBeCloseTo(1);
+    expect(sharpness(coarse)).toBeCloseTo(0.5 / 0.95);
+    // A denser patch shows on top of a coarser one, whichever came first.
+    const centre = patchScreenCoverage(dense, fit, frame, view);
+    expect(centre).toBeGreaterThan(0.3);
+    expect(centre).toBeLessThan(1);
+    expect(sharpness(dense)).toBeCloseTo(centre);
+    expect(sharpness(coarse, dense)).toBeCloseTo(centre + (1 - centre) * (0.5 / 0.95));
+    expect(sharpness(dense, coarse)).toBeCloseTo(sharpness(coarse, dense));
+    expect(sharpness(exact, dense)).toBeCloseTo(1);
   });
 
   it("requires new detail after zooming in but reuses a capped-resolution patch without an endless redraw", () => {

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drawingPdfRaster } from "~/lib/drawing-pdf-raster-client";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
+  patchCoversView,
   planDrawingPatch,
   type DrawingPatch,
   type DrawingView,
@@ -204,6 +205,59 @@ describe("PDF detail drawn by the background worker", () => {
       planDrawingPatch(props.fit, props.frameSize, rest, props.dpr),
     );
     expect(loadPdfDocument).not.toHaveBeenCalled();
+  });
+
+  it("draws a zoom at the density it is heading for, over the coarser detail until that covers the screen", async () => {
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/zoom.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    const first = jobs[0]!;
+    await act(async () => {
+      first.resolve({ bitmap: bitmapFor(first.patch).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    await tick();
+    let scale = props.view.scale;
+    for (let frame = 0; frame < 6 && jobs.length === 1; frame++) {
+      scale *= 1.05;
+      act(() => paintRef.current!({ scale, x: 0, y: 0 }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16);
+      });
+    }
+    expect(jobs).toHaveLength(2);
+    const ahead = jobs[1]!.patch;
+    const now = planDrawingPatch(props.fit, props.frameSize, { scale, x: 0, y: 0 }, props.dpr)!;
+    expect(ahead.fullWidth).toBeGreaterThan(now.fullWidth * 1.1);
+    expect(ahead.width).toBeLessThan(now.width);
+
+    const canvases = [...view.container.querySelectorAll("canvas")];
+    const visible = () =>
+      canvases.filter((canvas) => canvas.style.visibility === "visible");
+    const coarse = visible()[0]!;
+    await act(async () => {
+      jobs[1]!.resolve({ bitmap: bitmapFor(ahead).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(visible()).toHaveLength(2);
+    const sharp = visible().find((canvas) => canvas !== coarse)!;
+    expect(sharp.style.zIndex).toBe("2");
+    expect(coarse.style.zIndex).toBe("1");
+
+    // Coming to rest where the new detail covers the screen lets the old go.
+    const rest = {
+      scale: (ahead.fullWidth / (props.fit.width * props.dpr * 1.1)) * 1.02,
+      x: 0,
+      y: 0,
+    };
+    expect(patchCoversView(ahead, props.fit, props.frameSize, rest, props.dpr)).toBe(true);
+    act(() => paintRef.current!(rest));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} view={rest} />);
+    await tick();
+    expect(visible()).toEqual([sharp]);
+    expect(jobs).toHaveLength(2);
   });
 
   it("moves to the main thread when the worker drops a render the layer still wanted", async () => {
