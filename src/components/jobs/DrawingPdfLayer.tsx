@@ -9,15 +9,20 @@ import {
 import {
   useEffect,
   useLayoutEffect,
+  useReducer,
   useRef,
   type RefCallback,
   type RefObject,
 } from "react";
-import type { RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
+import {
+  canRasterDrawingOffThread,
+  drawingPdfRaster,
+} from "~/lib/drawing-pdf-raster-client";
 import {
   drawingPdfOperationsFilter,
   isFullDrawingPatch,
 } from "~/lib/drawing-pdf-operations";
+import type { PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import {
@@ -46,6 +51,8 @@ type Props = {
   paintRef?: RefObject<((view: DrawingView) => void) | null>;
 };
 type Snapshot = { index: number; patch: DrawingPatch; scale: number };
+/** Pages the background renderer could not draw stay on the main thread. */
+const mainThreadPages = new Set<string>();
 /**
  * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
@@ -53,6 +60,12 @@ type Snapshot = { index: number; patch: DrawingPatch; scale: number };
  * Motion never erases it or cancels useful work; only changing sheets does.
  */
 export function DrawingPdfLayer(props: Props) {
+  // Detail is drawn by a background worker where the browser allows it; the
+  // main-thread renderer remains for older browsers and pages it cannot draw.
+  const pageKey = `${props.pdf.page}:${props.pdf.url}`;
+  const [, rerender] = useReducer((count: number) => count + 1, 0);
+  const offThread =
+    !mainThreadPages.has(pageKey) && canRasterDrawingOffThread();
   const canvases = useRef<Array<HTMLCanvasElement | null>>([null, null]);
   const latest = useRef(props);
   latest.current = props;
@@ -106,7 +119,19 @@ export function DrawingPdfLayer(props: Props) {
     let rendering = false;
     let stopPreparation: (() => void) | undefined;
     let current: Snapshot | null = null;
-    let task: RenderTask | null = null;
+    let task: { cancel: () => void } | null = null;
+    const raster = offThread ? drawingPdfRaster() : null;
+    if (offThread && !raster) {
+      rerender();
+      return;
+    }
+    const release = raster?.acquire();
+    // Bitmap canvases let go of their pixels through their own context.
+    const free = (canvas: HTMLCanvasElement) => {
+      if (raster) canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(null);
+      canvas.width = 0;
+      canvas.height = 0;
+    };
     let nextTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAfter = 0;
     let stalledTimer: ReturnType<typeof setTimeout> | null = null;
@@ -117,8 +142,7 @@ export function DrawingPdfLayer(props: Props) {
     for (const canvas of buffers) {
       if (canvas) {
         canvas.style.visibility = "hidden";
-        canvas.width = 0;
-        canvas.height = 0;
+        free(canvas);
       }
     }
 
@@ -127,6 +151,7 @@ export function DrawingPdfLayer(props: Props) {
     // lookup the first time the user zooms beyond the pre-rendered tiles.
     const warm = () => {
       if (disposed) return;
+      if (raster) return raster.warm(source.url, source.page);
       void loadPdfDocument(source.url)
         .then((document) =>
           disposed ? undefined : document.getPage(source.page),
@@ -183,72 +208,87 @@ export function DrawingPdfLayer(props: Props) {
       const loadingAt = performance.now();
       let renderingAt = loadingAt;
       let pixels = 0;
+      let bitmap: ImageBitmap | null = null;
       try {
-        const loading = loadPdfDocument(source.url);
-        const page = await Promise.race([
-          loading.then((document) =>
-            disposed ? null : document.getPage(source.page),
-          ),
-          new Promise<never>((_, reject) => {
-            stalledTimer = setTimeout(() => {
-              discardPdfDocument(source.url, loading);
-              reject(new Error("Drawing PDF loading timed out"));
-            }, 30_000);
-          }),
-        ]);
-        if (stalledTimer !== null) clearTimeout(stalledTimer);
-        stalledTimer = null;
-        if (disposed || !page) return;
-        // Loading a cold document may outlast a whole gesture. Rasterize the
-        // newest view, not the one captured before the network/worker wait.
-        const ready = latest.current;
-        if (!ready.enabled) return;
-        const patch = planDrawingPatch(
-          ready.fit,
-          ready.frameSize,
-          ready.view,
-          ready.dpr,
-        );
-        if (!patch) return;
-        const raw = page.getViewport({ scale: 1 });
-        const viewport = page.getViewport({
-          scale: patch.fullWidth / raw.width,
-        });
-        canvas.style.visibility = "hidden";
-        canvas.width = patch.pixelWidth;
-        canvas.height = patch.pixelHeight;
-        pixels = canvas.width * canvas.height;
-        renderingAt = performance.now();
-        const bounds = completedPdfBounds(page);
-        const recordFullPage = !bounds && isFullDrawingPatch(patch);
-        if (recordFullPage) page.recordedBBoxes = null;
-        const render = page.render({
-          canvas,
-          viewport,
-          // Recording while the whole page is visible lets later crops skip
-          // offscreen ink and its unused state. Deep-link opens without a full
-          // recording retain the complete rendering path.
-          recordOperations: recordFullPage,
-          operationsFilter: drawingPdfOperationsFilter(bounds, patch),
-          transform: [
-            1,
-            0,
-            0,
-            patch.fullHeight / viewport.height,
-            -patch.left * patch.fullWidth,
-            -patch.top * patch.fullHeight,
-          ],
-        });
-        task = render;
-        // A stuck PDF task must not block all future zoom/detail requests.
-        stalledTimer = setTimeout(() => render.cancel(), 30_000);
-        // Display rendering in the installed PDF.js already yields via RAF.
-        // Keep that scheduler instead of adding another frame of latency.
-        await render.promise;
-        if (stalledTimer !== null) clearTimeout(stalledTimer);
-        stalledTimer = null;
-        if (disposed) return;
-        if (recordFullPage) rememberPdfBounds(page);
+        let ready = latest.current;
+        let patch: DrawingPatch | null;
+        let page: PDFPageProxy | null = null;
+        if (raster) {
+          patch = planDrawingPatch(ready.fit, ready.frameSize, ready.view, ready.dpr);
+          if (!patch) return;
+          pixels = patch.pixelWidth * patch.pixelHeight;
+          const job = raster.render(source.url, source.page, patch);
+          task = job;
+          stalledTimer = setTimeout(job.cancel, 30_000);
+          ({ bitmap } = await job.promise);
+          if (disposed) return;
+        } else {
+          const loading = loadPdfDocument(source.url);
+          page = await Promise.race([
+            loading.then((document) =>
+              disposed ? null : document.getPage(source.page),
+            ),
+            new Promise<never>((_, reject) => {
+              stalledTimer = setTimeout(() => {
+                discardPdfDocument(source.url, loading);
+                reject(new Error("Drawing PDF loading timed out"));
+              }, 30_000);
+            }),
+          ]);
+          if (stalledTimer !== null) clearTimeout(stalledTimer);
+          stalledTimer = null;
+          if (disposed || !page) return;
+          // Loading a cold document may outlast a whole gesture. Rasterize the
+          // newest view, not the one captured before the network/worker wait.
+          ready = latest.current;
+          if (!ready.enabled) return;
+          patch = planDrawingPatch(
+            ready.fit,
+            ready.frameSize,
+            ready.view,
+            ready.dpr,
+          );
+          if (!patch) return;
+          const raw = page.getViewport({ scale: 1 });
+          const viewport = page.getViewport({
+            scale: patch.fullWidth / raw.width,
+          });
+          canvas.style.visibility = "hidden";
+          canvas.width = patch.pixelWidth;
+          canvas.height = patch.pixelHeight;
+          pixels = canvas.width * canvas.height;
+          renderingAt = performance.now();
+          const bounds = completedPdfBounds(page);
+          const recordFullPage = !bounds && isFullDrawingPatch(patch);
+          if (recordFullPage) page.recordedBBoxes = null;
+          const render = page.render({
+            canvas,
+            viewport,
+            // Recording while the whole page is visible lets later crops skip
+            // offscreen ink and its unused state. Deep-link opens without a full
+            // recording retain the complete rendering path.
+            recordOperations: recordFullPage,
+            operationsFilter: drawingPdfOperationsFilter(bounds, patch),
+            transform: [
+              1,
+              0,
+              0,
+              patch.fullHeight / viewport.height,
+              -patch.left * patch.fullWidth,
+              -patch.top * patch.fullHeight,
+            ],
+          });
+          task = render;
+          // A stuck PDF task must not block all future zoom/detail requests.
+          stalledTimer = setTimeout(() => render.cancel(), 30_000);
+          // Display rendering in the installed PDF.js already yields via RAF.
+          // Keep that scheduler instead of adding another frame of latency.
+          await render.promise;
+          if (stalledTimer !== null) clearTimeout(stalledTimer);
+          stalledTimer = null;
+          if (disposed) return;
+          if (recordFullPage) rememberPdfBounds(page);
+        }
         const now = latest.current;
         const coverage = patchScreenCoverage(
           patch,
@@ -262,6 +302,14 @@ export function DrawingPdfLayer(props: Props) {
         // A render can finish after a fast fling. Do not replace good detail
         // with an obsolete patch covering less of the view; refill the latest.
         if (coverage > 0 && (coverage + 0.001 >= oldCoverage || !current)) {
+          if (bitmap) {
+            // Handing the worker's bitmap to the canvas moves it; no pixels are
+            // copied. The size keeps toDataURL (markup snapshots) working.
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(bitmap);
+            bitmap = null;
+          }
           patches.current[index] = patch;
           position(index, camera.current);
           canvas.style.visibility = "visible";
@@ -271,8 +319,7 @@ export function DrawingPdfLayer(props: Props) {
               previous.style.visibility = "hidden";
               // Safari retains hidden canvas backing stores. Free the old
               // bitmap only after the replacement is ready and visible.
-              previous.width = 0;
-              previous.height = 0;
+              free(previous);
               patches.current[current.index] = null;
             }
           }
@@ -289,7 +336,7 @@ export function DrawingPdfLayer(props: Props) {
           pixels,
           outcome: sharp ? "sharp" : "partial",
         });
-        if (!stopPreparation && !completedPdfBounds(page)) {
+        if (page && !stopPreparation && !completedPdfBounds(page)) {
           stopPreparation = preparePdfBounds(
             page,
             () => request.current(),
@@ -299,6 +346,13 @@ export function DrawingPdfLayer(props: Props) {
         retryAfter = 0;
         failures = 0;
       } catch (error) {
+        // The background renderer could not draw this page. Draw it here.
+        if (raster && !disposed) {
+          disposed = true;
+          mainThreadPages.add(pageKey);
+          rerender();
+          return;
+        }
         if (!disposed) latest.current.onError?.(error);
         if (!disposed)
           recordDrawingPerformance({
@@ -317,10 +371,8 @@ export function DrawingPdfLayer(props: Props) {
         if (stalledTimer !== null) clearTimeout(stalledTimer);
         stalledTimer = null;
         // Failed and obsolete work must not retain a second large bitmap.
-        if (!disposed && current?.index !== index) {
-          canvas.width = 0;
-          canvas.height = 0;
-        }
+        bitmap?.close();
+        if (!disposed && current?.index !== index) free(canvas);
         task = null;
         rendering = false;
         if (!disposed) schedule(Math.max(0, retryAfter - Date.now()));
@@ -367,14 +419,14 @@ export function DrawingPdfLayer(props: Props) {
       for (const canvas of buffers) {
         if (canvas) {
           canvas.style.visibility = "hidden";
-          canvas.width = 0;
-          canvas.height = 0;
+          free(canvas);
         }
       }
+      release?.();
     };
     // Geometry changes request a refill below; only a different source tears down buffers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.pdf.url, props.pdf.page]);
+  }, [props.pdf.url, props.pdf.page, offThread]);
 
   useEffect(() => {
     request.current();
@@ -404,7 +456,8 @@ export function DrawingPdfLayer(props: Props) {
     >
       {[0, 1].map((index) => (
         <canvas
-          key={index}
+          // A canvas keeps its first context type; switching renderer needs new ones.
+          key={`${offThread ? "bitmap" : "2d"}-${index}`}
           ref={bind(index)}
           data-pdf-detail=""
           className="absolute"
