@@ -145,3 +145,7 @@ jobs:
         run: psql -h 127.0.0.1 -U postgres -d foremanhq_ci -v ON_ERROR_STOP=1 -c 'CREATE ROLE foreman_app NOLOGIN'
       - run: pnpm db:migrate:aws
       - run: pnpm db:migrate:aws
+      - name: Verify runtime permissions and organization isolation triggers
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U postgres -d foremanhq_ci -v ON_ERROR_STOP=1 -f infra/aws/verify-database.sql
