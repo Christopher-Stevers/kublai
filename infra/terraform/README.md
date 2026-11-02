@@ -19,7 +19,7 @@ Still outstanding: application deployment, source-version/cutover choice, databa
 ## Architecture and approved database choice
 
 - Account `337658133209`, Ohio (`us-east-2`), dedicated VPC.
-- `t3a.small` app host, standard CPU credits, encrypted 20 GiB root disk, Elastic IP. Public ports 80/443 only; use SSM for administration. IMDSv2 is required; container metadata access is restricted.
+- `t3a.medium` (4 GiB) app host, standard CPU credits, encrypted 20 GiB root disk, Elastic IP. Public ports 80/443 only; use SSM for administration. IMDSv2 is required; container metadata access is restricted.
 - PostgreSQL 16 on **Single-AZ `db.t4g.micro`**, selected November 2, 2026. 20 GiB gp3, encrypted, autoscaling up to 100 GiB. Private subnets in two AZs satisfy the subnet-group requirement; this is still one database instance, with no automatic standby failover. The DB shares the app host's AZ to avoid ordinary cross-AZ database traffic.
 - Port 5432 accepts connections only from the app security group. TLS is required. Use the AWS RDS CA bundle and certificate verification in clients.
 - Seven days of automated database backups/PITR, deletion protection, required final snapshot, retained automated backups. Major upgrades are explicit; minor upgrades use the maintenance window. Paid RDS Extended Support enrollment is disabled.
@@ -32,7 +32,7 @@ The RDS Ohio public price list published October 29, 2026 lists $0.016/hour for 
 
 At light usage, the current complete stack is approximately **$36–40/month before tax**, using a 730-hour month: EC2 $13.72, RDS compute/storage $13.98, 40 GiB EC2 gp3 disks $3.20, public IPv4 $3.65, plus approximately $1–5 for backups, monitoring, secrets, and image storage. This is incremental to existing hosting and excludes heavy traffic/CPU-credit use. AWS rates were checked November 2, 2026.
 
-The newer integration's room-detection worker configures a 4 GiB cgroup memory ceiling and expects cgroup delegation plus native processing tools. A 2 GiB `t3a.small` is an infrastructure starting point, **not a verified capacity recommendation for those workflows**. Reassess `app_instance_type` and worker isolation before enabling them; do not give a container unrestricted host privileges to bypass this requirement.
+The app host uses 4 GiB RAM. The web process has a 1 GiB cgroup limit, drawing workers share a 2 GiB ceiling and are serialized, and the container is capped at 3200 MiB. The host deployer delegates only the container's own workers subtree; no Docker socket, privileged container, or host-wide writable cgroup mount is exposed. A systemd service recreates the container and delegation after a restart.
 
 ## Initialize and review
 
@@ -81,3 +81,7 @@ bash -n bootstrap.sh.tftpl
 ```
 
 Mock tests check the approved size, private database configuration, recovery protection, IMDS requirements, ingress ports, private subnet routes, and encrypted persistent uploads. They do not prove AWS permissions, service availability, boot success, application compatibility, restore success, or live pricing totals. A real plan and deployment validation remain necessary.
+
+## Integration lint baseline
+
+The AWS release branch starts from integration commit `e8b3ba10cf3ddccce9860878845ae6abe181f473`. Its inherited lint baseline was stale: 291 additional errors already existed in that integration source. `eslint-baseline.json` now records the 1676 existing errors by file, rule, message and count. This records debt; it does not fix those application errors or disable rules. `pnpm lint` rejects additions and `pnpm lint:strict` exposes all debt. Application source was unchanged from that integration commit except the equivalent SQL `0` default required for Drizzle snapshot generation.

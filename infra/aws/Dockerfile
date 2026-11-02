@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Workers execute TypeScript and source-relative helpers at runtime; retain them.
 COPY --from=build --chown=node:node /app /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_EXTRA_CA_CERTS=/app/infra/aws/rds-ca.pem
+ENTRYPOINT ["bash", "/app/infra/aws/container-entrypoint.sh"]
 USER node
 EXPOSE 3000
 CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]

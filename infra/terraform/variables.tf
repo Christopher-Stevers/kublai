@@ -49,7 +49,7 @@ variable "monthly_budget_usd" {
 
 variable "app_instance_type" {
   type        = string
-  default     = "t3a.small"
+  default     = "t3a.medium"
   description = "Application host size. Reassess memory for full drawing/room worker workloads before app cutover."
   validation {
     condition     = contains(["t3a.small", "t3a.medium", "t3a.large"], var.app_instance_type)

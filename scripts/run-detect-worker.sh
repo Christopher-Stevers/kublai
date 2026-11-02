@@ -45,7 +45,10 @@ if [ -z "$current_cgroup" ]; then
   exit 70
 fi
 
-cgroup_parent=$(dirname "/sys/fs/cgroup$current_cgroup")
+cgroup_parent=${FOREMANHQ_CGROUP_ROOT:+$FOREMANHQ_CGROUP_ROOT/workers}
+if [ -z "$cgroup_parent" ]; then
+  cgroup_parent=$(dirname "/sys/fs/cgroup$current_cgroup")
+fi
 cgroup_dir="$cgroup_parent/foremenhq-detect-$upload_id"
 mkdir -p "$cgroup_dir"
 # Full-resolution hybrid tracing holds several native/typed pixel buffers in

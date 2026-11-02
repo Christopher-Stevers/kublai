@@ -21,37 +21,58 @@ aws ssm get-parameter --region us-east-2 --name /foremanhq/migration-env --with-
 # Apply reviewed, versioned migrations before launching the candidate.
 # The application container never receives schema-owner credentials.
 docker run --rm --env-file "$migration_env" --memory 512m --pids-limit 64 --security-opt no-new-privileges --cap-drop ALL "$image" node --import tsx scripts/migrate-aws.ts
-# Check the DB and app without replacing the active container after applying reviewed migrations.
+# Verify the candidate before changing the running release.
+. /opt/foremanhq/start-container.sh
 docker rm -f foremanhq-candidate >/dev/null 2>&1 || true
-docker run -d --name foremanhq-candidate --env-file "$env_file" --memory 1400m --memory-swap 1400m --pids-limit 256 --security-opt no-new-privileges --cap-drop ALL --mount type=bind,src=/srv/foremanhq/uploads,dst=/app/uploads "$image" >/dev/null
+cleanup_cgroup_mount foremanhq-candidate
+start_container foremanhq-candidate "$image" "$env_file"
 healthy=false
 for attempt in $(seq 1 36); do
   if docker exec foremanhq-candidate node scripts/check-health.mjs >/dev/null 2>&1; then healthy=true; break; fi
   sleep 5
 done
 docker rm -f foremanhq-candidate >/dev/null
+cleanup_cgroup_mount foremanhq-candidate
 $healthy || { echo 'Candidate failed database/app healthcheck; active release unchanged.' >&2; exit 1; }
-old_image=$(docker inspect --format '{{.Config.Image}}' foremanhq 2>/dev/null || true)
-if [[ -n "$old_image" ]]; then
-  docker rename foremanhq foremanhq-previous
-  docker stop foremanhq-previous >/dev/null
-fi
-start() {
-  docker run -d --name foremanhq --network foremanhq --restart unless-stopped --env-file "$env_file" --memory 1400m --memory-swap 1400m --pids-limit 256 --security-opt no-new-privileges --cap-drop ALL -p 127.0.0.1:3000:3000 --mount type=bind,src=/srv/foremanhq/uploads,dst=/app/uploads "$image" >/dev/null
-}
+old_image=$(cat /var/lib/foremanhq/current-image 2>/dev/null || true)
+cp /etc/foremanhq/app.env /etc/foremanhq/previous.env 2>/dev/null || true
+install -m 600 "$env_file" /etc/foremanhq/app.env
+printf '%s\n' "$image" > /var/lib/foremanhq/current-image
+cat > /etc/systemd/system/foremanhq.service <<'UNIT'
+[Unit]
+Description=ForemanHQ application with bounded drawing workers
+Requires=docker.service
+After=docker.service network-online.target
+RequiresMountsFor=/srv/foremanhq
+StartLimitIntervalSec=300
+StartLimitBurst=5
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/foremanhq/run-service.sh
+ExecStop=-/usr/bin/docker stop -t 20 foremanhq
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable foremanhq.service
+systemctl restart foremanhq.service
 healthy=false
-if start; then
-  for attempt in $(seq 1 36); do
-    if docker exec foremanhq node scripts/check-health.mjs >/dev/null 2>&1; then healthy=true; break; fi
-    sleep 5
-  done
-fi
+for attempt in $(seq 1 36); do
+  if docker exec foremanhq node scripts/check-health.mjs >/dev/null 2>&1; then healthy=true; break; fi
+  sleep 5
+done
 if ! $healthy; then
-  docker rm -f foremanhq >/dev/null 2>&1 || true
-  if [[ -n "$old_image" ]]; then docker rename foremanhq-previous foremanhq; docker start foremanhq >/dev/null; fi
-  echo 'Release failed; previous container restored when present.' >&2
+  systemctl stop foremanhq.service
+  if [[ -n "$old_image" ]]; then
+    printf '%s\n' "$old_image" > /var/lib/foremanhq/current-image
+    cp /etc/foremanhq/previous.env /etc/foremanhq/app.env
+    systemctl start foremanhq.service
+  fi
+  echo 'Release failed; previous release restored when present.' >&2
   exit 1
 fi
-docker rm foremanhq-previous >/dev/null 2>&1 || true
-printf '%s\n' "$image" > /var/lib/foremanhq/current-image
-echo 'Release healthy on localhost:3000. DNS/proxy cutover is managed separately.'
+rm -f /etc/foremanhq/previous.env
+echo 'Release healthy. Production DNS cutover is managed separately.'
