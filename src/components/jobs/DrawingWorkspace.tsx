@@ -1580,7 +1580,7 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
-  const showSelectedMarkupActions = tool === "select" && (!quickWheel || fullscreen) && selected?.kind === "markup" &&
+  const showSelectedMarkupActions = tool !== "pan" && tool !== "viewing" && (!quickWheel || fullscreen) && selected?.kind === "markup" &&
     selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
     !form && !compareIds;
 
