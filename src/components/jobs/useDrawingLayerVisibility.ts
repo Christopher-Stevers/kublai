@@ -9,6 +9,8 @@ export type DrawingLayers = {
   published: boolean;
   measurements?: boolean;
   hidden?: string[];
+  /** Authors whose markups, measurements and pins are switched off. */
+  hiddenPeople?: string[];
 };
 const defaults: DrawingLayers = {
   markups: true,
@@ -30,9 +32,11 @@ const usePreference = createAccountPreference<string>({
           (x) => typeof x === "boolean",
         ) &&
         (v.measurements === undefined || typeof v.measurements === "boolean") &&
-        (v.hidden === undefined ||
-          (Array.isArray(v.hidden) &&
-            v.hidden.every((x) => typeof x === "string")))
+        [v.hidden, v.hiddenPeople].every(
+          (list) =>
+            list === undefined ||
+            (Array.isArray(list) && list.every((x) => typeof x === "string")),
+        )
       );
     } catch {
       return false;

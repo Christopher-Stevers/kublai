@@ -1987,6 +1987,32 @@ it("keeps individual annotations out of Layers and remembers hidden drawing cont
   expect(screen.getByRole("button", { name: "Rectangle layer" })).toHaveAttribute("aria-pressed", "false");
 });
 
+it("switches off one person's markups from Layers and remembers it", () => {
+  mocks.account = { userId: "tim", accountKey: `people-${crypto.randomUUID()}`, store: null };
+  const mine = existingMarkup();
+  mocks.data!.entities = [
+    mine,
+    { ...mine, id: crypto.randomUUID(), authorId: "chris", authorName: "Chris" },
+    { ...mine, id: crypto.randomUUID(), authorId: "chris", authorName: "Chris" },
+  ];
+  const first = open();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(3);
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  const people = screen.getByText("People", { selector: "summary span" }).closest("details")!;
+  fireEvent.click(people.querySelector("summary")!);
+  expect(within(people).getAllByRole("button").map((row) => row.textContent)).toEqual(["Tim (you)1", "Chris2"]);
+  const chris = screen.getByRole("button", { name: "Chris layer" });
+  fireEvent.click(chris);
+  expect(chris).toHaveAttribute("aria-pressed", "false");
+  expect(mocks.viewer.mock.lastCall?.[0].annotations.map((entity: { authorId: string }) => entity.authorId)).toEqual(["tim"]);
+  first.unmount();
+  open();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Chris layer" }));
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(3);
+});
+
 it("loads deferred destinations only when a link is opened, with recoverable errors", async () => {
   const entity = existingMarkup();
   if (entity.kind !== "markup") throw Error("fixture");

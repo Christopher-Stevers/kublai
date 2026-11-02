@@ -109,6 +109,7 @@ export const snapshotStateSchema = z.object({
         published: z.boolean(),
         measurements: z.boolean().optional(),
         hidden: z.array(z.string().max(40)).max(40).optional(),
+        hiddenPeople: z.array(z.string().max(100)).max(200).optional(),
       }),
       selectedId: z.uuid().nullable(),
       panel: z

@@ -1,5 +1,5 @@
 "use client";
-import { useDrawingLayerVisibility } from "./useDrawingLayerVisibility";
+import { useDrawingLayerVisibility, type DrawingLayers } from "./useDrawingLayerVisibility";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
 import { SuperEquipmentDialog } from "./SuperEquipmentDialog";
@@ -81,6 +81,8 @@ import {
   SearchIcon,
   SendIcon,
   SplineIcon,
+  UserIcon,
+  UsersIcon,
   WrenchIcon,
   ArrowUpRightIcon,
   CircleIcon,
@@ -388,6 +390,72 @@ function LayerRow({
         className={`size-4 shrink-0 ${on ? "text-foreground/70" : "text-muted-foreground/70"}`}
       />
     </button>
+  );
+}
+/** Each person who has drawn on this sheet, so their work can be switched off. */
+function PeopleLayers({
+  entities,
+  sourceId,
+  actorId,
+  layers,
+  setLayers,
+}: {
+  entities: DrawingEntity[];
+  sourceId: string;
+  actorId: string;
+  layers: DrawingLayers;
+  setLayers: (next: (old: DrawingLayers) => DrawingLayers) => void;
+}) {
+  const people = new Map<string, { name: string; count: number }>();
+  for (const entity of entities)
+    if (
+      (entity.kind === "markup" || entity.kind === "issue") &&
+      entity.visibility !== "archived" &&
+      sourceOf(entity) === sourceId
+    ) {
+      const person = people.get(entity.authorId);
+      if (person) person.count++;
+      else
+        people.set(entity.authorId, {
+          name: entity.authorName.trim() || "Unknown",
+          count: 1,
+        });
+    }
+  if (people.size === 0) return null;
+  const hidden = layers.hiddenPeople ?? [];
+  const toggle = (id: string) =>
+    setLayers((old) => ({
+      ...old,
+      hiddenPeople: old.hiddenPeople?.includes(id)
+        ? old.hiddenPeople.filter((item) => item !== id)
+        : [...(old.hiddenPeople ?? []), id],
+    }));
+  const rows = [...people].sort(([a, x], [b, y]) =>
+    a === actorId ? -1 : b === actorId ? 1 : x.name.localeCompare(y.name),
+  );
+  return (
+    <details className="group/layers">
+      <summary
+        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 text-sm font-medium hover:bg-muted/70"
+        aria-label="Expand People Layers"
+      >
+        <span aria-hidden className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg">
+          <UsersIcon className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1 truncate">People</span>
+        {hidden.length > 0 && (
+          <span className="text-muted-foreground text-xs">{hidden.filter((id) => people.has(id)).length} off</span>
+        )}
+        <span className="grid size-11 shrink-0 place-items-center">
+          <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
+        </span>
+      </summary>
+      {rows.map(([id, person]) => (
+        <LayerRow key={id} child icon={UserIcon}
+          label={id === actorId ? `${person.name} (you)` : person.name}
+          count={person.count} on={!hidden.includes(id)} onToggle={() => toggle(id)} />
+      ))}
+    </details>
   );
 }
 const nameOf = (entity: DrawingEntity) =>
@@ -1486,6 +1554,7 @@ export function DrawingWorkspace({
             (entity.kind === "markup" || entity.kind === "issue") &&
             layers.hidden?.includes(entity.data.type)
           ) &&
+          !layers.hiddenPeople?.includes(entity.authorId) &&
           (entity.visibility === "private" ? layers.private : layers.published),
       ),
     [
@@ -1494,6 +1563,7 @@ export function DrawingWorkspace({
       layers.markups,
       layers.measurements,
       layers.hidden,
+      layers.hiddenPeople,
       layers.issues,
       layers.private,
       layers.published,
@@ -2814,6 +2884,8 @@ export function DrawingWorkspace({
                                 onToggle={() => setLayers(old => ({ ...old, measurements: old.measurements === false }))} />
                               {group("markups", "Markup", PenLineIcon, MARKUP_TYPES)}
                               {group("issues", "Tools", WrenchIcon, PIN_TYPES)}
+                              <PeopleLayers entities={entities} sourceId={sourceId}
+                                actorId={viewData.actor.id} layers={layers} setLayers={setLayers} />
                             </>
                           );
                         })()}
