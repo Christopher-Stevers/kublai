@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+
+import { deviceIsLandscape } from "~/components/app/LandscapeNavigation";
+
+type Orientation = "portrait" | "landscape";
+const preferenceKey = (orientation: Orientation) => `foremanhq:drawing-fullscreen:${orientation}`;
+const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /** Native fullscreen when available, with the same drawing-only view as a fallback. */
 export function useDrawingFullscreen(active: boolean) {
@@ -12,7 +18,18 @@ export function useDrawingFullscreen(active: boolean) {
   const nativeTarget = useRef<HTMLElement | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
-  const exit = useCallback(() => {
+  const orientation = useRef<Orientation>("portrait");
+  const sessionPreferences = useRef<Partial<Record<Orientation, boolean>>>({});
+  const remember = useCallback((value: boolean) => {
+    sessionPreferences.current[orientation.current] = value;
+    try { localStorage.setItem(preferenceKey(orientation.current), String(value)); } catch {
+      // Keep the choice for this session when browser storage is unavailable.
+    }
+  }, []);
+
+  // Navigation and rotation must not turn an automatic exit into a saved choice.
+  const close = useCallback(() => {
+    native.current = false;
     wanted.current = false;
     setFullscreen(false);
     if (
@@ -22,6 +39,7 @@ export function useDrawingFullscreen(active: boolean) {
       void document.exitFullscreen().catch(() => {
         // Keep the exit control accessible if the browser has not actually exited.
         if (document.fullscreenElement === nativeTarget.current) {
+          native.current = true;
           wanted.current = true;
           setFullscreen(true);
         }
@@ -29,9 +47,15 @@ export function useDrawingFullscreen(active: boolean) {
     }
   }, []);
 
+  const exit = useCallback(() => {
+    remember(false);
+    close();
+  }, [close, remember]);
+
   const enter = useCallback(() => {
     const target = surface.current;
     if (!target) return;
+    remember(true);
     wanted.current = true;
     nativeTarget.current = target;
     setFullscreen(true);
@@ -51,7 +75,7 @@ export function useDrawingFullscreen(active: boolean) {
     } catch {
       // Some browsers expose the method but cannot use it; retain expanded viewing.
     }
-  }, []);
+  }, [remember]);
 
   useEffect(() => {
     const changed = () => {
@@ -59,12 +83,13 @@ export function useDrawingFullscreen(active: boolean) {
         nativeTarget.current &&
         document.fullscreenElement === nativeTarget.current
       ) {
-        native.current = true;
+        native.current = wanted.current;
         if (!wanted.current) {
           void document.exitFullscreen().catch(() => undefined);
         }
       } else if (native.current) {
         native.current = false;
+        remember(false);
         wanted.current = false;
         setFullscreen(false);
       }
@@ -88,12 +113,44 @@ export function useDrawingFullscreen(active: boolean) {
         void document.exitFullscreen().catch(() => undefined);
       }
     };
-  }, [exit]);
+  }, [exit, remember]);
 
-  useEffect(() => {
+  useClientLayoutEffect(() => {
     if (!active) return;
-    return exit;
-  }, [active, exit]);
+    let previous: Orientation | undefined;
+    const restore = () => {
+      const next: Orientation = deviceIsLandscape() ? "landscape" : "portrait";
+      if (next === previous) return;
+      previous = next;
+      orientation.current = next;
+      let preference = sessionPreferences.current[next];
+      if (preference === undefined) {
+        try {
+          const saved = localStorage.getItem(preferenceKey(next));
+          if (saved === "true" || saved === "false") preference = saved === "true";
+        } catch { /* Use the orientation default when storage is unavailable. */ }
+      }
+      if (preference ?? next === "landscape") {
+        // Browsers require a user gesture for native fullscreen. Restore the
+        // same drawing-only layout without requesting browser fullscreen.
+        wanted.current = true;
+        setFullscreen(true);
+      } else close();
+    };
+    restore();
+    const media = window.matchMedia?.("(orientation: landscape)");
+    media?.addEventListener?.("change", restore);
+    window.screen.orientation?.addEventListener?.("change", restore);
+    window.addEventListener("orientationchange", restore);
+    window.addEventListener("resize", restore);
+    return () => {
+      media?.removeEventListener?.("change", restore);
+      window.screen.orientation?.removeEventListener?.("change", restore);
+      window.removeEventListener("orientationchange", restore);
+      window.removeEventListener("resize", restore);
+      close();
+    };
+  }, [active, close]);
 
   const wasFullscreen = useRef(false);
   useEffect(() => {
