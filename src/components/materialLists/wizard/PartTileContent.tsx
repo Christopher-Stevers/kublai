@@ -35,6 +35,8 @@ export function PartTileContent({
             src={part.imageUrl}
             alt={part.displayName}
             fill
+            // Tiles are at most 2in wide, less their padding.
+            sizes="168px"
             className="part-photo object-cover"
             draggable={false}
           />

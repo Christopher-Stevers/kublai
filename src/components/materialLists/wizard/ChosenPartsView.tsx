@@ -100,6 +100,7 @@ function PartImage({ part }: { part: PendingPart["partDefinition"] }) {
           src={part.imageUrl}
           alt={part.displayName}
           fill
+          sizes="32px"
           className="part-photo object-cover"
         />
       ) : (

@@ -1491,6 +1491,7 @@ function WheelDisplay({
                         src={option.imageUrl}
                         alt=""
                         fill
+                        sizes="(max-width: 640px) 33vw, 120px"
                         className="object-contain"
                       />
                     </div>
