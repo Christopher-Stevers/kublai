@@ -61,7 +61,6 @@ type Choices = { title: string; options: Choice[] };
 /** Mutable gesture registry; methods keep it separate from React render state. */
 class Registry {
   current: Choices | null = null;
-  openMenu?: (event: PointerEvent, choices: Choices) => boolean;
   private changed?: (choices: Choices) => void;
   register(choices: Choices) {
     this.current = choices;
@@ -93,13 +92,6 @@ export function useQuickWheelOptions(title: string, options: Choice[]) {
     if (!choice) return;
     (commit ?? choice.select)();
   };
-}
-
-/** Borrow the surrounding wheel for a card's more specific choices. */
-export function useQuickWheelMenu() {
-  const registry = useContext(WheelContext);
-  return (event: PointerEvent, choices: Choices) =>
-    registry?.openMenu?.(event, choices) ?? false;
 }
 
 type Wheel = Choices & {
@@ -523,7 +515,6 @@ export function QuickWheelSurface({
   const registry = useMemo(() => new Registry(), []);
   const surface = useRef<HTMLDivElement>(null);
   const active = useRef<Wheel | null>(null);
-  const menuSourceTitle = useRef<string | null>(null);
   const [wheel, setWheel] = useState<Wheel | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectionLatch = useRef<number | null>(null);
@@ -557,7 +548,6 @@ export function QuickWheelSurface({
     setPreview(null);
   };
   const close = () => {
-    menuSourceTitle.current = null;
     stopScrolling();
     const wasOpen = active.current !== null;
     const pointerId = active.current?.pointerId;
@@ -584,9 +574,6 @@ export function QuickWheelSurface({
     return registry.subscribe((choices) => {
       const current = active.current;
       if (!current) return;
-      // Keep the card submenu through parent rerenders, until the wizard advances.
-      if (menuSourceTitle.current === choices.title) return;
-      menuSourceTitle.current = null;
       const changed =
         choices.title !== current.title ||
         JSON.stringify(
@@ -643,16 +630,16 @@ export function QuickWheelSurface({
         Boolean(target.closest(interaction.current.activationSelector))
       );
     };
-    function open(event: PointerEvent | MouseEvent, latched = false, menu?: Choices) {
-      if (!wheelEnabled.current) return false;
+    function open(event: PointerEvent | MouseEvent, latched = false) {
+      if (!wheelEnabled.current) return;
       if (
         !latched &&
         event instanceof PointerEvent &&
         event.isPrimary === false
       )
         return;
-      const choices = menu ?? registry.current;
-      if (!choices?.options.length) return false;
+      const choices = registry.current;
+      if (!choices?.options.length) return;
       const bounds = element!.getBoundingClientRect();
       const viewport = window.visualViewport;
       const viewportLeft = viewport?.offsetLeft ?? 0;
@@ -670,8 +657,7 @@ export function QuickWheelSurface({
           bounds.bottom - 8,
         );
       const radius = Math.min(170, (right - left) / 2, (bottom - top) / 2);
-      if (radius < 95) return false;
-      menuSourceTitle.current = menu ? registry.current?.title ?? null : null;
+      if (radius < 95) return;
       event.preventDefault();
       interaction.current.onActivate?.(event);
       // Stage cards/headings are replaced when entering Parts. Keep the
@@ -740,13 +726,7 @@ export function QuickWheelSurface({
         }),
       );
       interaction.current.onActiveChange?.(true);
-      return true;
     }
-    registry.openMenu = (event, choices) => {
-      clearPending();
-      close();
-      return open(event, false, choices) ?? false;
-    };
     function start(event: PointerEvent) {
       if (!wheelEnabled.current) return;
       if (active.current) {
@@ -1039,7 +1019,7 @@ export function QuickWheelSurface({
             ),
           );
           // Use the latest callbacks after query or pending-quantity changes.
-          const choice = active.current?.options[entry.sourceIndex];
+          const choice = registry.current?.options[entry.sourceIndex];
           if (choice && !choice.disabled) {
             choice.select();
             if (choice.dismiss) close();
@@ -1140,7 +1120,6 @@ export function QuickWheelSurface({
     element.addEventListener("click", click, true);
     element.addEventListener("contextmenu", context, true);
     return () => {
-      registry.openMenu = undefined;
       if (
         heldPointer.current !== null &&
         interaction.current.activation === "context"
