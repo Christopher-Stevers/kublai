@@ -477,63 +477,61 @@ describe("wizard quick wheel", () => {
     customSizeUnitId: null, onCustomSizeUnitIdChange: vi.fn(),
     allUnits: [], onCreateSize: { mutate: vi.fn(), isPending: false },
   });
-  it.each(["mouse", "touch"])("uses Quickwheel for a held %s size card and continues to the next stage", (pointerType) => {
+  // jsdom has no pointer capture; the size cards use it while held.
+  const capturePointers = () => {
+    for (const name of ["setPointerCapture", "releasePointerCapture"] as const)
+      if (!(name in HTMLElement.prototype))
+        Object.defineProperty(HTMLElement.prototype, name, { configurable: true, writable: true, value: () => undefined });
+    if (!("hasPointerCapture" in HTMLElement.prototype))
+      Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", { configurable: true, writable: true, value: () => false });
+  };
+  it("rolls a held size card's sub-sizes on the drum roll with a mouse, not the wheel", () => {
+    capturePointers();
     const select = vi.fn();
-    function SubSizeHarness() {
-      const [selected, setSelected] = useState(false);
-      return <QuickWheelSurface>{selected ? <Stage title="Select Category" select={vi.fn()} /> :
-        <SizeStage {...subSizeStageProps(value => { select(value); setSelected(true); })} />}
-      </QuickWheelSurface>;
-    }
-    render(<SubSizeHarness />);
-    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), { ...pointer, pointerType });
+    render(<QuickWheelSurface><SizeStage {...subSizeStageProps(select)} /></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), { ...pointer, pointerType: "mouse" });
     void dwell(199);
-    expect(wheel()).toBeNull();
+    expect(screen.queryByText("Sub-size")).toBeNull();
     void dwell(1);
-    expect(wheel()).toHaveTextContent("Sub-size");
-    expect([...wheel()!.querySelectorAll("foreignObject")].map(tile => tile.textContent)).toEqual(['4" x 2"', '4" x 3"']);
-    expect(select).not.toHaveBeenCalled();
-    const tile = wheel()!.querySelector("foreignObject")!;
-    aim(Number(tile.getAttribute("x")) + 52, Number(tile.getAttribute("y")) + 52);
-    void dwell();
-    expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: "4 x 2" });
-    expect(wheel()).toHaveTextContent("Select Category");
-    fireEvent.pointerUp(window, { ...pointer, pointerType });
+    expect(screen.getByText("Sub-size")).toBeInTheDocument();
+    expect(screen.getByText('4" fittings')).toBeInTheDocument();
     expect(wheel()).toBeNull();
-    expect(select).toHaveBeenCalledTimes(1);
+    fireEvent.pointerMove(window, { ...pointer, pointerType: "mouse", clientY: pointer.clientY + 34 });
+    fireEvent.pointerUp(window, { ...pointer, pointerType: "mouse", clientY: pointer.clientY + 34 });
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: "4 x 3" });
+    expect(screen.queryByText("Sub-size")).toBeNull();
+    expect(wheel()).toBeNull();
   });
-  it.each(["pointerup", "pointercancel", "Escape"])("dismisses the sub-size wheel on %s without committing a size", (event) => {
+  it("rolls a held size card's sub-sizes on the drum roll by touch", () => {
+    capturePointers();
     const select = vi.fn();
-    const props = subSizeStageProps(select);
-    const view = render(<QuickWheelSurface><SizeStage {...props} /></QuickWheelSurface>);
-    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), pointer);
+    render(<QuickWheelSurface><SizeStage {...subSizeStageProps(select)} /></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), { ...pointer, pointerType: "touch" });
     void dwell(200);
-    view.rerender(<QuickWheelSurface><SizeStage {...props} /></QuickWheelSurface>);
-    expect(wheel()).toHaveTextContent("Sub-size");
-    if (event === "Escape") fireEvent.keyDown(window, { key: event });
-    else fireEvent(window, new PointerEvent(event, pointer));
-    fireEvent.pointerUp(screen.getByRole("button", { name: '4"' }), pointer);
-    void dwell();
+    expect(screen.getByText("Sub-size")).toBeInTheDocument();
+    fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 300 }] });
+    fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 334 }] });
+    fireEvent.touchEnd(window, { touches: [] });
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: "4 x 3" });
+    expect(screen.queryByText("Sub-size")).toBeNull();
     expect(wheel()).toBeNull();
-    expect(select).not.toHaveBeenCalled();
-    fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
-    expect(wheel()).toHaveTextContent("Select Size");
-    expect(wheel()).toHaveTextContent("All");
   });
   it("cancels a pending size hold when scrolling and still permits a subsequent quick tap", () => {
+    capturePointers();
     const select = vi.fn();
     render(<QuickWheelSurface><SizeStage {...subSizeStageProps(select)} /></QuickWheelSurface>);
     const card = screen.getByRole("button", { name: '4"' });
     fireEvent.pointerDown(card, { ...pointer, pointerType: "touch" });
-    aim(200, 320);
+    fireEvent.pointerMove(card, { ...pointer, pointerType: "touch", clientY: 320 });
     void dwell();
-    fireEvent.pointerUp(card, pointer);
-    expect(wheel()).toBeNull();
+    expect(screen.queryByText("Sub-size")).toBeNull();
+    fireEvent.pointerUp(card, { ...pointer, pointerType: "touch", clientY: 320 });
     expect(select).not.toHaveBeenCalled();
     fireEvent.pointerDown(card, pointer);
     fireEvent.pointerUp(card, pointer);
     void dwell();
     expect(wheel()).toBeNull();
+    expect(screen.queryByText("Sub-size")).toBeNull();
     expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: null });
   });
   it.each(["touch", "keyboard"])(
