@@ -16,7 +16,7 @@ import { DrawingQuickWheel, DrawingWheelRegistration, type DrawingWheelItem } fr
 import { drawingWheelStyleItems } from "./drawing-wheel-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
@@ -1584,6 +1584,27 @@ export function DrawingWorkspace({
     selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
     !form && !compareIds;
 
+  const selectedToolbarRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = selectedToolbarRef.current;
+    const area = bar?.closest<HTMLElement>("[data-drawing-tool-area]");
+    if (!showSelectedMarkupActions || !bar || !area) return;
+    const update = () => {
+      const clearance = Math.max(0, area.getBoundingClientRect().bottom - bar.getBoundingClientRect().top);
+      area.style.setProperty("--drawing-selection-clearance", `${clearance}px`);
+    };
+    update();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(bar);
+    observer?.observe(area);
+    window.addEventListener("resize", update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", update);
+      area.style.removeProperty("--drawing-selection-clearance");
+    };
+  }, [showSelectedMarkupActions, fullscreen]);
+
   useEffect(() => { setToolToolbarOpen(!quickWheel); }, [toolInUse, quickWheel]);
 
   // Consume back at the nearest open drawing state before the host leaves a sheet.
@@ -2086,7 +2107,7 @@ export function DrawingWorkspace({
         {toolInUse && <Button
           type="button" variant="outline" aria-label="Tool Controls" title="Tool Controls"
           aria-expanded={toolToolbarOpen}
-          style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
+          style={{ bottom: "calc(max(var(--drawing-toolbar-clearance, 0px), var(--drawing-selection-clearance, 0px)) + 1rem)" }}
           className="drawing-corner-control absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
           onClick={() => setToolToolbarOpen(open => !open)}
         ><SlidersHorizontalIcon aria-hidden="true" /></Button>}
@@ -2097,7 +2118,7 @@ export function DrawingWorkspace({
             aria-label="Done"
             title="Done"
             data-drawing-tool-done
-            style={{ bottom: "calc(var(--drawing-toolbar-clearance, 0px) + 1rem)" }}
+            style={{ bottom: "calc(max(var(--drawing-toolbar-clearance, 0px), var(--drawing-selection-clearance, 0px)) + 1rem)" }}
             className="drawing-corner-control absolute left-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
             onClick={finishUsing}
           >
@@ -2343,6 +2364,7 @@ export function DrawingWorkspace({
             <div
               role="toolbar"
               aria-label="Selected markup actions"
+              ref={selectedToolbarRef}
               data-drawing-chrome
               className={`absolute z-20 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto px-3 py-2 ${fullscreen
                 ? "bg-background/60 border-border/60 inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mx-auto max-w-2xl rounded-2xl border shadow-md backdrop-blur-sm"

@@ -2089,3 +2089,38 @@ it("closes More before navigating away from a base-state drawing", () => {
   act(() => { runHeaderBackOverride(); });
   expect(parent).toHaveBeenCalledOnce();
 });
+
+
+it("raises the floating menu and Done above the selected toolbar and follows its height", async () => {
+  let top = 650;
+  let resized: () => void = () => undefined;
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(callback: () => void) { resized = callback; }
+    observe() { return undefined; }
+    disconnect() { return undefined; }
+  });
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const bar = this.getAttribute("aria-label") === "Selected markup actions";
+    return { x: 0, y: bar ? top : 0, top: bar ? top : 0, bottom: 800, left: 0, right: 390, width: 390, height: bar ? 800 - top : 800, toJSON: () => ({}) };
+  });
+  open(true);
+  const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+  // Start an explicit drawing tool through the wheel.
+  fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+  fireEvent.click(screen.getByRole("button", { name: "Markup" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ellipse" }));
+  const entity = existingMarkup();
+  if (entity.kind !== "markup") throw Error("Expected markup");
+  act(() => viewer().onCreate?.({ ...entity.data, type: "ellipse" }));
+  const bar = await screen.findByRole("toolbar", { name: "Selected markup actions" });
+  const area = bar.closest<HTMLElement>("[data-drawing-tool-area]")!;
+  expect(area.style.getPropertyValue("--drawing-selection-clearance")).toBe("150px");
+  for (const name of ["Tool Controls", "Done"]) {
+    expect(screen.getByRole("button", { name }).style.bottom).toContain("--drawing-selection-clearance");
+  }
+  top = 590;
+  act(() => resized());
+  expect(area.style.getPropertyValue("--drawing-selection-clearance")).toBe("210px");
+  act(() => viewer().onSelect?.(null));
+  expect(area.style.getPropertyValue("--drawing-selection-clearance")).toBe("");
+});
