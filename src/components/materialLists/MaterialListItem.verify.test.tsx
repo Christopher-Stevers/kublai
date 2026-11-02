@@ -101,7 +101,7 @@ it("starts receiving again from the saved counts when they change", () => {
 
 it("lets go of the window when a card goes away in the middle of a hold", () => {
   vi.useFakeTimers();
-  const added = new Set<EventListenerOrEventListenerObject>();
+  const added = new Set<unknown>();
   const add = vi.spyOn(window, "addEventListener");
   const remove = vi.spyOn(window, "removeEventListener");
   const card = (received: string) => (
@@ -114,7 +114,7 @@ it("lets go of the window when a card goes away in the middle of a hold", () => 
   // A redraw gives the card new handlers before it goes away.
   rerender(card("5"));
   unmount();
-  const removed = new Set(remove.mock.calls.filter(([type]) => type.startsWith("touch")).map(([, listener]) => listener));
+  const removed = new Set<unknown>(remove.mock.calls.filter(([type]) => type.startsWith("touch")).map(([, listener]) => listener));
   for (const listener of added) expect(removed.has(listener)).toBe(true);
   add.mockRestore();
   remove.mockRestore();
