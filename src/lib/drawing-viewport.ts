@@ -289,6 +289,192 @@ export function shiftDrawingView(
   };
 }
 
+/** `from`, `to` and the edges between them, in order. */
+const cuts = (from: number, to: number, edges: number[]) =>
+  [...new Set([from, to, ...edges.filter((edge) => edge > from && edge < to)])].sort(
+    (a, b) => a - b,
+  );
+
+/** A strip ahead of a pan reaches at least this share of the screen, so a few cover it. */
+export const DRAWING_STRIP_REACH = 0.25;
+/** A strip is drawn instead of a whole patch only while it is at most this share of one. */
+const STRIP_SHARE = 0.6;
+/** Canvas pixels a strip reaches into the detail beside it, so no hairline shows between. */
+const STRIP_OVERLAP = 2;
+
+/**
+ * A pan's `lead` stretched to reach at least `reach` of the screen ahead, and
+ * at most all of it. Null for a zoom, or a camera that is not going anywhere.
+ */
+export function stretchDrawingLead(
+  lead: DrawingLead,
+  fit: DrawingSize,
+  frame: DrawingSize,
+  scale: number,
+  reach = DRAWING_STRIP_REACH,
+): DrawingLead | null {
+  if (Math.abs(Math.log(lead.zoom ?? 1)) > Math.log(ZOOM_LEAD_MIN)) return null;
+  // Screens travelled, along whichever axis moves furthest.
+  const screens = Math.max(
+    Math.abs(lead.x * fit.width * scale) / frame.width,
+    Math.abs(lead.y * fit.height * scale) / frame.height,
+  );
+  if (!(screens > 0) || !Number.isFinite(screens)) return null;
+  const stretch = Math.min(Math.max(1, reach / screens), 1 / screens);
+  return { x: lead.x * stretch, y: lead.y * stretch, zoom: 1 };
+}
+
+/** The part of the sheet a patch covers. */
+export const drawingPatchRect = (patch: DrawingPatch): DrawingRect => ({
+  left: patch.left,
+  top: patch.top,
+  right: patch.left + patch.width,
+  bottom: patch.top + patch.height,
+});
+
+/**
+ * During a pan the detail on screen stays right; only the part of the sheet
+ * the camera moves into is missing. Returns the piece of `area` worth drawing
+ * next at the density of `whole`, the patch a full render would draw, scored
+ * at `views`: on the pixel grid of the detail it adjoins, so the two meet
+ * without a seam. Null when no detail at that density shows yet, or the piece
+ * would not save most of a whole render's work.
+ */
+export function planDrawingStrip(
+  whole: DrawingPatch,
+  area: DrawingRect,
+  shown: readonly DrawingPatch[],
+  fit: DrawingSize,
+  frame: DrawingSize,
+  views: readonly DrawingView[],
+  dpr: number,
+): DrawingPatch | null {
+  const same = shown.filter(
+    (patch) =>
+      Math.abs(patch.fullWidth / whole.fullWidth - 1) < 0.001 &&
+      Math.abs(patch.fullHeight / whole.fullHeight - 1) < 0.001,
+  );
+  if (!same.length) return null;
+  const xs = cuts(
+    area.left,
+    area.right,
+    same.flatMap((patch) => [patch.left, patch.left + patch.width]),
+  );
+  const ys = cuts(
+    area.top,
+    area.bottom,
+    same.flatMap((patch) => [patch.top, patch.top + patch.height]),
+  );
+  // Cells of the area that detail at this density does not reach yet.
+  const nx = xs.length - 1,
+    ny = ys.length - 1;
+  const open = xs.slice(1).map((right, i) =>
+    ys.slice(1).map((bottom, j) => {
+      const x = (xs[i]! + right) / 2,
+        y = (ys[j]! + bottom) / 2;
+      return !same.some(
+        (patch) =>
+          x >= patch.left &&
+          x <= patch.left + patch.width &&
+          y >= patch.top &&
+          y <= patch.top + patch.height,
+      );
+    }),
+  );
+  // Covered cells before each cell, so a block of cells is checked at once.
+  const covered = Array.from({ length: nx + 1 }, () => Array<number>(ny + 1).fill(0));
+  for (let i = 0; i < nx; i++)
+    for (let j = 0; j < ny; j++)
+      covered[i + 1]![j + 1] =
+        (open[i]![j] ? 0 : 1) + covered[i]![j + 1]! + covered[i + 1]![j]! - covered[i]![j]!;
+  const isOpen = (i0: number, i1: number, j0: number, j1: number) =>
+    covered[i1 + 1]![j1 + 1]! - covered[i0]![j1 + 1]! - covered[i1 + 1]![j0]! + covered[i0]![j0]! ===
+    0;
+  // Every block of open cells that cannot grow any wider or taller: a
+  // sideways pan opens one beside the detail, a diagonal one an L of two.
+  const blocks: DrawingRect[] = [];
+  for (let i0 = 0; i0 < nx; i0++)
+    for (let i1 = i0; i1 < nx; i1++)
+      for (let j0 = 0; j0 < ny; ) {
+        if (!isOpen(i0, i1, j0, j0)) {
+          j0++;
+          continue;
+        }
+        let j1 = j0;
+        while (j1 + 1 < ny && isOpen(i0, i1, j1 + 1, j1 + 1)) j1++;
+        if (!(i0 > 0 && isOpen(i0 - 1, i1, j0, j1)) && !(i1 + 1 < nx && isOpen(i0, i1 + 1, j0, j1)))
+          blocks.push({ left: xs[i0]!, right: xs[i1 + 1]!, top: ys[j0]!, bottom: ys[j1 + 1]! });
+        j0 = j1 + 1;
+      }
+  if (!blocks.length) return null;
+  // One rectangle around them all can beat several renders.
+  if (blocks.length > 1)
+    blocks.push({
+      left: Math.min(...blocks.map((block) => block.left)),
+      top: Math.min(...blocks.map((block) => block.top)),
+      right: Math.max(...blocks.map((block) => block.right)),
+      bottom: Math.max(...blocks.map((block) => block.bottom)),
+    });
+  // Snap to the pixel grid of the nearest detail, reaching slightly into it.
+  const snap = (rect: DrawingRect): DrawingPatch | null => {
+    const gap = (patch: DrawingPatch) =>
+      Math.max(0, patch.left - rect.right, rect.left - patch.left - patch.width) +
+      Math.max(0, patch.top - rect.bottom, rect.top - patch.top - patch.height);
+    const grid = same.reduce((best, patch) => (gap(patch) < gap(best) ? patch : best));
+    const { fullWidth, fullHeight } = grid;
+    const x0 = Math.max(
+      Math.ceil(-grid.left * fullWidth - 1e-6),
+      Math.floor((rect.left - grid.left) * fullWidth + 1e-6) - STRIP_OVERLAP,
+    );
+    const x1 = Math.min(
+      Math.floor((1 - grid.left) * fullWidth + 1e-6),
+      Math.ceil((rect.right - grid.left) * fullWidth - 1e-6) + STRIP_OVERLAP,
+    );
+    const y0 = Math.max(
+      Math.ceil(-grid.top * fullHeight - 1e-6),
+      Math.floor((rect.top - grid.top) * fullHeight + 1e-6) - STRIP_OVERLAP,
+    );
+    const y1 = Math.min(
+      Math.floor((1 - grid.top) * fullHeight + 1e-6),
+      Math.ceil((rect.bottom - grid.top) * fullHeight - 1e-6) + STRIP_OVERLAP,
+    );
+    if (
+      x1 <= x0 ||
+      y1 <= y0 ||
+      x1 - x0 > MAX_DRAWING_PATCH_EDGE ||
+      y1 - y0 > MAX_DRAWING_PATCH_EDGE
+    )
+      return null;
+    return {
+      left: grid.left + x0 / fullWidth,
+      top: grid.top + y0 / fullHeight,
+      width: (x1 - x0) / fullWidth,
+      height: (y1 - y0) / fullHeight,
+      pixelWidth: x1 - x0,
+      pixelHeight: y1 - y0,
+      fullWidth,
+      fullHeight,
+    };
+  };
+  const sharpness = (stack: readonly DrawingPatch[]) =>
+    views.reduce(
+      (sum, view) => sum + drawingPatchSharpness(stack, fit, frame, view, dpr),
+      0,
+    );
+  const before = sharpness(shown);
+  const pixels = whole.pixelWidth * whole.pixelHeight;
+  let best: { strip: DrawingPatch; score: number } | null = null;
+  for (const block of blocks) {
+    const strip = snap(block);
+    if (!strip || strip.pixelWidth * strip.pixelHeight > pixels * STRIP_SHARE) continue;
+    const gain = sharpness([...shown, strip]) - before;
+    // Sharpness gained per pixel drawn; each render also costs a little.
+    const score = gain / (strip.pixelWidth * strip.pixelHeight + pixels * 0.05);
+    if (gain > 1e-6 && (!best || score > best.score)) best = { strip, score };
+  }
+  return best?.strip ?? null;
+}
+
 /** Share of the visible sheet a stack of patches shows, each point weighted
  * by the `quality` of the top patch there; the densest patch is on top. */
 function stackShare(
@@ -299,10 +485,6 @@ function stackShare(
   const stack = [...patches].sort((a, b) => b.fullWidth - a.fullWidth);
   // Split the visible rectangle along every patch edge; each cell then shows
   // a single patch, or none.
-  const cuts = (from: number, to: number, edges: number[]) =>
-    [...new Set([from, to, ...edges.filter((edge) => edge > from && edge < to)])].sort(
-      (a, b) => a - b,
-    );
   const xs = cuts(
     visible.left,
     visible.right,

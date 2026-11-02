@@ -38,6 +38,19 @@ describe("drawing render strain", () => {
     expect(at).toBeGreaterThan(0);
   });
 
+  it("takes a couple of hitches in one window for chance, not a pattern", () => {
+    const strain = createDrawingRenderStrain();
+    let at = run(strain, 0, 80, false);
+    // Two missed frames together, then none.
+    at = run(strain, at, 40, true, 20);
+    expect(strain.strained).toBe(false);
+    at = run(strain, at, 40, true);
+    expect(strain.strained).toBe(false);
+    // Missed again and again, it is.
+    run(strain, at, 80, true, 20);
+    expect(strain.strained).toBe(true);
+  });
+
   it("does not blame rendering on a page that misses frames anyway", () => {
     const strain = createDrawingRenderStrain();
     const at = run(strain, 0, 80, false, 12);

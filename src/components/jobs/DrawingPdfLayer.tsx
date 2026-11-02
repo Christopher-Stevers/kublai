@@ -28,14 +28,18 @@ import { discardPdfDocument, loadPdfDocument } from "~/lib/pdf-client";
 import { recordDrawingPerformance } from "~/lib/drawing-performance";
 import { createDrawingRenderStrain } from "~/lib/drawing-render-strain";
 import {
+  drawingPatchRect,
   drawingPatchSharpness,
   drawingPatchStackCoverage,
   drawingViewLead,
   keepDrawingPatchDuringPan,
+  MAX_DRAWING_PATCH_PIXELS,
   patchCoversView,
   patchScreenCoverage,
   planDrawingPatch,
+  planDrawingStrip,
   shiftDrawingView,
+  stretchDrawingLead,
   type DrawingCameraSample,
   type DrawingLead,
   type DrawingPatch,
@@ -67,13 +71,20 @@ const mainThreadPages = new Set<string>();
 const HANDOFF_MS = 33;
 /** Whether this device misses frames while detail is drawn during motion. */
 const strain = createDrawingRenderStrain();
+/** Background detail canvases: a pan lays strips beside the detail it has. */
+const DETAIL_SLOTS = 6;
+/** Detail showing at once stays within two whole patches' pixels. */
+const MAX_SHOWN_PIXELS = 2 * MAX_DRAWING_PATCH_PIXELS;
+/** A pan asks for its next strip this much sooner than it expects to need it. */
+const PAN_SLACK = 1.5;
 /**
  * Double-buffered, overscanned PDF detail. Primary drawings use screen-space
  * placement so a CSS-scaled ancestor cannot flatten their high-resolution ink.
  * Comparison callers can still use sheet-relative placement.
  * Motion never erases it or cancels useful work; only changing sheets does.
- * Off the main thread both buffers can show during motion: the denser patch
- * on top, the other filling in where it does not reach.
+ * Off the main thread several buffers can show at once: the denser patch on
+ * top, the others filling in where it does not reach. A pan draws only the
+ * strip of sheet it is moving into, beside the detail already showing.
  */
 export function DrawingPdfLayer(props: Props) {
   // Detail is drawn by a background worker where the browser allows it; the
@@ -82,11 +93,13 @@ export function DrawingPdfLayer(props: Props) {
   const [, rerender] = useReducer((count: number) => count + 1, 0);
   const offThread =
     !mainThreadPages.has(pageKey) && canRasterDrawingOffThread();
-  const canvases = useRef<Array<HTMLCanvasElement | null>>([null, null]);
+  const canvases = useRef<Array<HTMLCanvasElement | null>>([]);
   const latest = useRef(props);
   latest.current = props;
   const request = useRef<() => void>(() => undefined);
-  const patches = useRef<Array<DrawingPatch | null>>([null, null]);
+  const patches = useRef<Array<DrawingPatch | null>>(
+    Array<DrawingPatch | null>(DETAIL_SLOTS).fill(null),
+  );
   const camera = useRef(props.view);
   // Recent live camera positions, used to draw detail where a pan is heading.
   const motion = useRef<DrawingCameraSample[]>([]);
@@ -122,8 +135,7 @@ export function DrawingPdfLayer(props: Props) {
   useLayoutEffect(() => {
     const paint = (view: DrawingView) => {
       camera.current = view;
-      position(0, view);
-      position(1, view);
+      canvases.current.forEach((_, index) => position(index, view));
     };
     paint(props.view);
     if (props.paintRef)
@@ -162,6 +174,11 @@ export function DrawingPdfLayer(props: Props) {
       return;
     }
     const release = raster?.acquire();
+    const slots = raster ? DETAIL_SLOTS : 2;
+    // When each buffer last took a patch; older detail retires first.
+    const placed = Array<number>(DETAIL_SLOTS).fill(0);
+    let placements = 0;
+    patches.current.fill(null);
     // Bitmap canvases let go of their pixels through their own context. A null
     // transfer makes a blank bitmap the canvas's size, which at full size held
     // the main thread for about a frame on every detail swap; empty it first.
@@ -206,36 +223,56 @@ export function DrawingPdfLayer(props: Props) {
     // the view is heading. The main-thread renderer keeps to settled views.
     const viewNow = () => (raster ? camera.current : latest.current.view);
     const careful = () => !raster || strain.strained;
-    const leadNow = () =>
-      latest.current.moving && !careful()
-        ? drawingViewLead(
-            motion.current,
-            latest.current.fit,
-            performance.now(),
-            expectedMs + HANDOFF_MS,
-            latest.current.zoom,
-          )
-        : null;
+    const leadNow = () => {
+      if (!latest.current.moving || careful()) return null;
+      const lead = drawingViewLead(
+        motion.current,
+        latest.current.fit,
+        performance.now(),
+        expectedMs + HANDOFF_MS,
+        latest.current.zoom,
+      );
+      // A pan's next strip is small; asking a little early lets it land
+      // before the edge of the detail reaches the screen.
+      return lead && lead.zoom === 1
+        ? { ...lead, x: lead.x * PAN_SLACK, y: lead.y * PAN_SLACK }
+        : lead;
+    };
     const covers = (patch: DrawingPatch, view: DrawingView) => {
       const { fit, frameSize, dpr } = latest.current;
       return patchCoversView(patch, fit, frameSize, view, dpr);
     };
+    const shownPatches = () =>
+      patches.current.filter((patch): patch is DrawingPatch => !!patch);
+    const sharpness = (stack: readonly DrawingPatch[], view: DrawingView) => {
+      const { fit, frameSize, dpr } = latest.current;
+      return drawingPatchSharpness(stack, fit, frameSize, view, dpr);
+    };
+    const pixelsIn = (stack: readonly DrawingPatch[]) =>
+      stack.reduce((sum, patch) => sum + patch.pixelWidth * patch.pixelHeight, 0);
     const needsDetail = (view: DrawingView, lead: DrawingLead | null) => {
       if (!current) return true;
       if (lead) {
         // In motion, what counts is the screen when a render started now
         // could arrive: sharp where the camera is heading, and nothing
-        // missing on the way there.
-        const { fit, frameSize, dpr } = latest.current;
-        const stack = [current.patch, patches.current[1 - current.index]].filter(
-          (patch): patch is DrawingPatch => !!patch,
-        );
+        // missing on the way there. Detail leaving the screen behind a pan
+        // sooner than any render could land is not worth drawing again.
+        const { fit, frameSize } = latest.current;
+        const stack = shownPatches();
+        const soon = HANDOFF_MS / ((expectedMs + HANDOFF_MS) * PAN_SLACK);
+        const way =
+          lead.zoom === 1
+            ? shiftDrawingView(view, fit, { x: lead.x * soon, y: lead.y * soon, zoom: 1 })
+            : view;
         return !(
-          drawingPatchSharpness(stack, fit, frameSize, shiftDrawingView(view, fit, lead), dpr) >=
-            0.9999 && drawingPatchStackCoverage(stack, fit, frameSize, view) >= 0.9999
+          sharpness(stack, shiftDrawingView(view, fit, lead)) >= 0.9999 &&
+          drawingPatchStackCoverage(stack, fit, frameSize, way) >= 0.9999
         );
       }
-      if (covers(current.patch, view)) return false;
+      // Background detail counts together: strips laid beside each other
+      // show the view as well as one patch would.
+      if (raster ? sharpness(shownPatches(), view) >= 0.9999 : covers(current.patch, view))
+        return false;
       // A small pan should move the existing bitmap, not start another large
       // PDF raster on the same thread as touch input, or on a device that
       // misses frames for each new one. Refill during a long pan only when
@@ -248,61 +285,112 @@ export function DrawingPdfLayer(props: Props) {
           p.frameSize, view, p.moving)
       );
     };
-    // How sharp a stack of patches makes the screen now, and where the camera
-    // is heading.
-    const worth = (stack: Array<DrawingPatch | null | undefined>) => {
-      const { fit, frameSize, dpr } = latest.current;
-      const view = camera.current;
+    // How sharp a stack of patches makes the screen at `at`, the camera now
+    // unless judged for a render still to land, and where it is heading.
+    const worth = (stack: Array<DrawingPatch | null | undefined>, at = camera.current) => {
+      const { fit } = latest.current;
       const shown = stack.filter((patch): patch is DrawingPatch => !!patch);
-      const sharpness = (at: DrawingView) =>
-        drawingPatchSharpness(shown, fit, frameSize, at, dpr);
       const lead = leadNow();
-      return (
-        sharpness(view) +
-        (lead ? sharpness(shiftDrawingView(view, fit, lead)) : sharpness(view))
-      );
+      return sharpness(shown, at) + sharpness(shown, lead ? shiftDrawingView(at, fit, lead) : at);
     };
-    // The buffer a finished background patch replaces, or null when keeping
-    // what is on screen is better. It stays with the newest earlier patch,
-    // unless the older one shows more.
-    const place = (patch: DrawingPatch) => {
-      if (!(worth([patch]) > 0)) return null;
-      if (!current) return 0;
-      const other = 1 - current.index;
-      const under = patches.current[other];
-      const keepNewest = { index: other, value: worth([patch, current.patch]) };
-      const keepOlder = under
-        ? { index: current.index, value: worth([patch, under]) }
-        : null;
-      const best =
-        keepOlder && keepOlder.value > keepNewest.value + 1e-6 ? keepOlder : keepNewest;
-      return best.value + 1e-6 >= worth([current.patch, under]) ? best.index : null;
+    // Where the camera is expected to be when a render started now lands.
+    const landing = (view: DrawingView) => {
+      if (!leadNow()) return view;
+      const { fit, zoom } = latest.current;
+      const lead = drawingViewLead(motion.current, fit, performance.now(), expectedMs, zoom);
+      return lead ? shiftDrawingView(view, fit, lead) : view;
     };
-    // The patch underneath goes once the newest shows all it did, and always
-    // on a device that misses frames for each one.
-    const prune = () => {
-      if (!current) return;
-      const other = 1 - current.index;
-      const under = patches.current[other];
-      if (!under) return;
-      if (!careful() && worth([current.patch]) + 1e-6 < worth([current.patch, under]))
-        return;
-      const canvas = buffers[other];
+    // Shown slots, oldest first.
+    const byAge = () =>
+      patches.current
+        .map((patch, slot) => (patch ? slot : -1))
+        .filter((slot) => slot >= 0)
+        .sort((a, b) => placed[a]! - placed[b]!);
+    // The buffer a finished background patch goes in and the detail it
+    // retires to stay within the buffers and the pixel cap, or null when
+    // keeping what is on screen is better. What retires is what the screen
+    // misses least, the oldest on a tie.
+    const place = (patch: DrawingPatch, at = camera.current) => {
+      if (!(worth([patch], at) > 0)) return null;
+      const kept = byAge();
+      const drop: number[] = [];
+      const beside = (chosen: number[]) => [
+        patch,
+        ...chosen.map((slot) => patches.current[slot]!),
+      ];
+      while (kept.length && (kept.length >= slots || pixelsIn(beside(kept)) > MAX_SHOWN_PIXELS)) {
+        let least = 0,
+          value = Number.NEGATIVE_INFINITY;
+        kept.forEach((_, i) => {
+          const without = worth(beside(kept.filter((__, k) => k !== i)), at);
+          if (without > value + 1e-6) {
+            least = i;
+            value = without;
+          }
+        });
+        drop.push(...kept.splice(least, 1));
+      }
+      const gain = worth(beside(kept), at) - worth(patches.current, at);
+      if (!(gain + 1e-6 >= 0)) return null;
+      const slot =
+        drop[0] ?? patches.current.findIndex((shown, index) => index < slots && !shown);
+      return slot < 0 ? null : { slot, drop, gain };
+    };
+    const retire = (slot: number) => {
+      const canvas = buffers[slot];
       if (canvas) {
         canvas.style.visibility = "hidden";
         free(canvas);
       }
-      patches.current[other] = null;
+      patches.current[slot] = null;
+    };
+    // Earlier detail goes once the rest shows all it did. On a device that
+    // misses frames for each bitmap that is what shows now, without looking
+    // ahead; what is still on screen stays until newer detail covers it.
+    const prune = () => {
+      if (!current) return;
+      for (const slot of byAge()) {
+        if (slot === current.index) continue;
+        const without = patches.current.map((patch, index) => (index === slot ? null : patch));
+        if (worth(without) + 1e-6 >= worth(patches.current)) retire(slot);
+      }
     };
     // Denser detail on top, the newest on a tie: the order sharpness assumes.
     const restack = () => {
-      if (!current) return;
-      const under = patches.current[1 - current.index];
-      const newestOnTop = !under || current.patch.fullWidth >= under.fullWidth;
-      const top = buffers[current.index],
-        bottom = buffers[1 - current.index];
-      if (top) top.style.zIndex = newestOnTop ? "2" : "1";
-      if (bottom) bottom.style.zIndex = newestOnTop ? "1" : "2";
+      byAge()
+        .sort((a, b) => patches.current[a]!.fullWidth - patches.current[b]!.fullWidth)
+        .forEach((slot, rank) => {
+          const canvas = buffers[slot];
+          if (canvas) canvas.style.zIndex = String(rank + 1);
+        });
+    };
+    // A pan draws only the strip of sheet it is moving into, on the pixel grid
+    // of the detail beside it, so each render is small and lands in time. It
+    // reaches past where the camera is expected, so a few strips cover a
+    // screen. A zoom, or a view with no detail at its density yet, draws it
+    // whole.
+    // Returns what is worth drawing, best first.
+    const planDetail = (view: DrawingView, lead: DrawingLead | null) => {
+      const { fit, frameSize, dpr } = latest.current;
+      const whole = planDrawingPatch(fit, frameSize, view, dpr, lead);
+      if (!whole || careful()) return whole ? [whole] : [];
+      const reach = lead && stretchDrawingLead(lead, fit, frameSize, view.scale);
+      if (lead && !reach && lead.zoom !== 1) return [whole];
+      const here = planDrawingPatch(fit, frameSize, view, dpr);
+      const there = reach && planDrawingPatch(fit, frameSize, shiftDrawingView(view, fit, reach), dpr);
+      if (!here) return [whole];
+      const area = drawingPatchRect(here);
+      if (there) {
+        const far = drawingPatchRect(there);
+        area.left = Math.min(area.left, far.left);
+        area.top = Math.min(area.top, far.top);
+        area.right = Math.max(area.right, far.right);
+        area.bottom = Math.max(area.bottom, far.bottom);
+      }
+      // Scored where placing it is judged: now and where the camera is heading.
+      const views = lead ? [view, shiftDrawingView(view, fit, lead)] : [view];
+      const strip = planDrawingStrip(here, area, shownPatches(), fit, frameSize, views, dpr);
+      return strip ? [strip, whole] : [whole];
     };
     const schedule = (delay = 0) => {
       if (disposed || rendering || nextTimer !== null) return;
@@ -327,19 +415,30 @@ export function DrawingPdfLayer(props: Props) {
       const index = current?.index === 0 ? 1 : 0;
       const canvas = buffers[index];
       if (!canvas) return;
+      // Background detail is drawn only if it would show something new in
+      // the buffers there are, now or as it will be when it lands; a strip
+      // with no room gives way to the whole view. Anything else would be
+      // drawn again and again while the camera heads somewhere detail
+      // cannot reach yet, or thrown away on arrival.
+      const at = landing(view);
+      const gain = (patch: DrawingPatch) =>
+        Math.max(place(patch)?.gain ?? 0, at === view ? 0 : (place(patch, at)?.gain ?? 0));
+      const planned = raster ? planDetail(view, lead).find((patch) => gain(patch) > 1e-6) : null;
+      if (raster && !planned) return;
       rendering = true;
       superseded = false;
       let renderedScale = view.scale;
       const loadingAt = performance.now();
       let renderingAt = loadingAt;
       let pixels = 0;
+      let tookMs = 0;
       let bitmap: ImageBitmap | null = null;
       try {
         let ready = latest.current;
         let patch: DrawingPatch | null;
         let page: PDFPageProxy | null = null;
         if (raster) {
-          patch = planDrawingPatch(ready.fit, ready.frameSize, view, ready.dpr, lead);
+          patch = planned ?? null;
           if (!patch) return;
           pixels = patch.pixelWidth * patch.pixelHeight;
           const job = raster.render(source.url, source.page, patch);
@@ -348,7 +447,7 @@ export function DrawingPdfLayer(props: Props) {
           stalledTimer = setTimeout(job.cancel, 30_000);
           ({ bitmap } = await job.promise);
           if (disposed) return;
-          expectedMs = expectedMs * 0.6 + (performance.now() - loadingAt) * 0.4;
+          tookMs = performance.now() - loadingAt;
         } else {
           const loading = loadPdfDocument(source.url);
           page = await Promise.race([
@@ -421,9 +520,11 @@ export function DrawingPdfLayer(props: Props) {
         const nowView = viewNow();
         let shown = false;
         if (bitmap) {
-          const slot = place(patch);
-          const target = slot === null ? null : buffers[slot];
-          if (slot !== null && target) {
+          const placement = place(patch);
+          const target = placement && buffers[placement.slot];
+          if (placement && target) {
+            const { slot } = placement;
+            for (const old of placement.drop) if (old !== slot) retire(old);
             // Handing the worker's bitmap to the canvas moves it; no pixels are
             // copied. The size keeps toDataURL (markup snapshots) working.
             target.width = bitmap.width;
@@ -431,6 +532,7 @@ export function DrawingPdfLayer(props: Props) {
             target.getContext("bitmaprenderer")?.transferFromImageBitmap(bitmap);
             bitmap = null;
             patches.current[slot] = patch;
+            placed[slot] = ++placements;
             shownAt = performance.now();
             position(slot, camera.current);
             target.style.visibility = "visible";
@@ -440,6 +542,9 @@ export function DrawingPdfLayer(props: Props) {
             shown = true;
             latest.current.onReady?.();
           }
+          // Placed by the horizon it was drawn for, so a render that came
+          // early counts as in time rather than too far ahead.
+          expectedMs = expectedMs * 0.6 + tookMs * 0.4;
         } else {
           const coverage = patchScreenCoverage(
             patch,
@@ -473,7 +578,10 @@ export function DrawingPdfLayer(props: Props) {
           }
         }
         const sharp =
-          shown && patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr);
+          shown &&
+          (raster
+            ? sharpness(shownPatches(), nowView) >= 0.9999
+            : patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr));
         recordDrawingPerformance({
           loadMs: renderingAt - loadingAt,
           renderMs: performance.now() - renderingAt,
@@ -546,8 +654,16 @@ export function DrawingPdfLayer(props: Props) {
       if (raster && p.moving && watching === null)
         watching = requestAnimationFrame(watch);
       // A render planned for a view the gesture has left would only delay the
-      // one for where it came to rest.
-      if (inflight && !p.moving && !covers(inflight.patch, camera.current)) {
+      // one for where it came to rest; one that finishes that view stays.
+      const shown = shownPatches();
+      if (
+        inflight &&
+        !p.moving &&
+        !(
+          sharpness(shown, camera.current) < 0.9999 &&
+          sharpness([...shown, inflight.patch], camera.current) >= 0.9999
+        )
+      ) {
         superseded = true;
         inflight.cancel();
       }
@@ -628,7 +744,7 @@ export function DrawingPdfLayer(props: Props) {
         overflow: props.screenSpace ? "hidden" : undefined,
       }}
     >
-      {[0, 1].map((index) => (
+      {Array.from({ length: offThread ? DETAIL_SLOTS : 2 }, (_, index) => (
         <canvas
           // A canvas keeps its first context type; switching renderer needs new ones.
           key={`${offThread ? "bitmap" : "2d"}-${index}`}

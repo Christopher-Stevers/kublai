@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  drawingPatchRect,
   drawingPatchSharpness,
   drawingViewLead,
   keepDrawingPatchDuringPan,
@@ -8,7 +9,9 @@ import {
   patchCoversView,
   patchScreenCoverage,
   planDrawingPatch,
+  planDrawingStrip,
   shiftDrawingView,
+  stretchDrawingLead,
   visibleDrawingRect,
 } from "./drawing-viewport";
 
@@ -212,6 +215,75 @@ describe("drawing viewport geometry", () => {
     expect(sharpness(coarse, dense)).toBeCloseTo(centre + (1 - centre) * (0.5 / 0.95));
     expect(sharpness(dense, coarse)).toBeCloseTo(sharpness(coarse, dense));
     expect(sharpness(exact, dense)).toBeCloseTo(1);
+  });
+
+  it("draws only the strip a sideways pan moves into, on the pixel grid of the detail beside it", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const view = { scale: 4, x: 0, y: 0 };
+    const here = planDrawingPatch(fit, frame, view, 1)!;
+    const later = { ...view, x: -150 };
+    const whole = planDrawingPatch(fit, frame, later, 1)!;
+    const sharpness = (stack: Parameters<typeof drawingPatchSharpness>[0]) =>
+      drawingPatchSharpness(stack, fit, frame, later, 1);
+    expect(sharpness([here])).toBeLessThan(0.9);
+    const strip = planDrawingStrip(whole, drawingPatchRect(whole), [here], fit, frame, [later], 1)!;
+    // Two canvas pixels into the detail it meets, so no hairline shows.
+    expect(strip.left).toBeCloseTo(here.left + here.width - 2 / here.fullWidth);
+    expect(strip.left + strip.width).toBeGreaterThanOrEqual(whole.left + whole.width);
+    expect(((strip.left - here.left) * here.fullWidth) % 1).toBeCloseTo(0);
+    expect([strip.fullWidth, strip.fullHeight]).toEqual([here.fullWidth, here.fullHeight]);
+    expect(strip.pixelWidth * strip.pixelHeight).toBeLessThan(
+      0.3 * whole.pixelWidth * whole.pixelHeight,
+    );
+    expect(sharpness([here, strip])).toBeCloseTo(1);
+    expect(drawingPatchRect(strip)).toEqual({
+      left: strip.left,
+      top: strip.top,
+      right: strip.left + strip.width,
+      bottom: strip.top + strip.height,
+    });
+  });
+
+  it("fills a diagonal pan in pieces, and leaves zooms and long jumps to whole patches", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const view = { scale: 4, x: 0, y: 0 };
+    const here = planDrawingPatch(fit, frame, view, 1)!;
+    const later = { ...view, x: -120, y: -90 };
+    const whole = planDrawingPatch(fit, frame, later, 1)!;
+    const plan = (shown: Parameters<typeof planDrawingStrip>[2]) =>
+      planDrawingStrip(whole, drawingPatchRect(whole), shown, fit, frame, [later], 1);
+    const shown = [here];
+    for (let piece = 0; piece < 2; piece++) shown.push(plan(shown)!);
+    expect(drawingPatchSharpness(shown, fit, frame, later, 1)).toBeCloseTo(1);
+    expect(plan(shown)).toBeNull();
+    const pixels = shown.slice(1).reduce((sum, patch) => sum + patch.pixelWidth * patch.pixelHeight, 0);
+    expect(pixels).toBeLessThan(whole.pixelWidth * whole.pixelHeight);
+    // Nothing at this density to sit beside yet.
+    const coarse = planDrawingPatch(fit, frame, { ...view, scale: 2 }, 1)!;
+    expect(plan([coarse])).toBeNull();
+    // Most of a screen away, a strip would save little over a whole render.
+    const far = planDrawingPatch(fit, frame, { ...view, x: -400 }, 1)!;
+    expect(planDrawingStrip(far, drawingPatchRect(far), [here], fit, frame, [view], 1)).toBeNull();
+  });
+
+  it("stretches a pan's lead to reach a quarter of a screen, and at most one", () => {
+    const fit = { width: 1000, height: 500 };
+    const frame = { width: 400, height: 300 };
+    const screens = (lead: ReturnType<typeof stretchDrawingLead>) =>
+      lead && Math.hypot((lead.x * fit.width * 4) / frame.width, (lead.y * fit.height * 4) / frame.height);
+    expect(screens(stretchDrawingLead({ x: 0.001, y: 0 }, fit, frame, 4))).toBeCloseTo(0.25);
+    expect(screens(stretchDrawingLead({ x: 0.08, y: 0 }, fit, frame, 4))).toBeCloseTo(0.8);
+    expect(screens(stretchDrawingLead({ x: -0.2, y: 0 }, fit, frame, 4))).toBeCloseTo(1);
+    expect(stretchDrawingLead({ x: 0, y: 0.003, zoom: 1.03 }, fit, frame, 4)).toEqual({
+      x: 0,
+      // Within a few percent of zoom, a pinch that drifts is still a pan.
+      y: expect.closeTo(0.0375, 6),
+      zoom: 1,
+    });
+    expect(stretchDrawingLead({ x: 0.01, y: 0, zoom: 1.2 }, fit, frame, 4)).toBeNull();
+    expect(stretchDrawingLead({ x: 0, y: 0 }, fit, frame, 4)).toBeNull();
   });
 
   it("requires new detail after zooming in but reuses a capped-resolution patch without an endless redraw", () => {

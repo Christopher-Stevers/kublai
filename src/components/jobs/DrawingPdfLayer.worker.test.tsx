@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drawingPdfRaster } from "~/lib/drawing-pdf-raster-client";
 import { loadPdfDocument } from "~/lib/pdf-client";
 import {
+  drawingPatchSharpness,
+  MAX_DRAWING_PATCH_PIXELS,
   patchCoversView,
   planDrawingPatch,
   type DrawingPatch,
@@ -218,6 +220,92 @@ describe("PDF detail drawn by the background worker", () => {
       planDrawingPatch(props.fit, props.frameSize, rest, props.dpr),
     );
     expect(loadPdfDocument).not.toHaveBeenCalled();
+  });
+
+  it("lays strips beside the detail during a long pan, within its buffers, and stops once the view is sharp", async () => {
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/strips.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    const first = jobs[0]!;
+    await act(async () => {
+      first.resolve({ bitmap: bitmapFor(first.patch).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    const canvases = [...view.container.querySelectorAll("canvas")];
+    const visible = () => canvases.filter((canvas) => canvas.style.visibility === "visible");
+    let x = 0,
+      most = 0;
+    for (let frame = 0; frame < 60; frame++) {
+      x -= 12;
+      act(() => paintRef.current!({ ...props.view, x }));
+      // Each render lands a frame later.
+      await act(async () => {
+        for (const job of jobs.slice(1)) job.resolve({ bitmap: bitmapFor(job.patch).bitmap, renderMs: 10 });
+        await vi.advanceTimersByTimeAsync(16);
+      });
+      most = Math.max(most, visible().length);
+      const pixels = visible().reduce((sum, canvas) => sum + canvas.width * canvas.height, 0);
+      expect(pixels).toBeLessThanOrEqual(2 * MAX_DRAWING_PATCH_PIXELS);
+    }
+    const strips = jobs.slice(1).map((job) => job.patch);
+    expect(strips.length).toBeGreaterThan(2);
+    // Each a small piece at the density already showing, not a whole patch.
+    for (const strip of strips) {
+      expect(strip.fullWidth).toBeCloseTo(first.patch.fullWidth);
+      expect(strip.pixelWidth * strip.pixelHeight).toBeLessThan(
+        0.6 * first.patch.pixelWidth * first.patch.pixelHeight,
+      );
+    }
+    expect(most).toBeGreaterThan(2);
+    expect(most).toBeLessThanOrEqual(canvases.length);
+
+    // At rest the strips show the view whole: nothing more is drawn, then or later.
+    const rest = { ...props.view, x };
+    act(() => paintRef.current!(rest));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} view={rest} />);
+    const drawn = jobs.length;
+    await act(async () => {
+      for (const job of jobs.slice(1)) job.resolve({ bitmap: bitmapFor(job.patch).bitmap, renderMs: 10 });
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(jobs).toHaveLength(drawn);
+    expect(
+      drawingPatchSharpness(strips.slice(-canvases.length), props.fit, props.frameSize, rest, props.dpr),
+    ).toBeCloseTo(1);
+  });
+
+  it("keeps the strips on screen when the device turns out to miss frames", async () => {
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/strained.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    await act(async () => {
+      jobs[0]!.resolve({ bitmap: bitmapFor(jobs[0]!.patch).bitmap, renderMs: 20 });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    const canvases = [...view.container.querySelectorAll("canvas")];
+    const visible = () => canvases.filter((canvas) => canvas.style.visibility === "visible");
+    let x = 0;
+    for (let frame = 0; frame < 20; frame++) {
+      x -= 12;
+      act(() => paintRef.current!({ ...props.view, x }));
+      await act(async () => {
+        for (const job of jobs.slice(1)) job.resolve({ bitmap: bitmapFor(job.patch).bitmap, renderMs: 10 });
+        await vi.advanceTimersByTimeAsync(16);
+      });
+    }
+    const shown = visible().length;
+    expect(shown).toBeGreaterThan(1);
+    // The verdict comes in mid-pan; the pan ends before newer detail lands.
+    strain.strained = true;
+    const rest = { ...props.view, x: x - 12 };
+    act(() => paintRef.current!(rest));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} view={rest} />);
+    await tick();
+    expect(visible()).toHaveLength(shown);
   });
 
   it("draws a zoom at the density it is heading for, over the coarser detail until that covers the screen", async () => {

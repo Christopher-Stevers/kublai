@@ -20,6 +20,8 @@ export function createDrawingRenderStrain(): DrawingRenderStrain {
   const busy = { frames: 0, late: 0 };
   const idle = { frames: 0, late: 0, rate: 0 };
   let strained = false;
+  // Verdicts in a row that blamed rendering.
+  let blamed = 0;
   return {
     get strained() {
       return strained;
@@ -43,9 +45,16 @@ export function createDrawingRenderStrain(): DrawingRenderStrain {
       const rate = busy.late / busy.frames;
       busy.frames = busy.late = 0;
       // Only frames missed because of rendering count; a page that is slow
-      // anyway is not helped by drawing less.
-      if (rate >= 0.05 && rate > idle.rate + 0.03) strained = true;
-      else if (rate < 0.025) strained = false;
+      // anyway is not helped by drawing less. A couple of hitches can fall in
+      // one window by chance; a device that misses frames for each bitmap
+      // does so window after window.
+      if (rate >= 0.05 && rate > idle.rate + 0.03) {
+        blamed++;
+        if (blamed >= 2) strained = true;
+      } else {
+        blamed = 0;
+        if (rate < 0.025) strained = false;
+      }
     },
   };
 }
