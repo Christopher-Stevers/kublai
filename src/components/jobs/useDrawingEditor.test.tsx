@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MARKUP_SHAKE_MS,
+  MARKUP_LONG_PRESS_MS,
   useDrawingEditor,
   type DrawingEditorProps,
 } from "./useDrawingEditor";
@@ -20,6 +21,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 const flush = () =>
@@ -184,4 +186,35 @@ describe("drawing input and frame scheduling", () => {
       expect(onUpdate).not.toHaveBeenCalled();
     },
   );
+});
+
+
+describe("Viewing long-press editing", () => {
+  it.each(["pan", "viewing"] as const)("requires a full hold in %s and never edits on release", tool => {
+    vi.useFakeTimers();
+    const onLongPressSelect = vi.fn(), onActivate = vi.fn(), onUpdate = vi.fn(), onSelect = vi.fn();
+    const { result } = open({ tool, annotations: [entity], onLongPressSelect, onActivate, onUpdate, onSelect });
+    act(() => { result.current.down({ x: .2, y: .2 }, target()); vi.advanceTimersByTime(MARKUP_LONG_PRESS_MS - 1); });
+    expect(onLongPressSelect).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(onLongPressSelect).toHaveBeenCalledExactlyOnceWith(entity.id);
+    act(() => { result.current.move({ x: .4, y: .4 }); result.current.up({ x: .4, y: .4 }); });
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+  it.each(["tap", "drag", "cancel", "unmount"])("cancels selection after %s", action => {
+    vi.useFakeTimers();
+    const onLongPressSelect = vi.fn();
+    const { result, unmount } = open({ tool: "pan", annotations: [entity], onLongPressSelect });
+    act(() => { result.current.down({ x: .2, y: .2 }, target()); });
+    act(() => {
+      if (action === "tap") result.current.up({ x: .2, y: .2 });
+      if (action === "drag") result.current.move({ x: .4, y: .4 });
+      if (action === "cancel") result.current.cancelGesture();
+    });
+    if (action === "unmount") unmount();
+    act(() => { vi.advanceTimersByTime(MARKUP_LONG_PRESS_MS); });
+    expect(onLongPressSelect).not.toHaveBeenCalled();
+  });
 });

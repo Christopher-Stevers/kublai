@@ -2335,6 +2335,7 @@ export function DrawingWorkspace({
                   : undefined
               }
               onSelect={selectAnnotation}
+              onLongPressSelect={id => openMarkupMenu(id, { x: 0, y: 0 }, false)}
               onContextMenu={openMarkupMenu}
               onQuickWheelSelect={id => openMarkupMenu(id, { x: 0, y: 0 }, false)}
               onUpdate={(id, markup) => {

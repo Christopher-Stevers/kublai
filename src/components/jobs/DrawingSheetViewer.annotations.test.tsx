@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingEditorProps } from "./DrawingSheetViewer";
-import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
+import { MARKUP_LONG_PRESS_MS, MARKUP_SHAKE_MS } from "./useDrawingEditor";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 
 vi.mock("./DrawingComparisonLayer", () => ({ DrawingComparisonLayer: () => null }));
@@ -36,6 +36,24 @@ function markup(data: Partial<DrawingMarkup> = {}): DrawingEntity {
 }
 
 describe("drawing annotation tools in the real viewer", () => {
+  it.each(["rect", "text", "dimension", "link"] as const)("long-presses a %s in Viewing without activating or changing it", type => {
+    vi.useFakeTimers();
+    try {
+      const onLongPressSelect = vi.fn(), onActivate = vi.fn(), onUpdate = vi.fn();
+      const { container, frame } = open({ tool: "pan", annotations: [markup({ type })], onLongPressSelect, onActivate, onUpdate });
+      const target = container.querySelector('[data-annotation-id="markup"]')!;
+      expect(target).toHaveAttribute("data-quick-wheel-ignore");
+      expect(target).not.toHaveClass("pointer-events-none");
+      fireEvent.pointerDown(target, { pointerId: 1, pointerType: "touch", button: 0, clientX: 250, clientY: 250 });
+      act(() => { vi.advanceTimersByTime(MARKUP_LONG_PRESS_MS - 1); });
+      expect(onLongPressSelect).not.toHaveBeenCalled();
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(onLongPressSelect).toHaveBeenCalledExactlyOnceWith("markup");
+      fireEvent.pointerUp(frame, { pointerId: 1, pointerType: "touch", button: 0, clientX: 250, clientY: 250 });
+      expect(onActivate).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
   it.each(["touch", "mouse", "pen"])("places the arrow tip above touch only (%s)", pointerType => {
     const onCreate = vi.fn();
     const { frame } = open({ tool: "arrow", onCreate });

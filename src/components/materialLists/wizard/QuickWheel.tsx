@@ -531,7 +531,7 @@ export function QuickWheelSurface({
       pending = null;
     };
     const eligible = (target: EventTarget | null) => {
-      if (!(target instanceof Element)) return false;
+      if (!(target instanceof Element) || target.closest("[data-quick-wheel-ignore]")) return false;
       const control = target.closest(interactive);
       // Annotation SVGs are accessible buttons, but remain part of the drawing.
       if (

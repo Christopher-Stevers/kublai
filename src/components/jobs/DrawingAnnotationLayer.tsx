@@ -50,6 +50,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   data,
   selected,
   held = false,
+  holdable = false,
   animate = true,
   interactive,
   canEdit,
@@ -68,6 +69,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
   data: DrawingMarkup | null;
   selected: boolean;
   held?: boolean;
+  holdable?: boolean;
   animate?: boolean;
   canEdit: boolean;
 } & Pick<
@@ -103,6 +105,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
     <g
       key={entity.id}
       data-annotation-id={entity.id}
+      data-quick-wheel-ignore={holdable ? "" : undefined}
       tabIndex={interactive ? 0 : undefined}
       role={interactive ? "button" : undefined}
       aria-label={
@@ -121,14 +124,14 @@ const SavedAnnotation = memo(function SavedAnnotation({
       }}
       // A tap must not paint the browser's grey highlight or focus box around the markup.
       className={
-        !interactive
+        !interactive && !holdable
           ? "pointer-events-none outline-none [&_*]:!pointer-events-none"
           : animate && (selected || held)
             ? "annotation-shake outline-none"
             : "outline-none"
       }
       style={{
-        pointerEvents: interactive ? "visiblePainted" : "none",
+        pointerEvents: interactive || holdable ? "visiblePainted" : "none",
         cursor: interactive ? "pointer" : undefined,
         WebkitTapHighlightColor: "transparent",
       }}
@@ -413,6 +416,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 entity={entity}
                 data={data}
                 selected={selected}
+                holdable={interactive && navigationOnly && entity.kind === "markup"}
                 held={interactive && !navigationOnly && entity.id === heldId}
                 animate={!active && entity.id !== editedId}
                 interactive={interactive && (!navigationOnly || (entity.kind === "markup" && entity.data.type === "link"))}

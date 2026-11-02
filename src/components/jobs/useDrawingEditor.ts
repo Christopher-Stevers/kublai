@@ -28,6 +28,7 @@ export type DrawingEditorProps = {
   onContextMenu?: (id: string | null, point: { x: number; y: number }) => void;
   /** Select an item for the wheel without opening the regular context menu. */
   onQuickWheelSelect?: (id: string) => void;
+  onLongPressSelect?: (id: string) => void;
   onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
   onUpdate?: (id: string, data: DrawingMarkup) => void;
   onDelete?: (id: string) => void;
@@ -40,12 +41,14 @@ type Gesture = {
   start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle;
   activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint;
   /** Selection is immediate; a drag can edit only after the pickup shake. */
+  navigationPress?: boolean;
   armed?: boolean; holdTimer?: ReturnType<typeof setTimeout>;
   /** Moved before the hold completed: the drag pans the drawing instead. */
   panning?: boolean;
 };
 /** Matches annotation-shake in globals.css; edits unlock after the animation. */
 export const MARKUP_SHAKE_MS = 380;
+export const MARKUP_LONG_PRESS_MS = 700;
 const holdsToSelect = (entity: DrawingEntity) => entity.kind === "markup" && entity.data.type !== "link";
 
 export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
@@ -104,6 +107,7 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     else active.holdTimer = setTimeout(arm, delay);
   };
   const clear = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
+  useEffect(() => () => { stopHold(gesture.current); gesture.current = null; }, []);
   useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations, cancelPreview]);
   const canEdit = useCallback((entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
     && annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
@@ -141,9 +145,16 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     const element = target instanceof Element ? target.closest<SVGElement>("[data-annotation-id]") : null;
     const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
     if (tool === "pan" || tool === "viewing") {
-      if (entity?.kind !== "markup" || entity.data.type !== "link") return false;
-      const active: Gesture = { start: point, points: [point], moved: false, entity, activate: true };
+      if (entity?.kind !== "markup") return false;
+      const active: Gesture = { start: point, points: [point], moved: false, entity, activate: true, navigationPress: true };
       gesture.current = active;
+      active.holdTimer = setTimeout(() => {
+        active.holdTimer = undefined;
+        if (gesture.current !== active || active.moved) return;
+        active.activate = false;
+        active.panning = true;
+        (props.onLongPressSelect ?? props.onSelect)?.(entity.id);
+      }, MARKUP_LONG_PRESS_MS);
       return true;
     }
     if (tool === "select") {
@@ -236,6 +247,11 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     gesture.current = null;
     setPreview([]);
     if (!point) { setEditing(null); return true; }
+    if (active.navigationPress) {
+      if (active.activate && !active.moved && active.entity?.kind === "markup" && active.entity.data.type === "link")
+        props.onActivate?.(active.entity.data);
+      return true;
+    }
     if (active.entity) {
       if (!active.moved && active.entity.kind === "markup" && active.entity.data.type === "text" && props.onQuickWheelSelect)
         props.onSelect?.(active.entity.id);
