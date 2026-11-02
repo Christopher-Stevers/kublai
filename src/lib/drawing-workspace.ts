@@ -67,6 +67,8 @@ export const drawingMarkupSchema = z
   .object({
     sourceSheetId: id,
     type: drawingMarkupTypeSchema,
+    /** Prevent changes until an authorized editor explicitly unlocks the markup. */
+    locked: z.boolean().optional(),
     layer: z.string().trim().min(1).max(80).optional(),
     layers: z.array(z.string().trim().min(1).max(80)).min(1).max(30).optional(),
     points: z.array(drawingPointSchema).min(1).max(4000),

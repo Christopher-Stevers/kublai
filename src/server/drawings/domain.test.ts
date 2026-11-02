@@ -654,3 +654,32 @@ describe("bounded drawing tool payloads", () => {
     ).toBe(false);
   });
 });
+
+
+describe("markup locking", () => {
+  const locked = () => create({ visibility: "published", data: { ...markup, locked: true } });
+  it("persists a lock and permits its owner to explicitly unlock without changing content", () => {
+    const entity = locked();
+    expect(entity.data).toMatchObject({ locked: true });
+    const unlocked = prepareEntity(input({ expectedRevision: entity.revision, visibility: "published", data: { ...markup, locked: false } }), entity, worker, sheets, [], now);
+    expect(unlocked.data).toMatchObject({ locked: false });
+    const edited = prepareEntity(input({ expectedRevision: unlocked.revision, visibility: "published", data: { ...markup, locked: false, width: 4 } }), unlocked, worker, sheets, [], now);
+    expect(edited.data).toMatchObject({ width: 4 });
+  });
+  it.each([
+    { ...markup, locked: true, width: 4 },
+    { ...markup, locked: false, width: 4 },
+    { ...markup, points: [{ x: .2, y: .2 }, { x: .8, y: .8 }] },
+  ])("rejects editing locked content even when a client tries to unlock in the same edit", data => {
+    const entity = locked();
+    expect(() => prepareEntity(input({ expectedRevision: entity.revision, visibility: "published", data }), entity, worker, sheets, [], now)).toThrow("Unlock this markup");
+  });
+  it("blocks deletion while locked and does not broaden unlock permission", () => {
+    const entity = locked();
+    expect(() => archiveEntity(entity, worker, entity.revision, now)).toThrow("Unlock this markup");
+    expect(() => archiveEntity(entity, manager, entity.revision, now)).toThrow("Unlock this markup");
+    const request = input({ expectedRevision: entity.revision, visibility: "published", data: { ...markup, locked: false } });
+    expect(() => prepareEntity(request, entity, other, sheets, [], now)).toThrow();
+    expect(prepareEntity(request, entity, manager, sheets, [], now).data).toMatchObject({ locked: false });
+  });
+});

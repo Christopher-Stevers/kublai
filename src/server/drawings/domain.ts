@@ -156,6 +156,13 @@ export function prepareEntity(
         code: "CONFLICT",
         message: "An item's sheet and type cannot change.",
       });
+    if (existing.kind === "markup" && existing.data.locked && input.kind === "markup") {
+      const { locked: _previousLock, ...previous } = existing.data;
+      const { locked, ...next } = input.data;
+      if (locked !== false || input.visibility !== existing.visibility ||
+          !isDeepStrictEqual(JSON.parse(JSON.stringify(previous)), JSON.parse(JSON.stringify(next))))
+        throw new TRPCError({ code: "CONFLICT", message: "Unlock this markup before changing it." });
+    }
     if (["version", "review", "transmittal"].includes(existing.kind))
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -303,6 +310,8 @@ export function archiveEntity(
       message: "Only the author or a drawing manager can archive this item.",
     });
   assertRevision(existing.revision, expectedRevision);
+  if (existing.kind === "markup" && existing.data.locked)
+    throw new TRPCError({ code: "CONFLICT", message: "Unlock this markup before deleting it." });
   if (
     existing.kind === "version" ||
     existing.kind === "review" ||

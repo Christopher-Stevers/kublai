@@ -65,6 +65,8 @@ import {
   LayersIcon,
   SlidersHorizontalIcon,
   Link2Icon,
+  LockKeyholeIcon,
+  LockKeyholeOpenIcon,
   ListChecksIcon,
   MessageSquareMoreIcon,
   MaximizeIcon,
@@ -923,7 +925,7 @@ export function DrawingWorkspace({
     [queued.records],
   );
   const selected = entitiesById.get(selectedId ?? "");
-  const editable = useCallback(
+  const canEditEntity = useCallback(
     (entity: DrawingEntity) =>
       writable &&
       !blockedEdits.has(entity.id) &&
@@ -944,6 +946,10 @@ export function DrawingWorkspace({
             entity.data.assigneeId === data.actor.id)),
       ),
     [writable, blockedEdits, online, data],
+  );
+  const editable = useCallback(
+    (entity: DrawingEntity) => canEditEntity(entity) && !(entity.kind === "markup" && entity.data.locked),
+    [canEditEntity],
   );
   const toForm = (entity: DrawingEntity): DrawingSave =>
     ({
@@ -1715,7 +1721,8 @@ export function DrawingWorkspace({
   /** What can be done to a selected markup, shared by its bar and right-click menu. */
   const markupActions = (entity: DrawingEntity) => {
     if (entity.kind !== "markup") return [];
-    const can = editable(entity);
+    const can = canEditEntity(entity);
+    const locked = Boolean(entity.data.locked);
     const mode = (next: "move" | "resize") => ({
       active: selectionMode === next && tool === "select",
       run: () => {
@@ -1725,19 +1732,27 @@ export function DrawingWorkspace({
       },
     });
     return [
+      ...(can ? [{
+        key: "lock", label: locked ? "Unlock" : "Lock",
+        ariaLabel: locked ? "Unlock markup" : "Lock markup",
+        title: locked ? "Unlock markup" : "Lock markup",
+        icon: locked ? LockKeyholeIcon : LockKeyholeOpenIcon,
+        iconOnly: true, active: locked, disabled: pending > 0,
+        run: () => void save({ ...toForm(entity), kind: "markup", data: { ...entity.data, locked: !locked } }),
+      }] : []),
       ...(can
         ? [
-            { key: "move", label: "Move", icon: MoveIcon, disabled: pending > 0, ...mode("move") },
-            { key: "resize", label: "Resize", icon: ScalingIcon, disabled: pending > 0, ...mode("resize") },
+            { key: "move", label: "Move", icon: MoveIcon, disabled: pending > 0 || locked, ...mode("move") },
+            { key: "resize", label: "Resize", icon: ScalingIcon, disabled: pending > 0 || locked, ...mode("resize") },
             ...(entity.data.type === "dimension" && entity.data.parents
-              ? [{ key: "edit", label: "Edit", icon: PencilIcon, disabled: pending > 0, run: () => editMeasurement(entity.id) }]
+              ? [{ key: "edit", label: "Edit", icon: PencilIcon, disabled: pending > 0 || locked, run: () => editMeasurement(entity.id) }]
               : []),
             ...(entity.data.type === "text"
               ? [{
                   key: "edit-text",
                   label: "Edit text",
                   icon: TypeIcon,
-                  disabled: pending > 0,
+                  disabled: pending > 0 || locked,
                   run: () => {
                     setInlineText({ id: entity.id, data: entity.data });
                     setSelectedId(null);
@@ -2377,7 +2392,7 @@ export function DrawingWorkspace({
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                   {capitalize(nameOf(selected))}
                 </span>
-                {!editable(selected) && (
+                {!canEditEntity(selected) && (
                   <span className="text-muted-foreground shrink-0 text-xs">
                     Read only
                   </span>
@@ -2387,7 +2402,8 @@ export function DrawingWorkspace({
                     <Button
                       key={action.key}
                       size="icon"
-                      variant="outline"
+                      variant={action.active ? "default" : "outline"}
+                      aria-pressed={action.active}
                       className={`${SELECTED_ICON} ${action.destructive ? "text-destructive hover:text-destructive" : ""}`}
                       aria-label={action.ariaLabel ?? action.label}
                       title={action.title ?? action.label}
@@ -2411,12 +2427,12 @@ export function DrawingWorkspace({
                   ),
                 )}
               </div>
-              {editable(selected) &&
+              {canEditEntity(selected) &&
                 selected.data.type !== "text" &&
                 selected.data.type !== "link" && (
                   <MarkupStyleRow
                     data={selected.data}
-                    disabled={pending > 0}
+                    disabled={pending > 0 || Boolean(selected.data.locked)}
                     onChange={(patch) =>
                       void save({
                         ...toForm(selected),

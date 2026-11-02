@@ -1495,7 +1495,7 @@ describe("drawing workspace workflows", () => {
     act(()=>viewer().onContextMenu?.(entity.id,{x:120,y:80}));
     expect(viewer()).toMatchObject({selectedId:entity.id,tool:"select"});
     const menu=await screen.findByRole("menu");
-    expect(within(menu).getAllByRole("menuitem").map(item=>item.textContent)).toEqual(["Move","Resize","Edit","Details","Delete"]);
+    expect(within(menu).getAllByRole("menuitem").map(item=>item.textContent)).toEqual(["Lock","Move","Resize","Edit","Details","Delete"]);
     fireEvent.click(within(menu).getByRole("menuitem",{name:"Move"}));
     await waitFor(()=>expect(screen.queryByRole("menu")).toBeNull());
     expect(viewer()).toMatchObject({selectedId:entity.id,selectionMode:"move"});
@@ -2170,4 +2170,43 @@ it.each([false, true])("keeps selection and style menus out of the drawing layou
   expect(onViewportChange).not.toHaveBeenCalled();
   view.unmount();
   dock.remove();
+});
+
+
+it.each([false, true])("locks and unlocks a markup from its basic menu (fullscreen=%s)", async (fullscreen) => {
+  mocks.data!.entities = [existingMarkup()];
+  open(fullscreen);
+  const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+  fireEvent.click(screen.getByRole("button", { name: "Select first annotation" }));
+  const bar = screen.getByRole("toolbar", { name: "Selected markup actions" });
+  fireEvent.click(within(bar).getByRole("button", { name: "Lock markup" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+  expect(mocks.save.mock.lastCall?.[0]).toMatchObject({ id: entityId, data: { locked: true } });
+  await waitFor(() => expect(within(bar).getByRole("button", { name: "Unlock markup" })).toBeEnabled());
+  expect(within(bar).getByRole("button", { name: "Unlock markup" })).toHaveAttribute("aria-pressed", "true");
+  for (const name of ["Move", "Resize", "Delete markup", "Blue", "Fill"]) {
+    expect(within(bar).getByRole("button", { name, exact: true })).toBeDisabled();
+  }
+  expect(viewer().canEditAnnotation?.(entityId)).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Move selected annotation" }));
+  expect(mocks.save).toHaveBeenCalledOnce();
+  act(() => viewer().onSelect?.(null));
+  fireEvent.click(screen.getByRole("button", { name: "Select first annotation" }));
+  const reopened = screen.getByRole("toolbar", { name: "Selected markup actions" });
+  expect(within(reopened).getByRole("button", { name: "Unlock markup" })).toBeEnabled();
+  fireEvent.click(within(reopened).getByRole("button", { name: "Unlock markup" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
+  expect(mocks.save.mock.lastCall?.[0]).toMatchObject({ id: entityId, data: { locked: false } });
+  await waitFor(() => expect(within(reopened).getByRole("button", { name: "Move", exact: true })).toBeEnabled());
+});
+
+it("does not let a reader unlock someone else's markup", () => {
+  mocks.data!.canManage = false;
+  const entity = existingMarkup("published");
+  if (entity.kind !== "markup") throw Error("Expected markup");
+  mocks.data!.entities = [{ ...entity, authorId: "other", data: { ...entity.data, locked: true } }];
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Select first annotation" }));
+  expect(screen.queryByRole("button", { name: "Unlock markup" })).toBeNull();
+  expect(screen.getByText("Read only")).toBeVisible();
 });
