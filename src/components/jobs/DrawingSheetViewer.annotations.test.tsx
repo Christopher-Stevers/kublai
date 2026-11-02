@@ -530,3 +530,41 @@ it("leaves text closed until a tap releases, so a hold can open its wheel", () =
   fireEvent.pointerUp(frame, { clientX: 300, clientY: 250, pointerId: 1, button: 0, pointerType: "touch" });
   expect(onSelect).toHaveBeenCalledWith("markup");
 });
+
+it("deletes from the selected markup's corner without starting a drawing gesture", () => {
+  const onDelete = vi.fn(), onUpdate = vi.fn(), onSelect = vi.fn();
+  const { frame, container } = open({ tool: "select", annotations: [markup()], selectedId: "markup", onDelete, onUpdate, onSelect, canDeleteAnnotation: () => true });
+  const button = screen.getByRole("button", { name: "Delete selected markup" });
+  const position = button.closest("[data-annotation-delete-control]")!;
+  // The control sits above the top-right resize handle, with a screen-sized gap.
+  expect(Number(position.getAttribute("y")) + Number(position.getAttribute("height"))).toBeLessThan(125);
+  expect(Number(position.getAttribute("x")) + Number(position.getAttribute("width")) / 2).toBe(500);
+  const pointer = { pointerId: 1, pointerType: "touch", button: 0, clientX: 400, clientY: 160 };
+  fireEvent.pointerDown(button, pointer);
+  fireEvent.pointerUp(button, pointer);
+  fireEvent.click(button);
+  expect(onDelete).toHaveBeenCalledExactlyOnceWith("markup");
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(onSelect).not.toHaveBeenCalled();
+  expect(container.querySelectorAll('[data-annotation-delete-control]')).toHaveLength(1);
+  expect(frame.scrollTop).toBe(0);
+});
+
+it.each(["locked", "permission"])("does not delete through the corner when blocked by %s", reason => {
+  const onDelete = vi.fn();
+  open({ tool: "select", annotations: [markup({ locked: reason === "locked" })], selectedId: "markup", onDelete, canDeleteAnnotation: () => reason !== "permission" });
+  const button = screen.getByRole("button", { name: "Delete selected markup" });
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(onDelete).not.toHaveBeenCalled();
+});
+
+it("removes the corner trash control when selection clears or the layer is hidden", () => {
+  const props = { tool: "select" as const, annotations: [markup()], selectedId: "markup", onDelete: vi.fn() };
+  const view = open(props);
+  expect(screen.getByRole("button", { name: "Delete selected markup" })).toBeVisible();
+  view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} selectedId={null} />);
+  expect(screen.queryByRole("button", { name: "Delete selected markup" })).toBeNull();
+  view.rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} {...props} hideAnnotations />);
+  expect(screen.queryByRole("button", { name: "Delete selected markup" })).toBeNull();
+});

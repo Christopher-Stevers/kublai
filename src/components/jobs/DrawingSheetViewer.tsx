@@ -3025,6 +3025,8 @@ export function DrawingSheetViewer({
               Boolean(editorProps.onUpdate)
             }
             canEditAnnotation={editorProps.canEditAnnotation}
+            canDeleteAnnotation={editorProps.canDeleteAnnotation}
+            onDelete={!measuring && !pipeMode && annotationTool === "select" ? editorProps.onDelete : undefined}
           />
         )}
         {fit && textEditing?.data.points[0] && (

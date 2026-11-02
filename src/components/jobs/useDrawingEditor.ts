@@ -16,6 +16,7 @@ export type DrawingEditorProps = {
   selectedId?: string | null;
   selectionMode?: "move" | "resize";
   canEditAnnotation?: (entityId: string) => boolean;
+  canDeleteAnnotation?: (entityId: string) => boolean;
   hideAnnotations?: boolean;
   onCreate?: (data: DrawingMarkup) => void;
   loadPipeLegendReferences?: () => Promise<import("~/lib/pipe-components-types").PipeLegendReferences>;

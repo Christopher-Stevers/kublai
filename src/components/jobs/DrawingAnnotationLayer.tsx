@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useState, type Ref } from "react";
+import { Trash2Icon } from "lucide-react";
+import { Button } from "~/components/ui/button";
 import type { DrawingEntity, DrawingMarkup } from "~/lib/drawing-workspace";
 import type { LengthUnit, SheetScale } from "~/lib/sheet-measure";
 import {
@@ -34,6 +36,8 @@ type DrawingAnnotationLayerProps = {
   showResizeHandles?: boolean;
   showMoveArea?: boolean;
   canEditAnnotation?: (entityId: string) => boolean;
+  canDeleteAnnotation?: (entityId: string) => boolean;
+  onDelete?: (entityId: string) => void;
   /** Live SVG camera used by the viewer; printable layers keep the full sheet. */
   viewportRef?: Ref<SVGSVGElement>;
   /** Separate paint surface for draft/edited ink; moves with the saved camera. */
@@ -352,6 +356,8 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   showResizeHandles = true,
   showMoveArea = false,
   canEditAnnotation,
+  canDeleteAnnotation,
+  onDelete,
   viewportRef,
   activeViewportRef,
   viewBox,
@@ -379,6 +385,15 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   // edit moves to the active surface, after the viewer owns the pointer.
   const isActive = (entity: DrawingEntity) => entity.id === editing?.id;
   const split = bufferedViewport && Boolean(activeViewportRef);
+  const selectedMarkup = !hidden && interactive && !navigationOnly
+    ? annotations.find(entity => entity.id === selectedId && entity.kind === "markup" && entity.visibility !== "archived")
+    : undefined;
+  const selectedData = selectedMarkup?.kind === "markup"
+    ? editing?.id === selectedMarkup.id ? editing.data : selectedMarkup.data
+    : undefined;
+  const selectedBounds = selectedData ? drawingMarkupBounds(selectedData, aspect) : null;
+  const deleteEnabled = Boolean(selectedMarkup && selectedData && !selectedData.locked &&
+    (canDeleteAnnotation?.(selectedMarkup.id) ?? canEditAnnotation?.(selectedMarkup.id) ?? true));
   const ink = (active: boolean) => (
     <svg
       ref={active ? activeViewportRef : viewportRef}
@@ -440,6 +455,34 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
               />
             );
           })}
+      {/* Paint last so other annotations cannot cover the selected item's action. */}
+      {(!split || active) && selectedMarkup && selectedBounds && onDelete && (
+        <foreignObject
+          data-annotation-delete-control=""
+          x={selectedBounds.right * 1000 - 20 * screenPixelSize}
+          y={selectedBounds.top * 1000 * aspect - 48 * screenPixelSize}
+          width={40 * screenPixelSize}
+          height={40 * screenPixelSize}
+          className="overflow-visible"
+          style={{ pointerEvents: "auto" }}
+        >
+          <div style={{ width: 40, height: 40, transform: `scale(${screenPixelSize})`, transformOrigin: "0 0" }}
+            data-drawing-chrome data-quick-wheel-ignore
+            onPointerDown={event => event.stopPropagation()}
+            onPointerUp={event => event.stopPropagation()}
+            onPointerMove={event => event.stopPropagation()}
+            onKeyDown={event => event.stopPropagation()}
+            onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
+          >
+            <Button type="button" variant="outline" size="icon"
+              aria-label="Delete selected markup" title="Delete markup"
+              disabled={!deleteEnabled}
+              className="size-10 rounded-full border-red-300 bg-background/95 text-destructive shadow-md hover:bg-destructive/10"
+              onClick={event => { event.stopPropagation(); if (deleteEnabled) onDelete(selectedMarkup.id); }}
+            ><Trash2Icon className="size-[18px]" aria-hidden="true" /></Button>
+          </div>
+        </foreignObject>
+      )}
       {(!split || active) && draft && draft.points.length > 0 && (
         <g opacity={0.75}>
           <DrawingAnnotationSvg
@@ -476,7 +519,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
       >
         {ink(false)}
       </div>
-      {split && (draft ?? editing) && (
+      {split && (draft || editing || (selectedMarkup && onDelete)) && (
         <div
           data-annotation-pan-surface=""
           className="pointer-events-none absolute top-0 left-0 z-[3] h-full w-full"

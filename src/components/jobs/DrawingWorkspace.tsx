@@ -2368,6 +2368,10 @@ export function DrawingWorkspace({
                 const entity = entities.find((item) => item.id === id);
                 return entity ? archive(entity) : false;
               }}
+              canDeleteAnnotation={(id) => {
+                const entity = entitiesById.get(id);
+                return Boolean(entity && deletable(entity));
+              }}
               onDelete={(id) => {
                 const entity = entities.find((item) => item.id === id);
                 if (entity && deletable(entity)) void archive(entity);
