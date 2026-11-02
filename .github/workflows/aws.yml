@@ -25,6 +25,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test:reliability
+      - name: Authentication, teams and worker regression tests
+        run: pnpm exec vitest run src/app/api/webhooks/clerk/route.test.ts src/server/utils/get-request-identity.test.ts src/server/api/routers/organization-invites.test.ts src/server/api/routers/organization-permissions.test.ts src/server/rooms/detect-worker-process.test.ts
   lint:
     name: Lint (existing integration debt)
     runs-on: ubuntu-24.04
