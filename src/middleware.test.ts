@@ -5,12 +5,18 @@ import type { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   next: vi.fn(() => ({ kind: "next" })),
   redirect: vi.fn((url: URL) => ({ kind: "redirect", url: url.toString() })),
+  json: vi.fn((body: unknown, init: { status: number; headers: Record<string, string> }) => ({
+    kind: "json",
+    body,
+    status: init.status,
+    headers: init.headers,
+  })),
   auth: vi.fn(async () => ({ userId: null as string | null })),
   clerkGate: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
-  NextResponse: { next: mocks.next, redirect: mocks.redirect },
+  NextResponse: { next: mocks.next, redirect: mocks.redirect, json: mocks.json },
 }));
 vi.mock("@clerk/nextjs/server", () => ({
   clerkMiddleware:
@@ -30,12 +36,15 @@ vi.mock("@clerk/nextjs/server", () => ({
 import middleware from "./middleware";
 
 const SECRET = "unit-test-only-" + "x".repeat(48);
-function request(path: string, header?: string, cookie?: string) {
+function request(path: string, header?: string, cookie?: string, fetchMode?: string) {
   const url = new URL(path, "http://test.invalid");
   return {
     url: url.toString(),
     nextUrl: url,
-    headers: new Headers(header ? { "x-foremenhq-agent-auth": header } : {}),
+    headers: new Headers({
+      ...(header ? { "x-foremenhq-agent-auth": header } : {}),
+      ...(fetchMode ? { "sec-fetch-mode": fetchMode } : {}),
+    }),
     cookies: {
       get: (name: string) =>
         name === "foremenhq_agent_auth" && cookie !== undefined
@@ -129,11 +138,39 @@ describe("middleware provider isolation", () => {
 
   it("does not extend the health exemption to protected paths sharing its prefix", async () => {
     const response = await run(request("/api/health/private"));
+    expect(response).toMatchObject({ kind: "json", status: 401 });
+    expect(mocks.clerkGate).toHaveBeenCalledTimes(1);
+    expect(mocks.auth).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["/api/trpc/drawingsWorkspace.save", "/trpc/x", "/api/replicache/push"])(
+    "answers the app's signed-out call to %s with a 401 instead of the sign-in page",
+    async (path) => {
+      const response = await run(request(path, undefined, undefined, "cors"));
+      expect(response).toEqual({
+        kind: "json",
+        body: { error: { code: "SIGNED_OUT", message: expect.any(String) } },
+        status: 401,
+        headers: { "x-foremanhq-signed-out": "1" },
+      });
+    },
+  );
+
+  it("still sends someone opening an API address in the browser to sign in", async () => {
+    const response = await run(
+      request("/api/job-documents/file", undefined, undefined, "navigate"),
+    );
     expect(response).toEqual({
       kind: "redirect",
       url: "http://test.invalid/sign-in",
     });
-    expect(mocks.clerkGate).toHaveBeenCalledTimes(1);
-    expect(mocks.auth).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not treat a page whose name starts with api as an API call", async () => {
+    const response = await run(request("/apiary"));
+    expect(response).toEqual({
+      kind: "redirect",
+      url: "http://test.invalid/sign-in",
+    });
   });
 });

@@ -5,6 +5,7 @@ import {
   type DrawingSave,
 } from "./drawing-workspace";
 import { isDrawingOfflineAccountActive } from "./drawing-offline";
+import { SIGNED_OUT_CODE } from "./signed-out";
 export const DRAWING_QUEUE_LIMIT = 200;
 export const DRAWING_QUEUE_BYTES = 8 * 1024 * 1024;
 const DATABASE = "foremanhq-drawing-edits-v1";
@@ -102,6 +103,7 @@ function errorDetails(error: unknown) {
           message?: unknown;
           code?: unknown;
           data?: { code?: unknown };
+          cause?: { code?: unknown };
         })
       : {};
   return {
@@ -110,7 +112,10 @@ function errorDetails(error: unknown) {
         ? object.data.code
         : typeof object.code === "string"
           ? object.code
-          : "",
+          : // The API client wraps a lapsed sign-in in its own error.
+            typeof object.cause?.code === "string"
+            ? object.cause.code
+            : "",
     message:
       typeof object.message === "string"
         ? object.message.slice(0, 1000)
@@ -429,8 +434,13 @@ export class DrawingOfflineQueue {
             "NOT_FOUND",
             "PAYLOAD_TOO_LARGE",
           ].includes(detail.code);
+          // A lapsed sign-in isn't the edit's fault: it waits for the next
+          // sign-in without using up an attempt.
+          const signedOut = detail.code === SIGNED_OUT_CODE;
           const state =
-            detail.code === "CONFLICT"
+            signedOut
+              ? "pending"
+              : detail.code === "CONFLICT"
               ? "conflict"
               : permanent || claimed.attempts >= MAX_ATTEMPTS
                 ? "blocked"
@@ -444,9 +454,11 @@ export class DrawingOfflineQueue {
                 ...current,
                 state,
                 error: detail.message,
-                availableAt:
-                  Date.now() +
-                  Math.min(60_000, 1000 * 2 ** (claimed.attempts - 1)),
+                attempts: signedOut ? claimed.attempts - 1 : current.attempts,
+                availableAt: signedOut
+                  ? Date.now()
+                  : Date.now() +
+                    Math.min(60_000, 1000 * 2 ** (claimed.attempts - 1)),
                 leaseToken: null,
                 leaseUntil: 0,
                 updatedAt: Date.now(),

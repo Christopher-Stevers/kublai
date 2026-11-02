@@ -197,6 +197,23 @@ describe("durable account-bound drawing edit queue", () => {
     await queue.retry(record!.operationId);
     expect((await queue.list())[0]?.state).toBe("pending");
   });
+  it("keeps an edit pending without using an attempt while signed out", async () => {
+    const queue = new Queue("org:worker", "worker");
+    await queue.enqueue({ jobId, input: draft() });
+    const { SignedOutError } = await import("./signed-out");
+    const signedOut = Object.assign(new Error("Sign in again"), {
+      cause: new SignedOutError(),
+    });
+    await queue.flush({ save: vi.fn().mockRejectedValue(signedOut) });
+    const [record] = await queue.list();
+    expect(record?.state).toBe("pending");
+    expect(record?.attempts).toBe(0);
+    expect(record?.error).toBe("Sign in again");
+    const send = vi.fn(async (input: DrawingSave) => saved(input));
+    await queue.flush({ save: send });
+    expect(send).toHaveBeenCalledOnce();
+    expect(await queue.list()).toHaveLength(0);
+  });
   it("retains network failures with backoff and does not drop later edits", async () => {
     const queue = new Queue("org:worker", "worker");
     await queue.enqueue({ jobId, input: draft() });

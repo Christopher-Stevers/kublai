@@ -15,6 +15,7 @@ import SuperJSON from "superjson";
 import type { AppRouter } from "~/server/api/root";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
 import { createQueryClient } from "./query-client";
+import { SIGNED_OUT_HEADER, SignedOutError } from "~/lib/signed-out";
 
 async function blockedServerFetch(
   input: RequestInfo | URL,
@@ -43,6 +44,8 @@ async function blockedServerFetch(
   }
 
   const response = await globalThis.fetch(input, init);
+  if (response.status === 401 && response.headers.has(SIGNED_OUT_HEADER))
+    throw new SignedOutError();
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.includes("json")) {
     const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;

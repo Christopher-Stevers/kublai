@@ -1,5 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  SIGNED_OUT_CODE,
+  SIGNED_OUT_HEADER,
+  SIGNED_OUT_MESSAGE,
+} from "~/lib/signed-out";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -14,6 +19,15 @@ const isPublicRoute = createRouteMatcher([
   "/api/auth(.*)",
 ]);
 
+/** A request to the API made by the app rather than by opening a page. */
+function isApiCall(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  return (
+    /^\/(?:api|trpc)(?:\/|$)/.test(path) &&
+    req.headers.get("sec-fetch-mode") !== "navigate"
+  );
+}
+
 const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
   if (process.env.NODE_ENV !== "production") {
     return NextResponse.next();
@@ -23,6 +37,14 @@ const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
     const { userId } = await auth();
 
     if (!userId) {
+      // The app's own calls get a plain "signed out" answer. A redirect would
+      // hand them the sign-in page, which reads as a broken response.
+      if (isApiCall(req)) {
+        return NextResponse.json(
+          { error: { code: SIGNED_OUT_CODE, message: SIGNED_OUT_MESSAGE } },
+          { status: 401, headers: { [SIGNED_OUT_HEADER]: "1" } },
+        );
+      }
       const signInUrl = new URL("/sign-in", req.url);
       return NextResponse.redirect(signInUrl);
     }
