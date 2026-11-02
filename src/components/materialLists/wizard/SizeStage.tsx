@@ -67,6 +67,9 @@ function SizeCard({
   const activePointerIdRef = useRef<number | null>(null);
   const activePointerTypeRef = useRef<string | null>(null);
   const pointerElementRef = useRef<HTMLDivElement | null>(null);
+  // Window listeners are removed by the closures that added them, so a later
+  // render's handlers can't leave the earlier ones attached.
+  const windowListenersRef = useRef<(() => void) | null>(null);
   const subSizes = size.subSizes ?? [];
   const canPickSubSize = subSizes.length > 1;
   const isSelected =
@@ -82,9 +85,8 @@ function SizeCard({
   };
 
   const teardownWindowListeners = () => {
-    window.removeEventListener("pointermove", handleWindowPointerMove);
-    window.removeEventListener("pointerup", handleWindowPointerUp);
-    window.removeEventListener("pointercancel", handleWindowPointerCancel);
+    windowListenersRef.current?.();
+    windowListenersRef.current = null;
   };
 
   const updateSelectedIndex = (clientY: number) => {
@@ -184,6 +186,11 @@ function SizeCard({
       window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
       window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
       window.addEventListener("pointercancel", handleWindowPointerCancel);
+      windowListenersRef.current = () => {
+        window.removeEventListener("pointermove", handleWindowPointerMove);
+        window.removeEventListener("pointerup", handleWindowPointerUp);
+        window.removeEventListener("pointercancel", handleWindowPointerCancel);
+      };
     }, 200);
   };
 
@@ -237,9 +244,11 @@ function SizeCard({
   };
 
   useEffect(() => {
+    const longPressTimer = longPressTimerRef;
+    const windowListeners = windowListenersRef;
     return () => {
-      clearTimer();
-      teardownWindowListeners();
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      windowListeners.current?.();
     };
   }, []);
 

@@ -5,6 +5,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -564,7 +565,9 @@ export function QuickWheelSurface({
     if (wasOpen) interaction.current.onActiveChange?.(false);
   };
 
-  useEffect(() => { close(); }, [resetKey]);
+  // Effects and window listeners close the wheel as it is now, not as it was when they started.
+  const closeWheel = useEffectEvent(close);
+  useEffect(() => { closeWheel(); }, [resetKey]);
 
   useHeaderBackOverride(activation === "context" && wheel ? close : null, {
     priority: 120,
@@ -736,8 +739,8 @@ export function QuickWheelSurface({
           suppressClick.current = true;
           event.preventDefault();
           event.stopImmediatePropagation();
-          close();
-        } else if (event.pointerId !== active.current.pointerId) close();
+          closeWheel();
+        } else if (event.pointerId !== active.current.pointerId) closeWheel();
         return;
       }
       clearPending();
@@ -1022,7 +1025,7 @@ export function QuickWheelSurface({
           const choice = registry.current?.options[entry.sourceIndex];
           if (choice && !choice.disabled) {
             choice.select();
-            if (choice.dismiss) close();
+            if (choice.dismiss) closeWheel();
           }
         }, 700);
       }
@@ -1031,7 +1034,7 @@ export function QuickWheelSurface({
       if (pending?.event.pointerId === event.pointerId) clearPending();
       if (event.pointerId !== heldPointer.current) return;
       heldPointer.current = null;
-      close();
+      closeWheel();
       event.preventDefault();
       // Capture phase: newly mounted part cards must never receive this lift.
       event.stopImmediatePropagation();
@@ -1045,18 +1048,18 @@ export function QuickWheelSurface({
 
     function cancel() {
       clearPending();
-      close();
+      closeWheel();
     }
     function key(event: KeyboardEvent) {
       if (event.key === "Escape" && active.current) {
         event.preventDefault();
         event.stopPropagation();
-        close();
+        closeWheel();
       }
     }
     function touch(event: TouchEvent) {
       if (event.touches.length > 1) {
-        close();
+        closeWheel();
         return;
       }
       if (active.current) event.preventDefault();
@@ -1093,7 +1096,7 @@ export function QuickWheelSurface({
           heldPointer.current !== null
         )
           return;
-        if (active.current) close();
+        if (active.current) closeWheel();
         else open(event, true);
       } else if (active.current) event.preventDefault();
     }
@@ -1149,10 +1152,10 @@ export function QuickWheelSurface({
       element.removeEventListener("click", click, true);
       element.removeEventListener("contextmenu", context, true);
     };
-  }, []); // Keep release/click guards alive when the final choice disables the wheel.
+  }, [registry]); // Keep release/click guards alive when the final choice disables the wheel.
 
   useEffect(() => {
-    if (!enabled) close();
+    if (!enabled) closeWheel();
   }, [enabled]);
 
   return (

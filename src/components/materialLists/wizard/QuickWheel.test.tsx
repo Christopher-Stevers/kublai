@@ -12,7 +12,7 @@ import { QuickWheelSurface, useQuickWheelOptions } from "./QuickWheel";
 import { wheelUsageId } from "./quick-wheel-usage";
 const WHEEL_USAGE_KEY = "foremanhq:quick-wheel-usage:v1";
 const readWheelUsage = () =>
-  JSON.parse(localStorage.getItem(WHEEL_USAGE_KEY) ?? "{}");
+  JSON.parse(localStorage.getItem(WHEEL_USAGE_KEY) ?? "{}") as Record<string, number>;
 
 function Stage({
   title = "Catalog",
@@ -70,7 +70,7 @@ const nudge = (side: number, up = 0) => {
   aim(x - iy*side + ix*up, y + ix*side + iy*up);
 };
 const steer = (distance: number) => nudge(distance);
-const dwell = (ms = 700) => act(() => vi.advanceTimersByTime(ms));
+const dwell = (ms = 700) => act(() => { vi.advanceTimersByTime(ms); });
 const wheel = () => screen.queryByRole("status");
 beforeEach(() => {
   const stored = new Map<string, string>();
@@ -88,7 +88,7 @@ beforeEach(() => {
     bottom: 700,
     width: 400,
     height: 700,
-    toJSON() {},
+    toJSON: () => ({}),
   });
 });
 afterEach(() => {
@@ -100,7 +100,7 @@ afterEach(() => {
 
 describe("wizard quick wheel", () => {
   it("keeps the frosted backdrop below the wizard header", () => {
-    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 120,
       left: 0,
@@ -109,7 +109,7 @@ describe("wizard quick wheel", () => {
       bottom: 700,
       width: 400,
       height: 580,
-      toJSON() {},
+      toJSON: () => ({}),
     });
     render(
       <QuickWheelSurface>
@@ -407,7 +407,7 @@ describe("wizard quick wheel", () => {
     for (let tick = 0; tick < count * 12; tick++) {
       const labels = [...wheel()!.querySelectorAll("foreignObject")];
       expect(labels.length).toBeLessThanOrEqual(9);
-      labels.filter(tile => Number(tile.getAttribute("opacity")) > 0.8).forEach(tile => seen.add(tile.textContent!));
+      labels.filter(tile => Number(tile.getAttribute("opacity")) > 0.8).forEach(tile => seen.add(tile.textContent));
       dwell(100);
     }
     expect(seen.size).toBe(count);
@@ -700,7 +700,7 @@ describe("wizard quick wheel", () => {
     expect(wings().map((wing) => wing.getAttribute("data-wheel-wing"))).toEqual(["-1", "1"]);
     expect(lit()).toBeUndefined();
     // Each wing ends where the thumb reaches full speed on its side.
-    const tip = (wing: Element) => wing.querySelector("path")!.getAttribute("d")!.match(/C[^C]* ([-\d.]+) ([-\d.]+)C/)!.slice(1).map(Number);
+    const tip = (wing: Element) => /C[^C]* ([-\d.]+) ([-\d.]+)C/.exec(wing.querySelector("path")!.getAttribute("d")!)!.slice(1).map(Number);
     const root = wheel()!, x = Number(root.getAttribute("data-origin-x")), y = Number(root.getAttribute("data-origin-y"));
     const [ax, ay] = tip(wings()[1]!), [bx, by] = tip(wings()[0]!);
     expect(Math.hypot(ax! - x, ay! - y)).toBeCloseTo(Math.hypot(bx! - x, by! - y));
@@ -845,7 +845,7 @@ describe("wizard quick wheel", () => {
     aim(330 + tile.dx / distance * 100, 450 + tile.dy / distance * 100);
     expect(wheel()).toHaveAttribute("data-scrolling", "false");
     dwell();
-    expect(select).toHaveBeenCalledWith(Number(tile.el.textContent!.replace("Choice ", "")));
+    expect(select).toHaveBeenCalledWith(Number(tile.el.textContent.replace("Choice ", "")));
   });
   it("keeps inward movement neutral and follows an outward pull without selecting", () => {
     vi.stubGlobal("innerWidth", 400); vi.stubGlobal("innerHeight", 700);
@@ -1074,7 +1074,7 @@ describe("quick wheel Back target", () => {
     expect(screen.queryByRole("button", { name: "Back one step" })).not.toBeInTheDocument();
     down();
     const target = screen.getByRole("button", { name: "Back one step" });
-    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({ x: 0, y: 636, left: 0, top: 636, right: 400, bottom: 700, width: 400, height: 64, toJSON() {} });
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({ x: 0, y: 636, left: 0, top: 636, right: 400, bottom: 700, width: 400, height: 64, toJSON: () => ({}) });
     aim();
     dwell(250);
     aim(10, 670);

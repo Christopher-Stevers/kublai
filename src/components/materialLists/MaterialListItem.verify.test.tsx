@@ -87,3 +87,35 @@ it("marks an unreceived line back ordered once another line on its order is rece
   expect(screen.queryByText("Back Ordered")).not.toBeInTheDocument();
   expect(screen.getByText("Awaiting delivery")).toBeInTheDocument();
 });
+
+it("starts receiving again from the saved counts when they change", () => {
+  const { rerender } = render(
+    <MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4" />,
+  );
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("6");
+  rerender(
+    <MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="7" />,
+  );
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("3");
+});
+
+it("lets go of the window when a card goes away in the middle of a hold", () => {
+  vi.useFakeTimers();
+  const added = new Set<EventListenerOrEventListenerObject>();
+  const add = vi.spyOn(window, "addEventListener");
+  const remove = vi.spyOn(window, "removeEventListener");
+  const card = (received: string) => (
+    <MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity={received} onVerifyStateChange={() => undefined} />
+  );
+  const { rerender, unmount } = render(card("4"));
+  fireEvent.touchStart(screen.getByRole("button", { name: "Verify part" }), { touches: [{ clientY: 100 }] });
+  for (const [type, listener] of add.mock.calls) if (type.startsWith("touch")) added.add(listener);
+  expect(added.size).toBe(3);
+  // A redraw gives the card new handlers before it goes away.
+  rerender(card("5"));
+  unmount();
+  const removed = new Set(remove.mock.calls.filter(([type]) => type.startsWith("touch")).map(([, listener]) => listener));
+  for (const listener of added) expect(removed.has(listener)).toBe(true);
+  add.mockRestore();
+  remove.mockRestore();
+});

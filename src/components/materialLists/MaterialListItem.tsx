@@ -1,6 +1,8 @@
 "use client";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
+import { firstText } from "~/lib/first-text";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { packContents } from "~/lib/pack-quantity";
 
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
@@ -40,7 +42,7 @@ interface MaterialListItemProps {
   item: {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
-    supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
+    supplierVersion?: SupplierVersion | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
@@ -92,7 +94,7 @@ interface MaterialListItemProps {
   isToolRequest?: boolean;
   verifyOrderedQuantity?: string | null;
   verifyInitialReceivedQuantity?: string | number | null;
-  verifyInitialStatus?: VerifyStatus | string | null;
+  verifyInitialStatus?: string | null;
   onVerifyStateChange?: (state: {
     receivedQuantity: number;
     verificationStatus: VerifyStatus;
@@ -139,7 +141,7 @@ function VerifyQuantityColumn({
 }
 
 function getUserInitials(name: string | null | undefined, email: string | null | undefined) {
-  const source = (name?.trim() || email?.split("@")[0]?.trim() || "?").replace(
+  const source = (firstText(name?.trim(), email?.split("@")[0]?.trim()) ?? "?").replace(
     /[^a-z0-9\s._-]/gi,
     "",
   );
@@ -162,7 +164,7 @@ function InitialsSyncBadge({
   user: MaterialListItemProps["item"]["addedBy"] | null | undefined;
   status: MaterialListSyncStatus;
 }) {
-  const displayName = user?.name?.trim() || user?.email?.trim() || "Unknown user";
+  const displayName = firstText(user?.name?.trim(), user?.email?.trim()) ?? "Unknown user";
   const initials = getUserInitials(user?.name, user?.email);
   const statusLabel =
     status === "syncing" ? "Syncing" : status === "pending" ? "Pending sync" : "Synced";
@@ -224,6 +226,10 @@ function MaterialListItemComponent({
   const verifyActivePointerIdRef = useRef<number | null>(null);
   const verifyPickerTouchYRef = useRef<number | null>(null);
   const verifyPickerTouchAccumulatorRef = useRef(0);
+  // Window listeners are removed by the closures that added them, so a later
+  // render's handlers can't leave the earlier ones attached.
+  const verifyPickerListenersRef = useRef<(() => void) | null>(null);
+  const verifyTouchListenersRef = useRef<(() => void) | null>(null);
   const [verifyReceivedQuantity, setVerifyReceivedQuantity] = useState(0);
   const [verifyHasProblem, setVerifyHasProblem] = useState(false);
   const [verifyPickerQuantity, setVerifyPickerQuantity] = useState<number | null>(
@@ -241,8 +247,7 @@ function MaterialListItemComponent({
   };
 
   const partName =
-    item.partDefinition?.displayName ||
-    item.descriptionSnapshot ||
+    firstText(item.partDefinition?.displayName, item.descriptionSnapshot) ??
     "Unknown Part";
   const isReplicacheSyncing = useReplicacheSyncing(
     !syncStatus && !!item.pendingSync,
@@ -274,28 +279,30 @@ function MaterialListItemComponent({
     orderedQuantityNumber - verifyReceivedQuantity,
   );
 
-  useEffect(() => {
-    if (!verifyMode) return;
-    setVerifyReceivedQuantity(clampReceivedQuantity(initialReceivedQuantity));
-    setVerifyHasProblem(verifyInitialStatus === "problem");
-    setVerifyPickerQuantity(null);
-  }, [
-    initialReceivedQuantity,
-    orderedQuantity,
-    verifyInitialStatus,
-    verifyMode,
-  ]);
+  // Receiving starts again from the saved counts whenever they change.
+  const verifyStart = verifyMode
+    ? JSON.stringify([initialReceivedQuantity, orderedQuantityNumber, verifyInitialStatus ?? null])
+    : null;
+  const [verifyStarted, setVerifyStarted] = useState<string | null>(null);
+  if (verifyStart !== verifyStarted) {
+    setVerifyStarted(verifyStart);
+    if (verifyMode) {
+      setVerifyReceivedQuantity(Math.max(0, Math.min(orderedQuantityNumber, initialReceivedQuantity)));
+      setVerifyHasProblem(verifyInitialStatus === "problem");
+      setVerifyPickerQuantity(null);
+    }
+  }
 
   useEffect(() => {
+    const longPressTimer = verifyLongPressTimerRef;
+    const clickTimer = verifyClickTimerRef;
+    const pickerListeners = verifyPickerListenersRef;
+    const touchListeners = verifyTouchListenersRef;
     return () => {
-      if (verifyLongPressTimerRef.current) {
-        clearTimeout(verifyLongPressTimerRef.current);
-      }
-      if (verifyClickTimerRef.current) {
-        clearTimeout(verifyClickTimerRef.current);
-      }
-      teardownVerifyPickerListeners();
-      teardownVerifyTouchListeners();
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+      pickerListeners.current?.();
+      touchListeners.current?.();
     };
   }, []);
 
@@ -371,15 +378,13 @@ function MaterialListItemComponent({
   };
 
   function teardownVerifyPickerListeners() {
-    window.removeEventListener("pointermove", handleVerifyWindowPointerMove);
-    window.removeEventListener("pointerup", handleVerifyWindowPointerUp);
-    window.removeEventListener("pointercancel", handleVerifyWindowPointerCancel);
+    verifyPickerListenersRef.current?.();
+    verifyPickerListenersRef.current = null;
   }
 
   function teardownVerifyTouchListeners() {
-    window.removeEventListener("touchmove", handleVerifyWindowTouchMove);
-    window.removeEventListener("touchend", handleVerifyWindowTouchEnd);
-    window.removeEventListener("touchcancel", handleVerifyWindowTouchCancel);
+    verifyTouchListenersRef.current?.();
+    verifyTouchListenersRef.current = null;
   }
 
   function finishVerifyPickerSelection() {
@@ -531,6 +536,11 @@ function MaterialListItemComponent({
         passive: false,
       });
       window.addEventListener("pointercancel", handleVerifyWindowPointerCancel);
+      verifyPickerListenersRef.current = () => {
+        window.removeEventListener("pointermove", handleVerifyWindowPointerMove);
+        window.removeEventListener("pointerup", handleVerifyWindowPointerUp);
+        window.removeEventListener("pointercancel", handleVerifyWindowPointerCancel);
+      };
     }, 450);
   };
 
@@ -552,6 +562,7 @@ function MaterialListItemComponent({
     verifyPickerTouchYRef.current = touchY;
     verifyPickerTouchAccumulatorRef.current = 0;
 
+    teardownVerifyTouchListeners();
     window.addEventListener("touchmove", handleVerifyWindowTouchMove, {
       passive: false,
     });
@@ -561,6 +572,11 @@ function MaterialListItemComponent({
     window.addEventListener("touchcancel", handleVerifyWindowTouchCancel, {
       passive: false,
     });
+    verifyTouchListenersRef.current = () => {
+      window.removeEventListener("touchmove", handleVerifyWindowTouchMove);
+      window.removeEventListener("touchend", handleVerifyWindowTouchEnd);
+      window.removeEventListener("touchcancel", handleVerifyWindowTouchCancel);
+    };
 
     verifyLongPressTimerRef.current = setTimeout(() => {
       verifyLongPressTriggeredRef.current = true;
@@ -802,7 +818,7 @@ function MaterialListItemComponent({
           )}
           {verifyMode && verifyCaption}
 
-          {!verifyMode && item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={item.partDefinition?.bulkUnit || item.uom?.code} />}
+          {!verifyMode && item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={firstText(item.partDefinition?.bulkUnit, item.uom?.code)} />}
           {!verifyMode && !item.sentOrderItemId && (
             <div className="mt-auto flex flex-col gap-2 pt-2">
               {/* Each label sits just above its control. */}

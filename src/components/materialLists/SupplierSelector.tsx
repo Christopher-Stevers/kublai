@@ -1,4 +1,5 @@
 "use client";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { supplierVersionLabel } from "~/lib/supplier-label";
 import {
   buildSupplierChoices,
@@ -31,7 +32,7 @@ import {
 } from "~/lib/offline-supplier-parts";
 
 interface SupplierSelectorProps {
-  currentVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
+  currentVersion?: SupplierVersion | null;
   itemId: string;
   partDefinitionId: string;
   currentSupplierPartId: string | null | undefined;
@@ -74,31 +75,34 @@ export function SupplierSelector({
   const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<
     string | null
   >(null);
-  const [cachedSupplierParts, setCachedSupplierParts] = useState<
-    OfflineSupplierPartOption[]
-  >(NO_SUPPLIER_PARTS);
   // The choices are only worked out once the menu has been opened.
   const [hasOpened, setHasOpened] = useState(false);
   if (isDropdownOpen && !hasOpened) setHasOpened(true);
   // A job's quoted price must never overwrite another job's cached price.
   const cacheKey = `${partDefinitionId}:${materialListId}:standard`;
 
-  useEffect(() => {
+  // A saved choice replaces whatever was picked optimistically.
+  const savedChoice = JSON.stringify([currentSupplierPartId ?? null, currentSupplierId ?? null, currentVersion?.bookId ?? null, currentVersion?.label ?? null]);
+  const [shownChoice, setShownChoice] = useState(savedChoice);
+  if (savedChoice !== shownChoice) {
+    setShownChoice(savedChoice);
     setOptimisticSupplierPartId(currentSupplierPartId ?? null);
     setOptimisticSupplierId(currentSupplierId ?? null);
     setOptimisticDisplayLabel(null);
-  }, [currentSupplierPartId, currentSupplierId, currentVersion?.bookId, currentVersion?.label]);
+  }
 
   const subscribedSuppliers = useReplicacheSuppliers({ enabled: !suppliers });
   const allSuppliers = suppliers ?? subscribedSuppliers;
 
-  useEffect(() => {
-    setCachedSupplierParts(
+  // Saved prices are read again each time the menu opens or closes.
+  const cachedSupplierParts = useMemo(
+    () =>
       sandbox
         ? NO_SUPPLIER_PARTS
         : (getOfflineSupplierPartsByPart(cacheKey) ?? NO_SUPPLIER_PARTS),
-    );
-  }, [cacheKey, isDropdownOpen, sandbox]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isDropdownOpen re-reads the saved prices.
+    [cacheKey, isDropdownOpen, sandbox],
+  );
 
   const online = useOnlineStatus();
   const freshParts = api.supplier.getSupplierPartsByPart.useQuery(
@@ -108,7 +112,6 @@ export function SupplierSelector({
   useEffect(() => {
     if (freshParts.data && !sandbox) {
       setOfflineSupplierPartsByPart(cacheKey, freshParts.data);
-      setCachedSupplierParts(freshParts.data);
     }
   }, [freshParts.data, cacheKey, sandbox]);
   const supplierParts = freshParts.data ?? cachedSupplierParts;
@@ -203,7 +206,7 @@ export function SupplierSelector({
                 className="text-muted-foreground px-2 py-2 text-xs"
               >
                 Could not refresh supplier prices.{" "}
-                {cachedSupplierParts.length
+                {supplierParts.length
                   ? "Showing saved prices."
                   : "Try again when connected."}
               </div>

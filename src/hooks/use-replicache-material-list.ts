@@ -1,6 +1,7 @@
 "use client";
 
 import type { SentMaterialOrder } from "~/components/materialLists/SentMaterialStatus";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { purchaseLineTotal, purchaseQuantity } from "~/lib/purchase-quantity";
 
 import { useEffect, useMemo, useState } from "react";
@@ -37,7 +38,7 @@ export function useReplicacheSyncing(enabled = true) {
 }
 
 export interface ReplicacheMaterialListItem {
-  supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
+  supplierVersion?: SupplierVersion | null;
   jobPriceStatus?: string;
   sentOrderItemId?: string | null;
   priceBookNameSnapshot?: string | null;

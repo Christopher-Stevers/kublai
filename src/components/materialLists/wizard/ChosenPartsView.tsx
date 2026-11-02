@@ -220,33 +220,26 @@ export function ChosenPartsView({
   const isOnline = useOnlineStatus();
   const allSuppliers = useReplicacheSuppliers();
 
-  useEffect(() => {
-    setOptimisticSupplierSelections((prev) => {
-      let changed = false;
-      const next = { ...prev };
+  // A picked supplier stops being optimistic once the part has it saved.
+  let confirmedSelections: Record<string, OptimisticSupplierSelection> | null = null;
+  for (const pendingPart of pendingParts) {
+    const optimisticSelection = optimisticSupplierSelections[pendingPart.partId];
+    if (!pendingPart.supplierPartId || !optimisticSelection) {
+      continue;
+    }
 
-      for (const pendingPart of pendingParts) {
-        const optimisticSelection = next[pendingPart.partId];
-        if (!pendingPart.supplierPartId || !optimisticSelection) {
-          continue;
-        }
+    const matchedSupplier = (
+      supplierPartsData.get(pendingPart.partId) ?? []
+    ).find((sp) => sp.id === pendingPart.supplierPartId);
 
-        const matchedSupplier = (
-          supplierPartsData.get(pendingPart.partId) ?? []
-        ).find((sp) => sp.id === pendingPart.supplierPartId);
-
-        if (
-          matchedSupplier &&
-          matchedSupplier.id === optimisticSelection.supplierPartId
-        ) {
-          delete next[pendingPart.partId];
-          changed = true;
-        }
-      }
-
-      return changed ? next : prev;
-    });
-  }, [pendingParts, supplierPartsData]);
+    if (
+      matchedSupplier?.id === optimisticSelection.supplierPartId
+    ) {
+      confirmedSelections ??= { ...optimisticSupplierSelections };
+      delete confirmedSelections[pendingPart.partId];
+    }
+  }
+  if (confirmedSelections) setOptimisticSupplierSelections(confirmedSelections);
 
   const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
     { partIds: supplierDialogPartId ? [supplierDialogPartId] : [] },
@@ -255,7 +248,7 @@ export function ChosenPartsView({
 
   const { data: dialogSupplierParts } =
     api.supplier.getSupplierPartsByPart.useQuery(
-      { partDefinitionId: supplierDialogPartId || "" },
+      { partDefinitionId: supplierDialogPartId ?? "" },
       { enabled: isOnline && !!supplierDialogPartId },
     );
 
@@ -597,7 +590,7 @@ export function ChosenPartsView({
                     partDefinitionId={supplierDialogPartId}
                     currentPreferredSupplierId={
                       supplierInfo?.[supplierDialogPartId]?.preferredSupplier
-                        ?.id || null
+                        ?.id ?? null
                     }
                     availableSuppliers={
                       supplierInfo?.[supplierDialogPartId]

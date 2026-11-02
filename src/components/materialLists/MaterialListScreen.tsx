@@ -1,6 +1,7 @@
 "use client";
 import { MaterialFocusSection } from "./MaterialFocusSection";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { firstText } from "~/lib/first-text";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { SlipBadge, slipBadgeKey, SlipPartSheet, SlipVerifyBar, type SlipEntry } from "~/components/materialLists/SlipOnList";
@@ -21,7 +22,7 @@ import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrd
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -52,8 +53,34 @@ import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { markUserAction } from "~/lib/performance-marks";
 
-// A card gets the same object for as long as its part is unchanged, so only
-// changed parts redraw.
+// Each card keeps one receiving handler that calls the latest one, so
+// cards don't redraw just because the screen did.
+type VerifyHandlers = Map<string, { latest: VerifyStateHandler; stable: VerifyStateHandler }>;
+function stableVerifyHandler(handlers: VerifyHandlers, itemId: string, latest: VerifyStateHandler) {
+  const known = handlers.get(itemId);
+  if (known) {
+    known.latest = latest;
+    return known.stable;
+  }
+  const entry: { latest: VerifyStateHandler; stable: VerifyStateHandler } = {
+    latest,
+    stable: (state) => entry.latest(state),
+  };
+  handlers.set(itemId, entry);
+  return entry.stable;
+}
+// Slip badges are kept while what they show is the same, for the same reason.
+type SlipBadges = Map<string, { key: string; opener: { open: () => void }; badge: ReactNode }>;
+function keptSlipBadge(badges: SlipBadges, itemId: string, slipEntry: SlipEntry, open: () => void) {
+  const key = slipBadgeKey(slipEntry);
+  const known = badges.get(itemId);
+  const opener = known?.opener ?? { open };
+  opener.open = open;
+  if (known?.key === key) return known.badge;
+  const badge = <SlipBadge entry={slipEntry} onOpen={() => opener.open()} />;
+  badges.set(itemId, { key, opener, badge });
+  return badge;
+}
 // Parts keep their objects while the price book stays the same, so the
 // cards of unchanged parts don't redraw.
 const pricedParts = new WeakMap<object, WeakMap<object, object>>();
@@ -70,6 +97,8 @@ function pricedPart<T extends object>(book: object, part: T, price: (part: T) =>
   }
   return priced;
 }
+// A card gets the same object for as long as its part is unchanged, so only
+// changed parts redraw.
 const cardItems = new WeakMap<ReplicacheMaterialListItem, ComponentProps<typeof MaterialListItem>["item"]>();
 function cardItem(item: ReplicacheMaterialListItem) {
   let card = cardItems.get(item);
@@ -130,34 +159,10 @@ export function MaterialListScreen({
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const isBrowserOnline = useOnlineStatus();
-  // Each card keeps one receiving handler that calls the latest one, so
-  // cards don't redraw just because the screen did.
-  const verifyHandlers = useRef(new Map<string, { latest: VerifyStateHandler; stable: VerifyStateHandler }>());
-  const verifyHandler = (itemId: string, latest: VerifyStateHandler) => {
-    const known = verifyHandlers.current.get(itemId);
-    if (known) {
-      known.latest = latest;
-      return known.stable;
-    }
-    const entry: { latest: VerifyStateHandler; stable: VerifyStateHandler } = {
-      latest,
-      stable: (state) => entry.latest(state),
-    };
-    verifyHandlers.current.set(itemId, entry);
-    return entry.stable;
-  };
-  // Slip badges are kept while what they show is the same, for the same reason.
-  const slipBadges = useRef(new Map<string, { key: string; opener: { open: () => void }; badge: ReactNode }>());
-  const slipBadge = (itemId: string, slipEntry: SlipEntry, open: () => void) => {
-    const key = slipBadgeKey(slipEntry);
-    const known = slipBadges.current.get(itemId);
-    const opener = known?.opener ?? { open };
-    opener.open = open;
-    if (known?.key === key) return known.badge;
-    const badge = <SlipBadge entry={slipEntry} onOpen={() => opener.open()} />;
-    slipBadges.current.set(itemId, { key, opener, badge });
-    return badge;
-  };
+  const [verifyHandlers] = useState<VerifyHandlers>(() => new Map());
+  const verifyHandler = (itemId: string, latest: VerifyStateHandler) => stableVerifyHandler(verifyHandlers, itemId, latest);
+  const [slipBadges] = useState<SlipBadges>(() => new Map());
+  const slipBadge = (itemId: string, slipEntry: SlipEntry, open: () => void) => keptSlipBadge(slipBadges, itemId, slipEntry, open);
 
   const { materialList: mlHeader, items: unsortedItems, isLoading } =
     useReplicacheMaterialList(id);
@@ -241,16 +246,14 @@ export function MaterialListScreen({
     !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
   const hasReceivableOrder = items.some((item) => receivableOrder(item));
 
-  useEffect(() => {
-    if (!notesOrderId) {
-      setVerifyOrderNotes("");
-      return;
-    }
-
-    if (notesOrder) {
-      setVerifyOrderNotes(notesOrder.notes ?? "");
-    }
-  }, [notesOrderId, notesOrder]);
+  // The notes draft starts from the order's saved notes, and again whenever they change.
+  const savedNotes = !notesOrderId ? "" : notesOrder ? (notesOrder.notes ?? "") : null;
+  const savedNotesKey = savedNotes === null ? null : JSON.stringify([notesOrderId, savedNotes]);
+  const [notesDraftKey, setNotesDraftKey] = useState<string | null>(null);
+  if (savedNotes !== null && savedNotesKey !== notesDraftKey) {
+    setNotesDraftKey(savedNotesKey);
+    setVerifyOrderNotes(savedNotes);
+  }
 
   // Each order's parts sit under their own heading; once one scrolls up its
   // receiving bar takes the place of the list's own actions.
@@ -410,7 +413,7 @@ export function MaterialListScreen({
               {verifyOrder ? (
                 <span>
                   {" "}
-                  {verifyOrder.orderNumber || `#${verifyOrder.id.slice(0, 8)}`}
+                  {firstText(verifyOrder.orderNumber) ?? `#${verifyOrder.id.slice(0, 8)}`}
                   {verifyOrder.supplier?.name
                     ? ` - ${supplierLabel(verifyOrder.supplier.name, verifyOrder.supplier.priceBookName)}`
                     : ""}
@@ -427,7 +430,7 @@ export function MaterialListScreen({
             // underneath always stay reachable.
             <div className="sticky top-0 z-30 mb-3 max-h-[45dvh] space-y-2 overflow-y-auto overscroll-contain rounded-xl">
               {slipDrafts.drafts.map((draft) => (
-                <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId!} showOrder={!verifyOrderId} />
+                <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId} showOrder={!verifyOrderId} />
               ))}
             </div>
           )}
@@ -452,7 +455,7 @@ export function MaterialListScreen({
           ) : (
             <>
               {/* Grid View */}
-              {(verifyOrderId || viewMode === "grid") && (
+              {(!!verifyOrderId || viewMode === "grid") && (
                 <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
                   <MaterialFocusSection focused={!verifyOrderId && section.key === focusedSection?.key} key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">

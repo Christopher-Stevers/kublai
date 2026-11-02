@@ -11,6 +11,8 @@ import {
   type TableReceive,
 } from "./TableReceive";
 
+import { firstText } from "~/lib/first-text";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
@@ -30,7 +32,7 @@ export interface MaterialListTableRowProps {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
     priceBookNameSnapshot?: string | null;
-    supplierVersion?: import("~/lib/job-supplier-defaults").SupplierVersion | null;
+    supplierVersion?: SupplierVersion | null;
     sentOrder?: SentMaterialOrder | null;
     id: string;
     quantity: string;
@@ -104,9 +106,7 @@ export const MATERIAL_LIST_ORDERED_COLUMNS_NO_MONEY =
 type Item = MaterialListTableRowProps["item"];
 
 const partNameOf = (item: Item) =>
-  item.oneOff?.displayName ||
-  item.partDefinition?.displayName ||
-  item.descriptionSnapshot ||
+  firstText(item.oneOff?.displayName, item.partDefinition?.displayName, item.descriptionSnapshot) ??
   "Unknown Part";
 
 function PhotoCell({ item }: { item: Item }) {
