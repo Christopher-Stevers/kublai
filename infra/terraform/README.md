@@ -1,7 +1,7 @@
 # ForemanHQ on AWS
 
 Dedicated application EC2 and private RDS PostgreSQL for ForemanHQ (`kublai`).
-Adapted from [Hello Any World's shared EC2 infrastructure](https://github.com/Christopher-Stevers/hello-any-world/tree/main/infra/terraform), with separate resources and state. This root provisions infrastructure; it does not deploy an app image, migrate existing data, or change live DNS.
+Adapted from [Hello Any World's shared EC2 infrastructure](https://github.com/Christopher-Stevers/hello-any-world/tree/main/infra/terraform), with separate resources and state. This root provisions infrastructure and the Route 53 zone. GitHub Actions builds and deploys the app; Drizzle applies versioned database migrations.
 
 ## Deployment record — November 2, 2026
 
@@ -14,7 +14,9 @@ Provisioned in account `337658133209`, Ohio, from this Terraform root:
 
 Verified: Terraform created 40 resources; EC2 cloud-init completed; Docker, Compose and SSM are active; the uploads mount and Docker mount dependency are present; RDS is available, private and encrypted, with parameters in sync and a latest-restorable timestamp. A host-to-RDS connection verified the server certificate using the AWS CA bundle and negotiated TLS 1.3. The initial AWS Backup upload-volume job completed successfully. The `Project` cost-allocation tag was activated for billing.
 
-Still outstanding: application deployment, source-version/cutover choice, database roles and secrets, existing-data migration, DNS/HTTPS cutover, an actual restore drill, workload/capacity checks, and operator confirmation of the SNS email subscription. These checks do not establish that ForemanHQ is serving from AWS yet.
+The app is deployed to `https://aws.foremanhq.ca` from `ci/foremanhq-aws`, based on the October 21 integration. The main domain continues serving Vercel. Route 53 delegation is live and Clerk reports the primary domain verified. Separate AWS Clerk and Stripe webhook endpoints use signing secrets in encrypted SSM configuration.
+
+Still outstanding before production cutover: signed-in acceptance testing, representative drawing/uploads, recovery drills, and confirmation of the SNS email subscription. This is a fresh database; Tim's test data will be imported separately when requested.
 
 ## Architecture and approved database choice
 
@@ -30,7 +32,7 @@ Still outstanding: application deployment, source-version/cutover choice, databa
 
 The RDS Ohio public price list published October 29, 2026 lists $0.016/hour for micro plus $0.115/GB-month gp3. At 730 hours and 20 GB this is **$13.98/month for database compute/storage**. This excludes EC2, IPv4, EBS uploads/root disks, EBS snapshots, Secrets Manager, monitoring, traffic, surplus RDS CPU credits, excess backup storage, and tax. No promotional credits are assumed. Storage autoscaling can increase charges and cannot shrink storage in place.
 
-At light usage, the current complete stack is approximately **$36–40/month before tax**, using a 730-hour month: EC2 $13.72, RDS compute/storage $13.98, 40 GiB EC2 gp3 disks $3.20, public IPv4 $3.65, plus approximately $1–5 for backups, monitoring, secrets, and image storage. This is incremental to existing hosting and excludes heavy traffic/CPU-credit use. AWS rates were checked November 2, 2026.
+At light usage, the current complete stack is approximately **$50–55/month before tax**, using a 730-hour month: EC2 $27.45, RDS compute/storage $13.98, 40 GiB EC2 gp3 disks $3.20, public IPv4 $3.65, Route 53 approximately $0.50 plus queries, and approximately $1–5 for backups, monitoring, secrets, and image storage. This is incremental to existing hosting and excludes heavy traffic/CPU-credit use. AWS rates were checked November 2, 2026.
 
 The app host uses 4 GiB RAM. The web process has a 1 GiB cgroup limit, drawing workers share a 2 GiB ceiling and are serialized, and the container is capped at 3200 MiB. The host deployer delegates only the container's own workers subtree; no Docker socket, privileged container, or host-wide writable cgroup mount is exposed. A systemd service recreates the container and delegation after a restart.
 
@@ -57,18 +59,18 @@ The default `ami_id` is pinned to the first deployed image, `ami-02dae70ab250642
 
 ## App release and cutover work
 
-The default `development` branch is older than the application snapshot in open [PR #5](https://github.com/Christopher-Stevers/kublai/pull/5). The infrastructure is independent of that integration. Confirm the intended source revision before building a production image. Do not deploy the older default branch by accident or silently merge the integration PR.
+The AWS release branch is `ci/foremanhq-aws` and PR #7 targets `foremanhq-integration-2026-10-21`. Do not deploy the older default branch by accident or silently merge the integration PR.
 
-1. Wait for cloud-init and `/var/lib/foremanhq/bootstrap-ready` via SSM. Confirm the uploads mount before starting containers.
-2. Build an x86_64 Linux image from the selected source revision off-host, including required native PDF/CAD/room-processing dependencies and worker scripts. Public Clerk/Stripe variables are build-time Next.js inputs. Keep secret values out of build arguments/layers. Push an immutable commit tag to the output ECR repository and deploy by digest.
-3. Inventory the current production database and uploads. Decide whether this is an empty launch or a migration. For a migration, rehearse a restore into RDS, validate counts and files, and establish a cutover write freeze. Do not run `db:push` against production or replace existing data with seeds.
-4. Create the database application/migration roles privately through SSM connectivity. Store the production dotenv payload in SecureString SSM `/foremanhq/app-env` using the default SSM key; the host role may read only that parameter. Fetch into a root-owned file with mode 0600. Never output it in SSM logs. Use a TLS-verified RDS connection string with the runtime role, not the administrator. A custom KMS key requires a separately scoped decrypt grant.
-5. Run the repo's reviewed migration chain once with the migration role. Check the current integration's migration instructions rather than assuming the older branch's schema is complete.
-6. Run the application and Caddy through Docker Compose, mount uploads and certificate storage, and install a systemd service requiring the data mount. The newer app invokes worker scripts from source; a minimal Next.js standalone image may omit these and is not automatically sufficient.
-7. Test a staging hostname and real auth, API access, uploads/downloads, drawings, email, payments/webhooks as configured, reboot persistence, database restore, and upload restore. Confirm SNS subscriptions and inspect alarms/backup jobs.
-8. Only then move the production domain from its current hosting to the output Elastic IP, verify DNS/HTTPS, and keep the former deployment available for rollback. Database migrations and new writes may prevent simple image-only rollback.
+1. Push reviewed changes to the AWS branch. `.github/workflows/aws.yml` runs lint, typechecking, regression tests, Terraform checks, and fresh/repeated Drizzle migrations including organization-boundary checks.
+2. With repository variables `AWS_RELEASE_READY=true` and `AWS_DEPLOY_ENABLED=true`, CI builds off-host, publishes an immutable ECR image, and calls `infra/aws/send-deploy.py` using GitHub OIDC. Public Clerk/Stripe keys are build inputs; secrets never enter build arguments.
+3. `deploy.sh` fetches `/foremanhq/migration-env` and runs `pnpm db:migrate:aws`'s underlying migration script before starting the candidate. The app receives only `/foremanhq/app-env`. Database roles are `foreman_owner` for migrations and `foreman_app` for runtime. Never use `db:push` or destructive reseeding for deployment.
+4. The candidate must pass the app/database healthcheck. The deployer then updates the root-owned environment/image files and restarts `foremanhq.service`; a failed healthcheck restores the previous image/configuration when present. Schema migrations are not automatically reversed.
+5. `run-service.sh` and `start-container.sh` recreate the Docker container and bounded cgroup delegation on service/host restart. Caddy serves HTTPS and persistent uploads are mounted from EBS.
+6. Use `docker exec foremanhq node scripts/check-health.mjs` through SSM for health. `docker exec foremanhq node infra/aws/verify-clerk.mjs` verifies signed user events and removes its synthetic user; this command is restricted to the AWS acceptance hostname.
+7. Test real login, organization membership, uploads/downloads, drawing processing, invitations and billing. No real payment is required for webhook signature checks. Inspect backup jobs and perform recovery drills.
+8. After acceptance, change the Terraform-managed apex/www records to AWS and update Caddy and application callback URLs together. Keep the former deployment and original webhooks available during the transition; retire redundant AWS-preview webhook destinations deliberately to avoid duplicate delivery.
 
-At initial preparation, `foremanhq.ca` redirects to `www.foremanhq.ca` on Vercel. DNS records are intentionally absent from this infrastructure root until the authoritative zone and cutover are established. Once established, manage the new records in this repo too.
+Namecheap remains the registrar. The Route 53 zone in `dns.tf` currently preserves Vercel apex/wildcard routing and Clerk records, while `aws.foremanhq.ca` points to the dedicated Elastic IP. See `DNS-MIGRATION.md` for delegation and rollback details.
 
 ## Validation
 
@@ -84,4 +86,4 @@ Mock tests check the approved size, private database configuration, recovery pro
 
 ## Integration lint baseline
 
-The AWS release branch starts from integration commit `e8b3ba10cf3ddccce9860878845ae6abe181f473`. Its inherited lint baseline was stale: 291 additional errors already existed in that integration source. `eslint-baseline.json` now records the 1676 existing errors by file, rule, message and count. This records debt; it does not fix those application errors or disable rules. `pnpm lint` rejects additions and `pnpm lint:strict` exposes all debt. Application source was unchanged from that integration commit except the equivalent SQL `0` default required for Drizzle snapshot generation.
+The AWS release branch starts from integration commit `e8b3ba10cf3ddccce9860878845ae6abe181f473`. Its inherited lint baseline was stale: 291 additional errors already existed in that integration source. `eslint-baseline.json` now records the 1676 existing errors by file, rule, message and count. This records debt; it does not fix those application errors or disable rules. `pnpm lint` rejects additions and `pnpm lint:strict` exposes all debt. When the baseline was refreshed, application source was unchanged from that integration commit except the equivalent SQL `0` default required for Drizzle snapshot generation.
