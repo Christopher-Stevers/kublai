@@ -39,6 +39,7 @@ import {
   wheelThumbAnchor,
   wheelJoystickAxes,
   wheelJoystickMotion,
+  wheelRailAxes,
   wheelJoystickRadius,
   wrapWheelIndex,
 } from "./quick-wheel-joystick";
@@ -186,6 +187,10 @@ function createGeometry(wheel: Wheel): {
         }));
   return { layout, points, arc: undefined };
 }
+/** Scroll along the rail itself, which may turn away from the thumb anchor
+ * where the viewport pushes it aside. */
+const axesFor = (wheel: Wheel) =>
+  wheelRailAxes(wheel, wheel.thumbAnchor, geometryFor(wheel).arc);
 function geometryFor(wheel: Wheel) {
   let cache = geometryCache.get(wheel.bounds);
   if (!cache) {
@@ -771,7 +776,8 @@ export function QuickWheelSurface({
         dy = event.clientY - current.y;
       const selectionRadius = wheelHubRadius(current.radius) * 0.75;
       const inHub = Math.hypot(dx, dy) <= selectionRadius;
-      const { inward, sideways } = wheelJoystickAxes(current, current.thumbAnchor);
+      const axes = axesFor(current);
+      const { inward, sideways } = axes;
       const forward = dx * inward.x + dy * inward.y;
       const lateral = dx * sideways.x + dy * sideways.y;
       if (!current.repositioning) {
@@ -797,6 +803,7 @@ export function QuickWheelSurface({
         current.radius,
         current.repositioning,
         relocation.current.armed,
+        axes,
       );
       if (motion.relocate) {
         stopScrolling();
@@ -1134,7 +1141,7 @@ function WheelDisplay({
   );
   const { layout, points } = geometryFor(wheel);
   const hub = wheelHubRadius(wheel.radius);
-  const axes = wheelJoystickAxes(wheel, wheel.thumbAnchor);
+  const axes = axesFor(wheel);
   const hint = selected
     ? "Hold to select"
     : wheel.scrolling
@@ -1170,6 +1177,8 @@ function WheelDisplay({
       data-scrolling={Boolean(wheel.scrolling)}
       data-anchor-x={wheel.thumbAnchor.x}
       data-anchor-y={wheel.thumbAnchor.y}
+      data-inward-x={axes.inward.x.toFixed(4)}
+      data-inward-y={axes.inward.y.toFixed(4)}
       data-origin-x={wheel.x}
       data-origin-y={wheel.y}
       aria-label={`${wheel.title} quick wheel`}
@@ -1484,7 +1493,7 @@ function ScrollWings({
   cy: number;
   hub: number;
   reach: number;
-  axes: ReturnType<typeof wheelJoystickAxes>;
+  axes: ReturnType<typeof wheelRailAxes>;
   /** Sign of the current scroll; 0 at rest. */
   direction: number;
   /** Fade back while a choice is held or the wheel is being moved. */
@@ -1506,12 +1515,20 @@ function ScrollWings({
     >
       {[-1, 1].map((side) => {
         // `out` runs along the scroll axis away from the hub, `up` toward
-        // the choices; the tips sweep back slightly toward the hand.
-        const at = (out: number, up: number) =>
-          `${cx + side * axes.sideways.x * out + axes.inward.x * up} ${
-            cy + side * axes.sideways.y * out + axes.inward.y * up
+        // the choices. Both bend around the rail's centre, so the wings stay
+        // parallel to the choices however the rail is turned.
+        const at = (out: number, up: number) => {
+          const turn = Number.isFinite(axes.bend) ? out / axes.bend : 0;
+          const along = Number.isFinite(axes.bend)
+            ? (axes.bend + up) * Math.sin(turn)
+            : out;
+          const across = Number.isFinite(axes.bend)
+            ? (axes.bend + up) * Math.cos(turn) - axes.bend
+            : up;
+          return `${cx + side * axes.sideways.x * along + axes.inward.x * across} ${
+            cy + side * axes.sideways.y * along + axes.inward.y * across
           }`;
-        const sweep = -hub * 0.1;
+        };
         const active = direction === side;
         return (
           <g
@@ -1525,7 +1542,7 @@ function ScrollWings({
             }}
           >
             <path
-              d={`M${at(hub * 0.7, hub * 0.42)}C${at(hub * 1.05, hub * 0.46)} ${at(reach - hub * 0.3, hub * 0.24)} ${at(reach, sweep)}C${at(reach - hub * 0.35, -hub * 0.18)} ${at(hub * 1.05, -hub * 0.22)} ${at(hub * 0.7, -hub * 0.4)}Z`}
+              d={`M${at(hub * 0.7, hub * 0.42)}C${at(hub * 1.05, hub * 0.46)} ${at(reach - hub * 0.3, hub * 0.24)} ${at(reach, 0)}C${at(reach - hub * 0.35, -hub * 0.18)} ${at(hub * 1.05, -hub * 0.22)} ${at(hub * 0.7, -hub * 0.4)}Z`}
               className={cn(
                 "transition-[fill,stroke] duration-150",
                 active
@@ -1537,11 +1554,10 @@ function ScrollWings({
             />
             {[0.3, 0.58].map((share) => {
               const out = hub + (reach - hub) * share;
-              const up = sweep * share;
               return (
                 <path
                   key={share}
-                  d={`M${at(out - 4, up + 6)}L${at(out + 2, up)}L${at(out - 4, up - 6)}`}
+                  d={`M${at(out - 4, 6)}L${at(out + 2, 0)}L${at(out - 4, -6)}`}
                   fill="none"
                   className={cn(
                     "quick-wheel-chevron transition-[stroke] duration-150",

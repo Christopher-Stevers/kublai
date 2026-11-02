@@ -29,6 +29,19 @@ export function wheelJoystickAxes(origin: Point, anchor: Point) {
     length < 8 ? { x: 0, y: -1 } : { x: dx / length, y: dy / length };
   return { inward, sideways: { x: -inward.y, y: inward.x } };
 }
+/** Axes of a thumb rail: inward points from its curvature centre through the
+ * hub toward the choices, so sideways runs parallel to the rail. `bend` is the
+ * radius of the circle through the hub concentric with the rail. Without a
+ * rail, fall back to the thumb anchor axes.
+ */
+export function wheelRailAxes(origin: Point, anchor: Point, arc?: WheelArc) {
+  const offset = arc?.offset;
+  const length = offset ? Math.hypot(offset.x, offset.y) : 0;
+  if (!offset || length < 8)
+    return { ...wheelJoystickAxes(origin, anchor), bend: Infinity };
+  const inward = { x: -offset.x / length, y: -offset.y / length };
+  return { inward, sideways: { x: -inward.y, y: inward.x }, bend: length };
+}
 export function wheelJoystickMotion(
   origin: Point,
   pointer: Point,
@@ -36,8 +49,9 @@ export function wheelJoystickMotion(
   radius: number,
   dragging = false,
   relocationArmed = true,
+  axes: { inward: Point; sideways: Point } = wheelJoystickAxes(origin, anchor),
 ) {
-  const { inward, sideways } = wheelJoystickAxes(origin, anchor);
+  const { inward, sideways } = axes;
   const dx = pointer.x - origin.x,
     dy = pointer.y - origin.y;
   const forward = dx * inward.x + dy * inward.y;
