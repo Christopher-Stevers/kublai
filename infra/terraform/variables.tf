@@ -24,8 +24,8 @@ variable "database_instance_class" {
 }
 variable "ami_id" {
   type        = string
-  default     = null
-  description = "Pin the first deployed AMI before later applies to avoid unintended host replacement."
+  default     = "ami-02dae70ab25064279"
+  description = "Pinned deployed Amazon Linux image; change only for a reviewed host replacement."
 }
 variable "postgres_version" {
   type        = string

@@ -40,7 +40,7 @@ terraform apply production.tfplan
 
 The existing encrypted/versioned Hello Any World state bucket is reused under a **new key** `foremanhq/terraform.tfstate`; do not initialize this root with the shared-EC2 key. This root does not adopt, modify, or destroy the existing demo host. Confirm the bucket exists and access is scoped correctly before apply. Do not commit state, saved plans, private tfvars, app environment files, or credentials.
 
-After first apply, set `ami_id` in private tfvars from `terraform output -raw ami_id`. Otherwise a newer Amazon Linux image can propose a host replacement on a later plan. Review every replacement. Quiesce uploads and unmount the data disk before replacing the host; never force-detach it. Database deletion requires deliberately removing both Terraform and AWS deletion protections and choosing a unique final snapshot name.
+The default `ami_id` is pinned to the first deployed image, `ami-02dae70ab25064279`. Setting it to null follows the latest Amazon Linux image and can propose a host replacement on a later plan. Review every replacement. Quiesce uploads and unmount the data disk before replacing the host; never force-detach it. Database deletion requires deliberately removing both Terraform and AWS deletion protections and choosing a unique final snapshot name.
 
 ## App release and cutover work
 
