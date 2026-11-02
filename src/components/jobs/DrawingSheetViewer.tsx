@@ -2247,7 +2247,9 @@ export function DrawingSheetViewer({
         role="region"
         aria-label={`${alt} viewer`}
         aria-keyshortcuts="W A S D Q E"
-        className={`${imageReady ? "bg-muted" : "blueprint-grid"} relative min-h-0 w-full flex-1 overflow-hidden select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
+        // Camera transforms own panning. Clip must not become a native scroll container
+        // when an annotation gains focus or a menu restores focus to the canvas.
+        className={`${imageReady ? "bg-muted" : "blueprint-grid"} relative min-h-0 w-full flex-1 overflow-clip select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
         style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && view.scale <= 1.01 ? "pan-y" : "none" }}
