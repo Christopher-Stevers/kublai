@@ -2,8 +2,8 @@ import { Webhook } from 'svix';
 import postgres from 'postgres';
 import { randomUUID } from 'node:crypto';
 // Run inside the deployed container; never prints signing or database credentials.
-const base = process.env.FOREMANHQ_PUBLIC_URL;
-if (base !== 'https://aws.foremanhq.ca') throw new Error('This smoke test is restricted to the AWS acceptance deployment');
+const base = process.env.SMOKE_PUBLIC_URL ?? process.env.FOREMANHQ_PUBLIC_URL;
+if (!['https://aws.foremanhq.ca', 'https://www.foremanhq.ca'].includes(base)) throw new Error('This smoke test is restricted to the AWS acceptance deployment');
 const id = `user_aws_smoke_${randomUUID()}`;
 const db = postgres(process.env.DATABASE_URL, {max:1});
 const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);

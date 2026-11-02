@@ -33,11 +33,18 @@ export async function POST(req: Request) {
 
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    const signatureHeaders = {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
-    }) as WebhookEvent;
+    };
+    try {
+      evt = wh.verify(body, signatureHeaders) as WebhookEvent;
+    } catch (error) {
+      const secondary = process.env.CLERK_WEBHOOK_SECRET_SECONDARY;
+      if (!secondary) throw error;
+      evt = new Webhook(secondary).verify(body, signatureHeaders) as WebhookEvent;
+    }
   } catch (err) {
     console.error("Error verifying webhook:", err);
     return new Response("Error occurred", {

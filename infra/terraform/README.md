@@ -87,3 +87,9 @@ Mock tests check the approved size, private database configuration, recovery pro
 ## Integration lint baseline
 
 The AWS release branch starts from integration commit `e8b3ba10cf3ddccce9860878845ae6abe181f473`. Its inherited lint baseline was stale: 291 additional errors already existed in that integration source. `eslint-baseline.json` now records the 1676 existing errors by file, rule, message and count. This records debt; it does not fix those application errors or disable rules. `pnpm lint` rejects additions and `pnpm lint:strict` exposes all debt. When the baseline was refreshed, application source was unchanged from that integration commit except the equivalent SQL `0` default required for Drizzle snapshot generation.
+
+## Production cutover and billing flag
+
+`production_on_aws=true` routes the apex and explicit www record to the app EIP; false restores the prior Vercel apex and removes the www override. Caddy redirects the apex to `https://www.foremanhq.ca` and continues serving the AWS acceptance hostname. Set `FOREMANHQ_PUBLIC_URL` and `NEXT_PUBLIC_APP_URL` to the canonical www URL in encrypted SSM runtime configuration at cutover.
+
+`STRIPE_CHECKOUT_ENABLED=false` disables new paid subscriptions on the server and pricing page. Set it to the exact value `true` and redeploy only after accepting the billing flow. Existing subscription status and billing-portal access remain available. Webhooks continue syncing while checkout is off. Primary signing secrets belong to the AWS preview endpoints; optional `CLERK_WEBHOOK_SECRET_SECONDARY` and `STRIPE_WEBHOOK_SECRET_SECONDARY` accept the original production endpoints during transition without rotating the originals.

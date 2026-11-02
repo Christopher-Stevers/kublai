@@ -48,6 +48,7 @@ run "private_durable_database" {
   }
 }
 run "dns_migration_preserves_production" {
+  variables { production_on_aws = false }
   command = plan
   assert {
     condition     = aws_route53_zone.app.name == "foremanhq.ca" && toset(aws_route53_record.production.records) == toset(["216.198.79.1", "64.29.17.1"])

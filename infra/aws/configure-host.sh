@@ -4,7 +4,10 @@ mountpoint -q /srv/foremanhq
 install -d -m 700 /etc/foremanhq /srv/foremanhq/caddy/data /srv/foremanhq/caddy/config
 docker network inspect foremanhq >/dev/null 2>&1 || docker network create foremanhq >/dev/null
 cat > /etc/foremanhq/Caddyfile <<'CADDY'
-aws.foremanhq.ca {
+foremanhq.ca {
+  redir https://www.foremanhq.ca{uri} permanent
+}
+www.foremanhq.ca, aws.foremanhq.ca {
   encode zstd gzip
   reverse_proxy foremanhq:3000
 }

@@ -11,9 +11,10 @@ image = os.environ["IMAGE"]
 if not re.fullmatch(r"337658133209\.dkr\.ecr\.us-east-2\.amazonaws\.com/foremanhq@sha256:[a-f0-9]{64}", image):
     raise SystemExit("Invalid immutable image reference")
 commands = ["set -eu", "install -d -m 700 /opt/foremanhq"]
-for filename in ("deploy.sh", "start-container.sh", "run-service.sh"):
+for filename in ("deploy.sh", "start-container.sh", "run-service.sh", "configure-host.sh"):
     encoded = base64.b64encode(Path(f"infra/aws/{filename}").read_bytes()).decode()
     commands.append(f"echo '{encoded}' | base64 -d > /opt/foremanhq/{filename}")
+commands.append("bash /opt/foremanhq/configure-host.sh")
 commands.append(f"bash /opt/foremanhq/deploy.sh '{image}'")
 command = "; ".join(commands)
 def aws(*args):

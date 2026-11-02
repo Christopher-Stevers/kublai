@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   verify: vi.fn(), insert: vi.fn(), values: vi.fn(), upsert: vi.fn(),
 }));
@@ -29,4 +29,17 @@ test.each(["user.created", "user.updated"])("%s atomically upserts only identity
     name: "Test User", email: "test@example.invalid", image: null,
     updatedAt: expect.any(Date) as Date,
   } });
+});
+
+afterEach(() => vi.unstubAllEnvs());
+test("accepts the original production endpoint during the AWS transition", async () => {
+  vi.stubEnv("CLERK_WEBHOOK_SECRET_SECONDARY", "original-test-secret");
+  mocks.verify.mockImplementationOnce(() => { throw new Error("wrong primary signature"); });
+  mocks.verify.mockReturnValueOnce({ type: "user.updated", data: {
+    id: "test-user", email_addresses: [{ email_address: "test@example.invalid" }],
+    first_name: "Test", last_name: "User", image_url: null,
+  } });
+  const result = await POST(new Request("https://example.invalid/webhook", { method: "POST", body: "{}" }));
+  expect(result.status).toBe(200);
+  expect(mocks.verify).toHaveBeenCalledTimes(2);
 });
