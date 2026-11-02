@@ -526,7 +526,7 @@ export function MaterialListScreen({
                       badge: slipFound && slipEntry ? (
                         <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
                       ) : undefined,
-                      onChange: (state) => {
+                      onChange: verifyHandler(item.id, (state) => {
                         // While a read slip is being checked, changes stay on the slip until it is confirmed.
                         if (slipFound && slipEntry) {
                           slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem");
@@ -537,7 +537,7 @@ export function MaterialListScreen({
                           receivedQuantity: state.receivedQuantity,
                           verificationStatus: state.verificationStatus,
                         });
-                      },
+                      }),
                     };
                   }}
                 />

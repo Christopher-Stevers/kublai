@@ -137,6 +137,24 @@ it("puts parts not ordered orderTable, then each order under receiving columns",
   expect(within(plainTable!).getByText("Elbow")).toBeInTheDocument();
 });
 
+it("redraws a receiving row when its counts or access change, even with the same handler", () => {
+  const onChange = vi.fn();
+  const sheet = (received: string, readOnly = false) => (
+    <MaterialListSheet
+      items={[ordered]}
+      materialListId="m"
+      suppliers={[]}
+      receiveFor={() => ({ ordered: "10", received, status: "partial", unit: "ea", readOnly, onChange })}
+    />
+  );
+  const { rerender } = render(sheet("3"));
+  expect(screen.getByLabelText("Received: Valve")).toHaveValue(3);
+  rerender(sheet("5"));
+  expect(screen.getByLabelText("Received: Valve")).toHaveValue(5);
+  rerender(sheet("5", true));
+  expect(screen.queryByLabelText("Received: Valve")).not.toBeInTheDocument();
+});
+
 it("shows ordered counts read only without receive controls", () => {
   render(
     <MaterialListSheet items={[ordered]} materialListId="m" suppliers={[]} />,
