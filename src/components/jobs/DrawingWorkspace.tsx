@@ -31,6 +31,7 @@ import { api } from "~/trpc/react";
 import { useDrawingWorkspaceQuery } from "~/hooks/use-drawing-workspace-query";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { SwitchTrack } from "~/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -443,17 +444,30 @@ function PeopleLayers({
           <UsersIcon className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate">People</span>
-        {hidden.length > 0 && (
+        {layers.onlyMine ? (
+          <span className="text-muted-foreground text-xs">Only mine</span>
+        ) : hidden.some((id) => people.has(id)) && (
           <span className="text-muted-foreground text-xs">{hidden.filter((id) => people.has(id)).length} off</span>
         )}
         <span className="grid size-11 shrink-0 place-items-center">
           <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
         </span>
       </summary>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={!!layers.onlyMine}
+        onClick={() => setLayers((old) => ({ ...old, onlyMine: !old.onlyMine }))}
+        className="hover:bg-muted/70 flex min-h-11 w-full items-center gap-3 rounded-lg pr-2 pl-5.5 text-left text-sm transition-colors"
+      >
+        <span className="min-w-0 flex-1 truncate">Show only mine</span>
+        <SwitchTrack checked={!!layers.onlyMine} />
+      </button>
       {rows.map(([id, person]) => (
         <LayerRow key={id} child icon={UserIcon}
           label={id === actorId ? `${person.name} (you)` : person.name}
-          count={person.count} on={!hidden.includes(id)} onToggle={() => toggle(id)} />
+          count={person.count} on={!hidden.includes(id)}
+          muted={!!layers.onlyMine && id !== actorId} onToggle={() => toggle(id)} />
       ))}
     </details>
   );
@@ -1555,6 +1569,7 @@ export function DrawingWorkspace({
             layers.hidden?.includes(entity.data.type)
           ) &&
           !layers.hiddenPeople?.includes(entity.authorId) &&
+          (!layers.onlyMine || entity.authorId === data?.actor.id) &&
           (entity.visibility === "private" ? layers.private : layers.published),
       ),
     [
@@ -1564,6 +1579,8 @@ export function DrawingWorkspace({
       layers.measurements,
       layers.hidden,
       layers.hiddenPeople,
+      layers.onlyMine,
+      data?.actor.id,
       layers.issues,
       layers.private,
       layers.published,

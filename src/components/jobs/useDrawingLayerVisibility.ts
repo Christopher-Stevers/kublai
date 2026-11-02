@@ -11,6 +11,8 @@ export type DrawingLayers = {
   hidden?: string[];
   /** Authors whose markups, measurements and pins are switched off. */
   hiddenPeople?: string[];
+  /** Hides everyone else's work, including people who draw later. */
+  onlyMine?: boolean;
 };
 const defaults: DrawingLayers = {
   markups: true,
@@ -31,7 +33,9 @@ const usePreference = createAccountPreference<string>({
         [v.markups, v.issues, v.private, v.published].every(
           (x) => typeof x === "boolean",
         ) &&
-        (v.measurements === undefined || typeof v.measurements === "boolean") &&
+        [v.measurements, v.onlyMine].every(
+          (x) => x === undefined || typeof x === "boolean",
+        ) &&
         [v.hidden, v.hiddenPeople].every(
           (list) =>
             list === undefined ||

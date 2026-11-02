@@ -2013,6 +2013,29 @@ it("switches off one person's markups from Layers and remembers it", () => {
   expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(3);
 });
 
+it("shows only my markups from People, including anyone who draws later", () => {
+  mocks.account = { userId: "tim", accountKey: `mine-${crypto.randomUUID()}`, store: null };
+  const mine = existingMarkup();
+  mocks.data!.entities = [mine, { ...mine, id: crypto.randomUUID(), authorId: "chris", authorName: "Chris" }];
+  const first = open();
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  const people = screen.getByText("People", { selector: "summary span" }).closest("details")!;
+  fireEvent.click(people.querySelector("summary")!);
+  const onlyMine = screen.getByRole("switch", { name: "Show only mine" });
+  expect(onlyMine).toHaveAttribute("aria-checked", "false");
+  fireEvent.click(onlyMine);
+  expect(onlyMine).toHaveAttribute("aria-checked", "true");
+  expect(mocks.viewer.mock.lastCall?.[0].annotations.map((entity: { authorId: string }) => entity.authorId)).toEqual(["tim"]);
+  expect(within(people).getByText("Only mine")).toBeInTheDocument();
+  first.unmount();
+  mocks.data!.entities = [...mocks.data!.entities, { ...mine, id: crypto.randomUUID(), authorId: "sam", authorName: "Sam" }];
+  open();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations.map((entity: { authorId: string }) => entity.authorId)).toEqual(["tim"]);
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Show only mine" }));
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toHaveLength(3);
+});
+
 it("loads deferred destinations only when a link is opened, with recoverable errors", async () => {
   const entity = existingMarkup();
   if (entity.kind !== "markup") throw Error("fixture");
