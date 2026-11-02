@@ -97,9 +97,9 @@ export function wheelChoiceCone<T extends Point>(
   return closest;
 }
 
-// Half the original centre-to-arc reach: 104 CSS px at the standard size.
+// Keep the rail close to the thumb: about 125 CSS px at the standard size.
 export const wheelMinimumArcRadius = (radius: number) =>
-  (wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92) / 2;
+  (wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92) * 0.6;
 
 export type WheelArc = {
   radius: number; start: number; step: number;
@@ -108,7 +108,8 @@ export type WheelArc = {
   window?: { first: number; last: number; bounds: WheelBounds };
 };
 function shallowArc(distance: number, start: number, capacity: number): WheelArc {
-  const radius = distance * 1.6;
+  // A large underlying circle makes the visible rail open and shallow.
+  const radius = distance * 3;
   const step = 2 * Math.asin((WHEEL_CHOICE_DIAMETER + 14) / (2 * radius));
   const middle = start + step * (capacity - 1) / 2;
   // Keep the closest part of the wider circle at the existing thumb reach.

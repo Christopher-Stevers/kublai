@@ -126,7 +126,7 @@ describe("single thumb rail", () => {
     const rail = joystickWheelArc(origin, { left: 12, top: 88, right: 418, bottom: 838 }, 170, 20, "right")!;
     const offset = rail.arc.offset!;
     const reach = rail.arc.radius - Math.hypot(offset.x, offset.y);
-    expect(rail.arc.radius / reach).toBeCloseTo(1.6);
+    expect(rail.arc.radius / reach).toBeCloseTo(3);
     expect(reach).toBeGreaterThanOrEqual(wheelMinimumArcRadius(170));
     for (const position of [-.5, 0, .5]) {
       const tiles = wheelCarousel(position, 20, rail.points, origin, false, rail.arc);
@@ -187,10 +187,10 @@ describe("single thumb rail", () => {
   it("never falls back to a tight ring even when the viewport cannot fit the rail", () => {
     const origin = { x: 150, y: 150 };
     const rail = joystickWheelArc(origin, { left: 0, top: 0, right: 300, bottom: 300 }, 170, 20, "right", { x: 300, y: 204 })!;
-    expect(rail.arc.radius).toBeCloseTo(104 * 1.6);
+    expect(rail.arc.radius).toBeCloseTo(124.8 * 3);
     expect(rail.points.length).toBeGreaterThanOrEqual(1);
     for (const point of rail.points)
-      expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(104);
+      expect(Math.hypot(point.x-origin.x, point.y-origin.y)).toBeCloseTo(124.8);
   });
   it("keeps short lists unique across the gap beneath the thumb", () => {
     const origin = { x: 350, y: 520 },
