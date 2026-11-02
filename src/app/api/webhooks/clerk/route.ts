@@ -4,7 +4,10 @@ import type { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { env } from "~/env";
+
+const userIdColumn = (users as unknown as { id: AnyPgColumn }).id;
 
 export async function POST(req: Request) {
   // Get the Svix headers for verification
@@ -21,8 +24,7 @@ export async function POST(req: Request) {
   }
 
   // Get the body
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  const body = await req.text();
 
   // Create a new Svix instance with your secret.
   const wh = new Webhook(env.CLERK_WEBHOOK_SECRET ?? "");
@@ -31,14 +33,20 @@ export async function POST(req: Request) {
 
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    const signatureHeaders = {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
-    }) as WebhookEvent;
+    };
+    try {
+      evt = wh.verify(body, signatureHeaders) as WebhookEvent;
+    } catch (error) {
+      const secondary = process.env.CLERK_WEBHOOK_SECRET_SECONDARY;
+      if (!secondary) throw error;
+      evt = new Webhook(secondary).verify(body, signatureHeaders) as WebhookEvent;
+    }
   } catch (err) {
     console.error("Error verifying webhook:", err);
-    console.error("Payload body:", body);
     return new Response("Error occurred", {
       status: 400,
     });
@@ -59,44 +67,25 @@ export async function POST(req: Request) {
         ? `${first_name} ${last_name}`
         : (first_name ?? last_name ?? null);
 
-    // Upsert user in database - webhook is the single source of truth for user creation
-    // Try insert first (for new users), then update if user already exists
-    try {
-      await db.insert(users).values({
-        id,
-        name: name ?? null,
-        email: email, // Required field - use placeholder if no email
+    // Atomic upsert handles retries and existing users without parsing wrapped
+    // driver errors. Preserve organization membership, permissions and billing.
+    await db.insert(users).values({
+      id,
+      name,
+      email,
+      image: image_url ?? null,
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: userIdColumn,
+      set: {
+        name,
+        email,
         image: image_url ?? null,
-        role: "user",
-        createdAt: new Date(),
         updatedAt: new Date(),
-      });
-    } catch (insertError) {
-      // Check if this is a unique constraint violation (user already exists)
-      const isUniqueConstraintError =
-        insertError instanceof Error &&
-        (insertError.message.includes("unique") ||
-          insertError.message.includes("duplicate") ||
-          insertError.message.includes("violates unique constraint"));
-
-      if (isUniqueConstraintError) {
-        // User already exists - update with latest data from Clerk
-        // This handles cases where webhook fires multiple times or user was created elsewhere
-        await db
-          .update(users)
-          .set({
-            name: name ?? null,
-            email: email, // Update email if it changed
-            image: image_url ?? null,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, id));
-      } else {
-        // Re-throw if it's a different error (e.g., database connection issue)
-        console.error("Error creating/updating user in webhook:", insertError);
-        throw insertError;
-      }
-    }
+      },
+    });
   }
 
   if (eventType === "user.deleted") {
@@ -104,7 +93,7 @@ export async function POST(req: Request) {
 
     if (id) {
       // Delete user from database
-      await db.delete(users).where(eq(users.id, id));
+      await db.delete(users).where(eq(userIdColumn, id));
     }
   }
 
