@@ -46,3 +46,13 @@ variable "monthly_budget_usd" {
     error_message = "Budget must be positive."
   }
 }
+
+variable "app_instance_type" {
+  type        = string
+  default     = "t3a.small"
+  description = "Application host size. Reassess memory for full drawing/room worker workloads before app cutover."
+  validation {
+    condition     = contains(["t3a.small", "t3a.medium", "t3a.large"], var.app_instance_type)
+    error_message = "Choose t3a.small, t3a.medium, or t3a.large."
+  }
+}

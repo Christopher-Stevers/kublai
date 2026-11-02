@@ -17,6 +17,10 @@ Adapted from [Hello Any World's shared EC2 infrastructure](https://github.com/Ch
 
 The RDS Ohio public price list published October 29, 2026 lists $0.016/hour for micro plus $0.115/GB-month gp3. At 730 hours and 20 GB this is **$13.98/month for database compute/storage**. This excludes EC2, IPv4, EBS uploads/root disks, EBS snapshots, Secrets Manager, monitoring, traffic, surplus RDS CPU credits, excess backup storage, and tax. No promotional credits are assumed. Storage autoscaling can increase charges and cannot shrink storage in place.
 
+At light usage, the current complete stack is approximately **$36–40/month before tax**, using a 730-hour month: EC2 $13.72, RDS compute/storage $13.98, 40 GiB EC2 gp3 disks $3.20, public IPv4 $3.65, plus approximately $1–5 for backups, monitoring, secrets, and image storage. This is incremental to existing hosting and excludes heavy traffic/CPU-credit use. AWS rates were checked November 2, 2026.
+
+The newer integration's room-detection worker configures a 4 GiB cgroup memory ceiling and expects cgroup delegation plus native processing tools. A 2 GiB `t3a.small` is an infrastructure starting point, **not a verified capacity recommendation for those workflows**. Reassess `app_instance_type` and worker isolation before enabling them; do not give a container unrestricted host privileges to bypass this requirement.
+
 ## Initialize and review
 
 Terraform 1.10+ and AWS CLI v2 are required. Provider versions and checksums are committed. Use temporary AWS credentials; the existing `haw-terraform` profile currently delegates to `haw-bootstrap`. Prefer a scoped assumed role for ongoing operations.

@@ -164,7 +164,7 @@ resource "aws_iam_role_policy" "host" {
 resource "aws_iam_instance_profile" "host" { role = aws_iam_role.host.name }
 resource "aws_instance" "web" {
   ami                         = var.ami_id != null ? var.ami_id : nonsensitive(data.aws_ssm_parameter.ami.value)
-  instance_type               = "t3a.small"
+  instance_type               = var.app_instance_type
   subnet_id                   = aws_subnet.web.id
   vpc_security_group_ids      = [aws_security_group.web.id]
   iam_instance_profile        = aws_iam_instance_profile.host.name
