@@ -465,6 +465,75 @@ describe("wizard quick wheel", () => {
       sizeLabel: "4 x 2",
     });
   });
+  const subSizeStageProps = (select: SizeStageProps["onSizeSelect"]): SizeStageProps => ({
+    availableSizes: [{ nominal: 4, unit: "in", count: 3, subSizes: [
+      { label: "4 x 2", count: 2 }, { label: "4 x 3", count: 1 },
+    ] }],
+    selectedSize: null, onSizeSelect: select,
+    showCustomSize: false, onShowCustomSize: vi.fn(),
+    customSizeInput: "", onCustomSizeInputChange: vi.fn(),
+    customSizeUnitId: null, onCustomSizeUnitIdChange: vi.fn(),
+    allUnits: [], onCreateSize: { mutate: vi.fn(), isPending: false },
+  });
+  it.each(["mouse", "touch"])("uses Quickwheel for a held %s size card and continues to the next stage", (pointerType) => {
+    const select = vi.fn();
+    function SubSizeHarness() {
+      const [selected, setSelected] = useState(false);
+      return <QuickWheelSurface>{selected ? <Stage title="Select Category" select={vi.fn()} /> :
+        <SizeStage {...subSizeStageProps(value => { select(value); setSelected(true); })} />}
+      </QuickWheelSurface>;
+    }
+    render(<SubSizeHarness />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), { ...pointer, pointerType });
+    void dwell(199);
+    expect(wheel()).toBeNull();
+    void dwell(1);
+    expect(wheel()).toHaveTextContent("Sub-size");
+    expect([...wheel()!.querySelectorAll("foreignObject")].map(tile => tile.textContent)).toEqual(['4" x 2"', '4" x 3"']);
+    expect(select).not.toHaveBeenCalled();
+    const tile = wheel()!.querySelector("foreignObject")!;
+    aim(Number(tile.getAttribute("x")) + 52, Number(tile.getAttribute("y")) + 52);
+    void dwell();
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: "4 x 2" });
+    expect(wheel()).toHaveTextContent("Select Category");
+    fireEvent.pointerUp(window, { ...pointer, pointerType });
+    expect(wheel()).toBeNull();
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+  it.each(["pointerup", "pointercancel", "Escape"])("dismisses the sub-size wheel on %s without committing a size", (event) => {
+    const select = vi.fn();
+    const props = subSizeStageProps(select);
+    const view = render(<QuickWheelSurface><SizeStage {...props} /></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByRole("button", { name: '4"' }), pointer);
+    void dwell(200);
+    view.rerender(<QuickWheelSurface><SizeStage {...props} /></QuickWheelSurface>);
+    expect(wheel()).toHaveTextContent("Sub-size");
+    if (event === "Escape") fireEvent.keyDown(window, { key: event });
+    else fireEvent(window, new PointerEvent(event, pointer));
+    fireEvent.pointerUp(screen.getByRole("button", { name: '4"' }), pointer);
+    void dwell();
+    expect(wheel()).toBeNull();
+    expect(select).not.toHaveBeenCalled();
+    fireEvent.pointerDown(screen.getByText("Select Size"), pointer);
+    expect(wheel()).toHaveTextContent("Select Size");
+    expect(wheel()).toHaveTextContent("All");
+  });
+  it("cancels a pending size hold when scrolling and still permits a subsequent quick tap", () => {
+    const select = vi.fn();
+    render(<QuickWheelSurface><SizeStage {...subSizeStageProps(select)} /></QuickWheelSurface>);
+    const card = screen.getByRole("button", { name: '4"' });
+    fireEvent.pointerDown(card, { ...pointer, pointerType: "touch" });
+    aim(200, 320);
+    void dwell();
+    fireEvent.pointerUp(card, pointer);
+    expect(wheel()).toBeNull();
+    expect(select).not.toHaveBeenCalled();
+    fireEvent.pointerDown(card, pointer);
+    fireEvent.pointerUp(card, pointer);
+    void dwell();
+    expect(wheel()).toBeNull();
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nominal: 4, unit: "in", sizeLabel: null });
+  });
   it.each(["touch", "keyboard"])(
     "keeps real size-card %s selections working without influencing order ranking",
     (mode) => {
