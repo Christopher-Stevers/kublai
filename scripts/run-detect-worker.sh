@@ -49,9 +49,9 @@ cgroup_parent=$(dirname "/sys/fs/cgroup$current_cgroup")
 cgroup_dir="$cgroup_parent/foremenhq-detect-$upload_id"
 mkdir -p "$cgroup_dir"
 # Full-resolution hybrid tracing holds several native/typed pixel buffers in
-# addition to the JavaScript heap. Keep a 4 GiB process ceiling; the global
-# single-worker queue bounds detection to 4 GiB on this host.
-printf '%s\n' 4294967296 > "$cgroup_dir/memory.max"
+# addition to the JavaScript heap. The AWS launch budget caps each worker
+# at 2 GiB; oversized drawings fail without exhausting the web server.
+printf '%s\n' 2147483648 > "$cgroup_dir/memory.max"
 printf '%s\n' 0 > "$cgroup_dir/memory.swap.max"
 printf '%s\n' 64 > "$cgroup_dir/pids.max"
 printf '%s\n' 1 > "$cgroup_dir/memory.oom.group"
