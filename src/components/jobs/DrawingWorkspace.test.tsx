@@ -2210,3 +2210,23 @@ it("does not let a reader unlock someone else's markup", () => {
   expect(screen.queryByRole("button", { name: "Unlock markup" })).toBeNull();
   expect(screen.getByText("Read only")).toBeVisible();
 });
+
+
+it("keeps transient save status out of the bottom toolbar layout", async () => {
+  let finish!: (entity: DrawingEntity) => void;
+  mocks.save.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  open();
+  const container = screen.getByRole("toolbar", { name: "Drawing tools" });
+  chooseTool("ellipse");
+  const entity = existingMarkup();
+  if (entity.kind !== "markup") throw Error("Expected markup");
+  const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+  act(() => viewer().onCreate?.({ ...entity.data, type: "ellipse" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+  expect(screen.getByRole("status")).toHaveTextContent("Saving…");
+  expect(screen.getByRole("status")).toHaveClass("sr-only");
+  expect(container.querySelector("[data-action-bar-label]")).toBeNull();
+  await act(async () => { finish(entity); });
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+  expect(container.querySelector("[data-action-bar-label]")).toBeNull();
+});

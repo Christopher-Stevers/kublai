@@ -3648,7 +3648,6 @@ export function DrawingWorkspace({
           dismissOnBack
           role="toolbar"
           aria-label="Drawing tools"
-          label={statusText !== "Saved" ? statusText : undefined}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
         >
           <Button variant={scroll ? "default" : "outline"} className={BAR_BUTTON} role="switch" aria-label="Scroll between pages" aria-checked={scroll} onClick={() => setScroll(!scroll)}>
