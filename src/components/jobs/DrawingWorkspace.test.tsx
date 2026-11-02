@@ -1187,10 +1187,16 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("toolbar", { name: "Selected markup actions" }),
     ).toBeVisible();
     expect(screen.queryByLabelText("Drawing tools panel")).toBeNull();
-    // Edits unlock once the pickup shake has finished.
-    expect(
-      await screen.findByRole("button", { name: "Resize" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    // The complete menu is available immediately; only dragging waits for pickup.
+    expect(screen.queryByText("Read only")).toBeNull();
+    expect(screen.getByRole("button", { name: "Resize" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("group", { name: "Markup style" })).toBeVisible();
+    const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(viewer().canEditAnnotation?.(entityId)).toBe(false);
+    const menu = screen.getByRole("toolbar", { name: "Selected markup actions" });
+    const controls = menu.querySelectorAll("button").length;
+    await waitFor(() => expect(viewer().canEditAnnotation?.(entityId)).toBe(true));
+    expect(menu.querySelectorAll("button")).toHaveLength(controls);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(screen.getByTestId("markup-editor")).toHaveAttribute(
       "data-selection-mode",
@@ -1551,7 +1557,8 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Select first annotation" }),
     );
     // Edits unlock once the pickup shake has finished.
-    expect(await screen.findByRole("button", { name: "Move" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Move" })).toBeEnabled();
+    await waitFor(() => expect(mocks.viewer.mock.lastCall?.[0].canEditAnnotation?.(entityId)).toBe(true));
     fireEvent.click(
       screen.getByRole("button", { name: "Move selected annotation" }),
     );
@@ -2093,11 +2100,11 @@ it("closes More before navigating away from a base-state drawing", () => {
 
 it("raises the floating menu and Done above the selected toolbar and follows its height", async () => {
   let top = 650;
-  let resized: () => void = () => undefined;
+  const observers = new Set<() => void>();
   vi.stubGlobal("ResizeObserver", class {
-    constructor(callback: () => void) { resized = callback; }
-    observe() { return undefined; }
-    disconnect() { return undefined; }
+    constructor(private callback: () => void) {}
+    observe() { observers.add(this.callback); }
+    disconnect() { observers.delete(this.callback); }
   });
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     const bar = this.getAttribute("aria-label") === "Selected markup actions";
@@ -2119,8 +2126,48 @@ it("raises the floating menu and Done above the selected toolbar and follows its
     expect(screen.getByRole("button", { name }).style.bottom).toContain("--drawing-selection-clearance");
   }
   top = 590;
-  act(() => resized());
+  act(() => observers.forEach(callback => callback()));
   expect(area.style.getPropertyValue("--drawing-selection-clearance")).toBe("210px");
   act(() => viewer().onSelect?.(null));
   expect(area.style.getPropertyValue("--drawing-selection-clearance")).toBe("");
+});
+
+
+it.each([false, true])("keeps selection and style menus out of the drawing layout (fullscreen=%s)", async (fullscreen) => {
+  mocks.data!.entities = [existingMarkup()];
+  const dock = document.createElement("div");
+  document.body.appendChild(dock);
+  const initialViewport = { center: { x: 0.3, y: 0.7 }, zoom: 4 };
+  const onViewportChange = vi.fn();
+  const view = render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}
+    fullscreen={fullscreen} toolbarContainer={dock} initialViewport={initialViewport} onViewportChange={onViewportChange} />);
+  const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+  if (fullscreen) {
+    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
+    fireEvent.click(screen.getByRole("button", { name: "Markup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ellipse" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tool Controls" }));
+  } else chooseTool("ellipse");
+  const dockContent = Array.from(dock.children);
+  const area = screen.getByRole("toolbar", { name: "Markup controls" }).closest("[data-drawing-tool-area]");
+  const expectFloating = (label: string) => {
+    const bar = screen.getByRole("toolbar", { name: label });
+    expect(bar).toHaveClass("absolute");
+    expect(bar.closest("[data-drawing-tool-area]")).toBe(area);
+    expect(dock.contains(bar)).toBe(false);
+    expect(Array.from(dock.children)).toEqual(dockContent);
+    expect(viewer().initialViewport).toEqual(initialViewport);
+    expect(onViewportChange).not.toHaveBeenCalled();
+  };
+  expectFloating("Markup controls");
+  act(() => viewer().onSelect?.(entityId));
+  expectFloating("Selected markup actions");
+  expect(screen.queryByText("Read only")).toBeNull();
+  act(() => viewer().onSelect?.(null));
+  expect(screen.queryByRole("toolbar", { name: "Selected markup actions" })).toBeNull();
+  expect(Array.from(dock.children)).toEqual(dockContent);
+  expect(viewer().initialViewport).toEqual(initialViewport);
+  expect(onViewportChange).not.toHaveBeenCalled();
+  view.unmount();
+  dock.remove();
 });

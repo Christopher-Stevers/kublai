@@ -927,9 +927,6 @@ export function DrawingWorkspace({
     (entity: DrawingEntity) =>
       writable &&
       !blockedEdits.has(entity.id) &&
-      (entity.kind !== "markup" ||
-        entity.id !== selectedId ||
-        editReadyId === selectedId) &&
       (online ||
         (entity.authorId === data?.actor.id &&
           (entity.kind === "markup" ||
@@ -946,7 +943,7 @@ export function DrawingWorkspace({
           (entity.kind === "issue" &&
             entity.data.assigneeId === data.actor.id)),
       ),
-    [writable, blockedEdits, online, data, selectedId, editReadyId],
+    [writable, blockedEdits, online, data],
   );
   const toForm = (entity: DrawingEntity): DrawingSave =>
     ({
@@ -1541,9 +1538,11 @@ export function DrawingWorkspace({
   const canEditAnnotation = useCallback(
     (id: string) => {
       const entity = entitiesById.get(id);
-      return Boolean(entity && editable(entity) && pending === 0 && !form);
+      // Keep the pickup gesture guarded without delaying the menu or calling it read-only.
+      const ready = entity?.kind !== "markup" || id !== selectedId || editReadyId === id;
+      return Boolean(entity && editable(entity) && ready && pending === 0 && !form);
     },
-    [entitiesById, editable, pending, form],
+    [entitiesById, editable, pending, form, selectedId, editReadyId],
   );
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
@@ -1584,11 +1583,14 @@ export function DrawingWorkspace({
     selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
     !form && !compareIds;
 
+  const showMarkupControls = toolToolbarOpen && !showSelectedMarkupActions &&
+    !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
+    Boolean(inlineText || !OTHER_TOOLS.has(tool));
   const selectedToolbarRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const bar = selectedToolbarRef.current;
     const area = bar?.closest<HTMLElement>("[data-drawing-tool-area]");
-    if (!showSelectedMarkupActions || !bar || !area) return;
+    if (!bar || !area) return;
     const update = () => {
       const clearance = Math.max(0, area.getBoundingClientRect().bottom - bar.getBoundingClientRect().top);
       area.style.setProperty("--drawing-selection-clearance", `${clearance}px`);
@@ -1603,7 +1605,7 @@ export function DrawingWorkspace({
       window.removeEventListener("resize", update);
       area.style.removeProperty("--drawing-selection-clearance");
     };
-  }, [showSelectedMarkupActions, fullscreen]);
+  }, [showSelectedMarkupActions, showMarkupControls, fullscreen]);
 
   useEffect(() => { setToolToolbarOpen(!quickWheel); }, [toolInUse, quickWheel]);
 
@@ -2426,6 +2428,20 @@ export function DrawingWorkspace({
                 )}
             </div>
           )}
+
+        {showMarkupControls && (
+          <div ref={selectedToolbarRef} data-drawing-chrome role="toolbar" aria-label="Markup controls"
+            className="bg-card/95 absolute inset-x-0 bottom-0 z-20 rounded-t-2xl border-t px-3 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur">
+            <MarkupStyleRow
+              data={inlineText?.data ?? { sourceSheetId: sourceId, type: "line", points: [], ...style }}
+              disabled={!writable}
+              onChange={patch => {
+                setStyle(old => ({ ...old, ...patch }));
+                setInlineText(current => current ? { ...current, data: { ...current.data, ...patch } } : null);
+              }}
+            />
+          </div>
+        )}
 
         {markupMenu && selected?.id === markupMenu.id && !form && !compareIds && (
           <DropdownMenu
@@ -3530,22 +3546,6 @@ export function DrawingWorkspace({
       <span role="status" className="sr-only">
         {statusText}
       </span>
-      {toolToolbarOpen && !showSelectedMarkupActions && !bottomMode.measuring && !bottomMode.pipe && modeRequest.mode === "idle" &&
-        (inlineText || !OTHER_TOOLS.has(tool)) && (
-        <DrawingToolbarDock target={toolbarContainer}>
-          <div data-drawing-chrome data-bottom-menu role="toolbar" aria-label="Markup controls"
-            className="bg-card shrink-0 border-t px-3 py-2">
-            <MarkupStyleRow
-              data={inlineText?.data ?? { sourceSheetId: sourceId, type: "line", points: [], ...style }}
-              disabled={!writable}
-              onChange={patch => {
-                setStyle(old => ({ ...old, ...patch }));
-                setInlineText(current => current ? { ...current, data: { ...current.data, ...patch } } : null);
-              }}
-            />
-          </div>
-        </DrawingToolbarDock>
-      )}
       {/* Shared priority bar: Measure, Markup and Tools first; all other actions on its shelf. */}
       {!quickWheel && <DrawingToolbarDock target={toolbarContainer}>
       <div
