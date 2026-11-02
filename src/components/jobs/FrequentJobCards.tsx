@@ -58,7 +58,7 @@ export function FrequentJobCardsSetting() {
   );
 }
 
-export function FrequentJobCards({ children }: { children: ReactNode }) {
+export function FrequentJobCards({ children, trailingCards }: { children: ReactNode; trailingCards?: ReactNode }) {
   const { key, prefs } = useJobCardPreferences();
   const order = rankJobCards(prefs);
   const cards = Children.toArray(children).filter(
@@ -92,6 +92,7 @@ export function FrequentJobCards({ children }: { children: ReactNode }) {
         }}
       >
         {cards}
+        {trailingCards}
       </div>
     </div>
   );

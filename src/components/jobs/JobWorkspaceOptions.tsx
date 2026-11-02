@@ -35,7 +35,7 @@ export function JobWorkspaceOptions({
   const canAccessDrawings = useDrawingsAccess();
   return (
     <>
-    <FrequentJobCards>
+    <FrequentJobCards trailingCards={<VoiceCard />}>
       <Card
         data-job-card="material-lists"
         data-tutorial="material-lists"
@@ -253,7 +253,6 @@ export function JobWorkspaceOptions({
         </CardContent>
       </Card>}
     </FrequentJobCards>
-    <VoiceCard />
     </>
   );
 }

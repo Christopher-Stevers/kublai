@@ -476,9 +476,9 @@ export function VoiceCard() {
       ? `${voice.phase === "thinking" ? "Thinking…" : voice.phase === "speaking" ? "Speaking…" : "Voice is on"} Tap to end your session`
       : "Find parts. Open drawings. Get things done.";
   return (
-    <div>
+    <div className="flex min-w-0 flex-col">
       <Card
-        className={`${styles.card} cursor-pointer transition-shadow hover:shadow-md`}
+        className={`${styles.card} flex-1 cursor-pointer transition-shadow hover:shadow-md`}
         role="button"
         tabIndex={0}
         data-lit={lit}
