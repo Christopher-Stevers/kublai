@@ -1,0 +1,43 @@
+name: ForemanHQ AWS
+on:
+  push:
+    branches: [ci/foremanhq-aws, development]
+  pull_request:
+    branches: [development, foremanhq-integration-2026-10-21]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aws-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    name: Typecheck, lint and reliability tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test:reliability
+  terraform:
+    name: Validate infrastructure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.13.5'
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -lockfile=readonly
+      - run: terraform validate
+      - run: terraform test
