@@ -3386,7 +3386,7 @@ export function DrawingSheetViewer({
             type="button"
             variant={pipeMode ? "default" : "outline"}
             aria-pressed={pipeMode}
-            className="shadow-md"
+            className="drawing-state-control shadow-md"
             onClick={togglePipe}
           >
             <NetworkIcon className="h-4 w-4" />

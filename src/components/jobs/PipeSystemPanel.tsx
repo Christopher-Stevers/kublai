@@ -199,7 +199,7 @@ export function PipeSystemPanel({
             <Button
               size="icon-sm"
               variant={lassoArmed ? "secondary" : "outline"}
-              className="size-8 shrink-0 rounded-full"
+              className="drawing-state-control size-8 shrink-0 rounded-full"
               aria-label={lassoArmed ? "Stop drawing area" : "Draw area to count"}
               aria-pressed={lassoArmed}
               title="Draw around part of the system to count only that part"
@@ -298,7 +298,7 @@ export function PipeSystemPanel({
                   key={value}
                   type="button"
                   aria-pressed={unit === value}
-                  className={`h-7 flex-1 rounded-full text-xs font-medium transition-colors ${unit === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`drawing-state-control h-7 flex-1 rounded-full text-xs font-medium transition-colors ${unit === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => onUnit(value)}
                 >
                   {label}

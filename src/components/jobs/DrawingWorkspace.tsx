@@ -164,7 +164,7 @@ const OTHER_TOOLS = new Set<DrawingTool>([
   "rfi",
 ]);
 const BAR_BUTTON =
-  "h-11 w-full gap-1.5 rounded-md px-2 text-sm font-medium whitespace-normal";
+  "drawing-state-control h-11 w-full gap-1.5 rounded-md px-2 text-sm font-medium whitespace-normal";
 export const tools: Array<[DrawingTool, string]> = [
   ["pan", "Viewing"],
   ["select", "Edit Mode"],
@@ -256,7 +256,7 @@ const MARKUP_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
   count: HashIcon,
 };
 const MENU_CLASS = "spring-up w-64 rounded-xl p-1.5 shadow-xl";
-const MENU_ITEM = "min-h-11 gap-3 rounded-lg";
+const MENU_ITEM = "drawing-state-control min-h-11 gap-3 rounded-lg";
 const MENU_SECTION =
   "text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase";
 /** Colour, line width and fill: the same style controls a markup is drawn with. */
@@ -294,7 +294,7 @@ function MarkupStyleRow({
             aria-label="Fill"
             title="Fill"
             disabled={disabled}
-            className={`grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+            className={`drawing-state-control grid size-8 shrink-0 place-items-center rounded-full ${filled ? "bg-primary text-primary-foreground" : "bg-muted"}`}
             onClick={() =>
               onChange({ fill: filled ? "none" : `${data.stroke.slice(0, 7)}33` })
             }
@@ -306,8 +306,8 @@ function MarkupStyleRow({
     </div>
   );
 }
-const SELECTED_BUTTON = "h-8 shrink-0 rounded-full px-3 text-xs";
-const SELECTED_ICON = "h-8 w-10 shrink-0 rounded-full";
+const SELECTED_BUTTON = "drawing-state-control h-8 shrink-0 rounded-full px-3 text-xs";
+const SELECTED_ICON = "drawing-state-control h-8 w-10 shrink-0 rounded-full";
 const capitalize = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1);
 /** A small icon tile at the start of a bottom-bar menu item. */
@@ -2111,7 +2111,7 @@ export function DrawingWorkspace({
           type="button" variant="outline" aria-label="Tool Controls" title="Tool Controls"
           aria-expanded={toolToolbarOpen}
           style={{ bottom: "calc(max(var(--drawing-toolbar-clearance, 0px), var(--drawing-selection-clearance, 0px)) + 1rem)" }}
-          className="drawing-corner-control absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
+          className="drawing-state-control drawing-corner-control absolute right-3 z-30 bg-background/60 border-border/60 hover:bg-background/80 size-10 rounded-full p-0 shadow-md backdrop-blur-sm [&_svg]:size-5"
           onClick={() => setToolToolbarOpen(open => !open)}
         ><SlidersHorizontalIcon aria-hidden="true" /></Button>}
         {toolInUse && (
@@ -3620,7 +3620,7 @@ export function DrawingWorkspace({
                         aria-pressed={style.fill !== "none"}
                         aria-label="Fill"
                         title="Fill"
-                        className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
+                        className={`drawing-state-control grid size-8 shrink-0 place-items-center rounded-full transition-colors ${style.fill !== "none" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"}`}
                         onClick={toggleMarkupFill}
                       >
                         <PaintBucketIcon className="size-4" />

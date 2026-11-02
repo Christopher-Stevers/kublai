@@ -29,7 +29,7 @@ import { StyleStrip } from "./StyleStrip";
 
 /** One tile in the measuring tool row: an icon over a short label. */
 export const MEASURE_TILE =
-  "flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] leading-none font-medium whitespace-nowrap [&_svg]:size-[18px]";
+  "drawing-state-control flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] leading-none font-medium whitespace-nowrap [&_svg]:size-[18px]";
 
 /**
  * Controls for tracing a distance on a drawing.
@@ -163,7 +163,7 @@ function RegularSheetMeasureBar({
       type="button"
       size="sm"
       variant={measuring ? "default" : "outline"}
-      className="shrink-0"
+      className="drawing-state-control shrink-0"
       aria-pressed={measuring}
       disabled={saving}
       onClick={onToggle}

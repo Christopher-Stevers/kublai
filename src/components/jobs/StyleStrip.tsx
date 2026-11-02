@@ -49,7 +49,7 @@ export function StyleStrip({
               title={item.name}
               aria-pressed={active}
               disabled={disabled}
-              className={`size-7 shrink-0 rounded-full border border-black/15 shadow-sm transition-transform duration-150 hover:scale-110 active:scale-95 disabled:opacity-50 motion-reduce:transition-none ${active ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
+              className={`drawing-swatch-control size-7 shrink-0 rounded-full border border-black/15 shadow-sm transition-transform duration-150 hover:scale-110 active:scale-95 disabled:opacity-50 motion-reduce:transition-none ${active ? "ring-primary ring-offset-card ring-2 ring-offset-2" : ""}`}
               style={{ backgroundColor: item.value }}
               onClick={() => onColor(item.value)}
             />
@@ -92,7 +92,7 @@ export function StyleStrip({
               aria-label={`Width ${option}`}
               title={`Width ${option}`}
               disabled={disabled}
-              className={`flex h-7 min-w-9 flex-1 shrink-0 items-center justify-center rounded-full transition-colors ${width === option ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
+              className={`drawing-swatch-control flex h-7 min-w-9 flex-1 shrink-0 items-center justify-center rounded-full transition-colors ${width === option ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
               onClick={() => onWidth(option)}
             >
               <span

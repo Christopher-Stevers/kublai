@@ -915,3 +915,47 @@ html:root[data-drawing-quick-wheel-page] [data-app-shell] > main { padding-botto
   filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
     drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff);
 }
+
+
+/* Drawing selections must remain unmistakable over translucent controls and
+   either sheet background. Rings and badges never change the control's size. */
+.drawing-swatch-control,
+.drawing-state-control:not(.drawing-corner-control) {
+  position: relative;
+}
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]) {
+  background: #0369a1;
+  color: #fff;
+  border-color: #7dd3fc;
+  box-shadow: inset 0 0 0 2px #7dd3fc;
+  font-weight: 700;
+}
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]):hover {
+  background: #075985;
+  color: #fff;
+}
+.drawing-swatch-control:is([aria-pressed="true"], [aria-checked="true"])::after,
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]):not([role^="menuitem"])::after {
+  content: "✓";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #0369a1;
+  border-radius: 50%;
+  background: #fff;
+  color: #075985;
+  font: 700 11px/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.drawing-state-control.drawing-corner-control[aria-expanded="true"] svg {
+  color: #fff;
+  filter: none;
+}
+
+.drawing-swatch-control:is([aria-pressed="true"], [aria-checked="true"]) {
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px #0369a1;
+}
