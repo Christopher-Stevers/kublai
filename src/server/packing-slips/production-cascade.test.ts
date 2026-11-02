@@ -42,7 +42,7 @@ const args = () => ({
     versionId: "version",
     sourceHash: "a".repeat(64),
   },
-  base: { lines: [structuredClone(source)], warnings: [], model: "jev-1.14.0" },
+  base: { lines: [structuredClone(source)], warnings: [] as string[], model: "jev-1.14.0" },
   pages: [Buffer.from("fixture")],
   unresolvedOrder: false,
   context: vi.fn(async () => ({
