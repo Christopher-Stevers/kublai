@@ -97,10 +97,9 @@ export function wheelChoiceCone<T extends Point>(
   return closest;
 }
 
-// Reference spacing: about 208 CSS px from hub centre to option centre at
-// the standard size (64 px hub + 52 px option + 92 px clear gap).
+// Half the original centre-to-arc reach: 104 CSS px at the standard size.
 export const wheelMinimumArcRadius = (radius: number) =>
-  wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92;
+  (wheelHubRadius(radius) + WHEEL_CHOICE_DIAMETER / 2 + 92) / 2;
 
 export type WheelArc = {
   radius: number; start: number; step: number;

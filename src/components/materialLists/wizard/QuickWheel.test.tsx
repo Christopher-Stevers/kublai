@@ -689,8 +689,8 @@ describe("wizard quick wheel", () => {
       .sort((a,b) => Math.hypot(b.dx,b.dy)-Math.hypot(a.dx,a.dy));
     const tile = tiles[0]!;
     const distance = Math.hypot(tile.dx,tile.dy);
-    expect(distance - 129).toBeGreaterThan(58);
-    aim(330 + tile.dx / distance * 129, 450 + tile.dy / distance * 129);
+    expect(distance - 100).toBeGreaterThan(58);
+    aim(330 + tile.dx / distance * 100, 450 + tile.dy / distance * 100);
     expect(wheel()).toHaveAttribute("data-scrolling", "false");
     dwell();
     expect(select).toHaveBeenCalledWith(Number(tile.el.textContent!.replace("Choice ", "")));
