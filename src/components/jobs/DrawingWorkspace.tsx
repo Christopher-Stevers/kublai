@@ -882,15 +882,9 @@ export function DrawingWorkspace({
     onSaved: patchEntity,
     onError: fail,
   });
-  const hasQueuedEdits = queued.records.length > 0;
-  const queuedBannerScope = `${account?.accountKey ?? ""}:${sheet.id}`;
-  const [queuedBannerReady, setQueuedBannerReady] = useState<string | null>(null);
-  useEffect(() => {
-    setQueuedBannerReady(null);
-    if (!hasQueuedEdits) return;
-    const timer = setTimeout(() => setQueuedBannerReady(queuedBannerScope), 1000);
-    return () => clearTimeout(timer);
-  }, [hasQueuedEdits, queuedBannerScope]);
+  const failedQueuedEdits = queued.records.filter(record =>
+    record.state === "blocked" || record.state === "conflict",
+  );
   const writable =
     current &&
     Boolean(data) &&
@@ -1705,17 +1699,11 @@ export function DrawingWorkspace({
 
   const statusText = !data
     ? loadingTools ? "Loading drawing tools…" : "Offline drawing · annotation data was not downloaded."
-    : pending
-    ? "Saving…"
     : form || failedDrafts.length || metadataDirty
       ? "Unsaved changes"
-      : queued.records.length
-        ? `${queued.records.length} edit(s) saved on device`
-        : !online
-          ? "Offline · markups saved on device"
-          : !current
-            ? "Earlier revision · read only"
-            : "Saved";
+      : !current
+        ? "Earlier revision · read only"
+        : "";
 
   /** What can be done to a selected markup, shared by its bar and right-click menu. */
   const markupActions = (entity: DrawingEntity) => {
@@ -2028,13 +2016,13 @@ export function DrawingWorkspace({
             ))}
           </div>
         )}
-        {hasQueuedEdits && queuedBannerReady === queuedBannerScope && (
+        {failedQueuedEdits.length > 0 && (
           <div
-            aria-label="Offline drawing edits"
+            aria-label="Drawing sync errors"
             className="max-h-40 space-y-2 overflow-y-auto border-b bg-amber-50 px-3 py-2 text-sm text-amber-950"
           >
             <div className="flex items-center gap-2">
-              <b>{queued.records.length} edit(s) saved on this device</b>
+              <b>Drawing edits need attention</b>
               <Button
                 size="sm"
                 variant="outline"
@@ -2044,7 +2032,7 @@ export function DrawingWorkspace({
                 Sync now
               </Button>
             </div>
-            {queued.records.map((record) => (
+            {failedQueuedEdits.map((record) => (
               <div
                 key={record.operationId}
                 className="flex flex-wrap items-center gap-2"

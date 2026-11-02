@@ -564,7 +564,7 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toBe(viewer);
     expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBe(toolbar);
     expect(screen.getByRole("button", { name: "Markup" })).toBeVisible();
-    expect(screen.getByRole("status")).toHaveTextContent("Saved");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
   it("uses quick wheel only in fullscreen and restores regular controls on exit", () => {
@@ -1215,7 +1215,7 @@ describe("drawing workspace workflows", () => {
       { x: 0.6, y: 0.6 },
     ]);
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("Saved"),
+      expect(screen.getByRole("status")).toBeEmptyDOMElement(),
     );
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
     expect(screen.getByLabelText("Drawing tools panel")).toBeVisible();
@@ -1342,7 +1342,7 @@ describe("drawing workspace workflows", () => {
       data: { sourceSheetId: sheetId, type: "rect" },
     });
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("Saved"),
+      expect(screen.getByRole("status")).toBeEmptyDOMElement(),
     );
   });
   it("uses the personal Private default for new shapes, text and hyperlink drafts", async () => {
@@ -1517,7 +1517,7 @@ describe("drawing workspace workflows", () => {
       viewer().onCreate?.({ ...markup.data, type: "ellipse" });
     });
     const selectedActions = await screen.findByRole("toolbar", { name: "Selected markup actions" });
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+    await waitFor(() => expect(screen.getByRole("status")).toBeEmptyDOMElement());
     expect(screen.queryByRole("toolbar", { name: "Markup controls" })).toBeNull();
     await within(selectedActions).findByRole("group", { name: "Markup style" });
     expect(screen.getAllByRole("group", { name: "Markup style" })).toHaveLength(1);
@@ -1527,7 +1527,7 @@ describe("drawing workspace workflows", () => {
       id: mocks.save.mock.calls[0]![0].id,
       data: { type: "ellipse", stroke: "#2563eb" },
     });
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+    await waitFor(() => expect(screen.getByRole("status")).toBeEmptyDOMElement());
     act(() => viewer().onSelect?.(null));
     expect(screen.queryByRole("toolbar", { name: "Selected markup actions" })).toBeNull();
     expect(screen.getByRole("toolbar", { name: "Markup controls" })).toBeVisible();
@@ -2223,10 +2223,10 @@ it("keeps transient save status out of the bottom toolbar layout", async () => {
   const viewer = () => mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
   act(() => viewer().onCreate?.({ ...entity.data, type: "ellipse" }));
   await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
-  expect(screen.getByRole("status")).toHaveTextContent("Saving…");
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
   expect(screen.getByRole("status")).toHaveClass("sr-only");
   expect(container.querySelector("[data-action-bar-label]")).toBeNull();
   await act(async () => { finish(entity); });
-  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved"));
+  await waitFor(() => expect(screen.getByRole("status")).toBeEmptyDOMElement());
   expect(container.querySelector("[data-action-bar-label]")).toBeNull();
 });

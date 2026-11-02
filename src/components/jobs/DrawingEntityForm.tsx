@@ -555,13 +555,6 @@ export function DrawingEntityForm({
             </p>
           </>
         )}
-        {offline && (
-          <p className="text-muted-foreground text-xs">
-            {value.visibility === "published"
-              ? "Saved on this device. The job team will see this markup after you reconnect and it syncs."
-              : "Private draft saved on this device. Reconnect to attach photos."}
-          </p>
-        )}
         <Button
           type="submit"
           disabled={
