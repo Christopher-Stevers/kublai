@@ -691,6 +691,40 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toHaveAttribute("data-offset", before);
     expect(select).not.toHaveBeenCalled();
   });
+  it("shows a wing either side of a touch hub and lights the one scrolling", () => {
+    vi.stubGlobal("innerWidth", 430); vi.stubGlobal("innerHeight", 850);
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), { ...pointer, pointerType: "touch", clientX: 330, clientY: 450 });
+    const wings = () => [...wheel()!.querySelectorAll("[data-wheel-wing]")];
+    const lit = () => wheel()!.querySelector("[data-wheel-wing][data-active]")?.getAttribute("data-wheel-wing");
+    expect(wings().map((wing) => wing.getAttribute("data-wheel-wing"))).toEqual(["-1", "1"]);
+    expect(lit()).toBeUndefined();
+    // Each wing ends where the thumb reaches full speed on its side.
+    const tip = (wing: Element) => wing.querySelector("path")!.getAttribute("d")!.match(/C[^C]* ([-\d.]+) ([-\d.]+)C/)!.slice(1).map(Number);
+    const root = wheel()!, x = Number(root.getAttribute("data-origin-x")), y = Number(root.getAttribute("data-origin-y"));
+    const [ax, ay] = tip(wings()[1]!), [bx, by] = tip(wings()[0]!);
+    expect(Math.hypot(ax! - x, ay! - y)).toBeCloseTo(Math.hypot(bx! - x, by! - y));
+    expect(Math.hypot(ax! - x, ay! - y)).toBeGreaterThan(120);
+    steer(-80);
+    expect(wheel()).toHaveAttribute("data-scrolling", "true");
+    expect(lit()).toBe("-1");
+    steer(80);
+    expect(lit()).toBe("1");
+    aim(330, 450);
+    expect(wheel()).toHaveAttribute("data-scrolling", "false");
+    expect(lit()).toBeUndefined();
+  });
+  it("shows no scroll wings for a mouse wheel or a single choice", () => {
+    const { unmount } = render(<QuickWheelSurface><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);
+    down();
+    expect(wheel()!.querySelector("[data-wheel-wings]")).toBeNull();
+    unmount();
+    vi.stubGlobal("innerWidth", 430); vi.stubGlobal("innerHeight", 850);
+    render(<QuickWheelSurface showBackBar={false}><Stage count={1} select={vi.fn()}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), { ...pointer, pointerType: "touch", clientX: 330, clientY: 450 });
+    expect(wheel()).not.toBeNull();
+    expect(wheel()!.querySelector("[data-wheel-wings]")).toBeNull();
+  });
   it("scrolls continuously, reverses, stops at centre and selects the visible item", () => {
     const select = vi.fn();
     render(<QuickWheelSurface><Stage count={15} select={select}/></QuickWheelSurface>);

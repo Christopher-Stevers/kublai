@@ -39,6 +39,7 @@ import {
   wheelThumbAnchor,
   wheelJoystickAxes,
   wheelJoystickMotion,
+  wheelJoystickRadius,
   wrapWheelIndex,
 } from "./quick-wheel-joystick";
 
@@ -1235,6 +1236,19 @@ function WheelDisplay({
               strokeLinecap="round"
             />
           )}
+          {/* Under the choices, so a tile near the axis stays readable. */}
+          {!isPreview && wheel.hand && wheel.options.length > 1 && (
+            <ScrollWings
+              cx={wheel.x}
+              cy={wheel.y}
+              hub={hub}
+              reach={wheelJoystickRadius(wheel.radius)}
+              axes={axes}
+              direction={Math.sign(wheel.scrolling)}
+              quiet={Boolean(selected) || Boolean(wheel.repositioning)}
+              entrance={!wheel.skipEntrance && wheel.offset === 0}
+            />
+          )}
           {tiles.map(({ key, x, y, opacity, entry }, index) => (
             <foreignObject
               key={`${wheel.title}:${key}`}
@@ -1449,6 +1463,99 @@ function HighlightArc({
         strokeWidth={strokeWidth}
         strokeLinecap="round"
       />
+    </g>
+  );
+}
+
+/** Two swept wings either side of the hub, along the sideways slide that
+ * scrolls. Each reaches as far as the thumb travels to full speed; the one
+ * scrolling fills and its arrows run outward. */
+function ScrollWings({
+  cx,
+  cy,
+  hub,
+  reach,
+  axes,
+  direction,
+  quiet,
+  entrance,
+}: {
+  cx: number;
+  cy: number;
+  hub: number;
+  reach: number;
+  axes: ReturnType<typeof wheelJoystickAxes>;
+  /** Sign of the current scroll; 0 at rest. */
+  direction: number;
+  /** Fade back while a choice is held or the wheel is being moved. */
+  quiet: boolean;
+  entrance: boolean;
+}) {
+  // Decided when the wheel opens; scrolling later must not replay it.
+  const [unfold] = useState(entrance);
+  return (
+    <g
+      data-wheel-wings=""
+      className="quick-wheel-wings"
+      style={{
+        transformOrigin: `${cx}px ${cy}px`,
+        animationName: unfold ? undefined : "none",
+        opacity: quiet ? 0.25 : 1,
+        transition: "opacity 150ms",
+      }}
+    >
+      {[-1, 1].map((side) => {
+        // `out` runs along the scroll axis away from the hub, `up` toward
+        // the choices; the tips sweep back slightly toward the hand.
+        const at = (out: number, up: number) =>
+          `${cx + side * axes.sideways.x * out + axes.inward.x * up} ${
+            cy + side * axes.sideways.y * out + axes.inward.y * up
+          }`;
+        const sweep = -hub * 0.1;
+        const active = direction === side;
+        return (
+          <g
+            key={side}
+            data-wheel-wing={side}
+            data-active={active || undefined}
+            className="quick-wheel-wing"
+            style={{
+              opacity: direction && !active ? 0.35 : 1,
+              transition: "opacity 150ms",
+            }}
+          >
+            <path
+              d={`M${at(hub * 0.7, hub * 0.42)}C${at(hub * 1.05, hub * 0.46)} ${at(reach - hub * 0.3, hub * 0.24)} ${at(reach, sweep)}C${at(reach - hub * 0.35, -hub * 0.18)} ${at(hub * 1.05, -hub * 0.22)} ${at(hub * 0.7, -hub * 0.4)}Z`}
+              className={cn(
+                "transition-[fill,stroke] duration-150",
+                active
+                  ? "fill-primary stroke-primary"
+                  : "fill-primary/10 stroke-primary/35 dark:fill-primary/20",
+              )}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            {[0.3, 0.58].map((share) => {
+              const out = hub + (reach - hub) * share;
+              const up = sweep * share;
+              return (
+                <path
+                  key={share}
+                  d={`M${at(out - 4, up + 6)}L${at(out + 2, up)}L${at(out - 4, up - 6)}`}
+                  fill="none"
+                  className={cn(
+                    "quick-wheel-chevron transition-[stroke] duration-150",
+                    active ? "stroke-primary-foreground" : "stroke-primary/70",
+                  )}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              );
+            })}
+          </g>
+        );
+      })}
     </g>
   );
 }
