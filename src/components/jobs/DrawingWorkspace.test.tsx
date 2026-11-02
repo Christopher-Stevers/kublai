@@ -366,9 +366,9 @@ function existingMarkup(
     },
   };
 }
-const open = () =>
+const open = (fullscreen = false) =>
   render(
-    <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
+    <DrawingWorkspace fullscreen={fullscreen} jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
   );
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
@@ -481,9 +481,8 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
   });
   it("offers Viewing in the quick wheel and clears the selected markup", () => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     mocks.data!.entities = [existingMarkup()];
-    open();
+    open(true);
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     act(() => props.onSelect?.(entityId));
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
@@ -518,19 +517,18 @@ describe("drawing workspace workflows", () => {
     expect(next.selectedId).toBeNull();
   });
   it("retains wheel navigation and an exit when offline annotation data is unavailable", () => {
-    const stored = new Map([["foremanhq:drawing-quick-wheel:guest", "on"]]);
-    vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
+    const exit = vi.fn();
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     mocks.data = null;
     const next = vi.fn();
-    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext: next }} />);
+    render(<DrawingWorkspace fullscreen onFullscreen={exit} jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext: next }} />);
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Page" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(next).toHaveBeenCalledOnce();
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quickwheel mode off" }));
-    expect(stored.get("foremanhq:drawing-quick-wheel:guest")).toBe("off");
+    fireEvent.click(screen.getByRole("button", { name: "Page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
+    expect(exit).toHaveBeenCalledOnce();
   });
 
   it("shows the drawing while its tools are still loading", () => {
@@ -569,31 +567,28 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Saved");
   });
 
-  it("lets More opt into Quickwheel mode, uses the same measurement command, and restores the bars from the wheel", () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal("localStorage", { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
-    open(); openMenu("More");
-    const toggle = screen.getByRole("switch", { name: "Quickwheel mode" });
-    expect(toggle).not.toBeChecked(); fireEvent.click(toggle);
+  it("uses quick wheel only in fullscreen and restores regular controls on exit", () => {
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
+    const props = { jobId, sheet, onOpenSheet: vi.fn() };
+    const view = render(<DrawingWorkspace {...props} />);
+    openMenu("More");
+    expect(screen.queryByRole("switch", { name: "Quickwheel mode" })).toBeNull();
+    expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBeVisible();
+    view.rerender(<DrawingWorkspace {...props} fullscreen />);
     expect(screen.queryByRole("toolbar", { name: "Drawing tools" })).toBeNull();
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("measure");
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
     expect(screen.queryByRole("dialog")).toBeNull();
-    const done = screen.getByRole("button", { name: "Done" });
-    expect(done).toHaveAttribute("data-drawing-tool-done");
-    fireEvent.click(done);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(mocks.viewer.mock.lastCall?.[0].toolControls.modeRequest.mode).toBe("idle");
-    fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "F10", shiftKey: true });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quickwheel mode off" }));
-    expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBeInTheDocument();
+    view.rerender(<DrawingWorkspace {...props} />);
+    expect(screen.getByRole("toolbar", { name: "Drawing tools" })).toBeVisible();
   });
 
   it.each([["Markup", "Rectangle"], ["Tools", "Pipe system"]])("suspends the wheel during %s / %s until Done", (group, action) => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
-    open();
+    open(true);
     const workspace = screen.getByLabelText("Drawing workspace");
     fireEvent.keyDown(workspace, { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: group }));
@@ -609,8 +604,7 @@ describe("drawing workspace workflows", () => {
   });
 
   it("toggles quick-wheel markup styling and hides it again on Done", () => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
-    open();
+    open(true);
     const workspace = screen.getByLabelText("Drawing workspace");
     fireEvent.keyDown(workspace, { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Markup" }));
@@ -636,10 +630,9 @@ describe("drawing workspace workflows", () => {
   });
 
   it("exposes page navigation and selected markup actions through the wheel", async () => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     mocks.data!.entities = [existingMarkup()];
     const onNext = vi.fn();
-    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}
+    render(<DrawingWorkspace fullscreen jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}
       pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext }} />);
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Page" }));
@@ -686,9 +679,8 @@ describe("drawing workspace workflows", () => {
   });
 
   it("keeps restricted sheet commands disabled in the wheel rather than changing its layout", () => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     mocks.data!.canUseSheetTools = false;
-    open();
+    open(true);
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     for (const name of ["Auto Hyperlink", "Legend Items", "Super Equipment", "Super Spec Material", "Super Label", "Super scale"])
@@ -709,11 +701,10 @@ describe("drawing workspace workflows", () => {
   });
 
   it("offers text editing through the wheel without opening a competing text editor or context menu", () => {
-    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
     const note = existingMarkup();
     if (note.kind === "markup") note.data = { ...note.data, type: "text", text: "Test note", points: [{ x: 0.2, y: 0.2 }] };
     mocks.data!.entities = [note];
-    open();
+    open(true);
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     act(() => props.onQuickWheelSelect?.(entityId));
     expect(screen.queryByRole("textbox", { name: "Text" })).toBeNull();
@@ -1937,7 +1928,7 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
   openMenu("More");
-  expect(screen.getByRole("switch", { name: "Quickwheel mode" })).toBeVisible();
+  expect(screen.queryByRole("switch", { name: "Quickwheel mode" })).toBeNull();
 });
 
 it("opens layers directly from the drawing corner, including full screen", () => {
@@ -2034,9 +2025,8 @@ it("explains an uncached offline hyperlink without attempting a network request"
 
 
 it("keeps only the full-screen and layers corner controls in quick-wheel mode", () => {
-  vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
   const onFullscreen = vi.fn();
-  render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
+  render(<DrawingWorkspace fullscreen jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   expect(screen.queryByRole("toolbar", { name: "Drawing tools" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalledOnce();

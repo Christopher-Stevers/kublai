@@ -13,9 +13,6 @@ import {
   useDrawingWheelGesture,
   type DrawingWheelGroup,
 } from "./DrawingQuickWheel";
-import {
-  useDrawingQuickWheelMode,
-} from "./useDrawingQuickWheelMode";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { useState } from "react";
 import type { DrawingEntity } from "~/lib/drawing-workspace";
@@ -579,34 +576,7 @@ describe("drawing Quickwheel", () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it("remembers the optional mode separately for each account", () => {
-    function Setting() {
-      const { enabled, setEnabled } = useDrawingQuickWheelMode();
-      return (
-        <>
-          <input type="checkbox" role="switch" aria-label="Quickwheel mode" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
-          <output>{enabled ? "wheel" : "bars"}</output>
-        </>
-      );
-    }
-    const view = render(<Setting />);
-    expect(
-      screen.getByRole("switch", { name: "Quickwheel mode" }),
-    ).not.toBeChecked();
-    fireEvent.click(screen.getByRole("switch", { name: "Quickwheel mode" }));
-    expect(screen.getByText("wheel")).toBeInTheDocument();
-    identity.key = "chris";
-    view.rerender(<Setting />);
-    expect(screen.getByText("bars")).toBeInTheDocument();
-    identity.key = "tim";
-    view.rerender(<Setting />);
-    expect(screen.getByText("wheel")).toBeInTheDocument();
-    view.unmount();
-    render(<Setting />);
-    expect(
-      screen.getByRole("switch", { name: "Quickwheel mode" }),
-    ).toBeChecked();
-  });
+
 });
 
 

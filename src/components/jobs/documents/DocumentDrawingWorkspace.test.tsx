@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type { DrawingWorkspace } from "../DrawingWorkspace";
 const fixture = vi.hoisted(() => ({
+  fullscreen: false,
   props: null as ComponentProps<typeof DrawingWorkspace> | null,
   mutate: vi.fn(),
   offline: false,
@@ -47,11 +48,12 @@ vi.mock("~/components/chat/SnapshotSourceContext", () => ({
 }));
 vi.mock("../useDrawingFullscreen", () => ({
   useDrawingFullscreen: () => ({
-    fullscreen: false,
+    fullscreen: fixture.fullscreen,
     surface: null,
     enterButton: null,
     exitButton: null,
     enter: vi.fn(),
+    exit: vi.fn(),
   }),
 }));
 vi.mock("../DrawingWorkspace", () => ({
@@ -73,6 +75,7 @@ vi.mock("../DrawingWorkspace", () => ({
 }));
 import { DocumentDrawingWorkspace } from "./DocumentDrawingWorkspace";
 beforeEach(() => {
+  fixture.fullscreen = false;
   fixture.error = null;
   fixture.offline = false;
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
@@ -137,4 +140,21 @@ it("reopens downloaded document sheets offline without calling the server", asyn
   expect(fixture.mutate).not.toHaveBeenCalled();
   await fixture.props?.onPrepareOffline?.();
   await waitFor(() => expect(fixture.saveSnapshot).toHaveBeenCalledWith("document-sheets:version", fixture.sheets));
+});
+
+it("ties document quick wheel to fullscreen and restores navigation and zoom on exit", () => {
+  const view = render(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
+  expect(fixture.props?.fullscreen).toBe(false);
+  fireEvent.click(screen.getByText("Zoom"));
+  fixture.fullscreen = true;
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
+  expect(fixture.props?.fullscreen).toBe(true);
+  expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  expect(document.documentElement).toHaveAttribute("data-drawing-quick-wheel-page");
+  fixture.fullscreen = false;
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
+  expect(fixture.props?.fullscreen).toBe(false);
+  expect(screen.getByRole("button", { name: "Next" })).toBeVisible();
+  expect(screen.getByLabelText("Drawing zoom")).toHaveTextContent("1000%");
+  expect(document.documentElement).not.toHaveAttribute("data-drawing-quick-wheel-page");
 });

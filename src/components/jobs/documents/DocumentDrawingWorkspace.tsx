@@ -1,5 +1,4 @@
 "use client";
-import { useDrawingQuickWheelMode } from "../useDrawingQuickWheelMode";
 import { useDrawingPageMode } from "../DrawingPageMode";
 import { DrawingScrollPages } from "../DrawingScrollPages";
 import { useEffect, useRef, useState } from "react";
@@ -32,7 +31,6 @@ export function DocumentDrawingWorkspace({
   onDocumentDetails,
   onClose,
 }: Props) {
-  const { enabled: quickWheel } = useDrawingQuickWheelMode();
   const account = useDrawingAccount();
   const { scroll } = useDrawingPageMode();
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
@@ -55,6 +53,7 @@ export function DocumentDrawingWorkspace({
   const zoomLabel = useRef<HTMLSpanElement>(null);
   const { surface, fullscreen, exitButton, enterButton, enter, exit } =
     useDrawingFullscreen(true);
+  const quickWheel = fullscreen;
   const ready = useRef(onReady);
   useEffect(() => {
     ready.current = onReady;
@@ -83,7 +82,7 @@ export function DocumentDrawingWorkspace({
       ref={surface}
       data-drawing-fullscreen={fullscreen}
       data-drawing-quick-wheel={quickWheel && Boolean(sheet)}
-      className={`bg-background flex min-h-0 flex-1 flex-col ${fullscreen ? "fixed inset-0 z-[70] [&_[data-drawing-chrome]]:hidden" : quickWheel && sheet ? "fixed inset-0 z-[60]" : "relative"}`}
+      className={`bg-background flex min-h-0 flex-1 flex-col ${fullscreen ? "fixed inset-0 z-[70]" : "relative"}`}
       aria-label="Document drawing viewer"
     >
       {fullscreen && (
@@ -111,7 +110,8 @@ export function DocumentDrawingWorkspace({
                 onNext: () => { if (actualIndex < sheets.length - 1) openPage(actualIndex + 1); },
               }}
               fullscreenRef={enterButton}
-              onFullscreen={enter}
+              fullscreen={fullscreen}
+              onFullscreen={fullscreen ? exit : enter}
               key={sheet.id}
               jobId={jobId}
               sheet={sheet}
@@ -132,7 +132,7 @@ export function DocumentDrawingWorkspace({
               }}
             />
             </DrawingScrollPages>
-            {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={camera.zoom} zoomRef={zoomLabel} />}
+            {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={viewport.current.zoom} zoomRef={zoomLabel} />}
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
           {!quickWheel && <DrawingPageNavigation

@@ -9,7 +9,6 @@ import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingScrollPages } from "./DrawingScrollPages";
 import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "./DrawingPageNavigation";
-import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useRootFlag } from "~/hooks/use-root-flag";
 
@@ -113,7 +112,6 @@ export function JobDrawingsView({ jobId }: { jobId: string }) {
 }
 
 function JobDrawingsContent({ jobId }: { jobId: string }) {
-  const { enabled: quickWheel } = useDrawingQuickWheelMode();
   const permissions = useDrawingCapabilities();
   const sandbox = useTutorialSandbox();
   const utils = api.useUtils();
@@ -137,6 +135,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     null,
   );
   const full = useDrawingFullscreen(sheetId !== null);
+  const quickWheel = full.fullscreen;
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
   const { scroll } = useDrawingPageMode();
@@ -558,7 +557,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         ref={full.surface}
         data-drawing-fullscreen={full.fullscreen}
         data-drawing-quick-wheel={quickWheel}
-        className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60] [&_[data-drawing-chrome]]:hidden" : "inset-x-0 app-below-header bottom-0 z-30"}`}
+        className={`bg-background fixed flex flex-col ${full.fullscreen ? "inset-0 z-[60]" : "inset-x-0 app-below-header bottom-0 z-30"}`}
       >
         {full.fullscreen && (
           <Button
@@ -583,7 +582,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               onNext: () => { if (sheetIndex < sheets.length - 1) openSheet(sheets[sheetIndex + 1]!.id, true); },
             }}
             fullscreenRef={full.enterButton}
-            onFullscreen={full.enter}
+            fullscreen={full.fullscreen}
+            onFullscreen={full.fullscreen ? full.exit : full.enter}
             key={`${sheet.id}:${destination.request}`}
             onReady={() => setReadySheet(sheet.id)}
             initialSnapshot={destination.snapshot}
@@ -600,7 +600,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             }}
           />
           </DrawingScrollPages>
-          {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />}
+          {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={lastViewport.current?.zoom ?? entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />}
         </div>
         <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
         {!quickWheel && <DrawingPageNavigation

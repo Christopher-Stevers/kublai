@@ -13,7 +13,6 @@ import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { useDrawingPageMode } from "./DrawingPageMode";
 import { DrawingQuickWheel, DrawingWheelRegistration, type DrawingWheelItem } from "./DrawingQuickWheel";
-import { useDrawingQuickWheelMode } from "./useDrawingQuickWheelMode";
 import { drawingWheelStyleItems } from "./drawing-wheel-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
@@ -424,6 +423,7 @@ export function DrawingWorkspace({
   onPrepareOffline,
   onFullscreen,
   fullscreenRef,
+  fullscreen = false,
   pageNavigation,
 }: {
   jobId: string;
@@ -448,11 +448,11 @@ export function DrawingWorkspace({
   /** Shows a full screen button in the middle of the toolbar. */
   onFullscreen?: () => void;
   fullscreenRef?: Ref<HTMLButtonElement>;
+  fullscreen?: boolean;
   pageNavigation?: { index: number; count: number; onPrevious: () => void; onNext: () => void };
 }) {
-  const { enabled: savedQuickWheel, setEnabled: setQuickWheel } = useDrawingQuickWheelMode();
   const [temporaryQuickWheel, setTemporaryQuickWheel] = useState(false);
-  const quickWheel = savedQuickWheel || temporaryQuickWheel;
+  const quickWheel = fullscreen || temporaryQuickWheel;
   const [toolToolbarOpen, setToolToolbarOpen] = useState(!quickWheel);
   const { scroll, setScroll } = useDrawingPageMode();
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
@@ -1831,11 +1831,10 @@ export function DrawingWorkspace({
         { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
       ] : []),
       ...wheelCommands("fit"),
-      ...(onFullscreen ? [{ id: "full", label: "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),
+      ...(onFullscreen ? [{ id: "full", label: fullscreen ? "Exit full screen" : "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),
       ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", run: () => setCompareIds(null) }] : []),
     ] },
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
-      { id: "regular-controls", label: "Quickwheel mode off", icon: <WrenchIcon />, run: () => setQuickWheel(false) },
       ...wheelCommands("legend-items", "auto-hyperlink"),
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
       ...wheelCommands("overlay", "appearance", "super-equipment", "super-spec-material", "super-label", "super-scale"),
@@ -1866,7 +1865,7 @@ export function DrawingWorkspace({
 
   return (
     <DrawingQuickWheel enabled={quickWheel && !toolInUse}
-      allowItemHold={!savedQuickWheel && !toolInUse && tool !== "viewing" && !compareIds}
+      allowItemHold={!fullscreen && !toolInUse && tool !== "viewing" && !compareIds}
       onTemporaryChange={setTemporaryQuickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
     <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
       id: "selected", title: capitalize(nameOf(selected)), priority: 50,
@@ -3609,9 +3608,6 @@ export function DrawingWorkspace({
           label={statusText !== "Saved" ? statusText : undefined}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
         >
-          <Button variant="outline" className={BAR_BUTTON} role="switch" aria-label="Quickwheel mode" aria-checked={quickWheel} onClick={() => { finishTool(); setQuickWheel(!quickWheel); }}>
-            <MousePointer2Icon />Quickwheel Mode
-          </Button>
           <Button variant={scroll ? "default" : "outline"} className={BAR_BUTTON} role="switch" aria-label="Scroll between pages" aria-checked={scroll} onClick={() => setScroll(!scroll)}>
             <FileTextIcon />Scroll Between Pages
           </Button>

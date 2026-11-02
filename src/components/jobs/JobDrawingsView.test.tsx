@@ -120,7 +120,8 @@ vi.mock("~/components/ui/app-dialogs", () => ({
   notify: vi.fn(),
 }));
 vi.mock("./DrawingWorkspace", () => ({
-  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange, onFullscreen, fullscreenRef, onReady }: {
+  DrawingWorkspace: ({ sheet, initialViewport, onViewportChange, onFullscreen, fullscreenRef, fullscreen, onReady }: {
+    fullscreen?: boolean;
     onReady?: () => void;
     sheet: { name: string };
     initialViewport?: { center: { x: number; y: number }; zoom: number } | null;
@@ -131,6 +132,7 @@ vi.mock("./DrawingWorkspace", () => ({
     const mountedView = useRef(initialViewport);
     return (
     <div>
+      <span data-testid="wheel-enabled">{String(fullscreen)}</span>
       <span data-testid="mounted-view">{JSON.stringify(mountedView.current ?? null)}</span>
       <span>Viewing {sheet.name}</span>
       <button onClick={onReady}>Drawing Ready</button>
@@ -225,13 +227,20 @@ describe("Drawings", () => {
     expect(state.warm).toHaveBeenCalledTimes(1);
   });
 
-  it("hides its page navigation when the account uses Quickwheel mode", () => {
+  it("enables the wheel and hides page navigation only while fullscreen", () => {
     localStorage.setItem("foremanhq:drawing-quick-wheel:guest", "on");
     const view = openDrawing();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeVisible();
+    expect(screen.getByTestId("wheel-enabled")).toHaveTextContent("false");
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    expect(screen.getByTestId("wheel-enabled")).toHaveTextContent("true");
     expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
     // The app bars give way through a flag on <html>.
     expect(document.documentElement).toHaveAttribute("data-drawing-quick-wheel-page");
+    fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
+    expect(screen.getByTestId("wheel-enabled")).toHaveTextContent("false");
+    expect(screen.getByRole("button", { name: "Next" })).toBeVisible();
     view.unmount();
     expect(document.documentElement).not.toHaveAttribute("data-drawing-quick-wheel-page");
   });
@@ -273,7 +282,8 @@ describe("Drawings", () => {
     fireEvent.click(enter);
     const surface = workspace.closest('[data-drawing-fullscreen]')!;
     expect(surface).toHaveAttribute("data-drawing-fullscreen", "true");
-    expect(surface).toHaveClass("inset-0", "[&_[data-drawing-chrome]]:hidden");
+    expect(surface).toHaveClass("inset-0");
+    expect(surface).not.toHaveClass("[&_[data-drawing-chrome]]:hidden");
     expect(screen.getByRole("button", { name: "Exit full screen" })).toHaveFocus();
     expect(screen.getByText("Viewing M-101")).toBe(workspace);
     act(() => void runHeaderBackOverride());
