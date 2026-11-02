@@ -116,12 +116,14 @@ function Options({
 
 export function DrawingQuickWheel({
   enabled,
+  resetKey,
   allowItemHold = false,
   onTemporaryChange,
   group,
   children,
 }: {
   enabled: boolean;
+  resetKey?: string | number | boolean;
   /** Regular controls may borrow the wheel for an existing annotation only. */
   allowItemHold?: boolean;
   onTemporaryChange?: (active: boolean) => void;
@@ -136,6 +138,7 @@ export function DrawingQuickWheel({
   );
   const [path, setPath] = useState<string[]>([]);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useLayoutEffect(() => { setKeyboardOpen(false); setPath([]); }, [resetKey]);
   useHeaderBackOverride(enabled && keyboardOpen ? () => {
     if (path.length) setPath(value => value.slice(0, -1));
     else setKeyboardOpen(false);
@@ -233,6 +236,7 @@ export function DrawingQuickWheel({
     <Context.Provider value={registry}>
       <QuickWheelSurface
         enabled={enabled || allowItemHold}
+        resetKey={resetKey}
         activation="context"
         activationSelector={enabled ? "[data-drawing-wheel-canvas]" : "[data-drawing-wheel-canvas] [data-annotation-id]"}
         showBackBar={false}

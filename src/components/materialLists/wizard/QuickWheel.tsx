@@ -352,6 +352,7 @@ function guardRemainingLift(pointerId: number) {
 export function QuickWheelSurface({
   children,
   enabled = true,
+  resetKey,
   usage = {},
   previewChoice,
   onBack,
@@ -364,6 +365,8 @@ export function QuickWheelSurface({
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   enabled?: boolean;
+  /** Close an active gesture when its host changes viewing mode. */
+  resetKey?: string | number | boolean;
   usage?: WheelUsage;
   onBack?: () => void;
   /** Drawing workspaces reserve touch long-press and desktop context-menu. */
@@ -464,6 +467,8 @@ export function QuickWheelSurface({
     update(null);
     if (wasOpen) interaction.current.onActiveChange?.(false);
   };
+
+  useEffect(() => { close(); }, [resetKey]);
 
   useHeaderBackOverride(activation === "context" && wheel ? close : null, {
     priority: 120,

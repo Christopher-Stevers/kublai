@@ -100,6 +100,19 @@ afterEach(() => {
 });
 
 describe("drawing Quickwheel", () => {
+  it("closes an open wheel when leaving fullscreen without remounting the drawing", () => {
+    const group = { id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] };
+    const view = render(<DrawingQuickWheel enabled resetKey={true} group={group}><Canvas /></DrawingQuickWheel>);
+    const drawing = canvas();
+    fireEvent.contextMenu(drawing, {button: 2, clientX: 200, clientY: 400});
+    expect(wheel()).not.toBeNull();
+    view.rerender(<DrawingQuickWheel enabled={false} allowItemHold resetKey={false} group={group}><Canvas /></DrawingQuickWheel>);
+    expect(wheel()).toBeNull();
+    expect(canvas()).toBe(drawing);
+    // Fullscreen can be opened again; the old wheel does not reappear.
+    view.rerender(<DrawingQuickWheel enabled resetKey={true} group={group}><Canvas /></DrawingQuickWheel>);
+    expect(wheel()).toBeNull();
+  });
   it("borrows the wheel for an annotation hold and restores regular controls after selection or dismissal", () => {
     const action = vi.fn(), changed = vi.fn();
     function RegularDrawing() {

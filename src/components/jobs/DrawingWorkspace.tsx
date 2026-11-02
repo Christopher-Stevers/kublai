@@ -1864,7 +1864,7 @@ export function DrawingWorkspace({
   });
 
   return (
-    <DrawingQuickWheel enabled={quickWheel && !toolInUse}
+    <DrawingQuickWheel enabled={quickWheel && !toolInUse} resetKey={fullscreen}
       allowItemHold={!fullscreen && !toolInUse && tool !== "viewing" && !compareIds}
       onTemporaryChange={setTemporaryQuickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
     <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
