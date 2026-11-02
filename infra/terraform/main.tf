@@ -98,8 +98,9 @@ resource "aws_db_parameter_group" "app" {
   name_prefix = "foremanhq-pg16-"
   family      = "postgres16"
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
   lifecycle { create_before_destroy = true }
 }

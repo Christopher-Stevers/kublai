@@ -3,6 +3,19 @@
 Dedicated application EC2 and private RDS PostgreSQL for ForemanHQ (`kublai`).
 Adapted from [Hello Any World's shared EC2 infrastructure](https://github.com/Christopher-Stevers/hello-any-world/tree/main/infra/terraform), with separate resources and state. This root provisions infrastructure; it does not deploy an app image, migrate existing data, or change live DNS.
 
+## Deployment record — November 2, 2026
+
+Provisioned in account `337658133209`, Ohio, from this Terraform root:
+
+- EC2 `i-04896ee80d2ebcdf7`, Elastic IP `3.150.51.3`.
+- RDS `foremanhq`, PostgreSQL 16.15, `db.t4g.micro`, endpoint `foremanhq.cz02cicyidl6.us-east-2.rds.amazonaws.com`.
+- ECR `337658133209.dkr.ecr.us-east-2.amazonaws.com/foremanhq`.
+- Encrypted uploads volume `vol-0fdeccd520df32390` mounted at `/srv/foremanhq`.
+
+Verified: Terraform created 40 resources; EC2 cloud-init completed; Docker, Compose and SSM are active; the uploads mount and Docker mount dependency are present; RDS is available, private and encrypted, with parameters in sync and a latest-restorable timestamp. A host-to-RDS connection verified the server certificate using the AWS CA bundle and negotiated TLS 1.3. The initial AWS Backup upload-volume job completed successfully. The `Project` cost-allocation tag was activated for billing.
+
+Still outstanding: application deployment, source-version/cutover choice, database roles and secrets, existing-data migration, DNS/HTTPS cutover, an actual restore drill, workload/capacity checks, and operator confirmation of the SNS email subscription. These checks do not establish that ForemanHQ is serving from AWS yet.
+
 ## Architecture and approved database choice
 
 - Account `337658133209`, Ohio (`us-east-2`), dedicated VPC.
