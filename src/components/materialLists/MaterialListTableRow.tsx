@@ -335,20 +335,19 @@ function MaterialListTableRowComponent(props: MaterialListTableRowProps) {
   );
 }
 
-// Receive controls get a stable onChange per part. A slip badge is a fresh element each time, so those rows always render.
+// Receive controls get a stable onChange and slip badge per part, so rows compare them by identity.
 const sameReceive = (a: TableReceive | null | undefined, b: TableReceive | null | undefined) =>
   a === b ||
   (!a && !b) ||
   (!!a &&
     !!b &&
-    !a.badge &&
-    !b.badge &&
     a.ordered === b.ordered &&
     a.received === b.received &&
     a.status === b.status &&
     a.unit === b.unit &&
     a.readOnly === b.readOnly &&
     a.cancelled === b.cancelled &&
+    a.badge === b.badge &&
     a.onChange === b.onChange);
 
 export const MaterialListTableRow = memo(

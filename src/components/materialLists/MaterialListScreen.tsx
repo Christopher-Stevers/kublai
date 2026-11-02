@@ -3,7 +3,7 @@ import { MaterialFocusSection } from "./MaterialFocusSection";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { supplierLabel } from "~/lib/supplier-label";
 import { PackingSlips } from "~/components/materialLists/PackingSlips";
-import { SlipBadge, SlipPartSheet, SlipVerifyBar } from "~/components/materialLists/SlipOnList";
+import { SlipBadge, slipBadgeKey, SlipPartSheet, SlipVerifyBar, type SlipEntry } from "~/components/materialLists/SlipOnList";
 import { useSlipDrafts } from "~/components/materialLists/use-slip-draft";
 import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
 import { notify } from "~/components/ui/app-dialogs";
@@ -21,7 +21,7 @@ import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrd
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -129,6 +129,18 @@ export function MaterialListScreen({
     };
     verifyHandlers.current.set(itemId, entry);
     return entry.stable;
+  };
+  // Slip badges are kept while what they show is the same, for the same reason.
+  const slipBadges = useRef(new Map<string, { key: string; opener: { open: () => void }; badge: ReactNode }>());
+  const slipBadge = (itemId: string, slipEntry: SlipEntry, open: () => void) => {
+    const key = slipBadgeKey(slipEntry);
+    const known = slipBadges.current.get(itemId);
+    const opener = known?.opener ?? { open };
+    opener.open = open;
+    if (known?.key === key) return known.badge;
+    const badge = <SlipBadge entry={slipEntry} onOpen={() => opener.open()} />;
+    slipBadges.current.set(itemId, { key, opener, badge });
+    return badge;
   };
 
   const { materialList: mlHeader, items: unsortedItems, isLoading } =
@@ -473,9 +485,7 @@ export function MaterialListScreen({
                                 ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
                                 : orderLine?.status
                             }
-                            verifyBadge={slipFound && slipEntry ? (
-                              <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
-                            ) : undefined}
+                            verifyBadge={slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : undefined}
                             onVerifyStateChange={
                               orderLine
                                 ? verifyHandler(item.id, (state) => {
@@ -523,9 +533,7 @@ export function MaterialListScreen({
                         : listOrder.verificationStatus,
                       unit: item.partDefinition?.bulkUnit ?? item.uom?.code,
                       readOnly: !canReceive || !isBrowserOnline,
-                      badge: slipFound && slipEntry ? (
-                        <SlipBadge entry={slipEntry} onOpen={() => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })} />
-                      ) : undefined,
+                      badge: slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : undefined,
                       onChange: verifyHandler(item.id, (state) => {
                         // While a read slip is being checked, changes stay on the slip until it is confirmed.
                         if (slipFound && slipEntry) {

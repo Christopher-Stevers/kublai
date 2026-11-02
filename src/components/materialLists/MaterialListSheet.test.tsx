@@ -155,6 +155,22 @@ it("redraws a receiving row when its counts or access change, even with the same
   expect(screen.queryByLabelText("Received: Valve")).not.toBeInTheDocument();
 });
 
+it("redraws a receiving row when its slip badge changes", () => {
+  const onChange = vi.fn();
+  const sheet = (badge: string) => (
+    <MaterialListSheet
+      items={[ordered]}
+      materialListId="m"
+      suppliers={[]}
+      receiveFor={() => ({ ordered: "10", received: "3", status: "partial", unit: "ea", badge: <span>{badge}</span>, onChange })}
+    />
+  );
+  const { rerender } = render(sheet("Slip +2"));
+  expect(screen.getByText("Slip +2")).toBeInTheDocument();
+  rerender(sheet("Check"));
+  expect(screen.getByText("Check")).toBeInTheDocument();
+});
+
 it("shows ordered counts read only without receive controls", () => {
   render(
     <MaterialListSheet items={[ordered]} materialListId="m" suppliers={[]} />,

@@ -31,6 +31,7 @@ import { SlipLineImage } from "./SlipLineImage";
 import type { SlipDraft } from "./use-slip-draft";
 
 type Entry = NonNullable<ReturnType<SlipDraft["item"]>>;
+export type SlipEntry = Entry;
 const fmt = (n: number, unit: string) => `${roundQty(n)} ${unit}`;
 /** Keeps taps on slip controls from verifying the part card underneath. */
 const stop = {
@@ -40,6 +41,10 @@ const stop = {
   onTouchStart: (e: React.SyntheticEvent) => e.stopPropagation(),
   onKeyDown: (e: React.SyntheticEvent) => e.stopPropagation(),
 };
+
+/** Everything SlipBadge shows; the same key draws the same badge. */
+export const slipBadgeKey = ({ item, amount, slip, lines, check, edited, total }: Entry) =>
+  JSON.stringify([item.description, item.unit, item.ordered, amount ?? null, slip ?? null, lines.length, check, edited, total]);
 
 /** What the slip says about a part, on the part's photo. */
 export function SlipBadge({
