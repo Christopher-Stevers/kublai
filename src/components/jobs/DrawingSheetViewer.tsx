@@ -621,12 +621,12 @@ export function DrawingSheetViewer({
   const viewportListener = useRef(onViewportChange);
   viewportListener.current = onViewportChange;
   const annotationTool = editorProps.tool ?? "pan";
-  const viewing = annotationTool === "viewing";
+  const viewing = annotationTool === "viewing" || annotationTool === "pan";
   const pdfLinksEnabled =
     !measuring &&
     !pipeMode &&
     !comparison &&
-    annotationTool === "pan" &&
+    viewing &&
     Boolean(onPdfLink);
   const pdfLinkAt = (point: SheetPoint | null) =>
     point &&
@@ -2191,7 +2191,7 @@ export function DrawingSheetViewer({
   }, [measuring, pipeMode, reportMode]);
 
   useDrawingWheelGesture(appearanceId, event => {
-    if (!measuring && !pipeMode && (annotationTool === "pan" || annotationTool === "select") && event.target instanceof Element && frame.current?.contains(event.target)) {
+    if (!measuring && !pipeMode && annotationTool === "select" && event.target instanceof Element && frame.current?.contains(event.target)) {
       const id = event.target.closest("[data-annotation-id]")?.getAttribute("data-annotation-id");
       if (id) (editorProps.onQuickWheelSelect ?? editorProps.onSelect)?.(id);
     }
@@ -2256,7 +2256,7 @@ export function DrawingSheetViewer({
           // Touch long-press remains available for selecting and editing items.
           if (event.button !== 2 || (event.nativeEvent as PointerEvent).pointerType === "touch") return;
           if (event.target instanceof Element && event.target.closest('[data-drawing-chrome], input, textarea, [contenteditable="true"]')) return;
-          if (viewing) return;
+          if (viewing && !measuring && !pipeMode) return;
           if (measuring) toggleMeasuring();
           else if (pipeMode) togglePipe();
           else if (annotationTool !== "pan" && annotationTool !== "select") {
@@ -2990,7 +2990,8 @@ export function DrawingSheetViewer({
             bufferedViewport
             moving={moving}
             annotations={visibleAnnotations}
-            interactive={!viewing}
+            interactive={!pipeMode}
+            navigationOnly={viewing}
             aspect={fit.aspect}
             selectedId={pipeMode || viewing ? null : editorProps.selectedId}
             heldId={pipeMode || viewing ? null : editor.heldId}
@@ -3002,7 +3003,7 @@ export function DrawingSheetViewer({
             showAngles={showAngles}
             onSelect={pipeMode || viewing ? undefined : editorProps.onSelect}
             onActivate={
-              !measuring && !pipeMode && annotationTool === "pan"
+              !measuring && !pipeMode && viewing
                 ? editorProps.onActivate
                 : undefined
             }

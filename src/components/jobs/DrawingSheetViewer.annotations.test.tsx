@@ -70,10 +70,13 @@ describe("drawing annotation tools in the real viewer", () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it.each(["rect", "dimension", "link"] as const)("Viewing pans over %s without selecting, editing, or opening it", async type => {
+  it.each([
+    ["pan", "rect"], ["pan", "dimension"], ["pan", "text"],
+    ["viewing", "rect"], ["viewing", "dimension"], ["viewing", "text"],
+  ] as const)("%s pans over %s without selecting or editing it", async (tool, type) => {
     const entity = markup({ type });
     const onSelect = vi.fn(), onUpdate = vi.fn(), onDelete = vi.fn(), onActivate = vi.fn(), onContextMenu = vi.fn(), onDone = vi.fn();
-    const props = { tool: "viewing" as const, annotations: [entity], selectedId: entity.id, onSelect, onUpdate, onDelete, onActivate, onContextMenu, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } };
+    const props = { tool, annotations: [entity], selectedId: entity.id, onSelect, onUpdate, onDelete, onActivate, onContextMenu, toolControls: { measureRequest: 0, pipeRequest: 0, onDone } };
     const { frame, image, container, rerender } = open(props);
     const target = container.querySelector('[data-annotation-id="markup"]')!;
     expect(target).not.toHaveAttribute("tabindex");
@@ -288,7 +291,7 @@ describe("drawing annotation tools in the real viewer", () => {
   });
   it("selects an ordinary markup immediately and still pans during the shake", async () => {
     const onSelect = vi.fn(), onUpdate = vi.fn();
-    const { frame, image, container } = open({ annotations: [markup()], onSelect, onUpdate });
+    const { frame, image, container } = open({ tool: "select", annotations: [markup()], onSelect, onUpdate });
     const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
     // Selection is immediate; edits wait for the shake.
     tap(shape, 250, 250);
@@ -338,7 +341,7 @@ describe("drawing annotation tools in the real viewer", () => {
       unit: "m",
       scale: 100,
     });
-    const { frame, container } = open({ annotations: [run], onSelect, onUpdate });
+    const { frame, container } = open({ tool: "select", annotations: [run], onSelect, onUpdate });
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(0);
     const hit = container.querySelector('[data-annotation-id="markup"] path, [data-annotation-id="markup"] polyline')!;
     fireEvent.pointerDown(hit, { clientX: 300, clientY: 250, pointerId: 1, button: 0 });
@@ -488,9 +491,9 @@ describe("drawing annotation tools in the real viewer", () => {
     const shape = container.querySelector('[data-annotation-id="markup"] rect')!;
     expect(shape.getAttribute("width")).toBe("250");
   });
-  it("opens a link on an intentional tap and hides annotation layers without mutating their data", () => {
+  it.each(["pan", "viewing"] as const)("opens links in %s and hides annotation layers without mutations", (tool) => {
     const onActivate = vi.fn(); const entity = markup({ type: "link", href: "https://example.com/drawing" });
-    const { container, rerender } = open({ tool: "pan", annotations: [entity], onActivate });
+    const { container, rerender } = open({ tool, annotations: [entity], onActivate });
     tap(container.querySelector('[data-annotation-id="markup"] rect')!, 250, 250);
     expect(onActivate).toHaveBeenCalledWith(entity.data);
     rerender(<DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey={sourceSheetId} annotations={[entity]} hideAnnotations />);
@@ -502,7 +505,7 @@ describe("drawing annotation tools in the real viewer", () => {
 it("leaves text closed until a tap releases, so a hold can open its wheel", () => {
   const entity = markup({ type: "text", text: "Note" });
   const onSelect = vi.fn();
-  const { frame, container } = open({ annotations: [entity], tool: "pan", onSelect, onQuickWheelSelect: vi.fn() });
+  const { frame, container } = open({ annotations: [entity], tool: "select", onSelect, onQuickWheelSelect: vi.fn() });
   const target = container.querySelector('[data-annotation-id="markup"]')!;
   fireEvent.pointerDown(target, { clientX: 300, clientY: 250, pointerId: 1, button: 0, pointerType: "touch" });
   expect(onSelect).not.toHaveBeenCalled();

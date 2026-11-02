@@ -1580,7 +1580,7 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
-  const showSelectedMarkupActions = (!quickWheel || fullscreen) && selected?.kind === "markup" &&
+  const showSelectedMarkupActions = tool === "select" && (!quickWheel || fullscreen) && selected?.kind === "markup" &&
     selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
     !form && !compareIds;
 
@@ -1865,7 +1865,7 @@ export function DrawingWorkspace({
 
   return (
     <DrawingQuickWheel enabled={quickWheel && !toolInUse} resetKey={fullscreen}
-      allowItemHold={!fullscreen && !toolInUse && tool !== "viewing" && !compareIds}
+      allowItemHold={!fullscreen && !toolInUse && tool === "select" && !compareIds}
       onTemporaryChange={setTemporaryQuickWheel} group={{ id: "drawing", title: source.name, items: wheelItems }}>
     <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
       id: "selected", title: capitalize(nameOf(selected)), priority: 50,

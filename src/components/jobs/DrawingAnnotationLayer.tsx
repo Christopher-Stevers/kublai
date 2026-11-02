@@ -23,6 +23,7 @@ type DrawingAnnotationLayerProps = {
   hidden?: boolean;
   /** Keep ink visible while allowing every gesture to pass through to the viewer. */
   interactive?: boolean;
+  navigationOnly?: boolean;
   sharedScale?: SheetScale | null;
   displayUnit?: LengthUnit;
   showAngles?: boolean;
@@ -337,6 +338,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
   editing,
   hidden,
   interactive = true,
+  navigationOnly = false,
   sharedScale,
   displayUnit,
   showAngles = false,
@@ -391,7 +393,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
           .map((entity) => {
             if (entity.kind !== "markup" && entity.kind !== "issue")
               return null;
-            const selected = interactive && entity.id === selectedId;
+            const selected = interactive && !navigationOnly && entity.id === selectedId;
             const data =
               entity.kind === "markup"
                 ? editing?.id === entity.id
@@ -411,9 +413,9 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
                 entity={entity}
                 data={data}
                 selected={selected}
-                held={interactive && entity.id === heldId}
+                held={interactive && !navigationOnly && entity.id === heldId}
                 animate={!active && entity.id !== editedId}
-                interactive={interactive}
+                interactive={interactive && (!navigationOnly || (entity.kind === "markup" && entity.data.type === "link"))}
                 canEdit={selected && (canEditAnnotation?.(entity.id) ?? true)}
                 aspect={aspect}
                 sharedScale={sharedScale}

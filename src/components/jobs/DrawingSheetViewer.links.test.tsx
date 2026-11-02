@@ -84,7 +84,7 @@ function tap(frame: Element) {
   fireEvent.pointerUp(frame, point);
 }
 describe("PDF hyperlinks directly on drawings", () => {
-  it.each(["pan", undefined] as const)("opens retained links in %s with matching keyboard link regions", async (tool) => {
+  it.each(["pan", "viewing", undefined] as const)("opens retained links in %s with matching keyboard link regions", async (tool) => {
     const { frame, onPdfLink, image } = await open({ tool });
     const region = await screen.findByRole("link", { name: "Open PDF page 2" });
     expect(region).toHaveAttribute("x", "250");

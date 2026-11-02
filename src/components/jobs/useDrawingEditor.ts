@@ -137,14 +137,13 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
   }, [props.onUpdate, canEdit]);
   const distance = (a: DrawingPoint, b: DrawingPoint) => Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
   const down = (point: DrawingPoint | null, target: EventTarget | null) => {
-    if (!point || tool === "viewing") return false;
+    if (!point) return false;
     const element = target instanceof Element ? target.closest<SVGElement>("[data-annotation-id]") : null;
     const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
-    if (tool === "pan") {
-      if (!entity || (entity.kind !== "issue" && entity.kind !== "markup")) return false;
+    if (tool === "pan" || tool === "viewing") {
+      if (entity?.kind !== "markup" || entity.data.type !== "link") return false;
       const active: Gesture = { start: point, points: [point], moved: false, entity, activate: true };
       gesture.current = active;
-      if (holdsToSelect(entity)) startHold(active);
       return true;
     }
     if (tool === "select") {
@@ -265,17 +264,16 @@ export function useDrawingEditor(props: DrawingEditorProps, aspect: number, scre
     return true;
   };
   useEffect(() => {
-    if (tool === "viewing") return;
-    if (tool === "pan" && !props.selectedId && !gesture.current) return;
+    if (tool === "pan" || tool === "viewing") return;
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
-      if (event.key === "Escape" && (tool !== "pan" || gesture.current)) { event.preventDefault(); clear(); }
-      if (tool !== "pan" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
-      if (tool !== "pan" && event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
+      if (event.key === "Escape") { event.preventDefault(); clear(); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
+      if (event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
       const selected = props.annotations?.find(entity => entity.id === props.selectedId);
-      if ((event.key === "Delete" || event.key === "Backspace") && (tool === "select" || tool === "pan") && selected && props.onDelete && canEdit(selected) && (selectionLock.current.id !== selected.id || Date.now() >= selectionLock.current.until)) {
+      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && selected && props.onDelete && canEdit(selected) && (selectionLock.current.id !== selected.id || Date.now() >= selectionLock.current.until)) {
         event.preventDefault(); props.onDelete(selected.id);
       }
     };

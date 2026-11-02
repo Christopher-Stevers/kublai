@@ -182,7 +182,7 @@ describe("drawing Quickwheel", () => {
         group={{ id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] }}>
         <DrawingWheelRegistration group={selected ? { id: "item", title: "Selected item", priority: 50,
           items: [{ id: "style", label: "Style" }] } : null} />
-        <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="sheet" tool="pan"
+        <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="sheet" tool="select"
           annotations={[entity]} selectedId={selected} onUpdate={save} onActivate={activate}
           onSelect={select} onQuickWheelSelect={setSelected} />
       </DrawingQuickWheel>;
