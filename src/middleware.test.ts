@@ -34,6 +34,7 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 
 import middleware from "./middleware";
+import { SIGNED_OUT_MESSAGE } from "~/lib/signed-out";
 
 const SECRET = "unit-test-only-" + "x".repeat(48);
 function request(path: string, header?: string, cookie?: string, fetchMode?: string) {
@@ -149,7 +150,7 @@ describe("middleware provider isolation", () => {
       const response = await run(request(path, undefined, undefined, "cors"));
       expect(response).toEqual({
         kind: "json",
-        body: { error: { code: "SIGNED_OUT", message: expect.any(String) } },
+        body: { error: { code: "SIGNED_OUT", message: SIGNED_OUT_MESSAGE } },
         status: 401,
         headers: { "x-foremanhq-signed-out": "1" },
       });

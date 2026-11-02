@@ -54,6 +54,22 @@ import { markUserAction } from "~/lib/performance-marks";
 
 // A card gets the same object for as long as its part is unchanged, so only
 // changed parts redraw.
+// Parts keep their objects while the price book stays the same, so the
+// cards of unchanged parts don't redraw.
+const pricedParts = new WeakMap<object, WeakMap<object, object>>();
+function pricedPart<T extends object>(book: object, part: T, price: (part: T) => T): T {
+  let parts = pricedParts.get(book);
+  if (!parts) {
+    parts = new WeakMap();
+    pricedParts.set(book, parts);
+  }
+  let priced = parts.get(part) as T | undefined;
+  if (!priced) {
+    priced = price(part);
+    parts.set(part, priced);
+  }
+  return priced;
+}
 const cardItems = new WeakMap<ReplicacheMaterialListItem, ComponentProps<typeof MaterialListItem>["item"]>();
 function cardItem(item: ReplicacheMaterialListItem) {
   let card = cardItems.get(item);
@@ -161,18 +177,8 @@ export function MaterialListScreen({
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
   const {data:jobPriceBook}=useJobPricing(mlHeader?.kind === "tools" ? null : mlHeader?.jobId);
-  // Parts keep their objects while the price book stays the same, so the
-  // cards of unchanged parts don't redraw.
-  const pricedParts=useMemo(()=>new WeakMap<(typeof ordinaryItems)[number],(typeof ordinaryItems)[number]>(),[jobPriceBook]);
   const items=useMemo(()=>{
-    const annotated=jobPriceBook ? ordinaryItems.map(item=>{
-      let priced=pricedParts.get(item);
-      if(!priced){
-        priced={...item,jobPriceStatus:jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id)};
-        pricedParts.set(item,priced);
-      }
-      return priced;
-    }) : ordinaryItems;
+    const annotated=jobPriceBook ? ordinaryItems.map(item=>pricedPart(jobPriceBook,item,(part)=>({...part,jobPriceStatus:jobPriceStatus(jobPriceBook,part.partDefinition?.id,part.supplierId??part.supplierPart?.supplierId,part.supplierPart?.id)}))) : ordinaryItems;
     return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,item=>item.jobPriceStatus!=="unlisted") : annotated;
   },[ordinaryItems,jobPriceBook]);
   const jobDetail = useReplicacheJob(mlHeader?.jobId ?? "");
