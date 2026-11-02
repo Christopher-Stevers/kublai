@@ -81,7 +81,7 @@ export function SlipBadge({
             : `slip says ${fmt(slip, item.unit)}`
       }${edited ? `, set to ${fmt(amount ?? 0, item.unit)}` : ""}`}
       className={cn(
-        "flex items-center gap-1 rounded-full px-2 py-1 text-[11px] leading-none font-semibold shadow-sm ring-1 backdrop-blur",
+        "flex items-center gap-1 rounded-full px-2 py-1 text-[11px] leading-none font-semibold shadow-sm ring-1",
         check || over
           ? "bg-amber-100/95 text-amber-900 ring-amber-300 dark:bg-amber-950/90 dark:text-amber-200 dark:ring-amber-800"
           : lines.length
