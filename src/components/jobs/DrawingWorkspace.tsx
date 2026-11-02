@@ -165,8 +165,8 @@ const OTHER_TOOLS = new Set<DrawingTool>([
 const BAR_BUTTON =
   "h-11 w-full gap-1.5 rounded-md px-2 text-sm font-medium whitespace-normal";
 export const tools: Array<[DrawingTool, string]> = [
-  ["viewing", "Viewing"],
-  ["select", "Select"],
+  ["pan", "Viewing"],
+  ["select", "Edit Mode"],
   ["freehand", "Pen"],
   ["highlight", "Highlighter"],
   ["text", "Text"],
@@ -538,7 +538,7 @@ export function DrawingWorkspace({
   const selectTool = useCallback(
     (next: DrawingTool) => {
       requestMode("idle");
-      setTool(next);
+      setTool(next === "viewing" ? "pan" : next);
       setMarkupOpen(false);
       if (next === "viewing") {
         finishInlineText.current(false);
@@ -1778,7 +1778,8 @@ export function DrawingWorkspace({
     return command.wheelVisible === false ? [] : [{ id, label: command.label, icon: command.wheelIcon === false ? undefined : <command.Icon />, disabled: command.disabled, run: command.run }];
   });
   const chooseDrawingTool = (id: DrawingTool) => {
-    selectTool(id);
+    if (id === "pan" || id === "viewing") restTool.current = "pan";
+    selectTool(id === "pan" ? "viewing" : id);
     setPanel("");
     setHighlight(null);
     if (quickWheel && !OTHER_TOOLS.has(id)) setSelectedId(null);
@@ -1820,10 +1821,9 @@ export function DrawingWorkspace({
     { id: "tools", label: "Tools", icon: <WrenchIcon />, children: [
       ...tools.filter(([id]) => OTHER_TOOLS.has(id)).map(([id, label]) => {
         const Icon = TOOL_ICONS[id] ?? WrenchIcon;
-        return { id, label, icon: <Icon />, selected: tool === id, disabled: !writable && id !== "viewing", run: () => chooseDrawingTool(id) };
+        return { id, label, icon: <Icon />, selected: tool === id, disabled: !writable && id !== "pan" && id !== "viewing", run: () => chooseDrawingTool(id) };
       }),
       { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: pipeCommand },
-      { id: "pan", label: "Pan drawing", icon: <HandIcon />, run: finishTool },
     ] },
     { id: "page", label: "Page", icon: <FileTextIcon />, children: [
       ...(pageNavigation ? [
@@ -3665,7 +3665,7 @@ export function DrawingWorkspace({
                 </DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={
-                    bottomMode.pipe || bottomMode.measuring || tool === "pan"
+                    bottomMode.pipe || bottomMode.measuring
                       ? ""
                       : writable || tool === "viewing"
                         ? tool

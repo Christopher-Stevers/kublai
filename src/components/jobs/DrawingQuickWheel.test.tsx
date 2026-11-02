@@ -324,7 +324,7 @@ describe("drawing Quickwheel", () => {
           {
             id: "tools",
             label: "Tools",
-            children: [{ id: "select", label: "Select", run }],
+            children: [{ id: "select", label: "Edit Mode", run }],
           },
         ],
       },
@@ -346,7 +346,7 @@ describe("drawing Quickwheel", () => {
     dwell(1);
     expect(wheel()).toHaveAttribute("aria-label", "Tools quick wheel");
     expect(run).not.toHaveBeenCalled();
-    aim("Select");
+    aim("Edit Mode");
     dwell(699);
     expect(run).not.toHaveBeenCalled();
     dwell(1);
@@ -498,7 +498,7 @@ describe("drawing Quickwheel", () => {
         {
           id: "tools",
           label: "Tools",
-          children: [{ id: "select", label: "Select", run }],
+          children: [{ id: "select", label: "Edit Mode", run }],
         },
       ],
     });
@@ -510,7 +510,7 @@ describe("drawing Quickwheel", () => {
     fireEvent.keyDown(canvas(), { key: "F10", shiftKey: true });
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Tools" }));
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Mode" }));
     expect(run).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).toBeNull();
   });

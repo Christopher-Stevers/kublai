@@ -443,13 +443,13 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     openMenu("Tools");
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
-    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     expect(props.toolControls?.modeRequest?.mode).toBe("idle");
     expect(props.selectedId).toBeNull();
     expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
-    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
+    expect(screen.queryByRole("button", { name: "Pan drawing" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Tools" })).toBeVisible();
   });
   it("floats a Done button while anything is in use that goes back to Viewing or Select, whichever was last", () => {
     open();
@@ -469,7 +469,7 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "select");
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Mode" }));
     openMenu("Tools");
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -478,7 +478,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     expect(next.toolControls?.modeRequest?.mode).toBe("idle");
-    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
   });
   it("offers Viewing in the quick wheel and clears the selected markup", () => {
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === "foremanhq:drawing-quick-wheel:guest" ? "on" : null });
@@ -489,9 +489,10 @@ describe("drawing workspace workflows", () => {
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "Drawing tools" }));
     fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    expect(screen.queryByRole("button", { name: "Pan drawing" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
     const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
-    expect(next.tool).toBe("viewing");
+    expect(next.tool).toBe("pan");
     expect(next.selectedId).toBeNull();
     expect(mocks.save).not.toHaveBeenCalled();
   });
@@ -501,7 +502,7 @@ describe("drawing workspace workflows", () => {
     const viewing = screen.getByRole("menuitemradio", { name: "Viewing" });
     expect(viewing).not.toHaveAttribute("data-disabled");
     fireEvent.click(viewing);
-    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "viewing");
+    expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
   });
   it("finishes a text note when entering Viewing without reselecting the saved note", async () => {
     open(); chooseTool("text");
@@ -513,7 +514,7 @@ describe("drawing workspace workflows", () => {
     expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ data: { type: "text", text: "Keep this note" } });
     expect(screen.queryByLabelText("Text")).toBeNull();
     const next = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
-    expect(next.tool).toBe("viewing");
+    expect(next.tool).toBe("pan");
     expect(next.selectedId).toBeNull();
   });
   it("retains wheel navigation and an exit when offline annotation data is unavailable", () => {
@@ -1275,7 +1276,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(
       within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole(
         "button",
-        { name: "Select" },
+        { name: "Edit Mode" },
       ),
     );
     expect(
