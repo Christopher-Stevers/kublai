@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    name: Typecheck, lint and reliability tests
+    name: Typecheck and reliability tests
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -23,8 +23,21 @@ jobs:
           node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - run: pnpm typecheck
       - run: pnpm test:reliability
+  lint:
+    name: Lint (existing integration debt)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
   terraform:
     name: Validate infrastructure
     runs-on: ubuntu-24.04
@@ -84,7 +97,7 @@ jobs:
           cache-to: type=gha,mode=max
   deploy:
     name: Deploy to dedicated AWS host
-    needs: image
+    needs: [image, lint]
     if: github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true' && vars.AWS_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
