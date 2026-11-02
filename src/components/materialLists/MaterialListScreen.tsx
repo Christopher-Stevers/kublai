@@ -21,7 +21,7 @@ import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrd
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -45,12 +45,44 @@ import {
 import { ViewToggle } from "~/components/ui/view-toggle";
 import {
   useReplicacheMaterialList,
-  useReplicacheSyncing,
+  type ReplicacheMaterialListItem,
 } from "~/hooks/use-replicache-material-list";
 import { useReplicacheJob } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { markUserAction } from "~/lib/performance-marks";
+
+// A card gets the same object for as long as its part is unchanged, so only
+// changed parts redraw.
+const cardItems = new WeakMap<ReplicacheMaterialListItem, ComponentProps<typeof MaterialListItem>["item"]>();
+function cardItem(item: ReplicacheMaterialListItem) {
+  let card = cardItems.get(item);
+  if (!card) {
+    card = {
+      jobPriceStatus: item.jobPriceStatus,
+      id: item.id,
+      sentOrderItemId: item.sentOrderItemId,
+      sentOrder: item.sentOrder,
+      quantity: item.quantity,
+      unitCost: item.unitCost,
+      extendedPrice: item.extendedPrice,
+      descriptionSnapshot: item.descriptionSnapshot,
+      roomId: item.roomId,
+      roomName: item.roomName,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      pendingSync: item.pendingSync,
+      partDefinition: item.partDefinition ?? null,
+      selectedSupplierId: item.supplierId,
+      supplierPart: item.supplierPart ?? null,
+      addedBy: item.addedBy ?? null,
+    };
+    cardItems.set(item, card);
+  }
+  return card;
+}
+
+type VerifyStateHandler = NonNullable<ComponentProps<typeof MaterialListItem>["onVerifyStateChange"]>;
 
 /** A material list: its parts, ordering, and receiving what was ordered.
  * The Jobs shows it in place, where its own back button leads out. */
@@ -82,6 +114,22 @@ export function MaterialListScreen({
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const isBrowserOnline = useOnlineStatus();
+  // Each card keeps one receiving handler that calls the latest one, so
+  // cards don't redraw just because the screen did.
+  const verifyHandlers = useRef(new Map<string, { latest: VerifyStateHandler; stable: VerifyStateHandler }>());
+  const verifyHandler = (itemId: string, latest: VerifyStateHandler) => {
+    const known = verifyHandlers.current.get(itemId);
+    if (known) {
+      known.latest = latest;
+      return known.stable;
+    }
+    const entry: { latest: VerifyStateHandler; stable: VerifyStateHandler } = {
+      latest,
+      stable: (state) => entry.latest(state),
+    };
+    verifyHandlers.current.set(itemId, entry);
+    return entry.stable;
+  };
 
   const { materialList: mlHeader, items: unsortedItems, isLoading } =
     useReplicacheMaterialList(id);
@@ -101,8 +149,18 @@ export function MaterialListScreen({
   const suppliers = useReplicacheSuppliers();
   const { sortedItems: ordinaryItems } = useMaterialListSort(unsortedItems, suppliers);
   const {data:jobPriceBook}=useJobPricing(mlHeader?.kind === "tools" ? null : mlHeader?.jobId);
+  // Parts keep their objects while the price book stays the same, so the
+  // cards of unchanged parts don't redraw.
+  const pricedParts=useMemo(()=>new WeakMap<(typeof ordinaryItems)[number],(typeof ordinaryItems)[number]>(),[jobPriceBook]);
   const items=useMemo(()=>{
-    const annotated=ordinaryItems.map(item=>({...item,jobPriceStatus:jobPriceBook ? jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id) : item.jobPriceStatus}));
+    const annotated=jobPriceBook ? ordinaryItems.map(item=>{
+      let priced=pricedParts.get(item);
+      if(!priced){
+        priced={...item,jobPriceStatus:jobPriceStatus(jobPriceBook,item.partDefinition?.id,item.supplierId??item.supplierPart?.supplierId,item.supplierPart?.id)};
+        pricedParts.set(item,priced);
+      }
+      return priced;
+    }) : ordinaryItems;
     return jobPriceBook?.policy?.active ? listedPartsFirst(annotated,item=>item.jobPriceStatus!=="unlisted") : annotated;
   },[ordinaryItems,jobPriceBook]);
   const jobDetail = useReplicacheJob(mlHeader?.jobId ?? "");
@@ -153,14 +211,13 @@ export function MaterialListScreen({
   const canQuote = userData?.permissions.can["quotes.create"] ?? false;
   const canOrder =
     isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? false);
-  const isReplicacheSyncing = useReplicacheSyncing();
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
   const verifySupplierId = verifyOrder?.supplier?.id ?? null;
-  const visibleItems = verifyOrderId
+  const visibleItems = useMemo(() => verifyOrderId
     ? items.filter((item) => verifyOrder?.items.some((orderItem) =>
         matchesMaterialOrderLine(item, orderItem, verifySupplierId)))
-    : items;
+    : items, [items, verifyOrderId, verifyOrder, verifySupplierId]);
   // Ordered parts are received right on the list, as on an order's verify view.
   const receivableOrder = (item: Pick<(typeof items)[number], "sentOrderItemId" | "sentOrder">) =>
     !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
@@ -179,9 +236,9 @@ export function MaterialListScreen({
 
   // Each order's parts sit under their own heading; once one scrolls up its
   // receiving bar takes the place of the list's own actions.
-  const sections = verifyOrderId
+  const sections = useMemo(() => verifyOrderId
     ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, hasReceivedItems: verifyOrder?.items.some((item) => Number(item.receivedQuantity) > 0) ?? false, items: visibleItems }]
-    : materialSections(visibleItems, id);
+    : materialSections(visibleItems, id), [verifyOrderId, verifyOrder, visibleItems, id]);
   const listRef = useRef<HTMLDivElement>(null);
   const focusedSectionKey = useOrderInView(
     listRef,
@@ -400,25 +457,7 @@ export function MaterialListScreen({
                         return (
                           <MaterialListItem
                             key={item.id}
-                            item={{
-                              jobPriceStatus:item.jobPriceStatus,
-                              id: item.id,
-                              sentOrderItemId: item.sentOrderItemId,
-                              sentOrder: item.sentOrder,
-                              quantity: item.quantity,
-                              unitCost: item.unitCost,
-                              extendedPrice: item.extendedPrice,
-                              descriptionSnapshot: item.descriptionSnapshot,
-                              roomId: item.roomId,
-                              roomName: item.roomName,
-                              createdAt: item.createdAt,
-                              updatedAt: item.updatedAt,
-                              pendingSync: item.pendingSync,
-                              partDefinition: item.partDefinition ?? null,
-                              selectedSupplierId: item.supplierId,
-                              supplierPart: item.supplierPart ?? null,
-                              addedBy: item.addedBy ?? null,
-                            }}
+                            item={cardItem(item)}
                             materialListId={id}
                             suppliers={suppliers}
                             verifyMode={!!verifyOrderId || !!listOrder}
@@ -439,7 +478,7 @@ export function MaterialListScreen({
                             ) : undefined}
                             onVerifyStateChange={
                               orderLine
-                                ? (state) => {
+                                ? verifyHandler(item.id, (state) => {
                                     if (slipFound && slipEntry) {
                                       // The card reports from inside its own state update.
                                       queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
@@ -450,7 +489,7 @@ export function MaterialListScreen({
                                       receivedQuantity: state.receivedQuantity,
                                       verificationStatus: state.verificationStatus,
                                     });
-                                  }
+                                  })
                                 : undefined
                             }
                           />
@@ -468,7 +507,6 @@ export function MaterialListScreen({
                   items={visibleItems}
                   materialListId={id}
                   suppliers={suppliers}
-                  isReplicacheSyncing={isReplicacheSyncing}
                   isToolRequest={isToolRequest}
                   receiveFor={(item) => {
                     const listOrder = receivableOrder(item);

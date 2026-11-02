@@ -42,12 +42,13 @@ export function useOrderInView(
     const box = root.current;
     if (!box || !enabled) return;
     let frame = 0;
+    // The headings only change with the key, so they are found once rather
+    // than on every scrolled frame.
+    const headings = box.querySelectorAll<HTMLElement>(`[${attribute}]`);
     const measure = () => {
       frame = 0;
       let next = "";
-      for (const heading of box.querySelectorAll<HTMLElement>(
-        `[${attribute}]`,
-      )) {
+      for (const heading of headings) {
         const clip = clipOf(heading, box);
         const line = clip.atEnd
           ? clip.bottom

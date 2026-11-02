@@ -21,16 +21,19 @@ export function resolveReplicacheSyncStatus(
   return isSyncing ? "syncing" : "pending";
 }
 
-export function useReplicacheSyncing() {
+/** Whether material changes are being sent. Pass `enabled` false where the
+ * answer can't matter, e.g. a part with nothing waiting to sync, so every
+ * push and pull doesn't redraw it. */
+export function useReplicacheSyncing(enabled = true) {
   const sandbox = useTutorialSandbox();
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    if (sandbox) return;
+    if (sandbox || !enabled) return;
     return subscribeToMaterialListReplicacheSyncing(setIsSyncing);
-  }, [sandbox]);
+  }, [sandbox, enabled]);
 
-  return sandbox ? false : isSyncing;
+  return sandbox || !enabled ? false : isSyncing;
 }
 
 export interface ReplicacheMaterialListItem {
@@ -104,9 +107,23 @@ const EMPTY_DETAIL = {
 };
 export function useReplicacheMaterialList(materialListId: string) {
   const sandbox = useTutorialSandbox();
-  const useReader = useMemo(
-    () =>
-      createSharedReplicacheReader(async (tx) => {
+  const useReader = useMemo(() => {
+    // Unchanged parts keep their objects between reads, so a change to one
+    // part redraws only that part's card.
+    let previous = new Map<string, { key: string; item: ReplicacheMaterialListItem }>();
+    const reuse = (items: ReplicacheMaterialListItem[]) => {
+      const next = new Map<string, { key: string; item: ReplicacheMaterialListItem }>();
+      const result = items.map((item) => {
+        const key = JSON.stringify(item);
+        const prior = previous.get(item.id);
+        const kept = prior?.key === key ? prior.item : item;
+        next.set(item.id, { key, item: kept });
+        return kept;
+      });
+      previous = next;
+      return result;
+    };
+    return createSharedReplicacheReader(async (tx) => {
         const materialList = ((await tx.get(
           `materialList/${materialListId}`,
         )) ?? null) as unknown as ReplicacheMaterialList | null;
@@ -153,15 +170,14 @@ export function useReplicacheMaterialList(materialListId: string) {
         );
         return {
           materialList,
-          items: pricedItems,
+          items: reuse(pricedItems),
           materialTotal: pricedItems.reduce(
             (sum, item) => sum + Number(item.extendedPrice ?? 0),
             0,
           ),
           isLoading: false,
         };
-      }, EMPTY_DETAIL),
-    [materialListId],
-  );
+      }, EMPTY_DETAIL);
+  }, [materialListId]);
   return useReader(sandbox?.material ?? tryGetMaterialListReplicache());
 }

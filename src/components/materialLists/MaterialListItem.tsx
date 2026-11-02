@@ -182,7 +182,7 @@ function InitialsSyncBadge({
     >
       <div
         className={cn(
-          "relative flex h-[27px] w-[27px] items-center justify-center rounded-full bg-white/95 text-[9px] font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 backdrop-blur dark:bg-card/95 dark:text-foreground",
+          "relative flex h-[27px] w-[27px] items-center justify-center rounded-full bg-white/95 text-[9px] font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 dark:bg-card/95 dark:text-foreground",
           statusClasses,
         )}
       >
@@ -244,7 +244,9 @@ function MaterialListItemComponent({
     item.partDefinition?.displayName ||
     item.descriptionSnapshot ||
     "Unknown Part";
-  const isReplicacheSyncing = useReplicacheSyncing();
+  const isReplicacheSyncing = useReplicacheSyncing(
+    !syncStatus && !!item.pendingSync,
+  );
   const itemSyncStatus =
     syncStatus ??
     resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing);

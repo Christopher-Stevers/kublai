@@ -10,7 +10,7 @@ import {
   useSupplierLabel,
 } from "~/components/suppliers/SupplierLabel";
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,12 @@ interface SupplierSelectorProps {
   compact?: boolean;
 }
 
+const NO_SUPPLIER_PARTS: OfflineSupplierPartOption[] = [];
+const NO_CHOICES: ReturnType<typeof buildSupplierChoices> = {
+  standard: [],
+  jobSpecific: [],
+};
+
 export function SupplierSelector({
   currentVersion,
   itemId,
@@ -70,7 +76,10 @@ export function SupplierSelector({
   >(null);
   const [cachedSupplierParts, setCachedSupplierParts] = useState<
     OfflineSupplierPartOption[]
-  >([]);
+  >(NO_SUPPLIER_PARTS);
+  // The choices are only worked out once the menu has been opened.
+  const [hasOpened, setHasOpened] = useState(false);
+  if (isDropdownOpen && !hasOpened) setHasOpened(true);
   // A job's quoted price must never overwrite another job's cached price.
   const cacheKey = `${partDefinitionId}:${materialListId}:standard`;
 
@@ -85,7 +94,9 @@ export function SupplierSelector({
 
   useEffect(() => {
     setCachedSupplierParts(
-      sandbox ? [] : (getOfflineSupplierPartsByPart(cacheKey) ?? []),
+      sandbox
+        ? NO_SUPPLIER_PARTS
+        : (getOfflineSupplierPartsByPart(cacheKey) ?? NO_SUPPLIER_PARTS),
     );
   }, [cacheKey, isDropdownOpen, sandbox]);
 
@@ -116,11 +127,17 @@ export function SupplierSelector({
       ? currentSupplierPart.supplier.name
       : (currentSupplier?.name ?? "No supplier"));
 
-  const groups = buildSupplierChoices(
-    partDefinitionId,
-    allSuppliers,
-    supplierParts,
-    entries,
+  const groups = useMemo(
+    () =>
+      hasOpened
+        ? buildSupplierChoices(
+            partDefinitionId,
+            allSuppliers,
+            supplierParts,
+            entries,
+          )
+        : NO_CHOICES,
+    [hasOpened, partDefinitionId, allSuppliers, supplierParts, entries],
   );
   const handleSelect = (choice: SupplierChoice) => {
     setOptimisticSupplierPartId(choice.listing.id);

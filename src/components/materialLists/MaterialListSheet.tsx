@@ -35,7 +35,9 @@ export function MaterialListSheet({
   ) => MaterialListTableRowProps["receive"];
 }) {
   const showMoney = useFinancialVisibility();
-  const syncing = useReplicacheSyncing();
+  const syncing = useReplicacheSyncing(
+    isReplicacheSyncing === undefined && items.some((item) => item.pendingSync),
+  );
   const supplierLabel = isToolRequest ? "From" : "Supplier";
   const money = showMoney ? [isToolRequest ? " " : "Each", isToolRequest ? "  " : "Total"] : [];
   // Parts not ordered yet come first; each order follows under its own
@@ -93,7 +95,9 @@ export function MaterialListSheet({
                 item={item}
                 materialListId={materialListId}
                 suppliers={suppliers}
-                isReplicacheSyncing={isReplicacheSyncing ?? syncing}
+                // Only rows still waiting to sync show the sync state, so
+                // the rest skip redrawing on every push and pull.
+                isReplicacheSyncing={!!item.pendingSync && (isReplicacheSyncing ?? syncing)}
                 isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
                 receive={receiveFor?.(item)}
               />
