@@ -26,7 +26,10 @@
     "typecheck": "tsc --noEmit",
     "lint:strict": "eslint src",
     "test": "vitest run",
-    "test:reliability": "tsx --test src/server/rooms/upload-session.node-test.ts src/server/rooms/bounded-cache.node-test.ts scripts/service-worker.node-test.mjs"
+    "test:reliability": "tsx --test src/server/rooms/upload-session.node-test.ts src/server/rooms/bounded-cache.node-test.ts scripts/service-worker.node-test.mjs",
+    "db:generate:aws": "drizzle-kit generate --config=drizzle.aws.config.ts",
+    "db:migrate:aws": "tsx scripts/migrate-aws.ts",
+    "db:studio:aws": "drizzle-kit studio --config=drizzle.aws.config.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",

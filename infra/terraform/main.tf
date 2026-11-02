@@ -159,9 +159,9 @@ resource "aws_iam_role_policy" "host" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = "*" },
     { Effect = "Allow", Action = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"], Resource = aws_ecr_repository.app.arn },
-    { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/app-env" },
+    { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = ["arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/app-env", "arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/migration-env"] },
     # Managed SSM core includes parameter reads; this explicit deny narrows them.
-    { Effect = "Deny", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], NotResource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/app-env" }
+    { Effect = "Deny", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], NotResource = ["arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/app-env", "arn:aws:ssm:${var.region}:${var.account_id}:parameter/foremanhq/migration-env"] }
   ] })
 }
 resource "aws_iam_instance_profile" "host" { role = aws_iam_role.host.name }

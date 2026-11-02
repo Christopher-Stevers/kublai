@@ -56,7 +56,7 @@ jobs:
       - run: terraform test
   image:
     name: Build container
-    needs: [verify, terraform]
+    needs: [verify, terraform, migrations]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -114,3 +114,34 @@ jobs:
         env:
           IMAGE: 337658133209.dkr.ecr.us-east-2.amazonaws.com/foremanhq@${{ needs.image.outputs.digest }}
         run: python3 infra/aws/send-deploy.py
+
+  migrations:
+    name: Fresh PostgreSQL migrations and repeat run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: foremanhq_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_MIGRATION_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/foremanhq_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare runtime role
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U postgres -d foremanhq_ci -v ON_ERROR_STOP=1 -c 'CREATE ROLE foreman_app NOLOGIN'
+      - run: pnpm db:migrate:aws
+      - run: pnpm db:migrate:aws

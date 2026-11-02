@@ -9,14 +9,19 @@ mountpoint -q /srv/foremanhq
 install -d -m 700 /etc/foremanhq /var/lib/foremanhq
 umask 077
 env_file=$(mktemp /etc/foremanhq/env.XXXXXX)
-trap 'rm -f "$env_file"' EXIT
+migration_env=$(mktemp /etc/foremanhq/migration.XXXXXX)
+trap 'rm -f "$env_file" "$migration_env"' EXIT
 aws ssm get-parameter --region us-east-2 --name /foremanhq/app-env --with-decryption --query Parameter.Value --output text > "$env_file"
 for key in DATABASE_URL CLERK_SECRET_KEY STRIPE_SECRET_KEY; do
   grep -q "^${key}=.\+" "$env_file" || { echo "Missing runtime setting: $key" >&2; exit 1; }
 done
 aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin "${image%%/*}"
 docker pull "$image"
-# Check the DB and app without replacing the active container or running migrations.
+aws ssm get-parameter --region us-east-2 --name /foremanhq/migration-env --with-decryption --query Parameter.Value --output text > "$migration_env"
+# Apply reviewed, versioned migrations before launching the candidate.
+# The application container never receives schema-owner credentials.
+docker run --rm --env-file "$migration_env" --memory 512m --pids-limit 64 --security-opt no-new-privileges --cap-drop ALL "$image" node --import tsx scripts/migrate-aws.ts
+# Check the DB and app without replacing the active container after applying reviewed migrations.
 docker rm -f foremanhq-candidate >/dev/null 2>&1 || true
 docker run -d --name foremanhq-candidate --env-file "$env_file" --memory 1400m --memory-swap 1400m --pids-limit 256 --security-opt no-new-privileges --cap-drop ALL --mount type=bind,src=/srv/foremanhq/uploads,dst=/app/uploads "$image" >/dev/null
 healthy=false
@@ -32,7 +37,7 @@ if [[ -n "$old_image" ]]; then
   docker stop foremanhq-previous >/dev/null
 fi
 start() {
-  docker run -d --name foremanhq --restart unless-stopped --env-file "$env_file" --memory 1400m --memory-swap 1400m --pids-limit 256 --security-opt no-new-privileges --cap-drop ALL -p 127.0.0.1:3000:3000 --mount type=bind,src=/srv/foremanhq/uploads,dst=/app/uploads "$image" >/dev/null
+  docker run -d --name foremanhq --network foremanhq --restart unless-stopped --env-file "$env_file" --memory 1400m --memory-swap 1400m --pids-limit 256 --security-opt no-new-privileges --cap-drop ALL -p 127.0.0.1:3000:3000 --mount type=bind,src=/srv/foremanhq/uploads,dst=/app/uploads "$image" >/dev/null
 }
 healthy=false
 if start; then
