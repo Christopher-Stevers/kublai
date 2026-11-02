@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { MaterialStage, type MaterialStageProps } from "./MaterialStage";
@@ -67,8 +68,8 @@ it("leaves ungrouped selection and the All option intact", () => {
   expect(input.onMaterialSelect).toHaveBeenLastCalledWith(null);
 });
 
-it("flattens grouped materials only in the wheel and selects a nested material directly", async () => {
-  const { QuickWheelSurface } = await import("./QuickWheel");
+it("flattens grouped materials only in the arc scroller and selects a nested material directly", async () => {
+  const { ArcScrollerSurface } = await import("~/components/ui/arc-scroller");
   const { wheelUsageId } = await import("~/lib/order-wheel-usage");
   vi.useFakeTimers();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
@@ -84,54 +85,30 @@ it("flattens grouped materials only in the wheel and selects a nested material d
   });
   try {
     const input = props();
-    const { container } = render(
-      <QuickWheelSurface
+    render(
+      <ArcScrollerSurface
         usage={{ [wheelUsageId("Select Material", "Gasketed DR35")]: 10 }}
       >
         <MaterialStage {...input} />
-      </QuickWheelSurface>,
+      </ArcScrollerSurface>,
     );
-    // Cards still browse groups; opening the wheel from inside PVC still shows all materials.
+    // Cards still browse groups; opening the arc from inside PVC still shows all materials.
     fireEvent.click(screen.getByRole("button", { name: "PVC" }));
     expect(screen.queryByRole("button", { name: "Copper" })).toBeNull();
-    const pointer = {
-      pointerId: 1,
-      isPrimary: true,
-      button: 0,
-      clientX: 200,
-      clientY: 300,
-    };
-    fireEvent.pointerDown(
-      screen.getByRole("heading", { name: "Select PVC type" }),
-      pointer,
-    );
-    const wheel = screen.getByRole("status");
-    expect(wheel).toHaveAttribute("aria-label", "Select Material quick wheel");
-    const labels = Array.from(wheel.querySelectorAll("foreignObject"));
-    expect(labels.map((n) => n.textContent).sort()).toEqual(
-      [
-        "All",
-        "Copper",
-        "Gasketed DR25",
-        "Gasketed DR35",
-        "PVC DWV",
-        "XFR",
-      ].sort(),
-    );
-    const label = labels.find((n) => n.textContent === "Gasketed DR35")!;
-    const x =
-      Number(label.getAttribute("x")) +
-      Number(label.getAttribute("width")) / 2 +
-      30;
-    const y =
-      Number(label.getAttribute("y")) +
-      Number(label.getAttribute("height")) / 2 +
-      130;
-    fireEvent.pointerMove(window, { ...pointer, clientX: x, clientY: y });
-    await act(async () => vi.advanceTimersByTime(500));
-    expect(input.onMaterialSelect).toHaveBeenCalledExactlyOnceWith("dr35");
+    const pointer = { pointerId: 1, isPrimary: true, button: 0, clientX: 200, clientY: 300 };
+    fireEvent.pointerDown(screen.getByRole("heading", { name: "Select PVC type" }), pointer);
+    act(() => vi.advanceTimersByTime(400));
     fireEvent.pointerUp(window, pointer);
-    expect(container.querySelector("[data-quick-wheel]")).toBeNull();
+    act(() => vi.advanceTimersByTime(500));
+    const arc = screen.getByRole("dialog", { name: "Select Material" });
+    const labels = Array.from(arc.querySelectorAll("[data-arc-choice]")).map((n) => n.getAttribute("aria-label"));
+    // Most used first, then the stage's own order.
+    expect(labels[0]).toBe("Gasketed DR35");
+    expect([...labels].sort()).toEqual(
+      ["All", "Copper", "Gasketed DR25", "Gasketed DR35", "PVC DWV", "XFR"].sort(),
+    );
+    fireEvent.click(within(arc).getByRole("button", { name: "Gasketed DR35" }));
+    expect(input.onMaterialSelect).toHaveBeenCalledExactlyOnceWith("dr35");
   } finally {
     cleanup();
     vi.restoreAllMocks();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuickWheelOptions } from "./QuickWheel";
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useClientPagination } from "~/components/ui/list-pagination";
@@ -58,7 +58,7 @@ export function MaterialStage({
     setBrowsingPath(next);
     pagination.setPage(1);
   }
-  useQuickWheelOptions("Select Material", [
+  useArcScrollerOptions("Select Material", [
     { label: "All", select: () => onMaterialSelect(null) },
     ...materials.map(material => ({ label: material.name, select: () => onMaterialSelect(material.id) })),
   ]);

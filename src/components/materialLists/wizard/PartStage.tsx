@@ -1,6 +1,6 @@
 import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
 import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
-import { useQuickWheelOptions } from "./QuickWheel";
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { packContents, packsFromPieces } from "~/lib/pack-quantity";
 import { PackQuantityControls } from "../PackQuantityControls";
 import {
@@ -600,7 +600,7 @@ export function PartStage({
   useEffect(() => {
     onVisiblePartsChange?.(JSON.parse(visibleIds) as string[]);
   }, [visibleIds, onVisiblePartsChange]);
-  useQuickWheelOptions(actionMode === "edit" ? "Edit Part" : "Add Part", partsForSelection.map(part => ({
+  useArcScrollerOptions(actionMode === "edit" ? "Edit Part" : "Add Part", partsForSelection.map(part => ({
     label: part.displayName,
     select: () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part),
   })));

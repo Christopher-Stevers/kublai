@@ -21,8 +21,8 @@ import {
   DialogDescription,
 } from "~/components/ui/dialog";
 import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
-import { useDrawingWheelGroup } from "./DrawingQuickWheel";
-import { drawingWheelStyleItems } from "./drawing-wheel-style";
+import { useDrawingArcGroup } from "./DrawingArcMenu";
+import { drawingArcStyleItems } from "./drawing-arc-style";
 import { StyleStrip } from "./StyleStrip";
 import type { SheetMeasureBarProps } from "./SheetMeasureBar";
 
@@ -83,7 +83,7 @@ export function DrawingMeasureWheel({
     disabled: saving,
     run: () => onUnit(option.value),
   }));
-  useDrawingWheelGroup(
+  useDrawingArcGroup(
     measuring
       ? {
           id: "measurement",
@@ -221,7 +221,7 @@ export function DrawingMeasureWheel({
                   id: "style",
                   label: "Style",
                   icon: <PaletteIcon />,
-                  children: drawingWheelStyleItems({
+                  children: drawingArcStyleItems({
                     color,
                     width: lineWidth,
                     onColor,

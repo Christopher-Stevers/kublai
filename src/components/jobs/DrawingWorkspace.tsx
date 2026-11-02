@@ -12,8 +12,8 @@ import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { rememberHyperlinkSource } from "~/hooks/use-hyperlink-back";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { useDrawingPageMode } from "./DrawingPageMode";
-import { DrawingQuickWheel, DrawingWheelRegistration, type DrawingWheelItem } from "./DrawingQuickWheel";
-import { drawingWheelStyleItems } from "./drawing-wheel-style";
+import { DrawingArcMenu, DrawingArcRegistration, type DrawingArcItem } from "./DrawingArcMenu";
+import { drawingArcStyleItems } from "./drawing-arc-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
 import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
@@ -1885,7 +1885,7 @@ export function DrawingWorkspace({
   };
   type CommandId = keyof typeof commands;
   type Command = { label: string; Icon: LucideIcon; run: () => void; disabled?: boolean; barVisible?: boolean; wheelVisible?: boolean; wheelIcon?: boolean };
-  const wheelCommands = (...ids: CommandId[]): DrawingWheelItem[] => ids.flatMap(id => {
+  const wheelCommands = (...ids: CommandId[]): DrawingArcItem[] => ids.flatMap(id => {
     const command: Command = commands[id];
     return command.wheelVisible === false ? [] : [{ id, label: command.label, icon: command.wheelIcon === false ? undefined : <command.Icon />, disabled: command.disabled, run: command.run }];
   });
@@ -1912,13 +1912,13 @@ export function DrawingWorkspace({
   const changeMarkupColor = (stroke: string) => setStyle(old => ({ ...old, stroke, fill: old.fill === "none" ? "none" : `${quickWheel ? stroke : stroke.slice(0, 7)}33` }));
   const changeMarkupWidth = (width: number) => setStyle(old => ({ ...old, width }));
   const toggleMarkupFill = () => setStyle(old => ({ ...old, fill: old.fill === "none" ? `${old.stroke.slice(0, 7)}33` : "none" }));
-  const wheelStyle = drawingWheelStyleItems({
+  const wheelStyle = drawingArcStyleItems({
     color: style.stroke, width: style.width,
     onColor: changeMarkupColor,
     onWidth: changeMarkupWidth,
     onCustom: () => setWheelStyleOpen(true),
   });
-  const wheelItems: DrawingWheelItem[] = [
+  const wheelItems: DrawingArcItem[] = [
     { id: "measure", label: "Measure", icon: <RulerIcon />, run: measureCommand },
     { id: "markup", label: "Markup", icon: <PenLineIcon />, disabled: !writable, children: [
       ...tools.filter(([id]) => !OTHER_TOOLS.has(id)).map(([id, label]) => {
@@ -1976,9 +1976,9 @@ export function DrawingWorkspace({
   });
 
   return (
-    <DrawingQuickWheel enabled={quickWheel && !toolInUse} resetKey={fullscreen}
+    <DrawingArcMenu enabled={quickWheel && !toolInUse} resetKey={fullscreen}
       group={{ id: "drawing", title: source.name, items: wheelItems }}>
-    <DrawingWheelRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
+    <DrawingArcRegistration group={selected?.kind === "markup" && !form && !compareIds ? {
       id: "selected", title: capitalize(nameOf(selected)), priority: 50,
       items: [
         ...markupActions(selected).map(action => ({ id: action.key, label: action.label, icon: <action.icon />, disabled: action.disabled, run: action.run })),
@@ -3897,6 +3897,6 @@ export function DrawingWorkspace({
         </DialogContent>
       </Dialog>
     </div>
-    </DrawingQuickWheel>
+    </DrawingArcMenu>
   );
 }

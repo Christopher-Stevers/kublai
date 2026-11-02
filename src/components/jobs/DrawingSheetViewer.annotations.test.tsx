@@ -42,7 +42,7 @@ describe("drawing annotation tools in the real viewer", () => {
       const onLongPressSelect = vi.fn(), onActivate = vi.fn(), onUpdate = vi.fn();
       const { container, frame } = open({ tool: "pan", annotations: [markup({ type })], onLongPressSelect, onActivate, onUpdate });
       const target = container.querySelector('[data-annotation-id="markup"]')!;
-      expect(target).toHaveAttribute("data-quick-wheel-ignore");
+      expect(target).toHaveAttribute("data-arc-ignore");
       expect(target).not.toHaveClass("pointer-events-none");
       fireEvent.pointerDown(target, { pointerId: 1, pointerType: "touch", button: 0, clientX: 250, clientY: 250 });
       act(() => { vi.advanceTimersByTime(MARKUP_LONG_PRESS_MS - 1); });

@@ -20,7 +20,7 @@ import type { DrawingAppearance } from "~/lib/drawing-appearance";
 import type { DrawingComparison } from "./DrawingComparisonLayer";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
-import { useDrawingWheelGroup } from "./DrawingQuickWheel";
+import { useDrawingArcGroup } from "./DrawingArcMenu";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 
 export type DrawingCompareSheet = {
@@ -199,7 +199,7 @@ export function DrawingCompare({
     ),
   }));
   const configure = multi ? [selected] : drawings;
-  const quickWheel = useDrawingWheelGroup({ id: "comparison", title: "Compare drawings", priority: 5, items: [
+  const quickWheel = useDrawingArcGroup({ id: "comparison", title: "Compare drawings", priority: 5, items: [
     ...(onEditDrawings ? [{ id: "choose", label: "Choose Drawings", icon: <FilesIcon />, run: onEditDrawings }] : []),
     { id: "mode", label: "Comparison mode", icon: <LayersIcon />, children: [
       ...([ ["overlay", "Overlay"], ["difference", "Changes"], ["side-by-side", "Side by side"], ["wipe", "Wipe"] ] as const).map(([value, label]) => ({

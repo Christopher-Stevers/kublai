@@ -7,7 +7,7 @@ import { LENGTH_UNITS, type LengthUnit } from "~/lib/sheet-measure";
 import { PIPE_SYSTEM_NAMES } from "~/lib/pipe-system";
 import { StyleStrip } from "./StyleStrip";
 import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
-import { useDrawingWheelGroup } from "./DrawingQuickWheel";
+import { useDrawingArcGroup } from "./DrawingArcMenu";
 
 export function PipeSystemPanel({
   reading,
@@ -83,7 +83,7 @@ export function PipeSystemPanel({
   const componentLabel=analyzingComponents?"Identifying items…":componentCount!=null?`Fittings & valves (${componentCount})`:"Fittings & valves";
   const [expanded, setExpanded] = useState(false);
   const optionsId = useId();
-  const quickWheel = useDrawingWheelGroup({ id: "pipe", title: "Pipe system", priority: 20, items: [
+  const quickWheel = useDrawingArcGroup({ id: "pipe", title: "Pipe system", priority: 20, items: [
     ...(onDone ? [{ id: "done", label: "Done", run: onDone }] : []),
     { id: "systems", label: "Choose system", disabled: codes.length === 0, children: [
       { id: "connected", label: "Tap a pipe", selected: !system, run: () => onSystem("") },

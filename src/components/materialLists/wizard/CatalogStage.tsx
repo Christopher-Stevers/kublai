@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuickWheelOptions } from "./QuickWheel";
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import {
   WIZARD_OPTION_LABEL_CLASS,
@@ -43,7 +43,7 @@ export function CatalogStage({
   onPrefabsSelect,
 }: CatalogStageProps) {
   const pagination = useClientPagination(catalogs);
-  const choose = useQuickWheelOptions("Select Catalog", [
+  const choose = useArcScrollerOptions("Select Catalog", [
     { label: "All", select: () => onCatalogSelect(null) },
     ...(onPrefabsSelect ? [{ label: "Prefabs", select: onPrefabsSelect }] : []),
     ...catalogs.map(catalog => ({ label: catalog.name, select: () => onCatalogSelect(catalog.id) })),

@@ -91,7 +91,7 @@ import {
   type MeasurePrecision,
 } from "~/lib/sheet-measure-precision";
 import { SheetMeasureBar } from "./SheetMeasureBar";
-import { useDrawingWheelGesture } from "./DrawingQuickWheel";
+import { useDrawingArcGesture } from "./DrawingArcMenu";
 import { DrawingTileLayer } from "./DrawingTileLayer";
 import { DrawingPdfLayer } from "./DrawingPdfLayer";
 import { DrawingPdfLinkLayer } from "./DrawingPdfLinkLayer";
@@ -2190,7 +2190,7 @@ export function DrawingSheetViewer({
     reportMode?.({ measuring, pipe: pipeMode });
   }, [measuring, pipeMode, reportMode]);
 
-  useDrawingWheelGesture(appearanceId, event => {
+  useDrawingArcGesture(appearanceId, event => {
     if (!measuring && !pipeMode && annotationTool === "select" && event.target instanceof Element && frame.current?.contains(event.target)) {
       const id = event.target.closest("[data-annotation-id]")?.getAttribute("data-annotation-id");
       if (id) (editorProps.onQuickWheelSelect ?? editorProps.onSelect)?.(id);
@@ -2242,7 +2242,7 @@ export function DrawingSheetViewer({
       <div
         ref={frame}
         data-drawing-keyboard-surface
-        data-drawing-wheel-canvas
+        data-drawing-arc-canvas
         tabIndex={0}
         role="region"
         aria-label={`${alt} viewer`}

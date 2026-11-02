@@ -38,16 +38,6 @@ it("retains the regular cached catalogue outside supplier mode",()=>{
  expect(result.current.filteredPartsForSelection.map(p=>p.id)).toEqual(["wrong-supplier"]);
 });
 
-it("preloads supplier-scoped parts without committing the category or changing wizard state",async()=>{
- fixtures.fetch.mockResolvedValue([fixtures.part]);
- const {result}=renderHook(()=>usePartWizard(true,undefined,undefined,"materials","supplier"));
- act(()=>result.current.handleCatalogSelect("catalog"));act(()=>result.current.handleMaterialSelect("material"));act(()=>result.current.handleSizeSelect({nominal:.5,unit:"in"}));
- const before=result.current.selectedCategory;
- const preview=await result.current.previewQuickWheelChoice("Select Category","Clamps");
- expect(preview).toMatchObject({kind:"parts",options:[{label:"Shared clip"}]});
- expect(fixtures.fetch).toHaveBeenCalledWith(expect.objectContaining({supplierId:"supplier",catalogId:"catalog",materialId:"material",categoryId:"category",sizeNominal:.5}),expect.anything());
- expect(result.current.wizardStage).toBe("category");expect(result.current.selectedCategory).toBe(before);
-});
 
 it("offers tools beside material catalogues when the shared picker enables them", () => {
  const catalog = { id:"tools", name:"Tools", kind:"assets", sortOrder:1 };

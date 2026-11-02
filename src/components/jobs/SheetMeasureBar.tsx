@@ -1,6 +1,6 @@
 "use client";
 import { MeasurementLayerPicker } from "./MeasurementLayerPicker";
-import { useDrawingWheelEnabled } from "./DrawingQuickWheel";
+import { useDrawingArcEnabled } from "./DrawingArcMenu";
 import { DrawingMeasureWheel } from "./DrawingMeasureWheel";
 
 import {
@@ -91,7 +91,7 @@ export type SheetMeasureBarProps = {
 };
 
 export function SheetMeasureBar(props: SheetMeasureBarProps) {
-  const quickWheel = useDrawingWheelEnabled();
+  const quickWheel = useDrawingArcEnabled();
   return quickWheel ? <DrawingMeasureWheel {...props} /> : <RegularSheetMeasureBar {...props} />;
 }
 

@@ -1,8 +1,8 @@
 import { CircleIcon, PaletteIcon } from "lucide-react";
 import { LINE_WIDTHS, MEASURE_COLORS } from "~/lib/sheet-measure-color";
-import type { DrawingWheelItem } from "./DrawingQuickWheel";
+import type { DrawingArcItem } from "./DrawingArcMenu";
 
-export function drawingWheelStyleItems({
+export function drawingArcStyleItems({
   color,
   width,
   onColor,
@@ -14,7 +14,7 @@ export function drawingWheelStyleItems({
   onColor: (color: string) => void;
   onWidth?: (width: number) => void;
   onCustom: () => void;
-}): DrawingWheelItem[] {
+}): DrawingArcItem[] {
   return [
     {
       id: "colour",

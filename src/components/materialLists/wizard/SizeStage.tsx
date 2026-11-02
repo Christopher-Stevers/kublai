@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuickWheelOptions } from "./QuickWheel";
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { wizardSizeOptions } from "~/lib/wizard-size-options";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { formatSize, formatSizeDimensions } from "~/lib/size-utils";
@@ -302,7 +302,7 @@ export function SizeStage({
   isOnline = true,
 }: SizeStageProps) {
   const pagination = useClientPagination(availableSizes ?? []);
-  useQuickWheelOptions("Select Size", [
+  useArcScrollerOptions("Select Size", [
     { label: "All", select: () => commitSize(null) },
     ...wizardSizeOptions(
       (availableSizes ?? []).flatMap<SizeSelection>((size) =>

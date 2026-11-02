@@ -8,11 +8,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  DrawingQuickWheel,
-  DrawingWheelRegistration,
-  useDrawingWheelGesture,
-  type DrawingWheelGroup,
-} from "./DrawingQuickWheel";
+  DrawingArcMenu,
+  DrawingArcRegistration,
+  useDrawingArcGesture,
+  type DrawingArcGroup,
+} from "./DrawingArcMenu";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { useState } from "react";
 import type { DrawingEntity } from "~/lib/drawing-workspace";
@@ -43,9 +43,9 @@ const pointer = {
   clientY: 400,
 };
 function Canvas({ claim = () => undefined }: { claim?: () => void }) {
-  useDrawingWheelGesture("canvas", claim);
+  useDrawingArcGesture("canvas", claim);
   return (
-    <div data-drawing-wheel-canvas data-testid="canvas" tabIndex={0}>
+    <div data-drawing-arc-canvas data-testid="canvas" tabIndex={0}>
       <button>Existing control</button>
       <span role="button" data-annotation-id="markup" tabIndex={0}>
         Markup
@@ -55,28 +55,22 @@ function Canvas({ claim = () => undefined }: { claim?: () => void }) {
   );
 }
 const canvas = () => screen.getByTestId("canvas");
-const wheel = () => document.querySelector<HTMLElement>("[data-quick-wheel]");
+const wheel = () => document.querySelector<HTMLElement>("[data-arc-scroller]");
 const dwell = (ms = 700): void => {
   void act(() => {
     vi.advanceTimersByTime(ms);
   });
 };
 function aim(label: string) {
-  const current = wheel()!;
-  const tiles = [...current.querySelectorAll("foreignObject")];
-  const tile = tiles.find((item) => item.textContent === label)!;
-  expect(tile, `wheel choice ${label}`).toBeDefined();
-  const x =
-    Number(tile.getAttribute("x")) + Number(tile.getAttribute("width")) / 2;
-  const y =
-    Number(tile.getAttribute("y")) + Number(tile.getAttribute("height")) / 2;
-  fireEvent.pointerMove(window, { ...pointer, clientX: x, clientY: y });
+  const choice = wheel()!.querySelector<HTMLElement>(`[data-arc-choice][aria-label="${label}"]`);
+  expect(choice, `arc choice ${label}`).not.toBeNull();
+  fireEvent.click(choice!);
 }
-function open(group: DrawingWheelGroup, claim?: () => void, enabled = true) {
+function open(group: DrawingArcGroup, claim?: () => void, enabled = true) {
   return render(
-    <DrawingQuickWheel enabled={enabled} group={group}>
+    <DrawingArcMenu enabled={enabled} group={group}>
       <Canvas claim={claim} />
-    </DrawingQuickWheel>,
+    </DrawingArcMenu>,
   );
 }
 beforeEach(() => {
@@ -99,35 +93,35 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("drawing Quickwheel", () => {
-  it("closes an open wheel when leaving fullscreen without remounting the drawing", () => {
+describe("drawing arc menu", () => {
+  it("closes an open arc when leaving fullscreen without remounting the drawing", () => {
     const group = { id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] };
-    const view = render(<DrawingQuickWheel enabled resetKey={true} group={group}><Canvas /></DrawingQuickWheel>);
+    const view = render(<DrawingArcMenu enabled resetKey={true} group={group}><Canvas /></DrawingArcMenu>);
     const drawing = canvas();
     fireEvent.contextMenu(drawing, {button: 2, clientX: 200, clientY: 400});
     expect(wheel()).not.toBeNull();
-    view.rerender(<DrawingQuickWheel enabled={false} allowItemHold resetKey={false} group={group}><Canvas /></DrawingQuickWheel>);
+    view.rerender(<DrawingArcMenu enabled={false} allowItemHold resetKey={false} group={group}><Canvas /></DrawingArcMenu>);
     expect(wheel()).toBeNull();
     expect(canvas()).toBe(drawing);
-    // Fullscreen can be opened again; the old wheel does not reappear.
-    view.rerender(<DrawingQuickWheel enabled resetKey={true} group={group}><Canvas /></DrawingQuickWheel>);
+    // Fullscreen can be opened again; the old arc does not reappear.
+    view.rerender(<DrawingArcMenu enabled resetKey={true} group={group}><Canvas /></DrawingArcMenu>);
     expect(wheel()).toBeNull();
   });
-  it("borrows the wheel for an annotation hold and restores regular controls after selection or dismissal", () => {
+  it("borrows the arc menu for an annotation hold and restores regular controls after selection or dismissal", () => {
     const action = vi.fn(), changed = vi.fn();
     function RegularDrawing() {
       const [temporary, setTemporary] = useState(false);
       const [selected, setSelected] = useState(false);
-      return <DrawingQuickWheel enabled={temporary} allowItemHold
+      return <DrawingArcMenu enabled={temporary} allowItemHold
         onTemporaryChange={value => { changed(value); setTemporary(value); }}
         group={{ id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] }}>
-        <DrawingWheelRegistration group={selected ? {
+        <DrawingArcRegistration group={selected ? {
           id: "selected", title: "Saved dimension", priority: 50,
           items: [{ id: "edit", label: "Edit dimension", run: action }],
         } : null} />
         <Canvas claim={() => setSelected(true)} />
         {!temporary && <span>Regular toolbar</span>}
-      </DrawingQuickWheel>;
+      </DrawingArcMenu>;
     }
     render(<RegularDrawing />);
     fireEvent.pointerDown(canvas(), pointer);
@@ -146,7 +140,7 @@ describe("drawing Quickwheel", () => {
     expect(changed).not.toHaveBeenCalled();
     fireEvent.pointerDown(target, pointer);
     dwell();
-    expect(wheel()).toHaveAttribute("aria-label", "Saved dimension quick wheel");
+    expect(wheel()).toHaveAttribute("aria-label", "Saved dimension");
     expect(screen.queryByText("Regular toolbar")).toBeNull();
     aim("Edit dimension");
     dwell();
@@ -157,7 +151,8 @@ describe("drawing Quickwheel", () => {
     fireEvent.pointerDown(target, pointer);
     dwell();
     expect(wheel()).not.toBeNull();
-    fireEvent.pointerCancel(window, pointer);
+    fireEvent.pointerUp(window, pointer);
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(wheel()).toBeNull();
     expect(changed.mock.calls).toEqual([[true], [false], [true], [false]]);
     expect(localStorage.getItem("foremanhq:drawing-quick-wheel:tim")).toBeNull();
@@ -178,14 +173,14 @@ describe("drawing Quickwheel", () => {
     function Drawing() {
       const [temporary, setTemporary] = useState(false);
       const [selected, setSelected] = useState<string | null>(null);
-      return <DrawingQuickWheel enabled={temporary} allowItemHold onTemporaryChange={setTemporary}
+      return <DrawingArcMenu enabled={temporary} allowItemHold onTemporaryChange={setTemporary}
         group={{ id: "drawing", title: "Sheet", items: [{ id: "fit", label: "Fit" }] }}>
-        <DrawingWheelRegistration group={selected ? { id: "item", title: "Selected item", priority: 50,
+        <DrawingArcRegistration group={selected ? { id: "item", title: "Selected item", priority: 50,
           items: [{ id: "style", label: "Style" }] } : null} />
         <DrawingSheetViewer src="/sheet.webp" alt="Sheet" sheetKey="sheet" tool="select"
           annotations={[entity]} selectedId={selected} onUpdate={save} onActivate={activate}
           onSelect={select} onQuickWheelSelect={setSelected} />
-      </DrawingQuickWheel>;
+      </DrawingArcMenu>;
     }
     render(<Drawing />);
     const image = screen.getByAltText("Sheet");
@@ -196,8 +191,11 @@ describe("drawing Quickwheel", () => {
     fireEvent.pointerDown(frame.querySelector('[data-annotation-id="item"]')!, pointer);
     if (type === "text") expect(select).not.toHaveBeenCalled();
     dwell();
-    expect(wheel()).toHaveAttribute("aria-label", "Selected item quick wheel");
+    expect(wheel()).toHaveAttribute("aria-label", "Selected item");
+    // The arc stays up after the lift so a choice can be tapped.
     fireEvent.pointerUp(window, pointer);
+    expect(wheel()).not.toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(wheel()).toBeNull();
     expect(save).not.toHaveBeenCalled();
     expect(activate).not.toHaveBeenCalled();
@@ -251,7 +249,7 @@ describe("drawing Quickwheel", () => {
         mode: "idle" as "idle" | "measure",
       });
       return (
-        <DrawingQuickWheel
+        <DrawingArcMenu
           enabled
           group={{
             id: "drawing",
@@ -277,7 +275,7 @@ describe("drawing Quickwheel", () => {
               modeRequest: mode,
             }}
           />
-        </DrawingQuickWheel>
+        </DrawingArcMenu>
       );
     }
     render(<Drawing />);
@@ -303,7 +301,7 @@ describe("drawing Quickwheel", () => {
     tap(300, 350);
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
     fireEvent.contextMenu(frame, { button: 2, clientX: 200, clientY: 400 });
-    expect(wheel()).toHaveAttribute("aria-label", "Measure quick wheel");
+    expect(wheel()).toHaveAttribute("aria-label", "Measure");
     expect(save).not.toHaveBeenCalled();
     fireEvent.keyDown(window, { key: "Escape" });
     fireEvent.pointerDown(frame, pointer);
@@ -311,7 +309,8 @@ describe("drawing Quickwheel", () => {
     expect(wheel()).not.toBeNull();
     fireEvent.pointerUp(frame, pointer);
     fireEvent.click(frame);
-    expect(wheel()).toBeNull();
+    expect(wheel()).not.toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(frame.querySelectorAll("[data-measure-node]")).toHaveLength(2);
     expect(save).not.toHaveBeenCalled();
     fireEvent.keyDown(frame, { key: "ContextMenu" });
@@ -323,7 +322,7 @@ describe("drawing Quickwheel", () => {
     });
   });
 
-  it("opens on right-click, stays open after mouse release, and confirms a nested action only after its dwell", async () => {
+  it("opens on right-click, stays open after mouse release, and steps into nested actions", async () => {
     const run = vi.fn(),
       claim = vi.fn();
     open(
@@ -342,8 +341,8 @@ describe("drawing Quickwheel", () => {
     );
     fireEvent.contextMenu(canvas(), { button: 2, clientX: 200, clientY: 400 });
     expect(claim).toHaveBeenCalledOnce();
-    expect(wheel()).toHaveAttribute("aria-label", "A101 quick wheel");
-    expect(document.querySelector("[data-quick-wheel-back]")).toBeNull();
+    expect(wheel()).toHaveAttribute("aria-label", "A101");
+    expect(screen.queryByRole("button", { name: "Back one step" })).toBeNull();
     fireEvent.pointerUp(canvas(), {
       ...pointer,
       pointerType: "mouse",
@@ -351,20 +350,17 @@ describe("drawing Quickwheel", () => {
     });
     expect(wheel()).not.toBeNull();
     aim("Tools");
-    dwell(699);
-    expect(wheel()).toHaveAttribute("aria-label", "A101 quick wheel");
-    dwell(1);
-    expect(wheel()).toHaveAttribute("aria-label", "Tools quick wheel");
+    expect(wheel()).toHaveAttribute("aria-label", "Tools");
     expect(run).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Back one step" }));
+    expect(wheel()).toHaveAttribute("aria-label", "A101");
+    aim("Tools");
     aim("Edit Mode");
-    dwell(699);
-    expect(run).not.toHaveBeenCalled();
-    dwell(1);
     expect(run).toHaveBeenCalledOnce();
     expect(wheel()).toBeNull();
   });
 
-  it("waits for a touch long press, then consumes the lift even after a leaf action dismisses the wheel", () => {
+  it("waits for a touch long press, then consumes the lift even after a leaf action dismisses the arc", () => {
     const run = vi.fn(),
       release = vi.fn(),
       click = vi.fn(),
@@ -375,11 +371,11 @@ describe("drawing Quickwheel", () => {
       items: [{ id: "measure", label: "Measure", run }],
     };
     render(
-      <DrawingQuickWheel enabled group={group}>
+      <DrawingArcMenu enabled group={group}>
         <div onPointerUp={release} onClick={click}>
           <Canvas claim={claim} />
         </div>
-      </DrawingQuickWheel>,
+      </DrawingArcMenu>,
     );
     fireEvent.pointerDown(canvas(), pointer);
     dwell(699);
@@ -403,7 +399,7 @@ describe("drawing Quickwheel", () => {
     expect(click).toHaveBeenCalledOnce();
   });
 
-  it("guards the initiating lift when a page action unmounts the wheel", () => {
+  it("guards the initiating lift when a page action unmounts the arc", () => {
     const release = vi.fn(),
       click = vi.fn();
     function Pages() {
@@ -413,7 +409,7 @@ describe("drawing Quickwheel", () => {
           Next page
         </button>
       ) : (
-        <DrawingQuickWheel
+        <DrawingArcMenu
           enabled
           group={{
             id: "drawing",
@@ -422,7 +418,7 @@ describe("drawing Quickwheel", () => {
           }}
         >
           <Canvas />
-        </DrawingQuickWheel>
+        </DrawingArcMenu>
       );
     }
     render(<Pages />);
@@ -472,7 +468,7 @@ describe("drawing Quickwheel", () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it("cancels when released, cancelled, resized, or escaped and keeps the center inactive", () => {
+  it("stays open after the lift, cancels an interrupted hold, and closes on escape or resize", () => {
     const run = vi.fn();
     open({
       id: "drawing",
@@ -482,16 +478,18 @@ describe("drawing Quickwheel", () => {
     fireEvent.pointerDown(canvas(), pointer);
     dwell();
     fireEvent.pointerMove(window, { ...pointer, clientX: 210 });
+    fireEvent.pointerUp(canvas(), pointer);
     dwell(1500);
     expect(run).not.toHaveBeenCalled();
-    fireEvent.pointerUp(canvas(), pointer);
+    expect(wheel()).not.toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(wheel()).toBeNull();
     fireEvent.pointerDown(canvas(), pointer);
     fireEvent.pointerCancel(canvas(), pointer);
     dwell();
     expect(wheel()).toBeNull();
     fireEvent.contextMenu(canvas(), { button: 2, clientX: 200, clientY: 400 });
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.click(wheel()!);
     expect(wheel()).toBeNull();
     fireEvent.contextMenu(canvas(), { button: 2, clientX: 200, clientY: 400 });
     fireEvent.resize(window);
@@ -525,7 +523,7 @@ describe("drawing Quickwheel", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("uses current contextual actions without reopening the wheel", () => {
+  it("uses current contextual actions without reopening the arc", () => {
     const group = {
       id: "drawing",
       title: "A101",
@@ -533,9 +531,9 @@ describe("drawing Quickwheel", () => {
     };
     const run = vi.fn();
     const view = render(
-      <DrawingQuickWheel enabled group={group}>
+      <DrawingArcMenu enabled group={group}>
         <Canvas />
-        <DrawingWheelRegistration
+        <DrawingArcRegistration
           group={{
             id: "measurement",
             title: "Measure",
@@ -543,14 +541,14 @@ describe("drawing Quickwheel", () => {
             items: [{ id: "undo", label: "Undo", disabled: true, run }],
           }}
         />
-      </DrawingQuickWheel>,
+      </DrawingArcMenu>,
     );
     fireEvent.contextMenu(canvas(), { button: 2, clientX: 200, clientY: 400 });
-    expect(wheel()).toHaveAttribute("aria-label", "Measure quick wheel");
+    expect(wheel()).toHaveAttribute("aria-label", "Measure");
     view.rerender(
-      <DrawingQuickWheel enabled group={group}>
+      <DrawingArcMenu enabled group={group}>
         <Canvas />
-        <DrawingWheelRegistration
+        <DrawingArcRegistration
           group={{
             id: "measurement",
             title: "Measure",
@@ -558,7 +556,7 @@ describe("drawing Quickwheel", () => {
             items: [{ id: "undo", label: "Undo", run }],
           }}
         />
-      </DrawingQuickWheel>,
+      </DrawingArcMenu>,
     );
     aim("Undo");
     dwell();
@@ -593,7 +591,7 @@ describe("drawing Quickwheel", () => {
 });
 
 
-it("dismisses an open pointer wheel before back can reach the drawing", () => {
+it("dismisses an open arc before back can reach the drawing", () => {
   open({ id: "drawing", title: "A101", items: [{ id: "measure", label: "Measure" }] });
   fireEvent.contextMenu(canvas(), {button: 2, clientX: 200, clientY: 400});
   expect(wheel()).not.toBeNull();

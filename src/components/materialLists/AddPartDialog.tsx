@@ -21,7 +21,7 @@ import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
 import type { PendingPart, PendingSupplierPartSnapshot } from "./wizard/types";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 
-import { QuickWheelSurface } from "./wizard/QuickWheel";
+import { ArcScrollerSurface } from "~/components/ui/arc-scroller";
 import { CatalogStage } from "./wizard/CatalogStage";
 import { MaterialStage } from "./wizard/MaterialStage";
 import { SizeStage } from "./wizard/SizeStage";
@@ -100,7 +100,6 @@ export function AddPartDialog({
   const { sortMode, keywordGroups } = useMaterialListSortPreference();
   const {
     wizardStage,
-    previewQuickWheelChoice,
     selectedCatalogId,
     hasCatalogSelection,
     selectedMaterialId,
@@ -1154,7 +1153,7 @@ export function AddPartDialog({
           )}
 
 
-          <QuickWheelSurface onBack={wizardStage === "catalog" ? undefined : () => { stepBack(); }} previewChoice={previewQuickWheelChoice} usage={orderWheelUsage} enabled={!prefabView && !showChosenParts && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage) && !quantityPickerPreview}
+          <ArcScrollerSurface onBack={wizardStage === "catalog" ? undefined : () => { stepBack(); }} usage={orderWheelUsage} enabled={!prefabView && !showChosenParts && !isWizardSearchActive && ["catalog", "material", "size", "category"].includes(wizardStage) && !quantityPickerPreview}
             data-tutorial={`wizard-${isWizardSearchActive ? "part" : wizardStage}`}
             className={`flex-1 space-y-2 overflow-y-auto overscroll-contain pt-2 pb-3 sm:space-y-4 sm:pt-4 sm:pb-4 ${showChosenParts ? "px-4 sm:px-6" : "px-2 sm:px-4 md:px-6"} ${quantityPickerPreview ? "touch-none overflow-hidden" : ""} @container ${centerOptionCards ? "flex flex-col [&_.wizard-option-grid]:my-auto [&>*:last-child]:flex [&>*:last-child]:flex-1 [&>*:last-child]:flex-col" : ""}`}
           >
@@ -1326,7 +1325,7 @@ export function AddPartDialog({
               />
             )}
             </>)}
-          </QuickWheelSurface>
+          </ArcScrollerSurface>
 
           {/* Bottom bar, laid out like the material list's */}
           <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>

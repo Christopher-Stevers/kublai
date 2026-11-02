@@ -109,7 +109,7 @@ const SavedAnnotation = memo(function SavedAnnotation({
     <g
       key={entity.id}
       data-annotation-id={entity.id}
-      data-quick-wheel-ignore={holdable ? "" : undefined}
+      data-arc-ignore={holdable ? "" : undefined}
       tabIndex={interactive ? 0 : undefined}
       role={interactive ? "button" : undefined}
       aria-label={
@@ -467,7 +467,7 @@ export const DrawingAnnotationLayer = memo(function DrawingAnnotationLayer({
           style={{ pointerEvents: "auto" }}
         >
           <div style={{ width: 40, height: 40, transform: `scale(${screenPixelSize})`, transformOrigin: "0 0" }}
-            data-drawing-chrome data-quick-wheel-ignore
+            data-drawing-chrome data-arc-ignore
             onPointerDown={event => event.stopPropagation()}
             onPointerUp={event => event.stopPropagation()}
             onPointerMove={event => event.stopPropagation()}

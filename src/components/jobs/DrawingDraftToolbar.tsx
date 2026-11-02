@@ -2,13 +2,13 @@
 import { Button } from "~/components/ui/button";
 import type { DrawingTool } from "~/lib/drawing-workspace";
 import { isPathTool } from "~/lib/drawing-annotation-geometry";
-import { useDrawingWheelGroup } from "./DrawingQuickWheel";
+import { useDrawingArcGroup } from "./DrawingArcMenu";
 import { CheckIcon, Undo2Icon, XIcon } from "lucide-react";
 
 export function DrawingDraftToolbar({ tool, count, canFinish, onUndo, onCancel, onFinish, onDone }: {
   tool: DrawingTool; count: number; canFinish: boolean; onUndo: () => void; onCancel: () => void; onFinish: () => void; onDone?: () => void;
 }) {
-  const quickWheel = useDrawingWheelGroup(tool !== "pan" && tool !== "viewing" && tool !== "select" ? {
+  const quickWheel = useDrawingArcGroup(tool !== "pan" && tool !== "viewing" && tool !== "select" ? {
     id: "draft", title: tool === "freehand" ? "Pen" : tool === "link" ? "Hyperlink" : tool,
     priority: 10,
     items: [

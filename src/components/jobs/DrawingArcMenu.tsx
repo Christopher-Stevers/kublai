@@ -12,9 +12,9 @@ import {
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { ArrowLeftIcon, CircleDotIcon, XIcon } from "lucide-react";
 import {
-  QuickWheelSurface,
-  useQuickWheelOptions,
-} from "~/components/materialLists/wizard/QuickWheel";
+  ArcScrollerSurface,
+  useArcScrollerOptions,
+} from "~/components/ui/arc-scroller";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -24,37 +24,37 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 
-export type DrawingWheelItem = {
+export type DrawingArcItem = {
   id: string;
   label: string;
   icon?: ReactNode;
   disabled?: boolean;
   selected?: boolean;
-  children?: DrawingWheelItem[];
+  children?: DrawingArcItem[];
   run?: () => void;
   /** Toggles such as layer checkboxes can be changed without lifting. */
   keepOpen?: boolean;
 };
-export type DrawingWheelGroup = {
+export type DrawingArcGroup = {
   id: string;
   title: string;
-  items: DrawingWheelItem[];
-  /** An active measurement / markup becomes the first wheel. */
+  items: DrawingArcItem[];
+  /** An active measurement / markup becomes the first menu. */
   priority?: number;
 };
 type Registry = {
   enabled: boolean;
-  register: (group: DrawingWheelGroup) => void;
+  register: (group: DrawingArcGroup) => void;
   remove: (id: string) => void;
   gestures: Map<string, (event: PointerEvent | MouseEvent) => void>;
 };
 const Context = createContext<Registry | null>(null);
-export function useDrawingWheelEnabled() {
+export function useDrawingArcEnabled() {
   return useContext(Context)?.enabled ?? false;
 }
 
 /** Register live callbacks from the same controls used by the regular toolbars. */
-export function useDrawingWheelGroup(group: DrawingWheelGroup | null) {
+export function useDrawingArcGroup(group: DrawingArcGroup | null) {
   const registry = useContext(Context);
   useLayoutEffect(() => {
     if (group && registry?.enabled) registry.register(group);
@@ -69,16 +69,16 @@ export function useDrawingWheelGroup(group: DrawingWheelGroup | null) {
   return registry?.enabled ?? false;
 }
 
-export function DrawingWheelRegistration({
+export function DrawingArcRegistration({
   group,
 }: {
-  group: DrawingWheelGroup | null;
+  group: DrawingArcGroup | null;
 }) {
-  useDrawingWheelGroup(group);
+  useDrawingArcGroup(group);
   return null;
 }
 
-export function useDrawingWheelGesture(
+export function useDrawingArcGesture(
   id: string,
   cancel: (event: PointerEvent | MouseEvent) => void,
 ) {
@@ -98,10 +98,10 @@ function Options({
   choose,
 }: {
   title: string;
-  items: DrawingWheelItem[];
-  choose: (item: DrawingWheelItem) => void;
+  items: DrawingArcItem[];
+  choose: (item: DrawingArcItem) => void;
 }) {
-  useQuickWheelOptions(
+  useArcScrollerOptions(
     title,
     items.map((item) => ({
       label: item.selected ? `✓ ${item.label}` : item.label,
@@ -114,7 +114,7 @@ function Options({
   return null;
 }
 
-export function DrawingQuickWheel({
+export function DrawingArcMenu({
   enabled,
   resetKey,
   allowItemHold = false,
@@ -124,16 +124,16 @@ export function DrawingQuickWheel({
 }: {
   enabled: boolean;
   resetKey?: string | number | boolean;
-  /** Regular controls may borrow the wheel for an existing annotation only. */
+  /** Regular controls may borrow the arc menu for an existing annotation only. */
   allowItemHold?: boolean;
   onTemporaryChange?: (active: boolean) => void;
-  group: DrawingWheelGroup;
+  group: DrawingArcGroup;
   children: ReactNode;
 }) {
   const temporary = useRef(false);
-  const groups = useRef(new Map<string, DrawingWheelGroup>());
+  const groups = useRef(new Map<string, DrawingArcGroup>());
   const signatures = useRef(new Map<string, string>());
-  const [registeredGroups, setRegisteredGroups] = useState<DrawingWheelGroup[]>(
+  const [registeredGroups, setRegisteredGroups] = useState<DrawingArcGroup[]>(
     [],
   );
   const [path, setPath] = useState<string[]>([]);
@@ -191,19 +191,9 @@ export function DrawingQuickWheel({
     items = child.children;
     title = child.label;
   }
-  const choices: DrawingWheelItem[] = path.length
-    ? [
-        ...items,
-        {
-          id: "back",
-          label: "Back",
-          icon: <ArrowLeftIcon />,
-          keepOpen: true,
-          run: () => setPath((value) => value.slice(0, -1)),
-        },
-      ]
-    : items;
-  const choose = (item: DrawingWheelItem) => {
+  const choices = items;
+  const back = path.length ? () => setPath((value) => value.slice(0, -1)) : undefined;
+  const choose = (item: DrawingArcItem) => {
     // Child tools can refresh their callbacks without changing the menu labels.
     // Resolve the action at selection time so a saved run / permission is current.
     const latest = contextGroup ? groups.current.get(contextGroup.id) : group;
@@ -220,8 +210,8 @@ export function DrawingQuickWheel({
       liveItems = next;
     }
     const current = liveItems.find((value) => value.id === item.id);
-    if (!current && item.id !== "back") return;
-    item = current ?? item;
+    if (!current) return;
+    item = current;
     if (item.disabled) return;
     if (item.children) setPath((value) => [...value, item.id]);
     else {
@@ -234,33 +224,13 @@ export function DrawingQuickWheel({
   };
   return (
     <Context.Provider value={registry}>
-      <QuickWheelSurface
+      <ArcScrollerSurface
         enabled={enabled || allowItemHold}
         resetKey={resetKey}
         activation="context"
-        activationSelector={enabled ? "[data-drawing-wheel-canvas]" : "[data-drawing-wheel-canvas] [data-annotation-id]"}
-        showBackBar={false}
+        activationSelector={enabled ? "[data-drawing-arc-canvas]" : "[data-drawing-arc-canvas] [data-annotation-id]"}
         showBackdrop={false}
-        previewChoice={(_, label) => {
-          const item = choices.find(
-            (value) =>
-              (value.selected ? `✓ ${value.label}` : value.label) === label,
-          );
-          return item?.children
-            ? {
-                kind: "wheel",
-                title: item.label,
-                options: [
-                  ...item.children.map((value) => ({
-                    label: value.selected ? `✓ ${value.label}` : value.label,
-                    icon: value.icon ?? <CircleDotIcon aria-hidden="true" />,
-                    disabled: value.disabled,
-                  })),
-                  { label: "Back", icon: <ArrowLeftIcon /> },
-                ],
-              }
-            : undefined;
-        }}
+        onBack={back}
         onActivate={(event) => {
           if (!enabled && allowItemHold) {
             temporary.current = true;
@@ -322,6 +292,12 @@ export function DrawingQuickWheel({
                   {item.label}
                 </Button>
               ))}
+              {back && (
+                <Button variant="outline" onClick={back}>
+                  <ArrowLeftIcon />
+                  Back
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => setKeyboardOpen(false)}>
                 <XIcon />
                 Close
@@ -329,7 +305,7 @@ export function DrawingQuickWheel({
             </div>
           </DialogContent>
         </Dialog>
-      </QuickWheelSurface>
+      </ArcScrollerSurface>
     </Context.Provider>
   );
 }

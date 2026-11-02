@@ -43,26 +43,12 @@
   }
 }
 
-/* Part wizard quick wheel: the backdrop fades in and tiles pop into place. */
-@keyframes quick-wheel-fade {
+/* Arc scroller: the arc fades in beside the thumb. */
+@keyframes arc-scroller-in {
   from { opacity: 0; }
 }
-@keyframes quick-wheel-tile {
-  from { opacity: 0; transform: scale(0.4); translate: var(--from-x, 0) var(--from-y, 0); }
-}
-/* The scroll wings unfold from the hub; the arrows of the side scrolling run outward. */
-@keyframes quick-wheel-wings {
-  from { opacity: 0; scale: 0.4; }
-}
-@keyframes quick-wheel-chevron {
-  50% { opacity: 0.3; }
-}
 @media (prefers-reduced-motion: no-preference) {
-  .quick-wheel-backdrop { animation: quick-wheel-fade 160ms ease-out backwards; }
-  .quick-wheel-tile { animation: quick-wheel-tile 300ms cubic-bezier(0.22, 1.25, 0.36, 1) backwards; }
-  .quick-wheel-wings { animation: quick-wheel-wings 300ms cubic-bezier(0.22, 1.25, 0.36, 1) backwards; }
-  .quick-wheel-wing[data-active] .quick-wheel-chevron { animation: quick-wheel-chevron 640ms ease-in-out infinite; }
-  .quick-wheel-wing[data-active] .quick-wheel-chevron:last-child { animation-delay: 160ms; }
+  .arc-scroller { animation: arc-scroller-in 140ms ease-out backwards; }
 }
 
 /* Loading placeholders: a soft highlight sweeps across instead of a spinner. */
@@ -896,7 +882,7 @@ html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slo
   text-transform: capitalize;
 }
 
-/* Quick-wheel drawings use all available space. Navigation remains in the wheel.
+/* Full-screen drawings use all available space. Navigation remains in the arc menu.
    The viewer flags <html>; see useRootFlag. */
 html:root[data-drawing-quick-wheel-page] {
   --app-header-height: 0px;
