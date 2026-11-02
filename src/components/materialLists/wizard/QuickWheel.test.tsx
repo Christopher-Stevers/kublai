@@ -65,7 +65,7 @@ const aim = (x = 200, y = 180) =>
 /** Move along the wheel's own axes: `up` toward the choices, `side` along them. */
 const nudge = (side: number, up = 0) => {
   const root = wheel()!;
-  const x = Number(root.getAttribute("data-origin-x")), y = Number(root.getAttribute("data-origin-y"));
+  const x = Number(root.getAttribute("data-thumb-x")), y = Number(root.getAttribute("data-thumb-y"));
   const ix = Number(root.getAttribute("data-inward-x")), iy = Number(root.getAttribute("data-inward-y"));
   aim(x - iy*side + ix*up, y + ix*side + iy*up);
 };
@@ -732,12 +732,38 @@ describe("wizard quick wheel", () => {
     const sq = (p: readonly [number, number]) => p[0] ** 2 + p[1] ** 2;
     const cx = (sq(a!) * (b![1] - c![1]) + sq(b!) * (c![1] - a![1]) + sq(c!) * (a![1] - b![1])) / d;
     const cy = (sq(a!) * (c![0] - b![0]) + sq(b!) * (a![0] - c![0]) + sq(c!) * (b![0] - a![0])) / d;
-    const hub = Math.hypot(330 - cx, 450 - cy);
+    const hx = Number(root.getAttribute("data-origin-x")), hy = Number(root.getAttribute("data-origin-y"));
+    const hub = Math.hypot(hx - cx, hy - cy);
     for (const wing of root.querySelectorAll("[data-wheel-wing] > path:first-child")) {
       const [, x, y] = /C[^C]* ([-\d.]+) ([-\d.]+)C/.exec(wing.getAttribute("d")!)!.map(Number);
       expect(Math.hypot(x! - cx, y! - cy)).toBeCloseTo(hub, 0);
-      expect(Math.hypot(x! - 330, y! - 450)).toBeGreaterThan(120);
+      expect(Math.hypot(x! - hx, y! - hy)).toBeGreaterThan(120);
     }
+  });
+  it("pushes the hub in from the edge so both scroll wings stay on screen", () => {
+    vi.stubGlobal("innerWidth", 412); vi.stubGlobal("innerHeight", 915);
+    render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);
+    fireEvent.pointerDown(screen.getByTestId("blank"), { ...pointer, pointerType: "touch", clientX: 400, clientY: 120 });
+    const root = wheel()!;
+    expect(Number(root.getAttribute("data-origin-x"))).toBeLessThan(400);
+    expect(Number(root.getAttribute("data-origin-y"))).toBeGreaterThan(120);
+    // The thumb stays where it landed, so the shifted hub does not scroll.
+    expect(root).toHaveAttribute("data-thumb-x", "400");
+    expect(root).toHaveAttribute("data-thumb-y", "120");
+    for (const wing of root.querySelectorAll("[data-wheel-wing] > path:first-child")) {
+      const values = wing.getAttribute("d")!.match(/-?[\d.]+/g)!.map(Number);
+      for (let i = 0; i < values.length; i += 2) {
+        expect(values[i]).toBeGreaterThanOrEqual(12);
+        expect(values[i]).toBeLessThanOrEqual(400);
+        expect(values[i + 1]).toBeGreaterThanOrEqual(12);
+        expect(values[i + 1]).toBeLessThanOrEqual(903);
+      }
+    }
+    dwell(300);
+    expect(root).toHaveAttribute("data-scrolling", "false");
+    expect(root).toHaveAttribute("data-offset", "0");
+    steer(-90); dwell(300);
+    expect(wheel()).toHaveAttribute("data-scrolling", "true");
   });
   it("shows no scroll wings for a mouse wheel or a single choice", () => {
     const { unmount } = render(<QuickWheelSurface><Stage count={15} select={vi.fn()}/></QuickWheelSurface>);
@@ -832,24 +858,27 @@ describe("wizard quick wheel", () => {
     expect(wheel()).toHaveAttribute("data-anchor-y","412");
     const ix=Number(wheel()!.getAttribute("data-inward-x")), iy=Number(wheel()!.getAttribute("data-inward-y"));
     const origin=()=>[Number(wheel()!.getAttribute("data-origin-x")),Number(wheel()!.getAttribute("data-origin-y"))];
+    const thumb=()=>[Number(wheel()!.getAttribute("data-thumb-x")),Number(wheel()!.getAttribute("data-thumb-y"))];
+    const start=origin();
     nudge(0,20); dwell(600);
     expect(wheel()).toHaveAttribute("data-offset","0");
-    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    expect(origin()).toEqual(start);
     steer(-40); dwell(600);
     const offset=wheel()!.getAttribute("data-offset");
     expect(Number(offset)).toBeGreaterThan(0);
     const tile=[...wheel()!.querySelectorAll("foreignObject")].find(el=>el.getAttribute("opacity")==="1")!;
     aim(Number(tile.getAttribute("x"))+52,Number(tile.getAttribute("y"))+52); dwell(250);
     nudge(0,-23);
-    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    expect(origin()).toEqual(start);
     aim(330,450); dwell(260);
     aim(330-ix*51.5,450-iy*51.5);
-    expect(origin()[0]).toBeCloseTo(330-ix*51.5,3);
-    expect(origin()[1]).toBeCloseTo(450-iy*51.5,3);
+    expect(origin()).not.toEqual(start);
+    expect(thumb()[0]).toBeCloseTo(330-ix*51.5,3);
+    expect(thumb()[1]).toBeCloseTo(450-iy*51.5,3);
     expect(wheel()).toHaveAttribute("data-scrolling","false");
     aim(330-ix*53,450-iy*53);
-    expect(origin()[0]).toBeCloseTo(330-ix*53,3);
-    expect(origin()[1]).toBeCloseTo(450-iy*53,3);
+    expect(thumb()[0]).toBeCloseTo(330-ix*53,3);
+    expect(thumb()[1]).toBeCloseTo(450-iy*53,3);
     expect(wheel()).toHaveAttribute("data-anchor-x","400");
     expect(wheel()).toHaveAttribute("data-anchor-y","412");
     dwell(1000);
@@ -869,17 +898,19 @@ describe("wizard quick wheel", () => {
     const select = vi.fn();
     render(<QuickWheelSurface showBackBar={false}><Stage count={15} select={select}/></QuickWheelSurface>);
     fireEvent.pointerDown(screen.getByTestId("blank"), {...pointer, pointerType:"touch",clientX:330,clientY:450});
+    const origin=()=>[wheel()!.getAttribute("data-origin-x"),wheel()!.getAttribute("data-origin-y")];
+    const start=origin();
     steer(-60); dwell(300);
     aim(330,450); dwell(50);
     // Reversal drifts well into the outward half before reaching the other side.
     nudge(0,-57);
-    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    expect(origin()).toEqual(start);
     steer(60); dwell(300);
     expect(wheel()).toHaveAttribute("data-scrolling","true");
-    expect(wheel()).toHaveAttribute("data-origin-y","450");
+    expect(wheel()).toHaveAttribute("data-origin-y",start[1]!);
     // A wide reversal which never crosses the hub is equally safe.
     nudge(0,-57); steer(-60); dwell(300);
-    expect(wheel()).toHaveAttribute("data-origin-x","330");
+    expect(origin()).toEqual(start);
     expect(wheel()).toHaveAttribute("data-scrolling","true");
     expect(select).not.toHaveBeenCalled();
   });

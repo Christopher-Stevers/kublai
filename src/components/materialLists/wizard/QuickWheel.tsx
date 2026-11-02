@@ -119,6 +119,9 @@ type Wheel = Choices & {
   offset: number;
   scrolling: number;
   repositioning?: boolean;
+  /** Thumb neutral relative to the hub, where the hub was pushed in so the
+   * scroll wings stay on screen. Scrolling and aiming measure from here. */
+  grip?: { x: number; y: number };
   hovered: number | null;
   moved: boolean;
   skipEntrance?: boolean;
@@ -206,8 +209,95 @@ function geometryFor(wheel: Wheel) {
   }
   return geometry;
 }
-/** Translate the whole rail while it fits; reflow only when reaching an edge. */
+type WheelPoint = { x: number; y: number };
+/** Where the thumb rests; the hub may sit beside it. */
+const wheelNeutral = (wheel: Wheel): WheelPoint => ({
+  x: wheel.x + (wheel.grip?.x ?? 0),
+  y: wheel.y + (wheel.grip?.y ?? 0),
+});
+const hasScrollWings = (wheel: Wheel) =>
+  Boolean(wheel.hand) && wheel.options.length > 1;
+/** Wings run a little past the reach for full speed. */
+const scrollWingLength = (radius: number) => wheelJoystickRadius(radius) * 1.2;
+/** One wing as two cubic curves in rail coordinates: `out` along the scroll
+ * axis from the hub, `up` toward the choices. */
+function scrollWingOutline(hub: number, length: number): [number, number][] {
+  return [
+    [hub * 0.7, hub * 0.52],
+    [hub * 1.05, hub * 0.58],
+    [length - hub * 0.35, hub * 0.3],
+    [length, 0],
+    [length - hub * 0.4, -hub * 0.22],
+    [hub * 1.05, -hub * 0.28],
+    [hub * 0.7, -hub * 0.5],
+  ];
+}
+/** Bend rail coordinates around the rail's centre, so the wings stay parallel
+ * to the choices however the rail is turned. */
+function scrollWingPoint(
+  cx: number,
+  cy: number,
+  axes: ReturnType<typeof wheelRailAxes>,
+  side: number,
+  out: number,
+  up: number,
+): WheelPoint {
+  const bent = Number.isFinite(axes.bend);
+  const along = bent ? (axes.bend + up) * Math.sin(out / axes.bend) : out;
+  const across = bent ? (axes.bend + up) * Math.cos(out / axes.bend) - axes.bend : up;
+  return {
+    x: cx + side * axes.sideways.x * along + axes.inward.x * across,
+    y: cy + side * axes.sideways.y * along + axes.inward.y * across,
+  };
+}
+/** Push the hub in from the edges until both wings are fully on screen. The
+ * curves stay inside their control points, so those are enough to test. The
+ * rail turns as the hub moves, so settle over a few passes. */
+function fitScrollWings(
+  place: (x: number, y: number) => Wheel,
+  thumb: WheelPoint,
+): Wheel {
+  let wheel = place(thumb.x, thumb.y);
+  if (hasScrollWings(wheel)) {
+    const margin = 4;
+    for (let pass = 0; pass < 4; pass++) {
+      const axes = axesFor(wheel);
+      const outline = scrollWingOutline(
+        wheelHubRadius(wheel.radius),
+        scrollWingLength(wheel.radius),
+      );
+      const { bounds } = wheel;
+      let left = 0, right = 0, top = 0, bottom = 0;
+      for (const side of [-1, 1])
+        for (const [out, up] of outline) {
+          const p = scrollWingPoint(wheel.x, wheel.y, axes, side, out, up);
+          left = Math.max(left, bounds.left + margin - p.x);
+          right = Math.max(right, p.x - bounds.right + margin);
+          top = Math.max(top, bounds.top + margin - p.y);
+          bottom = Math.max(bottom, p.y - bounds.bottom + margin);
+        }
+      const dx = Math.ceil(left) - Math.ceil(right);
+      const dy = Math.ceil(top) - Math.ceil(bottom);
+      if (!dx && !dy) break;
+      wheel = place(
+        Math.max(bounds.left, Math.min(bounds.right, wheel.x + dx)),
+        Math.max(bounds.top, Math.min(bounds.bottom, wheel.y + dy)),
+      );
+    }
+  }
+  const grip = { x: thumb.x - wheel.x, y: thumb.y - wheel.y };
+  return { ...wheel, grip: grip.x || grip.y ? grip : undefined };
+}
+/** Follow the thumb, keeping the scroll wings on screen. */
 function moveWheelOrigin(wheel: Wheel, x: number, y: number): Wheel {
+  return {
+    ...fitScrollWings((hx, hy) => placeWheelOrigin(wheel, hx, hy), { x, y }),
+    startX: x,
+    startY: y,
+  };
+}
+/** Translate the whole rail while it fits; reflow only when reaching an edge. */
+function placeWheelOrigin(wheel: Wheel, x: number, y: number): Wheel {
   const next = {
     ...wheel,
     x,
@@ -606,7 +696,7 @@ export function QuickWheelSurface({
         (event.clientX < viewportLeft + (viewport?.width ?? innerWidth) / 2
           ? "left"
           : "right");
-      update({
+      const opened: Wheel = {
         ...choices,
         hand,
         thumbAnchor: wheelThumbAnchor(
@@ -642,7 +732,13 @@ export function QuickWheelSurface({
         scrolling: 0,
         hovered: null,
         moved: false,
-      });
+      };
+      update(
+        fitScrollWings((x, y) => ({ ...opened, x, y }), {
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      );
       interaction.current.onActiveChange?.(true);
       return true;
     }
@@ -772,8 +868,9 @@ export function QuickWheelSurface({
           event.clientX - current.startX,
           event.clientY - current.startY,
         ) > 12;
-      const dx = event.clientX - current.x,
-        dy = event.clientY - current.y;
+      const neutral = wheelNeutral(current);
+      const dx = event.clientX - neutral.x,
+        dy = event.clientY - neutral.y;
       const selectionRadius = wheelHubRadius(current.radius) * 0.75;
       const inHub = Math.hypot(dx, dy) <= selectionRadius;
       const axes = axesFor(current);
@@ -797,7 +894,7 @@ export function QuickWheelSurface({
         }
       }
       const motion = wheelJoystickMotion(
-        current,
+        neutral,
         pointerPosition.current,
         current.thumbAnchor,
         current.radius,
@@ -839,7 +936,7 @@ export function QuickWheelSurface({
       // reach. Turning inward hands control back to the visible choice lanes.
       const extendingScroll = Boolean(current.hand && current.scrolling) && !movingInward && motion.speed !== 0;
       const target = !extendingScroll && !inHub && moved
-        ? wheelChoiceCone(current, pointerPosition.current, current.radius, tiles,
+        ? wheelChoiceCone(neutral, pointerPosition.current, current.radius, tiles,
             movingInward ? selectionRadius : undefined)
           ?? tiles
             .sort((a, b) =>
@@ -852,7 +949,7 @@ export function QuickWheelSurface({
       // Freeze rotation along visible selection lanes even before the thumb
       // clears the joystick. Otherwise the target moves away on approach.
       const approachingChoice = movingInward && wheelChoiceCone(
-        current, pointerPosition.current, current.radius, tiles, 24,
+        neutral, pointerPosition.current, current.radius, tiles, 24,
       );
       const speed = current.options.length > 1 && !target && !approachingChoice
         ? motion.speed : 0;
@@ -924,18 +1021,23 @@ export function QuickWheelSurface({
           const { x, y } = pointerPosition.current;
           selectionLatch.current = null;
           relocation.current = { armed: true, centreSince: Date.now() };
-          update({
-            ...current,
-            x,
-            y,
-            startX: x,
-            startY: y,
-            scrolling: 0,
-            repositioning: false,
-            skipEntrance: hadPreview,
-            hovered: null,
-            moved: false,
-          });
+          update(
+            fitScrollWings(
+              (hx, hy) => ({
+                ...current,
+                x: hx,
+                y: hy,
+                startX: x,
+                startY: y,
+                scrolling: 0,
+                repositioning: false,
+                skipEntrance: hadPreview,
+                hovered: null,
+                moved: false,
+              }),
+              { x, y },
+            ),
+          );
           // Use the latest callbacks after query or pending-quantity changes.
           const choice = active.current?.options[entry.sourceIndex];
           if (choice && !choice.disabled) {
@@ -1177,6 +1279,8 @@ function WheelDisplay({
       data-scrolling={Boolean(wheel.scrolling)}
       data-anchor-x={wheel.thumbAnchor.x}
       data-anchor-y={wheel.thumbAnchor.y}
+      data-thumb-x={wheelNeutral(wheel).x}
+      data-thumb-y={wheelNeutral(wheel).y}
       data-inward-x={axes.inward.x.toFixed(4)}
       data-inward-y={axes.inward.y.toFixed(4)}
       data-origin-x={wheel.x}
@@ -1251,7 +1355,7 @@ function WheelDisplay({
               cx={wheel.x}
               cy={wheel.y}
               hub={hub}
-              reach={wheelJoystickRadius(wheel.radius)}
+              length={scrollWingLength(wheel.radius)}
               axes={axes}
               direction={Math.sign(wheel.scrolling)}
               quiet={Boolean(selected) || Boolean(wheel.repositioning)}
@@ -1477,13 +1581,13 @@ function HighlightArc({
 }
 
 /** Two swept wings either side of the hub, along the sideways slide that
- * scrolls. Each reaches as far as the thumb travels to full speed; the one
- * scrolling fills and its arrows run outward. */
+ * scrolls. Each runs a little past where the thumb reaches full speed; the
+ * one scrolling fills and its arrows run outward. */
 function ScrollWings({
   cx,
   cy,
   hub,
-  reach,
+  length,
   axes,
   direction,
   quiet,
@@ -1492,7 +1596,7 @@ function ScrollWings({
   cx: number;
   cy: number;
   hub: number;
-  reach: number;
+  length: number;
   axes: ReturnType<typeof wheelRailAxes>;
   /** Sign of the current scroll; 0 at rest. */
   direction: number;
@@ -1514,21 +1618,13 @@ function ScrollWings({
       }}
     >
       {[-1, 1].map((side) => {
-        // `out` runs along the scroll axis away from the hub, `up` toward
-        // the choices. Both bend around the rail's centre, so the wings stay
-        // parallel to the choices however the rail is turned.
         const at = (out: number, up: number) => {
-          const turn = Number.isFinite(axes.bend) ? out / axes.bend : 0;
-          const along = Number.isFinite(axes.bend)
-            ? (axes.bend + up) * Math.sin(turn)
-            : out;
-          const across = Number.isFinite(axes.bend)
-            ? (axes.bend + up) * Math.cos(turn) - axes.bend
-            : up;
-          return `${cx + side * axes.sideways.x * along + axes.inward.x * across} ${
-            cy + side * axes.sideways.y * along + axes.inward.y * across
-          }`;
+          const p = scrollWingPoint(cx, cy, axes, side, out, up);
+          return `${p.x} ${p.y}`;
         };
+        const [root, ...curves] = scrollWingOutline(hub, length).map(
+          ([out, up]) => at(out, up),
+        );
         const active = direction === side;
         return (
           <g
@@ -1542,7 +1638,7 @@ function ScrollWings({
             }}
           >
             <path
-              d={`M${at(hub * 0.7, hub * 0.42)}C${at(hub * 1.05, hub * 0.46)} ${at(reach - hub * 0.3, hub * 0.24)} ${at(reach, 0)}C${at(reach - hub * 0.35, -hub * 0.18)} ${at(hub * 1.05, -hub * 0.22)} ${at(hub * 0.7, -hub * 0.4)}Z`}
+              d={`M${root}C${curves.slice(0, 3).join(" ")}C${curves.slice(3).join(" ")}Z`}
               className={cn(
                 "transition-[fill,stroke] duration-150",
                 active
@@ -1553,11 +1649,11 @@ function ScrollWings({
               strokeLinejoin="round"
             />
             {[0.3, 0.58].map((share) => {
-              const out = hub + (reach - hub) * share;
+              const out = hub + (length - hub) * share;
               return (
                 <path
                   key={share}
-                  d={`M${at(out - 4, 6)}L${at(out + 2, 0)}L${at(out - 4, -6)}`}
+                  d={`M${at(out - 5, 7)}L${at(out + 2, 0)}L${at(out - 5, -7)}`}
                   fill="none"
                   className={cn(
                     "quick-wheel-chevron transition-[stroke] duration-150",
