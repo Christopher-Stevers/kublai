@@ -640,10 +640,10 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(onNext).toHaveBeenCalledOnce();
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     act(() => props.onSelect?.(entityId));
-    expect(screen.queryByRole("toolbar", { name: "Selected markup actions" })).toBeNull();
+    expect(screen.getByRole("toolbar", { name: "Selected markup actions" })).toHaveClass("bg-background/60", "backdrop-blur-sm", "rounded-2xl");
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Resize" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Move" }).length).toBeGreaterThan(0));
+    expect(screen.getAllByRole("button", { name: "Resize" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 
@@ -1177,9 +1177,9 @@ describe("drawing workspace workflows", () => {
     }
   });
 
-  it("keeps the canvas available after selecting a markup and exposes move, resize, and delete", async () => {
+  it.each([false, true])("keeps markup move, resize, and delete available (fullscreen=%s)", async (fullscreen) => {
     mocks.data!.entities = [existingMarkup()];
-    open();
+    open(fullscreen);
     fireEvent.click(
       screen.getByRole("button", { name: "Select first annotation" }),
     );

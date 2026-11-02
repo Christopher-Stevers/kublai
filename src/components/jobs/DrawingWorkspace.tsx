@@ -1580,7 +1580,7 @@ export function DrawingWorkspace({
     modeRequest.mode !== "idle" || Boolean(inlineText) ||
     (tool !== "pan" && tool !== "viewing" && tool !== "select");
 
-  const showSelectedMarkupActions = !quickWheel && selected?.kind === "markup" &&
+  const showSelectedMarkupActions = (!quickWheel || fullscreen) && selected?.kind === "markup" &&
     selected.visibility !== "archived" && sourceOf(selected) === sourceId &&
     !form && !compareIds;
 
@@ -2344,7 +2344,9 @@ export function DrawingWorkspace({
               role="toolbar"
               aria-label="Selected markup actions"
               data-drawing-chrome
-              className="bg-card/95 absolute inset-x-0 bottom-0 z-20 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto rounded-t-2xl border-t px-3 pt-2 pb-2 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
+              className={`absolute z-20 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto px-3 py-2 ${fullscreen
+                ? "bg-background/60 border-border/60 inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mx-auto max-w-2xl rounded-2xl border shadow-md backdrop-blur-sm"
+                : "bg-card/95 inset-x-0 bottom-0 rounded-t-2xl border-t shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"}`}
             >
               <div className="flex items-center gap-1.5">
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
