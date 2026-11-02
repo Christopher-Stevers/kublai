@@ -307,7 +307,7 @@ function MarkupStyleRow({
   );
 }
 const SELECTED_BUTTON = "h-8 shrink-0 rounded-full px-3 text-xs";
-const SELECTED_ICON = "size-8 shrink-0 rounded-full";
+const SELECTED_ICON = "h-8 w-10 shrink-0 rounded-full";
 const capitalize = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1);
 /** A small icon tile at the start of a bottom-bar menu item. */
@@ -1742,8 +1742,8 @@ export function DrawingWorkspace({
       }] : []),
       ...(can
         ? [
-            { key: "move", label: "Move", icon: MoveIcon, disabled: pending > 0 || locked, ...mode("move") },
-            { key: "resize", label: "Resize", icon: ScalingIcon, disabled: pending > 0 || locked, ...mode("resize") },
+            { key: "move", label: "Move", icon: MoveIcon, iconOnly: true, disabled: pending > 0 || locked, ...mode("move") },
+            { key: "resize", label: "Resize", icon: ScalingIcon, iconOnly: true, disabled: pending > 0 || locked, ...mode("resize") },
             ...(entity.data.type === "dimension" && entity.data.parents
               ? [{ key: "edit", label: "Edit", icon: PencilIcon, disabled: pending > 0 || locked, run: () => editMeasurement(entity.id) }]
               : []),
