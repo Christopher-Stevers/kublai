@@ -47,3 +47,14 @@ run "private_durable_database" {
     error_message = "Uploads need encrypted storage without forced detach."
   }
 }
+run "dns_migration_preserves_production" {
+  command = plan
+  assert {
+    condition     = aws_route53_zone.app.name == "foremanhq.ca" && toset(aws_route53_record.production.records) == toset(["216.198.79.1", "64.29.17.1"])
+    error_message = "DNS migration must preserve Vercel production until a separate cutover."
+  }
+  assert {
+    condition     = length(aws_route53_record.clerk) == 5 && length(aws_route53_record.certificate_authorities.records) == 3 && toset(aws_route53_record.wildcard.records) == toset(["cname.vercel-dns-017.com."])
+    error_message = "Preserve all Clerk, CAA and wildcard records during DNS migration."
+  }
+}
