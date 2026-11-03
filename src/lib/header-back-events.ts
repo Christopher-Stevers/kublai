@@ -128,9 +128,18 @@ function onPopState(event: PopStateEvent) {
 }
 
 /** Runs the most recent back override. Returns false when there is none. */
+const backRunListeners = new Set<() => void>();
+
+/** Called just before the app bar's back arrow (or its key) steps back. */
+export function onHeaderBackRun(listener: () => void) {
+  backRunListeners.add(listener);
+  return () => void backRunListeners.delete(listener);
+}
+
 export function runHeaderBackOverride() {
   const top = topOverride();
   if (!top) return false;
+  for (const listener of backRunListeners) listener();
   top.current();
   return true;
 }

@@ -12,6 +12,32 @@ const keys = new Set<string>(["w", "a", "s", "d", "q", "e"]);
 const surfaces = new Set<HTMLElement>();
 let preferred: HTMLElement | null = null;
 
+function availableDrawingSurfaces() {
+  const dialog = activeShortcutDialog();
+  return [...surfaces].filter((surface) => {
+    if (
+      !surface.isConnected ||
+      !shortcutElementAvailable(surface) ||
+      (dialog && !dialog.contains(surface))
+    )
+      return false;
+    const rect = surface.getBoundingClientRect();
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom > 0 &&
+      rect.right > 0 &&
+      rect.top < innerHeight &&
+      rect.left < innerWidth
+    );
+  });
+}
+
+/** A visible drawing sheet keeps W A S D for panning. */
+export function drawingKeysActive() {
+  return availableDrawingSurfaces().length > 0;
+}
+
 /** Only the visible, most recently used sheet owns drawing keyboard controls. */
 export function useDrawingKeyboardControls(
   frame: RefObject<HTMLDivElement | null>,
@@ -32,24 +58,7 @@ export function useDrawingKeyboardControls(
     const keydown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (!keys.has(key) || keyboardShortcutBlocked(event)) return;
-      const dialog = activeShortcutDialog();
-      const available = [...surfaces].filter((surface) => {
-        if (
-          !surface.isConnected ||
-          !shortcutElementAvailable(surface) ||
-          (dialog && !dialog.contains(surface))
-        )
-          return false;
-        const rect = surface.getBoundingClientRect();
-        return (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          rect.bottom > 0 &&
-          rect.right > 0 &&
-          rect.top < innerHeight &&
-          rect.left < innerWidth
-        );
-      });
+      const available = availableDrawingSurfaces();
       const target =
         event.target instanceof Element
           ? event.target.closest<HTMLElement>("[data-drawing-keyboard-surface]")
