@@ -2,11 +2,18 @@
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { SlipLineImage } from "./SlipLineImage";
+import { useExperimentalEnabled } from "~/lib/experimental";
 import {
   slipTestReviewSchema,
   type SlipTestReview,
 } from "~/lib/packing-slip-test-review";
-export function PackingSlipTestReview({
+export function PackingSlipTestReview(props: {
+  jobId: string;
+  versionId: string;
+}) {
+  return useExperimentalEnabled() ? <ExperimentalTestReview {...props} /> : null;
+}
+function ExperimentalTestReview({
   jobId,
   versionId,
 }: {

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
+import { useExperimentalEnabled } from "~/lib/experimental";
 
 export type { JobWorkspaceOptionId };
 
@@ -33,6 +34,7 @@ export function JobWorkspaceOptions({
 }) {
   const canAccessSystems = useSystemsAccess();
   const canAccessDrawings = useDrawingsAccess();
+  const experimental = useExperimentalEnabled();
   return (
     <>
     <FrequentJobCards trailingCards={<VoiceCard />}>
@@ -190,7 +192,7 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      {canAccessDrawings && (
+      {experimental && canAccessDrawings && (
         <Card
           data-job-card="models"
           role="button"
@@ -221,7 +223,7 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
-      {canAccessSystems && <Card
+      {experimental && canAccessSystems && <Card
         data-job-card="systems"
         role="button"
         aria-label="Systems"

@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { JobWorkspaceOptions } from "./JobWorkspaceOptions";
-afterEach(cleanup);
+import { ExperimentalSettings } from "~/components/account/ExperimentalSettings";
+import { getLastJobWorkspaceLocation, setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
+afterEach(() => { cleanup(); localStorage.clear(); });
 it("orders the job cards and opens Chat with keyboard or touch", () => {
   const select = vi.fn();
   render(<JobWorkspaceOptions onSelect={select} chatUnreadCount={7} />);
@@ -41,3 +43,16 @@ it("shows unavailable instead of a false zero without cached rooms", () => {
 });
 
 vi.mock("~/components/permissions/SystemsAccess", () => ({ useSystemsAccess: () => true }));
+
+it("hides experimental cards and saved experimental screens once turned off in settings", () => {
+  setLastJobWorkspaceLocation({ jobId: "job", view: "models", materialListId: null });
+  render(<><ExperimentalSettings /><JobWorkspaceOptions onSelect={vi.fn()} /></>);
+  expect(screen.getByRole("button", { name: "Models, experimental" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("switch", { name: "Show experimental features" }));
+  expect(screen.queryByRole("button", { name: "Models, experimental" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Systems" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Drawings/ })).toBeInTheDocument();
+  expect(getLastJobWorkspaceLocation()?.view).toBe("options");
+  fireEvent.click(screen.getByRole("switch", { name: "Show experimental features" }));
+  expect(screen.getByRole("button", { name: "Systems" })).toBeInTheDocument();
+});

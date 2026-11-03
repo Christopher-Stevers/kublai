@@ -1,3 +1,5 @@
+import { EXPERIMENTAL_JOB_VIEWS, isExperimentalEnabled } from "./experimental";
+
 export type JobWorkspaceOptionId =
   | "material-lists"
   | "tool-requests"
@@ -45,7 +47,11 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
     }
     return {
       jobId: parsed.jobId,
-      view: parsed.view === "tool-requests" ? "material-lists" : parsed.view,
+      view: parsed.view === "tool-requests"
+        ? "material-lists"
+        : !isExperimentalEnabled() && EXPERIMENTAL_JOB_VIEWS.includes(parsed.view)
+          ? "options"
+          : parsed.view,
       materialListId:
         typeof parsed.materialListId === "string"
           ? parsed.materialListId

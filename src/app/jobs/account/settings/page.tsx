@@ -4,6 +4,7 @@ import { OfflineTestSettings } from "~/components/account/OfflineTestSettings";
 import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
 import { FrequentJobCardsSetting } from "~/components/jobs/FrequentJobCards";
 import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
+import { ExperimentalSettings } from "~/components/account/ExperimentalSettings";
 import { useLandingPage } from "~/hooks/use-landing-page";
 import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
 import { api } from "~/trpc/react";
@@ -128,6 +129,7 @@ export default function SettingsPage() {
 
       <RestartTutorialCard />
       <AssessmentAiSettings key={me?.id} />
+      <ExperimentalSettings />
       <OfflineTestSettings />
       <DiagnosticsSettings />
 
