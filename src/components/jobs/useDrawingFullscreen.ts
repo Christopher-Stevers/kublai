@@ -88,10 +88,10 @@ export function useDrawingFullscreen(active: boolean) {
           void document.exitFullscreen().catch(() => undefined);
         }
       } else if (native.current) {
+        // App switching, locking the phone, and browser UI can end native
+        // fullscreen without an Exit action. Keep the drawing-only fallback
+        // and the saved orientation choice; Exit/Escape explicitly clear them.
         native.current = false;
-        remember(false);
-        wanted.current = false;
-        setFullscreen(false);
       }
     };
     const key = (event: KeyboardEvent) => {
@@ -113,7 +113,7 @@ export function useDrawingFullscreen(active: boolean) {
         void document.exitFullscreen().catch(() => undefined);
       }
     };
-  }, [exit, remember]);
+  }, [exit]);
 
   useClientLayoutEffect(() => {
     if (!active) return;

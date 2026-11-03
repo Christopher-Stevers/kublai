@@ -123,3 +123,44 @@ it("still applies defaults and session choices when storage is unavailable", () 
   rotate(90);
   expect(screen.getByRole("status")).toHaveTextContent("normal");
 });
+
+
+it.each([true, false])("preserves portrait fullscreen when app switching ends native fullscreen (hidden first=%s)", async hiddenFirst => {
+  let element: Element | null = null;
+  let hidden = false;
+  const request = vi.fn(function(this: HTMLElement) {
+    element = this;
+    fireEvent(document, new Event("fullscreenchange"));
+    return Promise.resolve();
+  });
+  Object.defineProperty(document, "fullscreenElement", { configurable: true, get: () => element });
+  Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+  Object.defineProperty(HTMLElement.prototype, "requestFullscreen", { configurable: true, value: request });
+  const visibility = (value: boolean) => {
+    hidden = value;
+    fireEvent(document, new Event("visibilitychange"));
+  };
+  try {
+    const view = render(<Viewer />);
+    await act(async () => fireEvent.click(screen.getByText("Enter")));
+    if (hiddenFirst) visibility(true);
+    element = null;
+    fireEvent(document, new Event("fullscreenchange"));
+    if (!hiddenFirst) visibility(true);
+    visibility(false);
+    fireEvent(window, new Event("pageshow"));
+    expect(screen.getByRole("status")).toHaveTextContent("fullscreen");
+    expect(storage.get(key("portrait"))).toBe("true");
+    expect(request).toHaveBeenCalledOnce();
+    view.unmount();
+    render(<Viewer />);
+    expect(screen.getByRole("status")).toHaveTextContent("fullscreen");
+    fireEvent.click(screen.getByText("Exit"));
+    expect(storage.get(key("portrait"))).toBe("false");
+    expect(screen.getByRole("status")).toHaveTextContent("normal");
+  } finally {
+    Reflect.deleteProperty(document, "fullscreenElement");
+    Reflect.deleteProperty(document, "hidden");
+    Reflect.deleteProperty(HTMLElement.prototype, "requestFullscreen");
+  }
+});
