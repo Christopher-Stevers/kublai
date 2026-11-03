@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { beforeAll, expect, it, vi } from "vitest";
 import { analyzeSlip, type Evaluator } from "./analyze";
 import {
+  assumedUnit,
   bandsFromTable,
   snapColumns,
   type VisionAnswer,
@@ -1282,6 +1283,42 @@ it("finishes clear 98% OCR without calling either model", async () => {
   expect(evaluate).not.toHaveBeenCalled();
 });
 
+it("counts an unprinted unit as the order's, or as pieces where only they fit", () => {
+  expect(assumedUnit(item, 6).unit).toBe("ea");
+  const box = {
+    ...item,
+    unit: "box",
+    ordered: 2,
+    received: 1,
+    piecesPerPack: 100,
+    individualUnit: "pcs",
+  };
+  expect(assumedUnit(box, 100).unit).toBe("pcs");
+  expect(assumedUnit(box, 1).unit).toBe("box");
+  // 100 boxes and 100 pieces both fit an order of 100 boxes.
+  expect(assumedUnit({ ...box, ordered: 100 }, 100)).toMatchObject({
+    unit: null,
+    issue: "Check whether the slip counts box or pieces.",
+  });
+});
+
+it("leaves a blank shipped cell blank beside a generic qty column", async () => {
+  // QTY over ORD, SHP and B/O, with the B/O heading unread.
+  const heading = row(
+    ["SKU", "Description", "Ordered", "Shipped", "Qty", "Unit"],
+    0.1,
+  );
+  const blank = row(["ABC123", "Brass valve", "10", "", "4", "ea"], 0.2);
+  blank.words.splice(3, 1);
+  blank.text = "ABC123 Brass valve 10 4 ea";
+  const result = await analyzeSlip([heading, blank], [item], noAssistant, {
+    pages: [],
+    models: false,
+  });
+  expect(result.lines[0]!.shipped).toBeNull();
+  expect(result.lines[0]!.proposed).toBeNull();
+});
+
 it("checks only the uncertain OCR row and preserves the clear row", async () => {
   const clear = row(["DEF456", "Copper tee", "10", "6", "4", "ea"], 0.3);
   const uncertain = structuredClone(line);
@@ -1298,4 +1335,34 @@ it("checks only the uncertain OCR row and preserves the clear row", async () => 
   expect(calls).not.toContain("items");
   expect(result.lines.find((l) => l.orderItemId === "b")?.source).toBe("table");
   expect(result.lines.find((l) => l.orderItemId === "b")?.proposed).toBe(6);
+});
+
+it("reads every line when Jev counts lines the table reader missed", async () => {
+  const clear = row(["DEF456", "Copper tee", "10", "6", "4", "ea"], 0.3);
+  const uncertain = structuredClone(line);
+  uncertain.words[3]!.confidence = 40;
+  const other = { ...item, id: "b", sku: "DEF456", description: "Copper tee" };
+  const { ask, calls } = fakeJev({
+    // A third printed line that the table reader did not find.
+    page: {
+      count: pick("n3", 0.95),
+      lines: pick("n3", 0.95),
+      range: pick("r0", 0.99),
+    },
+    total: pick("v18"),
+    rows: {
+      row1: box(0, 1, 0.19, 0.27),
+      row2: box(0, 1, 0.29, 0.37),
+      row3: box(0, 1, 0.39, 0.47),
+    },
+  });
+  const result = await analyzeSlip(
+    [header, uncertain, clear],
+    [item, other],
+    noAssistant,
+    { pages: [page], ask },
+  );
+  expect(calls).toContain("rows");
+  expect(calls.filter((c) => c === "main")).toHaveLength(3);
+  expect(result.lines).toHaveLength(3);
 });

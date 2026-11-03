@@ -18,7 +18,12 @@ import {
 } from "./read-table";
 import { matchLines } from "./match";
 import { recoverProductRows } from "./recover-rows";
-import { readSlipImages, VISION_MODEL, type VisionAsk } from "./vision";
+import {
+  assumedUnit,
+  readSlipImages,
+  VISION_MODEL,
+  type VisionAsk,
+} from "./vision";
 import { sameLine, escalationPlan } from "./cascade-policy";
 type Question = {
   type: "choice";
@@ -556,7 +561,11 @@ function tableLines(
     const q = {
       ordered: readQuantity(line.cells.ordered),
       previous: readQuantity(line.cells.previous),
-      shipped: readQuantity(line.cells.shipped ?? line.cells.qty),
+      // A blank shipped cell stays blank: a generic qty column beside a
+      // shipped one holds some other count, as a backorder under QTY B/O.
+      shipped: readQuantity(
+        has("shipped") ? line.cells.shipped : line.cells.qty,
+      ),
       backordered: readQuantity(line.cells.backordered),
     };
     const shippedColumn = has("shipped") || has("qty");
@@ -617,7 +626,7 @@ function tableLines(
         ?.toLowerCase() ??
       q.shipped.unit ??
       null;
-    const unit = rawUnit;
+    let unit = rawUnit;
     const matchIssue = (text: string) => {
       matchIssues.add(text);
       issues.push(text);
@@ -633,10 +642,12 @@ function tableLines(
         matchIssue("Check the product: the description only partly matches.");
       else if (match.confidence === "medium")
         notes.push("Matched by description. Check it is the same product.");
-      if (!unit)
-        issues.push(
-          "Quantity unit is not printed. Confirm the unit before receiving.",
-        );
+      if (!unit) {
+        const assumed = assumedUnit(item, shipped ?? ordered ?? 0);
+        unit = assumed.unit;
+        if (assumed.note) notes.push(assumed.note);
+        if (assumed.issue) issues.push(assumed.issue);
+      }
       if (
         ordered !== null &&
         Math.abs(ordered - item.ordered) > 1e-6 &&
@@ -881,7 +892,8 @@ export async function analyzeSlip(
         v.readings = [slipReading(ocr[0]!), own];
     }
     // A targeted check cannot overwrite an already clear OCR row.
-    lines = targeted
+    const narrow = targeted && vision.targeted;
+    lines = narrow
       ? lines.map((line) => {
           if (!targets.includes(line)) return line;
           const candidates = vision.lines.filter((v) => sameLine(line, v));
@@ -889,7 +901,7 @@ export async function analyzeSlip(
         })
       : vision.lines;
     model = vision.model;
-    if (!targeted) warnings.length = 0; // Full image coverage supersedes OCR routing warnings.
+    if (!narrow) warnings.length = 0; // Full image coverage supersedes OCR routing warnings.
     warnings.push(...vision.warnings);
     if (!headers.length) headers = vision.headers;
   } else if (

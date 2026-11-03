@@ -784,6 +784,19 @@ export async function readSlipImages(input: {
     !!last &&
     (printed(choice(last.answers.lines)) ||
       printed(choice(last.answers.range)));
+  // The table reader can merge or miss whole lines. Where Jev surely counts
+  // more lines starting on a page than the table found, checking only its
+  // uncertain rows never looks for the rest, so every line is read instead.
+  const short = pageInfo.some((info) => {
+    const count = choice(info.answers.count);
+    return (
+      !!count &&
+      count.confidence >= COUNT_MIN &&
+      (lineCount(count) ?? 0) >
+        tableBands.filter((b) => b.page === info.page).length
+    );
+  });
+  const targets = short ? undefined : input.targets;
   // Each page read whole, per order item, checks the line readings.
   const readItems = () =>
     Promise.all(
@@ -808,8 +821,7 @@ export async function readSlipImages(input: {
   // Without printed totals it checks every slip. With totals it found nothing
   // more and cost a third more output tokens in testing, so there it only
   // stands in when the totals cannot be squared.
-  const itemChecks =
-    footer || input.targets ? Promise.resolve(null) : readItems();
+  const itemChecks = footer || targets ? Promise.resolve(null) : readItems();
   // Photos often defeat the table reader, which then finds only some lines.
   // Where Jev counts more lines starting on a page, Jev finds them all. A
   // count it is unsure of only stands in when there is no table at all.
@@ -833,7 +845,7 @@ export async function readSlipImages(input: {
         );
   for (const info of pageInfo) {
     const own = tableBands.filter((b) => b.page === info.page);
-    if (input.targets) {
+    if (targets) {
       bands.push(...own);
       continue;
     }
@@ -925,8 +937,7 @@ export async function readSlipImages(input: {
     total: bands.length,
   });
   const selectedBands = bands.filter(
-    (band) =>
-      !input.targets || (band.table && input.targets.includes(band.table)),
+    (band) => !targets || (band.table && targets.includes(band.table)),
   );
   const readings = await limited(
     selectedBands.map((band, index) => async (): Promise<Reading> => {
@@ -1236,7 +1247,7 @@ export async function readSlipImages(input: {
     total: readings.length,
     lines,
   });
-  if (input.targets) {
+  if (targets) {
     const count = choice(last?.answers.lines);
     const expectedCount =
       count && count.confidence >= COUNT_MIN ? lineCount(count) : null;
@@ -1259,7 +1270,7 @@ export async function readSlipImages(input: {
   }
   let checks = await itemChecks;
   const { problems, countOff, counted, shipped } =
-    last && !input.targets
+    last && !targets
       ? totalsProblems(lines, readings, last.answers, last.total)
       : { problems: [], countOff: false, counted: false, shipped: null };
   const total =
@@ -1328,6 +1339,8 @@ export async function readSlipImages(input: {
     headers,
     layout: { footer },
     model: `${VISION_MODEL} (images)`,
+    /** Only the targets were read; otherwise every line was. */
+    targeted: !!targets,
   };
 }
 
@@ -1662,6 +1675,32 @@ export function settleHidden(r: Reading, items: ReceiptOrderItem[]): Reading {
   };
 }
 
+/** The unit of a quantity printed without one: the order's, or pieces where
+ * only that fits a packed item's order. Null where packs and pieces both fit,
+ * or neither does. */
+export function assumedUnit(item: ReceiptOrderItem, amount: number) {
+  if (!(item.piecesPerPack && item.piecesPerPack > 1))
+    return {
+      unit: item.unit,
+      note: `No unit printed; counted as ${item.unit}.`,
+    };
+  const pack = item.piecesPerPack,
+    near = (n: number) => n <= Math.max(item.ordered, 1) * 1.5;
+  const packs = near(amount),
+    pieces = amount > 0 && amount % pack === 0 && near(amount / pack);
+  if (packs === pieces)
+    return {
+      unit: null,
+      issue: `Check whether the slip counts ${item.unit} or pieces.`,
+    };
+  return packs
+    ? { unit: item.unit, note: `No unit printed; read as ${item.unit}.` }
+    : {
+        unit: item.individualUnit ?? "pcs",
+        note: `No unit printed; read as pieces (${pack} per ${item.unit}).`,
+      };
+}
+
 export function checkAgainstOrder(
   readings: Reading[],
   items: ReceiptOrderItem[],
@@ -1685,8 +1724,8 @@ export function checkAgainstOrder(
       issues.push(
         `Check the product: only ${sure} sure it is this order item.`,
       );
-    const unit = r.unit;
-    let explained = false,
+    let unit = r.unit,
+      explained = false,
       { shippedConf, backorderedConf } = r;
     if (item) {
       if ((matched.get(r.part as number) ?? 0) > 1)
@@ -1714,9 +1753,10 @@ export function checkAgainstOrder(
           `Check the product: the slip shows ${r.ordered} ordered; the order has ${item.ordered} ${item.unit}.`,
         );
       if (!unit && r.shipped !== null) {
-        issues.push(
-          "No unit could be read on the slip. Confirm the printed unit and any pack or length conversion.",
-        );
+        const assumed = assumedUnit(item, r.shipped);
+        unit = assumed.unit;
+        if (assumed.note) notes.push(assumed.note);
+        if (assumed.issue) issues.push(assumed.issue);
       }
       const inOrderUnit =
         r.shipped !== null && unit
