@@ -1327,8 +1327,9 @@ export function AddPartDialog({
             </>)}
           </ArcScrollerSurface>
 
-          {/* Bottom bar, laid out like the material list's */}
-          <div data-bottom-menu className={`shrink-0 border-t bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
+          {/* Bottom bar, laid out like the material list's. Its background
+              runs the full screen width; the controls keep the column width. */}
+          <div data-bottom-menu className={`relative isolate shrink-0 before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:border-t before:bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div>
               <PriorityActionBar
                 tabAction={!prefabView ? (
