@@ -946,8 +946,38 @@ html:root[data-drawing-quick-wheel-page] [data-app-shell] > main { padding-botto
   box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px #0369a1;
 }
 
-/* The item the arrow keys moved to; unlayered so it shows through outline-none. */
+/* The item the arrow keys moved to, ringed like a darksaber: a black blade
+   with a white edge, wrapped in dark smoke (seen on light pages) and a pale
+   glow (seen on dark ones) that hums. Unlayered so it shows through
+   outline-none and the item's own shadow. */
 [data-key-focus]:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  outline: 3px solid #050507;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 2px 8px rgb(255 255 255 / 0.95),
+    0 0 10px 9px rgb(8 10 18 / 0.45),
+    0 0 26px 12px rgb(205 218 255 / 0.5);
+  animation: darksaber-hum 1.8s ease-in-out infinite;
+}
+@keyframes darksaber-hum {
+  50% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 3px 8px #fff,
+      0 0 14px 11px rgb(8 10 18 / 0.6),
+      0 0 34px 15px rgb(205 218 255 / 0.75);
+  }
+  54% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 2px 8px rgb(255 255 255 / 0.8),
+      0 0 9px 9px rgb(8 10 18 / 0.38),
+      0 0 22px 11px rgb(205 218 255 / 0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-key-focus]:focus-visible {
+    animation: none;
+  }
 }
