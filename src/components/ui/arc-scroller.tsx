@@ -97,9 +97,8 @@ export type ArcGeometry = {
   /** Choices further than this many steps from the middle are hidden. */
   half: number;
 };
-const SPAN = (50 * Math.PI) / 180;
+const SPAN = (36 * Math.PI) / 180;
 const SPACING = 70;
-const EDGE = 48;
 /** The check button sits this far from the middle of the arc, toward the thumb. */
 const CHECK_GAP = 110;
 
@@ -107,12 +106,14 @@ const CHECK_GAP = 110;
 export function arcGeometry(bounds: Bounds, y: number, hand: ArcHand): ArcGeometry | null {
   const width = bounds.right - bounds.left;
   const height = bounds.bottom - bounds.top;
-  const radius = Math.min(330, (height - 70) / (2 * Math.sin(SPAN)), (width - 190) / 0.45);
+  // A wide, shallow arc; its ends stay clear of the side, more so in landscape.
+  const edge = Math.min(220, Math.max(64, width * (width > height ? 0.16 : 0.06)));
+  const radius = Math.min(480, (height - 70) / (2 * Math.sin(SPAN)), (width - 150 - edge) / 0.45);
   if (radius < 120) return null;
   const reach = radius * Math.sin(SPAN) + 35;
   const cy = Math.min(Math.max(y, bounds.top + reach), bounds.bottom - reach);
-  // The arc's two ends sit EDGE px in from the side; its middle bulges inward.
-  const inset = radius * Math.cos(SPAN) - EDGE;
+  // The arc's two ends sit `edge` px in from the side; its middle bulges inward.
+  const inset = radius * Math.cos(SPAN) - edge;
   const cx = hand === "right" ? bounds.right + inset : bounds.left - inset;
   const step = SPACING / radius;
   return { hand, cx, cy, radius, step, half: SPAN / step };
@@ -270,6 +271,7 @@ export function ArcScrollerSurface({
   } | null>(null);
   const suppressTap = useRef(false);
   const wheelIdle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const wheelTarget = useRef<number | null>(null);
 
   const setOffset = (value: number) => {
     offsetRef.current = value;
@@ -278,6 +280,8 @@ export function ArcScrollerSurface({
   const stopAnimation = () => {
     if (animation.current !== null) cancelAnimationFrame(animation.current);
     animation.current = null;
+    wheelTarget.current = null;
+    clearTimeout(wheelIdle.current);
   };
   const show = (value: Open | null) => {
     openRef.current = value;
@@ -566,12 +570,29 @@ export function ArcScrollerSurface({
             onChoose={choose}
             onPointerDown={beginDrag}
             onWheel={(delta) => {
-              const next = offsetRef.current + delta;
+              // Glide toward where the wheel has scrolled to, then rest on the nearest choice.
               const count = open.ranked.length;
-              setOffset(arcLoops(count, open.geometry) ? next : Math.min(count - 1, Math.max(0, next)));
-              stopAnimation();
+              const gliding = wheelTarget.current !== null && animation.current !== null;
+              const next = (gliding ? wheelTarget.current! : offsetRef.current) + delta;
+              const target = arcLoops(count, open.geometry) ? next : Math.min(count - 1, Math.max(0, next));
+              if (!gliding) stopAnimation();
+              wheelTarget.current = target;
+              if (!gliding) {
+                const glide = () => {
+                  const goal = wheelTarget.current;
+                  if (goal === null) return void (animation.current = null);
+                  const gap = goal - offsetRef.current;
+                  setOffset(Math.abs(gap) < 0.002 ? goal : offsetRef.current + gap * 0.2);
+                  animation.current = requestAnimationFrame(glide);
+                };
+                animation.current = requestAnimationFrame(glide);
+              }
               clearTimeout(wheelIdle.current);
-              wheelIdle.current = setTimeout(() => settle(), 140);
+              wheelIdle.current = setTimeout(() => {
+                const goal = wheelTarget.current;
+                wheelTarget.current = null;
+                if (goal !== null) settle((Math.round(goal) - offsetRef.current) / 0.3);
+              }, 160);
             }}
           />
         )}
@@ -631,7 +652,7 @@ function ArcDisplay({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      onWheel={(event) => onWheel(event.deltaY / 90)}
+      onWheel={(event) => onWheel((event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 400 : 1)) / 90)}
       onContextMenu={(event) => event.preventDefault()}
     >
       <div

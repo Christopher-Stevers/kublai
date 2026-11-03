@@ -48,7 +48,7 @@ it("hugs the thumb-side edge and bulges inward around the hold", () => {
   const end = arcPoint(right, right.half);
   expect(middle.y).toBeCloseTo(400);
   expect(middle.x).toBeLessThan(end.x);
-  expect(end.x).toBeCloseTo(352);
+  expect(end.x).toBeCloseTo(336);
   const left = arcGeometry(bounds, 400, "left")!;
   expect(arcPoint(left, 0).x).toBeCloseTo(400 - middle.x);
   // Too small to fit an arc.
@@ -88,12 +88,12 @@ it("scrolls past the last choice back round to the first, and the check picks th
   hold();
   fireEvent.pointerUp(window, pointer);
   act(() => { vi.advanceTimersByTime(500); });
-  expect(focused()).toBe("5 in");
-  for (let i = 0; i < 8; i++) {
+  expect(focused()).toBe("4 in");
+  for (let i = 0; i < 9; i++) {
     fireEvent.keyDown(window, { key: "ArrowDown" });
     act(() => { vi.advanceTimersByTime(600); });
   }
-  // Eight steps from 5 in: past 12 in, over the gap without stopping, round to 1 in.
+  // Nine steps from 4 in: past 12 in, over the gap without stopping, round to 1 in.
   expect(focused()).toBe("1 in");
   expect(document.querySelector("[data-arc-gap]")).not.toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Choose 1 in" }));
@@ -173,4 +173,24 @@ it("offers Back from later steps and ignores holds on controls", () => {
   hold();
   fireEvent.click(screen.getByRole("button", { name: "Back one step" }));
   expect(back).toHaveBeenCalledOnce();
+});
+
+it("glides with the mouse wheel and comes to rest on a whole choice", () => {
+  render(
+    <ArcScrollerSurface>
+      <Stage options={sizes()} />
+    </ArcScrollerSurface>,
+  );
+  fireEvent.contextMenu(screen.getByText("Blank stage"), { button: 2, clientX: 330, clientY: 400 });
+  expect(focused()).toBe("4 in");
+  const first = arc()!.querySelector<HTMLElement>('[aria-label="5 in"]')!.style.transform;
+  fireEvent.wheel(arc()!, { deltaY: 40 });
+  act(() => { vi.advanceTimersByTime(32); });
+  // Part way between choices rather than a whole step at once.
+  const moving = arc()!.querySelector<HTMLElement>('[aria-label="5 in"]')!.style.transform;
+  expect(moving).not.toBe(first);
+  expect(focused()).toBe("4 in");
+  fireEvent.wheel(arc()!, { deltaY: 40 });
+  act(() => { vi.advanceTimersByTime(1000); });
+  expect(focused()).toBe("5 in");
 });
