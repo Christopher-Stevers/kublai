@@ -123,6 +123,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     piecesPerPack: z.number().int().min(1).max(999999).nullable(),
     individualUnit: text.max(32),
     photoUrl: text.max(2000).nullable(),
+    /** Also add it to the linked order and its material list. */
+    addToOrder: z.boolean().default(false),
   }),
   z.object({
     ...base,

@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc } from "drizzle-orm";
 import { db } from "~/server/db";
 import {
   orders,
@@ -49,6 +49,7 @@ import { seedPreviousReceipt } from "./review-draft";
 import { trialDocument } from "./trial-store";
 import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { canCreateFromSlip } from "./receiving-access";
+import { catalogueFor, forgetCatalogue } from "./catalogue-match";
 import { publishMaterialListEvent } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
@@ -276,7 +277,6 @@ export async function receivingQueue(
     unitOptions,
     listOptions,
     orderOptions,
-    parts,
     mayCreate,
     members,
   ] = await Promise.all([
@@ -327,35 +327,47 @@ export async function receivingQueue(
         ),
       )
       .orderBy(desc(orders.createdAt)),
-    query.trim().length >= 2
-      ? db
-          .select({
-            id: partDefinitions.id,
-            name: partDefinitions.displayName,
-            description: partDefinitions.description,
-            photoUrl: partDefinitions.imageUrl,
-            catalogId: partDefinitions.catalogId,
-            unit: partDefinitions.bulkUnit,
-            piecesPerPack: partDefinitions.piecesPerPack,
-            individualUnit: partDefinitions.individualUnit,
-          })
-          .from(partDefinitions)
-          .where(
-            and(
-              eq(partDefinitions.organizationId, access.job.organizationId),
-              eq(partDefinitions.isActive, true),
-              sql`exists (select 1 from ${catalogs} where ${catalogs.id}=${partDefinitions.catalogId} and ${catalogs.kind}='materials')`,
-              ilike(
-                partDefinitions.displayName,
-                `%${query.replace(/[\\%_]/g, "\\$&")}%`,
-              ),
-            ),
-          )
-          .limit(50)
-      : Promise.resolve([]),
     canCreateFromSlip(access, db),
     documentMembers(access),
   ]);
+  // Likely catalogue parts for lines not on the order, which a reviewer who
+  // may add parts can put on the material list, and the typed search.
+  const searching = query.trim().length >= 2,
+    unmatched =
+      doc.packingSlip && mayCreate
+        ? review.lines.filter(
+            (l) => !l.ignored && !l.approved && !l.orderItemId,
+          )
+        : [];
+  const catalogue =
+    searching || unmatched.length
+      ? await catalogueFor(
+          db,
+          access.job.organizationId,
+          doc.packingSlip
+            ? (orderOptions.find((o) => o.id === doc.packingSlip!.orderId)
+                ?.supplierId ?? null)
+            : review.supplierId,
+        )
+      : null;
+  const parts = searching
+    ? catalogue!(
+        { code: "", text: query.trim() },
+        { limit: 50, min: 0.15, typed: true },
+      )
+    : [];
+  const likely = Object.fromEntries(
+    unmatched.map((l) => {
+      const ranked = catalogue!({ code: l.sku, text: l.description }),
+        chosen = l.partId ? catalogue!.part(l.partId) : undefined;
+      return [
+        l.id,
+        chosen
+          ? [chosen, ...ranked.filter((p) => p.id !== chosen.id)].slice(0, 3)
+          : ranked,
+      ];
+    }),
+  );
   const photoSuggestions =
     query.trim().length >= 2
       ? await import("~/server/api/routers/catalogue")
@@ -420,6 +432,7 @@ export async function receivingQueue(
     lists: listOptions,
     orders: orderOptions,
     parts,
+    likely,
     photoSuggestions,
     canCreate: mayCreate,
     scannedBy:
@@ -545,6 +558,13 @@ async function addOrderLine(
     )
     .limit(1);
   if (!part) fail("The catalogue part is unavailable.");
+  // An unread unit is the part's own, unless the part comes in packs.
+  if (
+    !receiptUnit(line.unit) &&
+    !(part!.piecesPerPack && part!.piecesPerPack > 1) &&
+    part!.bulkUnit
+  )
+    line.unit = part!.bulkUnit;
   const unit = receiptUnit(line.unit);
   if (
     part!.piecesPerPack &&
@@ -775,6 +795,25 @@ async function mutateReceivingImpl(
         const l = review.lines.find((l) => l.id === id);
         if (!l) fail("Slip line no longer exists.", "CONFLICT");
         return l!;
+      };
+      // Puts a slip line's catalogue part on the linked order and its
+      // material list.
+      const addToOrder = async (l: ReceivingLine) => {
+        if (!doc.packingSlip) fail("Choose an order first.");
+        if (l.orderItemId || l.approved)
+          fail("This line already belongs to the order.");
+        const order = await orderFor(tx, fresh, doc.packingSlip!.orderId);
+        await scopedSupplier(tx, fresh, order.supplierId);
+        const [list] = await tx
+          .select()
+          .from(materialLists)
+          .where(eq(materialLists.id, order.materialListId!))
+          .for("update");
+        if (!list?.quoteId) fail("The material list has no item container.");
+        // When the ordered count was not read, the order asked for what came.
+        if (l.ordered === null && l.quantity !== null && l.quantity > 0)
+          l.ordered = l.quantity;
+        await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!);
       };
       if (input.action === "trialDraft") {
         const trial = await trialDocument(fresh, doc.id, input.runId, state);
@@ -1231,6 +1270,7 @@ async function mutateReceivingImpl(
           l.partId = p!.id;
           l.photoUrl = p!.imageUrl;
         }
+        if (input.addToOrder) await addToOrder(l);
       } else if (input.action === "reconstruct") {
         await requireCreate(fresh, tx);
         if (doc.packingSlip) fail("This slip already has an order.");
@@ -1311,19 +1351,7 @@ async function mutateReceivingImpl(
         review.orderConfirmed = true;
       } else if (input.action === "extra") {
         await requireCreate(fresh, tx);
-        if (!doc.packingSlip) fail("Choose an order first.");
-        const l = lineFor(input.lineId);
-        if (l.orderItemId || l.approved)
-          fail("This line already belongs to the order.");
-        const order = await orderFor(tx, fresh, doc.packingSlip!.orderId);
-        await scopedSupplier(tx, fresh, order.supplierId);
-        const [list] = await tx
-          .select()
-          .from(materialLists)
-          .where(eq(materialLists.id, order.materialListId!))
-          .for("update");
-        if (!list?.quoteId) fail("The material list has no item container.");
-        await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!);
+        await addToOrder(lineFor(input.lineId));
       } else if (input.action === "approve") {
         if (!doc.packingSlip || !review.orderConfirmed)
           fail("Confirm the linked order first.");
@@ -1505,5 +1533,8 @@ async function mutateReceivingImpl(
       "updated",
       access.job.organizationId,
     );
+  // New parts and supplier listings change the likely parts.
+  if (["part", "extra", "reconstruct"].includes(input.action))
+    forgetCatalogue(access.job.organizationId);
   return result;
 }

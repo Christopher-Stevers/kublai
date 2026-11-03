@@ -42,6 +42,7 @@ import * as schema from "~/server/db/schema";
 import { assertManualReceiptEditable } from "./manual-receiving";
 import {
   mutateReceiving,
+  receivingQueue,
   importTrialReview,
   receivingOrderComparison,
   receivingOrderCandidates,
@@ -1962,5 +1963,193 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       (await workspace()).documents[0]!.receivingReview!.lines[0]!.ignored,
     ).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("offers likely catalogue parts for a line not on the order and adds the chosen one to the list", async () => {
+    const { access, doc } = await confirmedHeader();
+    await db
+      .update(schema.jobs)
+      .set({ foremanUserId: "receiver" })
+      .where(sql`"id"=${job}`);
+    await db.insert(schema.suppliers).values({
+      id: id(70),
+      organizationId: org,
+      name: "Slip Supplier",
+      kind: "external",
+    });
+    await db.insert(schema.quotes).values({
+      id: id(71),
+      organizationId: org,
+      jobId: job,
+      materialListId: list,
+      createdByUserId: "receiver",
+    });
+    await db
+      .update(schema.materialLists)
+      .set({ quoteId: id(71) })
+      .where(eq(schema.materialLists.id, list));
+    await db
+      .update(schema.orders)
+      .set({ supplierId: id(70) })
+      .where(eq(schema.orders.id, order));
+    await db.insert(schema.partDefinitions).values(
+      [
+        [60, '1/2" Copper 90 Elbow C x C'],
+        [61, '3/4" Copper 90 Elbow C x C'],
+        [62, '1/2" Copper Coupling'],
+      ].map(([n, displayName]) => ({
+        id: id(n as number),
+        organizationId: org,
+        catalogId: id(50),
+        displayName: displayName as string,
+        bulkUnit: "ea",
+      })),
+    );
+    await reviewAction(access, doc.documentId, {
+      action: "line",
+      lineId: "0",
+      description: "1/2 CXC 90 ELL WROT",
+      sku: "W07002",
+      quantity: 4,
+      ordered: null,
+      unit: "",
+      unitPrice: null,
+      orderItemId: null,
+      checked: true,
+    });
+    const foreman = await assertDocumentAccess("receiver", job, db);
+    const before = await receivingQueue(foreman, doc.documentId);
+    // The 3/4" elbow is a different size, so it is not offered.
+    expect(before.likely?.["0"]?.map((p) => p.id)).toEqual([id(60), id(62)]);
+    await reviewAction(access, doc.documentId, {
+      action: "part",
+      lineId: "0",
+      partId: id(60),
+      name: '1/2" Copper 90 Elbow C x C',
+      description: "",
+      catalogId: id(50),
+      unit: "ea",
+      piecesPerPack: null,
+      individualUnit: "ea",
+      photoUrl: null,
+      addToOrder: true,
+    });
+    const added = (await db.select().from(schema.orderItems)).find(
+      (i) => i.partDefinitionId === id(60),
+    )!;
+    expect(added).toMatchObject({
+      orderId: order,
+      quantity: "4.000000",
+      requestedQuantity: "0.000000",
+      uomId: id(51),
+    });
+    expect(
+      (await db.select().from(schema.quoteItems)).map((q) => q.sentOrderItemId),
+    ).toEqual([added.id]);
+    const line = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    expect(line).toMatchObject({
+      orderItemId: added.id,
+      partId: id(60),
+      unit: "ea",
+      ordered: 4,
+    });
+    // The supplier's code and words now lead to the part on the next slip.
+    expect(
+      (await db.select().from(schema.supplierParts)).map((l) => [
+        l.supplierSku,
+        l.supplierName,
+      ]),
+    ).toEqual([["W07002", "1/2 CXC 90 ELL WROT"]]);
+    const after = await receivingQueue(foreman, doc.documentId);
+    expect(after.likely?.["0"]).toBeUndefined();
+    expect(after.items?.map((i) => i.id)).toContain(added.id);
+  });
+  it("adds a new catalogue part from a slip line to the order in one step", async () => {
+    const { access, doc } = await confirmedHeader();
+    await db
+      .update(schema.jobs)
+      .set({ foremanUserId: "receiver" })
+      .where(sql`"id"=${job}`);
+    await db.insert(schema.suppliers).values({
+      id: id(70),
+      organizationId: org,
+      name: "Slip Supplier",
+      kind: "external",
+    });
+    await db.insert(schema.quotes).values({
+      id: id(71),
+      organizationId: org,
+      jobId: job,
+      materialListId: list,
+      createdByUserId: "receiver",
+    });
+    await db
+      .update(schema.materialLists)
+      .set({ quoteId: id(71) })
+      .where(eq(schema.materialLists.id, list));
+    await db
+      .update(schema.orders)
+      .set({ supplierId: id(70) })
+      .where(eq(schema.orders.id, order));
+    await reviewAction(access, doc.documentId, {
+      action: "line",
+      lineId: "0",
+      description: "Brass ball valve 3/4",
+      sku: "",
+      quantity: 2,
+      ordered: 3,
+      unit: "ea",
+      unitPrice: null,
+      orderItemId: null,
+      checked: true,
+    });
+    await reviewAction(access, doc.documentId, {
+      action: "part",
+      lineId: "0",
+      partId: null,
+      name: 'Brass Ball Valve 3/4"',
+      description: "",
+      catalogId: id(50),
+      unit: "ea",
+      piecesPerPack: null,
+      individualUnit: "ea",
+      photoUrl: null,
+      addToOrder: true,
+    });
+    const part = (await db.select().from(schema.partDefinitions)).find(
+      (p) => p.displayName === 'Brass Ball Valve 3/4"',
+    )!;
+    expect(part.organizationId).toBe(org);
+    const added = (await db.select().from(schema.orderItems)).find(
+      (i) => i.partDefinitionId === part.id,
+    )!;
+    expect(added).toMatchObject({ orderId: order, quantity: "3.000000" });
+    // The new part is offered straight away, not after the cache expires.
+    const queue = await receivingQueue(access, doc.documentId, "ball valve");
+    expect(queue.parts?.map((p) => p.id)).toContain(part.id);
+  });
+  it("adds nothing when the line already belongs to the order", async () => {
+    const { access, doc } = await confirmedHeader();
+    await db
+      .update(schema.jobs)
+      .set({ foremanUserId: "receiver" })
+      .where(sql`"id"=${job}`);
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "part",
+        lineId: "0",
+        partId: null,
+        name: "Another valve",
+        description: "",
+        catalogId: id(50),
+        unit: "ea",
+        piecesPerPack: null,
+        individualUnit: "ea",
+        photoUrl: null,
+        addToOrder: true,
+      }),
+    ).rejects.toThrow("already belongs");
+    expect(
+      (await db.select().from(schema.partDefinitions)).map((p) => p.id),
+    ).toEqual([id(5)]);
   });
 });

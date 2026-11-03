@@ -600,3 +600,90 @@ it("preserves a manual order choice when a suggestion arrives during polling", a
   );
   expect(posts).toEqual([]);
 }, 10000);
+
+function notOnOrder(quantity: number | null) {
+  state.canCreate = true;
+  state.review.lines[1]!.quantity = quantity;
+  state.document.packingSlip = {
+    orderId: "order",
+    orderNumber: "PO-155",
+    materialListName: "Level 3",
+  } as typeof state.document.packingSlip;
+  Object.assign(state, {
+    catalogs: [{ id: "cat", name: "Plumbing" }],
+    likely: {
+      "1": [
+        {
+          id: "pipe",
+          name: "Copper pipe",
+          description: null,
+          photoUrl: null,
+          catalogId: "cat",
+          unit: "ft",
+          piecesPerPack: null,
+          individualUnit: null,
+          score: 0.8,
+          code: true,
+        },
+      ],
+    },
+  });
+}
+it("adds the likely catalogue part to the material list in one tap", async () => {
+  notOnOrder(3);
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(await screen.findByText(/likely Copper pipe/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  expect(screen.getByText(/puts it on Level 3 with 3 ordered/)).toBeVisible();
+  const likely = screen.getByRole("list", { name: "Likely catalogue parts" });
+  expect(within(likely).getByText("Same supplier code")).toBeVisible();
+  fireEvent.click(
+    within(likely).getByRole("button", { name: "Add Copper pipe to the list" }),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "part",
+    lineId: "1",
+    partId: "pipe",
+    catalogId: "cat",
+    unit: "ft",
+    addToOrder: true,
+  });
+});
+it("adds a new part to ForemanHQ and the material list together", async () => {
+  notOnOrder(3);
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  const add = screen.getByRole("button", { name: "New part in ForemanHQ" });
+  fireEvent.click(add);
+  expect(add).toHaveAttribute("aria-expanded", "true");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Add to ForemanHQ and the list" }),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "part",
+    lineId: "1",
+    partId: null,
+    name: "Unclear pipe",
+    catalogId: "cat",
+    addToOrder: true,
+  });
+});
+it("asks for the quantity before a part goes on the list", async () => {
+  notOnOrder(null);
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  expect(
+    screen.getByText("Enter the quantity that came below and save it first."),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Add Copper pipe to the list" }),
+  ).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole("button", { name: "New part in ForemanHQ" }),
+  );
+  expect(
+    screen.getByRole("button", { name: "Add to ForemanHQ and the list" }),
+  ).toBeDisabled();
+});

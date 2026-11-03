@@ -82,6 +82,8 @@ type Part = {
   piecesPerPack: number | null;
   individualUnit: string | null;
 };
+/** `code`: the slip printed this supplier's code for it. */
+type LikelyPart = Part & { score: number; code: boolean };
 type Detail = {
   processingJob?: ProcessingJob | null;
   documents: Entry[];
@@ -107,6 +109,8 @@ type Detail = {
     listId: string | null;
   }>;
   parts: Part[];
+  /** Likely catalogue parts for each slip line not on the linked order. */
+  likely?: Record<string, LikelyPart[]>;
   photoSuggestions: Array<{
     id: string;
     displayName: string;
@@ -1881,7 +1885,11 @@ function OrderComparison({
                         {item.sku && ` · ${item.sku}`}
                       </>
                     ) : (
-                      <span className={amber.text}>Not on the order</span>
+                      <>
+                        <span className={amber.text}>Not on the order</span>
+                        {likelyName(detail, lines) &&
+                          ` · likely ${likelyName(detail, lines)}`}
+                      </>
                     )}
                   </p>
                 </div>
@@ -2138,6 +2146,12 @@ function LineReview({
                 : "The reading is unsure. Check it against the slip."}
             </p>
           )}
+          {!l.orderItemId &&
+            !l.approved &&
+            detail.canCreate &&
+            detail.document.packingSlip && (
+              <AddToList line={l} detail={detail} jobId={jobId} run={run} />
+            )}
           {editing && (
             <div className="space-y-3 border-t pt-3">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
@@ -2190,34 +2204,22 @@ function LineReview({
                   />
                 </Label>
               </div>
-              {!l.orderItemId && detail.canCreate && (
-                <div className="-mt-1 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="-ml-3"
-                    onClick={() => setPart(!part)}
-                  >
-                    <SearchIcon />
-                    Find or create part
-                  </Button>
-                  {l.partId && detail.document.packingSlip && (
+              {/* Without an order, a chosen part rebuilds one below. */}
+              {!l.orderItemId &&
+                detail.canCreate &&
+                !detail.document.packingSlip && (
+                  <div className="-mt-1 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void run({
-                          action: "extra",
-                          lineId: l.id,
-                          confirmed: true,
-                        })
-                      }
+                      variant="ghost"
+                      className="-ml-3"
+                      onClick={() => setPart(!part)}
                     >
-                      Approve additional order line
+                      <SearchIcon />
+                      Find or create part
                     </Button>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
               {part && (
                 <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
               )}
@@ -2379,7 +2381,77 @@ function LineReview({
     </div>
   );
 }
-function PartDraft({
+/** The likely catalogue part, named in a row that is not on the order. */
+const likelyName = (detail: Detail, lines: Array<{ line: ReceivingLine }>) => {
+  const top = detail.likely?.[lines[0]?.line.id ?? ""]?.[0];
+  return top && (top.code || top.score >= 0.45) ? top.name : undefined;
+};
+/** Links the catalogue part and puts it on the order's material list. */
+const addPart = (
+  run: (a: Action) => Promise<boolean>,
+  line: ReceivingLine,
+  p: Part,
+) =>
+  run({
+    action: "part",
+    lineId: line.id,
+    partId: p.id,
+    name: p.name.slice(0, 255),
+    description: (p.description ?? "").slice(0, 4000),
+    catalogId: p.catalogId,
+    unit: (p.unit?.trim() ? p.unit : line.unit.trim() ? line.unit : "ea").slice(
+      0,
+      32,
+    ),
+    piecesPerPack: p.piecesPerPack,
+    individualUnit: (p.individualUnit ?? "").slice(0, 32),
+    photoUrl: null,
+    addToOrder: true,
+  });
+function PartChoice({
+  part: p,
+  note,
+  primary,
+  disabled,
+  onAdd,
+}: {
+  part: Part;
+  note?: string;
+  primary?: boolean;
+  disabled?: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 px-3 py-2">
+      {p.photoUrl ? (
+        <img
+          alt=""
+          src={p.photoUrl}
+          className="size-12 shrink-0 rounded object-contain"
+        />
+      ) : (
+        <span aria-hidden className="bg-muted size-12 shrink-0 rounded" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium break-words">{p.name}</p>
+        {note && <p className="text-muted-foreground text-xs">{note}</p>}
+      </div>
+      <Button
+        size="sm"
+        variant={primary ? "default" : "outline"}
+        aria-label={`Add ${p.name} to the list`}
+        disabled={disabled}
+        onClick={onAdd}
+      >
+        <PlusIcon />
+        Add to list
+      </Button>
+    </li>
+  );
+}
+/** A slip line that is not on the order. The reviewer adds the likely
+ * catalogue part, or a new one, to the order's material list. */
+function AddToList({
   line,
   detail,
   jobId,
@@ -2389,6 +2461,104 @@ function PartDraft({
   detail: Detail;
   jobId: string;
   run: (a: Action) => Promise<boolean>;
+}) {
+  const [mode, setMode] = useState<"search" | "new" | null>(null);
+  const likely = detail.likely?.[line.id] ?? [],
+    order = detail.document.packingSlip!,
+    count = line.ordered ?? line.quantity,
+    counted = count !== null && count > 0;
+  const toggle = (next: "search" | "new") =>
+    setMode(mode === next ? null : next);
+  return (
+    <section className="space-y-3 rounded-lg border p-3">
+      <div>
+        <h4 className="font-medium">Add it to the material list</h4>
+        <p className="text-muted-foreground text-sm">
+          This part is not on order {order.orderNumber}. Adding it puts it on{" "}
+          {order.materialListName}
+          {counted ? ` with ${count} ordered` : ""}. You still confirm what
+          came.
+        </p>
+        {!counted && (
+          <p className={`mt-1 text-sm ${amber.text}`}>
+            Enter the quantity that came below and save it first.
+          </p>
+        )}
+      </div>
+      {likely.length > 0 ? (
+        <ul
+          aria-label="Likely catalogue parts"
+          className="divide-y rounded-md border"
+        >
+          {likely.map((p, i) => (
+            <PartChoice
+              key={p.id}
+              part={p}
+              primary={i === 0}
+              disabled={!counted}
+              note={
+                p.id === line.partId
+                  ? "Chosen part"
+                  : p.code
+                    ? "Same supplier code"
+                    : p.score >= 0.58
+                      ? "Close match"
+                      : "Possible match"
+              }
+              onAdd={() => void addPart(run, line, p)}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm">No close match in your catalogue.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          aria-expanded={mode === "search"}
+          onClick={() => toggle("search")}
+        >
+          <SearchIcon />
+          Search catalogue
+        </Button>
+        <Button
+          size="sm"
+          variant={likely.length ? "outline" : "default"}
+          aria-expanded={mode === "new"}
+          onClick={() => toggle("new")}
+        >
+          <PlusIcon />
+          New part in ForemanHQ
+        </Button>
+      </div>
+      {mode && (
+        <PartDraft
+          key={mode}
+          line={line}
+          detail={detail}
+          jobId={jobId}
+          run={run}
+          mode={mode}
+        />
+      )}
+    </section>
+  );
+}
+/** Mode `all` chooses or creates a part for a slip with no order yet; `search`
+ * and `new` also put the part on the linked order's material list. */
+function PartDraft({
+  line,
+  detail,
+  jobId,
+  run,
+  mode = "all",
+}: {
+  line: ReceivingLine;
+  detail: Detail;
+  jobId: string;
+  run: (a: Action) => Promise<boolean>;
+  mode?: "all" | "search" | "new";
 }) {
   const [name, setName] = useState(line.description.slice(0, 255)),
     [description, setDescription] = useState(line.description),
@@ -2404,10 +2574,15 @@ function PartDraft({
       Detail["photoSuggestions"]
     >([]),
     [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  // A new part's photo suggestions follow its name.
+  const query = mode === "new" ? name : search,
+    count = line.ordered ?? line.quantity,
+    // Only a counted line can go on the order.
+    blocked = mode !== "all" && !(count !== null && count > 0);
   const find = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/job-documents/packing-slips/queue?${new URLSearchParams({ jobId, documentId: detail.document.id, q: search })}`,
+        `/api/job-documents/packing-slips/queue?${new URLSearchParams({ jobId, documentId: detail.document.id, q: query })}`,
       );
       const data = (await res.json()) as Detail & { error?: string };
       if (!res.ok) throw Error(data.error);
@@ -2416,159 +2591,201 @@ function PartDraft({
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [jobId, detail.document.id, search]);
+  }, [jobId, detail.document.id, query]);
   useEffect(() => {
     const t = setTimeout(() => void find(), 300);
     return () => clearTimeout(t);
   }, [find]);
   return (
     <section className="bg-background space-y-3 rounded-lg border p-4">
-      <h4 className="font-medium">Catalogue part</h4>
+      <h4 className="font-medium">
+        {mode === "search"
+          ? "Search the catalogue"
+          : mode === "new"
+            ? "New part in ForemanHQ"
+            : "Catalogue part"}
+      </h4>
       <p className="text-muted-foreground text-sm">
-        Reuse an existing part, or approve a new entry for your organization.
-        Prices stay with this job.
+        {mode === "search"
+          ? "Find the part, then add it to the list."
+          : mode === "new"
+            ? "It joins your catalogue and this order's material list. Prices stay with this job."
+            : "Reuse an existing part, or approve a new entry for your organization. Prices stay with this job."}
       </p>
-      <div className="flex gap-2">
-        <input
-          aria-label="Search catalogue"
-          className={field}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Button variant="outline" onClick={() => void find()}>
-          Search
-        </Button>
-      </div>
-      {error && <p role="alert">{error}</p>}
-      {parts.map((p) => (
-        <button
-          key={p.id}
-          className={`flex w-full items-center gap-3 border-b py-2 text-left text-sm ${selected?.id === p.id ? "bg-muted" : ""}`}
-          onClick={() => {
-            setSelected(p);
-            setName(p.name);
-            setCatalog(p.catalogId);
-            setUnit(p.unit ?? unit);
-          }}
-        >
-          {p.photoUrl && (
-            <img
-              alt={p.name}
-              src={p.photoUrl}
-              className="size-12 object-contain"
-            />
-          )}
-          {p.name}
-        </button>
-      ))}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Label name="Part name">
+      {mode !== "new" && (
+        <div className="flex gap-2">
           <input
+            aria-label="Search catalogue"
             className={field}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setSelected(null);
-            }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-        </Label>
-        <Label name="Catalogue">
-          <select
-            className={field}
-            value={catalog}
-            onChange={(e) => setCatalog(e.target.value)}
-          >
-            {detail.catalogs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Label>
-        <Label name="Description">
-          <input
-            className={field}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </Label>
-        <Label name="Order unit">
-          <input
-            className={field}
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          />
-        </Label>
-        <Label name="Pieces per pack (if packaged)">
-          <input
-            type="number"
-            min="1"
-            className={field}
-            value={pack}
-            onChange={(e) => setPack(e.target.value)}
-          />
-        </Label>
-        <Label name="Individual unit">
-          <input
-            className={field}
-            value={individual}
-            onChange={(e) => setIndividual(e.target.value)}
-          />
-        </Label>
-      </div>
-      {!selected && photoSuggestions.length > 0 && (
-        <div>
-          <p className="mb-2 text-sm">
-            Photo suggestions from your catalogue — select only if it shows this
-            product.
-          </p>
-          <div className="flex gap-2 overflow-x-auto">
-            {photoSuggestions.map(
-              (p) =>
-                p.imageUrl && (
-                  <button
-                    key={p.id}
-                    aria-pressed={photoUrl === p.imageUrl}
-                    className="w-28 shrink-0 rounded border p-2 text-xs aria-pressed:ring-2"
-                    onClick={() =>
-                      setPhotoUrl(photoUrl === p.imageUrl ? null : p.imageUrl)
-                    }
-                  >
-                    <img
-                      src={p.imageUrl}
-                      alt={p.displayName}
-                      className="mb-1 h-20 w-full object-contain"
-                    />
-                    {p.displayName}
-                  </button>
-                ),
-            )}
-          </div>
+          <Button variant="outline" onClick={() => void find()}>
+            Search
+          </Button>
         </div>
       )}
-      <p className="text-muted-foreground text-xs">
-        {selected?.photoUrl
-          ? "Photo from the existing catalogue."
-          : "No verified product photo is available. You can add one in Catalogue; a guessed photo will not be used."}
-      </p>
-      <Button
-        onClick={() =>
-          void run({
-            action: "part",
-            lineId: line.id,
-            partId: selected?.id ?? null,
-            name,
-            description,
-            catalogId: catalog,
-            unit,
-            piecesPerPack: pack ? Number(pack) : null,
-            individualUnit: individual,
-            photoUrl: selected?.photoUrl ?? photoUrl,
-          })
-        }
-      >
-        {selected ? "Use catalogue part" : "Approve new catalogue part"}
-      </Button>
+      {error && <p role="alert">{error}</p>}
+      {mode === "search" &&
+        (parts.length ? (
+          <ul
+            aria-label="Catalogue parts"
+            className="divide-y rounded-md border"
+          >
+            {parts.map((p) => (
+              <PartChoice
+                key={p.id}
+                part={p}
+                disabled={blocked}
+                onAdd={() => void addPart(run, line, p)}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">No parts found.</p>
+        ))}
+      {mode === "all" &&
+        parts.map((p) => (
+          <button
+            key={p.id}
+            className={`flex w-full items-center gap-3 border-b py-2 text-left text-sm ${selected?.id === p.id ? "bg-muted" : ""}`}
+            onClick={() => {
+              setSelected(p);
+              setName(p.name);
+              setCatalog(p.catalogId);
+              setUnit(p.unit ?? unit);
+            }}
+          >
+            {p.photoUrl && (
+              <img
+                alt={p.name}
+                src={p.photoUrl}
+                className="size-12 object-contain"
+              />
+            )}
+            {p.name}
+          </button>
+        ))}
+      {mode !== "search" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Label name="Part name">
+              <input
+                className={field}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setSelected(null);
+                }}
+              />
+            </Label>
+            <Label name="Catalogue">
+              <select
+                className={field}
+                value={catalog}
+                onChange={(e) => setCatalog(e.target.value)}
+              >
+                {detail.catalogs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Label>
+            <Label name="Description">
+              <input
+                className={field}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Label>
+            <Label name="Order unit">
+              <input
+                className={field}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+              />
+            </Label>
+            <Label name="Pieces per pack (if packaged)">
+              <input
+                type="number"
+                min="1"
+                className={field}
+                value={pack}
+                onChange={(e) => setPack(e.target.value)}
+              />
+            </Label>
+            <Label name="Individual unit">
+              <input
+                className={field}
+                value={individual}
+                onChange={(e) => setIndividual(e.target.value)}
+              />
+            </Label>
+          </div>
+          {!selected && photoSuggestions.length > 0 && (
+            <div>
+              <p className="mb-2 text-sm">
+                Photo suggestions from your catalogue — select only if it shows
+                this product.
+              </p>
+              <div className="flex gap-2 overflow-x-auto">
+                {photoSuggestions.map(
+                  (p) =>
+                    p.imageUrl && (
+                      <button
+                        key={p.id}
+                        aria-pressed={photoUrl === p.imageUrl}
+                        className="w-28 shrink-0 rounded border p-2 text-xs aria-pressed:ring-2"
+                        onClick={() =>
+                          setPhotoUrl(
+                            photoUrl === p.imageUrl ? null : p.imageUrl,
+                          )
+                        }
+                      >
+                        <img
+                          src={p.imageUrl}
+                          alt={p.displayName}
+                          className="mb-1 h-20 w-full object-contain"
+                        />
+                        {p.displayName}
+                      </button>
+                    ),
+                )}
+              </div>
+            </div>
+          )}
+          <p className="text-muted-foreground text-xs">
+            {selected?.photoUrl
+              ? "Photo from the existing catalogue."
+              : "No verified product photo is available. You can add one in Catalogue; a guessed photo will not be used."}
+          </p>
+          <Button
+            disabled={blocked}
+            onClick={() =>
+              void run({
+                action: "part",
+                lineId: line.id,
+                partId: selected?.id ?? null,
+                name,
+                description,
+                catalogId: catalog,
+                unit,
+                piecesPerPack: pack ? Number(pack) : null,
+                individualUnit: individual,
+                photoUrl: selected?.photoUrl ?? photoUrl,
+                addToOrder: mode === "new",
+              })
+            }
+          >
+            {mode === "new"
+              ? "Add to ForemanHQ and the list"
+              : selected
+                ? "Use catalogue part"
+                : "Approve new catalogue part"}
+          </Button>
+        </>
+      )}
     </section>
   );
 }
