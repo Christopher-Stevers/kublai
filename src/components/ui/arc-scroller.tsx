@@ -675,7 +675,9 @@ function ArcDisplay({
         if (reach > 1.08) return null;
         const point = arcPoint(geometry, distance);
         const focus = index === middle;
-        const scale = 1 - 0.28 * Math.min(1, reach) ** 2;
+        // Shrink toward the ends, and swell like a dock as a choice nears the
+        // middle. The peak stays under the spacing so neighbours never touch.
+        const scale = 1 - 0.28 * Math.min(1, reach) ** 2 + 0.38 * Math.exp(-(distance ** 2) / 1.2);
         return (
           <button
             key={`${index}:${choice.label}`}
