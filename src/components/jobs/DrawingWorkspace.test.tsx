@@ -523,10 +523,9 @@ describe("drawing workspace workflows", () => {
     const next = vi.fn();
     render(<DrawingWorkspace fullscreen onFullscreen={exit} jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext: next }} />);
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
-    fireEvent.click(screen.getByRole("button", { name: "Page" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(next).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Page" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" })); expect(next).toHaveBeenCalledOnce();
     fireEvent.keyDown(screen.getByTestId("markup-editor"), { key: "ContextMenu" });
-    fireEvent.click(screen.getByRole("button", { name: "Page" }));
     fireEvent.click(screen.getByRole("button", { name: "Exit full screen" }));
     expect(exit).toHaveBeenCalledOnce();
   });
@@ -635,9 +634,8 @@ describe("drawing workspace workflows", () => {
     render(<DrawingWorkspace fullscreen jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}
       pageNavigation={{ index: 0, count: 2, onPrevious: vi.fn(), onNext }} />);
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
-    fireEvent.click(screen.getByRole("button", { name: "Page" }));
-    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next" })); expect(onNext).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" })); expect(onNext).toHaveBeenCalledOnce();
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     act(() => props.onSelect?.(entityId));
     expect(screen.getByRole("toolbar", { name: "Selected markup actions" })).toHaveClass("bg-background/60", "backdrop-blur-sm", "rounded-2xl");

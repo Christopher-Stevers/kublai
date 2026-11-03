@@ -56,6 +56,7 @@ import {
   BellIcon,
   BookmarkIcon,
   CheckIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   CircleAlertIcon,
   DownloadIcon,
@@ -71,6 +72,7 @@ import {
   ListChecksIcon,
   MessageSquareMoreIcon,
   MaximizeIcon,
+  MinimizeIcon,
   MoveIcon,
   BookOpenIcon,
   MoreHorizontalIcon,
@@ -1950,15 +1952,14 @@ export function DrawingWorkspace({
       }),
       { id: "pipe", label: "Pipe system", icon: <SplineIcon />, run: pipeCommand },
     ] },
-    { id: "page", label: "Page", icon: <FileTextIcon />, children: [
-      ...(pageNavigation ? [
-        { id: "previous", label: "Previous", disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
-        { id: "next", label: "Next", disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
-      ] : []),
-      ...wheelCommands("fit"),
-      ...(onFullscreen ? [{ id: "full", label: fullscreen ? "Exit full screen" : "Full screen", icon: <MaximizeIcon />, run: onFullscreen }] : []),
-      ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", run: () => setCompareIds(null) }] : []),
-    ] },
+    // Page controls sit on the main menu, one turn away.
+    ...(pageNavigation ? [
+      { id: "previous", label: "Previous page", icon: <ChevronLeftIcon />, disabled: pageNavigation.index <= 0, run: pageNavigation.onPrevious },
+      { id: "next", label: "Next page", icon: <ChevronRightIcon />, disabled: pageNavigation.index >= pageNavigation.count - 1, run: pageNavigation.onNext },
+    ] : []),
+    ...wheelCommands("fit"),
+    ...(onFullscreen ? [{ id: "full", label: fullscreen ? "Exit full screen" : "Full screen", icon: fullscreen ? <MinimizeIcon /> : <MaximizeIcon />, run: onFullscreen }] : []),
+    ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", icon: <XIcon />, run: () => setCompareIds(null) }] : []),
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       ...wheelCommands("legend-items", "auto-hyperlink"),
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
