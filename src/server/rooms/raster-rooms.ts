@@ -29,6 +29,9 @@ export function inkMask(
   return mask;
 }
 
+/** max(a, b) when flip is 0, min(a, b) when flip is 255. One small function V8 inlines. */
+const pick = (a: number, b: number, flip: number) => ((a ^ flip) > (b ^ flip) ? a : b);
+
 /**
  * Min (erode) or max (dilate) over a (2r+1)-wide window along one axis,
  * using van Herk/Gil-Werman blocks: O(1) per pixel regardless of r.
@@ -45,32 +48,50 @@ function filterAxis(
     out.data.set(src.data);
     return out;
   }
-  const lines = horizontal ? height : width;
-  const length = horizontal ? width : height;
   const k = 2 * r + 1;
-  const g = new Uint8Array(length);
-  const h = new Uint8Array(length);
   const pad = dilate ? 0 : 1; // outside the image: empty for dilate, full for erode
-  const pick = dilate
-    ? (a: number, b: number) => (a > b ? a : b)
-    : (a: number, b: number) => (a < b ? a : b);
-  for (let line = 0; line < lines; line += 1) {
-    const at = (i: number) =>
-      horizontal ? line * width + i : i * width + line;
-    for (let i = 0; i < length; i += 1) {
-      const v = src.data[at(i)]!;
-      g[i] = i % k === 0 ? v : pick(g[i - 1]!, v);
+  const flip = dilate ? 0 : 255;
+  const s = src.data;
+  const o = out.data;
+  if (horizontal) {
+    const g = new Uint8Array(width);
+    const h = new Uint8Array(width);
+    for (let row = 0; row < s.length; row += width) {
+      for (let i = 0; i < width; i += 1) {
+        const v = s[row + i]!;
+        g[i] = i % k === 0 ? v : pick(g[i - 1]!, v, flip);
+      }
+      for (let i = width - 1; i >= 0; i -= 1) {
+        const v = s[row + i]!;
+        h[i] = i % k === k - 1 || i === width - 1 ? v : pick(h[i + 1]!, v, flip);
+      }
+      for (let i = 0; i < width; i += 1) {
+        const a = i - r >= 0 ? h[i - r]! : pad;
+        const b = i + r < width ? g[i + r]! : pad;
+        o[row + i] = pick(a, b, flip);
+      }
     }
-    for (let i = length - 1; i >= 0; i -= 1) {
-      const v = src.data[at(i)]!;
-      h[i] = i % k === k - 1 || i === length - 1 ? v : pick(h[i + 1]!, v);
-    }
-    for (let i = 0; i < length; i += 1) {
-      const lo = i - r;
-      const hi = i + r;
-      const a = lo >= 0 ? h[lo]! : pad;
-      const b = hi < length ? g[hi]! : pad;
-      out.data[at(i)] = pick(a, b);
+    return out;
+  }
+  // Vertical: the same blocks, run a whole row of columns at a time so
+  // memory is read in order.
+  const g = new Uint8Array(s.length);
+  const h = new Uint8Array(s.length);
+  for (let y = 0, row = 0; y < height; y += 1, row += width) {
+    if (y % k === 0) g.set(s.subarray(row, row + width), row);
+    else for (let p = row; p < row + width; p += 1) g[p] = pick(g[p - width]!, s[p]!, flip);
+  }
+  for (let y = height - 1, row = y * width; y >= 0; y -= 1, row -= width) {
+    if (y % k === k - 1 || y === height - 1) h.set(s.subarray(row, row + width), row);
+    else for (let p = row; p < row + width; p += 1) h[p] = pick(h[p + width]!, s[p]!, flip);
+  }
+  for (let y = 0, row = 0; y < height; y += 1, row += width) {
+    const lo = y - r >= 0 ? (y - r) * width : -1;
+    const hi = y + r < height ? (y + r) * width : -1;
+    for (let x = 0; x < width; x += 1) {
+      const a = lo >= 0 ? h[lo + x]! : pad;
+      const b = hi >= 0 ? g[hi + x]! : pad;
+      o[row + x] = pick(a, b, flip);
     }
   }
   return out;

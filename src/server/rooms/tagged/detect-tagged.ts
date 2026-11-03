@@ -14,6 +14,8 @@ export const TAGGED_VERSION = "tagged-units-v2";
 const LONG_SIDE = 5000;
 /** Spaces narrower than 2× this (doorways, cased openings) separate rooms. */
 const NECK_FRACTION = 0.003;
+/** Fewer room tags than this and the sheet goes to the label-free finder. */
+export const MIN_ROOM_TAGS = 3;
 
 /**
  * Unit/suite-level room detection for construction floor plans:
@@ -27,15 +29,21 @@ const NECK_FRACTION = 0.003;
  *  4. Free space is split at doorways (narrow necks), each room seed names
  *     its space, and the rooms of a suite are joined through its private
  *     doorways. Corridors and lobbies shared by several rooms stay separate.
- * Everything still needs review.
+ * Everything still needs review. Returns null, before the wall work, for
+ * sheets with fewer than `minRoomTags` room tags.
  */
-export async function detectTaggedRooms(pdf: Buffer, pageNumber: number) {
+export async function detectTaggedRooms(
+  pdf: Buffer,
+  pageNumber: number,
+  { minRoomTags = MIN_ROOM_TAGS } = {},
+) {
   const labels = await extractPdfLabels(pdf, pageNumber);
   const page = await renderStructuralPage(pdf, pageNumber, LONG_SIDE);
   const { rgba, width, height } = page;
   const tagSeeds = findRoomTagSeeds(labels, width / height);
   const nameSeeds = physicalRoomSeeds(extractPdfRoomSeeds(labels));
   const seeds = mergeRoomSeeds(tagSeeds, nameSeeds);
+  if (tagSeeds.length < minRoomTags) return null;
 
   const outdoor = await openSpaceMask(rgba, width, height, seeds);
   paintMask(rgba, outdoor.mask);

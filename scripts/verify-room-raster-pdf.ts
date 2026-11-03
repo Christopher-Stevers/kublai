@@ -17,7 +17,9 @@ console.info = (...args) => {
 };
 const pdf = await readFile(pdfPath);
 const start = performance.now();
-const result = await detectTaggedRooms(pdf, Number(pageArg));
+// Every stage runs, whatever the tag count, so both engines are compared.
+const result = await detectTaggedRooms(pdf, Number(pageArg), { minRoomTags: 0 });
+if (!result) throw new Error("Tagged detection returned nothing");
 if (engine === "rust" && nativeCalls !== 2)
   throw new Error("Both native stages must run");
 const report = {

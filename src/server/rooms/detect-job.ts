@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { detectTaggedRooms } from "./tagged/detect-tagged";
+import { detectTaggedRooms, MIN_ROOM_TAGS } from "./tagged/detect-tagged";
 import { detectLayeredRooms } from "./doors/detect-layered";
 import { BoundedCache } from "./bounded-cache";
 import { processIdentity } from "./process-identity";
@@ -541,7 +541,7 @@ export async function runCompleteDetectAllRooms(input: {
       console.error("[detect-job:tagged]", error);
       return null;
     });
-    if (tagged && tagged.stats.roomTags >= 3 && tagged.rooms.length) {
+    if (tagged && tagged.stats.roomTags >= MIN_ROOM_TAGS && tagged.rooms.length) {
       await log(
         `Read ${tagged.stats.roomTags} room tags and found ${tagged.rooms.length} rooms (${tagged.unlabeledCount} without a tag). All need review.`,
       );
