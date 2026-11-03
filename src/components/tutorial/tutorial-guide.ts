@@ -35,7 +35,7 @@ export function getTutorialGuide(
           target: "wizard-confirm",
           title: "Add the material to your list",
           text: "Tap Add to put your selected parts on the list. Basket lets you change quantities and suppliers; Add opens it automatically if a supplier is missing.",
-          allow: ["wizard-chosen-toggle", "wizard-chosen-quantity"],
+          allow: ["wizard-chosen-toggle", "wizard-chosen-quantity", "wizard-chosen-view"],
         };
       const instructions: Record<string, [string, string]> = {
         catalog: ["Select a catalog", "Choose Plumbing from the part picker."],

@@ -408,11 +408,13 @@ export function ChosenPartsView({
           <h3 className="text-base font-semibold sm:text-lg">
             Basket
           </h3>
+          <div data-tutorial="wizard-chosen-view">
           <ViewToggle
             view={chosenView}
             onViewChange={setChosenView}
             showOnMobile
           />
+          </div>
         </div>
         {!allPartsHaveSuppliers && !isToolRequest && (
           <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800 sm:px-3 sm:text-sm">
@@ -428,7 +430,7 @@ export function ChosenPartsView({
 
       {pendingParts.length === 0 && <p className="text-muted-foreground py-6 text-center">Your basket is empty.</p>}
       {chosenView === "grid" ? (
-        <div className={PART_TILE_GRID_CLASS}>
+        <div className={PART_TILE_GRID_CLASS} data-tutorial="wizard-chosen-quantity">
           {pendingParts.map((pendingPart) => {
             const isToolLine = isToolRequest || pendingPart.isTool;
             const supplierSelection = getSupplierSelection(pendingPart);

@@ -9,6 +9,8 @@ import {
 import { PackingSlips } from "./PackingSlips";
 vi.mock("~/components/ui/app-dialogs", () => ({ confirmAction: vi.fn(async () => true) }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
+const routerPush = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: routerPush, replace: vi.fn(), refresh: vi.fn(), back: vi.fn() }) }));
 vi.mock("next/dynamic", async () => {
   const { useState } = await import("react");
   return {
@@ -86,9 +88,10 @@ it("saves a scan with its order and returns to the slip list to watch it being r
     fetcher.mock.calls.filter(([, options]) => options?.method === "POST"),
   ).toHaveLength(1);
 });
-it("closes after saving a scan when read slips are checked on the list", async () => {
+it("closes after saving a scan and opens the slip in receiving", async () => {
+  routerPush.mockClear();
   vi.stubGlobal("fetch", vi.fn(async (_url: string, options?: RequestInit) =>
-    Response.json(options?.method === "POST" ? { success: true } : { canUpload: true, documents: [] })));
+    Response.json(options?.method === "POST" ? { success: true, documentId: "doc" } : { canUpload: true, documents: [] })));
   const changed = vi.fn();
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" onChanged={changed} onReviewOnList={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Packing slips" }));
@@ -96,6 +99,7 @@ it("closes after saving a scan when read slips are checked on the list", async (
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(changed).toHaveBeenCalledTimes(1);
+  expect(routerPush).toHaveBeenCalledWith("/jobs/job/receiving?document=doc");
 });
 it("retains a failed scan for retry and offers read-only slips from a normal material list", async () => {
   let fail = true;
@@ -164,7 +168,9 @@ it("shows the slip list with Upload instead of the scanner on a computer without
   expect(screen.queryByRole("region", { name: "Packing slip camera" })).not.toBeInTheDocument();
 });
 
-it("opens a saved slip's summary instead of restarting the camera, and sends it to the list", async () => {
+it("opens a saved slip's summary instead of restarting the camera, and sends it to receiving", async () => {
+  const assign = vi.fn();
+  vi.stubGlobal("location", { ...window.location, assign });
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({
     canUpload: true,
     documents: [{
@@ -184,8 +190,7 @@ it("opens a saved slip's summary instead of restarting the camera, and sends it 
   await screen.findByRole("region", { name: "Packing slip camera" });
   fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
   fireEvent.click(await screen.findByRole("button", { name: /Check parts on the list/ }));
-  expect(onList).toHaveBeenCalledWith("doc");
-  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(assign).toHaveBeenCalledWith("/jobs/job/receiving?document=doc");
 });
 
 it("sends per-slip clear and rerun actions for the current detection without confirming a receipt", async () => {
@@ -203,7 +208,7 @@ it("sends per-slip clear and rerun actions for the current detection without con
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" onVerified={verified}/>);
   fireEvent.click(screen.getByRole("button",{name:"Packing slips"}));
   fireEvent.click(await screen.findByRole("button",{name:"Clear detection"}));
-  await screen.findByText("Detection cleared. The file is still saved.");
+  await screen.findByText("Detection cleared. Approved quantities and review decisions are preserved.");
   expect(actions[0]).toMatchObject({action:"clear",jobId:"job",documentId:"doc",runId:"old-run"});
   fireEvent.click(screen.getByRole("button",{name:"Rerun detection"}));
   await waitFor(()=>expect(actions).toHaveLength(2));
@@ -212,7 +217,7 @@ it("sends per-slip clear and rerun actions for the current detection without con
   expect(actions.some(action=>action.action==="confirm")).toBe(false);
 });
 
-it("takes back a confirmed slip's receipt when it is read again and refreshes the order", async () => {
+it("reads a confirmed slip again without taking back its approved quantities", async () => {
   let analysis:Record<string,unknown>={runId:"old-run",versionId:"version",status:"ready",startedAt:"2026-10-22",items:[],lines:[],warnings:[],applied:{at:"2026-10-22",by:"u",quantities:{item:6}}};
   const actions:Record<string,unknown>[]=[];
   const verified=vi.fn();
@@ -227,7 +232,7 @@ it("takes back a confirmed slip's receipt when it is read again and refreshes th
   render(<PackingSlips jobId="job" materialListId="list" orderId="order" onVerified={verified}/>);
   fireEvent.click(screen.getByRole("button",{name:"Packing slips"}));
   fireEvent.click(await screen.findByRole("button",{name:"Rerun detection"}));
-  await screen.findByText("This slip's received quantities were taken back. Reading it again now.");
+  await screen.findByText("Reading the slip again. Approved quantities are preserved.");
   expect(actions[0]).toMatchObject({action:"analyze",runId:"old-run"});
-  expect(verified).toHaveBeenCalledTimes(1);
+  expect(verified).not.toHaveBeenCalled();
 });

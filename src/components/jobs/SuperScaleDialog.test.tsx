@@ -230,7 +230,7 @@ it("does not offer transfers without a reference calibration", async () => {
       onSaved={() => undefined}
     />,
   );
-  expect(screen.getByText(/First calibrate this drawing/)).toBeInTheDocument();
+  expect(screen.getByText(/Set the reference scale to begin/)).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Find matching drawings" }),
   ).toBeNull();

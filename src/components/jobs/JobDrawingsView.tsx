@@ -995,7 +995,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const folders = setsData?.sets ?? [];
   const orderedFolders = folderOrder.sortFolders(folders);
   const openFolder = (id: string) => {
-    recordDrawingFolderOpen(id);
+    if (!sandbox) recordDrawingFolderOpen(id);
     setSetId(id);
   };
   const newFolderButton = (
