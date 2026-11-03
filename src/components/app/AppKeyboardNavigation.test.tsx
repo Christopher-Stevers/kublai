@@ -76,6 +76,21 @@ it("moves between the page's items with the arrow keys, and W clicks the one cho
   expect(pick).toHaveBeenCalledTimes(2);
 });
 
+it("does not count a wider item above as being to the right", () => {
+  render(
+    <>
+      <AppKeyboardNavigation />
+      <button data-box="0 0 400 40">Wide</button>
+      <button data-box="0 60 20 20">Tick</button>
+    </>,
+  );
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(screen.getByText("Tick"));
+  fireEvent.keyDown(window, { key: "ArrowRight" });
+  expect(document.activeElement).toBe(screen.getByText("Tick"));
+});
+
 it("right-clicks the chosen item with S", () => {
   const menu = vi.fn();
   render(<Grid onMenu={menu} />);

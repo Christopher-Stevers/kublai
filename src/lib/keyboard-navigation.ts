@@ -85,7 +85,10 @@ export function nextItem(from: HTMLElement | null, direction: ArrowDirection, it
     const along = vertical
       ? sign * (b.top + b.height / 2 - (a.top + a.height / 2))
       : sign * (b.left + b.width / 2 - (a.left + a.width / 2));
-    if (along <= 2) continue;
+    // Its leading edge must move that way too: a wider item above whose
+    // middle sits further right is not "to the right".
+    const edge = vertical ? sign * (b.top - a.top) : sign * (b.left - a.left);
+    if (along <= 2 || edge <= 2) continue;
     const gap = Math.max(
       0,
       vertical
