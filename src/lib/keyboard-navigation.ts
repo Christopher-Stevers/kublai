@@ -24,6 +24,11 @@ const ITEMS = [
 const TYPING =
   'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, canvas, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"], [role="slider"], [role="spinbutton"]';
 
+/** A key on an element that types, as opposed to one that is pressed. */
+export function typingElement(element: Element | null) {
+  return Boolean(element?.closest(TYPING));
+}
+
 /** Keys that belong to text entry or to a control with its own key handling. */
 export function typingTarget(event: KeyboardEvent) {
   const target = event.composedPath().find((item) => item instanceof Element);
@@ -59,18 +64,36 @@ export function currentItem(items = navigableItems()) {
 }
 
 function firstItem(items: HTMLElement[]) {
-  const onScreen = items.filter((item) => {
-    const rect = item.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < innerHeight;
-  });
+  const visible = items.filter((item) => onScreen(item.getBoundingClientRect()));
   // Start in the page itself rather than on the app bar.
-  const page = onScreen.filter((item) => !item.closest("header"));
-  const pool = page.length ? page : onScreen.length ? onScreen : items;
+  const page = visible.filter((item) => !item.closest("header"));
+  const pool = page.length ? page : visible.length ? visible : items;
   return [...pool].sort((a, b) => {
     const ra = a.getBoundingClientRect();
     const rb = b.getBoundingClientRect();
     return Math.abs(ra.top - rb.top) > 4 ? ra.top - rb.top : ra.left - rb.left;
   })[0];
+}
+
+const onScreen = (rect: DOMRect) => rect.bottom > 0 && rect.top < innerHeight;
+
+/** The page's item nearest the middle of the screen, for a newly opened screen. */
+export function centreItem(items = navigableItems()) {
+  const page = items.filter((item) => !item.closest("header") && onScreen(item.getBoundingClientRect()));
+  let best: HTMLElement | null = null;
+  let bestDistance = Infinity;
+  for (const item of page) {
+    const rect = item.getBoundingClientRect();
+    // Distance from the screen's middle to the nearest point of the item.
+    const dx = Math.max(0, rect.left - innerWidth / 2, innerWidth / 2 - rect.right);
+    const dy = Math.max(0, rect.top - innerHeight / 2, innerHeight / 2 - rect.bottom);
+    const distance = Math.hypot(dx, dy) + rect.width * rect.height * 1e-6;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = item;
+    }
+  }
+  return best;
 }
 
 /** Nearest item in a direction, favouring ones in line with the current one. */

@@ -6,6 +6,7 @@ import { drawingKeysActive } from "~/components/jobs/useDrawingKeyboardControls"
 import { activeShortcutDialog } from "~/lib/keyboard-shortcuts";
 import { onHeaderBackRun, runHeaderBackOverride } from "~/lib/header-back-events";
 import {
+  centreItem,
   currentItem,
   focusItem,
   pressItem,
@@ -14,6 +15,7 @@ import {
   nextItem,
   openPopupMenu,
   rightClick,
+  typingElement,
   typingTarget,
   type ArrowDirection,
 } from "~/lib/keyboard-navigation";
@@ -83,12 +85,62 @@ function KeyboardNavigation() {
       const next = nextItem(currentItem(items), direction, items);
       if (next) focusItem(next);
     };
+    // After a key that may open a new screen (another page, a dialog, the next
+    // step), focus the item in the middle of it once it has drawn.
+    let watching: (() => void) | null = null;
+    const centreNewScreen = () => {
+      watching?.();
+      const from = currentItem();
+      const url = here();
+      const dialog = activeShortcutDialog();
+      const started = Date.now();
+      let changedAt = 0;
+      let timer = 0;
+      const stop = () => {
+        clearTimeout(timer);
+        window.removeEventListener("pointerdown", stop, true);
+        window.removeEventListener("keydown", stopOnKey, true);
+        watching = null;
+      };
+      const stopOnKey = (event: KeyboardEvent) => {
+        if (event.key.toLowerCase() !== "w") stop();
+      };
+      const check = () => {
+        const now = Date.now();
+        const next = activeShortcutDialog();
+        if (!changedAt) {
+          // A closed dialog hands focus back to what opened it; keep that.
+          if (dialog && !next) return stop();
+          const changed =
+            here() !== url || (next && next !== dialog) || (from && !from.isConnected);
+          if (changed) changedAt = now;
+          else if (now - started > 3000) return stop();
+        }
+        // Let the new screen draw before choosing.
+        if (changedAt && now - changedAt >= 250) {
+          if (typingElement(document.activeElement)) return stop();
+          const item = centreItem();
+          if (item) {
+            stop();
+            focusItem(item);
+            return;
+          }
+          if (now - changedAt > 4000) return stop();
+        }
+        timer = window.setTimeout(check, 100);
+      };
+      window.addEventListener("pointerdown", stop, true);
+      window.addEventListener("keydown", stopOnKey, true);
+      watching = stop;
+      timer = window.setTimeout(check, 100);
+    };
     let held: HTMLElement | null = null;
     const release = (event: KeyboardEvent) => {
       if (!held || event.key.toLowerCase() !== "w") return;
       const item = held;
       held = null;
       event.preventDefault();
+      centreNewScreen();
       releasePress(item);
     };
     // Leaving the window mid-hold must not leave the item pressed.
@@ -133,6 +185,7 @@ function KeyboardNavigation() {
         if (item) {
           // Held down until W comes up, so holding W is a long press.
           if (pressItem(item)) held = item;
+          else centreNewScreen();
         } else {
           const first = nextItem(null, "down");
           if (first) focusItem(first);
@@ -147,12 +200,14 @@ function KeyboardNavigation() {
       } else if (letter === "a") {
         // In a dialog, back closes it, as Escape does.
         const dialog = activeShortcutDialog();
+        centreNewScreen();
         if (dialog)
           (document.activeElement ?? dialog).dispatchEvent(
             new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
           );
         else runHeaderBackOverride();
       } else {
+        centreNewScreen();
         const target = forward.at(-1);
         if (!target) return router.forward();
         returning = target;
@@ -165,6 +220,7 @@ function KeyboardNavigation() {
     window.addEventListener("blur", cancel);
     return () => {
       cancel();
+      watching?.();
       window.removeEventListener("keydown", arrow, true);
       window.removeEventListener("keydown", key);
       window.removeEventListener("keyup", release);

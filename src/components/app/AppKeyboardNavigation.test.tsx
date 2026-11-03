@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { AppKeyboardNavigation, resetKeyboardHistory } from "./AppKeyboardNavigation";
@@ -161,6 +162,51 @@ it("holding W is a long press: the item's hold timer runs until W comes up", () 
   expect(events.mock.calls).toEqual([["long press"]]);
   fireEvent.keyUp(window, { key: "w" });
   expect(events.mock.calls).toEqual([["long press"], ["click after hold"]]);
+  vi.useRealTimers();
+});
+
+it("focuses the middle of a new screen opened from the keyboard", () => {
+  vi.useFakeTimers();
+  function App() {
+    const [page, setPage] = useState("list");
+    return (
+      <>
+        <AppKeyboardNavigation />
+        <header><button data-box="0 0 40 40">Menu</button></header>
+        {page === "list" ? (
+          <button data-box="0 100 100 40" onClick={() => { at("/jobs/job"); setPage("job"); }}>Open job</button>
+        ) : (
+          <main>
+            <button data-box="20 100 100 40">Top</button>
+            <button data-box="440 360 140 40">Middle</button>
+            <button data-box="20 700 100 40">Bottom</button>
+          </main>
+        )}
+      </>
+    );
+  }
+  render(<App />);
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(screen.getByText("Open job"));
+  tapW();
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(document.activeElement).toBe(screen.getByText("Middle"));
+  expect(document.activeElement).toHaveAttribute("data-key-focus");
+  vi.useRealTimers();
+});
+
+it("leaves focus alone when the screen does not change, or the mouse takes over", () => {
+  vi.useFakeTimers();
+  render(
+    <>
+      <Grid />
+      <button data-box="440 360 140 40">Middle</button>
+    </>,
+  );
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  tapW();
+  act(() => { vi.advanceTimersByTime(4000); });
+  expect(document.activeElement).toBe(screen.getByText("One"));
   vi.useRealTimers();
 });
 
