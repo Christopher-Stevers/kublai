@@ -2,7 +2,10 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   ArcScrollerSurface,
+  arcDistance,
+  arcFocus,
   arcGeometry,
+  arcLoops,
   arcPoint,
   arcScrollDelta,
   useArcScrollerOptions,
@@ -45,7 +48,7 @@ it("hugs the thumb-side edge and bulges inward around the hold", () => {
   const end = arcPoint(right, right.half);
   expect(middle.y).toBeCloseTo(400);
   expect(middle.x).toBeLessThan(end.x);
-  expect(end.x).toBeCloseTo(370);
+  expect(end.x).toBeCloseTo(352);
   const left = arcGeometry(bounds, 400, "left")!;
   expect(arcPoint(left, 0).x).toBeCloseTo(400 - middle.x);
   // Too small to fit an arc.
@@ -58,6 +61,43 @@ it("turns a swipe along the arc into scrolling by whole choices", () => {
   const to = arcPoint(geometry, -2);
   expect(arcScrollDelta(geometry, from, to)).toBeCloseTo(2);
   expect(arcScrollDelta(geometry, to, from)).toBeCloseTo(-2);
+});
+
+it("loops long lists round with one empty slot at the end, and keeps short lists whole", () => {
+  const geometry = arcGeometry(bounds, 400, "right")!;
+  expect(arcLoops(12, geometry)).toBe(true);
+  expect(arcLoops(4, geometry)).toBe(false);
+  // At the first choice, the last sits two steps above it with the gap between.
+  expect(arcDistance(11, 0, 12, geometry)).toBe(-2);
+  expect(arcDistance(12, 0, 12, geometry)).toBe(-1);
+  expect(arcFocus(-1, 12, geometry)).toBeNull();
+  expect(arcFocus(-2, 12, geometry)).toBe(11);
+  expect(arcFocus(15, 12, geometry)).toBe(2);
+  // Short lists stop at their ends.
+  expect(arcDistance(3, 0, 4, geometry)).toBe(3);
+  expect(arcFocus(-2, 4, geometry)).toBe(0);
+});
+
+it("scrolls past the last choice back round to the first, and the check picks the middle choice", () => {
+  const select = vi.fn();
+  render(
+    <ArcScrollerSurface>
+      <Stage options={sizes(select)} />
+    </ArcScrollerSurface>,
+  );
+  hold();
+  fireEvent.pointerUp(window, pointer);
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(focused()).toBe("5 in");
+  for (let i = 0; i < 8; i++) {
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    act(() => { vi.advanceTimersByTime(600); });
+  }
+  // Eight steps from 5 in: past 12 in, over the gap without stopping, round to 1 in.
+  expect(focused()).toBe("1 in");
+  expect(document.querySelector("[data-arc-gap]")).not.toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Choose 1 in" }));
+  expect(select).toHaveBeenCalledWith(1);
 });
 
 it("opens on a hold, survives the lift, scrolls by swipe, and picks a tapped choice", () => {

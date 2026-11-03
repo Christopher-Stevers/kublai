@@ -12,7 +12,7 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from "react";
-import { ArrowLeftIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, XIcon } from "lucide-react";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import { wheelUsageId, type WheelUsage } from "~/lib/order-wheel-usage";
 import { cn } from "~/lib/utils";
@@ -97,15 +97,17 @@ export type ArcGeometry = {
   /** Choices further than this many steps from the middle are hidden. */
   half: number;
 };
-const SPAN = (55 * Math.PI) / 180;
-const SPACING = 60;
-const EDGE = 30;
+const SPAN = (50 * Math.PI) / 180;
+const SPACING = 70;
+const EDGE = 48;
+/** The check button sits this far from the middle of the arc, toward the thumb. */
+const CHECK_GAP = 110;
 
 /** Fit an arc against the thumb-side edge, centred on the hold where it fits. */
 export function arcGeometry(bounds: Bounds, y: number, hand: ArcHand): ArcGeometry | null {
   const width = bounds.right - bounds.left;
   const height = bounds.bottom - bounds.top;
-  const radius = Math.min(260, (height - 70) / (2 * Math.sin(SPAN)), (width - 150) / 0.6);
+  const radius = Math.min(330, (height - 70) / (2 * Math.sin(SPAN)), (width - 190) / 0.45);
   if (radius < 120) return null;
   const reach = radius * Math.sin(SPAN) + 35;
   const cy = Math.min(Math.max(y, bounds.top + reach), bounds.bottom - reach);
@@ -147,6 +149,33 @@ export function rankArcChoices(title: string, options: ArcChoice[], usage: Wheel
     .map((choice, index) => ({ choice, index }))
     .sort((a, b) => frequency(b.choice.label) - frequency(a.choice.label) || a.index - b.index)
     .map(({ choice }) => choice);
+}
+
+/** Long lists loop round, with one empty slot marking where the list ends.
+ * Lists short enough to show whole stay put. */
+export const arcLoops = (count: number, geometry: ArcGeometry) => count + 1 > 2.2 * geometry.half + 1;
+const wrap = (value: number, period: number) => ((value % period) + period) % period;
+
+/** Steps from the middle of the arc to choice `index`; the short way round when the list loops.
+ * `index === count` is the gap. */
+export function arcDistance(index: number, offset: number, count: number, geometry: ArcGeometry) {
+  if (!arcLoops(count, geometry)) return index - offset;
+  const period = count + 1;
+  return wrap(index - offset + period / 2, period) - period / 2;
+}
+
+/** The choice in the middle of the arc, or null while the gap is there. */
+export function arcFocus(offset: number, count: number, geometry: ArcGeometry) {
+  if (!count) return null;
+  if (!arcLoops(count, geometry)) return Math.min(count - 1, Math.max(0, Math.round(offset)));
+  const index = wrap(Math.round(offset), count + 1);
+  return index < count ? index : null;
+}
+
+/** Where a scroll may come to rest: on a choice, never the gap, and within the list when it does not loop. */
+function restingOffset(target: number, from: number, count: number, geometry: ArcGeometry) {
+  if (!arcLoops(count, geometry)) return Math.min(count - 1, Math.max(0, target));
+  return wrap(target, count + 1) === count ? target + (target < from ? -1 : 1) : target;
 }
 
 /** Few choices sit centred on the arc; long lists start with the first at the top. */
@@ -276,15 +305,17 @@ export function ArcScrollerSurface({
     stopAnimation();
     const current = openRef.current;
     if (!current) return;
-    const max = current.ranked.length - 1;
+    const count = current.ranked.length;
     const from = offsetRef.current;
-    const target = Math.round(Math.min(max, Math.max(0, from + velocity * 0.3)));
+    const target = restingOffset(Math.round(from + velocity * 0.3), from, count, current.geometry);
+    const period = arcLoops(count, current.geometry) ? count + 1 : 0;
     const started = performance.now();
     const duration = Math.min(520, 220 + Math.abs(target - from) * 50);
     const tick = (now: number) => {
       const t = Math.min(1, (now - started) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
-      setOffset(from + (target - from) * eased);
+      // Back to the first lap once it lands, so a looping offset stays small.
+      setOffset(t < 1 || !period ? from + (target - from) * eased : wrap(target, period));
       animation.current = t < 1 ? requestAnimationFrame(tick) : null;
     };
     animation.current = requestAnimationFrame(tick);
@@ -449,12 +480,11 @@ export function ArcScrollerSurface({
       current.moved = true;
       const delta = arcScrollDelta(arc.geometry, current.last, point);
       current.last = point;
-      const max = arc.ranked.length - 1;
       // Undo the previous stretch before adding the finger's movement.
       const raw = current.samples.at(-1)!.offset + delta;
       const now = performance.now();
       current.samples = [...current.samples.filter((sample) => now - sample.t < 120), { t: now, offset: raw }];
-      setOffset(rubber(raw, max));
+      setOffset(arcLoops(arc.ranked.length, arc.geometry) ? raw : rubber(raw, arc.ranked.length - 1));
     };
     const end = (event: PointerEvent) => {
       const current = drag.current;
@@ -483,8 +513,9 @@ export function ArcScrollerSurface({
         event.stopPropagation();
         const arc = openRef.current;
         if (!arc) return;
-        const target = Math.round(offsetRef.current) + (event.key === "ArrowDown" ? 1 : -1);
-        setOffset(Math.min(arc.ranked.length - 1, Math.max(0, target)));
+        const from = offsetRef.current;
+        const target = Math.round(from) + (event.key === "ArrowDown" ? 1 : -1);
+        setOffset(restingOffset(target, from, arc.ranked.length, arc.geometry));
         settle();
       }
     };
@@ -535,8 +566,9 @@ export function ArcScrollerSurface({
             onChoose={choose}
             onPointerDown={beginDrag}
             onWheel={(delta) => {
-              const max = open.ranked.length - 1;
-              setOffset(Math.min(max, Math.max(0, offsetRef.current + delta)));
+              const next = offsetRef.current + delta;
+              const count = open.ranked.length;
+              setOffset(arcLoops(count, open.geometry) ? next : Math.min(count - 1, Math.max(0, next)));
               stopAnimation();
               clearTimeout(wheelIdle.current);
               wheelIdle.current = setTimeout(() => settle(), 140);
@@ -572,7 +604,18 @@ function ArcDisplay({
   const { cx, cy, radius } = geometry;
   const trackStart = arcPoint(geometry, -geometry.half - 0.6);
   const trackEnd = arcPoint(geometry, geometry.half + 0.6);
-  const middle = Math.round(offset);
+  const count = ranked.length;
+  const middle = arcFocus(offset, count, geometry);
+  const focused = middle === null ? null : ranked[middle]!;
+  const gap = arcLoops(count, geometry) ? arcDistance(count, offset, count, geometry) : null;
+  const gapPoint = gap !== null && Math.abs(gap) <= geometry.half ? arcPoint(geometry, gap) : null;
+  const hub = arcPoint(geometry, 0);
+  const check = {
+    x: right
+      ? Math.min(bounds.right - 36, hub.x + CHECK_GAP)
+      : Math.max(bounds.left + 36, hub.x - CHECK_GAP),
+    y: cy,
+  };
   return (
     <div
       data-arc-scroller=""
@@ -620,13 +663,14 @@ function ArcDisplay({
           d={`M ${trackStart.x} ${trackStart.y} A ${radius} ${radius} 0 0 ${right ? 0 : 1} ${trackEnd.x} ${trackEnd.y}`}
           className="stroke-primary/25"
           fill="none"
-          strokeWidth={34}
+          strokeWidth={40}
           strokeLinecap="round"
         />
         <circle cx={cx} cy={cy} r={6} className="fill-primary/30" />
+        {gapPoint && <circle data-arc-gap="" cx={gapPoint.x} cy={gapPoint.y} r={5} className="fill-primary/45" />}
       </svg>
       {ranked.map((choice, index) => {
-        const distance = index - offset;
+        const distance = arcDistance(index, offset, count, geometry);
         const reach = Math.abs(distance) / geometry.half;
         if (reach > 1.08) return null;
         const point = arcPoint(geometry, distance);
@@ -643,30 +687,41 @@ function ArcDisplay({
             tabIndex={reach <= 1 ? 0 : -1}
             onClick={() => onChoose(choice)}
             className={cn(
-              "absolute top-0 left-0 flex h-11 items-center gap-2 rounded-full border bg-card text-card-foreground shadow-md transition-[background-color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              right ? "flex-row-reverse pr-0.5 pl-3.5" : "pr-3.5 pl-0.5",
+              "absolute top-0 left-0 flex h-13 items-center gap-2.5 rounded-full border bg-card text-card-foreground shadow-md transition-[background-color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              right ? "flex-row-reverse pr-0.5 pl-4" : "pr-4 pl-0.5",
               focus && "border-primary/60 ring-primary/30 shadow-lg ring-2",
               choice.disabled && "text-muted-foreground opacity-60",
             )}
             style={{
               opacity: Math.max(0, Math.min(1, (1.08 - reach) * 3)) * (choice.disabled ? 0.6 : 1),
-              transform: `translate(${point.x}px, ${point.y}px) translate(${right ? "calc(-100% + 1.25rem)" : "-1.25rem"}, -50%) scale(${scale})`,
-              transformOrigin: right ? "calc(100% - 1.25rem) 50%" : "1.25rem 50%",
+              transform: `translate(${point.x}px, ${point.y}px) translate(${right ? "calc(-100% + 1.625rem)" : "-1.625rem"}, -50%) scale(${scale})`,
+              transformOrigin: right ? "calc(100% - 1.625rem) 50%" : "1.625rem 50%",
             }}
           >
             <span
               aria-hidden
               className={cn(
-                "grid size-10 shrink-0 place-items-center rounded-full [&_svg]:size-4.5",
+                "grid size-12 shrink-0 place-items-center rounded-full [&_svg]:size-5.5",
                 focus ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80",
               )}
             >
               {choice.icon ?? <span className="size-2 rounded-full bg-current" />}
             </span>
-            <span className="max-w-[min(13rem,52vw)] truncate text-sm font-medium">{choice.label}</span>
+            <span className="max-w-[min(14rem,52vw)] truncate text-base font-medium">{choice.label}</span>
           </button>
         );
       })}
+      <button
+        type="button"
+        data-arc-check=""
+        aria-label={focused ? `Choose ${focused.label}` : "Choose"}
+        disabled={!focused || focused.disabled}
+        onClick={() => focused && onChoose(focused)}
+        className="bg-primary text-primary-foreground focus-visible:ring-ring absolute top-0 left-0 grid size-14 place-items-center rounded-full shadow-lg transition-opacity outline-none focus-visible:ring-2 disabled:opacity-40"
+        style={{ transform: `translate(${check.x}px, ${check.y}px) translate(-50%, -50%)` }}
+      >
+        <CheckIcon className="size-7" strokeWidth={2.75} />
+      </button>
     </div>
   );
 }
