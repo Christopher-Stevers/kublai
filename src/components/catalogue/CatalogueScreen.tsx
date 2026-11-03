@@ -637,6 +637,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
       />
       <div className="bg-card shrink-0 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
         <PriorityActionBar
+          className="mx-auto max-w-6xl"
           search={{
             value: wizardSearchQuery,
             onChange: setWizardSearchQuery,
