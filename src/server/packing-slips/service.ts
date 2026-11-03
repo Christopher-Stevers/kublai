@@ -12,6 +12,7 @@ import {
   seedPreviousReceipt,
 } from "./review-draft";
 import { separateBackground } from "~/server/background/mode";
+import { publishBackgroundHint } from "~/server/background/hints";
 import { packingSlipJobs } from "~/server/background/packing-schema";
 import {
   claimPackingSlip,
@@ -479,7 +480,11 @@ export async function startSlipAnalysis(
       "updated",
       access.job.organizationId,
     );
-  if (separateBackground()) return;
+  if (separateBackground()) {
+    // The worker starts it now rather than at its next look at the queue.
+    publishBackgroundHint({ topic: "work", feature: "packing-slips" });
+    return;
+  }
   const work = tail
     .catch(() => undefined)
     .then(async () => {
@@ -970,9 +975,10 @@ async function performSlipTask(
   }
 }
 /** One durable claim per dispatch. Reading never confirms received quantities. */
+/** Reads the oldest queued slip; true when there was one, as another may wait. */
 export async function dispatchPackingSlips() {
   const claim = await claimPackingSlip();
-  if (!claim) return;
+  if (!claim) return false;
   const heartbeat = setInterval(
     () => void heartbeatPackingSlip(claim).catch(() => undefined),
     15_000,
@@ -1017,6 +1023,7 @@ export async function dispatchPackingSlips() {
   } finally {
     clearInterval(heartbeat);
   }
+  return true;
 }
 /** Clear detection only; preserve the receipt and its audit trail. */
 export async function clearSlipAnalysis(

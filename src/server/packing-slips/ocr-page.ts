@@ -51,8 +51,7 @@ export async function ocrPage(
       image.info.width,
       image.info.height,
     );
-  let block = await read("6");
-  let sparse = await read("11");
+  let [block, sparse] = await Promise.all([read("6"), read("11")]);
   const candidate = estimatePageWarp(sparse);
   let warp: typeof candidate = null;
   if (candidate) {
@@ -61,8 +60,10 @@ export async function ocrPage(
       image = await sharp(await dewarpPage(image.data, candidate))
         .png()
         .toBuffer({ resolveWithObject: true });
-      const correctedBlock = await read("6");
-      const correctedSparse = await read("11");
+      const [correctedBlock, correctedSparse] = await Promise.all([
+        read("6"),
+        read("11"),
+      ]);
       // A failed correction must not silently discard readable source text.
       if (correctedSparse.length < sparse.length * 0.8) image = original;
       else {

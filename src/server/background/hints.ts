@@ -13,6 +13,7 @@ const hintSchema = z.discriminatedUnion("topic", [
   z.object({ topic: z.literal("poke"), organizationId: identifier }),
   z.object({ topic: z.literal("catalogue"), organizationId: identifier }),
   z.object({ topic: z.literal("conversation"), conversationId: identifier }),
+  z.object({ topic: z.literal("work"), feature: z.literal("packing-slips") }),
 ]);
 export type BackgroundHint = z.infer<typeof hintSchema>;
 const envelope = z.object({ origin: z.string().uuid(), hint: hintSchema });

@@ -733,54 +733,100 @@ export async function readSlipImages(input: {
   if (Math.max(0, ...rows.map((r) => r.page)) > pages.length)
     throw Error("Page images are incomplete.");
   const tableBands = bandsFromTable(input.tableLines);
+  const ownBands = (page: number) => tableBands.filter((b) => b.page === page);
+  // Where the totals print is asked beside the last page's questions, not
+  // after them; on a slip without totals the answer goes unused.
+  const lastImage = preparedPages.at(-1);
+  const totalsBox = lastImage
+    ? ask(
+        { page: lastImage },
+        { totals: { type: "box", instructions: FOOTER } },
+      )
+    : null;
+  // Awaited later, where a failure surfaces.
+  void totalsBox?.catch(() => undefined);
   const pageInfo = await limited(
-    pages.map((png, i) => async () => {
-      const page = i + 1;
-      const image = preparedPages[i]!;
-      const a = await ask(
-        { page: image },
-        pageQuestions(page === pages.length),
-      );
-      let total: { value: number | null; confidence: number } | null = null;
-      const range = choice(a.range);
-      const lo =
-        range && /^r\d$/.test(range.choice)
-          ? Number(range.choice.slice(1)) * 100
-          : null;
-      // The totals print small. Across a whole page a dot-matrix 6 reads as
-      // an 8 and a 1 as a 3, surely; enlarged they read true.
-      const near =
-        page === pages.length &&
-        [a.lines, a.range].some((x) => {
-          const c = choice(x);
-          return c && c.choice !== "not_printed";
-        })
-          ? await readFooter(png, image, lo, ask)
-          : {};
-      if (lo !== null) {
-        const exact =
-          near.total ??
-          choice(
-            (await ask({ page: image }, { total: exactTotal(lo, TOTAL) }))
-              .total,
-          );
-        total = {
-          value: number(exact),
-          confidence: range!.confidence * (exact?.confidence ?? 0),
-        };
-      }
-      return {
-        page,
-        answers: near.lines ? { ...a, lines: near.lines } : a,
-        total,
-      };
-    }),
+    pages.map((_png, i) => async () => ({
+      page: i + 1,
+      answers: await ask(
+        { page: preparedPages[i]! },
+        pageQuestions(i + 1 === pages.length),
+      ),
+    })),
     4,
   );
-  const last = pageInfo.at(-1);
+  // A one-page slip's printed line count is its page's, and Jev reads it
+  // more surely than it counts the lines; it stands in for a count Jev is
+  // unsure of.
+  const pageCount = (info: (typeof pageInfo)[number]) => {
+    const count = choice(info.answers.count);
+    const listed = pages.length === 1 ? choice(info.answers.lines) : undefined;
+    return count &&
+      count.confidence < COUNT_MIN &&
+      listed &&
+      listed.confidence >= TOTAL_MIN &&
+      lineCount(listed) !== null
+      ? listed
+      : count;
+  };
   const printed = (a: ChoiceAnswer | undefined) =>
     !!a && a.choice !== "not_printed" && a.confidence >= TOTAL_MIN;
-  const footer =
+  // The totals print small. Across a whole page a dot-matrix 6 reads as an 8
+  // and a 1 as a 3, surely; enlarged they read true. They are read while the
+  // lines are found and read.
+  const totalsRead = (async () => {
+    const info = pageInfo.at(-1);
+    if (!info) return undefined;
+    const a = info.answers;
+    let total: { value: number | null; confidence: number } | null = null;
+    const range = choice(a.range);
+    const lo =
+      range && /^r\d$/.test(range.choice)
+        ? Number(range.choice.slice(1)) * 100
+        : null;
+    const near = [a.lines, a.range].some((x) => {
+      const c = choice(x);
+      return c && c.choice !== "not_printed";
+    })
+      ? await readFooter(pages[info.page - 1]!, totalsBox!, lo, ask)
+      : {};
+    if (lo !== null) {
+      const exact =
+        near.total ??
+        choice(
+          (
+            await ask(
+              { page: preparedPages[info.page - 1]! },
+              { total: exactTotal(lo, TOTAL) },
+            )
+          ).total,
+        );
+      total = {
+        value: number(exact),
+        confidence: range!.confidence * (exact?.confidence ?? 0),
+      };
+    }
+    // Across a whole page a dot-matrix 10 can read surely as an 18. A count
+    // the enlarged footer reads otherwise, even unsurely, is not sure.
+    const page = choice(a.lines);
+    const disputed =
+      !near.lines &&
+      near.read &&
+      /^n\d+$/.test(near.read.choice) &&
+      page &&
+      /^n\d+$/.test(page.choice) &&
+      near.read.choice !== page.choice;
+    const lines = near.lines ?? (disputed ? near.read : undefined);
+    return {
+      ...info,
+      answers: lines ? { ...a, lines } : a,
+      total,
+      footer: printed(page) || printed(range),
+    };
+  })();
+  void totalsRead.catch(() => undefined);
+  /** Whether the slip prints a line count or total that can be trusted. */
+  const footed = (last: Awaited<typeof totalsRead>) =>
     !!last &&
     (printed(choice(last.answers.lines)) ||
       printed(choice(last.answers.range)));
@@ -788,12 +834,11 @@ export async function readSlipImages(input: {
   // more lines starting on a page than the table found, checking only its
   // uncertain rows never looks for the rest, so every line is read instead.
   const short = pageInfo.some((info) => {
-    const count = choice(info.answers.count);
+    const count = pageCount(info);
     return (
       !!count &&
       count.confidence >= COUNT_MIN &&
-      (lineCount(count) ?? 0) >
-        tableBands.filter((b) => b.page === info.page).length
+      (lineCount(count) ?? 0) > ownBands(info.page).length
     );
   });
   const targets = short ? undefined : input.targets;
@@ -803,65 +848,39 @@ export async function readSlipImages(input: {
       pages.map(async (_png, pageIndex) => {
         const image = preparedPages[pageIndex]!;
         const answers: Record<number, ChoiceAnswer | undefined> = {};
-        for (let start = 0; start < items.length; start += 30) {
-          const chunk = items.slice(start, start + 30);
-          const a = await ask(
-            { page: image },
-            Object.fromEntries(
-              chunk.map((item, k) => [`item${start + k}`, pageItem(item)]),
-            ),
-          );
-          chunk.forEach((_, k) => {
-            answers[start + k] = choice(a[`item${start + k}`]);
-          });
-        }
+        await Promise.all(
+          Array.from(
+            { length: Math.ceil(items.length / 30) },
+            async (_, chunkIndex) => {
+              const start = chunkIndex * 30;
+              const chunk = items.slice(start, start + 30);
+              const a = await ask(
+                { page: image },
+                Object.fromEntries(
+                  chunk.map((item, k) => [`item${start + k}`, pageItem(item)]),
+                ),
+              );
+              chunk.forEach((_, k) => {
+                answers[start + k] = choice(a[`item${start + k}`]);
+              });
+            },
+          ),
+        );
         return answers;
       }),
     ).catch(() => null);
   // Without printed totals it checks every slip. With totals it found nothing
   // more and cost a third more output tokens in testing, so there it only
   // stands in when the totals cannot be squared.
-  const itemChecks = footer || targets ? Promise.resolve(null) : readItems();
+  const itemChecks = targets
+    ? Promise.resolve(null)
+    : totalsRead.then((last) => (footed(last) ? null : readItems()));
+  void itemChecks.catch(() => undefined);
   // Photos often defeat the table reader, which then finds only some lines.
-  // Where Jev counts more lines starting on a page, Jev finds them all. A
-  // count it is unsure of only stands in when there is no table at all.
-  const bands: Band[] = [];
-  // Lines the slip's printed line count says the pages' counts missed; with
-  // no count printed, any page may hold one more than Jev counted.
-  const listed = choice(last?.answers.lines);
-  const printedLines =
-    listed && listed.confidence >= TOTAL_MIN ? lineCount(listed) : null;
-  let spare =
-    printedLines === null
-      ? Infinity
-      : pageInfo.reduce(
-          (left, info) =>
-            left -
-            Math.max(
-              lineCount(choice(info.answers.count)) ?? 0,
-              tableBands.filter((b) => b.page === info.page).length,
-            ),
-          printedLines,
-        );
-  for (const info of pageInfo) {
-    const own = tableBands.filter((b) => b.page === info.page);
-    if (targets) {
-      bands.push(...own);
-      continue;
-    }
-    const count = choice(info.answers.count);
-    const n = lineCount(count) ?? 0;
-    if (count?.choice === "unclear" && !own.length)
-      warnings.push(
-        `Page ${info.page}: the slip lines could not be counted. Check it by hand.`,
-      );
-    if (
-      n <= own.length ||
-      (tableBands.length && count!.confidence < COUNT_MIN)
-    ) {
-      bands.push(...own);
-      continue;
-    }
+  // Where Jev counts more lines starting on a page, Jev finds them all, on
+  // every such page at once. A count it is unsure of only stands in when
+  // there is no table at all.
+  const locate = async (info: (typeof pageInfo)[number], n: number) => {
     const located = await ask(
       { page: preparedPages[info.page - 1]! },
       Object.fromEntries(
@@ -879,21 +898,74 @@ export async function readSlipImages(input: {
     )
       .filter((b): b is Edges => !!b)
       .sort((a, b) => a.top - b.top);
+    // The ink only sharpens where lines start; the OCR's rows place them
+    // without it.
+    const ink =
+      found.length > ownBands(info.page).length
+        ? await pageInk(
+            pages[info.page - 1]!,
+            found,
+            quantityColumns(info.answers),
+          ).catch(() => [])
+        : [];
+    return { found, ink };
+  };
+  const locating = new Map<number, ReturnType<typeof locate>>();
+  if (!targets)
+    for (const info of pageInfo) {
+      const count = pageCount(info);
+      const n = lineCount(count) ?? 0;
+      if (
+        n <= ownBands(info.page).length ||
+        (tableBands.length && count!.confidence < COUNT_MIN)
+      )
+        continue;
+      const located = locate(info, n);
+      void located.catch(() => undefined);
+      locating.set(info.page, located);
+    }
+  const bands: Band[] = [];
+  // Lines the slip's printed line count says the pages' counts missed; with
+  // no count printed, any page may hold one more than Jev counted.
+  let spare: number | undefined;
+  for (const info of pageInfo) {
+    const own = ownBands(info.page);
+    if (targets) {
+      bands.push(...own);
+      continue;
+    }
+    const count = pageCount(info);
+    if (count?.choice === "unclear" && !own.length)
+      warnings.push(
+        `Page ${info.page}: the slip lines could not be counted. Check it by hand.`,
+      );
+    const pending = locating.get(info.page);
+    const { found, ink } = pending ? await pending : { found: [], ink: [] };
     if (found.length <= own.length) {
       bands.push(...own);
       continue;
     }
-    const pageRows = rows.filter((r) => r.page === info.page);
-    const columns = quantityColumns(info.answers);
-    // The ink only sharpens where lines start; the OCR's rows place them
-    // without it.
-    const ink = await pageInk(pages[info.page - 1]!, found, columns).catch(
-      () => [],
-    );
+    if (spare === undefined) {
+      const listed = choice((await totalsRead)?.answers.lines);
+      const printedLines =
+        listed && listed.confidence >= TOTAL_MIN ? lineCount(listed) : null;
+      spare =
+        printedLines === null
+          ? Infinity
+          : pageInfo.reduce(
+              (left, page) =>
+                left -
+                Math.max(
+                  lineCount(pageCount(page)) ?? 0,
+                  ownBands(page.page).length,
+                ),
+              printedLines,
+            );
+    }
     const placed = locatedBands(
       found,
-      pageRows,
-      columns,
+      rows.filter((r) => r.page === info.page),
+      quantityColumns(info.answers),
       ink,
       spare > 0 ? 1 : 0,
     );
@@ -996,6 +1068,62 @@ export async function readSlipImages(input: {
             ])
           : await crop(png, { top: 0, bottom: 0.1 }),
       );
+      // The line's own reading is asked first; its cells and other views are
+      // prepared meanwhile.
+      const mainRead = ask(
+        { row, columnHeadings },
+        {
+          kind: {
+            type: "choice",
+            instructions: `Does \`row\` depict one product item, multiple items, or no product item? A wrapped description belongs to the same item. Text cut off at the top or bottom edge of the image belongs to neighbouring lines; ignore it. ${EVIDENCE}`,
+            criteria: {
+              one: "Exactly one product line",
+              multiple: "Multiple distinct product lines",
+              none: "No product line",
+              unclear: "Cannot tell",
+            },
+          },
+          part: productQuestion(items),
+          shipped: quantity(
+            "SHIPPED",
+            "A table with a single quantity column (e.g. QTY or Quantity) shows the shipped quantity there. ",
+          ),
+          backordered: quantity(
+            "BACKORDERED",
+            "It is the quantity still to come, in a column such as B/O, Back Order, Balance, Remaining, Outstanding or To Follow. ",
+          ),
+          ordered: quantity("ORDERED (order quantity, not shipped)"),
+          unit: {
+            type: "choice",
+            instructions:
+              COMMON +
+              "What unit applies to the shipped quantity as explicitly printed in the row or its heading? Do not infer packaging from the order.",
+            criteria: {
+              ea: "Each or pieces",
+              ft: "Feet",
+              m: "Metres",
+              box: "Boxes",
+              pack: "Packs",
+              bag: "Bags",
+              roll: "Rolls",
+              length: "Lengths",
+              blank: "Not printed",
+              other: "Another unit",
+              unclear: "Not legible",
+            },
+          },
+          handwriting: {
+            type: "choice",
+            instructions: `Does handwriting in \`row\` appear to change or conflict with the printed quantity? ${EVIDENCE}`,
+            criteria: {
+              yes: "A handwritten quantity correction or conflicting quantity is present",
+              no: "No apparent quantity correction; ticks or signatures alone do not count",
+              unclear: "Cannot tell",
+            },
+          },
+        },
+      );
+      void mainRead.catch(() => undefined);
       const cell = async (field: keyof typeof columns) => {
         const c = columns[field];
         if (!c) return null;
@@ -1096,70 +1224,17 @@ export async function readSlipImages(input: {
         }
       }
       const text = ocrText(rows, band.page, band.top, band.bottom);
-      const cells = {
-        shippedCell: await cell("shipped"),
-        orderedCell: await cell("ordered"),
-        backorderedCell: await cell("backordered"),
-      };
-      const cellInputs = Object.fromEntries(
-        Object.entries(cells).filter((e): e is [string, Buffer] => !!e[1]),
-      );
-      const code = codeMatch(text || band.evidence, items, input.known);
-      const [main, cellRead] = await Promise.all([
-        ask(
-          { row, columnHeadings },
-          {
-            kind: {
-              type: "choice",
-              instructions: `Does \`row\` depict one product item, multiple items, or no product item? A wrapped description belongs to the same item. Text cut off at the top or bottom edge of the image belongs to neighbouring lines; ignore it. ${EVIDENCE}`,
-              criteria: {
-                one: "Exactly one product line",
-                multiple: "Multiple distinct product lines",
-                none: "No product line",
-                unclear: "Cannot tell",
-              },
-            },
-            part: productQuestion(items),
-            shipped: quantity(
-              "SHIPPED",
-              "A table with a single quantity column (e.g. QTY or Quantity) shows the shipped quantity there. ",
-            ),
-            backordered: quantity(
-              "BACKORDERED",
-              "It is the quantity still to come, in a column such as B/O, Back Order, Balance, Remaining, Outstanding or To Follow. ",
-            ),
-            ordered: quantity("ORDERED (order quantity, not shipped)"),
-            unit: {
-              type: "choice",
-              instructions:
-                COMMON +
-                "What unit applies to the shipped quantity as explicitly printed in the row or its heading? Do not infer packaging from the order.",
-              criteria: {
-                ea: "Each or pieces",
-                ft: "Feet",
-                m: "Metres",
-                box: "Boxes",
-                pack: "Packs",
-                bag: "Bags",
-                roll: "Rolls",
-                length: "Lengths",
-                blank: "Not printed",
-                other: "Another unit",
-                unclear: "Not legible",
-              },
-            },
-            handwriting: {
-              type: "choice",
-              instructions: `Does handwriting in \`row\` appear to change or conflict with the printed quantity? ${EVIDENCE}`,
-              criteria: {
-                yes: "A handwritten quantity correction or conflicting quantity is present",
-                no: "No apparent quantity correction; ticks or signatures alone do not count",
-                unclear: "Cannot tell",
-              },
-            },
-          },
-        ),
-        Object.keys(cellInputs).length
+      const cellsRead = (async () => {
+        const [shippedCell, orderedCell, backorderedCell] = await Promise.all([
+          cell("shipped"),
+          cell("ordered"),
+          cell("backordered"),
+        ]);
+        const cells = { shippedCell, orderedCell, backorderedCell };
+        const cellInputs = Object.fromEntries(
+          Object.entries(cells).filter((e): e is [string, Buffer] => !!e[1]),
+        );
+        return Object.keys(cellInputs).length
           ? ask(
               cellInputs,
               Object.fromEntries(
@@ -1168,46 +1243,59 @@ export async function readSlipImages(input: {
                   .map((f) => [f, cellQuantity(f.toUpperCase(), `${f}Cell`)]),
               ),
             )
-          : Promise.resolve({} as Record<string, VisionAnswer>),
-      ]);
-      // A printed supplier code, or a sure first answer, settles the product.
-      const settled =
-        code !== null || (choice(main.part)?.confidence ?? 0) >= VIEWS_SKIP;
-      const [withText, withCrop, hand] = await Promise.all([
-        !settled && text
-          ? ask(
-              { row, columnHeadings, ocrText: text },
-              { part: productQuestion(items, "ocr") },
-            )
-          : Promise.resolve(null),
-        !settled && product
-          ? crop(
-              png,
-              {
-                ...band,
-                left: product.left - 0.01,
-                right: product.right + 0.01,
-              },
-              0.006,
-            ).then(async (c) =>
-              ask(
-                { row, columnHeadings, productCell: await prepared(c) },
-                { part: productQuestion(items, "cell") },
-              ),
-            )
-          : Promise.resolve(null),
-        ["yes", "unclear"].includes(choice(main.handwriting)?.choice ?? "") ||
-        // A shipped figure written into an empty printed cell reads as
-        // blank on the line but shows in the cell; read the pen so review
-        // can take it in one tap.
-        (["blank", "unclear"].includes(choice(main.shipped)?.choice ?? "") &&
-          number(choice(cellRead.shipped)) !== null)
-          ? !columns.shipped
-            ? ask({ row, columnHeadings }, { handwritten })
-            : penCell(columns.shipped).then((penCell) =>
-                ask({ row, penCell }, { handwritten: penWritten }),
+          : ({} as Record<string, VisionAnswer>);
+      })();
+      const code = codeMatch(text || band.evidence, items, input.known);
+      // A printed supplier code, or a sure first answer, settles the product;
+      // otherwise other views of it are asked as soon as that answer is in.
+      const viewsRead = mainRead.then((main) => {
+        const settled =
+          code !== null || (choice(main.part)?.confidence ?? 0) >= VIEWS_SKIP;
+        return Promise.all([
+          !settled && text
+            ? ask(
+                { row, columnHeadings, ocrText: text },
+                { part: productQuestion(items, "ocr") },
               )
-          : Promise.resolve(null),
+            : Promise.resolve(null),
+          !settled && product
+            ? crop(
+                png,
+                {
+                  ...band,
+                  left: product.left - 0.01,
+                  right: product.right + 0.01,
+                },
+                0.006,
+              ).then(async (c) =>
+                ask(
+                  { row, columnHeadings, productCell: await prepared(c) },
+                  { part: productQuestion(items, "cell") },
+                ),
+              )
+            : Promise.resolve(null),
+        ]);
+      });
+      const handRead = Promise.all([mainRead, cellsRead]).then(
+        ([main, cellRead]) =>
+          ["yes", "unclear"].includes(choice(main.handwriting)?.choice ?? "") ||
+          // A shipped figure written into an empty printed cell reads as
+          // blank on the line but shows in the cell; read the pen so review
+          // can take it in one tap.
+          (["blank", "unclear"].includes(choice(main.shipped)?.choice ?? "") &&
+            number(choice(cellRead.shipped)) !== null)
+            ? !columns.shipped
+              ? ask({ row, columnHeadings }, { handwritten })
+              : penCell(columns.shipped).then((penCell) =>
+                  ask({ row, penCell }, { handwritten: penWritten }),
+                )
+            : Promise.resolve(null),
+      );
+      const [main, cellRead, [withText, withCrop], hand] = await Promise.all([
+        mainRead,
+        cellsRead,
+        viewsRead,
+        handRead,
       ]);
       const reading = decideReading(
         band,
@@ -1239,6 +1327,8 @@ export async function readSlipImages(input: {
   );
 
   for (const [k, r] of readings.entries()) readings[k] = settleHidden(r, items);
+  const last = await totalsRead;
+  const footer = !!last?.footer;
   const lines = checkAgainstOrder(readings, items);
   await input.onProgress?.({
     stage: "checking",
@@ -1348,18 +1438,16 @@ export async function readSlipImages(input: {
  * readings come back; the page's readings stand for the rest. */
 async function readFooter(
   png: Buffer,
-  image: Buffer,
+  /** Jev's box for the totals on the page. */
+  box: Promise<Record<string, VisionAnswer>>,
   lo: number | null,
   ask: VisionAsk,
-): Promise<{ lines?: ChoiceAnswer; total?: ChoiceAnswer }> {
-  const at = edges(
-    (
-      await ask(
-        { page: image },
-        { totals: { type: "box", instructions: FOOTER } },
-      )
-    ).totals,
-  );
+): Promise<{
+  lines?: ChoiceAnswer;
+  total?: ChoiceAnswer;
+  read?: ChoiceAnswer;
+}> {
+  const at = edges((await box).totals);
   if (!at) return {};
   // Jev's boxes are coarse; the margins keep the figures and lines at their
   // ends.
@@ -1378,7 +1466,11 @@ async function readFooter(
       ? c
       : undefined;
   };
-  return { lines: sure(a.lines, /^n\d+$/), total: sure(a.total, /^v\d+$/) };
+  return {
+    lines: sure(a.lines, /^n\d+$/),
+    total: sure(a.total, /^v\d+$/),
+    read: choice(a.lines),
+  };
 }
 
 function ocrText(rows: SlipRow[], page: number, top: number, bottom: number) {
@@ -1777,7 +1869,10 @@ export function checkAgainstOrder(
       issues.push(
         "Check shipped quantity against the slip; the print is unclear.",
       );
-    if (backorderedConf < QUANTITY_MIN || r.backorderedUnclear)
+    // A line that adds up with nothing backordered settles a backordered
+    // cell Jev found unclear.
+    const adds = r.ordered !== null && (r.earlier === null || explained);
+    if (backorderedConf < QUANTITY_MIN || (r.backorderedUnclear && !adds))
       issues.push("Check backordered quantity against the slip.");
     if (explained)
       notes.push(
@@ -1790,7 +1885,6 @@ export function checkAgainstOrder(
     issues.push(...r.flags);
     // A tick beside a printed count is often taken for a written count. A
     // pen read equal to the printed count only stands when the line adds up.
-    const adds = r.ordered !== null && (r.earlier === null || explained);
     if (r.pen === "differs" || (r.pen === "agrees" && !adds))
       issues.push(
         "Handwriting on this line may change the quantity. Check the slip.",

@@ -1,7 +1,7 @@
 /** Bounded, short-lived process; document bytes and OCR output never go into logs. */
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { createCanvas } from "@napi-rs/canvas";
 import sharp from "sharp";
 import {
@@ -22,14 +22,23 @@ async function main() {
   if (bytes.length > 50 * 1024 * 1024) throw Error();
   const rows: SlipRow[] = [],
     warnings: string[] = [];
-  const tesseract: Tesseract = async (args, input) =>
-    execFileSync("tesseract", args, {
-      input,
-      encoding: "utf8",
-      timeout: 25000,
-      maxBuffer: 8 * 1024 * 1024,
-      env: { ...process.env, OMP_THREAD_LIMIT: "1" },
-      stdio: ["pipe", "pipe", "ignore"],
+  // Asynchronous, so a page's passes can run side by side.
+  const tesseract: Tesseract = (args, input) =>
+    new Promise((resolve, reject) => {
+      const child = execFile(
+        "tesseract",
+        args,
+        {
+          encoding: "utf8",
+          timeout: 25000,
+          maxBuffer: 8 * 1024 * 1024,
+          env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+        },
+        (error, stdout) =>
+          error ? reject(Error("Text reading failed.")) : resolve(stdout),
+      );
+      child.stdin?.on("error", () => undefined);
+      child.stdin?.end(input);
     });
   /** Page image for the line-by-line image check, upright, ≤2000 px. */
   const keep = async (png: Buffer, page: number) =>
@@ -49,13 +58,15 @@ async function main() {
       { mode: 0o600 },
     );
   const ocr = async (png: Buffer, page: number) => {
-    await keep(png, page).catch(() => undefined);
-    warnings.push(
-      ...(await measurePage(png)
+    const [, quality, read] = await Promise.all([
+      keep(png, page).catch(() => undefined),
+      measurePage(png)
         .then((q) => qualityWarnings(page, q))
-        .catch(() => [])),
-    );
-    rows.push(...(await ocrPage(png, page, tesseract, [...rows])));
+        .catch(() => []),
+      ocrPage(png, page, tesseract, [...rows]),
+    ]);
+    warnings.push(...quality);
+    rows.push(...read);
   };
   if (mime === "application/pdf") {
     const task = getDocument({

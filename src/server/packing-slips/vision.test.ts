@@ -671,6 +671,25 @@ it("blocks every line when the printed totals disagree", async () => {
   );
 });
 
+it("does not trust a printed line count the enlarged footer reads otherwise", async () => {
+  const read = (footer: VisionAnswer) =>
+    analyze(
+      [header, line],
+      fakeJev({ page: { lines: pick("n3", 0.98) }, footer: { lines: footer } })
+        .ask,
+    );
+  // Across the page a dot-matrix 1 read surely as a 3; enlarged, it is a 1.
+  const disputed = await read(pick("n1", 0.5));
+  expect(disputed.warnings).toEqual([]);
+  expect(disputed.layout).toEqual({ footer: true });
+  expect(disputed.lines[0]).toMatchObject({ proposed: 6, issues: [] });
+  // A footer crop that agrees, or that misses the count, leaves it standing.
+  for (const footer of [pick("n3", 0.5), pick("not_printed", 0.55)])
+    expect((await read(footer)).warnings).toEqual([
+      "Check every line: the slip lists 3 lines but 1 were read.",
+    ]);
+});
+
 it("keeps the lines the whole page confirms when a missed line may explain the totals", async () => {
   // The slip lists a line that was not read.
   const missed = { lines: pick("n2", 0.95) };
@@ -1040,6 +1059,30 @@ it("trusts a backordered figure that balances sure shipped and ordered figures",
   const unclear = await read(pick("unclear", 0.7));
   expect(unclear!.proposed).toBeNull();
   expect(unclear!.issues).toContain(
+    "Check backordered quantity against the slip.",
+  );
+});
+
+it("settles an unclear backordered cell on a line that adds up without it", async () => {
+  const read = async (shipped: string) => {
+    const backordered = pick("unclear", 0.95);
+    const jev = fakeJev({
+      total: pick(shipped, 0.99),
+      main: { shipped: pick(shipped, 0.95), backordered },
+      cells: { shipped: pick(shipped, 0.95), backordered },
+    });
+    return (await analyze([header, line], jev.ask)).lines[0];
+  };
+  // 10 ordered less the 8 shipped and the 2 received earlier leaves none.
+  expect(await read("v8")).toMatchObject({
+    shipped: 8,
+    proposed: 8,
+    issues: [],
+  });
+  // With 7 shipped, 1 is unaccounted for and may be the backorder.
+  const short = await read("v7");
+  expect(short!.proposed).toBeNull();
+  expect(short!.issues).toContain(
     "Check backordered quantity against the slip.",
   );
 });

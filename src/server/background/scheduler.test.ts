@@ -35,6 +35,68 @@ it("limits concurrent heavy tasks and admits waiting features fairly", async () 
   expect(scheduler.active()).toEqual([]);
   expect(seen).toHaveLength(3);
 });
+it("reads packing slips while other features fill every slot", async () => {
+  const releases: Record<string, () => void> = {},
+    seen: string[] = [];
+  const scheduler = backgroundScheduler(
+    ["rooms", "models", "packing-slips", "assessments"].map((name) => ({
+      name,
+      run: () => {
+        seen.push(name);
+        return new Promise<void>((r) => (releases[name] = r));
+      },
+    })),
+    2,
+  );
+  scheduler.tick();
+  await Promise.resolve();
+  expect(seen).toEqual(["packing-slips", "rooms", "models"]);
+  // A finished slip frees no other feature's slot.
+  releases["packing-slips"]!();
+  await new Promise((r) => setTimeout(r, 0));
+  scheduler.tick();
+  await Promise.resolve();
+  expect(seen).toEqual(["packing-slips", "rooms", "models", "packing-slips"]);
+  const stopping = scheduler.stop();
+  Object.values(releases).forEach((r) => r());
+  await stopping;
+});
+it("starts a queued slip at once and reads the next as soon as one is read", async () => {
+  const queue = ["one", "two"],
+    seen: string[] = [],
+    rooms = vi.fn(async () => undefined);
+  const scheduler = backgroundScheduler(
+    [
+      {
+        name: "packing-slips",
+        run: async () => {
+          const slip = queue.shift();
+          if (slip) seen.push(slip);
+          return !!slip;
+        },
+      },
+      { name: "rooms", run: rooms },
+    ],
+    2,
+  );
+  const queued = () =>
+    acceptBackgroundHint(
+      JSON.stringify({
+        origin: "00000000-0000-4000-8000-000000000001",
+        hint: { topic: "work", feature: "packing-slips" },
+      }),
+    );
+  // No tick: the hint alone starts the reading, and the queue drains.
+  queued();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(seen).toEqual(["one", "two"]);
+  expect(rooms).not.toHaveBeenCalled();
+  await scheduler.stop();
+  queue.push("three");
+  queued();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(seen).toEqual(["one", "two"]);
+});
 it("releases a failed feature slot and keeps dispatching", async () => {
   const error = vi.fn(),
     next = vi.fn(async () => undefined);

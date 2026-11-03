@@ -12,10 +12,14 @@
  *     [--from N] [--seed N] [--style laser|form|dotmatrix]
  *     [--marks clean|ticks|corrections|handwritten] [--text-only]
  *     [--capture-only] [--hard] [--fresh] [--verbose] [--trace] [--tag NAME]
+ *     [--latency MS] [--workers N]
  *
  * Jev answers are cached per request in .tmp/slip-photos/cache, so a re-run
  * only pays for requests whose images or questions changed; --fresh asks
- * again. --trace saves each request's images, questions and answers under
+ * again. --latency makes each cached answer take as long as Jev took to give
+ * it, or MS where that was not recorded, so the analysis time shows how long
+ * the reading takes without paying for it. --workers sets how many slips are
+ * read at once (2). --trace saves each request's images, questions and answers under
  * .tmp/slip-photos/trace/<tag>/<seed>. Per order item: "correct" = prefilled
  * with the right amount, or rightly left alone; "review" = left for the user;
  * "wrong" = prefilled with a wrong amount. Prefilling the printed amount where
@@ -78,6 +82,9 @@ const textOnly = flag("text-only"),
   verbose = flag("verbose"),
   tracing = flag("trace");
 const tag = option("tag") ?? "run";
+const workers = Number(option("workers") ?? 2);
+const latency =
+  option("latency") === undefined ? null : Number(option("latency"));
 const root = path.resolve(import.meta.dirname, "..");
 const scratch = path.join(root, ".tmp/slip-photos");
 const cacheDir = path.join(scratch, "cache");
@@ -90,6 +97,7 @@ const realFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const response = await realFetch(input, init);
   const usage = usageOf.getStore();
+  if (usage && !response.ok) jev.failed++;
   if (usage && response.ok) {
     const body = (await response
       .clone()
@@ -104,7 +112,7 @@ globalThis.fetch = async (input, init) => {
 };
 const digest = (v: Buffer | string) =>
   createHash("sha256").update(v).digest("hex");
-const jev = { calls: 0, cached: 0, input: 0, output: 0, ms: 0 };
+const jev = { calls: 0, cached: 0, failed: 0, input: 0, output: 0, ms: 0 };
 const traceOf = new AsyncLocalStorage<{ dir: string; n: number }>();
 async function trace(
   inputs: Parameters<VisionAsk>[0],
@@ -155,9 +163,12 @@ const cachedAsk: VisionAsk = async (inputs, questions) => {
       .then(JSON.parse)
       .catch(() => null)) as {
       answers: Awaited<ReturnType<VisionAsk>>;
+      ms?: number;
     } | null;
     if (hit) {
       jev.cached++;
+      if (latency !== null)
+        await new Promise((r) => setTimeout(r, hit.ms ?? latency));
       await trace(inputs, questions, hit.answers);
       return hit.answers;
     }
@@ -168,7 +179,8 @@ const cachedAsk: VisionAsk = async (inputs, questions) => {
   jev.calls++;
   jev.input += usage.input;
   jev.output += usage.output;
-  jev.ms += performance.now() - started;
+  const ms = Math.round(performance.now() - started);
+  jev.ms += ms;
   await writeFile(
     file,
     JSON.stringify({
@@ -176,6 +188,7 @@ const cachedAsk: VisionAsk = async (inputs, questions) => {
       questions: Object.keys(questions),
       answers,
       usage,
+      ms,
     }),
     { mode: 0o600 },
   );
@@ -547,6 +560,7 @@ async function one(seed: number) {
       detected: s.detected,
       cornerError: s.cornerError,
     })),
+    analyzeMs: Math.round(t3 - t2),
     extractWarnings: extracted.warnings,
     warnings: result.warnings,
     model: result.model,
@@ -561,7 +575,7 @@ async function one(seed: number) {
   console.log(
     `seed ${seed} ${slip.style}/${slip.marks} ${slip.layout}: ${mine.correct} correct, ${mine.review} review, ${mine.wrong} wrong` +
       ` | pages ${pageSummary}` +
-      ` | ${((t3 - t0) / 1000).toFixed(0)}s`,
+      ` | ${((t3 - t0) / 1000).toFixed(0)}s, analyze ${((t3 - t2) / 1000).toFixed(1)}s`,
   );
 }
 
@@ -569,14 +583,14 @@ const seeds =
   only !== undefined
     ? [Number(only)]
     : Array.from({ length: count }, (_, i) => i + from);
-const workers = Array.from({ length: 2 }, async () => {
+const pool = Array.from({ length: workers }, async () => {
   for (let seed = seeds.shift(); seed !== undefined; seed = seeds.shift())
     await one(seed).catch((e: Error) => {
       console.log(`seed ${seed} FAILED: ${e.message}`);
       failures.push(`${seed} failed: ${e.message}`);
     });
 });
-await Promise.all(workers);
+await Promise.all(pool);
 
 const items = total.correct + total.review + total.wrong;
 const pct = (n: number, d: number) =>
@@ -611,7 +625,7 @@ if (!captureOnly) {
   );
 }
 console.log(
-  `cost: ${jev.calls} Jev calls (${jev.cached} cached), ${jev.input} input + ${jev.output} output tokens;` +
+  `cost: ${jev.calls} Jev calls (${jev.cached} cached, ${jev.failed} failed and retried), ${jev.input} input + ${jev.output} output tokens;` +
     ` time capture ${(stats.captureMs / 1000).toFixed(0)}s, extract ${(stats.extractMs / 1000).toFixed(0)}s, analyze ${(stats.analyzeMs / 1000).toFixed(0)}s`,
 );
 if (verbose) for (const f of failures) console.log(`  ${f}`);
