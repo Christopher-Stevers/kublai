@@ -34,6 +34,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const tapW = () => {
+  fireEvent.keyDown(window, { key: "w" });
+  fireEvent.keyUp(window, { key: "w" });
+};
+
 function Back({ up }: { up: () => void }) {
   useHeaderBackOverride(up, { historyGuard: false });
   return null;
@@ -68,10 +73,10 @@ it("moves between the page's items with the arrow keys, and W clicks the one cho
   // Nothing further left: focus stays.
   fireEvent.keyDown(window, { key: "ArrowLeft" });
   expect(document.activeElement).toBe(screen.getByText("Three"));
-  fireEvent.keyDown(window, { key: "w" });
+  tapW();
   expect(pick).toHaveBeenCalledWith("three");
   fireEvent.keyDown(window, { key: "ArrowRight" });
-  fireEvent.keyDown(window, { key: "w" });
+  tapW();
   expect(pick).toHaveBeenLastCalledWith("four");
   expect(pick).toHaveBeenCalledTimes(2);
 });
@@ -120,6 +125,43 @@ it("moves past a dropdown with the arrows, and opens it only with W", () => {
   act(() => screen.getByTestId("handle").focus());
   fireEvent.keyDown(screen.getByTestId("handle"), { key: "ArrowUp" });
   expect(document.activeElement).toBe(screen.getByTestId("handle"));
+});
+
+it("holding W is a long press: the item's hold timer runs until W comes up", () => {
+  vi.useFakeTimers();
+  const events = vi.fn();
+  function Held() {
+    const timer = { current: undefined as ReturnType<typeof setTimeout> | undefined };
+    let long = false;
+    return (
+      <button
+        data-box="0 0 100 40"
+        onPointerDown={() => {
+          long = false;
+          timer.current = setTimeout(() => { long = true; events("long press"); }, 500);
+        }}
+        onPointerUp={() => clearTimeout(timer.current)}
+        onClick={() => events(long ? "click after hold" : "click")}
+      >
+        Card
+      </button>
+    );
+  }
+  render(<><AppKeyboardNavigation /><Held /></>);
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  tapW();
+  expect(events.mock.calls).toEqual([["click"]]);
+  events.mockClear();
+  fireEvent.keyDown(window, { key: "w" });
+  // The keyboard repeats while held; that must not press again.
+  for (let i = 0; i < 10; i++) {
+    act(() => { vi.advanceTimersByTime(60); });
+    fireEvent.keyDown(window, { key: "w", repeat: true });
+  }
+  expect(events.mock.calls).toEqual([["long press"]]);
+  fireEvent.keyUp(window, { key: "w" });
+  expect(events.mock.calls).toEqual([["long press"], ["click after hold"]]);
+  vi.useRealTimers();
 });
 
 it("right-clicks the chosen item with S", () => {

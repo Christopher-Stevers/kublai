@@ -8,7 +8,8 @@ import { onHeaderBackRun, runHeaderBackOverride } from "~/lib/header-back-events
 import {
   currentItem,
   focusItem,
-  leftClick,
+  pressItem,
+  releasePress,
   navigableItems,
   nextItem,
   openPopupMenu,
@@ -82,6 +83,19 @@ function KeyboardNavigation() {
       const next = nextItem(currentItem(items), direction, items);
       if (next) focusItem(next);
     };
+    let held: HTMLElement | null = null;
+    const release = (event: KeyboardEvent) => {
+      if (!held || event.key.toLowerCase() !== "w") return;
+      const item = held;
+      held = null;
+      event.preventDefault();
+      releasePress(item);
+    };
+    // Leaving the window mid-hold must not leave the item pressed.
+    const cancel = () => {
+      if (held) releasePress(held, true);
+      held = null;
+    };
     const key = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -116,8 +130,10 @@ function KeyboardNavigation() {
           return;
         }
         const item = currentItem();
-        if (item) leftClick(item);
-        else {
+        if (item) {
+          // Held down until W comes up, so holding W is a long press.
+          if (pressItem(item)) held = item;
+        } else {
           const first = nextItem(null, "down");
           if (first) focusItem(first);
         }
@@ -145,9 +161,14 @@ function KeyboardNavigation() {
     };
     window.addEventListener("keydown", arrow, true);
     window.addEventListener("keydown", key);
+    window.addEventListener("keyup", release);
+    window.addEventListener("blur", cancel);
     return () => {
+      cancel();
       window.removeEventListener("keydown", arrow, true);
       window.removeEventListener("keydown", key);
+      window.removeEventListener("keyup", release);
+      window.removeEventListener("blur", cancel);
     };
   }, [router]);
   return null;

@@ -129,23 +129,45 @@ function pointer(type: string, init: MouseEventInit & { pointerType?: string; is
   return typeof PointerEvent === "function" ? new PointerEvent(type, init) : new MouseEvent(type, init);
 }
 
-/** The same events a mouse's left click sends, for menus that open on press. */
-export function leftClick(element: HTMLElement) {
+function pressInit(element: Element, buttons: number) {
+  return {
+    bubbles: true, cancelable: true, composed: true, button: 0, buttons,
+    pointerId: 1, pointerType: "mouse", isPrimary: true, ...centre(element),
+  };
+}
+
+/**
+ * The mouse button going down on an item. Held, it is a long press: the item's
+ * own hold timer runs until releasePress.
+ */
+export function pressItem(element: HTMLElement) {
   if (element instanceof HTMLSelectElement) {
     try {
       element.showPicker();
     } catch {
       element.focus();
     }
+    return false;
+  }
+  element.dispatchEvent(pointer("pointerdown", pressInit(element, 1)));
+  element.dispatchEvent(new MouseEvent("mousedown", pressInit(element, 1)));
+  return true;
+}
+
+/** The button coming back up: a click, unless the press was cancelled. */
+export function releasePress(element: HTMLElement, cancelled = false) {
+  if (cancelled) {
+    element.dispatchEvent(pointer("pointercancel", pressInit(element, 0)));
     return;
   }
-  const base = { bubbles: true, cancelable: true, composed: true, button: 0, ...centre(element) };
-  const press = { ...base, buttons: 1, pointerId: 1, pointerType: "mouse", isPrimary: true };
-  element.dispatchEvent(pointer("pointerdown", press));
-  element.dispatchEvent(new MouseEvent("mousedown", press));
-  element.dispatchEvent(pointer("pointerup", { ...press, buttons: 0 }));
-  element.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0 }));
-  element.click();
+  element.dispatchEvent(pointer("pointerup", pressInit(element, 0)));
+  element.dispatchEvent(new MouseEvent("mouseup", pressInit(element, 0)));
+  if (element.isConnected) element.click();
+}
+
+/** The same events a mouse's left click sends, for menus that open on press. */
+export function leftClick(element: HTMLElement) {
+  if (pressItem(element)) releasePress(element);
 }
 
 /** A right click: opens the arc scroller, or the item's own context menu. */
