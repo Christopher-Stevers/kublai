@@ -393,6 +393,15 @@ function LayerRow({
     </button>
   );
 }
+/** Rows without an arrow keep its space, so every eye and arrow lines up in one column. */
+function ArrowColumn({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-1">
+      {children}
+      <span aria-hidden className="size-11 shrink-0" />
+    </div>
+  );
+}
 /** Each person who has drawn on this sheet, so their work can be switched off. */
 function PeopleLayers({
   entities,
@@ -437,7 +446,7 @@ function PeopleLayers({
   return (
     <details className="group/layers">
       <summary
-        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 text-sm font-medium hover:bg-muted/70"
+        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg pl-2 text-sm font-medium hover:bg-muted/70"
         aria-label="Expand People Layers"
       >
         <span aria-hidden className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg">
@@ -453,6 +462,7 @@ function PeopleLayers({
           <ChevronRightIcon aria-hidden className="size-4 transition-transform group-open/layers:rotate-90" />
         </span>
       </summary>
+      <ArrowColumn>
       <button
         type="button"
         role="switch"
@@ -463,11 +473,14 @@ function PeopleLayers({
         <span className="min-w-0 flex-1 truncate">Show only mine</span>
         <SwitchTrack checked={!!layers.onlyMine} />
       </button>
+      </ArrowColumn>
       {rows.map(([id, person]) => (
-        <LayerRow key={id} child icon={UserIcon}
-          label={id === actorId ? `${person.name} (you)` : person.name}
-          count={person.count} on={!hidden.includes(id)}
-          muted={!!layers.onlyMine && id !== actorId} onToggle={() => toggle(id)} />
+        <ArrowColumn key={id}>
+          <LayerRow child icon={UserIcon}
+            label={id === actorId ? `${person.name} (you)` : person.name}
+            count={person.count} on={!hidden.includes(id)}
+            muted={!!layers.onlyMine && id !== actorId} onToggle={() => toggle(id)} />
+        </ArrowColumn>
       ))}
     </details>
   );
@@ -2888,17 +2901,21 @@ export function DrawingWorkspace({
                                 </span>
                               </summary>
                               {types.map(type => (
-                                <LayerRow key={type} child icon={MARKUP_ICONS[type] ?? TOOL_ICONS[type]}
-                                  label={layerLabel(type)} count={counts.get(type)} on={!hidden.includes(type)}
-                                  muted={layers[key] === false} onToggle={() => toggleType(type)} />
+                                <ArrowColumn key={type}>
+                                  <LayerRow child icon={MARKUP_ICONS[type] ?? TOOL_ICONS[type]}
+                                    label={layerLabel(type)} count={counts.get(type)} on={!hidden.includes(type)}
+                                    muted={layers[key] === false} onToggle={() => toggleType(type)} />
+                                </ArrowColumn>
                               ))}
                             </details>
                           );
                           return (
                             <>
-                              <LayerRow label="Measure" icon={RulerIcon} count={total(MEASUREMENT_TYPES)}
-                                on={layers.measurements !== false}
-                                onToggle={() => setLayers(old => ({ ...old, measurements: old.measurements === false }))} />
+                              <ArrowColumn>
+                                <LayerRow label="Measure" icon={RulerIcon} count={total(MEASUREMENT_TYPES)}
+                                  on={layers.measurements !== false}
+                                  onToggle={() => setLayers(old => ({ ...old, measurements: old.measurements === false }))} />
+                              </ArrowColumn>
                               {group("markups", "Markup", PenLineIcon, MARKUP_TYPES)}
                               {group("issues", "Tools", WrenchIcon, PIN_TYPES)}
                               <PeopleLayers entities={entities} sourceId={sourceId}
