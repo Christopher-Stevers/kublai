@@ -6,6 +6,8 @@ const ITEMS = [
   "a[href]",
   "button",
   "summary",
+  "select",
+  '[role="combobox"]',
   'input[type="checkbox"]',
   'input[type="radio"]',
   '[role="button"]',
@@ -20,7 +22,7 @@ const ITEMS = [
 
 // Typing, and canvases with their own key controls (the 3D model view).
 const TYPING =
-  'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, canvas, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"], [role="combobox"], [role="slider"], [role="spinbutton"]';
+  'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, canvas, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"], [role="slider"], [role="spinbutton"]';
 
 /** Keys that belong to text entry or to a control with its own key handling. */
 export function typingTarget(event: KeyboardEvent) {
@@ -129,6 +131,14 @@ function pointer(type: string, init: MouseEventInit & { pointerType?: string; is
 
 /** The same events a mouse's left click sends, for menus that open on press. */
 export function leftClick(element: HTMLElement) {
+  if (element instanceof HTMLSelectElement) {
+    try {
+      element.showPicker();
+    } catch {
+      element.focus();
+    }
+    return;
+  }
   const base = { bubbles: true, cancelable: true, composed: true, button: 0, ...centre(element) };
   const press = { ...base, buttons: 1, pointerId: 1, pointerType: "mouse", isPrimary: true };
   element.dispatchEvent(pointer("pointerdown", press));

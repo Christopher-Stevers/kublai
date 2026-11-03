@@ -62,6 +62,26 @@ function KeyboardNavigation() {
   }, [pathname, search]);
 
   useEffect(() => {
+    const blocked = (event: KeyboardEvent) =>
+      event.isComposing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.shiftKey ||
+      typingTarget(event);
+    // Arrows are taken before the focused control sees them, so a dropdown or
+    // list only opens with W, never on the way past.
+    const arrow = (event: KeyboardEvent) => {
+      const direction = ARROWS[event.key];
+      if (!direction || blocked(event) || openPopupMenu() || arcOpen()) return;
+      if (document.activeElement?.closest("[data-own-arrows]")) return;
+      if (window.getSelection()?.isCollapsed === false) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const items = navigableItems();
+      const next = nextItem(currentItem(items), direction, items);
+      if (next) focusItem(next);
+    };
     const key = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -81,16 +101,6 @@ function KeyboardNavigation() {
         (document.activeElement ?? document.body).dispatchEvent(
           new KeyboardEvent("keydown", { key: press, bubbles: true, cancelable: true }),
         );
-        return;
-      }
-      const direction = ARROWS[event.key];
-      if (direction) {
-        // The arc scroller turns with up and down itself.
-        if (arcOpen() || window.getSelection()?.isCollapsed === false) return;
-        const items = navigableItems();
-        const next = nextItem(currentItem(items), direction, items);
-        event.preventDefault();
-        if (next) focusItem(next);
         return;
       }
       const letter = event.key.toLowerCase();
@@ -133,8 +143,12 @@ function KeyboardNavigation() {
         router.push(target);
       }
     };
+    window.addEventListener("keydown", arrow, true);
     window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("keydown", arrow, true);
+      window.removeEventListener("keydown", key);
+    };
   }, [router]);
   return null;
 }

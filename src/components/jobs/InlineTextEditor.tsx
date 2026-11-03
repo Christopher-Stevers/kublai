@@ -271,6 +271,7 @@ export function InlineTextEditor({
           <span
             role="button"
             aria-label="Resize text box"
+            data-own-arrows=""
             tabIndex={0}
             title="Drag to resize the text box"
             className="bg-card border-primary absolute -right-3 -bottom-3 size-5 cursor-nwse-resize touch-none rounded-full border-2 shadow"

@@ -91,6 +91,37 @@ it("does not count a wider item above as being to the right", () => {
   expect(document.activeElement).toBe(screen.getByText("Tick"));
 });
 
+it("moves past a dropdown with the arrows, and opens it only with W", () => {
+  const opened = vi.fn();
+  render(
+    <>
+      <AppKeyboardNavigation />
+      <button
+        role="combobox"
+        data-box="0 0 200 40"
+        onKeyDown={(event) => event.key === "ArrowDown" && opened("key")}
+        onPointerDown={() => opened("press")}
+      >
+        Supplier
+      </button>
+      <button data-box="0 60 200 40">Save</button>
+      <span role="button" tabIndex={0} data-own-arrows="" data-box="0 120 20 20" data-testid="handle" />
+    </>,
+  );
+  fireEvent.keyDown(window, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(screen.getByText("Supplier"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(screen.getByText("Save"));
+  expect(opened).not.toHaveBeenCalled();
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+  fireEvent.keyDown(document.activeElement!, { key: "w" });
+  expect(opened).toHaveBeenCalledWith("press");
+  // A control that moves with the arrows itself keeps them.
+  act(() => screen.getByTestId("handle").focus());
+  fireEvent.keyDown(screen.getByTestId("handle"), { key: "ArrowUp" });
+  expect(document.activeElement).toBe(screen.getByTestId("handle"));
+});
+
 it("right-clicks the chosen item with S", () => {
   const menu = vi.fn();
   render(<Grid onMenu={menu} />);
