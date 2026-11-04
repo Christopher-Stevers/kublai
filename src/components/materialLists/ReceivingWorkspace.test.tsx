@@ -96,6 +96,9 @@ function fixture() {
         unit: "ea",
         ordered: 10,
         received: 2,
+        aliases: [] as string[],
+        piecesPerPack: null as number | null,
+        individualUnit: null as string | null,
       },
     ],
     fingerprint: "current-totals",
@@ -351,21 +354,23 @@ it("lists every order item beside the slip reading and its reader", async () => 
     unit: "ea",
     ordered: 4,
     received: 0,
+    aliases: [],
+    piecesPerPack: null,
+    individualUnit: null,
   });
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByRole("heading", { name: "Valve" });
   expect(
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
-  ).toEqual(["Valve", "Elbow", "Unclear pipe"]);
+  ).toEqual(["Valve", "Elbow", "No matching part"]);
   const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
-  expect(valve).toHaveTextContent("Needs 8 ea");
-  expect(valve).toHaveTextContent("6 ea");
-  expect(valve).toHaveTextContent("2 ea short");
-  expect(valve).toHaveTextContent("Terra 6.1 · 6 ea");
-  expect(valve).toHaveTextContent("part 99%");
-  expect(valve).toHaveTextContent("qty 97%");
+  expect(valve).toHaveTextContent("8 eaStill due");
+  const terra = within(valve).getByRole("group", { name: "Terra 6.1 reading" });
+  expect(terra).toHaveTextContent("98%");
+  expect(terra).toHaveTextContent("6 ea");
+  expect(terra).toHaveTextContent("2 ea short");
   const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
-  expect(elbow).toHaveTextContent("Needs 4 ea");
+  expect(elbow).toHaveTextContent("4 eaStill due");
   expect(elbow).toHaveTextContent("Not on the slip");
   const pipe = screen
     .getByRole("heading", { name: "Unclear pipe" })
@@ -615,13 +620,17 @@ it("shows every reader's part match and quantity confidence", async () => {
   const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
     "li",
   )!;
-  const readers = [
-    ...valve.querySelectorAll('[aria-label="Readers"] > li'),
-  ].map((li) => li.textContent);
-  expect(readers).toEqual([
-    "OCR only · 5 eapart 40%qty 55%",
-    "Jev Image · 6 eapart 90%qty 70%",
-    "Terra 6.1 · 6 eapart 98%qty 96%",
+  const readers = () =>
+    within(valve)
+      .getAllByRole("group")
+      .map((g) => g.textContent);
+  // The most confident reader first; the others behind one toggle.
+  expect(readers()).toEqual(["Terra 6.197%Valve6 ea2 ea short2 other readers"]);
+  fireEvent.click(within(valve).getByRole("button", { name: /2 other readers/ }));
+  expect(readers()).toEqual([
+    "Terra 6.197%Valve6 ea2 ea shortHide other readers",
+    "Jev Image80%Valve6 ea2 ea short",
+    "OCR only48%Valve5 ea3 ea short",
   ]);
 });
 it("says when Terra found no product on a row and leaves it out in one tap", async () => {
@@ -639,8 +648,10 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
   const pipe = (
     await screen.findByRole("heading", { name: "Unclear pipe" })
   ).closest("li")!;
-  expect(pipe).toHaveTextContent("Jev Image · ? eapart 63%qty 63%");
-  expect(pipe).toHaveTextContent("Terra 6.1 · found no product here");
+  expect(
+    within(pipe).getByRole("group", { name: "Jev Image reading" }),
+  ).toHaveTextContent("Jev Image63%Unclear pipeNot read");
+  expect(pipe).toHaveTextContent("Terra 6.1 found no product here");
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Not a product, leave it out" }),
@@ -770,7 +781,7 @@ function notOnOrder(quantity: number | null) {
 it("adds the likely catalogue part to the material list in one tap", async () => {
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);
-  expect(await screen.findByText(/likely Copper pipe/)).toBeInTheDocument();
+  expect(await screen.findByText(/Likely Copper pipe/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
   expect(screen.getByText(/puts it on Level 3 with 3 ordered/)).toBeVisible();
   const likely = screen.getByRole("list", { name: "Likely catalogue parts" });

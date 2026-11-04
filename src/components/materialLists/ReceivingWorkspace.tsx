@@ -43,7 +43,11 @@ import type {
   ReceiptKind,
 } from "~/lib/receiving-review";
 import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
-import { lineReadings, receiptUnit } from "~/lib/packing-slip-review";
+import {
+  lineReadings,
+  readSlipQuantity,
+  receiptUnit,
+} from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import {
   partFit,
@@ -60,6 +64,7 @@ import {
 import {
   readersInTrial,
   readerLabels,
+  type TrialLine,
   type TrialReader,
   type TrialResults,
 } from "~/lib/packing-slip-trial";
@@ -1722,6 +1727,175 @@ function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
           text: amber.text,
         };
 }
+const copyLabel =
+  "text-muted-foreground text-[11px] font-medium tracking-wide uppercase";
+const copyText = "mt-0.5 text-sm font-medium break-words";
+const copyQty = "mt-1 text-base font-semibold tabular-nums";
+const copyNote = "mt-0.5 text-xs";
+type Verdict = { ok: boolean; label: string; text: string };
+/** Whether a count, already in the order's unit, covers what is still due. */
+function dueVerdict(item: ReceiptOrderItem, got: number): Verdict {
+  const due = Math.max(0, qtyRound(item.ordered - item.received));
+  got = qtyRound(got);
+  return got === due
+    ? {
+        ok: true,
+        label: "Matches the order",
+        text: "text-emerald-700 dark:text-emerald-300",
+      }
+    : got < due
+      ? {
+          ok: false,
+          label: `${qtyRound(due - got)} ${item.unit} short`,
+          text: amber.text,
+        }
+      : {
+          ok: false,
+          label: `${qtyRound(got - due)} ${item.unit} more than needed`,
+          text: amber.text,
+        };
+}
+/** One reader's count against the order, read as packs or pieces as fits. */
+function readingVerdict(
+  item: ReceiptOrderItem,
+  shipped: number | null,
+  unit: string | null,
+  text: string,
+): Verdict {
+  if (shipped === null)
+    return { ok: false, label: "Quantity not read", text: amber.text };
+  const read = readSlipQuantity(shipped, unit || null, item, text);
+  if (read === null)
+    return {
+      ok: false,
+      label: `Different unit. The order counts in ${item.unit}.`,
+      text: amber.text,
+    };
+  const verdict = dueVerdict(item, read.amount);
+  return read.amount === shipped
+    ? verdict
+    : { ...verdict, label: `= ${read.amount} ${item.unit} · ${verdict.label}` };
+}
+type ReaderCopy = {
+  key: string;
+  label: string;
+  score: number | null;
+  description: string;
+  shipped: number | null;
+  unit: string;
+  verdict: Verdict | null;
+  missing?: boolean;
+};
+const meanScore = (...values: Array<number | null | undefined>) => {
+  const known = values.filter((v): v is number => typeof v === "number");
+  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
+};
+/**
+ * What each reader saw for one order item, a whole comparison apiece, most
+ * confident first. A person's edit comes before any reader.
+ */
+function readerCopies({
+  item,
+  lines,
+  live,
+  readings,
+  trialReadings,
+}: {
+  item: ReceiptOrderItem | undefined;
+  lines: ReceivingLine[];
+  live: ReceivingLine[];
+  readings: Array<ModelReading & { line: ReceivingLine }>;
+  trialReadings: Array<{ reader: TrialReader; t: TrialLine }>;
+}): ReaderCopy[] {
+  if (!lines.length)
+    return [
+      {
+        key: "missing",
+        label: "Slip",
+        score: null,
+        description: "",
+        shipped: null,
+        unit: "",
+        verdict: null,
+        missing: true,
+      },
+    ];
+  const sum = (values: Array<number | null>) =>
+    values.some((v) => v === null)
+      ? null
+      : qtyRound(values.reduce<number>((a, v) => a + (v ?? 0), 0));
+  const describe = (texts: string[]) =>
+    [...new Set(texts.map((t) => t.trim()).filter(Boolean))].join(" + ");
+  const review = (label: string): ReaderCopy => {
+    const shown = live.length ? live : lines;
+    return {
+      key: label,
+      label,
+      score: null,
+      description: describe(shown.map((l) => l.description)),
+      shipped: sum(shown.map((l) => l.quantity)),
+      unit: shown[0]!.unit,
+      verdict: item ? compareToOrder(item, lines) : null,
+    };
+  };
+  const byReader = new Map<string, ReaderCopy & { texts: string[] }>();
+  const add = (
+    reader: TrialReader,
+    shipped: number | null,
+    unit: string | null,
+    score: number | null,
+    text: string,
+  ) => {
+    const copy = byReader.get(reader);
+    if (copy) {
+      copy.shipped =
+        copy.shipped === null || shipped === null
+          ? null
+          : qtyRound(copy.shipped + shipped);
+      copy.texts.push(text);
+      copy.score = meanScore(copy.score, score);
+      return;
+    }
+    byReader.set(reader, {
+      key: reader,
+      label: readerLabels[reader],
+      score,
+      description: "",
+      shipped,
+      unit: unit ?? "",
+      verdict: null,
+      texts: [text],
+    });
+  };
+  for (const x of readings)
+    add(x.reader, x.shipped, x.unit, meanScore(x.match, x.quantity), x.line.description);
+  for (const { reader, t } of trialReadings)
+    add(
+      reader,
+      t.shipped,
+      t.unit,
+      meanScore(t.confidence.match.value, t.confidence.quantity.value),
+      t.description,
+    );
+  const ranked: ReaderCopy[] = [...byReader.values()]
+    .map(({ texts, ...copy }) => {
+      const description = describe(texts);
+      return {
+        ...copy,
+        description,
+        verdict: item
+          ? readingVerdict(item, copy.shipped, copy.unit, description)
+          : null,
+      };
+    })
+    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  if (!live.length || !ranked.length) return [review("Slip"), ...ranked];
+  if (live.some((l) => l.humanEdited)) return [review("Edited"), ...ranked];
+  // Once received, the top copy says so rather than re-judging the count.
+  if (live.every((l) => l.approved) && item)
+    ranked[0] = { ...ranked[0]!, verdict: compareToOrder(item, lines) };
+  return ranked;
+}
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
   detail,
@@ -1738,6 +1912,8 @@ function OrderComparison({
   setOpenRow: (row: string | null) => void;
   trial: TrialResults | null;
 }) {
+  // One toggle for every row: opening the other readers on one opens them all.
+  const [showOthers, setShowOthers] = useState(false);
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
   const known = new Set(detail.items.map((i) => i.id));
@@ -1774,12 +1950,6 @@ function OrderComparison({
       : [];
   return (
     <div>
-      <div className="text-muted-foreground grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] gap-x-3 border-b px-4 py-2 text-xs font-medium">
-        <span />
-        <span>On the order</span>
-        <span>Read from the slip</span>
-        <span />
-      </div>
       <ul className="divide-y">
         {rows.map(({ key, n, item, lines }) => {
           const open = openRow === key,
@@ -1788,179 +1958,177 @@ function OrderComparison({
               .map((x) => lineStatus(x.line, r))
               .sort((x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y))[0],
             tone = status ? statusStyle[status] : undefined,
-            verdict = item
-              ? compareToOrder(
-                  item,
-                  lines.map((x) => x.line),
-                )
-              : null,
             due = item
               ? Math.max(0, qtyRound(item.ordered - item.received))
               : 0,
             readings = live.flatMap((x) =>
-              modelReadings(x.line, detail).map((reading, i) => ({
+              modelReadings(x.line, detail).map((reading) => ({
                 ...reading,
-                key: `${x.line.id}:${i}`,
+                line: x.line,
               })),
             ),
             trialReadings = item
               ? others(item.id, new Set<string>(readings.map((x) => x.reader)))
               : [],
-            quantities = live.map((x) => x.line.quantity),
             title = item ? item.description : lines[0]!.line.description,
-            slipText = live
-              .map((x) => x.line.description)
-              .filter(
-                (d) =>
-                  d.trim().toLowerCase() !==
-                  item?.description.trim().toLowerCase(),
-              );
+            likely = item ? null : likelyName(detail, lines),
+            orderText = item
+              ? item.description
+              : likely
+                ? `Likely ${likely}`
+                : "No matching part";
+          const copies = readerCopies({
+            item,
+            lines: lines.map((x) => x.line),
+            live: live.map((x) => x.line),
+            readings,
+            trialReadings,
+          });
           return (
             <li key={key} className={open ? "bg-muted/30" : undefined}>
-              <div className="relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] items-start gap-x-3 px-4 py-3">
-                <span
-                  aria-hidden
-                  className={`mt-0.5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+              {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
+                <div
+                  key={copy.key}
+                  className={`relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] items-stretch gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "py-3"}`}
                 >
-                  {status === "approved" ? (
-                    <CheckIcon className="size-3.5" />
+                  {c === 0 ? (
+                    <span
+                      aria-hidden
+                      className={`mt-5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                    >
+                      {status === "approved" ? (
+                        <CheckIcon className="size-3.5" />
+                      ) : (
+                        n + 1
+                      )}
+                    </span>
                   ) : (
-                    n + 1
+                    <span />
                   )}
-                </span>
-                <div className="min-w-0">
-                  <h3 className="font-medium break-words">
-                    {lines.length ? (
+                  <div
+                    className={`min-w-0 ${c ? "text-muted-foreground" : ""}`}
+                  >
+                    <p className={copyLabel}>Order</p>
+                    {c === 0 ? (
+                      <h3 aria-label={title} className={copyText}>
+                        {lines.length ? (
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            onClick={() => setOpenRow(open ? null : key)}
+                            aria-label={title}
+                            className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
+                          >
+                            {orderText}
+                          </button>
+                        ) : (
+                          orderText
+                        )}
+                      </h3>
+                    ) : (
+                      <p className={copyText}>{orderText}</p>
+                    )}
+                    <p className={copyQty}>
+                      {item ? `${due} ${item.unit}` : "—"}
+                    </p>
+                    <p className={copyNote}>
+                      {item ? (
+                        <>
+                          {due > 0 ? "Still due" : "All received"}
+                          {item.sku && ` · ${item.sku}`}
+                        </>
+                      ) : (
+                        "Not on the order"
+                      )}
+                    </p>
+                  </div>
+                  <div
+                    role="group"
+                    aria-label={`${copy.label} reading`}
+                    className="min-w-0 border-l pl-3"
+                  >
+                    <p className={copyLabel}>
+                      {copy.label}
+                      {copy.score !== null && (
+                        <span
+                          className={`ml-1.5 normal-case tabular-nums ${unsure(copy.score) ? amber.text : ""}`}
+                        >
+                          {percent(copy.score)}
+                        </span>
+                      )}
+                    </p>
+                    {copy.missing ? (
+                      <p className={`${copyText} text-muted-foreground`}>
+                        Not on the slip
+                      </p>
+                    ) : (
+                      <>
+                        <p className={copyText}>{copy.description || "—"}</p>
+                        <p className={copyQty}>
+                          {copy.shipped === null ? (
+                            <span className={amber.text}>Not read</span>
+                          ) : (
+                            `${copy.shipped} ${copy.unit}`
+                          )}
+                        </p>
+                        {copy.verdict && (
+                          <p
+                            className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
+                          >
+                            {copy.verdict.ok ? (
+                              <CheckCircle2Icon className="size-3.5 shrink-0" />
+                            ) : (
+                              <AlertTriangleIcon className="size-3.5 shrink-0" />
+                            )}
+                            {copy.verdict.label}
+                          </p>
+                        )}
+                        {c === 0 && !item && tone && (
+                          <p className={`${copyNote} font-medium ${tone.text}`}>
+                            {tone.label}
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {c === 0 && copies.length > 1 && (
                       <button
                         type="button"
-                        aria-expanded={open}
-                        onClick={() => setOpenRow(open ? null : key)}
-                        className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
+                        aria-expanded={showOthers}
+                        onClick={() => setShowOthers(!showOthers)}
+                        className="text-muted-foreground hover:text-foreground relative z-10 mt-2 inline-flex items-center gap-1 text-xs font-medium"
                       >
-                        {title}
+                        {showOthers
+                          ? "Hide other readers"
+                          : `${copies.length - 1} other ${copies.length === 2 ? "reader" : "readers"}`}
+                        <ChevronDownIcon
+                          className={`size-3.5 transition-transform motion-reduce:transition-none ${showOthers ? "rotate-180" : ""}`}
+                        />
                       </button>
-                    ) : (
-                      title
                     )}
-                  </h3>
-                  <p className="text-muted-foreground mt-0.5 text-sm break-words">
-                    {item ? (
-                      <>
-                        {due > 0 ? `Needs ${due} ${item.unit}` : "All received"}
-                        {item.sku && ` · ${item.sku}`}
-                      </>
-                    ) : (
-                      <>
-                        <span className={amber.text}>Not on the order</span>
-                        {likelyName(detail, lines) &&
-                          ` · likely ${likelyName(detail, lines)}`}
-                      </>
-                    )}
-                  </p>
+                  </div>
+                  {c === 0 && lines.length > 0 ? (
+                    <ChevronDownIcon
+                      aria-hidden
+                      className={`text-muted-foreground mt-5 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                    />
+                  ) : (
+                    <span />
+                  )}
                 </div>
-                <div className="min-w-0 text-sm">
-                  {lines.length === 0 ? (
-                    <p className="text-muted-foreground">Not on the slip</p>
-                  ) : live.length ? (
-                    <>
-                      <p className="font-semibold tabular-nums">
-                        {quantities.some((q) => q === null) ? (
-                          <span className={amber.text}>Not read</span>
-                        ) : (
-                          `${qtyRound(quantities.reduce<number>((a, q) => a + (q ?? 0), 0))} ${live[0]!.line.unit}`
-                        )}
-                        {live.some((x) => x.line.humanEdited) && (
-                          <span className="text-muted-foreground text-xs font-normal">
-                            {" "}
-                            · edited
-                          </span>
-                        )}
-                      </p>
-                      {slipText.map((d, i) => (
+              ))}
+              {live.flatMap((x) => {
+                  const check = terraCheck(x.line, detail);
+                  return check
+                    ? [
                         <p
-                          key={i}
-                          className="text-muted-foreground truncate text-xs"
+                          key={`terra:${x.line.id}`}
+                          className={`px-4 pb-3 pl-13 text-xs ${amber.text}`}
                         >
-                          “{d}”
-                        </p>
-                      ))}
-                    </>
-                  ) : null}
-                  {verdict && (
-                    <p
-                      className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${verdict.text}`}
-                    >
-                      {verdict.ok ? (
-                        <CheckCircle2Icon className="size-3.5 shrink-0" />
-                      ) : (
-                        <AlertTriangleIcon className="size-3.5 shrink-0" />
-                      )}
-                      {verdict.label}
-                    </p>
-                  )}
-                  {!item && tone && (
-                    <p className={`mt-0.5 text-xs font-medium ${tone.text}`}>
-                      {tone.label}
-                    </p>
-                  )}
-                  {(readings.length > 0 || trialReadings.length > 0) && (
-                    <ul
-                      aria-label="Readers"
-                      className="text-muted-foreground mt-1 space-y-0.5 text-xs"
-                    >
-                      {readings.map((x) => (
-                        <li key={x.key}>
-                          <span className="text-foreground">
-                            {readerLabels[x.reader]}
-                          </span>
-                          {` · ${x.shipped ?? "?"} ${x.unit ?? ""}`}
-                          <span className="flex flex-wrap gap-x-2">
-                            <Confidence name="part" value={x.match} />
-                            <Confidence name="qty" value={x.quantity} />
-                          </span>
-                        </li>
-                      ))}
-                      {live.flatMap((x) => {
-                        const check = terraCheck(x.line, detail);
-                        return check
-                          ? [
-                              <li key={`terra:${x.line.id}`} className={amber.text}>
-                                {readerLabels.terra} · {check.reader}
-                              </li>,
-                            ]
-                          : [];
-                      })}
-                      {trialReadings.map(({ reader, t }) => (
-                        <li key={`${reader}:${t.lineId}`}>
-                          <span className="text-foreground">
-                            {readerLabels[reader]}
-                          </span>
-                          {` · ${t.shipped ?? "?"} ${t.unit ?? ""}`}
-                          <span
-                            title={`${t.confidence.overall.basis}: ${t.confidence.overall.reason}`}
-                            className="flex flex-wrap gap-x-2"
-                          >
-                            <Confidence
-                              name="part"
-                              value={t.confidence.match.value}
-                            />
-                            <Confidence
-                              name="qty"
-                              value={t.confidence.quantity.value}
-                            />
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {lines.length > 0 && (
-                  <ChevronDownIcon
-                    aria-hidden
-                    className={`text-muted-foreground mt-1 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-                  />
-                )}
-              </div>
+                          {readerLabels.terra} {check.reader}.
+                        </p>,
+                      ]
+                    : [];
+                })}
               {open &&
                 lines.map(({ line, index }) => (
                   <div key={line.id}>
