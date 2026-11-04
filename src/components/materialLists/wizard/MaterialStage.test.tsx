@@ -102,11 +102,10 @@ it("flattens grouped materials only in the arc scroller and selects a nested mat
     act(() => vi.advanceTimersByTime(500));
     const arc = screen.getByRole("dialog", { name: "Select Material" });
     const labels = Array.from(arc.querySelectorAll("[data-arc-choice]")).map((n) => n.getAttribute("aria-label"));
-    // Most used first, then the stage's own order.
+    // The used shortcut starts in the middle; the full list follows a gap.
     expect(labels[0]).toBe("Gasketed DR35");
-    expect([...labels].sort()).toEqual(
-      ["All", "Copper", "Gasketed DR25", "Gasketed DR35", "PVC DWV", "XFR"].sort(),
-    );
+    expect(arc.querySelector("[data-focus]")).toHaveAttribute("aria-label", "Gasketed DR35");
+    expect(arc.querySelector('[data-arc-gap="frequent"]')).not.toBeNull();
     fireEvent.click(within(arc).getByRole("button", { name: "Gasketed DR35" }));
     expect(input.onMaterialSelect).toHaveBeenCalledExactlyOnceWith("dr35");
   } finally {

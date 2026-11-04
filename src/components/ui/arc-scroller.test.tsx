@@ -8,9 +8,11 @@ import {
   arcLoops,
   arcPoint,
   arcScrollDelta,
+  rankArcChoices,
   useArcScrollerOptions,
   type ArcChoice,
 } from "./arc-scroller";
+import { wheelUsageId } from "~/lib/order-wheel-usage";
 
 const bounds = { left: 0, top: 0, right: 400, bottom: 800 };
 const pointer = { pointerId: 3, pointerType: "touch", isPrimary: true, button: 0, clientX: 330, clientY: 400 };
@@ -19,7 +21,7 @@ function Stage({ options, title = "Select Size" }: { options: ArcChoice[]; title
   useArcScrollerOptions(title, options);
   return <p>Blank stage</p>;
 }
-const sizes = (select = vi.fn()) =>
+const sizes = (select = vi.fn()): ArcChoice[] =>
   Array.from({ length: 12 }, (_, i) => ({ label: `${i + 1} in`, select: () => select(i + 1) }));
 const arc = () => document.querySelector<HTMLElement>("[data-arc-scroller]");
 const focused = () => arc()!.querySelector("[data-focus]")?.getAttribute("aria-label");
@@ -193,4 +195,84 @@ it("glides with the mouse wheel and comes to rest on a whole choice", () => {
   fireEvent.wheel(arc()!, { deltaY: 40 });
   act(() => { vi.advanceTimersByTime(1000); });
   expect(focused()).toBe("5 in");
+});
+
+const popularSizes = ["11 in", "9 in", "12 in", "8 in", "5 in", "2 in", "10 in", "1 in", "7 in"];
+const sizeUsage = Object.fromEntries(popularSizes.map((label, rank) => [wheelUsageId("Select Size", label), 100 - rank]));
+
+it("centres the eight most-used shortcuts before a gap and the entire original list", () => {
+  const options = sizes();
+  const ranked = rankArcChoices("Select Size", options, sizeUsage);
+  expect(ranked.slice(0, 8).map(choice => choice?.label)).toEqual([
+    "10 in", "5 in", "12 in", "11 in", "9 in", "8 in", "2 in", "1 in",
+  ]);
+  expect(ranked[8]).toBeNull();
+  expect(ranked.slice(9)).toEqual(options);
+  expect(options.map(choice => choice.label)).toEqual(Array.from({ length: 12 }, (_, index) => `${index + 1} in`));
+});
+
+it("only promotes usable choices with real history, with stable ties and an unchanged no-history list", () => {
+  const options = sizes();
+  options[0]!.disabled = true;
+  const ranked = rankArcChoices("Select Size", options, {
+    [wheelUsageId("Select Size", "1 in")]: 100,
+    [wheelUsageId("Select Size", "2 in")]: 5,
+    [wheelUsageId("Select Size", "3 in")]: 5,
+    [wheelUsageId("Select Size", "4 in")]: -1,
+    [wheelUsageId("Select Size", "5 in")]: Infinity,
+    [wheelUsageId("Select Material", "6 in")]: 100,
+  });
+  expect(ranked.slice(0, 3).map(choice => choice?.label ?? null)).toEqual(["2 in", "3 in", null]);
+  expect(ranked.slice(3)).toEqual(options);
+  expect(rankArcChoices("Select Size", options, {})).toEqual(options);
+});
+
+it("opens on the favourite, skips the separator both ways, and keeps regular choices in order", () => {
+  const select = vi.fn();
+  render(<ArcScrollerSurface usage={sizeUsage}><Stage options={sizes(select)} /></ArcScrollerSurface>);
+  hold();
+  fireEvent.pointerUp(window, pointer);
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(focused()).toBe("11 in");
+  expect(arc()!.querySelector("[data-focus]")).toHaveAttribute("data-arc-section", "frequent");
+  fireEvent.click(screen.getByRole("button", { name: "Choose 11 in" }));
+  expect(select).toHaveBeenCalledExactlyOnceWith(11);
+  const step = (key = "ArrowDown") => {
+    fireEvent.keyDown(window, { key });
+    act(() => { vi.advanceTimersByTime(600); });
+  };
+  for (let i = 0; i < 5; i++) step();
+  expect(focused()).toBe("1 in");
+  expect(arc()!.querySelector("[data-focus]")).toHaveAttribute("data-arc-section", "regular");
+  expect(arc()!.querySelector('[data-arc-gap="frequent"]')).not.toBeNull();
+  step("ArrowUp");
+  expect(arc()!.querySelector("[data-focus]")).toHaveAttribute("data-arc-section", "frequent");
+  step();
+  const regular = [focused()];
+  for (let i = 1; i < 12; i++) { step(); regular.push(focused()); }
+  expect(regular).toEqual(Array.from({ length: 12 }, (_, index) => `${index + 1} in`));
+  fireEvent.click(screen.getByRole("button", { name: "Choose 12 in" }));
+  expect(select.mock.calls).toEqual([[11], [12]]);
+  step();
+  expect(focused()).toBe("10 in");
+  expect(arc()!.querySelector("[data-focus]")).toHaveAttribute("data-arc-section", "frequent");
+  step("ArrowUp");
+  expect(focused()).toBe("12 in");
+});
+
+it("resets each new stage to its own most-used choice and refreshes the shortcut callback", () => {
+  const oldSelect = vi.fn(), latestSelect = vi.fn();
+  const usage = { ...sizeUsage, [wheelUsageId("Select Category", "Tee")]: 20 };
+  const view = render(<ArcScrollerSurface usage={usage}><Stage options={sizes(oldSelect)} /></ArcScrollerSurface>);
+  fireEvent.contextMenu(screen.getByText("Blank stage"), { button: 2, clientX: 330, clientY: 400 });
+  expect(focused()).toBe("11 in");
+  view.rerender(<ArcScrollerSurface usage={usage}><Stage options={sizes(latestSelect)} /></ArcScrollerSurface>);
+  fireEvent.click(screen.getByRole("button", { name: "Choose 11 in" }));
+  expect(oldSelect).not.toHaveBeenCalled();
+  expect(latestSelect).toHaveBeenCalledExactlyOnceWith(11);
+  view.rerender(<ArcScrollerSurface usage={usage}><Stage title="Select Category" options={[
+    { label: "Elbow", select: latestSelect }, { label: "Tee", select: latestSelect },
+  ]} /></ArcScrollerSurface>);
+  expect(focused()).toBe("Tee");
+  expect(arc()).toHaveAttribute("aria-label", "Select Category");
 });

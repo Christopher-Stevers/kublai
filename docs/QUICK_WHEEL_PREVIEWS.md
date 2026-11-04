@@ -1,4 +1,20 @@
-# Quick-wheel anticipation
+# Quick-wheel behaviour
+
+## Current arc scroller
+
+Catalogue and Add Parts use the existing recent-order history to offer up to eight
+frequently used shortcuts before the complete list in its regular order. The most
+used starts at the centre of the arc; the next most used alternate on either side.
+A blank slot separates those shortcuts from the regular list. Keyboard, swipe and
+mouse-wheel settling skip the gap, and the check button cannot select it.
+
+Only enabled choices with positive usage become shortcuts. Equal counts keep the
+stage's original priority. With no history, the normal list and starting position
+stay unchanged. Changing stages centres that stage's favourite, and shortcuts use
+the same current callbacks as regular choices. Drawing controls without order
+history retain their existing layout.
+
+## Earlier radial anticipation
 
 The selection delay remains 500 ms. After 50 ms over a choice, prepare the next
 step and gradually crossfade it into view for the remainder of that same delay.

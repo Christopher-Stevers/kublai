@@ -143,13 +143,29 @@ export function arcScrollDelta(
   return -delta / geometry.step;
 }
 
-/** Most-used first, otherwise in the stage's own order. */
-export function rankArcChoices(title: string, options: ArcChoice[], usage: WheelUsage) {
-  const frequency = (label: string) => usage[wheelUsageId(title, label)] ?? 0;
-  return options
+/** A null slot separates the frequent shortcuts from the complete regular list. */
+type ArcSlots = Array<ArcChoice | null>;
+
+/** Up to eight used choices, strongest at the centre, then the stage's own order. */
+export function rankArcChoices(title: string, options: ArcChoice[], usage: WheelUsage): ArcSlots {
+  const frequency = (label: string) => {
+    const count = usage[wheelUsageId(title, label)] ?? 0;
+    return Number.isFinite(count) ? count : 0;
+  };
+  const popular = options
     .map((choice, index) => ({ choice, index }))
+    .filter(({ choice }) => !choice.disabled && frequency(choice.label) > 0)
     .sort((a, b) => frequency(b.choice.label) - frequency(a.choice.label) || a.index - b.index)
+    .slice(0, 8)
     .map(({ choice }) => choice);
+  if (!popular.length) return options;
+  const centre = Math.floor((popular.length - 1) / 2);
+  const favourites: ArcChoice[] = [];
+  popular.forEach((choice, rank) => {
+    // Alternate below and above the centre so the next most-used stay nearby.
+    favourites[centre + (rank % 2 ? (rank + 1) / 2 : -rank / 2)] = choice;
+  });
+  return [...favourites, null, ...options];
 }
 
 /** Long lists loop round, with one empty slot marking where the list ends.
@@ -174,14 +190,25 @@ export function arcFocus(offset: number, count: number, geometry: ArcGeometry) {
 }
 
 /** Where a scroll may come to rest: on a choice, never the gap, and within the list when it does not loop. */
-function restingOffset(target: number, from: number, count: number, geometry: ArcGeometry) {
-  if (!arcLoops(count, geometry)) return Math.min(count - 1, Math.max(0, target));
-  return wrap(target, count + 1) === count ? target + (target < from ? -1 : 1) : target;
+function restingOffset(target: number, from: number, choices: ArcSlots, geometry: ArcGeometry) {
+  const count = choices.length;
+  if (!arcLoops(count, geometry)) target = Math.min(count - 1, Math.max(0, target));
+  const direction = target < from ? -1 : 1;
+  let focus = arcFocus(target, count, geometry);
+  while (focus === null || choices[focus] === null) {
+    target += direction;
+    focus = arcFocus(target, count, geometry);
+  }
+  return target;
 }
 
-/** Few choices sit centred on the arc; long lists start with the first at the top. */
-const startOffset = (count: number, geometry: ArcGeometry) =>
-  Math.min((count - 1) / 2, Math.floor(geometry.half));
+/** Centre the strongest shortcut; without history retain the regular layout. */
+const startOffset = (choices: ArcSlots, geometry: ArcGeometry) => {
+  const separator = choices.indexOf(null);
+  return separator > 0
+    ? Math.floor((separator - 1) / 2)
+    : Math.min((choices.length - 1) / 2, Math.floor(geometry.half));
+};
 
 /** Past either end the list stretches a little and springs back. */
 function rubber(offset: number, max: number) {
@@ -215,7 +242,7 @@ function guardLift(pointerId: number) {
 type Open = Choices & {
   geometry: ArcGeometry;
   bounds: Bounds;
-  ranked: ArcChoice[];
+  ranked: ArcSlots;
 };
 const interactive =
   'button, a, input, select, textarea, [role="button"], [role="slider"], [role="spinbutton"], [contenteditable="true"], [data-arc-ignore]';
@@ -311,7 +338,7 @@ export function ArcScrollerSurface({
     if (!current) return;
     const count = current.ranked.length;
     const from = offsetRef.current;
-    const target = restingOffset(Math.round(from + velocity * 0.3), from, count, current.geometry);
+    const target = restingOffset(Math.round(from + velocity * 0.3), from, current.ranked, current.geometry);
     const period = arcLoops(count, current.geometry) ? count + 1 : 0;
     const started = performance.now();
     const duration = Math.min(520, 220 + Math.abs(target - from) * 50);
@@ -336,7 +363,7 @@ export function ArcScrollerSurface({
         // A new step starts fresh; a toggle in the same list keeps its place.
         if (choices.title !== current.title) {
           stopAnimation();
-          setOffset(startOffset(ranked.length, current.geometry));
+          setOffset(startOffset(ranked, current.geometry));
         } else if (offsetRef.current > ranked.length - 1) setOffset(ranked.length - 1);
       }),
     [registry],
@@ -396,7 +423,7 @@ export function ArcScrollerSurface({
       const ranked = rankArcChoices(choices.title, choices.options, live.current.usage);
       live.current.onActivate?.(event);
       stopAnimation();
-      setOffset(startOffset(ranked.length, geometry));
+      setOffset(startOffset(ranked, geometry));
       show({ ...choices, geometry, bounds, ranked });
       live.current.onActiveChange?.(true);
       return true;
@@ -519,7 +546,7 @@ export function ArcScrollerSurface({
         if (!arc) return;
         const from = offsetRef.current;
         const target = Math.round(from) + (event.key === "ArrowDown" ? 1 : -1);
-        setOffset(restingOffset(target, from, arc.ranked.length, arc.geometry));
+        setOffset(restingOffset(target, from, arc.ranked, arc.geometry));
         settle();
       }
     };
@@ -628,8 +655,10 @@ function ArcDisplay({
   const count = ranked.length;
   const middle = arcFocus(offset, count, geometry);
   const focused = middle === null ? null : ranked[middle]!;
-  const gap = arcLoops(count, geometry) ? arcDistance(count, offset, count, geometry) : null;
-  const gapPoint = gap !== null && Math.abs(gap) <= geometry.half ? arcPoint(geometry, gap) : null;
+  const gaps = [ranked.indexOf(null), ...(arcLoops(count, geometry) ? [count] : [])]
+    .filter(index => index >= 0)
+    .map(index => ({ index, distance: arcDistance(index, offset, count, geometry) }))
+    .filter(({ distance }) => Math.abs(distance) <= geometry.half);
   const hub = arcPoint(geometry, 0);
   const check = {
     x: right
@@ -688,9 +717,13 @@ function ArcDisplay({
           strokeLinecap="round"
         />
         <circle cx={cx} cy={cy} r={6} className="fill-primary/30" />
-        {gapPoint && <circle data-arc-gap="" cx={gapPoint.x} cy={gapPoint.y} r={5} className="fill-primary/45" />}
+        {gaps.map(({ index, distance }) => {
+          const point = arcPoint(geometry, distance);
+          return <circle key={index} data-arc-gap={index === count ? "end" : "frequent"} cx={point.x} cy={point.y} r={5} className="fill-primary/45" />;
+        })}
       </svg>
       {ranked.map((choice, index) => {
+        if (!choice) return null;
         const distance = arcDistance(index, offset, count, geometry);
         const reach = Math.abs(distance) / geometry.half;
         if (reach > 1.08) return null;
@@ -704,6 +737,7 @@ function ArcDisplay({
             key={`${index}:${choice.label}`}
             type="button"
             data-arc-choice=""
+            data-arc-section={ranked.indexOf(null) > index ? "frequent" : "regular"}
             data-focus={focus || undefined}
             aria-label={choice.label}
             aria-disabled={choice.disabled || undefined}
