@@ -12,7 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useHeaderBackOverride } from "~/lib/header-back-events";
 import {
   CheckCircle2Icon,
   CheckIcon,
@@ -249,6 +250,17 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const query = useSearchParams(),
     id = query.get("document");
   const online = useOnlineStatus();
+  const router = useRouter();
+  // Back from a slip steps up to the queue, not out to the job.
+  useHeaderBackOverride(
+    id
+      ? () => {
+          const queue = `/jobs/${jobId}/receiving`;
+          if (!online) window.location.href = queue;
+          else router.replace(queue);
+        }
+      : null,
+  );
   const [docs, setDocs] = useState<Entry[]>([]),
     [trial, setTrial] = useState<TrialSummary | null>(null),
     [detail, setDetail] = useState<Detail | null>(null),
@@ -497,16 +509,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link
-            className="text-muted-foreground inline-flex items-center gap-1 text-sm"
-            href={
-              id ? `/jobs/${jobId}/receiving` : `/jobs/${jobId}/material-lists`
-            }
-          >
-            <ChevronLeftIcon className="size-4" />
-            {id ? "Receiving queue" : "Material lists"}
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          {!id && (
+            <Link
+              className="text-muted-foreground mb-2 inline-flex items-center gap-1 text-sm"
+              href={`/jobs/${jobId}/material-lists`}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Material lists
+            </Link>
+          )}
+          <h1 className="text-2xl font-semibold tracking-tight">
             {id ? "Review packing slip" : "Receiving queue"}
           </h1>
           {detail && (

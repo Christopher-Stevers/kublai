@@ -10,10 +10,12 @@ import {
   within,
 } from "@testing-library/react";
 import { ReceivingWorkspace } from "./ReceivingWorkspace";
+import { runHeaderBackOverride } from "~/lib/header-back-events";
 const push = vi.fn();
+const replace = vi.fn();
 const navigation = vi.hoisted(() => ({ query: "document=doc" }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
   useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
@@ -152,6 +154,13 @@ it("shows source issues and never receives automatically", async () => {
     "href",
     "/jobs/job/documents?document=doc&from=receiving",
   );
+});
+it("steps back from a slip to the receiving queue", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByRole("link", { name: /Receiving queue/ })).toBeNull();
+  runHeaderBackOverride();
+  expect(replace).toHaveBeenCalledWith("/jobs/job/receiving");
 });
 it("opens the slip in the documents viewer from step 3", async () => {
   render(<ReceivingWorkspace jobId="job" />);
