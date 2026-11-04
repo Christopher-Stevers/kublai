@@ -59,6 +59,8 @@ export function SlipLineImage({
   box,
   header,
   label,
+  initiallyZoomed = false,
+  showError = false,
 }: {
   url: string;
   page: number;
@@ -66,10 +68,12 @@ export function SlipLineImage({
   /** Column headings, printed on `page` unless the table started earlier. */
   header?: { page: number; box: SlipBox };
   label: string;
+  initiallyZoomed?: boolean;
+  showError?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<"waiting" | "ready" | "failed">("waiting");
-  const [zoom, setZoom] = useState(false);
+  const [zoom, setZoom] = useState(initiallyZoomed);
   useEffect(() => {
     const target = canvas.current;
     if (!target || typeof IntersectionObserver === "undefined") return;
@@ -146,7 +150,12 @@ export function SlipLineImage({
       observer.disconnect();
     };
   }, [url, page, box, header]);
-  if (state === "failed") return null;
+  if (state === "failed")
+    return showError ? (
+      <p role="alert" className="text-muted-foreground text-sm">
+        The packing-slip image could not be loaded. Close and reopen to retry.
+      </p>
+    ) : null;
   // Whole line by default; tap to enlarge on small screens.
   return (
     <div className="overflow-x-auto rounded border bg-white">

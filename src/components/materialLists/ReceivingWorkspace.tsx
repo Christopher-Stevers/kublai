@@ -35,6 +35,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { ReceivingItemPreview } from "./ReceivingItemPreview";
+import type { SlipBox } from "~/lib/packing-slip-review";
 import { SlipLineImage } from "./SlipLineImage";
 import { SlipProcessingProgress } from "./SlipProcessingProgress";
 import type {
@@ -1962,6 +1964,20 @@ function OrderComparison({
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
+  const [preview, setPreview] = useState<
+    | { kind: "item"; item: ReceiptOrderItem }
+    | {
+        kind: "slip";
+        title: string;
+        sources: Array<{ page: number; box?: SlipBox }>;
+      }
+    | null
+  >(null);
+  const previewTrigger = useRef<HTMLElement | null>(null);
+  const showPreview = (value: NonNullable<typeof preview>) => {
+    previewTrigger.current = document.activeElement as HTMLElement | null;
+    setPreview(value);
+  };
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
   const known = new Set(detail.items.map((i) => i.id));
@@ -1973,9 +1989,7 @@ function OrderComparison({
       lines: slip.filter((x) => x.line.orderItemId === item.id),
     })),
     ...slip
-      .filter(
-        (x) => !x.line.orderItemId || !known.has(x.line.orderItemId),
-      )
+      .filter((x) => !x.line.orderItemId || !known.has(x.line.orderItemId))
       .map((x, i) => ({
         key: x.line.id,
         n: detail.items.length + i,
@@ -2004,7 +2018,9 @@ function OrderComparison({
             live = lines.filter((x) => !x.line.ignored),
             status = lines
               .map((x) => lineStatus(x.line, r))
-              .sort((x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y))[0],
+              .sort(
+                (x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y),
+              )[0],
             tone = status ? statusStyle[status] : undefined,
             due = item
               ? Math.max(0, qtyRound(item.ordered - item.received))
@@ -2054,18 +2070,17 @@ function OrderComparison({
                     <span className="row-span-4" />
                   )}
                   <div
-                    className={`row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
+                    className={`relative row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
                   >
                     <p className={copyLabel}>Order</p>
                     {c === 0 ? (
                       <h3 aria-label={title} className={copyText}>
-                        {lines.length ? (
+                        {item ? (
                           <button
                             type="button"
-                            aria-expanded={open}
-                            onClick={() => setOpenRow(open ? null : key)}
-                            aria-label={title}
-                            className="focus-visible:after:ring-ring/50 text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset"
+                            aria-label={`View material-list item: ${title}`}
+                            onClick={() => showPreview({ kind: "item", item })}
+                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
                           >
                             {orderText}
                           </button>
@@ -2074,7 +2089,20 @@ function OrderComparison({
                         )}
                       </h3>
                     ) : (
-                      <p className={copyText}>{orderText}</p>
+                      <p className={copyText}>
+                        {item ? (
+                          <button
+                            type="button"
+                            aria-label={`View material-list item: ${title}`}
+                            onClick={() => showPreview({ kind: "item", item })}
+                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                          >
+                            {orderText}
+                          </button>
+                        ) : (
+                          orderText
+                        )}
+                      </p>
                     )}
                     {item ? (
                       <QuantityPair
@@ -2090,7 +2118,9 @@ function OrderComparison({
                     <p className={copyNote}>
                       {item && (
                         <>
-                          {due > 0 ? `${due} ${item.unit} still due` : "All received"}
+                          {due > 0
+                            ? `${due} ${item.unit} still due`
+                            : "All received"}
                           {item.sku && ` · ${item.sku}`}
                         </>
                       )}
@@ -2099,7 +2129,7 @@ function OrderComparison({
                   <div
                     role="group"
                     aria-label={`${copy.label} reading`}
-                    className="row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3"
+                    className="relative row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3"
                   >
                     <p className={copyLabel}>
                       {copy.label}
@@ -2120,7 +2150,43 @@ function OrderComparison({
                       </>
                     ) : (
                       <>
-                        <p className={copyText}>{copy.description || "—"}</p>
+                        <p className={copyText}>
+                          <button
+                            type="button"
+                            aria-label={`View packing-slip line: ${copy.description || title} (${copy.label})`}
+                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                            onClick={() => {
+                              const fromTrial = trialReadings.filter(
+                                ({ reader }) => reader === copy.key,
+                              );
+                              const matching = live.filter(({ line }) =>
+                                modelReadings(line, detail).some(
+                                  (reading) => reading.reader === copy.key,
+                                ),
+                              );
+                              const sources = fromTrial.length
+                                ? fromTrial.map(({ t }) => ({
+                                    page: t.page,
+                                    box: t.box ?? undefined,
+                                  }))
+                                : (matching.length ? matching : lines).map(
+                                    ({ line }) => ({
+                                      page: line.page,
+                                      box:
+                                        line.sourceBox ??
+                                        sourceLine(line, detail)?.box,
+                                    }),
+                                  );
+                              showPreview({
+                                kind: "slip",
+                                title: copy.description || title,
+                                sources,
+                              });
+                            }}
+                          >
+                            {copy.description || "—"}
+                          </button>
+                        </p>
                         <QuantityPair
                           ordered={copy.ordered}
                           received={copy.shipped}
@@ -2131,65 +2197,75 @@ function OrderComparison({
                     <div>
                       {!copy.missing && (
                         <>
-                        {copy.verdict && (
-                          <p
-                            className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
-                          >
-                            {copy.verdict.ok ? (
-                              <CheckCircle2Icon className="size-3.5 shrink-0" />
-                            ) : (
-                              <AlertTriangleIcon className="size-3.5 shrink-0" />
-                            )}
-                            {copy.verdict.label}
-                          </p>
-                        )}
-                        {c === 0 && !item && tone && (
-                          <p className={`${copyNote} font-medium ${tone.text}`}>
-                            {tone.label}
-                          </p>
-                        )}
+                          {copy.verdict && (
+                            <p
+                              className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
+                            >
+                              {copy.verdict.ok ? (
+                                <CheckCircle2Icon className="size-3.5 shrink-0" />
+                              ) : (
+                                <AlertTriangleIcon className="size-3.5 shrink-0" />
+                              )}
+                              {copy.verdict.label}
+                            </p>
+                          )}
+                          {c === 0 && !item && tone && (
+                            <p
+                              className={`${copyNote} font-medium ${tone.text}`}
+                            >
+                              {tone.label}
+                            </p>
+                          )}
                         </>
                       )}
-                    {c === 0 && copies.length > 1 && (
-                      <button
-                        type="button"
-                        aria-expanded={showOthers}
-                        onClick={() => setShowOthers(!showOthers)}
-                        className="text-muted-foreground hover:text-foreground relative z-10 mt-2 inline-flex items-center gap-1 text-xs font-medium"
-                      >
-                        {showOthers
-                          ? "Hide other readers"
-                          : `${copies.length - 1} other ${copies.length === 2 ? "reader" : "readers"}`}
-                        <ChevronDownIcon
-                          className={`size-3.5 transition-transform motion-reduce:transition-none ${showOthers ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                    )}
+                      {c === 0 && copies.length > 1 && (
+                        <button
+                          type="button"
+                          aria-expanded={showOthers}
+                          onClick={() => setShowOthers(!showOthers)}
+                          className="text-muted-foreground hover:text-foreground relative z-10 mt-2 inline-flex items-center gap-1 text-xs font-medium"
+                        >
+                          {showOthers
+                            ? "Hide other readers"
+                            : `${copies.length - 1} other ${copies.length === 2 ? "reader" : "readers"}`}
+                          <ChevronDownIcon
+                            className={`size-3.5 transition-transform motion-reduce:transition-none ${showOthers ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                      )}
                     </div>
                   </div>
                   {c === 0 && lines.length > 0 ? (
-                    <ChevronDownIcon
-                      aria-hidden
-                      className={`text-muted-foreground row-span-4 mt-5 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-                    />
+                    <button
+                      type="button"
+                      aria-label={`Review line: ${title}`}
+                      aria-expanded={open}
+                      onClick={() => setOpenRow(open ? null : key)}
+                      className="relative row-span-4 mt-4 h-8 w-6 -ml-1 rounded focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <ChevronDownIcon
+                        aria-hidden
+                        className={`text-muted-foreground size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                      />
+                    </button>
                   ) : (
                     <span className="row-span-4" />
                   )}
                 </div>
               ))}
               {live.flatMap((x) => {
-                  const check = terraCheck(x.line, detail);
-                  return check
-                    ? [
-                        <p
-                          key={`terra:${x.line.id}`}
-                          className={`px-4 pb-3 pl-13 text-xs ${amber.text}`}
-                        >
-                          {readerLabels.terra} {check.reader}.
-                        </p>,
-                      ]
-                    : [];
-                })}
+                const check = terraCheck(x.line, detail);
+                return check
+                  ? [
+                      <p
+                        key={`terra:${x.line.id}`}
+                        className={`px-4 pb-3 pl-13 text-xs ${amber.text}`}
+                      >
+                        {readerLabels.terra} {check.reader}.
+                      </p>,
+                    ]
+                  : [];
+              })}
               {open &&
                 lines.map(({ line, index }) => (
                   <div key={line.id}>
@@ -2213,9 +2289,89 @@ function OrderComparison({
           );
         })}
       </ul>
+      <Dialog
+        open={!!preview}
+        onOpenChange={(open) => {
+          if (!open) setPreview(null);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            previewTrigger.current?.focus({ preventScroll: true });
+          }}
+          className={`flex max-h-[90dvh] flex-col overflow-hidden ${preview?.kind === "slip" ? "sm:max-w-4xl" : "sm:max-w-md"}`}
+        >
+          <DialogHeader className="shrink-0">
+            <DialogTitle>
+              {preview?.kind === "item"
+                ? "Material-list item"
+                : "Packing-slip line"}
+            </DialogTitle>
+            <DialogDescription>
+              {preview?.kind === "item"
+                ? preview.item.description
+                : preview?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 overflow-y-auto">
+            {preview?.kind === "item" && (
+              <ReceivingItemPreview
+                item={preview.item}
+                part={detail.orderParts?.[preview.item.id]}
+                materialListId={
+                  detail.document.packingSlip?.materialListId ??
+                  detail.orders.find(
+                    (o) => o.id === detail.document.packingSlip?.orderId,
+                  )?.listId ??
+                  ""
+                }
+                materialListName={detail.document.packingSlip?.materialListName}
+                supplierName={
+                  detail.suppliers.find(
+                    (s) => s.id === detail.review.supplierId,
+                  )?.name ?? detail.review.supplierName
+                }
+              />
+            )}
+            {preview?.kind === "slip" &&
+              (detail.review.versionId !== detail.document.currentVersionId ? (
+                <p className="text-sm text-muted-foreground">
+                  The source file changed. Review the new version before viewing
+                  this line.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {preview.sources.map((source, i) => (
+                    <div key={i} className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Page {source.page}
+                        {!source.box &&
+                          " · Exact line position unavailable; showing the source page."}
+                      </p>
+                      <SlipLineImage
+                        url={detail.sourceUrl}
+                        page={source.page}
+                        box={source.box ?? { x: 0, y: 0, width: 1, height: 1 }}
+                        label={`Packing-slip source ${i + 1}, page ${source.page}`}
+                        initiallyZoomed
+                        showError
+                      />
+                    </div>
+                  ))}
+                </div>
+              ))}
+          </div>
+          <Button className="w-full shrink-0" onClick={() => setPreview(null)}>
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 /** Asks how to read a slip count that disagrees with its order part, and
  * shows the part changes that would let the next slip match on its own. */
 function PartFitDialog({

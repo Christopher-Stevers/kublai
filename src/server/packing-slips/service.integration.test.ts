@@ -2302,10 +2302,15 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       .set({ uomId: id(81) })
       .where(eq(schema.orderItems.id, id(6)));
     const { access, doc } = await confirmedHeader();
+    await db
+      .update(schema.partDefinitions)
+      .set({ imageUrl: "/valve.png" })
+      .where(eq(schema.partDefinitions.id, id(5)));
     const facts = (await receivingQueue(access, doc.documentId)).orderParts;
     expect(facts?.[id(6)]).toEqual({
       partId: id(5),
       name: "Valve",
+      imageUrl: "/valve.png",
       bulkUnit: null,
       supplierSku: null,
       supplierName: null,

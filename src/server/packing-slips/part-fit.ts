@@ -96,6 +96,7 @@ export async function orderPartFacts(
       id: orderItems.id,
       partId: partDefinitions.id,
       name: partDefinitions.displayName,
+      imageUrl: partDefinitions.imageUrl,
       bulkUnit: partDefinitions.bulkUnit,
       supplierPartId: orderItems.supplierPartId,
       supplierId: orders.supplierId,
@@ -126,6 +127,7 @@ export async function orderPartFacts(
       {
         partId: r.partId,
         name: r.name,
+        imageUrl: r.imageUrl,
         bulkUnit: r.bulkUnit,
         supplierSku: listings[i]?.supplierSku ?? null,
         supplierName: listings[i]?.supplierName ?? null,

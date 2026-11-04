@@ -10,6 +10,7 @@ import {
 
 /** The catalogue part behind an order item, and this supplier's listing. */
 export type PartFacts = {
+  imageUrl?: string | null;
   partId: string;
   name: string;
   bulkUnit: string | null;

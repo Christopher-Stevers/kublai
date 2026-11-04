@@ -25,6 +25,15 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("~/components/jobs/documents/DocumentPdfPreview", () => ({
   DocumentPdfPreview: () => <div>Source PDF</div>,
 }));
+vi.mock("./SlipLineImage", () => ({
+  SlipLineImage: ({page, box, initiallyZoomed}: {page: number; box: unknown; initiallyZoomed?: boolean}) =>
+    <div role="img" aria-label={`Slip crop page ${page}`} data-box={JSON.stringify(box)} data-zoomed={String(initiallyZoomed)} />,
+}));
+vi.mock("~/hooks/use-replicache-material-list", () => ({
+  useReplicacheMaterialList: () => ({items: [], materialList: null}),
+  useReplicacheSyncing: () => false,
+  resolveReplicacheSyncStatus: () => "synced",
+}));
 function fixture() {
   return {
     documents: [],
@@ -300,7 +309,7 @@ it("confirms the matched order in one tap and only then compares lines", async (
 });
 it("leaves out a line that was not delivered in one tap", async () => {
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Valve" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review line: Valve" }));
   fireEvent.click(screen.getByRole("button", { name: "Not delivered" }));
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({
@@ -377,7 +386,7 @@ it("lists every order item beside the slip reading and its reader", async () => 
     .closest("li")!;
   expect(pipe).toHaveTextContent("Not on the order");
   expect(pipe).toHaveTextContent("Not read");
-  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
   expect(
     screen.getByText("The reading is unsure. Check it against the slip."),
   ).toBeInTheDocument();
@@ -386,7 +395,7 @@ it("lists every order item beside the slip reading and its reader", async () => 
   expect(
     screen.getByRole("button", { name: "Save and confirm" }),
   ).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Valve" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review line: Valve" }));
   expect(screen.queryByText("Quantity unclear")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Quantity")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
@@ -424,7 +433,7 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
   };
   Object.assign(state, { canEditParts: true, orderParts: { item: part } });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: /HEX NUT GR2/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }));
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   const ask = await screen.findByRole("dialog", {
     name: "Update this part to match the slip?",
@@ -457,7 +466,7 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
   cleanup();
   Object.assign(state, { canEditParts: false });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: /HEX NUT GR2/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }));
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   const read = await screen.findByRole("dialog", { name: "Receive 1 box?" });
   fireEvent.click(within(read).getByRole("button", { name: "Keep 2500 box" }));
@@ -654,7 +663,7 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
     "Jev Image63%Unclear pipeOrdered—ReceivedNot read",
   );
   expect(pipe).toHaveTextContent("Terra 6.1 found no product here");
-  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Not a product, leave it out" }),
   );
@@ -784,7 +793,7 @@ it("adds the likely catalogue part to the material list in one tap", async () =>
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);
   expect(await screen.findByText(/Likely Copper pipe/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
   expect(screen.getByText(/puts it on Level 3 with 3 ordered/)).toBeVisible();
   const likely = screen.getByRole("list", { name: "Likely catalogue parts" });
   expect(within(likely).getByText("Same supplier code")).toBeVisible();
@@ -808,7 +817,7 @@ it("confirms EA means one complete pipe length before adding it", async () => {
     unit: "length", piecesPerPack: 12, individualUnit: "ft",
   });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
   fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
   const dialog = await screen.findByRole("dialog", { name: "Confirm what “each” means" });
   expect(dialog).toHaveTextContent("one length contains 12 ft");
@@ -824,7 +833,7 @@ it("confirms EA means one complete pipe length before adding it", async () => {
 it("adds a new part to ForemanHQ and the material list together", async () => {
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
   const add = screen.getByRole("button", { name: "New part in ForemanHQ" });
   fireEvent.click(add);
   expect(add).toHaveAttribute("aria-expanded", "true");
@@ -844,7 +853,7 @@ it("adds a new part to ForemanHQ and the material list together", async () => {
 it("asks for the quantity before a part goes on the list", async () => {
   notOnOrder(null);
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
   expect(
     screen.getByText("Enter the quantity that came below and save it first."),
   ).toBeVisible();
@@ -942,4 +951,87 @@ it("includes an auto-confirmed flagged line in review without posting on load", 
   await waitFor(() =>
     expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }),
   );
+});
+
+
+it("opens the material-list item from the left column and closes without editing receipts", async () => {
+  Object.assign(state.items[0]!, { sku: "V123" });
+  Object.assign(state, {
+    orderParts: {
+      item: {
+        partId: "part",
+        name: "Valve",
+        imageUrl: "/valve.png",
+        bulkUnit: "ea",
+        units: ["ea"],
+        supplierSku: "V123",
+        supplierName: "Valve",
+      },
+    },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "View material-list item: Valve",
+    }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Material-list item" });
+  expect(within(dialog).getByText("Supplier")).toBeInTheDocument();
+  expect(within(dialog).getByText("V123")).toBeInTheDocument();
+  expect(within(dialog).getByAltText("Valve")).toBeInTheDocument();
+  expect(
+    within(dialog).queryByRole("button", { name: "Verify part" }),
+  ).toBeNull();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(posts).toEqual([]);
+});
+it("opens an enlarged source crop from the right column and keeps editing on the arrow", async () => {
+  const box = { x: 0.1, y: 0.4, width: 0.8, height: 0.04 };
+  Object.assign(state.review.lines[0]!, { sourceBox: box, page: 2 });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "View packing-slip line: Valve (Slip)",
+    }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Packing-slip line" });
+  expect(
+    within(dialog).getByRole("img", { name: "Slip crop page 2" }),
+  ).toHaveAttribute("data-box", JSON.stringify(box));
+  expect(within(dialog).getByRole("img")).toHaveAttribute(
+    "data-zoomed",
+    "true",
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review line: Valve" }));
+  expect(
+    screen.getByRole("button", { name: "Looks right" }),
+  ).toBeInTheDocument();
+  expect(posts).toEqual([]);
+});
+it("shows the source page when a slip line has no crop, and never shows a crop from a replaced file", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "View packing-slip line: Unclear pipe (Slip)",
+    }),
+  );
+  expect(
+    screen.getByText(/Exact line position unavailable/),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  cleanup();
+  state.document.currentVersionId = "replacement";
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "View packing-slip line: Valve (Slip)",
+    }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Packing-slip line" });
+  expect(within(dialog).queryByRole("img")).toBeNull();
+  expect(
+    within(dialog).getByText(/The source file changed/),
+  ).toBeInTheDocument();
 });
