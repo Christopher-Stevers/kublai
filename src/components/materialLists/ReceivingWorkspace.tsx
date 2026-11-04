@@ -21,6 +21,7 @@ import {
   ChevronLeftIcon,
   EyeIcon,
   FileTextIcon,
+  FlaskConicalIcon,
   Loader2Icon,
   PlusIcon,
   RefreshCwIcon,
@@ -51,6 +52,7 @@ import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   PackingSlipTrialComparison,
   PackingSlipTrialSummary,
+  useTrialComparison,
   type TrialSummary,
 } from "./PackingSlipTrial";
 import {
@@ -251,6 +253,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     id = query.get("document");
   const online = useOnlineStatus();
   const router = useRouter();
+  const comparison = useTrialComparison(jobId, id ?? undefined, online);
+  const trialResults =
+    comparison.trial && !comparison.trial.stale
+      ? comparison.trial.results
+      : null;
   // Back from a slip steps up to the queue, not out to the job.
   useHeaderBackOverride(
     id
@@ -275,7 +282,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [over, setOver] = useState(false),
     [accounted, setAccounted] = useState(false),
     [openLine, setOpenLine] = useState<string | null>(null),
-    [trialResults, setTrialResults] = useState<TrialResults | null>(null),
+    [lab, setLab] = useState(false),
     [changingOrder, setChangingOrder] = useState(false),
     [showLines, setShowLines] = useState(false);
   const [receivedAt, setReceivedAt] = useState(() => Date.now());
@@ -547,6 +554,24 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               {progress ? "Hide progress" : "Show progress"}
             </Button>
           )}
+          {detail && r && (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label={`Slip lab${r.warnings.length ? `, ${r.warnings.length} reading ${r.warnings.length === 1 ? "note" : "notes"}` : ""}`}
+              title="Slip lab"
+              className="relative"
+              onClick={() => setLab(true)}
+            >
+              <FlaskConicalIcon className="size-4" />
+              {!!r.warnings.length && (
+                <span
+                  aria-hidden
+                  className="absolute -top-1 -right-1 size-2.5 rounded-full bg-amber-500"
+                />
+              )}
+            </Button>
+          )}
           {detail && (
             <Button variant="outline" size="sm" asChild>
               <Link href={slipViewerHref(jobId, detail)}>
@@ -696,18 +721,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         <p role="status">Loading review…</p>
       ) : (
         <>
-          <PackingSlipTrialComparison
-            key={detail.document.id}
-            jobId={jobId}
-            documentId={detail.document.id}
-            online={online}
-            busy={busy}
-            selectedReader={r?.sourceTrial?.reader}
-            onTrial={setTrialResults}
-            onUse={async (reader, runId) => {
-              await run({ action: "trialDraft", reader, runId });
-            }}
-          />
           {progress && a?.status === "processing" && (
             <div className={`${card} mb-4 px-4 py-3`}>
               <SlipProcessingProgress analysis={a} embedded />
@@ -988,20 +1001,32 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   />
                 )}
               </fieldset>
-              <details className={`${card} group text-sm`}>
-                <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-                  <span>
-                    Slip tools
-                    {!!r!.warnings.length && (
-                      <span className={`ml-2 text-xs ${amber.text}`}>
-                        {r!.warnings.length} reading{" "}
-                        {r!.warnings.length === 1 ? "note" : "notes"}
-                      </span>
-                    )}
-                  </span>
-                  <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-                </summary>
-                <div className="space-y-4 border-t px-4 py-4">
+            </div>
+          </div>
+          <Dialog open={lab} onOpenChange={setLab}>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-5xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FlaskConicalIcon className="size-5" />
+                  Slip lab
+                </DialogTitle>
+                <DialogDescription>
+                  How this slip was read, other readers, and tools to read it
+                  again.
+                </DialogDescription>
+              </DialogHeader>
+              <PackingSlipTrialComparison
+                comparison={comparison}
+                online={online}
+                busy={busy}
+                selectedReader={r?.sourceTrial?.reader}
+                onUse={async (reader, runId) => {
+                  setLab(false);
+                  await run({ action: "trialDraft", reader, runId });
+                }}
+              />
+                <section aria-label="Slip tools" className="space-y-4 rounded-lg border px-4 py-4 text-sm">
+                  <h3 className="font-medium">Slip tools</h3>
                   {!!r!.warnings.length && (
                     <div>
                       <p className="font-medium">Reading notes</p>
@@ -1071,10 +1096,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       </pre>
                     </details>
                   )}
-                </div>
-              </details>
-            </div>
-          </div>
+                </section>
+            </DialogContent>
+          </Dialog>
           <footer className="bg-background/95 fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
             <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 sm:px-2">
               <div className="min-w-0 text-sm">

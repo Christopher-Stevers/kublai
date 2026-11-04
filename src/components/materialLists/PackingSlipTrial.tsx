@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, ChevronUpIcon, FlaskConicalIcon } from "lucide-react";
+import { ChevronDownIcon, FlaskConicalIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SlipLineImage } from "./SlipLineImage";
 import {
@@ -162,30 +162,29 @@ function Score({ label, score }: { label: string; score: TrialScore }) {
     </span>
   );
 }
+export type TrialComparison = { trial: Comparison | null; error: string };
+/** One slip's reader comparison, kept loaded while the page is open. */
+export function useTrialComparison(
+  jobId: string,
+  documentId: string | undefined,
+  online: boolean,
+): TrialComparison {
+  return useTrial<Comparison>(jobId, documentId, online && !!documentId);
+}
 export function PackingSlipTrialComparison({
-  jobId,
-  documentId,
+  comparison: { trial, error },
   online,
   busy,
   selectedReader,
   onUse,
-  onTrial,
 }: {
-  jobId: string;
-  documentId: string;
+  comparison: TrialComparison;
   online: boolean;
   busy: boolean;
   selectedReader?: TrialReader;
   onUse: (reader: TrialReader, runId: string) => Promise<void>;
-  /** Receives the current readings, or null when there are none. */
-  onTrial?: (results: TrialResults | null) => void;
 }) {
-  const { trial, error } = useTrial<Comparison>(jobId, documentId, online);
-  useEffect(() => {
-    onTrial?.(trial && !trial.stale ? trial.results : null);
-  }, [trial, onTrial]);
-  const [open, setOpen] = useState(false),
-    [differencesOnly, setDifferencesOnly] = useState(false),
+  const [differencesOnly, setDifferencesOnly] = useState(false),
     [showCrops, setShowCrops] = useState(false);
   const rows = useMemo(() => alignTrialLines(trial?.results ?? {}), [trial]);
   if (!trial)
@@ -206,181 +205,163 @@ export function PackingSlipTrialComparison({
       className="mb-5 overflow-hidden rounded-lg border"
       aria-label="Independent reader comparison"
     >
-      <button
-        type="button"
-        className="flex min-h-12 w-full items-center justify-between gap-4 px-4 py-3 text-left"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <span>
-          <span className="font-medium">Compare {readers.length} readers</span>
-          <span className="text-muted-foreground ml-2 text-sm">
-            {ready}/{readers.length} ready
-            {selectedReader
-              ? ` · reviewing ${readerLabels[selectedReader]}`
-              : ""}
-          </span>
+      <h3 className="px-4 py-3">
+        <span className="font-medium">Compare {readers.length} readers</span>
+        <span className="text-muted-foreground ml-2 text-sm">
+          {ready}/{readers.length} ready
+          {selectedReader ? ` · reviewing ${readerLabels[selectedReader]}` : ""}
         </span>
-        {open ? (
-          <ChevronUpIcon className="h-4 w-4 shrink-0" />
-        ) : (
-          <ChevronDownIcon className="h-4 w-4 shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="border-t">
-          <div className="space-y-2 px-4 py-3 text-sm">
-            <p>
-              Scores are estimates, not measured accuracy. OCR quality, Jev’s
-              scores and model self-assessments are kept separate. Your
-              corrections remain separate from these original predictions.
-            </p>
-            <p className="text-muted-foreground">
-              Choose a reading to prepare the review below. Saved human
-              decisions are preserved. Received quantities change only when you
-              approve the review.
-            </p>
-            {trial.stale && (
-              <p role="alert" className="text-amber-700 dark:text-amber-300">
-                The source file has changed. This comparison is for the older
-                version and cannot replace the current draft.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={differencesOnly}
-                  onChange={(e) => setDifferencesOnly(e.target.checked)}
-                />{" "}
-                Differences only
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showCrops}
-                  onChange={(e) => setShowCrops(e.target.checked)}
-                />{" "}
-                Show source rows
-              </label>
-              <a
-                className="underline"
-                href={trial.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open source PDF
-              </a>
-            </div>
-            <p className="text-muted-foreground text-xs lg:hidden">
-              Swipe the table sideways to compare all readers.
-            </p>
-          </div>
-          <div
-            className="overflow-x-auto"
-            tabIndex={0}
-            role="region"
-            aria-label="Side-by-side reader results; scroll horizontally on small screens"
-          >
-            <table
-              className="w-full table-fixed border-collapse text-left text-sm"
-              style={{ minWidth: readers.length * 225 }}
-            >
-              <thead>
-                <tr>
-                  {readers.map((reader) => {
-                    const result = trial.results[reader];
-                    return (
-                      <th
-                        key={reader}
-                        className="bg-muted/40 border-t border-r px-3 py-3 align-top font-normal last:border-r-0"
-                      >
-                        <strong className="block">
-                          {readerLabels[reader]}
-                        </strong>
-                        <span className="text-muted-foreground mt-1 block text-xs">
-                          {!result
-                            ? "Waiting for run"
-                            : result.status === "failed"
-                              ? "Failed — retry needed"
-                              : `${result.lines.length} detected lines · ${result.pagesRead?.length ?? 0}/${trial.entry.pages} pages`}
-                        </span>
-                        {result?.status === "complete" && (
-                          <>
-                            <p className="mt-2 text-xs">
-                              {result.orderLabel ??
-                                (result.orderId
-                                  ? "Candidate order"
-                                  : "Order unresolved")}
-                              {result.orderId
-                                ? ` · ${Math.round((result.orderConfidence?.value ?? 0) * 100)}%`
-                                : ""}
-                            </p>
-                            <Button
-                              className="mt-2 h-auto min-h-9 w-full px-2 py-2 text-xs whitespace-normal"
-                              variant="outline"
-                              disabled={!online || busy || trial.stale}
-                              onClick={() => void onUse(reader, trial.runId)}
-                            >
-                              Use {readerLabels[reader]} for review
-                            </Button>
-                          </>
-                        )}
-                        {result?.error && (
-                          <p className="mt-2 text-xs">{result.error}</p>
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {display.map((row) => {
-                  const flags = trialDisagreements(row, trial.results);
-                  const anchor =
-                    Object.values(row.lines).find((l) => l.box) ??
-                    Object.values(row.lines)[0]!;
-                  return (
-                    <TrialComparisonRow
-                      key={row.id}
-                      row={row}
-                      flags={flags}
-                      anchor={anchor}
-                      trial={trial}
-                      readers={readers}
-                      showCrops={showCrops}
-                    />
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {!display.length && (
-            <p className="px-4 py-5 text-sm">
-              {rows.length
-                ? "No differences in aligned detections. This does not prove the readings are correct."
-                : "No line results are available yet."}
+      </h3>
+      <div className="border-t">
+        <div className="space-y-2 px-4 py-3 text-sm">
+          <p>
+            Scores are estimates, not measured accuracy. OCR quality, Jev’s
+            scores and model self-assessments are kept separate. Your
+            corrections remain separate from these original predictions.
+          </p>
+          <p className="text-muted-foreground">
+            Choose a reading to prepare the review below. Saved human decisions
+            are preserved. Received quantities change only when you approve the
+            review.
+          </p>
+          {trial.stale && (
+            <p role="alert" className="text-amber-700 dark:text-amber-300">
+              The source file has changed. This comparison is for the older
+              version and cannot replace the current draft.
             </p>
           )}
-          <div className="space-y-2 border-t px-4 py-3">
-            {readers.map((reader) => {
-              const warnings = trial.results[reader]?.warnings;
-              return warnings?.length ? (
-                <details key={reader} className="text-sm">
-                  <summary className="cursor-pointer">
-                    {readerLabels[reader]} · {warnings.length} notes
-                  </summary>
-                  <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5">
-                    {warnings.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null;
-            })}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={differencesOnly}
+                onChange={(e) => setDifferencesOnly(e.target.checked)}
+              />{" "}
+              Differences only
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showCrops}
+                onChange={(e) => setShowCrops(e.target.checked)}
+              />{" "}
+              Show source rows
+            </label>
+            <a
+              className="underline"
+              href={trial.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open source PDF
+            </a>
           </div>
+          <p className="text-muted-foreground text-xs lg:hidden">
+            Swipe the table sideways to compare all readers.
+          </p>
         </div>
-      )}
+        <div
+          className="overflow-x-auto"
+          tabIndex={0}
+          role="region"
+          aria-label="Side-by-side reader results; scroll horizontally on small screens"
+        >
+          <table
+            className="w-full table-fixed border-collapse text-left text-sm"
+            style={{ minWidth: readers.length * 225 }}
+          >
+            <thead>
+              <tr>
+                {readers.map((reader) => {
+                  const result = trial.results[reader];
+                  return (
+                    <th
+                      key={reader}
+                      className="bg-muted/40 border-t border-r px-3 py-3 align-top font-normal last:border-r-0"
+                    >
+                      <strong className="block">{readerLabels[reader]}</strong>
+                      <span className="text-muted-foreground mt-1 block text-xs">
+                        {!result
+                          ? "Waiting for run"
+                          : result.status === "failed"
+                            ? "Failed — retry needed"
+                            : `${result.lines.length} detected lines · ${result.pagesRead?.length ?? 0}/${trial.entry.pages} pages`}
+                      </span>
+                      {result?.status === "complete" && (
+                        <>
+                          <p className="mt-2 text-xs">
+                            {result.orderLabel ??
+                              (result.orderId
+                                ? "Candidate order"
+                                : "Order unresolved")}
+                            {result.orderId
+                              ? ` · ${Math.round((result.orderConfidence?.value ?? 0) * 100)}%`
+                              : ""}
+                          </p>
+                          <Button
+                            className="mt-2 h-auto min-h-9 w-full px-2 py-2 text-xs whitespace-normal"
+                            variant="outline"
+                            disabled={!online || busy || trial.stale}
+                            onClick={() => void onUse(reader, trial.runId)}
+                          >
+                            Use {readerLabels[reader]} for review
+                          </Button>
+                        </>
+                      )}
+                      {result?.error && (
+                        <p className="mt-2 text-xs">{result.error}</p>
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {display.map((row) => {
+                const flags = trialDisagreements(row, trial.results);
+                const anchor =
+                  Object.values(row.lines).find((l) => l.box) ??
+                  Object.values(row.lines)[0]!;
+                return (
+                  <TrialComparisonRow
+                    key={row.id}
+                    row={row}
+                    flags={flags}
+                    anchor={anchor}
+                    trial={trial}
+                    readers={readers}
+                    showCrops={showCrops}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!display.length && (
+          <p className="px-4 py-5 text-sm">
+            {rows.length
+              ? "No differences in aligned detections. This does not prove the readings are correct."
+              : "No line results are available yet."}
+          </p>
+        )}
+        <div className="space-y-2 border-t px-4 py-3">
+          {readers.map((reader) => {
+            const warnings = trial.results[reader]?.warnings;
+            return warnings?.length ? (
+              <details key={reader} className="text-sm">
+                <summary className="cursor-pointer">
+                  {readerLabels[reader]} · {warnings.length} notes
+                </summary>
+                <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5">
+                  {warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : null;
+          })}
+        </div>
+      </div>
     </section>
   );
 }

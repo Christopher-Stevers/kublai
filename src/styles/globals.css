@@ -137,6 +137,36 @@
   .save-check-tick { animation: save-check-draw 260ms 140ms ease-out backwards; }
 }
 
+/* Reading a slip: a light sweeps down the paper and each line inks in as it
+   passes. Done, the lines settle and a tick draws; failed, the slip shakes. */
+@keyframes slip-scan-beam {
+  0% { transform: translateY(0); opacity: 0; }
+  12%, 82% { opacity: 1; }
+  100% { transform: translateY(24px); opacity: 0; }
+}
+@keyframes slip-scan-ink {
+  0%, 8% { transform: scaleX(0.12); opacity: 0.35; }
+  40%, 78% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0.35; }
+}
+@keyframes slip-scan-wait {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
+}
+@keyframes slip-scan-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1.5px); }
+  75% { transform: translateX(1.5px); }
+}
+.slip-scan-ink { transform-box: fill-box; transform-origin: left; }
+.slip-scan-beam { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .slip-scan[data-state="running"] .slip-scan-beam { animation: slip-scan-beam 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+  .slip-scan[data-state="running"] .slip-scan-ink { animation: slip-scan-ink 1.8s ease-out infinite backwards; }
+  .slip-scan[data-state="waiting"] .slip-scan-ink { animation: slip-scan-wait 2.4s ease-in-out infinite; }
+  .slip-scan[data-state="failed"] { animation: slip-scan-shake 180ms 2 ease-in-out; }
+}
+
 /* Keep each complete source photo contained; the separate dark-mode treatment
    below preserves the original softened frame appearance. */
 .part-photo {

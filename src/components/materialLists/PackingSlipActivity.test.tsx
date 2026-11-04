@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { PackingSlipActivity } from "./PackingSlipActivity";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 afterEach(() => {
@@ -39,6 +39,9 @@ it("shows saved events and confirms a live worker", () => {
     />,
   );
   expect(screen.getByRole("status")).toHaveTextContent("Running");
+  // Collapsed, only the indicator shows.
+  expect(screen.queryByText("OCR finished. Matching orders…")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Processing activity/ }));
   expect(
     screen.getByText("OCR finished. Matching orders…"),
   ).toBeInTheDocument();

@@ -162,6 +162,16 @@ it("steps back from a slip to the receiving queue", async () => {
   runHeaderBackOverride();
   expect(replace).toHaveBeenCalledWith("/jobs/job/receiving");
 });
+it("keeps reader comparison and slip tools in the lab", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByRole("button", { name: "Rerun detection" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Slip lab/ }));
+  const lab = await screen.findByRole("dialog", { name: /Slip lab/ });
+  expect(
+    within(lab).getByRole("button", { name: "Rerun detection" }),
+  ).toBeInTheDocument();
+});
 it("opens the slip in the documents viewer from step 3", async () => {
   render(<ReceivingWorkspace jobId="job" />);
   const step = await screen.findByRole("region", {
@@ -206,6 +216,7 @@ it("keeps the activity log visible when detailed progress is hidden", async () =
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findAllByText("Reading the scanned pages…");
   fireEvent.click(screen.getByRole("button", { name: "Hide progress" }));
+  fireEvent.click(screen.getByRole("button", { name: /Processing activity/ }));
   expect(
     within(
       screen.getByRole("region", { name: "Processing activity" }),
