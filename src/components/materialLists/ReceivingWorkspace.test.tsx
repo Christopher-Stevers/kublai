@@ -228,7 +228,13 @@ it("links a newly chosen order before confirming the slip details", async () => 
     target: { value: "order-2" },
   });
   expect(screen.getByLabelText("Supplier")).toHaveValue("other");
-  fireEvent.click(screen.getByRole("button", { name: "Confirm details" }));
+  // One confirm button; the page check comes with approving the lines.
+  expect(screen.queryByRole("checkbox")).toBeNull();
+  for (const name of ["Back", "New supplier", "Confirm details"])
+    expect(screen.queryByRole("button", { name })).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "I confirm this is the correct order" }),
+  );
   await waitFor(() => expect(posts).toHaveLength(2));
   expect(posts[0]).toMatchObject({
     action: "link",
@@ -254,7 +260,11 @@ it("confirms the matched order in one tap and only then compares lines", async (
     screen.getByRole("region", { name: "Step 3: Compare with the order" }),
   ).toHaveTextContent("After the order is confirmed.");
   expect(screen.queryByRole("heading", { name: "Valve" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Yes, this order" }));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "I confirm this is the correct order",
+    }),
+  );
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({
     action: "header",
@@ -585,7 +595,9 @@ it("shows a suggestion arriving after mount and confirms that order explicitly",
   await screen.findByText("Suggested order", {}, { timeout: 6000 });
   expect(screen.getByText("PO-155")).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: "Yes, this order" }),
+    screen.getByRole("button", {
+      name: "I confirm this is the correct order",
+    }),
   ).toBeDisabled();
   expect(screen.queryByText(/lines? ready to approve/)).not.toBeInTheDocument();
   state.document.packingSlipAnalysis.status = "ready";
@@ -594,7 +606,11 @@ it("shows a suggestion arriving after mount and confirms that order explicitly",
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
   ).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Yes, this order" }));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "I confirm this is the correct order",
+    }),
+  );
   await waitFor(() => expect(posts).toHaveLength(2));
   expect(posts[0]).toMatchObject({
     action: "link",

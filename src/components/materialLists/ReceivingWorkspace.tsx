@@ -1304,12 +1304,7 @@ function Identity({
     [delivery, setDelivery] = useState(r.deliveryNumber),
     [orderNum, setOrderNum] = useState(r.supplierOrderNumber),
     [date, setDate] = useState(r.deliveryDate),
-    [linkChoice, setLink] = useState<string | null>(null),
-    [newSupplier, setNewSupplier] = useState(false),
-    [name, setName] = useState(r.supplierName),
-    [email, setEmail] = useState(r.supplierEmail ?? ""),
-    [phone, setPhone] = useState(r.supplierPhone ?? ""),
-    [accounted, setAccounted] = useState(r.documentChecked ?? false);
+    [linkChoice, setLink] = useState<string | null>(null);
   // Background results can arrive after this form mounts. Follow fresh defaults
   // until the reviewer explicitly chooses a value; polling must not erase edits.
   const link = linkChoice ?? (linked || match?.id || "");
@@ -1344,16 +1339,23 @@ function Identity({
         kind,
         supplierId: supplier || null,
         supplierName:
-          detail.suppliers.find((s) => s.id === supplier)?.name ?? name,
+          detail.suppliers.find((s) => s.id === supplier)?.name ??
+          r.supplierName,
         deliveryNumber: delivery,
         supplierOrderNumber: orderNum,
         deliveryDate: date,
         confirmed: true,
-        documentChecked: accounted,
+        // Every page is confirmed when the lines are approved.
+        documentChecked: r.documentChecked ?? false,
       })
     )
       onDone();
   };
+  const confirmButton = (
+    <Button onClick={() => void confirm()}>
+      <CheckIcon />I confirm this is the correct order
+    </Button>
+  );
   if (!match && analysis?.status === "processing")
     return (
       <p role="status" className="text-muted-foreground p-4 text-sm">
@@ -1382,10 +1384,7 @@ function Identity({
         {candidates}
         {comparison}
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void confirm()}>
-            <CheckIcon />
-            Yes, this order
-          </Button>
+          {confirmButton}
           <Button variant="outline" onClick={() => setForm(true)}>
             Choose another order
           </Button>
@@ -1474,77 +1473,14 @@ function Identity({
         </Label>
       </div>
       <div className="mt-4">{comparison}</div>
-      <label className="mt-3 flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-0.5"
-          checked={accounted}
-          onChange={(e) => setAccounted(e.target.checked)}
-        />
-        All source pages and item lines are accounted for.
-      </label>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={() => void confirm()}>
-          <CheckIcon />
-          Confirm details
-        </Button>
-        {(onCancel ?? match) && (
-          <Button
-            variant="ghost"
-            onClick={() => (onCancel ? onCancel() : setForm(false))}
-          >
-            {onCancel ? "Cancel" : "Back"}
-          </Button>
-        )}
-        {detail.canCreate && (
-          <Button
-            variant="ghost"
-            className="ml-auto"
-            onClick={() => setNewSupplier(!newSupplier)}
-          >
-            New supplier
+        {confirmButton}
+        {onCancel && (
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
           </Button>
         )}
       </div>
-      {newSupplier && (
-        <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-3">
-          <p className="text-muted-foreground text-sm sm:col-span-3">
-            Create a shared organization supplier from this slip.
-          </p>
-          <Label name="Supplier name">
-            <input
-              className={field}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </Label>
-          <Label name="Email">
-            <input
-              type="email"
-              className={field}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Label>
-          <Label name="Phone">
-            <input
-              className={field}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </Label>
-          <div className="sm:col-span-3">
-            <Button
-              variant="outline"
-              onClick={() =>
-                void run({ action: "supplier", name, email, phone })
-              }
-            >
-              Approve new supplier
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
