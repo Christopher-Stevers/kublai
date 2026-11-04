@@ -2583,8 +2583,8 @@ function PartChoice({
           <DialogHeader>
             <DialogTitle>Confirm what “each” means</DialogTitle>
             <DialogDescription>
-              {p.name}: one {p.unit} contains {p.piecesPerPack} {p.individualUnit || "pieces"}.
-              Does 1 {line.unit || "EA"} on the slip mean one complete {p.unit}?
+              {p.name}: one {p.unit} contains {p.piecesPerPack} {p.individualUnit ?? "pieces"}.
+              Does 1 {line.unit ?? "EA"} on the slip mean one complete {p.unit}?
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm">
