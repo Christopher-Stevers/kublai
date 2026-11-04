@@ -788,6 +788,26 @@ it("adds the likely catalogue part to the material list in one tap", async () =>
     addToOrder: true,
   });
 });
+it("confirms EA means one complete pipe length before adding it", async () => {
+  notOnOrder(1);
+  state.review.lines[1]!.unit = "EA";
+  Object.assign((state as typeof state & { likely: Record<string, Array<Record<string, unknown>>> }).likely["1"]![0]!, {
+    unit: "length", piecesPerPack: 12, individualUnit: "ft",
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Unclear pipe" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
+  const dialog = await screen.findByRole("dialog", { name: "Confirm what “each” means" });
+  expect(dialog).toHaveTextContent("one length contains 12 ft");
+  expect(dialog).toHaveTextContent("Delivered: 1 length");
+  expect(posts).toHaveLength(0);
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
+  fireEvent.click(screen.getByRole("button", { name: "Yes, add as length" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "part", partId: "pipe", unit: "length", piecesPerPack: 12, packageUnitConfirmed: true });
+});
 it("adds a new part to ForemanHQ and the material list together", async () => {
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);

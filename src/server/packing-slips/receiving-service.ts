@@ -591,7 +591,7 @@ async function addOrderLine(
     unit !== receiptUnit(part!.bulkUnit ?? "pack")
   )
     fail(
-      `Enter ordered and delivered quantities in ${part!.bulkUnit ?? "pack"} before adding this packaged part.`,
+      `Confirm whether the slip quantity is in ${part!.bulkUnit ?? "pack"} or ${part!.individualUnit ?? "individual pieces"} before adding this part.`,
     );
   if (!unit) fail("Confirm the quantity unit.");
   const unitRows = await tx.select().from(units);
@@ -1214,6 +1214,26 @@ async function mutateReceivingImpl(
             )
             .limit(1);
           if (!p) fail("Catalogue part unavailable.");
+          if (input.packageUnitConfirmed) {
+            if (
+              !input.addToOrder ||
+              receiptUnit(l.unit) !== "ea" ||
+              !p!.piecesPerPack ||
+              p!.piecesPerPack <= 1 ||
+              !p!.bulkUnit ||
+              receiptUnit(p!.bulkUnit) === "ea" ||
+              receiptUnit(input.unit) !== receiptUnit(p!.bulkUnit) ||
+              input.piecesPerPack !== p!.piecesPerPack ||
+              receiptUnit(input.individualUnit) !==
+                receiptUnit(p!.individualUnit)
+            )
+              fail(
+                "The part or slip unit changed. Review the package size and confirm again.",
+              );
+            // Explicitly confirmed EA means one complete package. Preserve the
+            // ordered/delivered counts and price; do not multiply by pack size.
+            l.unit = p!.bulkUnit!;
+          }
           l.partId = p!.id;
           l.photoUrl = p!.imageUrl;
         } else {

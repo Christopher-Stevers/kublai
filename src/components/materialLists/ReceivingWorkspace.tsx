@@ -43,7 +43,7 @@ import type {
   ReceiptKind,
 } from "~/lib/receiving-review";
 import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
-import { lineReadings } from "~/lib/packing-slip-review";
+import { lineReadings, receiptUnit } from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import {
   partFit,
@@ -2515,6 +2515,7 @@ const addPart = (
   run: (a: Action) => Promise<boolean>,
   line: ReceivingLine,
   p: Part,
+  packageUnitConfirmed = false,
 ) =>
   run({
     action: "part",
@@ -2531,6 +2532,7 @@ const addPart = (
     individualUnit: (p.individualUnit ?? "").slice(0, 32),
     photoUrl: null,
     addToOrder: true,
+    packageUnitConfirmed,
   });
 function PartChoice({
   part: p,
@@ -2538,13 +2540,17 @@ function PartChoice({
   primary,
   disabled,
   onAdd,
+  line,
 }: {
+  line: ReceivingLine;
   part: Part;
   note?: string;
   primary?: boolean;
   disabled?: boolean;
-  onAdd: () => void;
+  onAdd: (confirmed?: boolean) => void;
 }) {
+  const [confirm, setConfirm] = useState(false);
+  const needsConfirmation = receiptUnit(line.unit) === "ea" && !!p.piecesPerPack && p.piecesPerPack > 1 && !!p.unit && receiptUnit(p.unit) !== "ea";
   return (
     <li className="flex items-center gap-3 px-3 py-2">
       {p.photoUrl ? (
@@ -2567,11 +2573,31 @@ function PartChoice({
         variant={primary ? "default" : "outline"}
         aria-label={`Add ${p.name} to the list`}
         disabled={disabled}
-        onClick={onAdd}
+        onClick={() => needsConfirmation ? setConfirm(true) : onAdd()}
       >
         <PlusIcon />
         Add to list
       </Button>
+      <Dialog open={confirm} onOpenChange={setConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm what “each” means</DialogTitle>
+            <DialogDescription>
+              {p.name}: one {p.unit} contains {p.piecesPerPack} {p.individualUnit || "pieces"}.
+              Does 1 {line.unit || "EA"} on the slip mean one complete {p.unit}?
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">
+            Ordered: {line.ordered ?? line.quantity ?? "not entered"} {p.unit}.
+            Delivered: {line.quantity ?? "not entered"} {p.unit}.
+            The counts stay the same. You will still review and approve the delivery.
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirm(false)}>Cancel</Button>
+            <Button onClick={() => { setConfirm(false); onAdd(true); }}>Yes, add as {p.unit}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </li>
   );
 }
@@ -2620,6 +2646,7 @@ function AddToList({
             <PartChoice
               key={p.id}
               part={p}
+              line={line}
               primary={i === 0}
               disabled={!counted}
               note={
@@ -2631,7 +2658,7 @@ function AddToList({
                       ? "Close match"
                       : "Possible match"
               }
-              onAdd={() => void addPart(run, line, p)}
+              onAdd={(confirmed) => void addPart(run, line, p, confirmed)}
             />
           ))}
         </ul>
@@ -2762,8 +2789,9 @@ function PartDraft({
               <PartChoice
                 key={p.id}
                 part={p}
+                line={line}
                 disabled={blocked}
-                onAdd={() => void addPart(run, line, p)}
+                onAdd={(confirmed) => void addPart(run, line, p, confirmed)}
               />
             ))}
           </ul>

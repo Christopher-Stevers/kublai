@@ -1965,8 +1965,9 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     ).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
-  it("offers likely catalogue parts for a line not on the order and adds the chosen one to the list", async () => {
+  it.each([false, true])("adds a likely part, confirming complete package units when needed (%s)", async (packaged) => {
     const { access, doc } = await confirmedHeader();
+    if (packaged) await db.insert(schema.units).values({ id: id(90), code: "length", displayName: "Length", kind: "quantity" });
     await db
       .update(schema.jobs)
       .set({ foremanUserId: "receiver" })
@@ -2002,7 +2003,9 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         organizationId: org,
         catalogId: id(50),
         displayName: displayName as string,
-        bulkUnit: "ea",
+        bulkUnit: packaged ? "length" : "ea",
+        piecesPerPack: packaged ? 12 : null,
+        individualUnit: packaged ? "ft" : null,
       })),
     );
     await reviewAction(access, doc.documentId, {
@@ -2012,7 +2015,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       sku: "W07002",
       quantity: 4,
       ordered: null,
-      unit: "",
+      unit: packaged ? "EA" : "",
       unitPrice: null,
       orderItemId: null,
       checked: true,
@@ -2021,19 +2024,25 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     const before = await receivingQueue(foreman, doc.documentId);
     // The 3/4" elbow is a different size, so it is not offered.
     expect(before.likely?.["0"]?.map((p) => p.id)).toEqual([id(60), id(62)]);
-    await reviewAction(access, doc.documentId, {
+    const action = {
       action: "part",
       lineId: "0",
       partId: id(60),
       name: '1/2" Copper 90 Elbow C x C',
       description: "",
       catalogId: id(50),
-      unit: "ea",
-      piecesPerPack: null,
-      individualUnit: "ea",
+      unit: packaged ? "length" : "ea",
+      piecesPerPack: packaged ? 12 : null,
+      individualUnit: packaged ? "ft" : "ea",
       photoUrl: null,
       addToOrder: true,
-    });
+      packageUnitConfirmed: packaged,
+    } as const;
+    if (packaged) {
+      await expect(reviewAction(access, doc.documentId, { ...action, packageUnitConfirmed: false })).rejects.toThrow(/Confirm whether/);
+      await expect(reviewAction(access, doc.documentId, { ...action, piecesPerPack: 20 })).rejects.toThrow(/changed/);
+    }
+    await reviewAction(access, doc.documentId, action);
     const added = (await db.select().from(schema.orderItems)).find(
       (i) => i.partDefinitionId === id(60),
     )!;
@@ -2041,7 +2050,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       orderId: order,
       quantity: "4.000000",
       requestedQuantity: "0.000000",
-      uomId: id(51),
+      uomId: packaged ? id(90) : id(51),
     });
     expect(
       (await db.select().from(schema.quoteItems)).map((q) => q.sentOrderItemId),
@@ -2050,8 +2059,9 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(line).toMatchObject({
       orderItemId: added.id,
       partId: id(60),
-      unit: "ea",
+      unit: packaged ? "length" : "ea",
       ordered: 4,
+      quantity: 4,
     });
     // The supplier's code and words now lead to the part on the next slip.
     expect(

@@ -136,6 +136,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     photoUrl: text.max(2000).nullable(),
     /** Also add it to the linked order and its material list. */
     addToOrder: z.boolean().default(false),
+    /** Reviewer confirms each means one complete catalogue package/length. */
+    packageUnitConfirmed: z.boolean().default(false),
   }),
   z.object({
     ...base,
