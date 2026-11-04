@@ -45,6 +45,12 @@ import type {
 import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
 import { lineReadings } from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
+import {
+  partFit,
+  type PartFacts,
+  type PartFit,
+  type PartUpdate,
+} from "~/lib/slip-part-fit";
 import type { JobDocument } from "~/server/documents/types";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -116,6 +122,9 @@ type Detail = {
     imageUrl: string | null;
   }>;
   canCreate: boolean;
+  /** The catalogue part behind each order item, for suggested part fixes. */
+  orderParts?: Record<string, PartFacts>;
+  canEditParts?: boolean;
   scannedBy: string;
   sourceUrl: string;
   sourceMimeType?: string;
@@ -1978,6 +1987,128 @@ function OrderComparison({
     </div>
   );
 }
+/** Asks how to read a slip count that disagrees with its order part, and
+ * shows the part changes that would let the next slip match on its own. */
+function PartFitDialog({
+  fit,
+  item,
+  unit,
+  onClose,
+  onChoose,
+}: {
+  fit: PartFit | null;
+  item: ReceiptOrderItem | undefined;
+  unit: string;
+  onClose: () => void;
+  onChoose: (over?: {
+    quantity?: number;
+    unit?: string;
+    fit?: PartUpdate;
+  }) => void;
+}) {
+  const change = !!fit?.rows.length,
+    read = fit?.read ?? null,
+    counted = fit && item ? `${fit.quantity} ${item.unit}` : "";
+  return (
+    <Dialog open={!!fit && !!item} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+        {fit && item && (
+          <>
+            <DialogHeader>
+              <DialogTitle>
+                {change
+                  ? "Update this part to match the slip?"
+                  : `Receive ${counted}?`}
+              </DialogTitle>
+              <DialogDescription>{fit.reason}</DialogDescription>
+            </DialogHeader>
+            {change && (
+              <div className="min-w-0 space-y-2 text-sm">
+                <p className="font-medium break-words">{item.description}</p>
+                <table className="w-full table-fixed text-left">
+                  <thead className="text-muted-foreground text-xs">
+                    <tr>
+                      <th className="w-[34%] pb-1 font-normal">
+                        <span className="sr-only">Detail</span>
+                      </th>
+                      <th className="w-[24%] pb-1 font-normal">Now</th>
+                      <th className="pb-1 font-normal">Change to</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fit.rows.map((r) => (
+                      <tr key={r.label} className="border-t align-top">
+                        <th
+                          scope="row"
+                          className="text-muted-foreground py-2 pr-3 font-normal"
+                        >
+                          {r.label}
+                        </th>
+                        <td className="text-muted-foreground py-2 pr-3">
+                          {r.before}
+                        </td>
+                        <td className="py-2 font-medium break-words">
+                          {r.after}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-muted-foreground text-xs">
+                  Next time, a slip like this one matches without asking.
+                </p>
+              </div>
+            )}
+            {fit.held && (
+              <p className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+                {fit.held}
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
+              {change && (
+                <Button
+                  onClick={() =>
+                    onChoose({
+                      fit: fit.update,
+                      ...(read === null
+                        ? {}
+                        : { quantity: fit.quantity, unit: item.unit }),
+                    })
+                  }
+                >
+                  <CheckIcon />
+                  {read === null
+                    ? "Update part and confirm"
+                    : `Update part and receive ${counted}`}
+                </Button>
+              )}
+              {read === null ? (
+                <Button variant="outline" onClick={() => onChoose()}>
+                  Confirm only
+                </Button>
+              ) : (
+                <Button
+                  variant={change ? "outline" : "default"}
+                  onClick={() =>
+                    onChoose({ quantity: fit.quantity, unit: item.unit })
+                  }
+                >
+                  {!change && <CheckIcon />}
+                  {change ? `Receive ${counted} only` : `Receive ${counted}`}
+                </Button>
+              )}
+              {read !== null && (
+                <Button variant="ghost" onClick={() => onChoose()}>
+                  Keep {read} {unit || item.unit}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 const slipViewerHref = (jobId: string, detail: Detail) =>
   `/jobs/${jobId}/documents?document=${detail.document.id}&from=receiving`;
 function LineReview({
@@ -2026,21 +2157,56 @@ function LineReview({
       ? (l.sourceBox ?? source?.box)
       : undefined;
   const terra = terraCheck(l, detail);
-  const save = (asChecked: boolean) =>
+  const save = (
+    asChecked: boolean,
+    over: { quantity?: number; unit?: string; fit?: PartUpdate } = {},
+  ) =>
     run({
       action: "line",
       lineId: l.id,
       kind: kind || null,
       description: name,
       sku,
-      quantity: quantity === "" ? null : Number(quantity),
+      quantity: over.quantity ?? (quantity === "" ? null : Number(quantity)),
       ordered: ordered === "" ? null : Number(ordered),
-      unit,
+      unit: over.unit ?? unit,
       unitPrice: price === "" ? null : Number(price),
       orderItemId: item || null,
       checked: asChecked,
+      ...(over.fit && Object.keys(over.fit).length ? { fit: over.fit } : {}),
     });
   const complete = !!item && quantity !== "";
+  const chosen = detail.items.find((i) => i.id === item);
+  // A slip line that disagrees with its order part asks before it is
+  // confirmed: how to read the count, and what to change on the part.
+  const [fit, setFit] = useState<PartFit | null>(null);
+  const confirm = async () => {
+    const found =
+      chosen && quantity !== ""
+        ? partFit(
+            chosen,
+            {
+              quantity: Number(quantity),
+              read: l.quantity,
+              unit,
+              description: name,
+              sku,
+              evidence: l.evidence,
+            },
+            detail.orderParts?.[chosen.id],
+            {
+              byHand: item !== (l.orderItemId ?? ""),
+              canEdit: !!detail.canEditParts,
+            },
+          )
+        : null;
+    if (found) setFit(found);
+    else if (await save(true)) onDone();
+  };
+  const finish = async (over?: Parameters<typeof save>[1]) => {
+    setFit(null);
+    if (await save(true, over)) onDone();
+  };
   if (l.ignored)
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
@@ -2261,12 +2427,7 @@ function LineReview({
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              disabled={!complete}
-              onClick={async () => {
-                if (await save(true)) onDone();
-              }}
-            >
+            <Button disabled={!complete} onClick={() => void confirm()}>
               <CheckIcon />
               {editing ? "Save and confirm" : "Looks right"}
             </Button>
@@ -2295,6 +2456,13 @@ function LineReview({
               </Button>
             )}
           </div>
+          <PartFitDialog
+            fit={fit}
+            item={chosen}
+            unit={unit}
+            onClose={() => setFit(null)}
+            onChoose={(over) => void finish(over)}
+          />
           {!complete && (
             <p className="text-muted-foreground -mt-1 text-xs">
               Match a part and enter the quantity to confirm this line.

@@ -395,6 +395,71 @@ it("lists every order item beside the slip reading and its reader", async () => 
     checked: true,
   });
 });
+it("offers to set a part's pack size when the slip counts pieces", async () => {
+  Object.assign(state.review.lines[0]!, {
+    description: "HEX NUT GR2 ZC,3/8-16",
+    sku: "HN38G2ZB",
+    evidence: "HN38G2ZB HEX NUT GR2 ZC,3/8-16 2500 2500 0",
+    quantity: 2500,
+    unit: "box",
+  });
+  Object.assign(state.items[0]!, {
+    description: "HEX NUT GR2 ZINC 3/8-16 - BULK (Bulk Box = 2500pcs)",
+    unit: "box",
+    ordered: 1,
+    received: 0,
+  });
+  const part = {
+    partId: "part",
+    name: "Hex nut",
+    bulkUnit: null,
+    supplierSku: null,
+    supplierName: null,
+    units: ["box"],
+  };
+  Object.assign(state, { canEditParts: true, orderParts: { item: part } });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: /HEX NUT GR2/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
+  const ask = await screen.findByRole("dialog", {
+    name: "Update this part to match the slip?",
+  });
+  expect(ask).toHaveTextContent(
+    "The slip shows 2500 where the order needs 1 box. That is 1 box of 2500 ea each.",
+  );
+  expect(ask).toHaveTextContent("Pack sizeNot set2500 ea per box");
+  expect(ask).toHaveTextContent("Supplier codeNot setHN38G2ZB");
+  expect(posts).toEqual([]);
+  fireEvent.click(
+    within(ask).getByRole("button", { name: "Update part and receive 1 box" }),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "line",
+    orderItemId: "item",
+    quantity: 1,
+    unit: "box",
+    checked: true,
+    fit: {
+      piecesPerPack: 2500,
+      individualUnit: "ea",
+      bulkUnit: "box",
+      supplierSku: "HN38G2ZB",
+      supplierName: "HEX NUT GR2 ZC,3/8-16",
+    },
+  });
+  // Without the right to edit parts, it only offers to read the count.
+  cleanup();
+  Object.assign(state, { canEditParts: false });
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: /HEX NUT GR2/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
+  const read = await screen.findByRole("dialog", { name: "Receive 1 box?" });
+  fireEvent.click(within(read).getByRole("button", { name: "Keep 2500 box" }));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[1]).toMatchObject({ quantity: 2500, unit: "box" });
+  expect(posts[1]).not.toHaveProperty("fit");
+});
 it("asks to allow over-delivery only when a line exceeds what is due", async () => {
   render(<ReceivingWorkspace jobId="job" />);
   fireEvent.click(

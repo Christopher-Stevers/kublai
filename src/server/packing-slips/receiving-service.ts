@@ -50,7 +50,11 @@ import { trialDocument } from "./trial-store";
 import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { canCreateFromSlip } from "./receiving-access";
 import { catalogueFor, forgetCatalogue } from "./catalogue-match";
-import { publishMaterialListEvent } from "~/server/material-list-events";
+import { applyPartFit, orderPartFacts } from "./part-fit";
+import {
+  publishMaterialListEvent,
+  publishOrganizationCatalogueEvent,
+} from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
 import { comparisonRows } from "./order-comparison";
@@ -281,6 +285,7 @@ export async function receivingQueue(
     orderOptions,
     mayCreate,
     members,
+    orderParts,
   ] = await Promise.all([
     db
       .select({ id: suppliers.id, name: suppliers.name })
@@ -331,6 +336,9 @@ export async function receivingQueue(
       .orderBy(desc(orders.createdAt)),
     canCreateFromSlip(access, db),
     documentMembers(access),
+    doc.packingSlip
+      ? orderPartFacts(db, access, doc.packingSlip.orderId)
+      : Promise.resolve<Awaited<ReturnType<typeof orderPartFacts>>>({}),
   ]);
   // Likely catalogue parts for lines not on the order, which a reviewer who
   // may add parts can put on the material list, and the typed search.
@@ -437,6 +445,9 @@ export async function receivingQueue(
     likely,
     photoSuggestions,
     canCreate: mayCreate,
+    /** The catalogue part behind each order item, for fixes a slip suggests. */
+    orderParts,
+    canEditParts: userCan(access.user, "parts.edit") || mayCreate,
     scannedBy:
       members.find((m) => m.id === doc.createdBy)?.name ??
       "Organization member",
@@ -510,6 +521,12 @@ async function history(
     },
   });
 }
+/** Fixing a part's pack size or supplier code from a slip: anyone who may
+ * edit parts, or add them from a slip. */
+const canEditParts = async (
+  access: DocumentAccess,
+  reader: Pick<Tx, "select">,
+) => userCan(access.user, "parts.edit") || canCreateFromSlip(access, reader);
 async function requireCreate(access: DocumentAccess, tx: Tx) {
   if (!(await canCreateFromSlip(access, tx)))
     fail(
@@ -957,7 +974,19 @@ async function mutateReceivingImpl(
             fail(
               `Enter the quantity in ${item!.unit}, the order’s unit. Convert packs or lengths explicitly.`,
             );
-        }
+          if (input.fit) {
+            if (!(await canEditParts(fresh, tx)))
+              fail("You do not have permission to edit parts.", "FORBIDDEN");
+            await applyPartFit(
+              tx,
+              fresh,
+              doc.packingSlip!.orderId,
+              item!.id,
+              item!.unit,
+              input.fit,
+            );
+          }
+        } else if (input.fit) fail("Match an order part first.");
         if (!input.unit.trim()) {
           l.unit = "";
           defaultReviewUnit(l, quantityUnit);
@@ -1543,5 +1572,9 @@ async function mutateReceivingImpl(
   // New parts and supplier listings change the likely parts.
   if (["part", "extra", "reconstruct"].includes(input.action))
     forgetCatalogue(access.job.organizationId);
+  if (input.action === "line" && input.fit) {
+    forgetCatalogue(access.job.organizationId);
+    publishOrganizationCatalogueEvent(access.job.organizationId);
+  }
   return result;
 }

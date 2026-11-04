@@ -67,6 +67,17 @@ export const receivingInput = z.discriminatedUnion("action", [
     unitPrice: z.number().finite().min(0).max(999999).nullable(),
     orderItemId: z.uuid().nullable(),
     checked: z.boolean(),
+    /** Part changes the reviewer accepted so the next slip matches. */
+    fit: z
+      .object({
+        piecesPerPack: z.number().int().min(2).max(100000).optional(),
+        individualUnit: text.min(1).max(32).optional(),
+        bulkUnit: text.min(1).max(32).optional(),
+        supplierSku: text.min(1).max(255).optional(),
+        supplierName: text.min(1).max(700).optional(),
+        alias: text.min(1).max(255).optional(),
+      })
+      .optional(),
   }),
   z.object({
     ...base,

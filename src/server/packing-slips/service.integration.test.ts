@@ -107,6 +107,7 @@ vi.mock("./analyze", () => ({
 }));
 vi.mock("~/server/material-list-events", () => ({
   publishMaterialListEvent: vi.fn(),
+  publishOrganizationCatalogueEvent: vi.fn(),
 }));
 vi.mock("./find-order-service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./find-order-service")>();
@@ -2151,5 +2152,128 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(
       (await db.select().from(schema.partDefinitions)).map((p) => p.id),
     ).toEqual([id(5)]);
+  });
+  it("gives an order part the pack size and supplier listing a slip shows", async () => {
+    await db.insert(schema.suppliers).values({
+      id: id(80),
+      organizationId: org,
+      name: "Jev",
+      kind: "external",
+    });
+    await db
+      .update(schema.orders)
+      .set({ supplierId: id(80) })
+      .where(eq(schema.orders.id, order));
+    await db.insert(schema.units).values({
+      id: id(81),
+      code: "box",
+      displayName: "Box",
+      kind: "quantity",
+    });
+    await db
+      .update(schema.orderItems)
+      .set({ uomId: id(81) })
+      .where(eq(schema.orderItems.id, id(6)));
+    const { access, doc } = await confirmedHeader();
+    const facts = (await receivingQueue(access, doc.documentId)).orderParts;
+    expect(facts?.[id(6)]).toEqual({
+      partId: id(5),
+      name: "Valve",
+      bulkUnit: null,
+      supplierSku: null,
+      supplierName: null,
+      units: ["box"],
+    });
+    const line = {
+      action: "line",
+      lineId: "0",
+      description: "HEX NUT GR2 ZC,3/8-16",
+      sku: "HN38G2ZB",
+      quantity: 1,
+      ordered: null,
+      unit: "box",
+      unitPrice: null,
+      orderItemId: id(6),
+      checked: true,
+    };
+    const fit = {
+      piecesPerPack: 2500,
+      individualUnit: "ea",
+      bulkUnit: "box",
+      supplierSku: "HN38G2ZB",
+      supplierName: "HEX NUT GR2 ZC,3/8-16",
+    };
+    // A list that counts the part in another unit keeps its pack size as is.
+    await db
+      .insert(schema.quoteItems)
+      .values({ id: id(82), partDefinitionId: id(5), uomId: id(51) } as never);
+    await expect(
+      reviewAction(access, doc.documentId, { ...line, fit }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await db.select().from(schema.supplierParts)).length).toBe(0);
+    await db.delete(schema.quoteItems).where(eq(schema.quoteItems.id, id(82)));
+    // A code another part already uses stays with that part.
+    await db.insert(schema.partDefinitions).values({
+      id: id(83),
+      organizationId: org,
+      catalogId: id(50),
+      displayName: "Other nut",
+    });
+    await db.insert(schema.supplierParts).values({
+      id: id(84),
+      organizationId: org,
+      supplierId: id(80),
+      partDefinitionId: id(83),
+      supplierSku: "HN38G2ZB",
+    });
+    await expect(
+      reviewAction(access, doc.documentId, { ...line, fit }),
+    ).rejects.toThrow("already belongs to another part");
+    await db
+      .delete(schema.supplierParts)
+      .where(eq(schema.supplierParts.id, id(84)));
+    await reviewAction(access, doc.documentId, {
+      ...line,
+      fit: { ...fit, alias: "Hex nut 3/8" },
+    });
+    const part = (await db.select().from(schema.partDefinitions)).find(
+      (p) => p.id === id(5),
+    )!;
+    expect(part).toMatchObject({
+      piecesPerPack: 2500,
+      individualUnit: "ea",
+      bulkUnit: "box",
+    });
+    expect(await db.select().from(schema.supplierParts)).toMatchObject([
+      {
+        supplierId: id(80),
+        partDefinitionId: id(5),
+        supplierSku: "HN38G2ZB",
+        supplierName: "HEX NUT GR2 ZC,3/8-16",
+      },
+    ]);
+    expect(
+      (await db.select().from(schema.partSynonyms)).map((s) => s.synonym),
+    ).toEqual(["Hex nut 3/8"]);
+    // The order still counts boxes, now of 2500 pieces.
+    expect((await orderSnapshot(db, access, order))[0]).toMatchObject({
+      unit: "box",
+      piecesPerPack: 2500,
+      individualUnit: "ea",
+    });
+    // Nothing set is overwritten.
+    await expect(
+      reviewAction(access, doc.documentId, {
+        ...line,
+        fit: { piecesPerPack: 100 },
+      }),
+    ).rejects.toThrow("already has a pack size");
+    await reviewAction(access, doc.documentId, {
+      ...line,
+      fit: { supplierSku: "NEW", supplierName: "Other name" },
+    });
+    expect(await db.select().from(schema.supplierParts)).toMatchObject([
+      { supplierSku: "HN38G2ZB", supplierName: "HEX NUT GR2 ZC,3/8-16" },
+    ]);
   });
 });
