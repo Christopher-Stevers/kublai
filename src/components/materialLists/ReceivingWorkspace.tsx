@@ -264,7 +264,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [accounted, setAccounted] = useState(false),
     [openLine, setOpenLine] = useState<string | null>(null),
     [trialResults, setTrialResults] = useState<TrialResults | null>(null),
-    [changingOrder, setChangingOrder] = useState(false);
+    [changingOrder, setChangingOrder] = useState(false),
+    [showLines, setShowLines] = useState(false);
   const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
@@ -414,6 +415,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         ? "done"
         : "active";
   const linesWaiting = !orderConfirmed || repeat || supporting;
+  // Once every line is approved or excluded, the list folds like the steps above.
+  const linesDone = !linesWaiting && active > 0 && !remaining;
   const canApprove =
     !!r?.kindConfirmed &&
     !!r.orderConfirmed &&
@@ -822,7 +825,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 </Step>
                 <Step
                   n={2}
-                  title="Order"
+                  title="Match Order"
                   state={orderStep}
                   meta={
                     orderStep === "waiting"
@@ -860,23 +863,30 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 </Step>
                 <Step
                   n={3}
-                  title="Compare with the order"
+                  title="Line By Line Matching"
                   action={
-                    !linesWaiting && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={slipViewerHref(jobId, detail)}>
-                          <FileTextIcon />
-                          View slip
-                        </Link>
+                    linesDone ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-expanded={showLines}
+                        onClick={() => setShowLines(!showLines)}
+                      >
+                        {showLines ? "Hide lines" : "Show lines"}
                       </Button>
+                    ) : (
+                      !linesWaiting && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={slipViewerHref(jobId, detail)}>
+                            <FileTextIcon />
+                            View slip
+                          </Link>
+                        </Button>
+                      )
                     )
                   }
                   state={
-                    linesWaiting
-                      ? "waiting"
-                      : active && !remaining
-                        ? "done"
-                        : "active"
+                    linesWaiting ? "waiting" : linesDone ? "done" : "active"
                   }
                   meta={
                     linesWaiting
@@ -893,7 +903,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       .join(" · ") || "No lines yet"
                   }
                 >
-                  {!linesWaiting && (
+                  {!linesWaiting && (!linesDone || showLines) && (
                     <>
                       {active > 0 && (
                         <div aria-hidden className="bg-muted flex h-1">

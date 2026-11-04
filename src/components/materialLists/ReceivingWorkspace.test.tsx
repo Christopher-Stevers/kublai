@@ -156,7 +156,7 @@ it("shows source issues and never receives automatically", async () => {
 it("opens the slip in the documents viewer from step 3", async () => {
   render(<ReceivingWorkspace jobId="job" />);
   const step = await screen.findByRole("region", {
-    name: "Step 3: Compare with the order",
+    name: "Step 3: Line By Line Matching",
   });
   expect(within(step).getByRole("link", { name: "View slip" })).toHaveAttribute(
     "href",
@@ -253,11 +253,13 @@ it("confirms the matched order in one tap and only then compares lines", async (
   state.review.orderConfirmed = false;
   state.review.kindConfirmed = false;
   render(<ReceivingWorkspace jobId="job" />);
-  const order = await screen.findByRole("region", { name: "Step 2: Order" });
+  const order = await screen.findByRole("region", {
+    name: "Step 2: Match Order",
+  });
   expect(order).toHaveTextContent("Matched order");
   expect(order).toHaveTextContent("PO-155");
   expect(
-    screen.getByRole("region", { name: "Step 3: Compare with the order" }),
+    screen.getByRole("region", { name: "Step 3: Line By Line Matching" }),
   ).toHaveTextContent("After the order is confirmed.");
   expect(screen.queryByRole("heading", { name: "Valve" })).toBeNull();
   fireEvent.click(
@@ -302,7 +304,7 @@ it("warns about a repeat scan first and records what it is", async () => {
   expect(check).toHaveTextContent("Earlier slip.jpg");
   expect(check).toHaveTextContent("It has already been received.");
   expect(
-    screen.getByRole("region", { name: "Step 2: Order" }),
+    screen.getByRole("region", { name: "Step 2: Match Order" }),
   ).toHaveTextContent("After the duplicate check.");
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
@@ -780,4 +782,26 @@ it("confirms the one order above 90% confidence without asking", async () => {
     supplierId: "other",
     confirmed: true,
   });
+});
+it("folds line by line matching once every line is approved or excluded", async () => {
+  state.review.lines[0]!.approved = {
+    itemId: "item",
+    quantity: 6,
+    kind: "delivery",
+    by: "receiver",
+    at: "now",
+  };
+  Object.assign(state.review.lines[1]!, { ignored: true });
+  render(<ReceivingWorkspace jobId="job" />);
+  const step = await screen.findByRole("region", {
+    name: "Step 3: Line By Line Matching",
+  });
+  expect(step).toHaveTextContent("1 approved");
+  expect(within(step).queryByRole("heading", { name: "Valve" })).toBeNull();
+  fireEvent.click(within(step).getByRole("button", { name: "Show lines" }));
+  expect(
+    within(step).getByRole("heading", { name: "Valve" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(step).getByRole("button", { name: "Hide lines" }));
+  expect(within(step).queryByRole("heading", { name: "Valve" })).toBeNull();
 });
