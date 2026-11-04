@@ -141,7 +141,7 @@ async function main() {
         assert.equal(row.supplierSku, null);
         assert.equal(row.lastKnownUnitCost, null);
       }
-      assert.deepEqual(afterAttributes, attributes.filter((a) => !removeAttributes.some((r) => r.id === a.id)));
+      assert.deepEqual([...afterAttributes], attributes.filter((a) => !removeAttributes.some((r) => r.id === a.id)));
       for (const old of aliases.filter((a) => !removeAliases.some((r) => r.id === a.id)))
         assert.deepEqual(afterAliases.find((a) => a.id === old.id), old);
       assert.equal(afterAliases.length, aliases.length + newAliases.length - removeAliases.length);
