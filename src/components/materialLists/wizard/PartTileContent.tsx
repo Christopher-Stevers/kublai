@@ -37,7 +37,7 @@ export function PartTileContent({
             fill
             // Tiles are at most 2in wide, less their padding.
             sizes="168px"
-            className="part-photo object-cover"
+            className="part-photo object-contain p-1"
             draggable={false}
           />
         ) : (

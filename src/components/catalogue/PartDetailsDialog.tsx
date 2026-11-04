@@ -1226,7 +1226,7 @@ export function PartDetailsDialog({
                       src={previewImageUrl}
                       alt="Part preview"
                       fill
-                      className="object-contain p-1.5"
+                      className="part-photo object-contain p-1.5"
                       unoptimized
                     />
                   ) : (
@@ -1957,7 +1957,7 @@ export function PartDetailsDialog({
                         src={choice.imageUrl}
                         alt=""
                         fill
-                        className="object-cover"
+                        className="part-photo object-contain p-1"
                         unoptimized
                       />
                     </div>
@@ -2001,7 +2001,7 @@ export function PartDetailsDialog({
                       src={previewImageUrl}
                       alt=""
                       fill
-                      className="object-cover"
+                      className="part-photo object-contain p-1"
                       unoptimized
                     />
                   </div>

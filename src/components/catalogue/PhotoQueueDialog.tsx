@@ -211,7 +211,7 @@ function PhotoLibrary() {
                   src={asset.url}
                   alt={asset.originalFilename ?? "Catalogue photo"}
                   fill
-                  className="object-contain p-2"
+                  className="part-photo object-contain p-2"
                   unoptimized
                 />
               </div>
@@ -550,7 +550,7 @@ export function PhotoQueueDialog({
                       src={imageUrl}
                       alt={`${currentGroup.familyLabel} preview`}
                       fill
-                      className="object-contain p-2"
+                      className="part-photo object-contain p-2"
                       unoptimized
                     />
                   ) : (

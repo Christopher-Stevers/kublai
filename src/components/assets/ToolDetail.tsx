@@ -60,7 +60,7 @@ export function ToolDetail({ id, tag }: { id?: string; tag?: string }) {
             <div className="bg-card flex gap-4 rounded-lg border p-4">
               {tool.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tool.imageUrl} alt="" className="h-24 w-24 shrink-0 rounded-md border object-contain" />
+                <img src={tool.imageUrl} alt="" className="part-photo h-24 w-24 shrink-0 rounded-md border object-contain p-1" />
               )}
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">

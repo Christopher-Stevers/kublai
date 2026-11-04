@@ -732,7 +732,7 @@ function MaterialListItemComponent({
                 fill
                 // Cards are under 300px wide unless one fills a phone screen.
                 sizes="(max-width: 420px) 100vw, 300px"
-                className="part-photo object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                className="part-photo object-contain p-1"
                 draggable={false}
                 onContextMenu={
                   verifyMode ? (event) => event.preventDefault() : undefined

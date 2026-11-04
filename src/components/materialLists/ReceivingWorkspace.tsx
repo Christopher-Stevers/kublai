@@ -2427,7 +2427,7 @@ function PartChoice({
         <img
           alt=""
           src={p.photoUrl}
-          className="size-12 shrink-0 rounded object-contain"
+          className="part-photo size-12 shrink-0 rounded object-contain p-1"
         />
       ) : (
         <span aria-hidden className="bg-muted size-12 shrink-0 rounded" />
