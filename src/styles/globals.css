@@ -137,25 +137,52 @@
   .save-check-tick { animation: save-check-draw 260ms 140ms ease-out backwards; }
 }
 
-/* Product imagery always shows the entire part. Do not crop, zoom, or fade
-   product edges: long fittings must remain identifiable in every thumbnail. */
+/* Keep each complete source photo contained; the separate dark-mode treatment
+   below preserves the original softened frame appearance. */
 .part-photo {
   object-fit: contain;
   object-position: center;
   padding: 0.25rem;
   transform: none;
 }
-/* Fade only the white padding around the photograph, never the fitting.
-   The mask becomes fully opaque before the contained image starts. */
+/* Part photos are shot on white. In dark mode, dim them and soften the
+   border: a narrow fade straddles the photo's edge, half inside and half
+   outside it. In a .part-photo-frame the photo is drawn 3% larger on each
+   side and the frame stops clipping, so the outer half shows past the edge. */
 .dark .part-photo {
-  padding: 8px;
-  background: #fff;
   filter: brightness(0.78) contrast(0.96);
   mask-image:
-    linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent),
-    linear-gradient(to bottom, transparent, #000 6px, #000 calc(100% - 6px), transparent);
+    linear-gradient(
+      to right,
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
+    );
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
+}
+.dark .part-photo-frame:has(> .part-photo) {
+  overflow: visible;
+  background: transparent;
+}
+/* next/image sets the fill position inline, so these need !important. */
+.dark .part-photo-frame > .part-photo {
+  inset: -3% !important;
+  width: 106% !important;
+  max-width: none;
+  height: 106% !important;
 }
 
 @theme {
