@@ -1243,6 +1243,7 @@ export async function confirmSlipReceipt(
                     ? null
                     : item.unit),
                 item,
+                `${line.description ?? ""} ${line.evidence}`,
               )
             : null;
       }

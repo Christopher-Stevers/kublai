@@ -1,4 +1,9 @@
-import type { ReceiptOrderItem, SlipLine } from "~/lib/packing-slip-review";
+import {
+  convertSlipQuantity,
+  orderPack,
+  type ReceiptOrderItem,
+  type SlipLine,
+} from "~/lib/packing-slip-review";
 import type { OrderMatchComparison } from "~/lib/order-match-comparison";
 import { lineScorer, matchLines } from "./match";
 
@@ -20,8 +25,18 @@ export function comparisonRows(
     description: item.description,
     quantity: item.originalOrdered ?? item.ordered,
     unit: item.unit,
-    piecesPerPack: item.piecesPerPack,
+    piecesPerPack: orderPack(item),
   });
+  // The slip's figure in the order's unit, where it counts something else
+  // (1000 EA against 1 box of 1000).
+  const inOrderUnit = (line: SlipLine, item: ReceiptOrderItem | undefined) => {
+    if (!item || line.shipped === null) return null;
+    const text = `${line.description ?? ""} ${line.evidence}`;
+    // A bare count of a packed item may be packs or pieces; the order decides.
+    const unit = line.unit ?? (orderPack(item, text) ? "ea" : item.unit);
+    const amount = convertSlipQuantity(line.shipped, unit, item, text);
+    return amount === null || amount === line.shipped ? null : amount;
+  };
   const rows: OrderMatchComparison["rows"] = lines.map((line, index) => {
     const item =
       items.find((item) => item.id === line.orderItemId) ??
@@ -44,6 +59,7 @@ export function comparisonRows(
           : line.evidence,
         quantity: line.shipped,
         unit: line.unit,
+        inOrderUnit: inOrderUnit(line, item),
       },
     };
   });

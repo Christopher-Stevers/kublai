@@ -49,7 +49,12 @@ export function trialDraft(input: {
       const item = input.items.find((i) => i.id === l.orderItemId);
       const converted =
         l.shipped !== null && item
-          ? convertSlipQuantity(Math.abs(l.shipped), l.unit, item)
+          ? convertSlipQuantity(
+              Math.abs(l.shipped),
+              l.unit,
+              item,
+              `${l.description ?? ""} ${l.evidence}`,
+            )
           : null;
       return {
         page: l.page,

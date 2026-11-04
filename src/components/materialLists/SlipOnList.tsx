@@ -347,6 +347,7 @@ function SlipPartBody({
                       line.handwritten!,
                       line.unit ?? (pack ? null : item.unit),
                       item,
+                      `${line.description ?? ""} ${line.evidence}`,
                     );
                     if (written === null) return;
                     setText(

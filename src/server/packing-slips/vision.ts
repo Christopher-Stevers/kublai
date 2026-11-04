@@ -11,6 +11,9 @@ import { z } from "zod";
 import {
   convertSlipQuantity,
   MATCH_ISSUE,
+  orderPack,
+  readSlipQuantity,
+  receiptUnit,
   type ReceiptOrderItem,
   type SlipBox,
   type SlipLine,
@@ -1770,14 +1773,20 @@ export function settleHidden(r: Reading, items: ReceiptOrderItem[]): Reading {
 /** The unit of a quantity printed without one: the order's, or pieces where
  * only that fits a packed item's order. Null where packs and pieces both fit,
  * or neither does. */
-export function assumedUnit(item: ReceiptOrderItem, amount: number) {
-  if (!(item.piecesPerPack && item.piecesPerPack > 1))
+export function assumedUnit(
+  item: ReceiptOrderItem,
+  amount: number,
+  slipText?: string | null,
+) {
+  const pack = orderPack(item, slipText);
+  // An order in EA whose pack size is only written down: the count is read
+  // as packs or pieces against the order later.
+  if (!pack || (!(item.piecesPerPack && item.piecesPerPack > 1) && ["ea", "ft", "in", "m"].includes(receiptUnit(item.unit))))
     return {
       unit: item.unit,
       note: `No unit printed; counted as ${item.unit}.`,
     };
-  const pack = item.piecesPerPack,
-    near = (n: number) => n <= Math.max(item.ordered, 1) * 1.5;
+  const near = (n: number) => n <= Math.max(item.ordered, 1) * 1.5;
   const packs = near(amount),
     pieces = amount > 0 && amount % pack === 0 && near(amount / pack);
   if (packs === pieces)
@@ -1805,6 +1814,7 @@ export function checkAgainstOrder(
     const issues: string[] = [],
       notes = [...r.notes];
     const item = typeof r.part === "number" ? items[r.part] : undefined;
+    const text = `${r.band.table?.description ?? ""} ${r.band.evidence}`;
     const sure = `${Math.round(r.partConf * 100)}%`;
     if (!item)
       issues.push(
@@ -1825,8 +1835,7 @@ export function checkAgainstOrder(
           "Check the product: several slip lines match this order item.",
         );
       const remaining = item.ordered - item.received;
-      const pack =
-        item.piecesPerPack && item.piecesPerPack > 1 ? item.piecesPerPack : 0;
+      const pack = orderPack(item, text) ?? 0;
       const fits = (q: number) =>
         [item.ordered, remaining].some(
           (o) =>
@@ -1845,14 +1854,14 @@ export function checkAgainstOrder(
           `Check the product: the slip shows ${r.ordered} ordered; the order has ${item.ordered} ${item.unit}.`,
         );
       if (!unit && r.shipped !== null) {
-        const assumed = assumedUnit(item, r.shipped);
+        const assumed = assumedUnit(item, r.shipped, text);
         unit = assumed.unit;
         if (assumed.note) notes.push(assumed.note);
         if (assumed.issue) issues.push(assumed.issue);
       }
       const inOrderUnit =
         r.shipped !== null && unit
-          ? convertSlipQuantity(r.shipped, unit, item)
+          ? convertSlipQuantity(r.shipped, unit, item, text)
           : null;
       if (inOrderUnit !== null && inOrderUnit > remaining + 1e-6)
         issues.push(
@@ -1893,10 +1902,12 @@ export function checkAgainstOrder(
       notes.push(`Pen marks on this line agree with the printed ${r.shipped}.`);
     if (r.backordered !== null && r.backordered > 0)
       notes.push(`${r.backordered} ${unit ?? "units"} backordered on slip.`);
-    let proposed =
+    const read =
       item && r.shipped !== null && !issues.length
-        ? convertSlipQuantity(r.shipped, unit, item)
+        ? readSlipQuantity(r.shipped, unit, item, text)
         : null;
+    if (read?.note) notes.push(read.note);
+    let proposed = read?.amount ?? null;
     if (item && r.shipped !== null && !issues.length && proposed === null) {
       issues.push("Confirm the quantity and its unit manually.");
       proposed = null;

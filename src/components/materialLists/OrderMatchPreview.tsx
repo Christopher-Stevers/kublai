@@ -227,6 +227,13 @@ export function OrderMatchPreview({
                             {row.slip ? (
                               <>
                                 {row.slip.quantity ?? "Unread"} {row.slip.unit}
+                                {row.order &&
+                                row.slip.inOrderUnit !== undefined &&
+                                row.slip.inOrderUnit !== null ? (
+                                  <span className="text-muted-foreground block text-xs">
+                                    = {row.slip.inOrderUnit} {row.order.unit}
+                                  </span>
+                                ) : null}
                               </>
                             ) : (
                               "—"

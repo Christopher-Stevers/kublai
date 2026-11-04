@@ -27,7 +27,7 @@ const line: SlipLine = {
   proposed: 250,
   issues: [],
 };
-it("preserves printed quantities and missing units instead of inferring a pack conversion", () => {
+it("keeps printed quantities and units, adding the pack reading the order fits", () => {
   const before = JSON.stringify({ item, line });
   expect(comparisonRows([item], [line])).toEqual([
     {
@@ -38,10 +38,24 @@ it("preserves printed quantities and missing units instead of inferring a pack c
         unit: "box",
         piecesPerPack: 25,
       },
-      slip: { description: "Rod hanger", quantity: 250, unit: null },
+      // 250 pieces is the 10 boxes of 25 ordered.
+      slip: { description: "Rod hanger", quantity: 250, unit: null, inOrderUnit: 10 },
     },
   ]);
   expect(JSON.stringify({ item, line })).toBe(before);
+});
+it("reads a slip's 1000 EA as the 1 box of 1000 ordered", () => {
+  const box = { ...item, ordered: 1, originalOrdered: 1, piecesPerPack: 1000 };
+  const [row] = comparisonRows([box], [{ ...line, shipped: 1000, unit: "EA" }]);
+  expect(row?.slip).toMatchObject({ quantity: 1000, unit: "EA", inOrderUnit: 1 });
+  const [same] = comparisonRows([box], [{ ...line, shipped: 1, unit: "BX" }]);
+  expect(same?.slip?.inOrderUnit).toBeNull();
+});
+it("finds a pack size written only in the description", () => {
+  const screws = { ...item, description: "#8 x 1-1/4 deck screw 1000/BX", unit: "ea", piecesPerPack: null, ordered: 1, originalOrdered: 1 };
+  const [row] = comparisonRows([screws], [{ ...line, shipped: 1000, unit: "EA" }]);
+  expect(row?.order?.piecesPerPack).toBe(1000);
+  expect(row?.slip?.inOrderUnit).toBe(1);
 });
 it("shows unmatched rows on both sides instead of implying an alignment", () => {
   const rows = comparisonRows(

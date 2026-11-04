@@ -28,6 +28,7 @@ export function lineAmount(
     line.shipped,
     line.unit ?? (pack ? null : item.unit),
     item,
+    `${line.description ?? ""} ${line.evidence}`,
   );
 }
 

@@ -3,6 +3,7 @@ import { recordModelCall, recordPipelineStage } from "./trace";
 import { z } from "zod";
 import {
   convertSlipQuantity,
+  readSlipQuantity,
   slipReading,
   type ReceiptOrderItem,
   type SlipBox,
@@ -406,17 +407,20 @@ async function assistRows(
         issues.push("Shipped quantity could not be read confidently.");
       if (row.words.some((w) => w.confidence < 60))
         issues.push("Some text is unclear.");
-      const proposed =
+      const read =
         item && shipped !== null && issues.length === 0
-          ? convertSlipQuantity(shipped, unit, item)
+          ? readSlipQuantity(shipped, unit, item, row.text)
           : null;
+      const proposed = read?.amount ?? null;
       if (item && shipped !== null && proposed === null)
         issues.push("Confirm the quantity and its unit manually.");
       // Backorders are tracked, not a reason to discard a valid shipped quantity.
-      const notes =
-        backordered !== null && backordered > 0
+      const notes = [
+        ...(read?.note ? [read.note] : []),
+        ...(backordered !== null && backordered > 0
           ? [`${backordered} ${unit ?? "units"} backordered on slip.`]
-          : [];
+          : []),
+      ];
       lines.push({
         page: row.page,
         evidence: row.text,
@@ -553,6 +557,7 @@ function tableLines(
   return parsed.map(({ line, code, description }, index) => {
     const match = matches[index]!;
     const item = items.find((i) => i.id === match.itemId);
+    const text = `${code} ${description} ${line.text}`;
     const issues: string[] = [],
       notes: string[] = [],
       matchIssues = new Set<string>();
@@ -643,15 +648,20 @@ function tableLines(
       else if (match.confidence === "medium")
         notes.push("Matched by description. Check it is the same product.");
       if (!unit) {
-        const assumed = assumedUnit(item, shipped ?? ordered ?? 0);
+        const assumed = assumedUnit(item, shipped ?? ordered ?? 0, text);
         unit = assumed.unit;
         if (assumed.note) notes.push(assumed.note);
         if (assumed.issue) issues.push(assumed.issue);
       }
+      // The slip may print the ordered count in pieces of a packed item.
+      const orderedPacks =
+        ordered === null
+          ? null
+          : (convertSlipQuantity(ordered, unit, item, text) ?? ordered);
       if (
-        ordered !== null &&
-        Math.abs(ordered - item.ordered) > 1e-6 &&
-        Math.abs(ordered - (item.ordered - item.received)) > 1e-6
+        orderedPacks !== null &&
+        Math.abs(orderedPacks - item.ordered) > 1e-6 &&
+        Math.abs(orderedPacks - (item.ordered - item.received)) > 1e-6
       )
         notes.push(
           `Slip shows ${ordered} ordered; the order has ${item.ordered} ${item.unit}.`,
@@ -660,7 +670,12 @@ function tableLines(
     // Earlier deliveries count toward the order even when the slip has no
     // previously-shipped column; compare in the slip's own unit.
     const perSlipUnit =
-      item && unit ? convertSlipQuantity(1, unit, item) : null;
+      item && unit && shipped !== null && shipped > 0
+        ? (convertSlipQuantity(shipped, unit, item, text) ?? 0) / shipped ||
+          null
+        : item && unit
+          ? convertSlipQuantity(1, unit, item, text)
+          : null;
     const before = item && perSlipUnit ? item.received / perSlipUnit : null;
     const adds = (done: number) =>
       Math.abs(ordered! - done - shipped! - backordered!) < 1e-6;
@@ -695,10 +710,12 @@ function tableLines(
       .flat()
       .some((w) => w.confidence < 60);
     if (unclear && !issues.length) notes.push("Some text is unclear.");
-    let proposed =
+    const read =
       item && shipped !== null && !issues.length
-        ? convertSlipQuantity(shipped, unit, item)
+        ? readSlipQuantity(shipped, unit, item, text)
         : null;
+    if (read?.note) notes.push(read.note);
+    let proposed = read?.amount ?? null;
     if (item && shipped !== null && !issues.length && proposed === null)
       issues.push("Confirm the quantity and its unit manually.");
     if (issues.length) proposed = null;

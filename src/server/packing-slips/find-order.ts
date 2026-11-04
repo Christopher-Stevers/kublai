@@ -4,7 +4,11 @@
  * evidence. */
 import { readSlipTable } from "./read-table";
 import type { SlipWord } from "./ocr-rows";
-import { receiptUnit, type ReceiptOrderItem } from "~/lib/packing-slip-review";
+import {
+  convertSlipQuantity,
+  receiptUnit,
+  type ReceiptOrderItem,
+} from "~/lib/packing-slip-review";
 import { lineScorer, prepareScoringLine } from "./match";
 import { EVIDENCE, prepared, type VisionAsk } from "./vision";
 
@@ -99,12 +103,13 @@ export function findOrder(
       )
         continue;
       const item = order.items.find((i) => i.id === top.itemId);
+      const unit = line.cells.unit?.map((w) => w.text).join(" ");
+      // A packed item's slip may count boxes or the pieces in them.
       if (
         item &&
-        line.cells.unit?.length &&
-        receiptUnit(line.cells.unit.map(w => w.text).join(" ")) === receiptUnit(item.unit) &&
-        !(item.piecesPerPack && item.piecesPerPack > 1) &&
-        Number(raw) === item.ordered
+        unit &&
+        receiptUnit(unit) &&
+        convertSlipQuantity(Number(raw), unit, item, line.text) === item.ordered
       )
         quantityItems.add(item.id);
     }

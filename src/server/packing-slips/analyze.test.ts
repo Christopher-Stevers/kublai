@@ -8,7 +8,10 @@ import {
 } from "./analyze";
 import {
   convertSlipQuantity,
+  orderPack,
+  packSizesIn,
   proposedReceipts,
+  readSlipQuantity,
   receiptIssues,
   type ReceiptOrderItem,
   type SlipAnalysis,
@@ -85,6 +88,14 @@ it("copies shipped values, matches exact SKU, preserves backorders and converts 
   expect(explicitSlipUnit([header, line], line)).toBe("ea");
   expect(numberCandidates(line).map((n) => n.value)).toEqual([10, 6, 4]);
 });
+it("reads a slip counting the pieces of a box of 1000 against the box ordered", async () => {
+  const box = { ...item, ordered: 1, received: 0, unit: "box", piecesPerPack: 1000, individualUnit: "pcs" };
+  const pieces = row(["ABC123", "Brass valve", "1000", "1000", "0", "ea"], 0.2);
+  const result = await analyzeSlip([header, pieces], [box], run);
+  expect(result.lines[0]).toMatchObject({ orderItemId: "a", shipped: 1000, unit: "ea", proposed: 1, issues: [] });
+  expect(result.lines[0]!.notes).toContain("Slip counts pieces: 1000 ea = 1 box (1000 per box).");
+  expect(result.lines[0]!.notes!.join(" ")).not.toContain("Slip shows");
+});
 it("withholds unclear OCR and duplicate-page proposals", async () => {
   const uncertain = await analyzeSlip(
     [header, row(["ABC123", "Brass valve", "10", "6", "4", "ea"], 0.2, 40)],
@@ -134,7 +145,7 @@ it("does not invent missing values or resolve duplicate SKU order lines", async 
   const missing = await analyzeSlip([line], [item], none);
   expect(missing.lines[0]!.shipped).toBeNull();
 });
-it("keeps pack quantities separate from pieces and refuses ambiguous EA on a pack", () => {
+it("keeps pack quantities separate from pieces and reads EA on a pack by what the order fits", () => {
   const box = {
     ...item,
     unit: "box",
@@ -143,7 +154,13 @@ it("keeps pack quantities separate from pieces and refuses ambiguous EA on a pac
   };
   expect(convertSlipQuantity(200, "pcs", box)).toBe(2);
   expect(convertSlipQuantity(2, "boxes", box)).toBe(2);
-  expect(convertSlipQuantity(2, "ea", box)).toBeNull();
+  // 2 boxes fits an order of 10; 0.02 of a box does not.
+  expect(convertSlipQuantity(2, "ea", box)).toBe(2);
+  // 800 pieces is the 8 boxes still due, 1000 the 10 ordered.
+  expect(convertSlipQuantity(800, "ea", box)).toBe(8);
+  expect(convertSlipQuantity(1000, "EA", box)).toBe(10);
+  // 1 box of 2 or 2 boxes: both fit an order of 3, so someone checks.
+  expect(convertSlipQuantity(2, "ea", { ...box, ordered: 3, received: 0, piecesPerPack: 2 })).toBeNull();
   expect(convertSlipQuantity(20, null, box)).toBeNull();
   expect(convertSlipQuantity(30, "ft", box)).toBeNull();
   expect(convertSlipQuantity(-1, "box", box)).toBeNull();
@@ -168,4 +185,47 @@ it("reports real processing stages and leaves final duplicate checks authoritati
   expect(progress[0]?.stage).toBe("matching");
   expect(progress.at(-1)?.stage).toBe("checking");
   expect(progress.at(-1)?.lines).toEqual(result.lines);
+});
+
+it("reads 1000 EA on a slip as the one box of 1000 ordered", () => {
+  const box = { ...item, ordered: 1, received: 0, unit: "box", piecesPerPack: 1000, individualUnit: "pcs" };
+  expect(readSlipQuantity(1000, "EA", box)).toEqual({
+    amount: 1,
+    note: "Slip counts pieces: 1000 EA = 1 box (1000 per box).",
+  });
+  expect(readSlipQuantity(1, "EA", box)).toEqual({
+    amount: 1,
+    note: "Slip's 1 EA counts whole box, not pieces.",
+  });
+  expect(convertSlipQuantity(1, "BX", box)).toBe(1);
+  // More than ordered either way: left for a person.
+  expect(convertSlipQuantity(5000, "EA", box)).toBeNull();
+});
+
+it("uses a pack size written in the description when the catalogue has none", () => {
+  const screws = { ...item, description: "#8 x 1-1/4 deck screw 1000/BX", ordered: 1, received: 0 };
+  expect(orderPack(screws)).toBe(1000);
+  expect(convertSlipQuantity(1000, "EA", screws)).toBe(1);
+  expect(convertSlipQuantity(1, "BX", screws)).toBe(1);
+  // Ordered as pieces: the slip's box is a thousand of them.
+  const pieces = { ...screws, ordered: 1000 };
+  expect(convertSlipQuantity(1, "BX", pieces)).toBe(1000);
+  expect(convertSlipQuantity(1000, "EA", pieces)).toBe(1000);
+  // The slip's own description can say it too.
+  expect(convertSlipQuantity(1000, "EA", { ...item, ordered: 1, received: 0 }, "DECK SCREW BOX OF 1000")).toBe(1);
+  // Without a pack size, nothing changes.
+  expect(convertSlipQuantity(1000, "EA", { ...item, ordered: 1, received: 0 })).toBe(1000);
+});
+
+it("finds pack sizes in descriptions without taking dimensions for them", () => {
+  expect(packSizesIn("SCREW 1000/BX")).toEqual([1000]);
+  expect(packSizesIn("Hanger (100 pieces per box)")).toEqual([100]);
+  expect(packSizesIn("BOX OF 250")).toEqual([250]);
+  expect(packSizesIn("Wire nut 100PK")).toEqual([100]);
+  expect(packSizesIn("PEX 250 FT/ROLL")).toEqual([250]);
+  expect(packSizesIn("Rebar 10/BDL")).toEqual([10]);
+  expect(packSizesIn("1/2 copper elbow")).toEqual([]);
+  expect(packSizesIn("3/4 x 10' pipe")).toEqual([]);
+  expect(packSizesIn("2 PC union 1-1/4")).toEqual([]);
+  expect(packSizesIn("Flange CL-150 / CS-300")).toEqual([]);
 });

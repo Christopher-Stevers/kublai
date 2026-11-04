@@ -16,6 +16,8 @@ export type OrderMatchComparison = {
       description: string;
       quantity: number | null;
       unit: string | null;
+      /** The slip's figure in the order's unit, where the slip counts differently. */
+      inOrderUnit?: number | null;
     } | null;
   }>;
 };

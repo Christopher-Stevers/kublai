@@ -1049,7 +1049,12 @@ async function mutateReceivingImpl(
             const converted =
               l.quantity === null
                 ? null
-                : convertSlipQuantity(l.quantity, l.unit, item);
+                : convertSlipQuantity(
+                    l.quantity,
+                    l.unit,
+                    item,
+                    `${l.description} ${l.evidence}`,
+                  );
             if (converted !== null) {
               l.quantity = converted;
               l.unit = item.unit;
