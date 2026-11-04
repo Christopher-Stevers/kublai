@@ -364,13 +364,13 @@ it("lists every order item beside the slip reading and its reader", async () => 
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
   ).toEqual(["Valve", "Elbow", "No matching part"]);
   const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
-  expect(valve).toHaveTextContent("8 eaStill due");
+  expect(valve).toHaveTextContent("ValveOrdered10 eaReceived2 ea8 ea still due");
   const terra = within(valve).getByRole("group", { name: "Terra 6.1 reading" });
   expect(terra).toHaveTextContent("98%");
   expect(terra).toHaveTextContent("6 ea");
   expect(terra).toHaveTextContent("2 ea short");
   const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
-  expect(elbow).toHaveTextContent("4 eaStill due");
+  expect(elbow).toHaveTextContent("4 ea still due");
   expect(elbow).toHaveTextContent("Not on the slip");
   const pipe = screen
     .getByRole("heading", { name: "Unclear pipe" })
@@ -625,12 +625,12 @@ it("shows every reader's part match and quantity confidence", async () => {
       .getAllByRole("group")
       .map((g) => g.textContent);
   // The most confident reader first; the others behind one toggle.
-  expect(readers()).toEqual(["Terra 6.197%Valve6 ea2 ea short2 other readers"]);
+  expect(readers()).toEqual(["Terra 6.197%ValveOrdered—Received6 ea2 ea short2 other readers"]);
   fireEvent.click(within(valve).getByRole("button", { name: /2 other readers/ }));
   expect(readers()).toEqual([
-    "Terra 6.197%Valve6 ea2 ea shortHide other readers",
-    "Jev Image80%Valve6 ea2 ea short",
-    "OCR only48%Valve5 ea3 ea short",
+    "Terra 6.197%ValveOrdered—Received6 ea2 ea shortHide other readers",
+    "Jev Image80%ValveOrdered—Received6 ea2 ea short",
+    "OCR only48%ValveOrdered—Received5 ea3 ea short",
   ]);
 });
 it("says when Terra found no product on a row and leaves it out in one tap", async () => {
@@ -650,7 +650,9 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
   ).closest("li")!;
   expect(
     within(pipe).getByRole("group", { name: "Jev Image reading" }),
-  ).toHaveTextContent("Jev Image63%Unclear pipeNot read");
+  ).toHaveTextContent(
+    "Jev Image63%Unclear pipeOrdered—ReceivedNot read",
+  );
   expect(pipe).toHaveTextContent("Terra 6.1 found no product here");
   fireEvent.click(screen.getByRole("button", { name: "Unclear pipe" }));
   fireEvent.click(

@@ -47,6 +47,7 @@ import {
   lineReadings,
   readSlipQuantity,
   receiptUnit,
+  slipReader,
 } from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import {
@@ -1604,6 +1605,8 @@ function sourceLine(l: ReceivingLine, detail: Detail) {
 }
 type ModelReading = {
   reader: TrialReader;
+  /** The slip's ordered column, when this reader's row is the one kept. */
+  ordered: number | null;
   shipped: number | null;
   unit: string | null;
   match: number | null;
@@ -1616,6 +1619,7 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
     return [
       {
         reader: l.predictionSource.reader,
+        ordered: l.ordered,
         shipped: l.humanEdited ? null : l.quantity,
         unit: l.unit,
         match: c.match.value,
@@ -1627,6 +1631,7 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
   if (source)
     return lineReadings(source).map((r) => ({
       ...r,
+      ordered: r.reader === slipReader(source) ? (source.ordered ?? null) : null,
       shipped: r.shipped === null ? null : Math.abs(r.shipped),
     }));
   if (!l.readingSource) return [];
@@ -1634,6 +1639,7 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
   return [
     {
       reader: l.readingSource.reader,
+      ordered: l.ordered,
       shipped: l.humanEdited ? null : l.quantity,
       unit: l.unit,
       match: c ? (c.match ?? c.part) : null,
@@ -1729,9 +1735,34 @@ function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
 }
 const copyLabel =
   "text-muted-foreground text-[11px] font-medium tracking-wide uppercase";
-const copyText = "mt-0.5 text-sm font-medium break-words";
-const copyQty = "mt-1 text-base font-semibold tabular-nums";
-const copyNote = "mt-0.5 text-xs";
+const copyText = "mt-0.5 pb-2 text-sm font-medium break-words";
+const copyNote = "mt-1.5 text-xs";
+/** Ordered over received, in the same type on both sides of a row. */
+function QuantityPair({
+  ordered,
+  received,
+  unit,
+}: {
+  ordered: number | null;
+  received: number | null;
+  unit: string;
+}) {
+  // Many dockets have no ordered column, so a blank there is not a misread.
+  const shown = (n: number | null, blank: string) =>
+    n === null ? (
+      <span className="text-muted-foreground font-normal">{blank}</span>
+    ) : (
+      `${n} ${unit}`.trim()
+    );
+  return (
+    <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-y-0.5 border-t pt-2 text-sm">
+      <dt className="text-muted-foreground text-xs">Ordered</dt>
+      <dd className="font-semibold tabular-nums">{shown(ordered, "—")}</dd>
+      <dt className="text-muted-foreground text-xs">Received</dt>
+      <dd className="font-semibold tabular-nums">{shown(received, "Not read")}</dd>
+    </dl>
+  );
+}
 type Verdict = { ok: boolean; label: string; text: string };
 /** Whether a count, already in the order's unit, covers what is still due. */
 function dueVerdict(item: ReceiptOrderItem, got: number): Verdict {
@@ -1781,6 +1812,7 @@ type ReaderCopy = {
   label: string;
   score: number | null;
   description: string;
+  ordered: number | null;
   shipped: number | null;
   unit: string;
   verdict: Verdict | null;
@@ -1814,6 +1846,7 @@ function readerCopies({
         label: "Slip",
         score: null,
         description: "",
+        ordered: null,
         shipped: null,
         unit: "",
         verdict: null,
@@ -1833,6 +1866,7 @@ function readerCopies({
       label,
       score: null,
       description: describe(shown.map((l) => l.description)),
+      ordered: sum(shown.map((l) => l.ordered)),
       shipped: sum(shown.map((l) => l.quantity)),
       unit: shown[0]!.unit,
       verdict: item ? compareToOrder(item, lines) : null,
@@ -1841,6 +1875,7 @@ function readerCopies({
   const byReader = new Map<string, ReaderCopy & { texts: string[] }>();
   const add = (
     reader: TrialReader,
+    ordered: number | null,
     shipped: number | null,
     unit: string | null,
     score: number | null,
@@ -1848,6 +1883,10 @@ function readerCopies({
   ) => {
     const copy = byReader.get(reader);
     if (copy) {
+      copy.ordered =
+        copy.ordered === null || ordered === null
+          ? null
+          : qtyRound(copy.ordered + ordered);
       copy.shipped =
         copy.shipped === null || shipped === null
           ? null
@@ -1861,6 +1900,7 @@ function readerCopies({
       label: readerLabels[reader],
       score,
       description: "",
+      ordered,
       shipped,
       unit: unit ?? "",
       verdict: null,
@@ -1868,10 +1908,18 @@ function readerCopies({
     });
   };
   for (const x of readings)
-    add(x.reader, x.shipped, x.unit, meanScore(x.match, x.quantity), x.line.description);
+    add(
+      x.reader,
+      x.ordered,
+      x.shipped,
+      x.unit,
+      meanScore(x.match, x.quantity),
+      x.line.description,
+    );
   for (const { reader, t } of trialReadings)
     add(
       reader,
+      t.ordered,
       t.shipped,
       t.unit,
       meanScore(t.confidence.match.value, t.confidence.quantity.value),
@@ -1989,12 +2037,12 @@ function OrderComparison({
               {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
                 <div
                   key={copy.key}
-                  className={`relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] items-stretch gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "py-3"}`}
+                  className={`relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "py-3"}`}
                 >
                   {c === 0 ? (
                     <span
                       aria-hidden
-                      className={`mt-5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                      className={`row-span-4 mt-5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
                     >
                       {status === "approved" ? (
                         <CheckIcon className="size-3.5" />
@@ -2003,10 +2051,10 @@ function OrderComparison({
                       )}
                     </span>
                   ) : (
-                    <span />
+                    <span className="row-span-4" />
                   )}
                   <div
-                    className={`min-w-0 ${c ? "text-muted-foreground" : ""}`}
+                    className={`row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
                   >
                     <p className={copyLabel}>Order</p>
                     {c === 0 ? (
@@ -2028,24 +2076,30 @@ function OrderComparison({
                     ) : (
                       <p className={copyText}>{orderText}</p>
                     )}
-                    <p className={copyQty}>
-                      {item ? `${due} ${item.unit}` : "—"}
-                    </p>
+                    {item ? (
+                      <QuantityPair
+                        ordered={item.ordered}
+                        received={item.received}
+                        unit={item.unit}
+                      />
+                    ) : (
+                      <p className="text-muted-foreground border-t pt-2 text-sm">
+                        Not on the order
+                      </p>
+                    )}
                     <p className={copyNote}>
-                      {item ? (
+                      {item && (
                         <>
-                          {due > 0 ? "Still due" : "All received"}
+                          {due > 0 ? `${due} ${item.unit} still due` : "All received"}
                           {item.sku && ` · ${item.sku}`}
                         </>
-                      ) : (
-                        "Not on the order"
                       )}
                     </p>
                   </div>
                   <div
                     role="group"
                     aria-label={`${copy.label} reading`}
-                    className="min-w-0 border-l pl-3"
+                    className="row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3"
                   >
                     <p className={copyLabel}>
                       {copy.label}
@@ -2058,19 +2112,25 @@ function OrderComparison({
                       )}
                     </p>
                     {copy.missing ? (
-                      <p className={`${copyText} text-muted-foreground`}>
-                        Not on the slip
-                      </p>
+                      <>
+                        <p className={`${copyText} text-muted-foreground`}>
+                          Not on the slip
+                        </p>
+                        <span />
+                      </>
                     ) : (
                       <>
                         <p className={copyText}>{copy.description || "—"}</p>
-                        <p className={copyQty}>
-                          {copy.shipped === null ? (
-                            <span className={amber.text}>Not read</span>
-                          ) : (
-                            `${copy.shipped} ${copy.unit}`
-                          )}
-                        </p>
+                        <QuantityPair
+                          ordered={copy.ordered}
+                          received={copy.shipped}
+                          unit={copy.unit}
+                        />
+                      </>
+                    )}
+                    <div>
+                      {!copy.missing && (
+                        <>
                         {copy.verdict && (
                           <p
                             className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
@@ -2088,8 +2148,8 @@ function OrderComparison({
                             {tone.label}
                           </p>
                         )}
-                      </>
-                    )}
+                        </>
+                      )}
                     {c === 0 && copies.length > 1 && (
                       <button
                         type="button"
@@ -2105,14 +2165,15 @@ function OrderComparison({
                         />
                       </button>
                     )}
+                    </div>
                   </div>
                   {c === 0 && lines.length > 0 ? (
                     <ChevronDownIcon
                       aria-hidden
-                      className={`text-muted-foreground mt-5 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                      className={`text-muted-foreground row-span-4 mt-5 size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
                     />
                   ) : (
-                    <span />
+                    <span className="row-span-4" />
                   )}
                 </div>
               ))}
