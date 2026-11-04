@@ -1,4 +1,10 @@
 import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
+import {
+  convertSlipQuantity,
+  lineReadings,
+  receiptUnit,
+  type ReceiptOrderItem,
+} from "./packing-slip-review";
 
 export type ReceiptKind = "delivery" | "return-replacement" | "return-credit";
 export type ReceivingLine = {
@@ -40,6 +46,8 @@ export type ReceivingLine = {
   };
   ignored?: { reason: string; by: string; at: string };
   checked?: boolean;
+  /** Response-only confirmation, recalculated from current saved reader evidence. */
+  autoConfirmed?: boolean;
 };
 export type ReceivingReview = {
   sourceTrial?: {
@@ -187,9 +195,67 @@ export function readyLine(l: ReceivingLine) {
     l.quantity !== null &&
     Number.isFinite(l.quantity) &&
     l.quantity > 0 &&
-    (l.checked === true || l.issues.length === 0)
+    (l.checked === true || l.autoConfirmed === true || l.issues.length === 0)
   );
 }
+
+/** One reader must support both the displayed part and quantity at 90% or more.
+ * This confirms a proposal, never posts a receipt or replaces a human decision. */
+export function autoConfirmsLine(
+  line: ReceivingLine,
+  review: ReceivingReview,
+  analysis: SlipAnalysis | undefined,
+  currentVersionId: string | null | undefined,
+  items: ReceiptOrderItem[],
+) {
+  if (
+    line.humanEdited ||
+    line.ignored ||
+    line.approved ||
+    review.retiredBy ||
+    analysis?.status !== "ready" ||
+    review.versionId !== currentVersionId ||
+    analysis.versionId !== currentVersionId ||
+    review.analysisRunId !== analysis.runId ||
+    (line.readingSource?.analysisRunId ?? analysis.runId) !== analysis.runId ||
+    line.sourceIndex === undefined ||
+    line.quantity === null ||
+    !Number.isFinite(line.quantity) ||
+    line.quantity <= 0
+  )
+    return false;
+  const source = analysis.lines[line.sourceIndex];
+  const item = items.find((i) => i.id === line.orderItemId);
+  if (
+    !item ||
+    source?.orderItemId !== item.id ||
+    receiptUnit(line.unit) !== receiptUnit(item.unit)
+  )
+    return false;
+  return lineReadings(source).some((reading) => {
+    if (
+      reading.orderItemId !== item.id ||
+      reading.shipped === null ||
+      reading.match === null ||
+      reading.match < 0.9 ||
+      reading.match > 1 ||
+      reading.quantity === null ||
+      reading.quantity < 0.9 ||
+      reading.quantity > 1 ||
+      !Number.isFinite(reading.match) ||
+      !Number.isFinite(reading.quantity)
+    )
+      return false;
+    const quantity = convertSlipQuantity(
+      Math.abs(reading.shipped),
+      reading.unit?.trim() ? reading.unit : item.unit,
+      item,
+      source.evidence,
+    );
+    return quantity !== null && qtyRound(quantity) === qtyRound(line.quantity!);
+  });
+}
+
 export function receiptDelta(
   kind: ReceiptKind,
   quantity: number,

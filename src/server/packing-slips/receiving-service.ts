@@ -29,6 +29,7 @@ import { mutateWorkspace, readWorkspace } from "~/server/documents/service";
 import type { JobDocument, DocumentState } from "~/server/documents/types";
 import {
   initialReview,
+  autoConfirmsLine,
   defaultReviewUnit,
   lineKind,
   duplicateEvidence,
@@ -272,11 +273,19 @@ export async function receivingQueue(
   const linked = doc.packingSlip
     ? await orderSnapshot(db, access, doc.packingSlip.orderId)
     : [];
-  for (const line of review.lines)
+  for (const line of review.lines) {
     defaultReviewUnit(
       line,
       linked.find((i) => i.id === line.orderItemId)?.unit,
     );
+    line.autoConfirmed = autoConfirmsLine(
+      line,
+      review,
+      doc.packingSlipAnalysis,
+      doc.currentVersionId,
+      linked,
+    );
+  }
   const [
     supplierOptions,
     catalogOptions,
@@ -1446,7 +1455,17 @@ async function mutateReceivingImpl(
           );
           if (l.ignored || !l.orderItemId || l.quantity === null)
             fail("Every selected line needs a matched part and a quantity.");
-          if (!l.checked && l.issues.length)
+          if (
+            !l.checked &&
+            l.issues.length &&
+            !autoConfirmsLine(
+              l,
+              review,
+              doc.packingSlipAnalysis,
+              doc.currentVersionId,
+              snapshot,
+            )
+          )
             fail(
               "Check the flagged lines against the source before approving.",
             );

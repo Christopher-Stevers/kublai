@@ -1321,6 +1321,123 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     ).toBe(true);
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
+  async function confidentSavedSlip() {
+    const fixture = await confirmedHeader();
+    const state = await workspace();
+    const doc = state.documents[0]!;
+    doc.packingSlipAnalysis!.lines[0]!.readings = [
+      {
+        reader: "ocr",
+        shipped: null,
+        unit: "ea",
+        orderItemId: id(6),
+        match: 0.95,
+        quantity: 0,
+      },
+      {
+        reader: "jev",
+        shipped: 6,
+        unit: "ea",
+        orderItemId: id(6),
+        match: 0.9,
+        quantity: 0.9,
+      },
+      {
+        reader: "terra",
+        shipped: 6,
+        unit: "ea",
+        orderItemId: id(6),
+        match: 0.99,
+        quantity: 0.99,
+      },
+    ];
+    doc.receivingReview!.lines[0]!.issues = [
+      "Check shipped quantity against the slip.",
+    ];
+    doc.receivingReview!.lines[0]!.checked = false;
+    await db
+      .update(schema.jobDocumentWorkspaces)
+      .set({ state })
+      .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    return fixture;
+  }
+  it("auto-confirms saved reader evidence on read, then posts only on explicit approval", async () => {
+    const { access, doc } = await confidentSavedSlip();
+    const before = await workspace();
+    const detail = await receivingQueue(access, doc.documentId);
+    expect(detail.review!.lines[0]).toMatchObject({
+      autoConfirmed: true,
+      checked: false,
+      quantity: 6,
+    });
+    expect(await workspace()).toEqual(before);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    await reviewAction(access, doc.documentId, {
+      action: "approve",
+      lineIds: ["0"],
+      fingerprint: await finger(access),
+    });
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+    expect(
+      (await workspace()).documents[0]!.receivingReview!.lines[0]!.approved
+        ?.quantity,
+    ).toBe(6);
+  });
+  it("does not auto-confirm a human-edited quantity from the original high-confidence prediction", async () => {
+    const { access, doc } = await confidentSavedSlip();
+    await reviewAction(access, doc.documentId, {
+      action: "line",
+      lineId: "0",
+      description: "Valve",
+      sku: "",
+      quantity: 7,
+      ordered: 10,
+      unit: "ea",
+      unitPrice: null,
+      orderItemId: id(6),
+      checked: false,
+    });
+    const detail = await receivingQueue(access, doc.documentId);
+    expect(detail.review!.lines[0]!.autoConfirmed).toBe(false);
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "approve",
+        lineIds: ["0"],
+        fingerprint: await finger(access),
+      }),
+    ).rejects.toThrow("Check the flagged lines");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+
+  it("recalculates confidence at approval instead of trusting a stale auto-confirmed flag", async () => {
+    const { access, doc } = await confidentSavedSlip();
+    expect(
+      (await receivingQueue(access, doc.documentId)).review!.lines[0]!
+        .autoConfirmed,
+    ).toBe(true);
+    const state = await workspace();
+    const saved = state.documents[0]!;
+    saved.receivingReview!.lines[0]!.autoConfirmed = true;
+    for (const reading of saved.packingSlipAnalysis!.lines[0]!.readings!)
+      reading.quantity = 0.89;
+    await db
+      .update(schema.jobDocumentWorkspaces)
+      .set({ state })
+      .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    expect(
+      (await receivingQueue(access, doc.documentId)).review!.lines[0]!
+        .autoConfirmed,
+    ).toBe(false);
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "approve",
+        lineIds: ["0"],
+        fingerprint: await finger(access),
+      }),
+    ).rejects.toThrow("Check the flagged lines");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+
   it("new queue approves once under concurrent requests and preserves unresolved lines", async () => {
     const { access, doc } = await confirmedHeader();
     const legacyState = await workspace();

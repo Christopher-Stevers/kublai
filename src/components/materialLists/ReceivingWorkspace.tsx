@@ -171,7 +171,7 @@ const approvable = (l: ReceivingLine, k: ReceiptKind) =>
   !!l.orderItemId &&
   l.quantity !== null &&
   (l.quantity > 0 || !!l.approved) &&
-  (l.checked === true || !l.issues.length) &&
+  (l.checked === true || l.autoConfirmed === true || !l.issues.length) &&
   changed(l, k);
 type LineStatus =
   | "review"
@@ -2261,7 +2261,7 @@ function LineReview({
                 Not a product, leave it out
               </Button>
             </div>
-          ) : l.issues.length > 0 && !l.checked && (
+          ) : l.issues.length > 0 && !l.checked && !l.autoConfirmed && (
             <p className="text-sm">
               {sourceBox
                 ? "The reading is unsure. Check the slip image above."

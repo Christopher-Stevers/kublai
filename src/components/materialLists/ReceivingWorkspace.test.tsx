@@ -907,3 +907,26 @@ it("folds line by line matching once every line is approved or excluded", async 
   fireEvent.click(within(step).getByRole("button", { name: "Hide lines" }));
   expect(within(step).queryByRole("heading", { name: "Valve" })).toBeNull();
 });
+
+
+it("includes an auto-confirmed flagged line in review without posting on load", async () => {
+  Object.assign(state.review.lines[0]!, {
+    checked: false,
+    autoConfirmed: true,
+    issues: ["Check quantity"],
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const approve = await screen.findByRole("button", {
+    name: "Review & approve",
+  });
+  expect(approve).toBeEnabled();
+  expect(posts).toEqual([]);
+  fireEvent.click(approve);
+  expect(
+    screen.getByRole("heading", { name: "Approve 1 line" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
+  await waitFor(() =>
+    expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }),
+  );
+});
