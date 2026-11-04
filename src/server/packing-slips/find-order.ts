@@ -29,9 +29,9 @@ export type OrderGuess = {
 };
 
 /** A slip row explains an order item at this score. */
-const FOUND = 0.75;
+export const FOUND = 0.75;
 /** Words in supplier names that do not tell suppliers apart. */
-const GENERIC = new Set(
+export const GENERIC = new Set(
   "and the inc ltd llc limited corp co company supply supplies supplier wholesale distribution distributors plumbing heating hydronics mechanical electric electrical industrial sales group canada".split(
     " ",
   ),
@@ -192,20 +192,6 @@ export function findOrder(
     top.score - (second?.score ?? 0) >= 0.3,
   );
   return { ranked, confident };
-}
-
-/** Doubt shared out like a vote: each order's chance of being the slip's,
- * against the others and against none of them. An order needs two products
- * found to stand above a doubtful one. A lead of 0.3 over a single rival, the
- * sure-match margin, comes out at about 90%, so only one can pass 90%. */
-export function orderConfidence(ranked: OrderGuess[]) {
-  const SPREAD = 0.137,
-    NONE = 0.6;
-  const weights = ranked.map((g) =>
-    Math.exp((g.found >= 2 ? g.score : Math.min(g.score, NONE)) / SPREAD),
-  );
-  const total = weights.reduce((sum, w) => sum + w, Math.exp(NONE / SPREAD));
-  return weights.map((w) => Math.round((100 * w) / total));
 }
 
 /** A review suggestion has a lower threshold than an automatic match.

@@ -1375,8 +1375,8 @@ function Identity({
     )
       onDone();
   };
-  // The one order above 90% confidence is confirmed without asking, unless the
-  // reviewer has started choosing. Change on the step reopens it.
+  // The one order at 90% match confidence is confirmed without asking, unless
+  // the reviewer has started choosing. Change on the step reopens it.
   const autoMatched = useRef(false);
   const matchSure = (orderId: string) => {
     if (

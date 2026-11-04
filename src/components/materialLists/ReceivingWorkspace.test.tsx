@@ -856,7 +856,7 @@ it("asks for the quantity before a part goes on the list", async () => {
     screen.getByRole("button", { name: "Add to ForemanHQ and the list" }),
   ).toBeDisabled();
 });
-it("confirms the one order above 90% confidence without asking", async () => {
+it("confirms the one order at 90% match confidence without asking", async () => {
   state.review.orderConfirmed = false;
   state.review.kindConfirmed = false;
   state.orders.push({ id: "order-2", name: "PO-156", supplierId: "other" });
@@ -880,7 +880,7 @@ it("confirms the one order above 90% confidence without asking", async () => {
       : answer(url, opts),
   );
   const view = render(<ReceivingWorkspace jobId="job" />);
-  await screen.findByText(/80% confidence/);
+  await screen.findByText(/80% match confidence/);
   expect(posts).toEqual([]);
   expect(
     screen.getByRole("button", { name: "I confirm this is the correct order" }),

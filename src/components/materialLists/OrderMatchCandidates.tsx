@@ -16,7 +16,7 @@ export function OrderMatchCandidates({
   readingKey: string;
   selectedId: string;
   onSelect: (orderId: string) => void;
-  /** Called with the one order above 90% confidence, once it is ranked. */
+  /** Called with the one order at 90% match confidence or more, once it is ranked. */
   onSure?: (orderId: string) => void;
 }) {
   const [retry, setRetry] = useState(0);
@@ -101,12 +101,17 @@ export function OrderMatchCandidates({
                   <span
                     className={`block text-xs ${order.weak ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}
                   >
-                    {order.confidence}% confidence ·{" "}
+                    {order.confidence}% match confidence ·{" "}
                     {order.weak
                       ? "Weak match — check carefully"
                       : `${order.found} product${order.found === 1 ? "" : "s"} found`}
                     {selectedId === order.orderId ? " · Selected" : ""}
                   </span>
+                  {order.notes?.length ? (
+                    <span className="text-muted-foreground block text-xs">
+                      {order.notes.join(" · ")}
+                    </span>
+                  ) : null}
                 </span>
               </button>
             </li>

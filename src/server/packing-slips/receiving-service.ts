@@ -60,7 +60,7 @@ import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
 import { comparisonRows } from "./order-comparison";
 import { jobOrders } from "./find-order-service";
-import { findOrder, orderConfidence } from "./find-order";
+import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
@@ -128,6 +128,22 @@ function duplicateList(state: DocumentState, doc: JobDocument) {
         : [];
     });
 }
+/** The slip's date: as reviewed, or as read. */
+const slipDate = (doc: JobDocument) =>
+  doc.receivingReview?.deliveryDate?.trim()
+    ? doc.receivingReview.deliveryDate
+    : (doc.packingSlipAnalysis?.cascade?.document?.deliveryDate ?? null);
+/** A slip's supplier order and delivery numbers, as reviewed and as read. */
+const slipNumbers = (doc: JobDocument) => {
+  const r = doc.receivingReview,
+    h = doc.packingSlipAnalysis?.cascade?.document;
+  return [
+    r?.supplierOrderNumber,
+    r?.deliveryNumber,
+    h?.supplierOrderNumber,
+    h?.deliveryNumber,
+  ].filter((n): n is string => !!n?.trim());
+};
 /** Rank the current saved reading locally; no OCR, model call, or write. */
 export async function receivingOrderCandidates(
   access: DocumentAccess,
@@ -143,17 +159,44 @@ export async function receivingOrderCandidates(
     : analysis.lines;
   if (!lines.length) return [];
   const orders = await jobOrders(access);
-  const rows = lines.map((line) => ({
-    page: line.page,
-    text: [line.sku, line.description, line.evidence].filter(Boolean).join(" "),
-  }));
-  // Only a supplier actually read from the slip adds evidence. The currently
-  // selected order's supplier must not bias its own rank.
-  const supplier = analysis.cascade?.document?.supplierName;
-  if (supplier) rows.push({ page: -1, text: supplier });
-  const { ranked } = findOrder(rows, orders.map((order) => order.slip));
-  const confidence = orderConfidence(ranked);
-  return ranked.slice(0, 5).map((rank, index) => {
+  const review =
+    doc.receivingReview?.versionId === doc.currentVersionId
+      ? doc.receivingReview
+      : undefined;
+  // What this slip has already received must not count against its own order.
+  const received: Record<string, number> = {};
+  for (const line of review?.lines ?? [])
+    if (line.approved?.kind === "delivery")
+      received[line.approved.itemId] =
+        (received[line.approved.itemId] ?? 0) + line.approved.quantity;
+  // Only what was read from the slip is evidence. The currently selected
+  // order, and the supplier it sets on the review, must not bias its own rank.
+  const ranked = matchConfidence(
+    {
+      lines,
+      supplier: analysis.cascade?.document?.supplierName,
+      text: review?.sourceText,
+      date: slipDate(doc),
+      numbers: slipNumbers(doc),
+      earlier: state.documents.flatMap((other) =>
+        other.id !== doc.id &&
+        !other.deletedAt &&
+        other.packingSlip?.orderId &&
+        (other.receivingReview?.orderConfirmed ||
+          other.packingSlipAnalysis?.applied)
+          ? [
+              {
+                orderId: other.packingSlip.orderId,
+                numbers: slipNumbers(other),
+              },
+            ]
+          : [],
+      ),
+      received,
+    },
+    orders.map((order) => ({ ...order.slip, sentAt: order.option.sentAt })),
+  );
+  return ranked.slice(0, 5).map((rank) => {
     const order = orders.find((order) => order.option.id === rank.orderId)!.option;
     return {
       orderId: order.id,
@@ -162,8 +205,9 @@ export async function receivingOrderCandidates(
       listName: order.materialListName,
       sentAt: order.sentAt,
       found: rank.found,
-      weak: rank.found < 1 || rank.score < 0.35,
-      confidence: confidence[index]!,
+      weak: rank.found < 1,
+      confidence: rank.confidence,
+      notes: rank.notes,
     };
   });
 }
@@ -186,10 +230,7 @@ export async function receivingOrderComparison(
     orderId: order.id,
     orderNumber: order.orderNumber ?? order.id,
     orderDate: order.sentAt?.toISOString() ?? null,
-    slipDate:
-      doc.receivingReview?.deliveryDate ||
-      analysis?.cascade?.document?.deliveryDate ||
-      null,
+    slipDate: slipDate(doc),
     rows: comparisonRows(
       items,
       analysis?.versionId === doc.currentVersionId
