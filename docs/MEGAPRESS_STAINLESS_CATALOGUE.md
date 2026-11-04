@@ -29,4 +29,6 @@ The default import target is Tim's existing organization account; `MEGAPRESS_STA
 
 The read-only dry run planned 492 new parts and found no matching existing articles. All source rows and photo hashes passed validation. Sampled 1-inch elbows match published article numbers 90015 (316 EPDM), 95015 (304 FKM) and 91705 (316 FKM).
 
-Repository typecheck currently reports existing errors in `scripts/import-megapressg.cjs` and two DrawingWorkspace test locators; no new TypeScript application code is part of this catalogue addition. The standalone importer uses runtime validation, consistent with the existing catalogue import scripts.
+The final repository typecheck reports existing errors in two DrawingWorkspace test locators (`exact` is not a supported role-query option); no new TypeScript application code is part of this catalogue addition. The standalone importer uses runtime validation, consistent with the existing catalogue import scripts.
+
+Live import completed: 492 new active parts, 2,952 aliases and all 60 unique photos verified through the public image endpoint. All imported fields matched the source manifest. Existing MegaPressG names were preserved. The catalogue sync revision advanced from 15522 to 16017. A second application created zero records and left the revision unchanged. No application restart or rebuild was needed. Browser verification was unavailable because no browser was connected; verification used read-only database queries and public image/health requests.
