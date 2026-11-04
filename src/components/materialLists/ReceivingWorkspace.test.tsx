@@ -486,11 +486,8 @@ it("lists slips to review with one next step each, suggested orders first", asyn
     "aria-pressed",
     "true",
   );
-  // The reader comparison folds into one line.
-  expect(
-    await screen.findByText(/Reader comparison · 1 of 2 readers done/),
-  ).toBeVisible();
-  expect(screen.getByText(/Every slip is read again/)).not.toBeVisible();
+  expect(screen.queryByText(/Reader comparison/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Refresh receiving queue" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "All" }));
   expect(rows()).toHaveLength(3);
   expect(rows()[2]).toHaveTextContent("Done");

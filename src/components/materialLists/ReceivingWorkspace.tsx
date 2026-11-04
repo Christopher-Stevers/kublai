@@ -23,7 +23,6 @@ import {
   FlaskConicalIcon,
   Loader2Icon,
   PlusIcon,
-  RefreshCwIcon,
   SearchIcon,
   AlertTriangleIcon,
   XIcon,
@@ -50,9 +49,7 @@ import type { JobDocument } from "~/server/documents/types";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   PackingSlipTrialComparison,
-  PackingSlipTrialSummary,
   useTrialComparison,
-  type TrialSummary,
 } from "./PackingSlipTrial";
 import {
   readersInTrial,
@@ -223,7 +220,7 @@ const statusStyle: Record<
   },
 };
 /** The one thing a queue row needs next. */
-function slipState(d: Entry, trial: TrialSummary | null) {
+function slipState(d: Entry) {
   if (d.status === "processing")
     return { label: "Reading…", tone: "text-muted-foreground" };
   if (d.status === "review")
@@ -234,12 +231,7 @@ function slipState(d: Entry, trial: TrialSummary | null) {
         : { label: "Needs review", tone: amber.text };
   if (d.status === "complete")
     return {
-      // Approved before the reader comparison, so not yet checked against it.
-      label:
-        trial?.cases.some((c) => c.documentId === d.id) &&
-        d.reviewTrialRunId !== trial.runId
-          ? "Approved before"
-          : "Done",
+      label: "Done",
       tone: "text-muted-foreground",
     };
   return {
@@ -268,7 +260,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       : null,
   );
   const [docs, setDocs] = useState<Entry[]>([]),
-    [trial, setTrial] = useState<TrialSummary | null>(null),
     [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -498,11 +489,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       (d) =>
         (showAll ||
           d.status === "review" ||
-          d.status === "processing" ||
-          // A fresh reader comparison asks for approved slips again.
-          !!trial?.cases.some(
-            (c) => c.documentId === d.id && d.reviewTrialRunId !== trial.runId,
-          )) &&
+          d.status === "processing") &&
         `${d.name} ${d.order?.orderNumber ?? ""}`
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -570,16 +557,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               </Link>
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label="Refresh receiving queue"
-            onClick={() =>
-              void load().catch((e: unknown) => setError(errorMessage(e)))
-            }
-          >
-            <RefreshCwIcon className="size-4" />
-          </Button>
         </div>
       </header>
       {detail && <PackingSlipActivity analysis={a} job={detail.processingJob} online={online} receivedAt={receivedAt} />}
@@ -629,11 +606,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       )}
       {!id ? (
         <>
-          <PackingSlipTrialSummary
-            jobId={jobId}
-            online={online}
-            onUpdate={setTrial}
-          />
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <div
               role="group"
@@ -689,9 +661,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     </span>
                   </span>
                   <span
-                    className={`shrink-0 text-right text-sm ${slipState(d, trial).tone}`}
+                    className={`shrink-0 text-right text-sm ${slipState(d).tone}`}
                   >
-                    {slipState(d, trial).label}
+                    {slipState(d).label}
                   </span>
                 </Link>
               </li>
