@@ -145,8 +145,17 @@
   padding: 0.25rem;
   transform: none;
 }
+/* Fade only the white padding around the photograph, never the fitting.
+   The mask becomes fully opaque before the contained image starts. */
 .dark .part-photo {
+  padding: 8px;
+  background: #fff;
   filter: brightness(0.78) contrast(0.96);
+  mask-image:
+    linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent),
+    linear-gradient(to bottom, transparent, #000 6px, #000 calc(100% - 6px), transparent);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 
 @theme {
