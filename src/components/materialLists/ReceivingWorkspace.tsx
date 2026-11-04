@@ -18,7 +18,6 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronLeftIcon,
   EyeIcon,
   FileTextIcon,
   FlaskConicalIcon,
@@ -516,15 +515,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {!id && (
-            <Link
-              className="text-muted-foreground mb-2 inline-flex items-center gap-1 text-sm"
-              href={`/jobs/${jobId}/material-lists`}
-            >
-              <ChevronLeftIcon className="size-4" />
-              Material lists
-            </Link>
-          )}
           <h1 className="text-2xl font-semibold tracking-tight">
             {id ? "Review packing slip" : "Receiving queue"}
           </h1>
@@ -544,7 +534,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2 pt-7">
+        <div className="flex shrink-0 items-center gap-2">
           {detail && a?.status === "processing" && (
             <Button
               variant="ghost"
