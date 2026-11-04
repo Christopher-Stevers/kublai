@@ -60,7 +60,7 @@ async function main(){
   }
   for(const {id,r} of pending){
    await tx`insert into kublai_part_definition ${tx({id,organizationId:org,catalogId,categoryId,materialId,sizeId:sizes.get(r.sizeNominal),displayName:r.displayName,description:r.description,sizeLabel:r.sizeLabel,imageUrl:data.images[r.imageKey].url,imageAssetId:assets.get(r.imageKey),isActive:true,createdAt:new Date()})}`;
-   const attrs={manufacturer:'Viega',manufacturer_model:r.model,manufacturer_part_number:r.sku,manufacturer_source:r.sourceUrl,source_import:source,application:'Natural gas / fuel gas',seal_material:'HNBR',connections:JSON.stringify(r.connections),availability:r.availability};
+   const attrs={manufacturer:'Viega',manufacturer_model:r.model,manufacturer_part_number:r.sku,manufacturer_source:r.sourceUrl,source_import:source,application:'Natural gas / fuel gas',seal_material:'HNBR',connections:JSON.stringify(r.connections),...(r.availability ? {availability:r.availability} : {})};
    await tx`insert into kublai_part_attribute ${tx(Object.entries(attrs).map(([key,valueText])=>({id:randomUUID(),partDefinitionId:id,key,valueText})))}`;
    await tx`insert into kublai_part_synonym ${tx([...new Set(r.aliases)].map(synonym=>({id:randomUUID(),partDefinitionId:id,synonym})))}`;
   }

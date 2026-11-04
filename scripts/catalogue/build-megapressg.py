@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image
+from press_catalogue_labels import clean_press_row
 BASE='https://www.viega.us/en/products/Catalog/Metal-systems/MegaPressG'
 CACHE=Path('.tmp/megapressg'); CACHE.mkdir(parents=True,exist_ok=True)
 def page(url):
@@ -28,6 +29,7 @@ def model(url):
     s=page(url);title=text(s.find('h1')); m=title.split(' - Model ')[-1]
     assert 'MegaPressG' in title and m!=title,title
     name=title.split(' - Model ')[0]
+    product=next(json.loads(node.string) for node in s.select('script[type="application/ld+json"]') if node.string and json.loads(node.string).get('@type')=='Product')
     t=s.select('table')[0]
     headers=[text(c) for c in t.select('thead tr')[0].find_all(['th','td'])]
     assert 'Part No' in headers and 'Quantity' in headers,(url,headers)
@@ -56,7 +58,7 @@ def model(url):
         if len(set(v[0] for v in dims))==1:size=dims[0][0]+'"'
         rows.append({'sku':sku,'availability':availability,'model':m,'displayName':f'{name} {size} ({connectionLabel}) - {m} - {sku}', 'sizeLabel':size,'sizeNominal':max(v[1] for v in dims), 'connections':dict(zip(connectionHeaders,[v[0]+'"' for v in dims])), 'articleData':dict(zip(headers,cells)),'sourceUrl':url,'imageKey':m,'category':'Fitting','material':'MegaPressG (Natural Gas)', 'description':f'Viega MegaPressG {m}. Natural gas / fuel gas fitting; carbon steel with HNBR sealing elements. Connections: '+', '.join(f'{h} {v[0]} in' for h,v in zip(connectionHeaders,dims))+'. Manufacturer part number '+sku+'. '+availability+'.', 'aliases':[f'MegaPressG {sku}',f'MegaPress G {sku}',f'Viega {sku}',f'Natural gas {name.removeprefix("Viega MegaPressG ")} {size}']})
     assert rows,url
-    return rows,asset
+    return [clean_press_row({**row, 'manufacturerDescription': product['description']}) for row in rows],asset
 root=page(BASE+'.html')
 categories=sorted(set(urljoin(BASE+'.html',a['href']) for a in root.select('a[href]') if a['href'].startswith('/en/products/Catalog/Metal-systems/MegaPressG/')))
 models=set()

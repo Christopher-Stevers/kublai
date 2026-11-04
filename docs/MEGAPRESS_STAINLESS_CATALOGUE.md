@@ -14,6 +14,8 @@ Plumbing → Press → MegaPress Stainless 316 (EPDM), MegaPress Stainless 304 (
 
 Each record preserves the manufacturer article number, model, source URL, steel grade, seal material, connection dimensions, published article table values and any limited-availability note. Search aliases include Viega, MegaPress, Mega Press Stainless and MegaPress SS. Size combinations come only from actual article rows; no inferred combinations or prices. Source quantity is retained as manufacturer table data, not interpreted as the app's ordering unit or packaging.
 
+Names use size, material and basic fitting type, for example `3" MegaPress Stainless 316 (EPDM) No-Stop Coupling`. Descriptions contain only the basic type (`No-Stop Coupling`). Manufacturer model, article number, detailed connections, length and the previous full name are searchable aliases. Male/female, street, reducing, stop and flange-face distinctions stay in basic labels. The provenance phrase “Listed in manufacturer catalogue” is excluded from aliases and availability attributes as well as names/descriptions. Actual limited-availability notes are retained.
+
 60 unique manufacturer product photos are shared across the 88 models and their sizes. Images use the largest URL advertised in the manufacturer's image srcset, converted to WebP without upscaling, and are served through the existing catalogue image API.
 
 ## Repeatable import
@@ -32,3 +34,9 @@ The read-only dry run planned 492 new parts and found no matching existing artic
 The final repository typecheck reports existing errors in two DrawingWorkspace test locators (`exact` is not a supported role-query option); no new TypeScript application code is part of this catalogue addition. The standalone importer uses runtime validation, consistent with the existing catalogue import scripts.
 
 Live import completed: 492 new active parts, 2,952 aliases and all 60 unique photos verified through the public image endpoint. All imported fields matched the source manifest. Existing MegaPressG names were preserved. The catalogue sync revision advanced from 15522 to 16017. A second application created zero records and left the revision unchanged. No application restart or rebuild was needed. Browser verification was unavailable because no browser was connected; verification used read-only database queries and public image/health requests.
+
+## Press supplier and label maintenance
+
+`scripts/ops/normalize-press-catalogue.cjs` applies the subsequent request to use Next as the preferred supplier for all 970 Press/Fitting catalogue parts. The 271 Copper Press and Carbon Steel Press parts already use Next and have basic labels. The 207 MegaPressG and 492 stainless articles use the revised manifests and gain unpriced Next listings. Manufacturer article numbers remain aliases/attributes rather than being assumed to be Next's supplier SKUs.
+
+Run without arguments for a read-only preview, then with `--apply` to update. `PRESS_CATALOGUE_USER_EMAIL` selects the organization account; the default is Tim's existing account. The command verifies the six material counts and manufacturer identities, locks the target records, writes a private full backup, updates only requested fields in a transaction, and verifies the result before commit. A changed inventory requires scope review. It preserves images, existing supplier prices/packaging, other attributes and existing aliases, and does not rewrite material-list or order snapshots. A repeat application should report zero changes.

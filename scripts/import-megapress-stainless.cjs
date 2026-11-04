@@ -209,7 +209,7 @@ async function main() {
           seal_material: r.seal,
           manufacturer_article_data: JSON.stringify(r.articleData),
           connections: JSON.stringify(r.connections),
-          availability: r.availability,
+          ...(r.availability ? { availability: r.availability } : {}),
         };
         await tx`insert into kublai_part_attribute ${tx(Object.entries(attributes).map(([key, valueText]) => ({ id: randomUUID(), partDefinitionId: id, key, valueText })))}`;
         await tx`insert into kublai_part_synonym ${tx([...new Set(r.aliases)].map((synonym) => ({ id: randomUUID(), partDefinitionId: id, synonym })))}`;

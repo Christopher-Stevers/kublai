@@ -15,6 +15,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image
+from press_catalogue_labels import clean_press_row
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -117,7 +118,7 @@ def model(item):
             'aliases': [f'Viega {sku}', f'MegaPress {sku}', f'Mega Press Stainless {short_name} {size}', f'MegaPress SS {spec["grade"]} {short_name} {size}', f'{material} {short_name} {size}', f'{name} {size} {number}'],
         })
     assert rows, url
-    return rows, image_key, asset
+    return [clean_press_row(row) for row in rows], image_key, asset
 
 def main():
     models = []
