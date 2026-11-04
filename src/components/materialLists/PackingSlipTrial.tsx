@@ -105,46 +105,50 @@ export function PackingSlipTrialSummary({
         Reader comparison: {error}
       </p>
     ) : null;
+  const readers = trialReaders.filter((r) => trial.counts[r]?.total > 0),
+    done = readers.filter(
+      (r) =>
+        trial.counts[r].complete + trial.counts[r].failed >=
+        trial.counts[r].total,
+    ).length;
+  // Folded away: the queue is for receiving, the comparison is a side study.
   return (
-    <section
-      aria-label="Packing-slip trial progress"
-      className="mb-5 border-y py-4"
-    >
-      <h2 className="flex items-center gap-2 font-medium">
-        <FlaskConicalIcon className="h-4 w-4" /> Reader comparison
-      </h2>
-      <p className="text-muted-foreground mt-1 text-sm">
+    <details aria-label="Packing-slip trial progress" className="group mb-4">
+      <summary className="text-muted-foreground flex w-fit cursor-pointer list-none items-center gap-2 py-1 text-sm [&::-webkit-details-marker]:hidden">
+        <FlaskConicalIcon className="size-4" />
+        Reader comparison · {done} of {readers.length} readers done
+        <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+      </summary>
+      <p className="text-muted-foreground mt-2 text-sm">
         Every slip is read again, including previously approved slips. Open one
         to compare each part and its confidence. Your verification supplies the
         answer key.
       </p>
       <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-        {trialReaders
-          .filter((r) => trial.counts[r]?.total > 0)
-          .map((reader) => {
-            const c = trial.counts[reader];
-            return (
-              <div key={reader} className="min-w-0">
-                <span className="text-sm font-medium">
-                  {readerLabels[reader]}
-                </span>
-                <p className="text-muted-foreground text-sm tabular-nums">
-                  {c.complete} / {c.total} slips
-                  {c.failed ? ` · ${c.failed} failed` : ""}
-                </p>
-                <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
-                  <div
-                    className="bg-foreground/60 h-full"
-                    style={{
-                      width: `${c.total ? (c.complete / c.total) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
+        {readers.map((reader) => {
+          const c = trial.counts[reader];
+          return (
+            <div key={reader} className="min-w-0">
+              <span className="text-sm font-medium">
+                {readerLabels[reader]}
+              </span>
+              <p className="text-muted-foreground text-sm tabular-nums">
+                {c.complete} / {c.total} slips
+                {c.failed ? ` · ${c.failed} failed` : ""}
+              </p>
+              <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
+                <div
+                  className="bg-foreground/60 h-full"
+                  style={{
+                    width: `${c.total ? (c.complete / c.total) * 100 : 0}%`,
+                  }}
+                />
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
       </div>
-    </section>
+    </details>
   );
 }
 function Score({ label, score }: { label: string; score: TrialScore }) {

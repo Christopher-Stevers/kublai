@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2Icon,
   CheckIcon,
@@ -52,7 +52,6 @@ import {
   type TrialSummary,
 } from "./PackingSlipTrial";
 import {
-  trialReaders,
   readersInTrial,
   readerLabels,
   type TrialReader,
@@ -220,9 +219,33 @@ const statusStyle: Record<
     text: "text-muted-foreground",
   },
 };
+/** The one thing a queue row needs next. */
+function slipState(d: Entry, trial: TrialSummary | null) {
+  if (d.status === "processing")
+    return { label: "Reading…", tone: "text-muted-foreground" };
+  if (d.status === "review")
+    return d.hasSuggestedOrder
+      ? { label: "Confirm order", tone: sky.text }
+      : d.pending
+        ? { label: `${d.pending} to check`, tone: amber.text }
+        : { label: "Needs review", tone: amber.text };
+  if (d.status === "complete")
+    return {
+      // Approved before the reader comparison, so not yet checked against it.
+      label:
+        trial?.cases.some((c) => c.documentId === d.id) &&
+        d.reviewTrialRunId !== trial.runId
+          ? "Approved before"
+          : "Done",
+      tone: "text-muted-foreground",
+    };
+  return {
+    label: d.status === "supporting" ? "Supporting file" : "Replaced",
+    tone: "text-muted-foreground",
+  };
+}
 export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const query = useSearchParams(),
-    router = useRouter(),
     id = query.get("document");
   const online = useOnlineStatus();
   const [docs, setDocs] = useState<Entry[]>([]),
@@ -231,7 +254,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [showAll, setShowAll] = useState(false),
-    [suggestedFirst, setSuggestedFirst] = useState(true),
     [search, setSearch] = useState(""),
     [notice, setNotice] = useState(""),
     [progress, setProgress] = useState(true),
@@ -445,8 +467,27 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         };
       })
     : [];
-  const select = (docId: string) =>
-    router.push(`/jobs/${jobId}/receiving?document=${docId}`);
+  const waiting = docs.filter(
+    (d) => d.status === "review" || d.status === "processing",
+  ).length;
+  // Suggested order matches first: confirming one is quick.
+  const shown = docs
+    .filter(
+      (d) =>
+        (showAll ||
+          d.status === "review" ||
+          d.status === "processing" ||
+          // A fresh reader comparison asks for approved slips again.
+          !!trial?.cases.some(
+            (c) => c.documentId === d.id && d.reviewTrialRunId !== trial.runId,
+          )) &&
+        `${d.name} ${d.order?.orderNumber ?? ""}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    )
+    .sort(
+      (a, b) => Number(!!b.hasSuggestedOrder) - Number(!!a.hasSuggestedOrder),
+    );
   const signed = (n: number) => `${n > 0 ? "+" : ""}${n}`;
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
@@ -562,125 +603,76 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             online={online}
             onUpdate={setTrial}
           />
-          <div className="mb-5 flex flex-wrap items-center gap-4">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <div
+              role="group"
+              aria-label="Which slips"
+              className="bg-muted inline-flex shrink-0 rounded-lg p-1"
+            >
+              {(
+                [
+                  [false, "To review", waiting],
+                  [true, "All", null],
+                ] as const
+              ).map(([all, label, count]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={showAll === all}
+                  onClick={() => setShowAll(all)}
+                  className="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-md px-3 py-1.5 text-sm font-medium aria-pressed:shadow-sm"
+                >
+                  {label}
+                  {count !== null && (
+                    <>
+                      {" "}
+                      <span className="tabular-nums">{count}</span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
             <div className="relative min-w-48 flex-1">
               <SearchIcon className="text-muted-foreground absolute top-3.5 left-3 size-4" />
               <input
                 aria-label="Search packing slips"
                 className={`${field} pl-9`}
-                placeholder="Search slips or orders"
+                placeholder="Search slips"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showAll}
-                onChange={(e) => setShowAll(e.target.checked)}
-              />
-              Show completed
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={suggestedFirst}
-                onChange={(e) => setSuggestedFirst(e.target.checked)}
-              />
-              Suggested order matches first
-            </label>
           </div>
-          <p className="text-muted-foreground mb-3 text-sm">
-            {
-              docs.filter(
-                (d) => d.status === "review" || d.status === "processing",
-              ).length
-            }{" "}
-            slips awaiting review · this job only
-          </p>
-          <div className="divide-y border-y">
-            {docs
-              .filter(
-                (d) =>
-                  (showAll ||
-                    !!trial?.cases.some(
-                      (c) =>
-                        c.documentId === d.id &&
-                        d.reviewTrialRunId !== trial.runId,
-                    ) ||
-                    d.status === "review" ||
-                    d.status === "processing") &&
-                  `${d.name} ${d.order?.orderNumber ?? ""}`
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-              )
-              .sort((a, b) =>
-                suggestedFirst
-                  ? Number(!!b.hasSuggestedOrder) -
-                    Number(!!a.hasSuggestedOrder)
-                  : 0,
-              )
-              .map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => select(d.id)}
-                  className="hover:bg-muted/50 flex w-full items-center gap-3 py-4 text-left transition-colors motion-reduce:transition-none"
+          <ul className="divide-y border-y">
+            {shown.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/jobs/${jobId}/receiving?document=${d.id}`}
+                  className="hover:bg-muted/50 flex items-center gap-3 py-3.5 transition-colors motion-reduce:transition-none"
                 >
-                  <FileTextIcon className="text-muted-foreground size-5 shrink-0" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{d.name}</span>
-                    <span className="text-muted-foreground text-sm">
-                      {d.order?.orderNumber ?? "Order not linked"} ·{" "}
+                    <span className="text-muted-foreground block truncate text-sm">
+                      {d.order?.orderNumber ?? "No order yet"} ·{" "}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </span>
-                    {d.hasSuggestedOrder && (
-                      <span className="block text-xs text-sky-700 dark:text-sky-300">
-                        Suggested order match · needs confirmation
-                      </span>
-                    )}
-                    {trial?.cases.find((c) => c.documentId === d.id) && (
-                      <span className="text-muted-foreground block text-xs">
-                        Fresh trial ·{" "}
-                        {
-                          trialReaders.filter(
-                            (reader) =>
-                              trial.cases.find((c) => c.documentId === d.id)
-                                ?.readers?.[reader] === "complete",
-                          ).length
-                        }
-                        /
-                        {
-                          readersInTrial(
-                            trial.cases.find((c) => c.documentId === d.id)
-                              ?.readers,
-                          ).length
-                        }{" "}
-                        readings ready
-                      </span>
-                    )}
                   </span>
-                  <span className="text-sm">
-                    {d.status === "processing"
-                      ? "Reading…"
-                      : d.status === "review"
-                        ? d.pending === null
-                          ? "Needs review"
-                          : `${d.pending} unresolved`
-                        : d.status === "complete"
-                          ? trial && d.reviewTrialRunId !== trial.runId
-                            ? "Previously approved"
-                            : "Reviewed"
-                          : d.status === "supporting"
-                            ? "Supporting file"
-                            : "Replaced"}
+                  <span
+                    className={`shrink-0 text-right text-sm ${slipState(d, trial).tone}`}
+                  >
+                    {slipState(d, trial).label}
                   </span>
-                </button>
-              ))}
-          </div>
-          {!docs.length && !error && (
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {!shown.length && !error && (
             <p className="py-8 text-sm">
-              No packing slips yet. Scan a slip from Material Lists or upload it
-              in Documents → Packing Slips.
+              {!docs.length
+                ? "No packing slips yet. Scan a slip from Material Lists or upload it in Documents → Packing Slips."
+                : search
+                  ? "No slips match."
+                  : "Nothing to review."}
             </p>
           )}
         </>

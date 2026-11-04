@@ -383,57 +383,92 @@ it("asks to allow over-delivery only when a line exceeds what is due", async () 
   });
 });
 
-it("puts suggested order matches first and can restore newest-first order", async () => {
+it("lists slips to review with one next step each, suggested orders first", async () => {
   navigation.query = "";
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Response.json({
-        documents: [
-          {
-            id: "new",
-            name: "New unresolved slip",
-            createdAt: "2026-10-27",
-            status: "review",
-            pending: 1,
-            approved: 0,
-            hasSuggestedOrder: false,
-          },
-          {
-            id: "suggested",
-            name: "Older suggested slip",
-            createdAt: "2026-10-26",
-            status: "review",
-            pending: 1,
-            approved: 0,
-            hasSuggestedOrder: true,
-          },
-        ],
-      }),
+    vi.fn(async (url: string) =>
+      url.includes("/trials")
+        ? Response.json({
+            trial: {
+              runId: "trial",
+              updatedAt: "now",
+              counts: {
+                ocr: { complete: 3, failed: 0, total: 3 },
+                jev: { complete: 1, failed: 0, total: 3 },
+              },
+              cases: [],
+            },
+          })
+        : Response.json({
+            documents: [
+              {
+                id: "new",
+                name: "New unresolved slip",
+                createdAt: "2026-10-27",
+                status: "review",
+                pending: 2,
+                approved: 0,
+                hasSuggestedOrder: false,
+              },
+              {
+                id: "suggested",
+                name: "Older suggested slip",
+                createdAt: "2026-10-26",
+                status: "review",
+                pending: 1,
+                approved: 0,
+                hasSuggestedOrder: true,
+                order: { orderId: "o", orderNumber: "PO-7" },
+              },
+              {
+                id: "done",
+                name: "Received slip",
+                createdAt: "2026-10-25",
+                status: "complete",
+                pending: 0,
+                approved: 3,
+              },
+            ],
+          }),
     ),
   );
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByText("Older suggested slip");
-  const names = () =>
-    screen
-      .getAllByRole("button")
-      .map((b) => b.textContent)
-      .filter(
-        (t) => t?.includes("unresolved slip") || t?.includes("suggested slip"),
-      );
-  expect(names()[0]).toContain("Older suggested slip");
-  fireEvent.click(
-    screen.getByRole("checkbox", { name: "Suggested order matches first" }),
+  const rows = () => screen.getAllByRole("link").filter((a) => a.closest("li"));
+  expect(rows().map((r) => r.textContent)).toEqual([
+    expect.stringContaining("Older suggested slip"),
+    expect.stringContaining("New unresolved slip"),
+  ]);
+  expect(rows()[0]).toHaveTextContent("PO-7");
+  expect(rows()[0]).toHaveTextContent("Confirm order");
+  expect(rows()[0]).toHaveAttribute(
+    "href",
+    "/jobs/job/receiving?document=suggested",
   );
-  expect(names()[0]).toContain("New unresolved slip");
+  expect(rows()[1]).toHaveTextContent("2 to check");
+  expect(screen.getByRole("button", { name: "To review 2" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // The reader comparison folds into one line.
+  expect(
+    await screen.findByText(/Reader comparison · 1 of 2 readers done/),
+  ).toBeVisible();
+  expect(screen.getByText(/Every slip is read again/)).not.toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
+  expect(rows()).toHaveLength(3);
+  expect(rows()[2]).toHaveTextContent("Done");
   fireEvent.change(
     screen.getByRole("textbox", { name: "Search packing slips" }),
     { target: { value: "Older" } },
   );
-  expect(screen.queryByText("New unresolved slip")).not.toBeInTheDocument();
-  expect(
-    screen.getByText("Suggested order match · needs confirmation"),
-  ).toBeInTheDocument();
+  expect(rows()).toHaveLength(1);
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Search packing slips" }),
+    { target: { value: "nothing like it" } },
+  );
+  expect(screen.getByText("No slips match.")).toBeInTheDocument();
 });
 it("shows every reader's part match and quantity confidence", async () => {
   Object.assign(state.review, { analysisRunId: "run" });
