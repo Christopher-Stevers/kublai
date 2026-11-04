@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
-import type { RankedOrderMatch } from "~/lib/order-match-comparison";
+import { sureOrder, type RankedOrderMatch } from "~/lib/order-match-comparison";
 
 export function OrderMatchCandidates({
   jobId,
@@ -9,12 +9,15 @@ export function OrderMatchCandidates({
   readingKey,
   selectedId,
   onSelect,
+  onSure,
 }: {
   jobId: string;
   documentId: string;
   readingKey: string;
   selectedId: string;
   onSelect: (orderId: string) => void;
+  /** Called with the one order above 90% confidence, once it is ranked. */
+  onSure?: (orderId: string) => void;
 }) {
   const [retry, setRetry] = useState(0);
   const key = JSON.stringify([jobId, documentId, readingKey, retry]);
@@ -43,6 +46,10 @@ export function OrderMatchCandidates({
       });
     return () => controller.abort();
   }, [jobId, documentId, key]);
+  const sure = current?.rows && sureOrder(current.rows);
+  useEffect(() => {
+    if (sure) onSure?.(sure);
+  }, [sure, onSure]);
   return (
     <section aria-label="Top order matches" className="space-y-2">
       <p className="text-sm font-medium">Top 5 Order Matches</p>
@@ -94,6 +101,7 @@ export function OrderMatchCandidates({
                   <span
                     className={`block text-xs ${order.weak ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}
                   >
+                    {order.confidence}% confidence ·{" "}
                     {order.weak
                       ? "Weak match — check carefully"
                       : `${order.found} product${order.found === 1 ? "" : "s"} found`}

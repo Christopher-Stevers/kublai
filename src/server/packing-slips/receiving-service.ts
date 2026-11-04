@@ -55,7 +55,7 @@ import type { ReceivingInput } from "./receiving-input";
 import { readersInTrial } from "~/lib/packing-slip-trial";
 import { comparisonRows } from "./order-comparison";
 import { jobOrders } from "./find-order-service";
-import { findOrder } from "./find-order";
+import { findOrder, orderConfidence } from "./find-order";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
@@ -147,7 +147,8 @@ export async function receivingOrderCandidates(
   const supplier = analysis.cascade?.document?.supplierName;
   if (supplier) rows.push({ page: -1, text: supplier });
   const { ranked } = findOrder(rows, orders.map((order) => order.slip));
-  return ranked.slice(0, 5).map((rank) => {
+  const confidence = orderConfidence(ranked);
+  return ranked.slice(0, 5).map((rank, index) => {
     const order = orders.find((order) => order.option.id === rank.orderId)!.option;
     return {
       orderId: order.id,
@@ -157,6 +158,7 @@ export async function receivingOrderCandidates(
       sentAt: order.sentAt,
       found: rank.found,
       weak: rank.found < 1 || rank.score < 0.35,
+      confidence: confidence[index]!,
     };
   });
 }

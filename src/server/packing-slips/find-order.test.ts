@@ -4,6 +4,7 @@ import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import {
   askWhichOrder,
   findOrder,
+  orderConfidence,
   supplierNamed,
   suggestedOrder,
   type SlipOrder,
@@ -75,6 +76,9 @@ describe("findOrder", () => {
       [pipe, fasteners],
     );
     expect(confident).toBe(true);
+    const [sure, other] = orderConfidence(ranked);
+    expect(sure).toBeGreaterThanOrEqual(90);
+    expect(other).toBeLessThan(10);
     expect(ranked[0]).toMatchObject({
       orderId: "174",
       found: 3,
@@ -114,6 +118,24 @@ describe("findOrder", () => {
     );
     expect(ranked).toHaveLength(2);
     expect(confident).toBe(false);
+    // Both fit, so neither is sure enough to match without asking.
+    const both = orderConfidence(ranked);
+    expect(Math.abs(both[0]! - both[1]!)).toBeLessThan(10);
+    expect(Math.max(...both)).toBeLessThan(90);
+  });
+
+  it("keeps doubt for one product found, or for no order at all", () => {
+    const guess = (score: number, found: number) => ({
+      orderId: "o",
+      score,
+      found,
+      supplier: true,
+      quantityMatches: 0,
+    });
+    expect(orderConfidence([guess(1.5, 1)])[0]).toBe(50);
+    expect(orderConfidence([guess(1.5, 3)])[0]).toBeGreaterThan(99);
+    expect(orderConfidence([guess(0.9, 3)])[0]).toBe(90);
+    expect(orderConfidence([])).toEqual([]);
   });
 
   it("prefers the order still waiting for its delivery", () => {

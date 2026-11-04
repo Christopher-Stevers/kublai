@@ -741,3 +741,43 @@ it("asks for the quantity before a part goes on the list", async () => {
     screen.getByRole("button", { name: "Add to ForemanHQ and the list" }),
   ).toBeDisabled();
 });
+it("confirms the one order above 90% confidence without asking", async () => {
+  state.review.orderConfirmed = false;
+  state.review.kindConfirmed = false;
+  state.orders.push({ id: "order-2", name: "PO-156", supplierId: "other" });
+  const ranked = (confidence: number) => [
+    {
+      orderId: "order-2",
+      orderNumber: "PO-156",
+      supplier: "Other",
+      listName: "List",
+      sentAt: null,
+      found: 4,
+      weak: false,
+      confidence,
+    },
+  ];
+  const answer = vi.mocked(fetch).getMockImplementation()!;
+  let confidence = 80;
+  vi.mocked(fetch).mockImplementation(async (url, opts) =>
+    (url as string).includes("rankOrders")
+      ? Response.json(ranked(confidence))
+      : answer(url, opts),
+  );
+  const view = render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText(/80% confidence/);
+  expect(posts).toEqual([]);
+  expect(
+    screen.getByRole("button", { name: "I confirm this is the correct order" }),
+  ).toBeInTheDocument();
+  view.unmount();
+  confidence = 94;
+  render(<ReceivingWorkspace jobId="job" />);
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[0]).toMatchObject({ action: "link", orderId: "order-2" });
+  expect(posts[1]).toMatchObject({
+    action: "header",
+    supplierId: "other",
+    confirmed: true,
+  });
+});

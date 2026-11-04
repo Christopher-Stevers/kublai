@@ -194,6 +194,20 @@ export function findOrder(
   return { ranked, confident };
 }
 
+/** Doubt shared out like a vote: each order's chance of being the slip's,
+ * against the others and against none of them. An order needs two products
+ * found to stand above a doubtful one. A lead of 0.3 over a single rival, the
+ * sure-match margin, comes out at about 90%, so only one can pass 90%. */
+export function orderConfidence(ranked: OrderGuess[]) {
+  const SPREAD = 0.137,
+    NONE = 0.6;
+  const weights = ranked.map((g) =>
+    Math.exp((g.found >= 2 ? g.score : Math.min(g.score, NONE)) / SPREAD),
+  );
+  const total = weights.reduce((sum, w) => sum + w, Math.exp(NONE / SPREAD));
+  return weights.map((w) => Math.round((100 * w) / total));
+}
+
 /** A review suggestion has a lower threshold than an automatic match.
  * Supplier alone or coincidental quantities cannot manufacture an order match. */
 export function suggestedOrder(ranked: OrderGuess[]) {

@@ -68,4 +68,12 @@ export type RankedOrderMatch = {
   sentAt: string | null;
   found: number;
   weak: boolean;
+  /** 0 to 100: the chance this is the slip's order, against the others. */
+  confidence: number;
+};
+
+/** The one order above 90% confidence, which is matched without asking. */
+export const sureOrder = (rows: RankedOrderMatch[]) => {
+  const sure = rows.filter((row) => row.confidence >= 90);
+  return sure.length === 1 ? sure[0]!.orderId : null;
 };

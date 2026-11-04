@@ -1316,8 +1316,6 @@ function Identity({
     const order = detail.orders.find((o) => o.id === id);
     setSupplier(order?.supplierId ?? "");
   };
-  const candidates = <OrderMatchCandidates jobId={jobId} documentId={detail.document.id}
-    readingKey={readingKey} selectedId={link} onSelect={chooseOrder} />;
   const comparison = link ? <OrderMatchPreview
     jobId={jobId} documentId={detail.document.id} orderId={link}
     readingKey={readingKey}
@@ -1325,21 +1323,25 @@ function Identity({
   /> : null;
   const suggested = (orderId: string) =>
     analysis?.orderCandidates?.includes(orderId) ?? false;
-  const confirm = async () => {
+  const confirm = async (orderId = link) => {
+    const supplierId =
+      orderId === link
+        ? supplier
+        : (detail.orders.find((o) => o.id === orderId)?.supplierId ?? "");
     // Linking rematches the lines, so it goes first; the details then confirm on top.
     if (
-      link &&
-      link !== linked &&
-      !(await run({ action: "link", orderId: link, confirmed: true }))
+      orderId &&
+      orderId !== linked &&
+      !(await run({ action: "link", orderId, confirmed: true }))
     )
       return;
     if (
       await run({
         action: "header",
         kind,
-        supplierId: supplier || null,
+        supplierId: supplierId || null,
         supplierName:
-          detail.suppliers.find((s) => s.id === supplier)?.name ??
+          detail.suppliers.find((s) => s.id === supplierId)?.name ??
           r.supplierName,
         deliveryNumber: delivery,
         supplierOrderNumber: orderNum,
@@ -1351,6 +1353,23 @@ function Identity({
     )
       onDone();
   };
+  // The one order above 90% confidence is confirmed without asking, unless the
+  // reviewer has started choosing. Change on the step reopens it.
+  const autoMatched = useRef(false);
+  const matchSure = (orderId: string) => {
+    if (
+      autoMatched.current ||
+      r.orderConfirmed ||
+      onCancel ||
+      form ||
+      analysis?.status === "processing"
+    )
+      return;
+    autoMatched.current = true;
+    void confirm(orderId);
+  };
+  const candidates = <OrderMatchCandidates jobId={jobId} documentId={detail.document.id}
+    readingKey={readingKey} selectedId={link} onSelect={chooseOrder} onSure={matchSure} />;
   const confirmButton = (
     <Button onClick={() => void confirm()}>
       <CheckIcon />I confirm this is the correct order
