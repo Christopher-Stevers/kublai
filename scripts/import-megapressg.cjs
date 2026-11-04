@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck
 // Idempotent organization-scoped addition. Existing catalogue records are never overwritten.
 require('dotenv/config');
 const fs=require('node:fs'),path=require('node:path');
