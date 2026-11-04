@@ -25,7 +25,7 @@ import {
   TrashIcon,
   XCircleIcon,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { cn } from "~/lib/utils";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";

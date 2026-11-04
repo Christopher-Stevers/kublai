@@ -30,7 +30,7 @@ import {
   parsePrimarySizeInput,
 } from "~/lib/size-utils";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import {
   Dialog,
   DialogContent,

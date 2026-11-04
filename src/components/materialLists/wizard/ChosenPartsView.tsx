@@ -36,7 +36,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import type { PendingPart, PendingSupplierPartSnapshot } from "./types";
 import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
 import { ViewToggle } from "~/components/ui/view-toggle";

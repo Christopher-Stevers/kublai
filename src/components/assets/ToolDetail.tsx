@@ -1,4 +1,5 @@
 "use client";
+import PartImage from "~/components/catalogue/PartImage";
 
 import { useEffect, useState } from "react";
 import { AlertTriangleIcon, ArrowRightLeftIcon, CheckCircle2Icon, PencilIcon, PrinterIcon } from "lucide-react";
@@ -60,7 +61,7 @@ export function ToolDetail({ id, tag }: { id?: string; tag?: string }) {
             <div className="bg-card flex gap-4 rounded-lg border p-4">
               {tool.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tool.imageUrl} alt="" className="part-photo h-24 w-24 shrink-0 rounded-md border object-contain p-1" />
+                <PartImage width={96} height={96} src={tool.imageUrl} alt="" className="part-photo h-24 w-24 shrink-0 rounded-md border object-contain p-1" />
               )}
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">

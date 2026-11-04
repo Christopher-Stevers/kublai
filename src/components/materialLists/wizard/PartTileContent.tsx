@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import { AlertCircle } from "lucide-react";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { formatPackQuantity } from "~/lib/pack-quantity";

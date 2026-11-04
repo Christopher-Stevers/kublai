@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,

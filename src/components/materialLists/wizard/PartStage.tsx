@@ -14,7 +14,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { AlertCircle, Minus, Plus } from "lucide-react";
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import type { PendingPart } from "./types";
 import { useClientPagination } from "~/components/ui/list-pagination";
 import { ViewToggle } from "~/components/ui/view-toggle";

@@ -16,7 +16,7 @@ import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { FinancialOnly, useFinancialVisibility } from "~/components/permissions/FinancialVisibility";
 
-import Image from "next/image";
+import Image from "~/components/catalogue/PartImage";
 import { MaterialListSyncIndicator } from "./MaterialListSyncIndicator";
 import { resolveReplicacheSyncStatus } from "~/hooks/use-replicache-material-list";
 import { memo, useRef, type ReactNode } from "react";

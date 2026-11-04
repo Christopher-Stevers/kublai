@@ -1,4 +1,5 @@
 "use client";
+import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
 import { PackingSlipActivity, type ProcessingJob } from "./PackingSlipActivity";
@@ -2416,7 +2417,9 @@ function PartChoice({
   return (
     <li className="flex items-center gap-3 px-3 py-2">
       {p.photoUrl ? (
-        <img
+        <PartImage
+          width={48}
+          height={48}
           alt=""
           src={p.photoUrl}
           className="part-photo size-12 shrink-0 rounded object-contain p-1"
