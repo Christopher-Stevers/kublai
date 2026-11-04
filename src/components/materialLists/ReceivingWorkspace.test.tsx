@@ -17,6 +17,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
+vi.mock("@clerk/nextjs", () => ({
+  useAuth: () => ({ userId: null, isLoaded: true }),
+}));
 vi.mock("~/components/jobs/documents/DocumentPdfPreview", () => ({
   DocumentPdfPreview: () => <div>Source PDF</div>,
 }));

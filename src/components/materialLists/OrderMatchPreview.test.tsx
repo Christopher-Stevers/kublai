@@ -1,11 +1,27 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { OrderMatchPreview } from "./OrderMatchPreview";
 import type { OrderMatchComparison } from "~/lib/order-match-comparison";
+// The open or folded choice is kept per account, so each test signs in afresh.
+const auth = vi.hoisted(() => ({ userId: "", next: 0 }));
+vi.mock("@clerk/nextjs", () => ({
+  useAuth: () => ({ userId: auth.userId, isLoaded: true }),
+}));
+beforeEach(() => {
+  auth.userId = `user-${++auth.next}`;
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+const details = () => screen.getByRole("button", { name: "Matching details" });
+const openDetails = () => fireEvent.click(details());
 const data: OrderMatchComparison = {
   orderId: "order",
   orderNumber: "183-Fastening House",
@@ -36,6 +52,12 @@ it("shows read-only pairs with a central score, date proximity, packaging and so
       sourceUrl="/source.pdf"
     />,
   );
+  // Folded by default, and nothing is loaded until it is opened.
+  expect(details()).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "View Slip" })).toBeInTheDocument();
+  expect(fetcher).not.toHaveBeenCalled();
+  openDetails();
   const table = await screen.findByRole("table");
   expect(
     within(table)
@@ -81,6 +103,7 @@ it("loads an alternate comparison without posting or changing the slip", async (
       sourceUrl="/source.pdf"
     />,
   );
+  openDetails();
   await screen.findByRole("table");
   view.rerender(
     <OrderMatchPreview
@@ -119,6 +142,7 @@ it("distinguishes unmatched and unknown scores without inventing confidence", as
       sourceUrl="/source.pdf"
     />,
   );
+  openDetails();
   await screen.findByRole("table");
   expect(
     screen.getByLabelText("Product match score: 0 out of 100"),
@@ -129,4 +153,37 @@ it("distinguishes unmatched and unknown scores without inventing confidence", as
   expect(screen.getByLabelText("Match score unavailable")).toHaveTextContent(
     "—",
   );
+});
+
+it("remembers whether this person left the details open or folded", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json(data)),
+  );
+  const preview = (
+    <OrderMatchPreview
+      jobId="job"
+      documentId="doc"
+      orderId="order"
+      readingKey="saved"
+      sourceUrl="/source.pdf"
+    />
+  );
+  const key = `foremanhq:slip-match-details:${auth.userId}`;
+  render(preview);
+  openDetails();
+  await screen.findByRole("table");
+  expect(localStorage.getItem(key)).toBe("open");
+  cleanup();
+  // The next slip opens the same way.
+  render(preview);
+  expect(details()).toHaveAttribute("aria-expanded", "true");
+  await screen.findByRole("table");
+  fireEvent.click(details());
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  expect(localStorage.getItem(key)).toBe("closed");
+  cleanup();
+  render(preview);
+  expect(details()).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
 });
