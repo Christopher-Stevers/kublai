@@ -181,10 +181,7 @@ export function JobMaterialListsView({
       )}
 
       <>
-        <div
-          aria-hidden="true"
-          className="h-20"
-        />
+        <div aria-hidden="true" className="h-20" />
         <div
           aria-label="Material list actions"
           className="bg-background pin-viewport-bottom fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6"
@@ -196,6 +193,7 @@ export function JobMaterialListsView({
               onChange: setSearch,
               label: "Search parts in material lists",
               placeholder: "Part name or SKU…",
+              inlineDesktop: true,
             }}
           >
             <BarSearchButton className="h-12 w-full px-2" />

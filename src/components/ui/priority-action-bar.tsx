@@ -81,16 +81,31 @@ export type BarSearch = {
   onChange: (value: string) => void;
   label: string;
   placeholder?: string;
+  /** Keep search in its own action slot alongside buttons on desktop. */
+  inlineDesktop?: boolean;
 };
 
 const BarSearchContext = createContext<{
   value: string;
   open: () => void;
+  inline?: BarSearch;
 } | null>(null);
 
 export function BarSearchButton({ className }: { className?: string }) {
   const search = useContext(BarSearchContext);
   if (!search) return null;
+  if (search.inline) {
+    return (
+      <Input
+        type="search"
+        aria-label={search.inline.label}
+        placeholder={search.inline.placeholder ?? "Search"}
+        value={search.value}
+        onChange={(event) => search.inline?.onChange(event.target.value)}
+        className={className}
+      />
+    );
+  }
   const value = search.value.trim();
   return (
     <Button
@@ -123,7 +138,12 @@ export function PriorityActionBar({
   dismissOnBack = false,
   tabAction,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { label?: ReactNode; search?: BarSearch; dismissOnBack?: boolean; /** Replaces More for bars whose actions all fit. */ tabAction?: ReactNode }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  label?: ReactNode;
+  search?: BarSearch;
+  dismissOnBack?: boolean;
+  /** Replaces More for bars whose actions all fit. */ tabAction?: ReactNode;
+}) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = useActionLimit(root);
@@ -134,12 +154,28 @@ export function PriorityActionBar({
   const swipe = useRef<{ y: number; dy: number } | null>(null);
   const shelfId = useId();
   const [searching, setSearching] = useState(() => !!search?.value);
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    if (!search?.inlineDesktop || typeof window.matchMedia !== "function")
+      return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [search?.inlineDesktop]);
+  const inlineSearch = !!search?.inlineDesktop && desktop;
   const searchButton = useRef(false);
-  const expanded = open && shelved > 0 && !searching;
-  useHeaderBackOverride(dismissOnBack && (expanded || searching) ? () => {
-    setOpen(false);
-    setSearching(false);
-  } : null, { priority: 110 });
+  const expanded = open && shelved > 0 && (!searching || inlineSearch);
+  useHeaderBackOverride(
+    dismissOnBack && (expanded || (searching && !inlineSearch))
+      ? () => {
+          setOpen(false);
+          setSearching(false);
+        }
+      : null,
+    { priority: 110 },
+  );
 
   useEffect(() => {
     // Back from the search: return focus to the Search button.
@@ -187,7 +223,13 @@ export function PriorityActionBar({
   return (
     <BarSearchContext.Provider
       value={
-        search ? { value: search.value, open: () => setSearching(true) } : null
+        search
+          ? {
+              value: search.value,
+              open: () => setSearching(true),
+              inline: inlineSearch ? search : undefined,
+            }
+          : null
       }
     >
       <div
@@ -198,7 +240,7 @@ export function PriorityActionBar({
         className={cn("relative w-full", className)}
       >
         {tabAction}
-        {!tabAction && shelved > 0 && !searching && (
+        {!tabAction && shelved > 0 && (!searching || inlineSearch) && (
           <button
             ref={tab}
             type="button"
@@ -267,7 +309,7 @@ export function PriorityActionBar({
         )}
         <div data-landscape-action-row>
           <div data-landscape-navigation-slot />
-          {search && searching && (
+          {search && searching && !inlineSearch && (
             <div data-action-bar-search>
               <div className="relative min-w-0 flex-1">
                 <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -306,7 +348,7 @@ export function PriorityActionBar({
           {/* Hidden, not removed, while searching: the bar measures this row. */}
           <div
             data-action-bar-row
-            hidden={!!search && searching}
+            hidden={!!search && searching && !inlineSearch}
             style={{
               gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))`,
             }}

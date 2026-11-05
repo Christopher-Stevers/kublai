@@ -53,7 +53,9 @@ it("shelves the lowest of four actions, never showing more than three", () => {
 });
 it("shows its label above the buttons", () => {
   render(
-    <PriorityActionBar label="Material Total $10.00">{buttons(2)}</PriorityActionBar>,
+    <PriorityActionBar label="Material Total $10.00">
+      {buttons(2)}
+    </PriorityActionBar>,
   );
   expect(screen.getByText("Material Total $10.00")).toHaveAttribute(
     "data-action-bar-label",
@@ -163,7 +165,14 @@ it("shows more actions on a wider bar", () => {
         .getAllByRole("button")
         .filter((b) => !b.closest("[data-action-bar-shelf]"))
         .map((b) => b.textContent),
-    ).toEqual(["More", "Action 3", "Action 4", "Action 5", "Action 6", "Action 7"]);
+    ).toEqual([
+      "More",
+      "Action 3",
+      "Action 4",
+      "Action 5",
+      "Action 6",
+      "Action 7",
+    ]);
   } finally {
     width.mockRestore();
     vi.unstubAllGlobals();
@@ -174,7 +183,9 @@ it("widens the search across the bar and shrinks it back with the X", () => {
   function Bar() {
     const [value, setValue] = useState("");
     return (
-      <PriorityActionBar search={{ value, onChange: setValue, label: "Search parts" }}>
+      <PriorityActionBar
+        search={{ value, onChange: setValue, label: "Search parts" }}
+      >
         <BarSearchButton />
         <button>Receive</button>
       </PriorityActionBar>
@@ -196,10 +207,53 @@ it("widens the search across the bar and shrinks it back with the X", () => {
 
 it("renders a custom view toggle above the action row", () => {
   const toggle = vi.fn();
-  render(<PriorityActionBar tabAction={<button data-action-bar-tab onClick={toggle}>Chosen Parts (2)</button>}>{buttons(3)}</PriorityActionBar>);
+  render(
+    <PriorityActionBar
+      tabAction={
+        <button data-action-bar-tab onClick={toggle}>
+          Chosen Parts (2)
+        </button>
+      }
+    >
+      {buttons(3)}
+    </PriorityActionBar>,
+  );
   const tab = screen.getByRole("button", { name: "Chosen Parts (2)" });
   expect(tab.closest("[data-action-bar-row]")).toBeNull();
-  expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "More" }),
+  ).not.toBeInTheDocument();
   fireEvent.click(tab);
   expect(toggle).toHaveBeenCalledOnce();
+});
+
+it("keeps Receive and New List available beside desktop search, including a restored filter", () => {
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+  function DesktopBar() {
+    const [value, onChange] = useState("copper");
+    return (
+      <PriorityActionBar
+        search={{ value, onChange, label: "Find parts", inlineDesktop: true }}
+      >
+        <BarSearchButton />
+        <button>Receive</button>
+        <button>New List</button>
+      </PriorityActionBar>
+    );
+  }
+  try {
+    render(<DesktopBar />);
+    const search = screen.getByRole("searchbox", { name: "Find parts" });
+    expect(search).toHaveValue("copper");
+    fireEvent.change(search, { target: { value: "cap" } });
+    expect(search).toHaveValue("cap");
+    expect(screen.getByRole("button", { name: "Receive" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "New List" })).toBeVisible();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
