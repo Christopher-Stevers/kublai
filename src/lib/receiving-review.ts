@@ -2,6 +2,7 @@ import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
 import {
   convertSlipQuantity,
   lineReadings,
+  orderPack,
   receiptUnit,
   type ReceiptOrderItem,
 } from "./packing-slip-review";
@@ -137,6 +138,12 @@ export function initialReview(
         };
       if (l.proposed !== null && item) draft.unit = item.unit;
       defaultReviewUnit(draft, item?.unit);
+      if (l.proposed !== null && l.shipped !== null)
+        draft.ordered = convertedOrderedQuantity(
+          draft.ordered,
+          Math.abs(l.shipped),
+          l.proposed,
+        );
       if (
         (analysis?.lines.some((line) => (line.shipped ?? 0) < 0) ?? false) &&
         (l.shipped ?? 0) > 0
@@ -188,6 +195,61 @@ export function defaultReviewUnit(
       !/^(?:Earlier reading: )?(?:No unit could be read on the slip\.|Quantity unit is not printed\.|Printed unit is missing or unclear\.|Quantity unit missing or ambiguous\.?$)/i.test(
         issue,
       ),
+  );
+}
+/** An accepted quantity conversion applies to both columns of the same slip row. */
+export function convertedOrderedQuantity(
+  ordered: number | null,
+  fromQuantity: number | null,
+  toQuantity: number | null,
+) {
+  if (
+    ordered === null ||
+    fromQuantity === null ||
+    toQuantity === null ||
+    !Number.isFinite(ordered) ||
+    !Number.isFinite(fromQuantity) ||
+    !Number.isFinite(toQuantity) ||
+    fromQuantity <= 0 ||
+    toQuantity <= 0
+  )
+    return ordered;
+  return qtyRound((ordered * toQuantity) / fromQuantity);
+}
+
+/** Older reviews converted shipped pieces to packs but kept the raw ordered count.
+ * Repair only an unchanged source count with the same proven pack conversion. */
+export function normalizeOrderedQuantity(
+  line: ReceivingLine,
+  source: SlipLine | undefined,
+  item: ReceiptOrderItem | undefined,
+) {
+  if (
+    !source ||
+    !item ||
+    source.orderItemId !== line.orderItemId ||
+    line.orderItemId !== item.id ||
+    source.ordered == null ||
+    source.shipped === null ||
+    line.ordered !== Math.abs(source.ordered) ||
+    line.quantity === null ||
+    !(line.checked || line.approved || source.proposed === line.quantity) ||
+    receiptUnit(line.unit) !== receiptUnit(item.unit) ||
+    (source.unit?.trim() && receiptUnit(source.unit) === receiptUnit(item.unit))
+  )
+    return;
+  const pack = orderPack(item, source.evidence);
+  if (
+    !pack ||
+    pack <= 1 ||
+    Math.abs(source.shipped) <= 0 ||
+    qtyRound(Math.abs(source.shipped) / pack) !== line.quantity
+  )
+    return;
+  line.ordered = convertedOrderedQuantity(
+    line.ordered,
+    Math.abs(source.shipped),
+    line.quantity,
   );
 }
 export function readyLine(l: ReceivingLine) {

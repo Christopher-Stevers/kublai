@@ -415,6 +415,7 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
     sku: "HN38G2ZB",
     evidence: "HN38G2ZB HEX NUT GR2 ZC,3/8-16 2500 2500 0",
     quantity: 2500,
+    ordered: 2500,
     unit: "box",
   });
   Object.assign(state.items[0]!, {
@@ -452,6 +453,7 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
     action: "line",
     orderItemId: "item",
     quantity: 1,
+    ordered: 1,
     unit: "box",
     checked: true,
     fit: {

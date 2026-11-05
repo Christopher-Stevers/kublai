@@ -1457,6 +1457,57 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
 
+  it.each([false, true])(
+    "normalizes saved ordered pieces only against current source evidence (stale=%s)",
+    async (stale) => {
+      const { access, doc } = await confirmedHeader();
+      await db
+        .update(schema.partDefinitions)
+        .set({ piecesPerPack: 100, bulkUnit: "box", individualUnit: "pcs" })
+        .where(eq(schema.partDefinitions.id, id(5)));
+      await db
+        .update(schema.orderItems)
+        .set({ quantity: "3" })
+        .where(eq(schema.orderItems.id, id(6)));
+      const state = await workspace();
+      const saved = state.documents[0]!;
+      Object.assign(saved.packingSlipAnalysis!.lines[0]!, {
+        ordered: 300,
+        shipped: 200,
+        proposed: null,
+        unit: null,
+      });
+      Object.assign(saved.receivingReview!.lines[0]!, {
+        ordered: 300,
+        quantity: 2,
+        unit: "box",
+        checked: true,
+        approved: {
+          quantity: 2,
+          itemId: id(6),
+          kind: "delivery",
+          by: "receiver",
+          at: "now",
+        },
+      });
+      if (stale) saved.receivingReview!.analysisRunId = "old-run";
+      await db
+        .update(schema.jobDocumentWorkspaces)
+        .set({ state })
+        .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+      const before = await workspace();
+      const receivedBefore = (await item()).receivedQuantity;
+      const detail = await receivingQueue(access, doc.documentId);
+      expect(detail.review!.lines[0]).toMatchObject({
+        ordered: stale ? 300 : 3,
+        quantity: 2,
+        unit: "box",
+        approved: { quantity: 2 },
+      });
+      expect(await workspace()).toEqual(before);
+      expect((await item()).receivedQuantity).toBe(receivedBefore);
+    },
+  );
   it("new queue approves once under concurrent requests and preserves unresolved lines", async () => {
     const { access, doc } = await confirmedHeader();
     const legacyState = await workspace();

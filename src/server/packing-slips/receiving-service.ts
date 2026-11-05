@@ -30,6 +30,7 @@ import type { JobDocument, DocumentState } from "~/server/documents/types";
 import {
   initialReview,
   autoConfirmsLine,
+  normalizeOrderedQuantity,
   defaultReviewUnit,
   lineKind,
   duplicateEvidence,
@@ -320,6 +321,18 @@ export async function receivingQueue(
       line,
       linked.find((i) => i.id === line.orderItemId)?.unit,
     );
+    const analysis = doc.packingSlipAnalysis;
+    if (
+      review.versionId === doc.currentVersionId &&
+      analysis?.versionId === doc.currentVersionId &&
+      review.analysisRunId === analysis?.runId &&
+      line.sourceIndex !== undefined
+    )
+      normalizeOrderedQuantity(
+        line,
+        analysis?.lines[line.sourceIndex],
+        linked.find(i => i.id === line.orderItemId),
+      );
     line.autoConfirmed = autoConfirmsLine(
       line,
       review,

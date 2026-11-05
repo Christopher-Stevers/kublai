@@ -48,7 +48,12 @@ import type {
   ReceivingLine,
   ReceiptKind,
 } from "~/lib/receiving-review";
-import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
+import {
+  receiptDelta,
+  qtyRound,
+  lineKind,
+  convertedOrderedQuantity,
+} from "~/lib/receiving-review";
 import { dueWithHandCount, type ItemReceipts } from "~/lib/receipt-sources";
 import {
   lineReadings,
@@ -2771,7 +2776,13 @@ function LineReview({
       description: name,
       sku,
       quantity: over.quantity ?? (quantity === "" ? null : Number(quantity)),
-      ordered: ordered === "" ? null : Number(ordered),
+      ordered: over.quantity !== undefined
+        ? convertedOrderedQuantity(
+            ordered === "" ? null : Number(ordered),
+            quantity === "" ? null : Number(quantity),
+            over.quantity,
+          )
+        : ordered === "" ? null : Number(ordered),
       unit: over.unit ?? unit,
       unitPrice: price === "" ? null : Number(price),
       orderItemId: item || null,

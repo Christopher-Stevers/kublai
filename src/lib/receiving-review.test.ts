@@ -2,6 +2,8 @@ import type { ReceiptOrderItem, SlipAnalysis } from "./packing-slip-review";
 import { describe, it, expect } from "vitest";
 import {
   autoConfirmsLine,
+  convertedOrderedQuantity,
+  normalizeOrderedQuantity,
   receiptDelta,
   duplicateEvidence,
   hasReturnEvidence,
@@ -282,4 +284,108 @@ describe("saved reader auto-confirmation", () => {
       expect(f.qualifies()).toBe(false);
     },
   );
+});
+
+
+describe("ordered counts during pack conversion", () => {
+  it("converts a partial shipment's ordered and delivered counts by the same factor", () => {
+    expect(convertedOrderedQuantity(300, 200, 2)).toBe(3);
+    expect(convertedOrderedQuantity(2500, 2500, 1)).toBe(1);
+    expect(convertedOrderedQuantity(3, 2, 200)).toBe(300);
+    expect(convertedOrderedQuantity(null, 200, 2)).toBeNull();
+    expect(convertedOrderedQuantity(300, 0, 2)).toBe(300);
+    expect(convertedOrderedQuantity(300, 200, 0)).toBe(300);
+  });
+  function fixture() {
+    const item: ReceiptOrderItem = {
+      id: "i",
+      description: "Clips (Box of 100)",
+      aliases: [],
+      sku: null,
+      unit: "box",
+      piecesPerPack: 100,
+      individualUnit: "pcs",
+      ordered: 3,
+      received: 0,
+      verificationStatus: "pending",
+    };
+    const source: SlipAnalysis["lines"][number] = {
+      page: 1,
+      evidence: "order 300; ship 200; unit not printed",
+      orderItemId: "i",
+      ordered: 300,
+      shipped: 200,
+      proposed: null,
+      backordered: 100,
+      unit: null,
+      issues: [],
+    };
+    const draft = {
+      id: "l",
+      page: 1,
+      sourceIndex: 0,
+      description: "Clips",
+      evidence: source.evidence,
+      sku: "",
+      ordered: 300,
+      quantity: 2,
+      unit: "box",
+      unitPrice: null,
+      orderItemId: "i",
+      issues: [],
+      checked: true,
+    };
+    return { item, source, draft };
+  }
+  it("repairs a saved converted line once, preserving approved receipt quantities", () => {
+    const f = fixture();
+    Object.assign(f.draft, {
+      approved: {
+        quantity: 2,
+        kind: "delivery",
+        itemId: "i",
+        by: "u",
+        at: "now",
+      },
+    });
+    normalizeOrderedQuantity(f.draft, f.source, f.item);
+    expect(f.draft.ordered).toBe(3);
+    expect(f.draft.quantity).toBe(2);
+    expect(f.draft).toMatchObject({ approved: { quantity: 2 } });
+    normalizeOrderedQuantity(f.draft, f.source, f.item);
+    expect(f.draft.ordered).toBe(3);
+  });
+  it("converts the ordered count when preparing a draft with an already-converted proposal", () => {
+    const f = fixture();
+    f.source.proposed = 2;
+    const analysis: SlipAnalysis = {
+      runId: "r",
+      versionId: "v",
+      status: "ready",
+      startedAt: "now",
+      items: [f.item],
+      lines: [f.source],
+      warnings: [],
+    };
+    expect(initialReview(analysis, "v", "u").lines[0]).toMatchObject({
+      ordered: 3,
+      quantity: 2,
+      unit: "box",
+    });
+    expect(analysis.lines[0]!.ordered).toBe(300);
+  });
+  it("preserves corrected ordered counts, unconverted quantities and explicit box readings", () => {
+    const f = fixture();
+    f.draft.ordered = 4;
+    normalizeOrderedQuantity(f.draft, f.source, f.item);
+    expect(f.draft.ordered).toBe(4);
+    f.draft.ordered = 300;
+    f.draft.quantity = 200;
+    normalizeOrderedQuantity(f.draft, f.source, f.item);
+    expect(f.draft.ordered).toBe(300);
+    f.draft.quantity = 2;
+    f.source.unit = "box";
+    normalizeOrderedQuantity(f.draft, f.source, f.item);
+    expect(f.draft.ordered).toBe(300);
+  });
 });
