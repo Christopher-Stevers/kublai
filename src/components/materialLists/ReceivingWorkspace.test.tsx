@@ -373,13 +373,13 @@ it("lists every order item beside the slip reading and its reader", async () => 
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
   ).toEqual(["Valve", "Elbow", "No matching part"]);
   const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
-  expect(valve).toHaveTextContent("ValveOrdered10 eaReceived2 ea8 ea still due");
+  expect(valve).toHaveTextContent("ValveOrdered10Received28 still due");
   const terra = within(valve).getByRole("group", { name: "Terra 6.1 reading" });
   expect(terra).toHaveTextContent("98%");
-  expect(terra).toHaveTextContent("6 ea");
-  expect(terra).toHaveTextContent("2 ea short");
+  expect(terra).toHaveTextContent("Received6");
+  expect(terra).toHaveTextContent("2 short");
   const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
-  expect(elbow).toHaveTextContent("4 ea still due");
+  expect(elbow).toHaveTextContent("4 still due");
   expect(elbow).toHaveTextContent("Not on the slip");
   const pipe = screen
     .getByRole("heading", { name: "Unclear pipe" })
@@ -634,12 +634,12 @@ it("shows every reader's part match and quantity confidence", async () => {
       .getAllByRole("group")
       .map((g) => g.textContent);
   // The most confident reader first; the others behind one toggle.
-  expect(readers()).toEqual(["Terra 6.197%ValveOrdered—Received6 ea2 ea short2 other readers"]);
+  expect(readers()).toEqual(["Terra 6.197%ValveOrdered—Received62 short2 other readers"]);
   fireEvent.click(within(valve).getByRole("button", { name: /2 other readers/ }));
   expect(readers()).toEqual([
-    "Terra 6.197%ValveOrdered—Received6 ea2 ea shortHide other readers",
-    "Jev Image80%ValveOrdered—Received6 ea2 ea short",
-    "OCR only48%ValveOrdered—Received5 ea3 ea short",
+    "Terra 6.197%ValveOrdered—Received62 shortHide other readers",
+    "Jev Image80%ValveOrdered—Received62 short",
+    "OCR only48%ValveOrdered—Received53 short",
   ]);
 });
 it("says when Terra found no product on a row and leaves it out in one tap", async () => {

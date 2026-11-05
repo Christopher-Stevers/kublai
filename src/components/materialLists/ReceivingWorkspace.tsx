@@ -1,4 +1,8 @@
 "use client";
+import {
+  receivingDisplayUnit,
+  receivingQuantity,
+} from "~/lib/receiving-quantity-display";
 import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
@@ -1156,7 +1160,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                         <p className="font-semibold tabular-nums">
                           {signed(delta.received)}{" "}
                           <span className="text-muted-foreground text-xs font-normal">
-                            {l.unit}
+                            {receivingDisplayUnit(l.unit)}
                           </span>
                         </p>
                         {above && (
@@ -1734,12 +1738,12 @@ function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
     : got < due
       ? {
           ok: false,
-          label: `${qtyRound(due - got)} ${item.unit} short`,
+          label: `${receivingQuantity(qtyRound(due - got), item.unit)} short`,
           text: amber.text,
         }
       : {
           ok: false,
-          label: `${qtyRound(got - due)} ${item.unit} more than needed`,
+          label: `${receivingQuantity(qtyRound(got - due), item.unit)} more than needed`,
           text: amber.text,
         };
 }
@@ -1762,7 +1766,7 @@ function QuantityPair({
     n === null ? (
       <span className="text-muted-foreground font-normal">{blank}</span>
     ) : (
-      `${n} ${unit}`.trim()
+      receivingQuantity(n, unit)
     );
   return (
     <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-y-0.5 border-t pt-2 text-sm">
@@ -1787,12 +1791,12 @@ function dueVerdict(item: ReceiptOrderItem, got: number): Verdict {
     : got < due
       ? {
           ok: false,
-          label: `${qtyRound(due - got)} ${item.unit} short`,
+          label: `${receivingQuantity(qtyRound(due - got), item.unit)} short`,
           text: amber.text,
         }
       : {
           ok: false,
-          label: `${qtyRound(got - due)} ${item.unit} more than needed`,
+          label: `${receivingQuantity(qtyRound(got - due), item.unit)} more than needed`,
           text: amber.text,
         };
 }
@@ -1815,7 +1819,7 @@ function readingVerdict(
   const verdict = dueVerdict(item, read.amount);
   return read.amount === shipped
     ? verdict
-    : { ...verdict, label: `= ${read.amount} ${item.unit} · ${verdict.label}` };
+    : { ...verdict, label: `= ${receivingQuantity(read.amount, item.unit)} · ${verdict.label}` };
 }
 type ReaderCopy = {
   key: string;
@@ -2132,7 +2136,7 @@ function OrderComparison({
                       {item && (
                         <>
                           {due > 0
-                            ? `${due} ${item.unit} still due`
+                            ? `${receivingQuantity(due, item.unit)} still due`
                             : "All received"}
                           {item.sku && ` · ${item.sku}`}
                         </>
@@ -2409,7 +2413,7 @@ function PartFitDialog({
 }) {
   const change = !!fit?.rows.length,
     read = fit?.read ?? null,
-    counted = fit && item ? `${fit.quantity} ${item.unit}` : "";
+    counted = fit && item ? receivingQuantity(fit.quantity, item.unit) : "";
   return (
     <Dialog open={!!fit && !!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
@@ -2500,7 +2504,7 @@ function PartFitDialog({
               )}
               {read !== null && (
                 <Button variant="ghost" onClick={() => onChoose()}>
-                  Keep {read} {unit || item.unit}
+                  Keep {receivingQuantity(read, unit || item.unit)}
                 </Button>
               )}
             </div>
@@ -2691,7 +2695,7 @@ function LineReview({
                     {detail.items.map((i) => (
                       <option key={i.id} value={i.id}>
                         {i.description} · due{" "}
-                        {Math.max(0, qtyRound(i.ordered - i.received))} {i.unit}
+                        {receivingQuantity(Math.max(0, qtyRound(i.ordered - i.received)), i.unit)}
                       </option>
                     ))}
                   </select>

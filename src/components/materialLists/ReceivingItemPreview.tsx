@@ -1,5 +1,6 @@
 "use client";
 
+import { receivingDisplayUnit } from "~/lib/receiving-quantity-display";
 import { MaterialListItem } from "./MaterialListItem";
 import { useReplicacheMaterialList } from "~/hooks/use-replicache-material-list";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
@@ -65,7 +66,7 @@ export function ReceivingItemPreview({
         verifyInitialStatus={item.verificationStatus}
         verifyCaption={
           <div className="text-muted-foreground mt-2 space-y-1 text-center text-sm">
-            <p>Unit: {item.unit}</p>
+            {receivingDisplayUnit(item.unit) && <p>Unit: {receivingDisplayUnit(item.unit)}</p>}
             {item.sku && <p>{item.sku}</p>}
             {supplierName && <p>{supplierName}</p>}
           </div>
