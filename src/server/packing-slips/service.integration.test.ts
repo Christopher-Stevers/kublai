@@ -1515,6 +1515,71 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     });
     expect(Number((await item()).receivedQuantity)).toBe(9);
   });
+  it("lets a slip take over a hand count of the same parts instead of adding to it", async () => {
+    const { access, doc } = await confirmedHeader();
+    // Marked received by hand on the order before the slip was reviewed.
+    await db
+      .update(schema.orderItems)
+      .set({ receivedQuantity: "10", verificationStatus: "complete" })
+      .where(eq(schema.orderItems.id, id(6)));
+    const receipts = async () =>
+      (await receivingQueue(access, doc.documentId)).receipts![id(6)];
+    expect(await receipts()).toEqual({ slips: [], byHand: 10 });
+    await expect(
+      reviewAction(access, doc.documentId, {
+        action: "approve",
+        lineIds: ["0"],
+        fingerprint: await finger(access),
+      }),
+    ).rejects.toThrow("exceeds the quantity due");
+    await reviewAction(access, doc.documentId, {
+      action: "approve",
+      lineIds: ["0"],
+      fingerprint: await finger(access),
+      fromHandCount: true,
+    });
+    expect(Number((await item()).receivedQuantity)).toBe(10);
+    const line = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    expect(line.approved).toMatchObject({ quantity: 6, fromHand: 6 });
+    expect(await receipts()).toEqual({
+      slips: [expect.objectContaining({ quantity: 6, self: true })],
+      byHand: 4,
+    });
+    // Correcting the slip to nothing gives the parts back to the hand count.
+    await reviewAction(access, doc.documentId, {
+      action: "line",
+      lineId: "0",
+      description: "Valve",
+      sku: "",
+      quantity: 0,
+      ordered: 10,
+      unit: "ea",
+      unitPrice: null,
+      orderItemId: id(6),
+      checked: true,
+    });
+    await reviewAction(access, doc.documentId, {
+      action: "approve",
+      lineIds: ["0"],
+      fingerprint: await finger(access),
+      reason: "Not on this delivery",
+    });
+    expect(Number((await item()).receivedQuantity)).toBe(10);
+    expect(await receipts()).toEqual({ slips: [], byHand: 10 });
+  });
+  it("takes over only what was counted by hand, and adds the rest", async () => {
+    const { access, doc } = await confirmedHeader();
+    await reviewAction(access, doc.documentId, {
+      action: "approve",
+      lineIds: ["0"],
+      fingerprint: await finger(access),
+      fromHandCount: true,
+    });
+    expect(Number((await item()).receivedQuantity)).toBe(6);
+    expect(
+      (await workspace()).documents[0]!.receivingReview!.lines[0]!.approved,
+    ).toMatchObject({ quantity: 6, fromHand: 2 });
+  });
   it("rejects duplicate files until a person explicitly permits an additional delivery", async () => {
     const { access, doc } = await confirmedHeader();
     await saveDocumentVersion(

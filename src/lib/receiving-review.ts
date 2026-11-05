@@ -43,6 +43,9 @@ export type ReceivingLine = {
     kind: ReceiptKind;
     by: string;
     at: string;
+    /** Of the quantity, what was already counted by hand on the order and
+     * taken over by this slip rather than added. */
+    fromHand?: number;
   };
   ignored?: { reason: string; by: string; at: string };
   checked?: boolean;

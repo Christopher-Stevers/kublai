@@ -62,6 +62,7 @@ import { comparisonRows } from "./order-comparison";
 import { jobOrders } from "./find-order-service";
 import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
+import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -469,6 +470,33 @@ export async function receivingQueue(
     ...d,
     name: visible.some((v) => v.id === d.id) ? d.name : "Another saved slip",
   }));
+  // Where each item's received count came from: the slips that received it,
+  // and what was counted by hand on the order.
+  const fromSlips = slipReceipts(state.documents);
+  const receipts: Record<string, ItemReceipts> = {};
+  for (const item of linked) {
+    const slips = (fromSlips.get(item.id) ?? []).map((r) => {
+      const other = state.documents.find((d) => d.id === r.documentId);
+      return {
+        ...r,
+        name:
+          r.documentId === doc.id
+            ? doc.name
+            : other?.deletedAt
+              ? "A deleted slip"
+              : visible.some((v) => v.id === r.documentId)
+                ? other!.name
+                : "Another saved slip",
+        by: members.find((m) => m.id === r.by)?.name ?? "Organization member",
+        self: r.documentId === doc.id,
+      };
+    });
+    const byHand = qtyRound(
+      item.received - slips.reduce((n, r) => n + r.quantity, 0),
+    );
+    if (slips.length || byHand > 0)
+      receipts[item.id] = { slips, byHand: Math.max(0, byHand) };
+  }
   // Supplier suggestion is never used as an approval.
   if (!review.supplierId && doc.packingSlip) {
     const order = orderOptions.find((o) => o.id === doc.packingSlip!.orderId);
@@ -486,6 +514,7 @@ export async function receivingQueue(
     items: linked,
     fingerprint: orderFingerprint(linked),
     duplicates,
+    receipts,
     suppliers: supplierOptions,
     catalogs: catalogOptions,
     units: unitOptions,
@@ -1489,6 +1518,23 @@ async function mutateReceivingImpl(
           .from(orderItems)
           .where(eq(orderItems.orderId, order.id))
           .for("update");
+        // What each item has counted by hand, not from any slip, which this
+        // slip may take over as the same parts.
+        const fromSlips = slipReceipts(state.documents);
+        const hand = new Map(
+          rows.map((row) => [
+            row.id,
+            input.fromHandCount
+              ? qtyRound(
+                  Number(row.receivedQuantity) -
+                    (fromSlips.get(row.id) ?? []).reduce(
+                      (n, r) => n + r.quantity,
+                      0,
+                    ),
+                )
+              : 0,
+          ]),
+        );
         for (const l of selected) {
           defaultReviewUnit(
             l,
@@ -1528,8 +1574,23 @@ async function mutateReceivingImpl(
             l.quantity!,
             l.approved,
           );
+          // A hand count of the same parts that the slip takes over instead
+          // of adding to. A correction keeps what the slip still covers and
+          // gives the rest back to the hand count.
+          const handBefore = l.approved?.fromHand ?? 0;
+          const fromHand = l.approved
+            ? Math.min(
+                handBefore,
+                lineKind(l, review.kind) === "delivery" ? l.quantity! : 0,
+              )
+            : Math.max(0, Math.min(hand.get(row!.id)!, delta.received));
+          if (!l.approved)
+            hand.set(row!.id, qtyRound(hand.get(row!.id)! - fromHand));
           const received = qtyRound(
-              Number(row!.receivedQuantity) + delta.received,
+              Number(row!.receivedQuantity) +
+                delta.received -
+                fromHand +
+                handBefore,
             ),
             credit = qtyRound(Number(row!.creditedQuantity) + delta.credit);
           const returned = qtyRound(
@@ -1581,6 +1642,7 @@ async function mutateReceivingImpl(
             kind: lineKind(l, review.kind),
             by: fresh.user.id,
             at: now,
+            ...(fromHand > 0 ? { fromHand } : {}),
           };
           l.checked = true;
         }

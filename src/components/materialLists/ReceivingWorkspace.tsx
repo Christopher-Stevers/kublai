@@ -49,6 +49,7 @@ import type {
   ReceiptKind,
 } from "~/lib/receiving-review";
 import { receiptDelta, qtyRound, lineKind } from "~/lib/receiving-review";
+import { dueWithHandCount, type ItemReceipts } from "~/lib/receipt-sources";
 import {
   lineReadings,
   readSlipQuantity,
@@ -116,6 +117,8 @@ type Detail = {
     key: string;
     received: boolean;
   }>;
+  /** Where each order item's received count came from. */
+  receipts?: Record<string, ItemReceipts>;
   suppliers: Option[];
   catalogs: Option[];
   units: Array<{ id: string; code: string }>;
@@ -292,6 +295,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [preview, setPreview] = useState(false),
     [reason, setReason] = useState(""),
     [over, setOver] = useState(false),
+    // Whether the parts counted by hand on the order are this slip's.
+    [sameAsHand, setSameAsHand] = useState<boolean | null>(null),
     [accounted, setAccounted] = useState(false),
     [openLine, setOpenLine] = useState<string | null>(null),
     [lab, setLab] = useState(false),
@@ -473,35 +478,62 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     : ready.length
                       ? "Everything else is done"
                       : "Every line is approved or excluded";
-  // Approval preview: running totals per order line, as the server applies them.
-  const totals = new Map<string, { received: number; credit: number }>();
-  const approvals = r
-    ? ready.map((l) => {
-        const delta = receiptDelta(
-            lineKind(l, r.kind),
-            l.quantity!,
-            l.approved,
-          ),
-          item = detail?.items.find((i) => i.id === l.orderItemId),
-          sum = totals.get(l.orderItemId!) ?? {
-            received: item?.received ?? 0,
-            credit: 0,
-          },
-          before = sum.received;
-        sum.received = qtyRound(sum.received + delta.received);
-        sum.credit = qtyRound(sum.credit + delta.credit);
-        totals.set(l.orderItemId!, sum);
-        const due = item ? qtyRound(item.ordered - sum.credit) : null;
-        return {
-          line: l,
-          delta,
-          before,
-          after: sum.received,
-          due,
-          over: due !== null && sum.received > due,
-        };
-      })
-    : [];
+  // Approval preview: running totals per order line, as the server applies
+  // them, with or without the slip taking over counts made by hand.
+  const plan = (linkHand: boolean) => {
+    const totals = new Map<string, { received: number; credit: number }>(),
+      hand = new Map<string, number>();
+    return r
+      ? ready.map((l) => {
+          const id = l.orderItemId!,
+            delta = receiptDelta(lineKind(l, r.kind), l.quantity!, l.approved),
+            item = detail?.items.find((i) => i.id === id),
+            sum = totals.get(id) ?? {
+              received: item?.received ?? 0,
+              credit: 0,
+            },
+            before = sum.received;
+          if (!hand.has(id)) hand.set(id, detail?.receipts?.[id]?.byHand ?? 0);
+          const handBefore = l.approved?.fromHand ?? 0,
+            canLink = l.approved
+              ? 0
+              : Math.max(0, Math.min(hand.get(id)!, delta.received)),
+            fromHand = l.approved
+              ? Math.min(
+                  handBefore,
+                  lineKind(l, r.kind) === "delivery" ? l.quantity! : 0,
+                )
+              : linkHand
+                ? canLink
+                : 0;
+          if (!l.approved) hand.set(id, qtyRound(hand.get(id)! - fromHand));
+          const change = qtyRound(delta.received - fromHand + handBefore);
+          sum.received = qtyRound(sum.received + change);
+          sum.credit = qtyRound(sum.credit + delta.credit);
+          totals.set(id, sum);
+          const due = item ? qtyRound(item.ordered - sum.credit) : null;
+          return {
+            line: l,
+            delta,
+            change,
+            fromHand: l.approved ? 0 : fromHand,
+            canLink,
+            before,
+            after: sum.received,
+            due,
+            over: due !== null && sum.received > due,
+          };
+        })
+      : [];
+  };
+  const unlinked = plan(false),
+    handLines = unlinked.filter((x) => x.canLink > 0),
+    // A slip that would take a hand-counted item over what was ordered is
+    // almost surely the same parts; otherwise the reviewer says which.
+    linkHand =
+      sameAsHand ??
+      (handLines.some((x) => x.over) ? true : handLines.length ? null : false),
+    approvals = linkHand ? plan(true) : unlinked;
   const waiting = docs.filter(
     (d) => d.status === "review" || d.status === "processing",
   ).length;
@@ -1104,6 +1136,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 onClick={() => {
                   setReason("");
                   setOver(false);
+                  setSameAsHand(null);
                   setAccounted(r?.documentChecked ?? false);
                   setPreview(true);
                 }}
@@ -1132,7 +1165,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               </DialogHeader>
               <ul className="divide-y rounded-lg border">
                 {approvals.map(
-                  ({ line: l, delta, before, after, due, over: above }) => (
+                  ({
+                    line: l,
+                    delta,
+                    change,
+                    fromHand,
+                    before,
+                    after,
+                    due,
+                    over: above,
+                  }) => (
                     <li
                       key={l.id}
                       className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm"
@@ -1149,6 +1191,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                               `Previously ${l.approved.quantity} → ${l.quantity}`,
                             due !== null &&
                               `Received ${before} → ${after} of ${due}`,
+                            fromHand > 0 &&
+                              `${fromHand} counted by hand, now on this slip`,
                             delta.credit !== 0 &&
                               `Credit ${signed(delta.credit)}`,
                           ]
@@ -1158,7 +1202,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="font-semibold tabular-nums">
-                          {signed(delta.received)}{" "}
+                          {signed(change)}{" "}
                           <span className="text-muted-foreground text-xs font-normal">
                             {receivingDisplayUnit(l.unit)}
                           </span>
@@ -1181,6 +1225,40 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                     onChange={(e) => setReason(e.target.value)}
                   />
                 </Label>
+              )}
+              {handLines.length > 0 && (
+                <div
+                  role="radiogroup"
+                  aria-labelledby="hand-count-question"
+                  className="space-y-2 rounded-lg border p-3 text-sm"
+                >
+                  <p id="hand-count-question" className="font-medium">
+                    {handLines.length === 1
+                      ? "1 line was already counted by hand on the order"
+                      : `${handLines.length} lines were already counted by hand on the order`}
+                  </p>
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="hand-count"
+                      className="mt-0.5"
+                      checked={linkHand === true}
+                      onChange={() => setSameAsHand(true)}
+                    />
+                    Same parts. This slip takes over the hand count, so nothing
+                    is added twice.
+                  </label>
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="hand-count"
+                      className="mt-0.5"
+                      checked={linkHand === false}
+                      onChange={() => setSameAsHand(false)}
+                    />
+                    A separate delivery. Add this slip on top.
+                  </label>
+                </div>
               )}
               <div className="space-y-2.5">
                 {(approvals.some((x) => x.over) ||
@@ -1216,6 +1294,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 className="w-full"
                 disabled={
                   busy ||
+                  linkHand === null ||
                   (ready.some((l) => l.approved) && reason.trim().length < 3)
                 }
                 onClick={async () => {
@@ -1226,6 +1305,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       fingerprint: detail.fingerprint,
                       reason,
                       allowOverDelivery: over,
+                      fromHandCount: linkHand === true,
                       documentChecked: accounted,
                     })
                   )
@@ -1701,10 +1781,52 @@ function terraCheck(l: ReceivingLine, detail: Detail) {
 }
 const unsure = (confidence: number | null) =>
   confidence !== null && confidence < 0.8;
+/** Where an order item's received count came from: each slip that received
+ * it, and what was counted by hand on the order, which keeps no record of who
+ * or when. */
+function ReceivedFrom({
+  item,
+  receipts,
+}: {
+  item: ReceiptOrderItem;
+  receipts: ItemReceipts | undefined;
+}) {
+  if (!receipts) return null;
+  const amount = (n: number) => receivingQuantity(Math.abs(n), item.unit);
+  return (
+    <ul aria-label="Received from" className="text-muted-foreground mt-1">
+      {receipts.byHand > 0 && (
+        <li>{amount(receipts.byHand)} counted by hand on the order</li>
+      )}
+      {receipts.slips.map((r) => (
+        <li key={r.documentId}>
+          {amount(r.quantity)} {r.quantity < 0 ? "returned" : "received"} on{" "}
+          {r.self ? (
+            "this slip"
+          ) : (
+            <>
+              <Link
+                className="relative z-10 underline"
+                href={`?document=${r.documentId}`}
+              >
+                {r.name}
+              </Link>
+              {` · ${r.by} · ${new Date(r.at).toLocaleDateString()}`}
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The slip lines against one order item, in the order's unit. */
-function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
-  const due = Math.max(0, qtyRound(item.ordered - item.received)),
-    live = lines.filter((l) => !l.ignored),
+function compareToOrder(
+  item: ReceiptOrderItem,
+  lines: ReceivingLine[],
+  byHand: number,
+) {
+  const live = lines.filter((l) => !l.ignored),
     pending = live.filter((l) => !l.approved);
   if (!live.length)
     return lines.length
@@ -1728,24 +1850,11 @@ function compareToOrder(item: ReceiptOrderItem, lines: ReceivingLine[]) {
       label: `Different unit. The order counts in ${item.unit}.`,
       text: amber.text,
     };
-  const got = qtyRound(pending.reduce((n, l) => n + (l.quantity ?? 0), 0));
-  return got === due
-    ? {
-        ok: true,
-        label: "Matches the order",
-        text: "text-emerald-700 dark:text-emerald-300",
-      }
-    : got < due
-      ? {
-          ok: false,
-          label: `${receivingQuantity(qtyRound(due - got), item.unit)} short`,
-          text: amber.text,
-        }
-      : {
-          ok: false,
-          label: `${receivingQuantity(qtyRound(got - due), item.unit)} more than needed`,
-          text: amber.text,
-        };
+  return dueVerdict(
+    item,
+    pending.reduce((n, l) => n + (l.quantity ?? 0), 0),
+    byHand,
+  );
 }
 const copyLabel =
   "text-muted-foreground text-[11px] font-medium tracking-wide uppercase";
@@ -1778,10 +1887,25 @@ function QuantityPair({
   );
 }
 type Verdict = { ok: boolean; label: string; text: string };
-/** Whether a count, already in the order's unit, covers what is still due. */
-function dueVerdict(item: ReceiptOrderItem, got: number): Verdict {
-  const due = Math.max(0, qtyRound(item.ordered - item.received));
+/** Whether a count, already in the order's unit, covers what is still due.
+ * Parts counted by hand on the order may be the slip's own, so a count they
+ * cover is not more than needed. */
+function dueVerdict(
+  item: ReceiptOrderItem,
+  got: number,
+  byHand: number,
+): Verdict {
+  let due = Math.max(0, qtyRound(item.ordered - item.received));
   got = qtyRound(got);
+  if (got > due && byHand > 0) {
+    due = dueWithHandCount(item, byHand, got).due;
+    if (got <= due)
+      return {
+        ok: true,
+        label: "Counted by hand already",
+        text: "text-emerald-700 dark:text-emerald-300",
+      };
+  }
   return got === due
     ? {
         ok: true,
@@ -1806,6 +1930,7 @@ function readingVerdict(
   shipped: number | null,
   unit: string | null,
   text: string,
+  byHand: number,
 ): Verdict {
   if (shipped === null)
     return { ok: false, label: "Quantity not read", text: amber.text };
@@ -1816,7 +1941,7 @@ function readingVerdict(
       label: `Different unit. The order counts in ${item.unit}.`,
       text: amber.text,
     };
-  const verdict = dueVerdict(item, read.amount);
+  const verdict = dueVerdict(item, read.amount, byHand);
   return read.amount === shipped
     ? verdict
     : { ...verdict, label: `= ${receivingQuantity(read.amount, item.unit)} · ${verdict.label}` };
@@ -1843,12 +1968,15 @@ const meanScore = (...values: Array<number | null | undefined>) => {
  */
 function readerCopies({
   item,
+  byHand,
   lines,
   live,
   readings,
   trialReadings,
 }: {
   item: ReceiptOrderItem | undefined;
+  /** What the order has counted by hand, not from any slip. */
+  byHand: number;
   lines: ReceivingLine[];
   live: ReceivingLine[];
   readings: Array<ModelReading & { line: ReceivingLine }>;
@@ -1900,7 +2028,7 @@ function readerCopies({
       ordered: sum(shown.map((l) => l.ordered)),
       shipped: sum(shown.map((l) => l.quantity)),
       unit: shown[0]!.unit,
-      verdict: item ? compareToOrder(item, lines) : null,
+      verdict: item ? compareToOrder(item, lines, byHand) : null,
     };
   };
   const byReader = new Map<string, ReaderCopy & { texts: string[] }>();
@@ -1963,7 +2091,7 @@ function readerCopies({
         ...copy,
         description,
         verdict: item
-          ? readingVerdict(item, copy.shipped, copy.unit, description)
+          ? readingVerdict(item, copy.shipped, copy.unit, description, byHand)
           : null,
       };
     })
@@ -1974,7 +2102,10 @@ function readerCopies({
   if (!ranked.length) return [review("Slip")];
   // Once received, the top copy says so rather than re-judging the count.
   if (live.every((l) => l.approved) && item)
-    ranked[0] = { ...ranked[0]!, verdict: compareToOrder(item, lines) };
+    ranked[0] = {
+      ...ranked[0]!,
+      verdict: compareToOrder(item, lines, byHand),
+    };
   return ranked;
 }
 /** Step 3: every order item beside what the slip says arrived for it. */
@@ -2072,8 +2203,10 @@ function OrderComparison({
               : likely
                 ? `Likely ${likely}`
                 : "No matching part";
+          const byHand = item ? (detail.receipts?.[item.id]?.byHand ?? 0) : 0;
           const copies = readerCopies({
             item,
+            byHand,
             lines: lines.map((x) => x.line),
             live: live.map((x) => x.line),
             readings,
@@ -2083,7 +2216,11 @@ function OrderComparison({
             !!item &&
             live.length > 0 &&
             live.every(({ line }) => line.checked === true) &&
-            compareToOrder(item, live.map(({ line }) => line))?.ok === true &&
+            compareToOrder(
+              item,
+              live.map(({ line }) => line),
+              byHand,
+            )?.ok === true &&
             status !== "correction";
           const complete = resolved || status === "approved";
           return (
@@ -2159,16 +2296,22 @@ function OrderComparison({
                         Not on the order
                       </p>
                     )}
-                    <p className={copyNote}>
+                    <div className={copyNote}>
                       {item && (
                         <>
                           {due > 0
                             ? `${receivingQuantity(due, item.unit)} still due`
                             : "All received"}
                           {item.sku && ` · ${item.sku}`}
+                          {c === 0 && item.received > 0 && (
+                            <ReceivedFrom
+                              item={item}
+                              receipts={detail.receipts?.[item.id]}
+                            />
+                          )}
                         </>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div
                     role="group"

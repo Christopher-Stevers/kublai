@@ -98,6 +98,9 @@ export const receivingInput = z.discriminatedUnion("action", [
     fingerprint: text.max(200000),
     reason: text.max(1000).default(""),
     allowOverDelivery: z.boolean().default(false),
+    /** Counts made by hand on the order are these parts: the slip takes them
+     * over instead of adding to them. */
+    fromHandCount: z.boolean().default(false),
     documentChecked: z.boolean().default(false),
   }),
   z.object({

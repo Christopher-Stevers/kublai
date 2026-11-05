@@ -497,6 +497,73 @@ it("asks to allow over-delivery only when a line exceeds what is due", async () 
   });
 });
 
+it("shows where a received count came from and lets the slip take over a hand count", async () => {
+  // Marked received by hand on the order before this slip was reviewed.
+  state.items[0]!.received = 10;
+  Object.assign(state, {
+    receipts: { item: { slips: [], byHand: 10 } },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const from = await screen.findByRole("list", { name: "Received from" });
+  expect(from).toHaveTextContent("10 counted by hand on the order");
+  expect(screen.getByText("Counted by hand already")).toBeInTheDocument();
+  expect(screen.queryByText(/more than needed/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Review & approve" }));
+  const same = screen.getByRole("radio", { name: /^Same parts/ });
+  expect(same).toBeChecked();
+  expect(
+    screen.getByText(
+      /Received 10 → 10 of 10 · 6 counted by hand, now on this slip/,
+    ),
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText(/above the amount still due/)).toBeNull();
+  // Counting it again would be over.
+  fireEvent.click(screen.getByRole("radio", { name: /^A separate delivery/ }));
+  expect(screen.getByText("6 over")).toBeInTheDocument();
+  fireEvent.click(same);
+  fireEvent.click(screen.getByRole("button", { name: "Approve ready lines" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "approve",
+    allowOverDelivery: false,
+    fromHandCount: true,
+  });
+});
+it("asks whether a slip within what is due repeats a hand count", async () => {
+  Object.assign(state, {
+    receipts: {
+      item: {
+        byHand: 2,
+        slips: [
+          {
+            documentId: "older",
+            name: "Earlier slip.pdf",
+            quantity: -1,
+            by: "Sam",
+            at: "2026-10-30T10:00:00Z",
+            self: false,
+          },
+        ],
+      },
+    },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const from = await screen.findByRole("list", { name: "Received from" });
+  expect(from).toHaveTextContent("2 counted by hand on the order");
+  expect(from).toHaveTextContent("1 returned on Earlier slip.pdf · Sam");
+  expect(
+    within(from).getByRole("link", { name: "Earlier slip.pdf" }),
+  ).toHaveAttribute("href", "?document=older");
+  fireEvent.click(screen.getByRole("button", { name: "Review & approve" }));
+  const approve = screen.getByRole("button", { name: "Approve ready lines" });
+  expect(approve).toBeDisabled();
+  fireEvent.click(screen.getByRole("radio", { name: /^A separate delivery/ }));
+  expect(screen.getByText(/Received 2 → 8 of 10/)).toBeInTheDocument();
+  fireEvent.click(approve);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "approve", fromHandCount: false });
+});
+
 it("lists slips to review with one next step each, suggested orders first", async () => {
   navigation.query = "";
   vi.stubGlobal(
