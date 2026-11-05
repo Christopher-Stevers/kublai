@@ -178,6 +178,29 @@ describe("saved reader auto-confirmation", () => {
       readings: analysis.lines[0]!.readings!,
     };
   }
+  it("uses saved Astra confidence for imported readings without rerunning a model", () => {
+    const f = fixture();
+    delete f.analysis.lines[0]!.readings;
+    delete f.analysis.lines[0]!.confidenceDetails;
+    f.review.sourceTrial = {runId: "saved-trial", reader: "astra"};
+    const score = (value: number) => ({value, basis: "self_assessed" as const, reason: "Saved original result"});
+    f.line.predictionSource = {trialRunId: "saved-trial", reader: "astra", lineId: "p1-l1", artifactSha256: "a".repeat(64), confidence: {part: score(.96), match: score(.93), quantity: score(.96), overall: score(.93)}};
+    expect(f.qualifies()).toBe(true);
+    f.line.predictionSource.confidence.quantity.value = .89;
+    expect(f.qualifies()).toBe(false);
+    f.line.predictionSource.confidence.quantity.value = .96;
+    f.line.quantity = 7;
+    expect(f.qualifies()).toBe(false);
+    f.line.quantity = 6;
+    f.line.humanEdited = true;
+    expect(f.qualifies()).toBe(false);
+    f.line.humanEdited = false;
+    f.line.predictionSource.trialRunId = "different-trial";
+    expect(f.qualifies()).toBe(false);
+    f.line.predictionSource.trialRunId = "saved-trial";
+    f.line.predictionSource.reader = "terra";
+    expect(f.qualifies()).toBe(false);
+  });
   it("accepts exactly 90% from one reader despite weaker or conflicting readers", () => {
     const f = fixture();
     f.readings[2]!.shipped = 8;

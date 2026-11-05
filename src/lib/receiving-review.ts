@@ -297,7 +297,22 @@ export function autoConfirmsLine(
     receiptUnit(line.unit) !== receiptUnit(item.unit)
   )
     return false;
-  return lineReadings(source).some((reading) => {
+  // Imported trial readers keep their original confidence on the review line.
+  // Pair it with the immutable source quantity, never with a reviewer-edited value.
+  const prediction = line.predictionSource;
+  const savedPrediction = prediction &&
+    prediction.trialRunId === review.sourceTrial?.runId &&
+    prediction.reader === review.sourceTrial.reader &&
+    /^[a-f0-9]{64}$/i.test(prediction.artifactSha256 ?? "")
+      ? [{
+          orderItemId: source.orderItemId,
+          shipped: source.shipped,
+          unit: source.unit,
+          match: prediction.confidence.match.value,
+          quantity: prediction.confidence.quantity.value,
+        }]
+      : [];
+  return [...lineReadings(source), ...savedPrediction].some((reading) => {
     if (
       reading.orderItemId !== item.id ||
       reading.shipped === null ||
