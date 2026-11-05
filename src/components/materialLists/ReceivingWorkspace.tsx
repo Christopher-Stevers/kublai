@@ -49,6 +49,7 @@ import {
   lineReadings,
   readSlipQuantity,
   receiptUnit,
+  slipHeader,
   slipReader,
 } from "~/lib/packing-slip-review";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
@@ -1598,6 +1599,13 @@ function DuplicateReview({
   );
 }
 const percent = (v: number) => `${Math.round(v * 100)}%`;
+/** The slip's column headings for a line on `page`, from this file's reading. */
+function headerFor(detail: Detail, page: number) {
+  const a = detail.document.packingSlipAnalysis;
+  return a && a.versionId === detail.review.versionId
+    ? slipHeader(a.headers, page)
+    : undefined;
+}
 /** The analysis row a review line was drafted from, while still current. */
 function sourceLine(l: ReceivingLine, detail: Detail) {
   const a = detail.document.packingSlipAnalysis;
@@ -2359,6 +2367,9 @@ function OrderComparison({
                         url={detail.sourceUrl}
                         page={source.page}
                         box={source.box ?? { x: 0, y: 0, width: 1, height: 1 }}
+                        header={
+                          source.box ? headerFor(detail, source.page) : undefined
+                        }
                         label={`Packing-slip source ${i + 1}, page ${source.page}`}
                         initiallyZoomed
                         showError
@@ -2625,6 +2636,7 @@ function LineReview({
               url={detail.sourceUrl}
               page={l.page}
               box={sourceBox}
+              header={headerFor(detail, l.page)}
               label={`Source for line ${index + 1}`}
             />
           )}

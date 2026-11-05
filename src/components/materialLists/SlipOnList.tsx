@@ -22,6 +22,7 @@ import {
 import { Input } from "~/components/ui/input";
 import {
   convertSlipQuantity,
+  slipHeader,
   type SlipAnalysis,
   type SlipLine,
 } from "~/lib/packing-slip-review";
@@ -121,7 +122,7 @@ export function SlipLineView({
   pickerLabel: string;
   openPicker?: boolean;
 }) {
-  const header = analysis.headers?.find((h) => h.page === line.page);
+  const header = slipHeader(analysis.headers, line.page);
   const picker = (
     <SlipLinePicker
       analysis={analysis}
@@ -140,11 +141,7 @@ export function SlipLineView({
           url={`/api/job-documents/files/${analysis.versionId}?jobId=${encodeURIComponent(jobId)}`}
           page={line.page}
           box={line.box}
-          header={
-            header
-              ? { page: header.printedOn ?? header.page, box: header.box }
-              : undefined
-          }
+          header={header}
           label={`Slip line ${index + 1} as printed on page ${line.page}`}
         />
       ) : (

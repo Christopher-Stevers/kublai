@@ -98,6 +98,22 @@ export function slipReading(l: SlipLine): SlipReading {
   };
 }
 export const lineReadings = (l: SlipLine) => l.readings ?? [slipReading(l)];
+/**
+ * The column headings to show above a line on `page`: that page's own, or,
+ * where a table runs on without repeating them, the last page that printed
+ * them.
+ */
+export function slipHeader(
+  headers: SlipAnalysis["headers"],
+  page: number,
+): { page: number; box: SlipBox } | undefined {
+  const h =
+    headers?.find((x) => x.page === page) ??
+    headers
+      ?.filter((x) => x.page < page)
+      .sort((a, b) => b.page - a.page)[0];
+  return h && { page: h.printedOn ?? h.page, box: h.box };
+}
 export type SlipProgress = {
   stage: "extracting" | "matching" | "checking";
   message: string;
