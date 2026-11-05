@@ -1831,6 +1831,7 @@ type ReaderCopy = {
   unit: string;
   verdict: Verdict | null;
   missing?: boolean;
+  reviewStatus?: "Confirmed" | "Edited";
 };
 const meanScore = (...values: Array<number | null | undefined>) => {
   const known = values.filter((v): v is number => typeof v === "number");
@@ -1875,9 +1876,25 @@ function readerCopies({
     [...new Set(texts.map((t) => t.trim()).filter(Boolean))].join(" + ");
   const review = (label: string): ReaderCopy => {
     const shown = live.length ? live : lines;
+    const reviewStatus =
+      label === "Confirmed" || label === "Edited" ? label : undefined;
+    const origins = [
+      ...new Set(
+        shown.flatMap((line) => {
+          const reader =
+            line.predictionSource?.reader ?? line.readingSource?.reader;
+          return reader ? [readerLabels[reader]] : [];
+        }),
+      ),
+    ];
     return {
       key: label,
-      label,
+      label: reviewStatus
+        ? origins.length
+          ? origins.join(" + ")
+          : "Manual review"
+        : label,
+      reviewStatus,
       score: null,
       description: describe(shown.map((l) => l.description)),
       ordered: sum(shown.map((l) => l.ordered)),
@@ -1951,9 +1968,10 @@ function readerCopies({
       };
     })
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
-  if (!live.length || !ranked.length) return [review("Slip"), ...ranked];
+  if (!live.length) return [review("Slip"), ...ranked];
   if (live.every((l) => l.checked)) return [review("Confirmed"), ...ranked];
   if (live.some((l) => l.humanEdited)) return [review("Edited"), ...ranked];
+  if (!ranked.length) return [review("Slip")];
   // Once received, the top copy says so rather than re-judging the count.
   if (live.every((l) => l.approved) && item)
     ranked[0] = { ...ranked[0]!, verdict: compareToOrder(item, lines) };
@@ -2159,6 +2177,11 @@ function OrderComparison({
                   >
                     <p className={copyLabel}>
                       {copy.label}
+                      {copy.reviewStatus && (
+                        <span aria-label={`Review status: ${copy.reviewStatus}`} className="text-muted-foreground ml-1.5 font-normal normal-case">
+                          · {copy.reviewStatus}
+                        </span>
+                      )}
                       {copy.score !== null && (
                         <span
                           className={`ml-1.5 normal-case tabular-nums ${unsure(copy.score) ? amber.text : ""}`}

@@ -1075,3 +1075,75 @@ it.each([
   for (const heading of headings)
     expect(heading.closest("li")!.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "pending");
 });
+
+
+it.each([
+  { checked: true, trial: false },
+  { checked: false, trial: false },
+  { checked: true, trial: true },
+  { checked: false, trial: true },
+])(
+  "keeps the source model visible when a line is confirmed or edited (%j)",
+  async ({ checked, trial }) => {
+    Object.assign(state.review.lines[0]!, {
+      checked,
+      humanEdited: true,
+      readingSource: {
+        analysisRunId: "run",
+        reader: "terra",
+        confidence: {
+          part: 0.98,
+          match: 0.98,
+          quantity: 0.96,
+          basis: "model_estimate",
+        },
+      },
+    });
+    if (trial) {
+      const confidence = {
+        value: 0.99,
+        basis: "self_assessed",
+        reason: "Readable source",
+      };
+      Object.assign(state.review.lines[0]!, {
+        predictionSource: {
+          trialRunId: "trial",
+          reader: "astra",
+          lineId: "line",
+          confidence: {
+            part: confidence,
+            match: confidence,
+            quantity: confidence,
+            overall: confidence,
+          },
+        },
+      });
+    }
+    const model = trial ? "Astra Max" : "Terra 6.1";
+    render(<ReceivingWorkspace jobId="job" />);
+    const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
+      "li",
+    )!;
+    const reading = within(row).getByRole("group", {
+      name: `${model} reading`,
+    });
+    expect(reading).toHaveTextContent(model);
+    expect(
+      within(reading).getByLabelText(
+        `Review status: ${checked ? "Confirmed" : "Edited"}`,
+      ),
+    ).toBeInTheDocument();
+    expect(within(reading).queryByText("97%")).toBeNull();
+    expect(posts).toEqual([]);
+  },
+);
+it("labels a reviewer-added line without model provenance as a manual review", async () => {
+  Object.assign(state.review.lines[0]!, { checked: true, humanEdited: true });
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  expect(
+    within(row).getByRole("group", { name: "Manual review reading" }),
+  ).toHaveTextContent("Confirmed");
+});
