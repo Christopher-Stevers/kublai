@@ -1214,3 +1214,20 @@ it("labels a reviewer-added line without model provenance as a manual review", a
     within(row).getByRole("group", { name: "Manual review reading" }),
   ).toHaveTextContent("Confirmed");
 });
+
+it("confirms removal of an unmatched order item without recording delivery", async () => {
+  Object.assign(state, {canRemoveOrderItems: true});
+  state.items[0]!.received = 0;
+  state.review.lines[0]!.orderItemId = null;
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", {name: "Remove from order"}));
+  let dialog = await screen.findByRole("dialog", {name: "Remove item from order?"});
+  expect(posts).toHaveLength(0);
+  fireEvent.click(within(dialog).getByRole("button", {name: "Cancel"}));
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", {name: "Remove from order"}));
+  dialog = await screen.findByRole("dialog", {name: "Remove item from order?"});
+  fireEvent.click(within(dialog).getByRole("button", {name: "Remove from order"}));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({action: "removeOrderItem", itemId: "item", fingerprint: "current-totals", confirmed: true});
+});

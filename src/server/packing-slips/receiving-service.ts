@@ -526,6 +526,7 @@ export async function receivingQueue(
     canCreate: mayCreate,
     /** The catalogue part behind each order item, for fixes a slip suggests. */
     orderParts,
+    canRemoveOrderItems: userCan(access.user, "orders.send"),
     canEditParts: userCan(access.user, "parts.edit") || mayCreate,
     scannedBy:
       members.find((m) => m.id === doc.createdBy)?.name ??
@@ -549,6 +550,7 @@ async function history(
     after: ReceivingReview;
   },
   developmentImport = false,
+  removedOrderItem?: typeof orderItems.$inferSelect,
 ) {
   const review = doc.receivingReview!;
   const applied = review.lines.filter(
@@ -594,6 +596,7 @@ async function history(
       before,
       after: review,
       replacedDocument,
+      removedOrderItem,
       confirmedAnalysis:
         input.action === "approve" ? confirmedAnalysis : undefined,
       source: doc.currentVersionId,
@@ -884,6 +887,7 @@ async function mutateReceivingImpl(
           "The source file changed. Review the new version before approving.",
           "CONFLICT",
         );
+      let removedOrderItem: typeof orderItems.$inferSelect | undefined;
       let replacedDocument:
         | { id: string; before: ReceivingReview; after: ReceivingReview }
         | undefined;
@@ -1104,6 +1108,19 @@ async function mutateReceivingImpl(
           ],
           checked: false,
         });
+      } else if (input.action === "removeOrderItem") {
+        if (!userCan(fresh.user, "orders.send")) fail("You do not have permission to change orders.", "FORBIDDEN");
+        if (!doc.packingSlip || !review.orderConfirmed) fail("Confirm the linked order first.");
+        const order = await orderFor(tx, fresh, doc.packingSlip!.orderId);
+        const rows = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id)).for("update");
+        if (orderFingerprint(await orderSnapshot(tx, fresh, order.id)) !== input.fingerprint) fail("The order changed. Reload before removing an item.", "CONFLICT");
+        const item = rows.find(i => i.id === input.itemId);
+        if (!item) fail("This item is no longer on the order.");
+        if (Number(item!.receivedQuantity) || Number(item!.returnedQuantity) || Number(item!.creditedQuantity) || Number(item!.fulfilledQuantity)) fail("An item with receiving, return or fulfilment records cannot be removed.");
+        if (review.lines.some(l => l.orderItemId === input.itemId && !l.ignored)) fail("This item is matched to a slip line. Resolve that line before removing it.");
+        if ((slipReceipts(state.documents).get(input.itemId) ?? []).length) fail("Another slip has receipt records for this item.");
+        removedOrderItem = item;
+        await tx.delete(orderItems).where(and(eq(orderItems.id, input.itemId), eq(orderItems.orderId, order.id)));
       } else if (input.action === "ignore") {
         const l = lineFor(input.lineId);
         if (l.approved && l.approved.quantity !== 0)
@@ -1698,6 +1715,7 @@ async function mutateReceivingImpl(
         before,
         replacedDocument,
         developmentImport,
+        removedOrderItem,
       );
       return {
         replayed: false,

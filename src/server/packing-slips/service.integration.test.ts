@@ -988,6 +988,25 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     });
     return fixture;
   }
+  it.each(["success", "received", "matched", "stale", "foreign"])("removing an absent order item: %s", async (mode) => {
+    const {access, doc} = await confirmedHeader();
+    await db.update(schema.orderItems).set({receivedQuantity: mode === "received" ? "2" : "0"}).where(eq(schema.orderItems.id, id(6)));
+    const state = await workspace();
+    const review = state.documents.find(d => d.id === doc.documentId)!.receivingReview!;
+    if (mode !== "matched") review.lines.forEach(l => { l.orderItemId = null; });
+    await db.update(schema.jobDocumentWorkspaces).set({state}).where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    const action = {action: "removeOrderItem", itemId: mode === "foreign" ? id(999) : id(6), fingerprint: mode === "stale" ? "stale" : await orderFingerprint(await orderSnapshot(db, access, order)), confirmed: true};
+    if (mode !== "success") {
+      await expect(reviewAction(access, doc.documentId, action)).rejects.toThrow();
+      expect(await db.select().from(schema.orderItems)).toHaveLength(1);
+    } else {
+      await reviewAction(access, doc.documentId, action);
+      expect(await db.select().from(schema.orderItems)).toHaveLength(0);
+      expect(await db.select().from(schema.partDefinitions)).toHaveLength(1);
+      const history = await db.select().from(schema.packingSlipReviewHistory);
+      expect(history.some(h => (h.data as {removedOrderItem?: {id:string}}).removedOrderItem?.id === id(6))).toBe(true);
+    }
+  });
   const finger = async (
     access: Awaited<ReturnType<typeof assertDocumentAccess>>,
   ) => orderFingerprint(await orderSnapshot(db, access, order));

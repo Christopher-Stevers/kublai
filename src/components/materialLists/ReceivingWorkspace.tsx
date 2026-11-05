@@ -141,6 +141,7 @@ type Detail = {
   /** The catalogue part behind each order item, for suggested part fixes. */
   orderParts?: Record<string, PartFacts>;
   canEditParts?: boolean;
+  canRemoveOrderItems?: boolean;
   scannedBy: string;
   sourceUrl: string;
   sourceMimeType?: string;
@@ -2126,6 +2127,8 @@ function OrderComparison({
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
+  const [removeItem, setRemoveItem] = useState<ReceiptOrderItem | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [preview, setPreview] = useState<
     | { kind: "item"; item: ReceiptOrderItem }
     | {
@@ -2174,6 +2177,23 @@ function OrderComparison({
       : [];
   return (
     <div>
+      <Dialog open={!!removeItem} onOpenChange={(open) => { if (!open && !removing) setRemoveItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove item from order?</DialogTitle>
+            <DialogDescription>{removeItem?.description} will be removed from this order, including its outstanding quantity. This does not record a delivery or delete the catalogue part or material-list entry. An item missing from a slip may still be on backorder.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={removing} onClick={() => setRemoveItem(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={removing} onClick={async () => {
+              if (!removeItem) return;
+              setRemoving(true);
+              try { if (await run({action: "removeOrderItem", itemId: removeItem.id, fingerprint: detail.fingerprint, confirmed: true})) setRemoveItem(null); }
+              finally { setRemoving(false); }
+            }}>Remove from order</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <ul className="divide-y">
         {rows.map(({ key, n, item, lines }) => {
           const open = openRow === key,
@@ -2303,6 +2323,9 @@ function OrderComparison({
                             ? `${receivingQuantity(due, item.unit)} still due`
                             : "All received"}
                           {item.sku && ` · ${item.sku}`}
+                          {c === 0 && !live.length && item.received === 0 && detail.canRemoveOrderItems && (
+                            <Button variant="outline" size="sm" className="relative z-10 mt-2" onClick={() => setRemoveItem(item)}>Remove from order</Button>
+                          )}
                           {c === 0 && item.received > 0 && (
                             <ReceivedFrom
                               item={item}

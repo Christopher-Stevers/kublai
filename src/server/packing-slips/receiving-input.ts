@@ -87,6 +87,13 @@ export const receivingInput = z.discriminatedUnion("action", [
   }),
   z.object({
     ...base,
+    action: z.literal("removeOrderItem"),
+    itemId: z.uuid(),
+    fingerprint: text.max(200000),
+    confirmed: z.literal(true),
+  }),
+  z.object({
+    ...base,
     action: z.literal("ignore"),
     lineId: text.max(100),
     reason: text.min(3).max(1000),
