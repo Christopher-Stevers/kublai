@@ -1035,3 +1035,43 @@ it("shows the source page when a slip line has no crop, and never shows a crop f
     within(dialog).getByText(/The source file changed/),
   ).toBeInTheDocument();
 });
+
+it("completes a matching comparison after Looks right, before receiving approval", async () => {
+  state.review.lines[0]!.quantity = 8;
+  state.review.lines[0]!.issues = ["Readers disagree"];
+  const fetchMock = vi.mocked(fetch);
+  const originalFetch = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation(async (url, opts) => {
+    if (opts?.method === "POST") {
+      const body = JSON.parse(typeof opts.body === "string" ? opts.body : "{}") as Record<string, unknown>;
+      if (body.action === "line")
+        Object.assign(state.review.lines[0]!, { checked: body.checked === true });
+    }
+    return originalFetch(url, opts);
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  const circle = () => row.querySelector("[data-comparison-state]")!;
+  expect(circle()).toHaveAttribute("data-comparison-state", "pending");
+  fireEvent.click(within(row).getByRole("button", { name: "Review line: Valve" }));
+  fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
+  await waitFor(() => expect(circle()).toHaveAttribute("data-comparison-state", "complete"));
+  expect(circle()).toHaveClass("bg-emerald-600");
+  expect(posts).toHaveLength(1);
+  expect(posts[0]).toMatchObject({ action: "line", checked: true });
+  expect(state.review.lines[0]!.approved).toBeUndefined();
+});
+
+it.each([
+  { checked: false, quantity: 8, orderItemId: "item" },
+  { checked: true, quantity: 6, orderItemId: "item" },
+  { checked: true, quantity: 9, orderItemId: "item" },
+  { checked: true, quantity: null, orderItemId: "item" },
+  { checked: true, quantity: 8, orderItemId: null },
+])("keeps incomplete comparisons pending: %j", async (line) => {
+  Object.assign(state.review.lines[0]!, line);
+  render(<ReceivingWorkspace jobId="job" />);
+  const headings = await screen.findAllByRole("heading", { name: "Valve" });
+  for (const heading of headings)
+    expect(heading.closest("li")!.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "pending");
+});

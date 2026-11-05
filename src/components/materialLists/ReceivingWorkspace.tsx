@@ -1952,6 +1952,7 @@ function readerCopies({
     })
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   if (!live.length || !ranked.length) return [review("Slip"), ...ranked];
+  if (live.every((l) => l.checked)) return [review("Confirmed"), ...ranked];
   if (live.some((l) => l.humanEdited)) return [review("Edited"), ...ranked];
   // Once received, the top copy says so rather than re-judging the count.
   if (live.every((l) => l.approved) && item)
@@ -2060,6 +2061,13 @@ function OrderComparison({
             readings,
             trialReadings,
           });
+          const resolved =
+            !!item &&
+            live.length > 0 &&
+            live.every(({ line }) => line.checked === true) &&
+            compareToOrder(item, live.map(({ line }) => line))?.ok === true &&
+            status !== "correction";
+          const complete = resolved || status === "approved";
           return (
             <li key={key} className={open ? "bg-muted/30" : undefined}>
               {/* The match number, bracketing the order and the slip it pairs. */}
@@ -2068,17 +2076,18 @@ function OrderComparison({
                 className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] gap-x-3 px-4 pt-3"
               >
                 <div className="col-span-2 flex items-start">
-                  <span className="border-muted-foreground/40 mt-3 h-2 flex-1 rounded-tl-md border-t border-l" />
+                  <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tl-md border-t border-l" />
                   <span
-                    className={`mx-2 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                    data-comparison-state={complete ? "complete" : "pending"}
+                    className={`mx-2 flex size-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${complete ? statusStyle.approved.badge : tone?.badge ?? "bg-muted text-muted-foreground"}`}
                   >
-                    {status === "approved" ? (
-                      <CheckIcon className="size-3.5" />
+                    {complete ? (
+                      <CheckIcon className="size-5" />
                     ) : (
                       n + 1
                     )}
                   </span>
-                  <span className="border-muted-foreground/40 mt-3 h-2 flex-1 rounded-tr-md border-t border-r" />
+                  <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tr-md border-t border-r" />
                 </div>
               </div>
               {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
