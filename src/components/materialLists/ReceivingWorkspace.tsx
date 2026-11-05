@@ -2050,25 +2050,30 @@ function OrderComparison({
           });
           return (
             <li key={key} className={open ? "bg-muted/30" : undefined}>
+              {/* The match number, bracketing the order and the slip it pairs. */}
+              <div
+                aria-hidden
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] gap-x-3 px-4 pt-3"
+              >
+                <div className="col-span-2 flex items-start">
+                  <span className="border-muted-foreground/40 mt-3 h-2 flex-1 rounded-tl-md border-t border-l" />
+                  <span
+                    className={`mx-2 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                  >
+                    {status === "approved" ? (
+                      <CheckIcon className="size-3.5" />
+                    ) : (
+                      n + 1
+                    )}
+                  </span>
+                  <span className="border-muted-foreground/40 mt-3 h-2 flex-1 rounded-tr-md border-t border-r" />
+                </div>
+              </div>
               {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
                 <div
                   key={copy.key}
-                  className={`relative grid grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "py-3"}`}
+                  className={`relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "pb-3 pt-1"}`}
                 >
-                  {c === 0 ? (
-                    <span
-                      aria-hidden
-                      className={`row-span-4 mt-5 flex size-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${tone?.badge ?? "bg-muted text-muted-foreground"}`}
-                    >
-                      {status === "approved" ? (
-                        <CheckIcon className="size-3.5" />
-                      ) : (
-                        n + 1
-                      )}
-                    </span>
-                  ) : (
-                    <span className="row-span-4" />
-                  )}
                   <div
                     className={`relative row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
                   >
@@ -2241,7 +2246,7 @@ function OrderComparison({
                       aria-label={`Review line: ${title}`}
                       aria-expanded={open}
                       onClick={() => setOpenRow(open ? null : key)}
-                      className="relative row-span-4 mt-4 h-8 w-6 -ml-1 rounded focus-visible:ring-2 focus-visible:ring-ring"
+                      className="relative row-span-4 mt-0 h-8 w-6 -ml-1 rounded focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <ChevronDownIcon
                         aria-hidden
@@ -2259,7 +2264,7 @@ function OrderComparison({
                   ? [
                       <p
                         key={`terra:${x.line.id}`}
-                        className={`px-4 pb-3 pl-13 text-xs ${amber.text}`}
+                        className={`px-4 pb-3 text-xs ${amber.text}`}
                       >
                         {readerLabels.terra} {check.reader}.
                       </p>,
@@ -2623,12 +2628,6 @@ function LineReview({
               label={`Source for line ${index + 1}`}
             />
           )}
-          <Button variant="link" size="sm" className="-my-1 h-auto px-0" asChild>
-            <Link href={slipViewerHref(jobId, detail)}>
-              <FileTextIcon />
-              View whole slip
-            </Link>
-          </Button>
           {terra ? (
             <div className="space-y-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
               <p>{terra.text}</p>
