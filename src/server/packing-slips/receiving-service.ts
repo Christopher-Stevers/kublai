@@ -982,6 +982,7 @@ async function mutateReceivingImpl(
         const counterpart = items.find(item => item.id === line.orderItemId);
         if (line.orderItemId && !counterpart) fail("The matching item is no longer on this order.", "CONFLICT");
         const counterpartFingerprint = counterpart ? resolutionCounterpartFingerprint(counterpart) : undefined;
+        if (input.counterpartFingerprint !== undefined && input.counterpartFingerprint !== (counterpartFingerprint ?? null)) fail("The order item or package changed while this line was open. Reload its details before confirming.", "CONFLICT");
         capturePaper(line);
         const previous = line.resolution?.evidenceFingerprint === input.evidenceFingerprint && line.resolution?.counterpartFingerprint === counterpartFingerprint ? line.resolution : newResolution(line, fresh.user.id, now);
         line.resolution = { ...previous, counterpartFingerprint, by: fresh.user.id, at: now };

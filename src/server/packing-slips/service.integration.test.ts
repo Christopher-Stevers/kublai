@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import postgres from "postgres";
 import type { SlipProgress } from "~/lib/packing-slip-review";
-import { resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
+import { resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableName, getTableColumns, eq, SQL, sql } from "drizzle-orm";
 import { PgDialect, type PgTable } from "drizzle-orm/pg-core";
@@ -1044,6 +1044,23 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     await resolveAction(f,{match:"confirmed"});
     const r=(await workspace()).documents[0]!.receivingReview!.lines[0]!.resolution!;
     expect(r.match).toBe("confirmed"); expect(r.specification).toBe("unresolved"); expect(r.quantity).toBe("unresolved");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("rejects confirmation of counterpart facts that changed after the reviewer saw them",async()=>{
+    const f=await confirmedHeader();
+    const shown=(await orderSnapshot(db,f.access,order)).find(i=>i.id===id(6))!;
+    const counterpartFingerprint=resolutionCounterpartFingerprint(shown);
+    await resolveAction(f,{match:"confirmed",counterpartFingerprint});
+    await db.update(schema.orderItems).set({quantity:"11"}).where(eq(schema.orderItems.id,id(6)));
+    const before=await workspace();
+    await expect(resolveAction(f,{specification:"confirmed",counterpartFingerprint})).rejects.toMatchObject({code:"CONFLICT"});
+    await expect(resolveAction(f,{specification:"confirmed",counterpartFingerprint:null})).rejects.toMatchObject({code:"CONFLICT"});
+    expect(await workspace()).toEqual(before);
+    const current=(await orderSnapshot(db,f.access,order)).find(i=>i.id===id(6))!;
+    await resolveAction(f,{specification:"confirmed",counterpartFingerprint:resolutionCounterpartFingerprint(current)});
+    const resolution=(await workspace()).documents[0]!.receivingReview!.lines[0]!.resolution!;
+    expect(resolution.specification).toBe("confirmed");
+    expect(resolution.match).toBe("unresolved");
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
   it("splits a printed line without double receiving and requires each derived line to be reviewed", async () => {

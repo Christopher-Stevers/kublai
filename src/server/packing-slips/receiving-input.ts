@@ -45,6 +45,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     action: z.literal("resolve"),
     lineId: text.max(100),
     evidenceFingerprint: text.max(20000),
+    /** Counterpart facts shown to the reviewer; null means no counterpart was shown. */
+    counterpartFingerprint: text.max(20000).nullable().optional(),
     note: text.max(1000).optional(),
     match: z.enum(["confirmed", "unresolved"]).optional(),
     specification: z

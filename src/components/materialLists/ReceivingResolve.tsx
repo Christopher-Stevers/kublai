@@ -12,6 +12,7 @@ import { receivingQuantity } from "~/lib/receiving-quantity-display";
 import {
   resolutionBlockers,
   resolutionEvidenceFingerprint,
+  resolutionCounterpartFingerprint,
   receivedLineQuantity,
   receivingLineReady,
 } from "~/lib/receiving-resolution";
@@ -143,6 +144,9 @@ export function ReceivingResolve({
       action: "resolve",
       lineId: line.id,
       evidenceFingerprint: resolutionEvidenceFingerprint(line),
+      counterpartFingerprint: item
+        ? resolutionCounterpartFingerprint(item)
+        : null,
       note,
       skipped: decision.skipped ?? false,
     });

@@ -14,6 +14,7 @@ import { initialReview, type ReceivingLine } from "~/lib/receiving-review";
 import {
   newResolution,
   resolutionEvidenceFingerprint,
+  resolutionCounterpartFingerprint,
 } from "~/lib/receiving-resolution";
 
 vi.mock("./SlipLineImage", () => ({
@@ -238,6 +239,7 @@ it("resolves one issue at a time without approving or clearing independent check
     action: "resolve",
     lineId: "line1",
     evidenceFingerprint: resolutionEvidenceFingerprint(detail.review.lines[0]!),
+    counterpartFingerprint: resolutionCounterpartFingerprint(detail.items[0]!),
     specification: "confirmed",
     note: "",
     skipped: false,
