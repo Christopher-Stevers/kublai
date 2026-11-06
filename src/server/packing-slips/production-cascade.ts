@@ -136,6 +136,7 @@ export async function productionCascade<T extends CheapReading>(args: {
     const context: FallbackInput = {
       ...(await args.context()),
       targetLineIndexes: fullReading ? null : targets,
+      headers: args.base.headers,
     };
     if (
       Buffer.byteLength(JSON.stringify(context)) > 120000 ||

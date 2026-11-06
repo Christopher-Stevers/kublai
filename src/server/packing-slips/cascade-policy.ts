@@ -5,8 +5,13 @@ import {
   slipReading,
 } from "~/lib/packing-slip-review";
 
-export const CASCADE_POLICY = "ocr-jev-terra-2026-10-30.1";
+export const CASCADE_POLICY = "ocr-jev-terra-2026-11-06.1";
 export type CheapReading = {
+  headers?: Array<{
+    page: number;
+    printedOn?: number;
+    box: NonNullable<SlipLine["box"]>;
+  }>;
   lines: SlipLine[];
   warnings: string[];
   model: string;
