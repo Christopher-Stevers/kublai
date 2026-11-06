@@ -1607,3 +1607,26 @@ it("says Empty on the side of a card with no match", async () => {
     /^OrderEmptyNot on the order/,
   );
 });
+it("an order item dragged onto another slip line leaves the line it was paired with", async () => {
+  dragSetup();
+  state.review.lines[0]!.orderItemId = "item2";
+  render(<ReceivingWorkspace jobId="job" />);
+  const pipe = (
+    await screen.findByRole("heading", { name: "Copper pipe 1/2" })
+  ).closest("li")!;
+  const order = within(pipe).getByRole("group", { name: "Order" });
+  under = () => screen.getByText("Unclear pipe");
+  fireEvent.touchStart(order, { touches: [{ clientX: 80, clientY: 300 }] });
+  await hold();
+  fireEvent.touchMove(window, { touches: [{ clientX: 120, clientY: 500 }] });
+  fireEvent.touchEnd(window, { touches: [] });
+  await waitFor(() =>
+    expect(posts.filter((p) => p.action === "line")).toEqual([
+      expect.objectContaining({ lineId: "1", orderItemId: "item2" }),
+      expect.objectContaining({ lineId: "0", orderItemId: null }),
+    ]),
+  );
+  expect(
+    await screen.findByText("Paired with Unclear pipe. Valve unpaired."),
+  ).toBeInTheDocument();
+});

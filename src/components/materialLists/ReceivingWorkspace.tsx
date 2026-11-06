@@ -2500,8 +2500,37 @@ function OrderComparison({
       if (grab.line) void moveLine(grab.line, over);
     } else {
       const line = lineIds.get(over);
-      if (line) void moveLine(line, grab.item.id);
+      if (line) void pairItem(grab.item, line);
     }
+  };
+  // An order item dragged onto a slip line leaves the lines it was paired
+  // with, unless they are already approved.
+  const pairItem = async (item: ReceiptOrderItem, line: ReceivingLine) => {
+    const link = linkLineAction(line, item.id, detail.items);
+    if (!link)
+      return notify(
+        "Units differ. Use Resolve to link it and confirm the count.",
+      );
+    const left = r.lines.filter(
+      (l) =>
+        l.orderItemId === item.id &&
+        l.id !== line.id &&
+        !l.ignored &&
+        !l.approved,
+    );
+    if (!(await run(link))) return;
+    if (!left.length) return notify(`Moved to ${item.description}.`, true);
+    for (const l of left) {
+      const unpair = linkLineAction(l, null, detail.items);
+      if (!unpair || !(await run(unpair)))
+        return notify(
+          `Paired with ${line.description}, but ${l.description} is still paired too.`,
+        );
+    }
+    // Undo only reaches the last change, so it isn't offered here.
+    notify(
+      `Paired with ${line.description}. ${left.map((l) => l.description).join(", ")} unpaired.`,
+    );
   };
   const rows = [
     ...detail.items.map((item, n) => ({
