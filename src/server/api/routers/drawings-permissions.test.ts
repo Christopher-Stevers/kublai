@@ -114,6 +114,7 @@ it("blocks all Sheet tool routes before reading data when disabled", async () =>
     () => workspace.superScaleLatest({ sheetId: id }),
     () => workspace.superScaleStart({ sheetId: id, id }),
     () => workspace.superScaleCancel({ sheetId: id, id }),
+    () => workspace.autoHyperlinkTargets({ sheetId: id }),
     () => workspace.autoHyperlinkSources({ sheetId: id }),
     () => workspace.autoHyperlinkReaders({ sheetId: id }),
     () => workspace.autoHyperlinkDetect({ sheetId: id, sourceSheetId: id, reader: "terra", requestId: id }),

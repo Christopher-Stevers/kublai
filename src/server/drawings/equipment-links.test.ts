@@ -338,3 +338,33 @@ it("reports the current revision once and preserves its exact source link",async
  const state=JSON.parse(decodeURIComponent(new URL(result.lines[0]!.sourceUrl,'https://example.com').hash.slice('#snapshot='.length)));
  expect(state.drawing).toMatchObject({sheetId:a.id,sourceSheetId:b.id});
 });
+
+it("restricts hyperlink destinations to selected sheets even when sheets share a PDF", async () => {
+ const {autoHyperlinkPreview}=await import("./auto-hyperlink");equipmentReportFixture();mock.sheets.mockResolvedValue([a,b]);
+ const result=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1"],scope:"custom",drawingIds:[b.id],documentIds:[]});
+ expect(result.results[0]).toMatchObject({drawings:1,documents:0});
+ expect(mock.index).toHaveBeenCalledTimes(1);
+ const empty=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1"],scope:"custom",drawingIds:[],documentIds:[]});
+ expect(empty.results[0]).toMatchObject({links:[],drawings:0,documents:0});
+});
+it("supports documents-only and drawings-only scopes",async()=>{
+ const {autoHyperlinkPreview}=await import("./auto-hyperlink");equipmentReportFixture();mock.sheets.mockResolvedValue([a,b]);
+ const docs=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1"],scope:"documents"});
+ expect(docs.results[0]).toMatchObject({drawings:0,documents:1});
+ const drawings=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1"],scope:"drawings"});
+ expect(drawings.results[0]).toMatchObject({drawings:1,documents:0});
+});
+it("rejects unavailable hyperlink source IDs before indexing",async()=>{
+ const {autoHyperlinkPreview}=await import("./auto-hyperlink");equipmentReportFixture();
+ for(const selection of [{drawingIds:[uuid(999)]},{documentIds:[uuid(999)]}])
+  await expect(autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["P-1"],scope:"custom",...selection})).rejects.toMatchObject({code:"FORBIDDEN"});
+ expect(mock.index).not.toHaveBeenCalled();
+});
+it("lists current authorized hyperlink targets without indexing their contents",async()=>{
+ const {autoHyperlinkTargets}=await import("./auto-hyperlink");const {state}=equipmentReportFixture();
+ mock.overview.mockResolvedValue({...state,folders:[{id:uuid(91),name:"Submittals",parentId:null}]});
+ mock.sheets.mockResolvedValue([{...a,setName:"Mechanical"},b]);mock.metadata=[{sheetId:a.id,data:{currentSourceSheetId:b.id}}];
+ const result=await autoHyperlinkTargets(ctx,a.id);
+ expect(result.drawings).toEqual([{id:a.id,name:a.name,setId:a.setId,setName:"Mechanical"}]);
+ expect(result.documents).toHaveLength(1);expect(result.folders[0]?.name).toBe("Submittals");expect(mock.index).not.toHaveBeenCalled();
+});

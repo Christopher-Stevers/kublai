@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({
+  targets: vi.fn(),
   sources: vi.fn(),
   preview: vi.fn(),
   readers: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("~/trpc/react", () => ({
     },
     useUtils: () => ({
       drawingsWorkspace: {
+        autoHyperlinkTargets: { fetch: mock.targets },
         autoHyperlinkSources: { fetch: mock.sources },
         autoHyperlinkPreview: { fetch: mock.preview },
         autoHyperlinkReaders: { fetch: mock.readers },
@@ -51,6 +53,7 @@ const props = () => ({
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  mock.targets.mockResolvedValue({drawings:[{id:uuid(1),name:"M-1",setId:uuid(4),setName:"Mechanical"},{id:uuid(8),name:"A-1",setId:uuid(9),setName:"Architectural"}], documents:[{id:uuid(10),name:"Pump submittal.pdf",folderId:uuid(11)}], folders:[{id:uuid(11),name:"Submittals",parentId:null}]});
   mock.readers.mockResolvedValue({
     normal: { available: true },
     terra: { available: true },
@@ -97,7 +100,7 @@ it("previews all tags in one job-wide request, then saves only the selected tags
   await screen.findByText("HEX-2");
   expect(save).not.toHaveBeenCalled();
   expect(mock.preview).toHaveBeenCalledWith(
-    { sheetId: uuid(1), tags: ["HEX-2", "FCU-1"], scope: "job" },
+    { sheetId: uuid(1), tags: ["HEX-2", "FCU-1"], scope: "job", drawingIds: [], documentIds: [] },
     { staleTime: 0 },
   );
   fireEvent.click(screen.getByLabelText("Link FCU-1"));
@@ -331,4 +334,41 @@ it("clears results when switching versions and ignores a stopped AI response", a
   });
   await waitFor(() => expect(screen.queryByText("OLD-1")).toBeNull());
   expect(save).not.toHaveBeenCalled();
+});
+
+it("searches only chosen sheets and files and clears stale results when selection changes", async () => {
+  render(<AutoHyperlinkDialog {...props()} />);
+  await waitFor(() => expect(mock.preview).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText("Hyperlink search scope"), {target: {value: "custom"}});
+  await screen.findByLabelText("Select all in Mechanical");
+  expect(screen.getByRole("button", {name: "Scan again"})).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("Select all in Mechanical"));
+  fireEvent.click(screen.getByLabelText("Pump submittal.pdf"));
+  fireEvent.click(screen.getByRole("button", {name: "Scan again"}));
+  await waitFor(() => expect(mock.preview).toHaveBeenLastCalledWith(expect.objectContaining({scope: "custom", drawingIds: [uuid(1)], documentIds: [uuid(10)]}), {staleTime: 0}));
+  fireEvent.click(screen.getByRole("button", {name: "Clear sources"}));
+  expect(screen.getByRole("button", {name: /Save Selected Links \(0\)/i})).toBeDisabled();
+});
+
+it("does not add same-sheet links to a documents-only search", async () => {
+  readWords.mockResolvedValue([word, {...word,left: .6,right:.65}]);
+  render(<AutoHyperlinkDialog {...props()} />);
+  await waitFor(() => expect(mock.preview).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText("Hyperlink search scope"), {target: {value: "documents"}});
+  fireEvent.click(screen.getByRole("button", {name: "Scan again"}));
+  await waitFor(() => expect(mock.preview).toHaveBeenLastCalledWith(expect.objectContaining({scope: "documents"}), {staleTime: 0}));
+  fireEvent.click(screen.getByRole("button", {name: /Save Selected Links/i}));
+  await waitFor(() => expect(save).toHaveBeenCalled());
+  for(const [value] of save.mock.calls) expect(JSON.stringify(value)).not.toContain('#snapshot=');
+});
+it("selects nested folder files and permits individual exclusions", async () => {
+  mock.targets.mockResolvedValue({drawings: [], documents: [{id:uuid(10),name:"Pump.pdf",folderId:uuid(12)},{id:uuid(13),name:"Fan.pdf",folderId:uuid(12)}], folders:[{id:uuid(11),name:"Submittals",parentId:null},{id:uuid(12),name:"Approved",parentId:uuid(11)}]});
+  render(<AutoHyperlinkDialog {...props()} />);
+  await waitFor(() => expect(mock.preview).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText("Hyperlink search scope"), {target:{value:"custom"}});
+  fireEvent.click(await screen.findByLabelText("Select all in Submittals"));
+  expect(screen.getByText(/2 documents selected/)).toBeInTheDocument();
+  fireEvent.click(screen.getAllByLabelText("Fan.pdf")[0]!);
+  fireEvent.click(screen.getByRole("button", {name:"Scan again"}));
+  await waitFor(() => expect(mock.preview).toHaveBeenLastCalledWith(expect.objectContaining({drawingIds:[],documentIds:[uuid(10)]}), {staleTime:0}));
 });

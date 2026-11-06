@@ -1,3 +1,4 @@
+import { hyperlinkScopeInput } from "~/lib/hyperlink-scope";
 import { compactDrawingWorkspace } from "~/lib/drawing-workspace-payload";
 import { assertCan } from "~/server/auth/permissions";
 import { superLabelSettings, saveSuperLabelBoxes, applySuperLabel } from "~/server/drawings/service";
@@ -8,7 +9,7 @@ import { legendItemSchema } from "~/lib/drawing-legend";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
 import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
-import { autoHyperlinkPreview } from "~/server/drawings/auto-hyperlink";
+import { autoHyperlinkPreview, autoHyperlinkTargets } from "~/server/drawings/auto-hyperlink";
 import { hyperlinkDetectInput } from "~/lib/hyperlink-readers";
 import { detectHyperlinkTags, hyperlinkReaderOptions } from "~/server/drawings/hyperlink-readers";
 import { superEquipmentSources, superEquipmentReport, recognizeEquipmentSource } from "~/server/drawings/super-equipment";
@@ -59,7 +60,8 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   autoHyperlinkReaders: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>hyperlinkReaderOptions(ctx,input.sheetId)),
   autoHyperlinkDetect: sheetTools.input(hyperlinkDetectInput).mutation(({ctx,input})=>detectHyperlinkTags(ctx,input)),
   autoHyperlinkSources: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
-  autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(2).max(40)).min(1).max(200),scope:z.enum(["job","set"]).default("job")})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
+  autoHyperlinkTargets: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>autoHyperlinkTargets(ctx,input.sheetId)),
+  autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(2).max(40)).min(1).max(200),...hyperlinkScopeInput.shape})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
   superEquipmentSources: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superEquipmentSources(ctx,input.sheetId)),
   superEquipmentReport: sheetTools.input(z.object({sheetId,documentIds:z.array(sheetId).max(2000).optional()})).query(({ctx,input})=>superEquipmentReport(ctx,input)),
   recognizeEquipmentSource: sheetTools.input(z.object({sheetId,kind:z.enum(["drawing","document"]),id:sheetId,page:z.number().int().min(1).max(2000)})).mutation(({ctx,input})=>recognizeEquipmentSource(ctx,input)),

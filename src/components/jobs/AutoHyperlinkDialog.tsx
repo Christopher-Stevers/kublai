@@ -28,6 +28,9 @@ import {
   type HyperlinkReader,
 } from "~/lib/hyperlink-readers";
 
+import type { HyperlinkScope } from "~/lib/hyperlink-scope";
+import { HyperlinkScopePicker } from "./HyperlinkScopePicker";
+
 type Match = {
   tag: string;
   links: DrawingMarkupLink[];
@@ -65,7 +68,11 @@ export function AutoHyperlinkDialog(props: {
     deepseek: { available: boolean };
   } | null>(null);
   const [readerError, setReaderError] = useState("");
-  const [scope, setScope] = useState<"job" | "set">("job");
+  const [scope, setScope] = useState<HyperlinkScope>({
+    scope: "job",
+    drawingIds: [],
+    documentIds: [],
+  });
   const [rows, setRows] = useState<Match[]>([]),
     [notes, setNotes] = useState<string[]>([]);
   const [status, setStatus] = useState("Reading equipment tags…"),
@@ -92,7 +99,15 @@ export function AutoHyperlinkDialog(props: {
   useEffect(() => {
     void checkReaders();
   }, [checkReaders]);
+  const emptyScope =
+    scope.scope === "custom" &&
+    !scope.drawingIds.length &&
+    !scope.documentIds.length;
   async function scan(refresh = false) {
+    if (emptyScope) {
+      setStatus("Choose at least one sheet or document to search.");
+      return;
+    }
     const id = ++run.current;
     setBusy(true);
     setRows([]);
@@ -176,7 +191,7 @@ export function AutoHyperlinkDialog(props: {
           {
             sheetId: props.sheetId,
             tags: tags.slice(start, start + 200),
-            scope,
+            ...scope,
           },
           { staleTime: 0 },
         );
@@ -189,7 +204,12 @@ export function AutoHyperlinkDialog(props: {
             box = boxes[0];
           if (!box) continue;
           const links: DrawingMarkupLink[] = [...match.links];
-          if (boxes[1]) {
+          if (
+            boxes[1] &&
+            scope.scope !== "documents" &&
+            (scope.scope !== "custom" ||
+              scope.drawingIds.includes(props.sheetId))
+          ) {
             const d = equipmentDrawingDestination({
               jobId: props.jobId,
               setId: props.setId,
@@ -348,7 +368,7 @@ export function AutoHyperlinkDialog(props: {
         }
       }}
     >
-      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-3xl">
+      <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Auto Hyperlink</DialogTitle>
           <DialogDescription>
@@ -410,28 +430,28 @@ export function AutoHyperlinkDialog(props: {
           </Button>
         )}
         <div className="flex flex-wrap gap-2">
-          <label className="min-w-0 flex-1 text-sm">
-            Search scope
-            <select
-              aria-label="Hyperlink search scope"
-              className="bg-background mt-1 h-10 w-full rounded border px-2"
+          <div className="w-full">
+            <HyperlinkScopePicker
+              sheetId={props.sheetId}
               value={scope}
               disabled={busy}
-              onChange={(e) => {
-                setScope(e.target.value as "job" | "set");
+              onChange={(next) => {
+                run.current++;
+                setScope(next);
+                setHasReading(false);
                 setRows([]);
+                setPending(0);
                 setStatus("Scope changed. Scan again to find destinations.");
               }}
-            >
-              <option value="job">All drawing sets + job documents</option>
-              <option value="set">This drawing set + job documents</option>
-            </select>
-          </label>
+            />
+          </div>
           <Button
             className="self-end"
             variant="outline"
             disabled={
-              busy || (reader !== "normal" && !readers?.[reader].available)
+              busy ||
+              emptyScope ||
+              (reader !== "normal" && !readers?.[reader].available)
             }
             onClick={() => void scan(reader !== "normal" && hasReading)}
           >
