@@ -1117,6 +1117,23 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     const history=await db.select().from(schema.packingSlipReviewHistory);
     expect(history.find(h=>(h.data as {operation?:string}).operation==="undoCorrection")!.data).toMatchObject({reason:"Wrong evidence selected",undoesRequestId:requestId});
   });
+  it("keeps a reviewer's note on the line without confirming, clearing or reopening any check",async()=>{
+    const f=await confirmedHeader();
+    await resolveAction(f,{match:"confirmed",specification:"confirmed"});
+    const before=(await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    const requestId=randomUUID();
+    await reviewAction(f.access,f.doc.documentId,{action:"note",lineId:"0",note:"Supplier to confirm the box size",requestId});
+    const detail=await receivingQueue(f.access,f.doc.documentId);
+    const saved=detail.review!.lines[0]!;
+    expect(saved.note?.text).toBe("Supplier to confirm the box size");
+    expect(typeof detail.noteAuthors?.[saved.note!.by]).toBe("string");
+    expect(saved.resolution).toEqual(before.resolution);
+    expect(saved.checked).toBe(before.checked);
+    expect(detail.correctionUndo?.requestId).toBe(requestId);
+    await reviewAction(f.access,f.doc.documentId,{action:"note",lineId:"0",note:""});
+    expect((await workspace()).documents[0]!.receivingReview!.lines[0]!.note).toBeUndefined();
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("preserves source crop for manually recovered lines and leaves them unchecked",async()=>{
     const f=await confirmedHeader();
     const sourceBox={x:0.1,y:0.2,width:0.7,height:0.05};

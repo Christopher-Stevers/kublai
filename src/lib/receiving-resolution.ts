@@ -166,6 +166,14 @@ export function newResolution(
   };
 }
 
+/** What each of the four checks still asks, worded as its blocker. */
+export const OPEN_CHECKS = {
+  match: "Choose and confirm the matching order item.",
+  specification: "Confirm the size, material, connection and specification.",
+  quantity: "Confirm the printed quantity and any unit conversion.",
+  delivery: "Confirm what arrived, or record the delivery issue.",
+} as const;
+
 /** Returns only structured Resolve blockers. Existing confidence/source checks remain separate. */
 export function resolutionBlockers(
   line: ReceivingLine,
@@ -190,9 +198,9 @@ export function resolutionBlockers(
       "The order item or package changed. Reconfirm the match, specification and quantity conversion.",
     );
   if (!line.orderItemId || r.match !== "confirmed")
-    problems.push("Choose and confirm the matching order item.");
+    problems.push(OPEN_CHECKS.match);
   if (r.specification === "unresolved")
-    problems.push("Confirm the size, material, connection and specification.");
+    problems.push(OPEN_CHECKS.specification);
   if (
     r.specification === "substitution-rejected" &&
     receivedLineQuantity(line) !== 0
@@ -201,9 +209,9 @@ export function resolutionBlockers(
       "A rejected substitute cannot be received. Record zero accepted or select the correct part.",
     );
   if (r.quantity !== "confirmed")
-    problems.push("Confirm the printed quantity and any unit conversion.");
+    problems.push(OPEN_CHECKS.quantity);
   if (r.delivery === "unresolved")
-    problems.push("Confirm what arrived, or record the delivery issue.");
+    problems.push(OPEN_CHECKS.delivery);
   const site = r.siteQuantity,
     accepted = receivedLineQuantity(line);
   if (

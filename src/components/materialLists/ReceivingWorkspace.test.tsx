@@ -1341,7 +1341,7 @@ it("saves a Resolve correction for review without confirming or approving", asyn
   fireEvent.click(
     (await screen.findAllByRole("button", { name: "Resolve" }))[0]!,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Correct reading" }));
+  fireEvent.click(screen.getByRole("button", { name: "Correct the reading" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Save reading for review" }),
   );
@@ -1367,4 +1367,14 @@ it("keeps unresolved absent-order-item notes in the review count", async () => {
   });
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByText("2 still to review");
+});
+
+it("shows what's needed from Resolve on the line's row", async () => {
+  Object.assign(state.review.lines[0]!, {
+    note: { text: "Supplier to confirm the box size", by: "user", at: "now" },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(
+    await screen.findByText("Supplier to confirm the box size"),
+  ).toBeInTheDocument();
 });

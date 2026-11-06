@@ -78,7 +78,7 @@ type CorrectionHistory = {
   before?: ReceivingReview;
   after?: ReceivingReview;
 };
-const undoActions = new Set(["resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition"]);
+const undoActions = new Set(["resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition", "note"]);
 function correctionCanUndo(data: CorrectionHistory, review: ReceivingReview) {
   if (!data.undoable || !data.operation || !undoActions.has(data.operation) || !data.before || data.after?.revision !== review.revision) return false;
   if (JSON.stringify(data.after.lines) !== JSON.stringify(review.lines.map(({ autoConfirmed: _auto, ...line }) => line))) return false;
@@ -566,6 +566,14 @@ export async function receivingQueue(
     scannedBy:
       members.find((m) => m.id === doc.createdBy)?.name ??
       "Organization member",
+    /** Who wrote each line's note. */
+    noteAuthors: Object.fromEntries(
+      review.lines.flatMap((l) =>
+        l.note
+          ? [[l.note.by, members.find((m) => m.id === l.note!.by)?.name ?? "Organization member"]]
+          : [],
+      ),
+    ),
     sourceMimeType:
       state.versions.find((v) => v.id === doc.currentVersionId)?.mimeType ??
       "application/pdf",
@@ -854,7 +862,8 @@ async function mutateReceivingImpl(
               l.checked === true ||
               l.humanEdited === true ||
               !!l.ignored ||
-              !!l.partId,
+              !!l.partId ||
+              !!l.note,
           )
         )
           return {
@@ -972,6 +981,11 @@ async function mutateReceivingImpl(
         review.orderResolutions ??= {};
         review.orderResolutions[input.itemId] = { disposition: input.disposition, note: input.note, by: fresh.user.id, at: now };
         review.documentChecked = false;
+      } else if (input.action === "note") {
+        // Words only: a note never confirms, clears or reopens a check.
+        const line = lineFor(input.lineId);
+        if (input.note) line.note = { text: input.note, by: fresh.user.id, at: now };
+        else delete line.note;
       } else if (input.action === "resolve") {
         const line = lineFor(input.lineId);
         if (line.ignored) fail("Restore this excluded line before resolving it.");

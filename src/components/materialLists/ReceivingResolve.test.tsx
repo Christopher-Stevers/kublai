@@ -241,7 +241,6 @@ it("resolves one issue at a time without approving or clearing independent check
     evidenceFingerprint: resolutionEvidenceFingerprint(detail.review.lines[0]!),
     counterpartFingerprint: resolutionCounterpartFingerprint(detail.items[0]!),
     specification: "confirmed",
-    note: "",
     skipped: false,
   });
   expect(
@@ -266,24 +265,87 @@ it("resolves one issue at a time without approving or clearing independent check
   expect(detail.review.lines[0]!.approved).toBeUndefined();
 });
 
-it("Skip saves the review note as unresolved and moves to the next line", async () => {
+it("Skip saves the note first, leaves the line unresolved and moves to the next line", async () => {
   open();
-  fireEvent.change(screen.getByRole("textbox", { name: "Resolution note" }), {
-    target: { value: "Ask the foreman about handwritten count" },
-  });
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+    { target: { value: "Ask the foreman about handwritten count" } },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Skip" }));
   await waitFor(() => expect(select).toHaveBeenCalledWith({ lineId: "line2" }));
-  expect(run).toHaveBeenCalledWith(
-    expect.objectContaining({
-      action: "resolve",
-      lineId: "line1",
-      skipped: true,
-      note: "Ask the foreman about handwritten count",
-    }),
-  );
-  expect(run.mock.calls[0]![0]).not.toHaveProperty("quantity");
-  expect(run.mock.calls[0]![0]).not.toHaveProperty("delivery");
+  expect(run.mock.calls.map(([action]) => action.action)).toEqual([
+    "note",
+    "resolve",
+  ]);
+  expect(run.mock.calls[0]![0]).toEqual({
+    action: "note",
+    lineId: "line1",
+    note: "Ask the foreman about handwritten count",
+  });
+  expect(run.mock.calls[1]![0]).toMatchObject({
+    action: "resolve",
+    lineId: "line1",
+    skipped: true,
+  });
+  expect(run.mock.calls[1]![0]).not.toHaveProperty("note");
+  expect(run.mock.calls[1]![0]).not.toHaveProperty("quantity");
+  expect(run.mock.calls[1]![0]).not.toHaveProperty("delivery");
   expect(close).not.toHaveBeenCalled();
+});
+
+it("saves what's needed as a note that changes no checks", async () => {
+  open();
+  const save = screen.getByRole("button", { name: "Save note" });
+  expect(save).toBeDisabled();
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+    { target: { value: "  Supplier to confirm the box size  " } },
+  );
+  fireEvent.click(save);
+  await waitFor(() => expect(run).toHaveBeenCalledTimes(1));
+  expect(run.mock.calls[0]![0]).toEqual({
+    action: "note",
+    lineId: "line1",
+    note: "Supplier to confirm the box size",
+  });
+  expect(await screen.findByText("Saved")).toBeInTheDocument();
+  expect(close).not.toHaveBeenCalled();
+});
+
+it("shows who left the saved note", () => {
+  detail.review.lines[0]!.note = {
+    text: "Ask for the second page",
+    by: "user-7",
+    at: "2026-11-05T12:00:00Z",
+  };
+  detail.noteAuthors = { "user-7": "Sam Rivera" };
+  open();
+  expect(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+  ).toHaveValue("Ask for the second page");
+  expect(screen.getByText(/Sam Rivera ·/)).toBeInTheDocument();
+});
+
+it("leaving saves an unsaved note, and stays put if the save fails", async () => {
+  open();
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+    { target: { value: "Waiting on a credit note" } },
+  );
+  run.mockResolvedValueOnce(false);
+  fireEvent.click(screen.getByRole("button", { name: "Back to lines" }));
+  await waitFor(() =>
+    expect(screen.getByRole("status")).toHaveTextContent("isn't saved"),
+  );
+  expect(close).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Back to lines" }));
+  await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+  expect(run).toHaveBeenCalledTimes(2);
+  expect(run.mock.calls[1]![0]).toEqual({
+    action: "note",
+    lineId: "line1",
+    note: "Waiting on a credit note",
+  });
 });
 
 it("records the site and accepted count separately without overwriting paper quantity", async () => {
@@ -341,21 +403,19 @@ it("shows paper, reviewed, counted and to-receive quantities distinctly", () => 
     remainder: "backordered",
   };
   open();
-  const evidence = screen.getByRole("button", {
-    name: /Astra Max · active saved reading/,
-  });
-  expect(within(evidence).getByText(/Paper quantity/)).toHaveTextContent("25");
-  expect(within(evidence).getByText(/Reviewed quantity/)).toHaveTextContent(
-    "24",
-  );
-  expect(within(evidence).getByText(/Counted on site/)).toHaveTextContent("20");
-  expect(within(evidence).getByText(/To receive/)).toHaveTextContent("18");
+  const slip = screen.getByRole("group", { name: "Slip · Astra Max" });
+  const figure = (name: string) =>
+    within(slip).getByText(name).nextElementSibling;
+  expect(figure("On paper")).toHaveTextContent("25");
+  expect(figure("Reviewed")).toHaveTextContent("24");
+  expect(figure("On site")).toHaveTextContent("20");
+  expect(figure("To receive")).toHaveTextContent("18");
 });
 
 it("identifies the active saved reader and separate confidence scores instead of promoting the highest alternate score", async () => {
   open();
   expect(
-    screen.getByRole("button", { name: /Astra Max · active saved reading/ }),
+    screen.getByRole("group", { name: "Slip · Astra Max" }),
   ).toBeInTheDocument();
   expect(
     screen.getByText(/Saved match confidence: 91% · quantity confidence: 74%/),
@@ -400,7 +460,7 @@ it("blocks footer mutations when the source version has changed", () => {
   expect(screen.getByRole("alert")).toHaveTextContent("source file changed");
   const skip = screen.getByRole("button", { name: "Skip" });
   expect(skip).toBeDisabled();
-  const confirm = screen.getByRole("button", { name: "Confirm part match" });
+  const confirm = screen.getByRole("button", { name: "Confirm match" });
   expect(confirm).toBeDisabled();
   const undo = screen.getByRole("button", { name: "Undo" });
   expect(undo).toBeDisabled();
@@ -413,9 +473,7 @@ it("blocks footer mutations when the source version has changed", () => {
 it("passes recovered source text and crop to the missed-line workflow without approving", async () => {
   detail.review.lines[0]!.page = 2;
   open();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Find on slip / add missed line" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Find on the slip" }));
   fireEvent.click(screen.getByRole("button", { name: "Use recovered line" }));
   await waitFor(() =>
     expect(addLine).toHaveBeenCalledWith({
@@ -444,9 +502,10 @@ it("labels an unmatched order item as unlinked without claiming it was not shipp
 
 it("Skip on an unlinked order row preserves its unresolved note without receiving it", async () => {
   open({ itemId: "item1" });
-  fireEvent.change(screen.getByRole("textbox", { name: "Resolution note" }), {
-    target: { value: "Check the missing second page" },
-  });
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+    { target: { value: "Check the missing second page" } },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Skip" }));
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   expect(run).toHaveBeenCalledWith({
@@ -478,9 +537,15 @@ it("linking an order counterpart stays unchecked and never receives quantities",
     sku: "CORRECT",
   });
   open();
-  fireEvent.click(screen.getByRole("button", { name: "Find order item" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change order item" }));
+  expect(
+    screen.getByRole("button", { name: /XFR Coupling/ }).closest("li"),
+  ).toHaveTextContent("Linked now");
+  expect(
+    screen.getByRole("button", { name: /Correct coupling/ }).closest("li"),
+  ).not.toHaveTextContent("Linked now");
   fireEvent.click(screen.getByRole("button", { name: /Correct coupling/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Link lines" }));
+  fireEvent.click(screen.getByRole("button", { name: "Link order item" }));
   await waitFor(() => expect(run).toHaveBeenCalledTimes(1));
   expect(run).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -506,9 +571,9 @@ it("an ambiguous counterpart unit opens correction without silently converting o
     individualUnit: "ft",
   });
   open();
-  fireEvent.click(screen.getByRole("button", { name: "Find order item" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change order item" }));
   fireEvent.click(screen.getByRole("button", { name: /Pipe sold by length/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Link lines" }));
+  fireEvent.click(screen.getByRole("button", { name: "Link order item" }));
   expect(screen.getByRole("status")).toHaveTextContent(
     "different or ambiguous unit",
   );
@@ -536,4 +601,90 @@ it("does not let a reviewer without substitution permission accept a wrong part"
   expect(accept).toBeDisabled();
   fireEvent.click(accept);
   expect(run).not.toHaveBeenCalled();
+});
+
+it("saves an unlinked order item's status with what's needed", async () => {
+  open({ itemId: "item1" });
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Order item status" }),
+    { target: { value: "cancel-requested" } },
+  );
+  const save = screen.getByRole("button", { name: "Save" });
+  expect(save).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+  expect(
+    screen.getByText("Say why the cancellation is requested."),
+  ).toBeInTheDocument();
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "What's needed to fix this" }),
+    { target: { value: "Supplier discontinued it" } },
+  );
+  fireEvent.click(save);
+  await waitFor(() => expect(run).toHaveBeenCalledTimes(1));
+  expect(run.mock.calls[0]![0]).toEqual({
+    action: "orderDisposition",
+    itemId: "item1",
+    disposition: "cancel-requested",
+    note: "Supplier discontinued it",
+  });
+  expect(close).not.toHaveBeenCalled();
+});
+
+it("walks the checks in order from the footer", async () => {
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm match" }));
+  await waitFor(() => expect(run).toHaveBeenCalledTimes(1));
+  expect(run.mock.calls[0]![0]).toMatchObject({
+    action: "resolve",
+    match: "confirmed",
+  });
+  expect(
+    screen.getByText("0 of 4 checks done", { selector: "p" }),
+  ).toBeInTheDocument();
+});
+
+function withResolution(
+  extra: Partial<NonNullable<ReceivingLine["resolution"]>>,
+) {
+  const line = detail.review.lines[0]!;
+  line.resolution = {
+    ...newResolution(line, "reviewer", "now"),
+    counterpartFingerprint: resolutionCounterpartFingerprint(detail.items[0]!),
+    ...extra,
+  };
+}
+
+it("offers Edit, not Confirm, beside a recorded delivery or substitute issue", () => {
+  withResolution({
+    delivery: "wrong",
+    specification: "substitution-rejected",
+  });
+  open();
+  expect(
+    screen.getByRole("button", { name: "Edit delivery issue" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Edit substitute decision" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Delivery matches paperwork" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Confirm size & specification" }),
+  ).not.toBeInTheDocument();
+});
+
+it("says all checks are done when only the review itself is left", () => {
+  withResolution({
+    match: "confirmed",
+    specification: "confirmed",
+    quantity: "confirmed",
+    delivery: "confirmed",
+  });
+  // The reading still has an issue, so the line waits for its check.
+  open();
+  expect(screen.queryByText(/0 things left/)).not.toBeInTheDocument();
+  expect(
+    screen.getByText("All checks done", { selector: "p" }),
+  ).toBeInTheDocument();
 });

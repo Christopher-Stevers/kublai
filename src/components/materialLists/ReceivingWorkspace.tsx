@@ -35,6 +35,7 @@ import {
   FileTextIcon,
   FlaskConicalIcon,
   Loader2Icon,
+  MessageSquareTextIcon,
   PlusIcon,
   SearchIcon,
   AlertTriangleIcon,
@@ -159,6 +160,8 @@ export type ReceivingDetail = {
   canEditParts?: boolean;
   canRemoveOrderItems?: boolean;
   scannedBy: string;
+  /** Names of the people who wrote line notes, by user id. */
+  noteAuthors?: Record<string, string>;
   sourceUrl: string;
   sourceMimeType?: string;
 };
@@ -2558,8 +2561,8 @@ function OrderComparison({
                           <p className="text-muted-foreground text-xs">
                             {
                               {
-                                outstanding: "Outstanding — still due",
-                                backordered: "Backordered — still due",
+                                outstanding: "Outstanding, still due",
+                                backordered: "Backordered, still due",
                                 "cancel-requested": "Cancellation requested",
                                 unresolved: "Still investigating",
                               }[disposition.disposition]
@@ -2675,9 +2678,29 @@ function OrderComparison({
                   )}
                 </div>
               ))}
-              <div className="flex justify-end px-4 pb-3">
+              <div className="flex items-start justify-between gap-3 px-4 pb-3">
+                {/* What reviewers said is needed, from Resolve. */}
+                <div className="min-w-0 space-y-1">
+                  {lines.flatMap(({ line }) =>
+                    line.note
+                      ? [
+                          <p
+                            key={line.id}
+                            className="text-muted-foreground flex gap-1.5 text-xs break-words"
+                          >
+                            <MessageSquareTextIcon
+                              aria-label="Note"
+                              className="mt-px size-3.5 shrink-0"
+                            />
+                            <span className="min-w-0">{line.note.text}</span>
+                          </p>,
+                        ]
+                      : [],
+                  )}
+                </div>
                 <Button
                   size="sm"
+                  className="shrink-0"
                   variant={complete ? "outline" : "default"}
                   onClick={() =>
                     onResolve({ lineId: resolveLine?.id, itemId: item?.id })

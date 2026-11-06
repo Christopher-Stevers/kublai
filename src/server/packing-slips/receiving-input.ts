@@ -72,6 +72,12 @@ export const receivingInput = z.discriminatedUnion("action", [
   }),
   z.object({
     ...base,
+    action: z.literal("note"),
+    lineId: text.max(100),
+    note: text.max(1000),
+  }),
+  z.object({
+    ...base,
     action: z.literal("allocate"),
     lineIds: z.array(text.max(100)).min(1).max(20),
     reason: text.min(3).max(1000),

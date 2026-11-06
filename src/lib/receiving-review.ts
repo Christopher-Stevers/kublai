@@ -13,6 +13,9 @@ export type ReceivingLine = {
   /** The source quantity is retained when a reviewer records a different site count. */
   paper?: { quantity: number | null; ordered: number | null; unit: string; description: string; sku: string };
   resolution?: ReceivingResolution;
+  /** What a reviewer says is needed to fix this line, in their own words.
+   * Saving it changes no decision. */
+  note?: { text: string; by: string; at: string };
   allocation?: { sourceLineIds: string[]; operationId: string };
   /** Current allocation operation owning this excluded source's quantity. */
   allocatedTo?: string;
