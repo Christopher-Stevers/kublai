@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
-import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
+import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors, scrollPreviewOffsets } from "./drawing-scroll-pages";
 
 const identity = vi.hoisted(() => ({accountKey:"org:user-a"}));
 vi.mock("./DrawingAccountProvider", () => ({useDrawingAccount: () => identity}));
@@ -59,7 +59,7 @@ describe("continuous scroll pages", () => {
       [2, 300 + 2 * SCROLL_PAGE_GAP, 200],
       [3, 500 + 3 * SCROLL_PAGE_GAP, 200],
     ]);
-    expect(scrollNeighbors(sheets, 4)).toEqual({ previous: sheets.slice(1, 4), next: [] });
+    expect(scrollNeighbors(sheets, 4)).toEqual({ previous: sheets.slice(0, 4), next: [] });
   });
 
   it("fits a portrait neighbour by its own height, as it opens", () => {
@@ -95,4 +95,22 @@ it("keeps either end page reachable when the entire stack fits inside the viewpo
   const limits = scrollLimits(pages, { width: 800, height: 600 }, 0.1);
   expect(limits.maxY).toBeCloseTo(316);
   expect(limits.minY).toBeCloseTo(-(400 + SCROLL_PAGE_GAP) * 0.1 - 316);
+});
+
+
+it("keeps the whole set reachable before any preview has loaded", () => {
+  const sheets = Array.from({ length: 41 }, (_, i) => ({ id: String(i), name: `M-${i}`, imageUrl: `/${i}.webp`, width: 1000, height: 500 }));
+  const pages = pageStack({ width: 400, height: 700 }, { width: 400, height: 200 }, { ...scrollNeighbors(sheets, 19), onPage: vi.fn() });
+  expect(pages).toHaveLength(41);
+  expect(pages[0]?.offset).toBe(-19);
+  expect(pages.at(-1)?.offset).toBe(21);
+  const destination = pages.find(page => page.offset === 12)!;
+  const view = { scale: 0.3, x: 0, y: -(destination.top + destination.height / 2) * 0.3 };
+  expect(pageAtCentre(pages, view).offset).toBe(12);
+  const previews = scrollPreviewOffsets(pages, { width: 400, height: 700 }, view);
+  expect(previews.has(12)).toBe(true);
+  expect(previews.has(-19)).toBe(false);
+  expect(previews.size).toBeLessThanOrEqual(24);
+  const overview = scrollPreviewOffsets(pages, { width: 400, height: 700 }, { scale: 0.1, y: 0 });
+  expect(overview.size).toBe(24);
 });

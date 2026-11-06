@@ -213,7 +213,7 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next: [page(1), page(2)], onPage }} />);
   expect(frame.style.touchAction).toBe("none");
   // Fit is 800 by 400; the next page starts a short gap below.
-  const next = within(container).getByAltText("Page 1");
+  const next = within(container).getByAltText("Page 1").closest<HTMLElement>("[data-drawing-scroll-page]")!;
   expect(next.style.top).toBe(`${200 + 200 + SCROLL_PAGE_GAP}px`);
   expect(next.style.height).toBe("400px");
   expect(next.style.maskImage).toBe("");
@@ -270,4 +270,22 @@ it.each([0.1, 1, 4])("pans beyond sheet edges at zoom %s in both viewing modes",
     expect(400 * zoom * view.center.y + 300).toBeGreaterThan(0);
     unmount();
   }
+});
+
+
+it("reserves every page even when distant previews have not been requested", () => {
+  const { rerender, props, container } = open({ center: { x: 0.5, y: 0.5 }, zoom: 0.3 });
+  const next = Array.from({ length: 40 }, (_, i) => ({ id: String(i + 1), name: `Page ${i + 1}`, imageUrl: `/${i + 1}.webp`, width: 1000, height: 500 }));
+  rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next, onPage: vi.fn() }} />);
+  expect(container.querySelectorAll("[data-drawing-scroll-page]")).toHaveLength(40);
+  const far = container.querySelector<HTMLElement>('[data-drawing-scroll-page="40"]')!;
+  expect(far.style.height).toBe("400px");
+  expect(far).toHaveTextContent("Page 40");
+  expect(far.querySelector("img")).toBeNull();
+  const near = container.querySelector<HTMLElement>('[data-drawing-scroll-page="1"]')!;
+  expect(near).toHaveTextContent("Loading preview");
+  expect(near).toHaveAttribute("data-preview-ready", "false");
+  fireEvent.load(near.querySelector("img")!);
+  expect(near).toHaveAttribute("data-preview-ready", "true");
+  expect(near.style.height).toBe("400px");
 });

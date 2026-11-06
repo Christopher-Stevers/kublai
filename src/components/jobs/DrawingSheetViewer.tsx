@@ -121,7 +121,8 @@ import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
-import { pageAtCentre, pagePanLimit, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
+import { DrawingScrollPage } from "./DrawingScrollPage";
+import { pageAtCentre, pagePanLimit, pageStack, scrollLimits, scrollPreviewOffsets, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 0.1;
@@ -249,9 +250,6 @@ export function DrawingSheetViewer({
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
-  // Keep the sheet surface opaque once its image arrives.
-  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-  const imageReady = loadedSrc === src;
   const [fit, setFit] = useState<{
     width: number;
     height: number;
@@ -272,6 +270,7 @@ export function DrawingSheetViewer({
   const live = useRef<View>(REST);
   const entryViewport = useRef(initialViewport);
   const [view, setView] = useState<View>(REST);
+  const previewOffsets = useMemo(() => stacked ? scrollPreviewOffsets(stacked, frameSize, view) : new Set<number>(), [stacked, frameSize, view]);
   const [moving, setMoving] = useState(false);
   const movingLive = useRef(false);
   const [pdfLinks, setPdfLinks] = useState<{
@@ -2912,15 +2911,11 @@ export function DrawingSheetViewer({
           }}
         >
           {stacked && fit && stacked.map(({ offset, page, top, width, height }) => page && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <DrawingScrollPage
               key={page.id}
-              src={page.imageUrl}
-              alt={page.name}
-              data-drawing-scroll-page={offset}
-              draggable={false}
-              decoding="async"
-              className="absolute bg-white"
+              page={page}
+              offset={offset}
+              loadPreview={previewOffsets.has(offset)}
               style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
             />
           ))}
@@ -2933,7 +2928,7 @@ export function DrawingSheetViewer({
           <div
             data-drawing-image-layer="true"
             className="absolute inset-0"
-            style={{ filter: appearanceFilter, backgroundColor: imageReady ? "#fff" : undefined }}
+            style={{ filter: appearanceFilter, backgroundColor: "#fff" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -2941,8 +2936,6 @@ export function DrawingSheetViewer({
               src={src}
               alt={alt}
               draggable={false}
-              onLoad={() => setLoadedSrc(src)}
-              onError={() => setLoadedSrc(src)}
               className="absolute inset-0 h-full w-full"
               style={{ opacity: usesInkComparison ? 0 : undefined }}
             />

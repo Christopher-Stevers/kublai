@@ -12,13 +12,12 @@ export type ScrollStack = {
 type Size = { width: number; height: number };
 /** Space between pages, in screen pixels at fit. */
 export const SCROLL_PAGE_GAP = 12;
-/** Pages drawn each side of the open one; a flick travels at most this far. */
-const NEIGHBORS = 3;
 
+/** Keep every page in the layout; preview loading is limited independently. */
 export function scrollNeighbors(sheets: ScrollPage[], index: number): Omit<ScrollStack, "onPage"> {
   return {
-    previous: sheets.slice(Math.max(0, index - NEIGHBORS), index),
-    next: sheets.slice(index + 1, index + 1 + NEIGHBORS),
+    previous: sheets.slice(0, index),
+    next: sheets.slice(index + 1),
   };
 }
 
@@ -75,4 +74,16 @@ export function pageAtCentre(pages: StackedPage[], view: { scale: number; x: num
       zoom: view.scale,
     },
   };
+}
+
+/** Load previews in and just beyond the viewport without decoding the whole set.
+ * Every other page still has its correctly sized placeholder in the stack. */
+export function scrollPreviewOffsets(pages: StackedPage[], frame: Size, view: { scale: number; y: number }) {
+  const centre = -view.y / view.scale;
+  const reach = frame.height / view.scale;
+  return new Set(pages
+    .filter(page => page.offset !== 0 && page.top <= centre + reach && page.top + page.height >= centre - reach)
+    .sort((a, b) => Math.abs(a.top + a.height / 2 - centre) - Math.abs(b.top + b.height / 2 - centre))
+    .slice(0, 24)
+    .map(page => page.offset));
 }
