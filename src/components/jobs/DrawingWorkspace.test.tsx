@@ -16,7 +16,7 @@ import type {
   DrawingSave,
   DrawingWorkspace as Workspace,
 } from "~/lib/drawing-workspace";
-import { useEffect, type ComponentProps } from "react";
+import { Activity, useEffect, type ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
@@ -2307,4 +2307,26 @@ it("keeps transient save status out of the bottom toolbar layout", async () => {
   await act(async () => { finish(entity); });
   await waitFor(() => expect(screen.getByRole("status")).toBeEmptyDOMElement());
   expect(container.querySelector("[data-action-bar-label]")).toBeNull();
+});
+
+
+it("removes docked controls when a retained page is hidden and restores only the active page", () => {
+  const dock = document.createElement("div");
+  document.body.append(dock);
+  const pages = (active: number) => <>{[0, 1, 2].map(page =>
+    <Activity key={page} mode={page === active ? "visible" : "hidden"}>
+      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} scrollPages toolbarContainer={dock} />
+    </Activity>
+  )}</>;
+  const view = render(pages(0));
+  for (const active of [1, 2, 0, 2, 1]) {
+    view.rerender(pages(active));
+    expect(within(dock).getAllByRole("button", { name: "Measure" })).toHaveLength(1);
+    expect(dock.querySelectorAll('[data-action-bar]')).toHaveLength(1);
+  }
+  fireEvent.click(within(dock).getByRole("button", { name: "Measure" }));
+  expect(within(dock).getByRole("button", { name: "Measure", pressed: true })).toBeVisible();
+  view.unmount();
+  expect(dock).toBeEmptyDOMElement();
+  dock.remove();
 });

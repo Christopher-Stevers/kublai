@@ -505,7 +505,21 @@ const sourceOf = (entity: DrawingEntity) =>
 
 /** Keep viewer controls outside the page scroller when the host provides a dock. */
 function DrawingToolbarDock({ target, children }: { target?: HTMLElement | null; children: ReactNode }) {
-  return target ? createPortal(children, target) : children;
+  // React can retain a hidden page (Activity/Suspense) without unmounting it.
+  // Portal children escape that page's hidden DOM, so tie their attachment to
+  // layout effects, which React disconnects while the owning page is hidden.
+  const host = useMemo(() => {
+    if (!target) return null;
+    const element = target.ownerDocument.createElement("div");
+    element.style.display = "contents";
+    return element;
+  }, [target]);
+  useLayoutEffect(() => {
+    if (!target || !host) return;
+    target.appendChild(host);
+    return () => { host.remove(); };
+  }, [target, host]);
+  return host ? createPortal(children, host) : children;
 }
 
 export function DrawingWorkspace({
