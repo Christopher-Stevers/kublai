@@ -1156,26 +1156,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           </Button>
                         </div>
                       )}
-                      <div className="border-t px-2 py-1.5">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            added.current = new Set(r.lines.map((l) => l.id));
-                            if (
-                              !(await run({
-                                action: "addLine",
-                                page: 1,
-                                description: "New slip line",
-                              }))
-                            )
-                              added.current = null;
-                          }}
-                        >
-                          <PlusIcon />
-                          Add missing line
-                        </Button>
-                      </div>
                     </>
                   )}
                 </Step>
