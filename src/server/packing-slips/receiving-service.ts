@@ -64,6 +64,7 @@ import { jobOrders } from "./find-order-service";
 import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
+import { slipOrderPairs } from "~/lib/slip-order-pairs";
 import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, pendingOrderResolutions, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
@@ -424,11 +425,12 @@ export async function receivingQueue(
       ? orderPartFacts(db, access, doc.packingSlip.orderId)
       : Promise.resolve<Awaited<ReturnType<typeof orderPartFacts>>>({}),
   ]);
-  // Likely catalogue parts for lines not on the order, which a reviewer who
-  // may add parts can put on the material list, and the typed search.
+  // Likely catalogue parts for lines not on the order: a reviewer who may add
+  // parts can put them on the material list, and one that is the part of an
+  // order line no slip has is paired with it. Also the typed search.
   const searching = query.trim().length >= 2,
     unmatched =
-      doc.packingSlip && mayCreate
+      doc.packingSlip && (mayCreate || Object.keys(orderParts).length)
         ? review.lines.filter(
             (l) => !l.ignored && !l.approved && !l.orderItemId,
           )
@@ -461,6 +463,14 @@ export async function receivingQueue(
           : ranked,
       ];
     }),
+  );
+  const pairs = slipOrderPairs(
+    review.lines,
+    likely,
+    orderParts,
+    [...slipReceipts(state.documents)]
+      .filter(([, r]) => r.some((x) => x.documentId !== doc.id))
+      .map(([id]) => id),
   );
   const photoSuggestions =
     query.trim().length >= 2
@@ -554,7 +564,9 @@ export async function receivingQueue(
     lists: listOptions,
     orders: orderOptions,
     parts,
-    likely,
+    likely: mayCreate ? likely : {},
+    /** Order items that slip lines the matcher missed are likely to be. */
+    pairs,
     photoSuggestions,
     canCreate: mayCreate,
     /** The catalogue part behind each order item, for fixes a slip suggests. */

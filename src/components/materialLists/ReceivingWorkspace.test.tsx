@@ -892,6 +892,30 @@ function notOnOrder(quantity: number | null) {
     },
   });
 }
+it("puts a missed slip line with the order line of its likely part", async () => {
+  state.items.push({
+    id: "pipe-item",
+    description: "Copper pipe",
+    unit: "ea",
+    ordered: 3,
+    received: 0,
+    aliases: [],
+    piecesPerPack: null,
+    individualUnit: null,
+  });
+  Object.assign(state, { pairs: { "1": "pipe-item" } });
+  try {
+    render(<ReceivingWorkspace jobId="job" />);
+    expect(
+      await screen.findByText(/The slip line is likely this part/),
+    ).toBeVisible();
+    expect(screen.queryByText("Not on the order")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Copper pipe" })).toHaveLength(1);
+  } finally {
+    state.items.pop();
+    delete (state as { pairs?: unknown }).pairs;
+  }
+});
 it("adds the likely catalogue part to the material list in one tap", async () => {
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);

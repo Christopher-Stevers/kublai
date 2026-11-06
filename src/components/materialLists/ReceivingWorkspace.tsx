@@ -149,6 +149,8 @@ export type ReceivingDetail = {
   parts: Part[];
   /** Likely catalogue parts for each slip line not on the linked order. */
   likely?: Record<string, LikelyPart[]>;
+  /** The order item a slip line the matcher missed is likely to be. */
+  pairs?: Record<string, string>;
   photoSuggestions: Array<{
     id: string;
     displayName: string;
@@ -2288,10 +2290,19 @@ function OrderComparison({
       key: `item:${item.id}`,
       n,
       item,
-      lines: slip.filter((x) => x.line.orderItemId === item.id),
+      lines: slip.filter(
+        (x) =>
+          x.line.orderItemId === item.id ||
+          (!x.line.orderItemId && detail.pairs?.[x.line.id] === item.id),
+      ),
     })),
     ...slip
-      .filter((x) => !x.line.orderItemId || !known.has(x.line.orderItemId))
+      .filter(
+        (x) =>
+          !(x.line.orderItemId
+            ? known.has(x.line.orderItemId)
+            : known.has(detail.pairs?.[x.line.id] ?? "")),
+      )
       .map((x, i) => ({
         key: x.line.id,
         n: detail.items.length + i,
@@ -2506,6 +2517,13 @@ function OrderComparison({
                             ? `${receivingQuantity(due, item.unit)} still due`
                             : "All received"}
                           {item.sku && ` · ${item.sku}`}
+                          {c === 0 &&
+                            live.some(({ line }) => !line.orderItemId) && (
+                              <span className={`block ${amber.text}`}>
+                                The slip line is likely this part. Confirm it
+                                in Resolve.
+                              </span>
+                            )}
                           {c === 0 &&
                             !live.length &&
                             item.received === 0 &&
@@ -3008,7 +3026,7 @@ function LineReview({
     [price, setPrice] = useState(
       l.unitPrice === null ? "" : String(l.unitPrice),
     ),
-    [item, setItem] = useState(l.orderItemId ?? ""),
+    [item, setItem] = useState(l.orderItemId ?? detail.pairs?.[l.id] ?? ""),
     [checked, setChecked] = useState(l.checked ?? false),
     [part, setPart] = useState(false),
     [reason, setReason] = useState(""),
