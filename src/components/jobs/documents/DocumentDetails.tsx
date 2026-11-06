@@ -194,6 +194,7 @@ export function DocumentDetails({
           key={version.id}
           fillHeight
           jobId={jobId}
+          folderId={document.folderId}
           versionId={version.id}
           initialView={
             initial?.versionId === version.id ? entry?.pdf : undefined

@@ -138,7 +138,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const quickWheel = full.fullscreen;
   const lastViewport = useRef<DrawingViewport | null>(null);
   const zoomLabel = useRef<HTMLSpanElement>(null);
-  const { scroll } = useDrawingPageMode();
+  const pageModeScope = `drawing-set:${jobId}:${setId ?? "root"}`;
+  const { scroll } = useDrawingPageMode(pageModeScope);
   const [entryViewport, setEntryViewport] = useState<DrawingViewport | null>(
     null,
   );
@@ -575,6 +576,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         )}
         <div data-tutorial="drawing-view" className="relative min-h-0 flex-1">
           <DrawingWorkspace
+            pageModeScope={pageModeScope}
             scrollPages={scroll}
             scrollStack={scroll ? { ...scrollNeighbors(sheets, sheetIndex), onPage: (offset, viewport) => {
               lastViewport.current = viewport;

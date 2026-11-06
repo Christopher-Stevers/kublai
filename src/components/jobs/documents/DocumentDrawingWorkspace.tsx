@@ -18,6 +18,7 @@ import type { DrawingViewport } from "../DrawingSheetViewer";
 type Props = {
   jobId: string;
   versionId: string;
+  folderId?: string | null;
   initialView?: SnapshotState["pdf"];
   onReady?: () => void;
   onDocumentDetails?: () => void;
@@ -26,13 +27,15 @@ type Props = {
 export function DocumentDrawingWorkspace({
   jobId,
   versionId,
+  folderId,
   initialView,
   onReady,
   onDocumentDetails,
   onClose,
 }: Props) {
   const account = useDrawingAccount();
-  const { scroll } = useDrawingPageMode();
+  const pageModeScope = `document-folder:${jobId}:${folderId ?? "root"}`;
+  const { scroll } = useDrawingPageMode(pageModeScope);
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
   const {
     mutate,
@@ -101,6 +104,7 @@ export function DocumentDrawingWorkspace({
         <>
           <div className="relative min-h-0 flex-1">
             <DrawingWorkspace
+              pageModeScope={pageModeScope}
               scrollPages={scroll}
               scrollStack={scroll ? { ...scrollNeighbors(sheets, actualIndex), onPage: (offset, view) => openPage(actualIndex + offset, view) } : undefined}
               toolbarContainer={toolbarContainer}

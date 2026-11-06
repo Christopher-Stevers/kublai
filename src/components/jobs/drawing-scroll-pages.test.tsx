@@ -3,19 +3,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
 import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
 
+const identity = vi.hoisted(() => ({accountKey:"org:user-a"}));
+vi.mock("./DrawingAccountProvider", () => ({useDrawingAccount: () => identity}));
 beforeEach(() => {
+  identity.accountKey="org:user-a";
   const values = new Map<string, string>();
   vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-it("shares and remembers the document/drawing mode across mounted settings", () => {
-  function Reader() { return <output>{useDrawingPageMode().scroll ? "Scrolling" : "Buttons"}</output>; }
-  const view = render(<><DrawingPageModeSetting /><Reader /></>);
+it("defaults to scrolling and remembers the choice for the same scope", () => {
+  localStorage.setItem("foremanhq:document-page-mode", "buttons");
+  function Reader() { return <output>{useDrawingPageMode("set:a").scroll ? "Scrolling" : "Buttons"}</output>; }
+  const view = render(<><DrawingPageModeSetting scope="set:a" /><Reader /></>);
+  expect(screen.getByRole("switch")).toBeChecked();
   fireEvent.click(screen.getByRole("switch"));
-  expect(screen.getByText("Scrolling")).toBeVisible();
+  expect(screen.getByText("Buttons")).toBeVisible();
   view.unmount();
-  render(<DrawingPageModeSetting />);
+  render(<DrawingPageModeSetting scope="set:a" />);
+  expect(screen.getByRole("switch")).not.toBeChecked();
+});
+it("keeps sets, document folders and accounts independent when switching", () => {
+  const view=render(<DrawingPageModeSetting scope="drawing-set:job:a" />);
+  fireEvent.click(screen.getByRole("switch"));
+  for(const scope of ["drawing-set:job:b","document-folder:job:a","document-folder:other-job:a"]){
+    view.rerender(<DrawingPageModeSetting scope={scope}/>);
+    expect(screen.getByRole("switch")).toBeChecked();
+  }
+  view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
+  expect(screen.getByRole("switch")).not.toBeChecked();
+  identity.accountKey="org:user-b";
+  view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
+  expect(screen.getByRole("switch")).toBeChecked();
+  identity.accountKey="org:user-a";
+  view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
+  expect(screen.getByRole("switch")).not.toBeChecked();
+  fireEvent.click(screen.getByRole("switch"));
   expect(screen.getByRole("switch")).toBeChecked();
 });
 

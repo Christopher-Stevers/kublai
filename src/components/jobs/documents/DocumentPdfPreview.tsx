@@ -55,6 +55,7 @@ type PreviewProps = {
   fillHeight?: boolean;
   jobId?: string;
   versionId?: string;
+  folderId?: string | null;
   onDocumentDetails?: () => void;
   onClose?: () => void;
 };
@@ -65,6 +66,7 @@ export function DocumentPdfPreview(props: PreviewProps) {
       <DocumentDrawingWorkspace
         jobId={props.jobId}
         versionId={props.versionId}
+        folderId={props.folderId}
         initialView={props.initialView}
         onReady={props.onReady}
         onDocumentDetails={props.onDocumentDetails}

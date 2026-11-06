@@ -1444,7 +1444,7 @@ export function JobDocumentsView({
               Browse sections, filter documents, and manage folders.
             </DialogDescription>
           </DialogHeader>
-          <DrawingPageModeSetting />
+          <DrawingPageModeSetting scope={`document-folder:${jobId}:${folderId ?? "root"}`} />
           <div
             className="flex flex-wrap gap-1 border-b"
             role="tablist"

@@ -75,13 +75,15 @@ vi.mock("../DrawingWorkspace", () => ({
 }));
 import { DocumentDrawingWorkspace } from "./DocumentDrawingWorkspace";
 beforeEach(() => {
+  const values=new Map<string,string>();
+  vi.stubGlobal("localStorage", {getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value),removeItem:(key:string)=>values.delete(key)});
   fixture.fullscreen = false;
   fixture.error = null;
   fixture.offline = false;
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   vi.clearAllMocks();
 });
-afterEach(() => { cleanup(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 it("uses the full workspace with shared navigation and restores the PDF camera", () => {
   const onReady = vi.fn();
   render(
@@ -157,4 +159,20 @@ it("ties document quick wheel to fullscreen and restores navigation and zoom on 
   expect(screen.getByRole("button", { name: "Next" })).toBeVisible();
   expect(screen.getByLabelText("Drawing zoom")).toHaveTextContent("1000%");
   expect(document.documentElement).not.toHaveAttribute("data-drawing-quick-wheel-page");
+});
+
+it("shares the folder preference across documents and keeps the root separate", () => {
+  const key=`foremanhq:page-mode:v2:${JSON.stringify(["fixture:person","document-folder:job:folder-a"])}`;
+  localStorage.setItem(key,"buttons");
+  const view=render(<DocumentDrawingWorkspace jobId="job" versionId="first" folderId="folder-a" />);
+  expect(fixture.props?.scrollPages).toBe(false);
+  expect(fixture.props?.pageModeScope).toBe("document-folder:job:folder-a");
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="second" folderId="folder-a" />);
+  expect(fixture.props?.scrollPages).toBe(false);
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="third" folderId="folder-b" />);
+  expect(fixture.props?.scrollPages).toBe(true);
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="root" folderId={null} />);
+  expect(fixture.props?.pageModeScope).toBe("document-folder:job:root");
+  expect(fixture.props?.scrollPages).toBe(true);
+  localStorage.removeItem(key);
 });

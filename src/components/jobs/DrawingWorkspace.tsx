@@ -517,6 +517,7 @@ export function DrawingWorkspace({
   onViewportChange,
   onReady,
   onDocumentDetails,
+  pageModeScope,
   scrollPages = false,
   scrollStack,
   toolbarContainer,
@@ -543,6 +544,7 @@ export function DrawingWorkspace({
   onViewportChange?: (viewport: DrawingViewport) => void;
   onReady?: () => void;
   onDocumentDetails?: () => void;
+  pageModeScope?: string;
   scrollPages?: boolean;
   scrollStack?: ScrollStack;
   toolbarContainer?: HTMLElement | null;
@@ -558,7 +560,7 @@ export function DrawingWorkspace({
 }) {
   const quickWheel = fullscreen;
   const [toolToolbarOpen, setToolToolbarOpen] = useState(!quickWheel);
-  const { scroll, setScroll } = useDrawingPageMode();
+  const { scroll, setScroll } = useDrawingPageMode(pageModeScope ?? `drawing-sheet:${jobId}:${sheet.id}`);
   const [wheelStyleOpen, setWheelStyleOpen] = useState(false);
   const router = useRouter();
   const sourceRegistry = useContext(SnapshotSourceContext);
