@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
+import { SCROLL_PAGE_GAP } from "./drawing-scroll-pages";
 
 beforeEach(() => {
   vi.stubGlobal("localStorage", { getItem: () => null });
@@ -213,7 +214,7 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   expect(frame.style.touchAction).toBe("none");
   // Fit is 800 by 400; the next page starts a short gap below.
   const next = within(container).getByAltText("Page 1");
-  expect(next.style.top).toBe(`${200 + 200 + 8}px`);
+  expect(next.style.top).toBe(`${200 + 200 + SCROLL_PAGE_GAP}px`);
   expect(next.style.height).toBe("400px");
   fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
   // The first page rests against the top of the frame.
