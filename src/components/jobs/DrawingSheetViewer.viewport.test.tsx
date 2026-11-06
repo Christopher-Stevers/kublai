@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
-import { SCROLL_PAGE_GAP } from "./drawing-scroll-pages";
 
 beforeEach(() => {
   vi.stubGlobal("localStorage", { getItem: () => null });
@@ -205,39 +204,22 @@ describe("drawing viewport navigation", () => {
   });
 });
 
-it("scrolls through the pages either side with the wheel and opens the one it settles on, keeping the zoom", () => {
+it.each([false, true])("mouse wheel zooms without scrolling when continuous pages are %s", scrollPages => {
   vi.useFakeTimers();
-  const { rerender, props, frame, onViewportChange, container } = open(null);
+  const { rerender, props, frame, onViewportChange } = open(null);
   const onPage = vi.fn<(offset: number, viewport: DrawingViewport) => void>();
-  const page = (n: number) => ({ id: String(n), name: `Page ${n}`, imageUrl: `/${n}.webp`, width: 1000, height: 500 });
-  rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next: [page(1), page(2)], onPage }} />);
-  expect(frame.style.touchAction).toBe("none");
-  // Fit is 800 by 400; the next page starts a short gap below.
-  const next = within(container).getByAltText("Page 1").closest<HTMLElement>("[data-drawing-scroll-page]")!;
-  expect(next.style.top).toBe(`${200 + 200 + SCROLL_PAGE_GAP}px`);
-  expect(next.style.height).toBe("400px");
-  expect(next.style.maskImage).toBe("");
+  rerender(<DrawingSheetViewer {...props} scrollPages={scrollPages} scrollStack={{ previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage }} />);
+  fireEvent.wheel(frame, { deltaY: -100, deltaX: 80, clientX: 400, clientY: 300 });
+  void act(() => vi.advanceTimersByTime(120));
+  expect(onViewportChange.mock.lastCall![0]).toEqual({ center: { x: 0.5, y: 0.5 }, zoom: Math.exp(0.15) });
   fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
-  void act(() => vi.advanceTimersByTime(20));
-  expect(next.style.maskImage).toBe("");
+  void act(() => vi.advanceTimersByTime(120));
+  expect(onViewportChange.mock.lastCall![0].zoom).toBeCloseTo(1);
+  expect(onViewportChange.mock.lastCall![0].center).toEqual({ x: 0.5, y: 0.5 });
   expect(onPage).not.toHaveBeenCalled();
-  // The first page rests against the top of the frame.
-  expect(onViewportChange).toHaveBeenLastCalledWith({ center: { x: 0.5, y: 0.75 }, zoom: 1 });
-  fireEvent.wheel(frame, { deltaY: -100, ctrlKey: true, clientX: 400, clientY: 300 });
-  const zoom = onViewportChange.mock.lastCall![0].zoom;
-  expect(zoom).toBeGreaterThan(1);
-  fireEvent.wheel(frame, { deltaY: 400, clientX: 400, clientY: 300 });
-  expect(onPage).not.toHaveBeenCalled();
-  void act(() => vi.advanceTimersByTime(20));
-  expect(next.style.maskImage).toBe("");
-  expect(onPage).not.toHaveBeenCalled();
-  vi.advanceTimersByTime(100);
-  expect(onPage).toHaveBeenCalledOnce();
-  const [offset, viewport] = onPage.mock.lastCall!;
-  expect(offset).toBe(1);
-  expect(viewport.zoom).toBe(zoom);
-  expect(viewport.center.y).toBeGreaterThan(0);
-  expect(viewport.center.y).toBeLessThan(1);
+  // Line-based mouse wheels use the same pixel-normalized zoom speed.
+  fireEvent.wheel(frame, { deltaY: -2, deltaMode: 1, clientX: 400, clientY: 300 });
+  expect(onViewportChange.mock.lastCall![0].zoom).toBeCloseTo(Math.exp(32 * 0.0015));
   vi.useRealTimers();
 });
 
