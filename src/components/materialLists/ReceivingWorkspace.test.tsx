@@ -389,7 +389,7 @@ it("lists every order item beside the slip reading and its reader", async () => 
   await screen.findByRole("heading", { name: "Valve" });
   expect(
     screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
-  ).toEqual(["Valve", "Elbow", "No matching part"]);
+  ).toEqual(["Valve", "Elbow", "Empty"]);
   const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
   expect(valve).toHaveTextContent("ValveOrdered10Received28 still due");
   expect(
@@ -730,7 +730,7 @@ it("shows every reader's part match and quantity confidence", async () => {
   )!;
   const readers = () =>
     within(valve)
-      .getAllByRole("group")
+      .getAllByRole("group", { name: / reading$/ })
       .map((g) => g.textContent);
   // Active saved evidence first; alternative scores cannot silently change the receipt.
   expect(readers()).toEqual([
@@ -1455,7 +1455,8 @@ it("moves a slip line onto an order item by long pressing and dragging, and the 
   under = () => target;
   fireEvent.touchStart(reading, { touches: [{ clientX: 200, clientY: 600 }] });
   await hold();
-  expect(screen.getByText("Drop on an order item")).toBeInTheDocument();
+  // Lifted, but not dragged until it moves.
+  expect(screen.queryByText(/Move to/)).not.toBeInTheDocument();
   fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 300 }] });
   expect(screen.getByText("Move to Copper pipe 1/2")).toBeInTheDocument();
   fireEvent.touchEnd(window, { touches: [] });
@@ -1527,4 +1528,82 @@ it("scrolling past a slip line or tapping it never starts a drag", async () => {
     await screen.findByRole("dialog", { name: "Packing-slip line" }),
   ).toBeInTheDocument();
   expect(posts).toEqual([]);
+});
+it("drags an order item onto a slip line to pair them", async () => {
+  dragSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  const pipe = (
+    await screen.findByRole("heading", { name: "Copper pipe 1/2" })
+  ).closest("li")!;
+  const order = within(pipe).getByRole("group", { name: "Order" });
+  under = () => screen.getByText("Unclear pipe");
+  fireEvent.touchStart(order, { touches: [{ clientX: 80, clientY: 300 }] });
+  await hold();
+  fireEvent.touchMove(window, { touches: [{ clientX: 120, clientY: 500 }] });
+  expect(screen.getByText("Pair with Unclear pipe")).toBeInTheDocument();
+  fireEvent.touchEnd(window, { touches: [] });
+  await waitFor(() =>
+    expect(posts).toContainEqual(
+      expect.objectContaining({
+        action: "line",
+        lineId: "1",
+        orderItemId: "item2",
+        checked: false,
+      }),
+    ),
+  );
+  expect(
+    await screen.findByText("Moved to Copper pipe 1/2."),
+  ).toBeInTheDocument();
+});
+it("letting go of a held half opens its options", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  const reading = within(valve).getAllByRole("group", {
+    name: / reading$/,
+  })[0]!;
+  fireEvent.touchStart(reading, { touches: [{ clientX: 300, clientY: 300 }] });
+  await hold();
+  fireEvent.touchMove(window, { touches: [{ clientX: 302, clientY: 303 }] });
+  fireEvent.touchEnd(window, { touches: [] });
+  expect(
+    await screen.findByText("Drag onto an order item to pair them."),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("menuitem", { name: "View on slip" })).toBeVisible();
+  fireEvent.click(
+    screen.getByRole("menuitem", { name: "Unpair from this item" }),
+  );
+  await waitFor(() =>
+    expect(posts).toContainEqual(
+      expect.objectContaining({
+        action: "line",
+        lineId: "0",
+        orderItemId: null,
+      }),
+    ),
+  );
+  expect(posts.at(-1)).not.toHaveProperty("approved");
+});
+it("says Empty on the side of a card with no match", async () => {
+  state.items.push({
+    ...state.items[0]!,
+    id: "item-2",
+    description: "Elbow",
+    received: 0,
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const elbow = (await screen.findByRole("heading", { name: "Elbow" })).closest(
+    "li",
+  )!;
+  expect(
+    within(elbow).getByRole("group", { name: "Slip reading" }),
+  ).toHaveTextContent(/^SlipEmpty/);
+  const pipe = screen
+    .getByRole("heading", { name: "Unclear pipe" })
+    .closest("li")!;
+  expect(within(pipe).getByRole("group", { name: "Order" })).toHaveTextContent(
+    /^OrderEmptyNot on the order/,
+  );
 });

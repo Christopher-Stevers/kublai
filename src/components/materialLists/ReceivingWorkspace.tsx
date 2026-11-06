@@ -27,6 +27,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import Link from "next/link";
@@ -42,6 +43,8 @@ import {
   Loader2Icon,
   MessageSquareTextIcon,
   PlusIcon,
+  Trash2Icon,
+  UnlinkIcon,
   SearchIcon,
   AlertTriangleIcon,
   XIcon,
@@ -54,6 +57,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { ReceivingItemPreview } from "./ReceivingItemPreview";
 import type { SlipBox } from "~/lib/packing-slip-review";
 import { SlipLineImage } from "./SlipLineImage";
@@ -2287,14 +2298,75 @@ function scrollParent(node: HTMLElement | null) {
   }
   return null;
 }
-/** The order item under a dragged slip line, if it accepts the drop. */
+/** The row under a dragged half, if it accepts the drop: an order item for a
+ * slip line, or a slip line for an order item. */
 const dropTarget = (at: DragPoint) =>
-  document
-    .elementFromPoint(at.x, at.y)
-    ?.closest<HTMLElement>("[data-drop-item]")?.dataset.dropItem ?? null;
-// The dragged card floats above the finger, so the finger never hides it.
+  document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>("[data-drop]")
+    ?.dataset.drop ?? null;
+// The dragged half floats above the finger, so the finger never hides it.
 const ghostAt = (at: DragPoint) =>
-  `translate(${Math.round(Math.max(8, Math.min(window.innerWidth - 248, at.x - 120)))}px, ${Math.round(at.y < 140 ? at.y + 28 : at.y - 84)}px)`;
+  `translate(${Math.round(Math.max(8, Math.min(window.innerWidth - 232, at.x - 112)))}px, ${Math.round(at.y < 140 ? at.y + 28 : at.y - 96)}px)`;
+// Once lifted, this far moved is a drag; less, and letting go opens the menu.
+const DRAG_FROM = 8;
+
+// Each comparison card is one ticket torn down a zigzag. The halves are
+// masked to either side of the same teeth, and the seam draws them at rest.
+const tooth = (path: string, paint = "") =>
+  `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='8' height='16'><path d='${path}' ${paint}/></svg>`)}")`;
+const maskStyle = (
+  image: string,
+  size: string,
+  position: string,
+  repeat: string,
+): CSSProperties => ({
+  maskImage: image,
+  WebkitMaskImage: image,
+  maskSize: size,
+  WebkitMaskSize: size,
+  maskPosition: position,
+  WebkitMaskPosition: position,
+  maskRepeat: repeat,
+  WebkitMaskRepeat: repeat,
+});
+const solid = "linear-gradient(#000,#000)";
+const tear = {
+  order: maskStyle(
+    `${solid}, ${tooth("M0 0L8 8L0 16Z")}`,
+    "calc(100% - 7px) 100%, 8px 16px",
+    "left top, right top",
+    "no-repeat, repeat-y",
+  ),
+  slip: maskStyle(
+    `${solid}, ${tooth("M0 0H8V16H0L8 8Z")}`,
+    "calc(100% - 7px) 100%, 8px 16px",
+    "right top, left top",
+    "no-repeat, repeat-y",
+  ),
+  seam: maskStyle(
+    tooth("M-1 -1L8 8L-1 17", "fill='none' stroke='#000' stroke-width='1.25'"),
+    "8px 16px",
+    "left top",
+    "repeat-y",
+  ),
+};
+/** A card half's paper: one torn edge, and slightly red when it is empty. */
+function TornPaper({
+  side,
+  empty,
+  ghost = false,
+}: {
+  side: "order" | "slip";
+  empty: boolean;
+  ghost?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      style={tear[side]}
+      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${empty ? "border-red-500/30 bg-red-500/[0.07] dark:bg-red-500/10" : ghost ? "bg-card" : "bg-muted/30"}`}
+    />
+  );
+}
 
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
@@ -2337,19 +2409,36 @@ function OrderComparison({
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
   const known = new Set(detail.items.map((i) => i.id));
-  // Long press a slip reading and drop it on another order item to pair them.
-  // A row that only held a likely part goes with its line.
+  // Long press either half of a card to lift it and see its options. Drag it
+  // to pair it with the other half of another card: a slip line onto an
+  // order item, or an order item onto a slip line. A row that only held a
+  // likely part goes with its line.
   const pressDrag = useLongPressDrag();
-  const [drag, setDrag] = useState<{
-    line: ReceivingLine;
-    from: string;
-    over: string | null;
+  type Grab = {
+    key: string;
+    start: DragPoint;
     at: DragPoint;
+    moving: boolean;
+    over: string | null;
+  } & (
+    | { side: "slip"; line: ReceivingLine | null }
+    | { side: "order"; item: ReceiptOrderItem }
+  );
+  const [drag, setDrag] = useState<Grab | null>(null);
+  const [menu, setMenu] = useState<{
+    key: string;
+    side: "order" | "slip";
   } | null>(null);
   const list = useRef<HTMLUListElement>(null);
   const ghost = useRef<HTMLDivElement>(null);
   const pointer = useRef<DragPoint | null>(null);
-  const dragging = !!drag;
+  // The press handlers read the grab as it is now, not as last rendered.
+  const grabbed = useRef<Grab | null>(null);
+  const setGrab = (next: Grab | null) => {
+    grabbed.current = next;
+    setDrag(next);
+  };
+  const dragging = !!drag?.moving;
   useEffect(() => {
     if (!dragging) return;
     // Near the top or bottom of the screen, scroll to reach other rows.
@@ -2375,8 +2464,12 @@ function OrderComparison({
           const by = Math.round(speed * 14);
           if (scroller) scroller.scrollBy(0, by);
           else window.scrollBy(0, by);
-          const over = dropTarget(at);
-          setDrag((d) => (d && d.over !== over ? { ...d, over, at } : d));
+          const over = dropTarget(at),
+            d = grabbed.current;
+          if (d && d.over !== over) {
+            grabbed.current = { ...d, over, at };
+            setDrag(grabbed.current);
+          }
         }
       }
       frame = requestAnimationFrame(tick);
@@ -2394,6 +2487,21 @@ function OrderComparison({
         "Units differ. Use Resolve to link it and confirm the count.",
       );
     if (await run(action)) notify(`Moved to ${target.description}.`, true);
+  };
+  const unpairLine = async (line: ReceivingLine) => {
+    const from = detail.items.find((i) => i.id === line.orderItemId);
+    const action = linkLineAction(line, null, detail.items);
+    if (action && (await run(action)))
+      notify(`Unpaired from ${from?.description ?? "the order item"}.`, true);
+  };
+  const lineIds = new Map(r.lines.map((line) => [line.id, line]));
+  const dropOn = (grab: Grab, over: string) => {
+    if (grab.side === "slip") {
+      if (grab.line) void moveLine(grab.line, over);
+    } else {
+      const line = lineIds.get(over);
+      if (line) void moveLine(line, grab.item.id);
+    }
   };
   const rows = [
     ...detail.items.map((item, n) => ({
@@ -2485,7 +2593,7 @@ function OrderComparison({
           </div>
         </DialogContent>
       </Dialog>
-      <ul ref={list} className="divide-y">
+      <ul ref={list}>
         {rows.map(({ key, n, item, lines }) => {
           const open = openRow === key,
             live = lines.filter((x) => !x.line.ignored),
@@ -2508,12 +2616,7 @@ function OrderComparison({
               ? others(item.id, new Set<string>(readings.map((x) => x.reader)))
               : [],
             title = item ? item.description : lines[0]!.line.description,
-            likely = item ? null : likelyName(detail, lines),
-            orderText = item
-              ? item.description
-              : likely
-                ? `Likely ${likely}`
-                : "No matching part";
+            likely = item ? null : likelyName(detail, lines);
           const byHand = item ? (detail.receipts?.[item.id]?.byHand ?? 0) : 0;
           const copies = readerCopies({
             item,
@@ -2551,260 +2654,354 @@ function OrderComparison({
             )?.line ??
             live.find(({ line }) => !line.approved)?.line ??
             live[0]?.line;
+          const resolve = () =>
+            onResolve({ lineId: resolveLine?.id, itemId: item?.id });
+          const canRemove =
+            !!item &&
+            !live.length &&
+            item.received === 0 &&
+            !!detail.canRemoveOrderItems;
           // One slip line moves at a time; Resolve splits a row of several.
           const mover =
             !sourceChanged && live.length === 1 && !live[0]!.line.approved
               ? live[0]!.line
               : null;
-          // Any order item the line isn't linked to, so a line only shown
-          // beside its likely order item can be dropped there to link it.
-          const accepts = !!drag && !!item && drag.line.orderItemId !== item.id;
-          const dragHandlers = mover && {
+          // While a half is held, the rows it can pair with: an order item
+          // the slip line isn't linked to, or a movable slip line not linked
+          // to the order item. A line only shown beside its likely item can
+          // be paired with it in its own row.
+          const accepts = !drag
+            ? null
+            : drag.side === "slip"
+              ? item && drag.line && drag.line.orderItemId !== item.id
+                ? item.id
+                : null
+              : mover && mover.orderItemId !== drag.item.id
+                ? mover.id
+                : null;
+          const held = (side: "order" | "slip") =>
+            (drag?.key === key && drag.side === side) ||
+            (menu?.key === key && menu.side === side);
+          const away = drag?.key === key && drag.moving ? drag.side : null;
+          const lifted = (side: "order" | "slip") => held(side) && !away;
+          const grab = (
+            side: "order" | "slip",
+            canDrag: boolean,
+            base:
+              | { side: "slip"; line: ReceivingLine | null }
+              | { side: "order"; item: ReceiptOrderItem },
+          ) => ({
             onLift: (at: DragPoint) => {
               pointer.current = at;
               if ("vibrate" in navigator) navigator.vibrate(10);
-              setDrag({ line: mover, from: key, over: null, at });
+              setMenu(null);
+              setGrab({
+                ...base,
+                key,
+                start: at,
+                at,
+                moving: false,
+                over: null,
+              });
             },
             onMove: (at: DragPoint) => {
               pointer.current = at;
+              const d = grabbed.current;
+              if (!d) return;
+              const moving =
+                d.moving ||
+                (canDrag &&
+                  Math.hypot(at.x - d.start.x, at.y - d.start.y) > DRAG_FROM);
+              if (!moving) return;
               if (ghost.current) ghost.current.style.transform = ghostAt(at);
               const over = dropTarget(at);
-              setDrag((d) => (d && d.over !== over ? { ...d, over, at } : d));
+              if (!d.moving || d.over !== over)
+                setGrab({ ...d, moving, over, at });
             },
             onDrop: (at: DragPoint) => {
-              const over = dropTarget(at);
+              const d = grabbed.current;
               pointer.current = null;
-              setDrag(null);
-              if (over) void moveLine(mover, over);
+              setGrab(null);
+              if (!d) return;
+              if (!d.moving) return setMenu({ key, side });
+              const over = dropTarget(at);
+              if (over) dropOn(d, over);
             },
             onCancel: () => {
               pointer.current = null;
-              setDrag(null);
+              setGrab(null);
             },
+          });
+          const viewItem = () => item && showPreview({ kind: "item", item });
+          const viewSlip = (copy: ReaderCopy) => {
+            const fromTrial = trialReadings.filter(
+              ({ reader }) => reader === copy.key,
+            );
+            const matching = live.filter(({ line }) =>
+              modelReadings(line, detail).some(
+                (reading) => reading.reader === copy.key,
+              ),
+            );
+            const sources = fromTrial.length
+              ? fromTrial.map(({ t }) => ({
+                  page: t.page,
+                  box: t.box ?? undefined,
+                }))
+              : (matching.length ? matching : lines).map(({ line }) => ({
+                  page: line.page,
+                  box: line.sourceBox ?? sourceLine(line, detail)?.box,
+                }));
+            showPreview({
+              kind: "slip",
+              title: copy.description || title,
+              sources,
+            });
           };
+          const main = copies[0]!;
+          // The heading, score and verdict of one reader's copy of the line.
+          const reading = (copy: ReaderCopy, first: boolean) => (
+            <>
+              <p className={`${copyLabel} ${first ? "pr-6" : ""}`}>
+                {copy.label}
+                {copy.reviewStatus && (
+                  <span
+                    aria-label={`Review status: ${copy.reviewStatus}`}
+                    className="text-muted-foreground ml-1.5 font-normal normal-case"
+                  >
+                    · {copy.reviewStatus}
+                  </span>
+                )}
+                {copy.score !== null && (
+                  <span
+                    className={`ml-1.5 normal-case tabular-nums ${unsure(copy.score) ? amber.text : ""}`}
+                  >
+                    {percent(copy.score)}
+                  </span>
+                )}
+              </p>
+              {copy.missing ? (
+                <>
+                  <p className={`${copyText} text-red-700 dark:text-red-300`}>
+                    Empty
+                  </p>
+                  {disposition ? (
+                    <p className="text-muted-foreground text-xs">
+                      {
+                        {
+                          outstanding: "Outstanding, still due",
+                          backordered: "Backordered, still due",
+                          "cancel-requested": "Cancellation requested",
+                          unresolved: "Still investigating",
+                        }[disposition.disposition]
+                      }
+                      {disposition.note && ` · ${disposition.note}`}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground border-t pt-2 text-xs">
+                      No slip line linked
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className={copyText}>
+                    <button
+                      type="button"
+                      aria-label={`View packing-slip line: ${copy.description || title} (${copy.label})`}
+                      className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
+                      onClick={() => viewSlip(copy)}
+                    >
+                      {copy.description || "—"}
+                    </button>
+                  </p>
+                  <QuantityPair
+                    ordered={copy.ordered}
+                    received={copy.shipped}
+                    unit={copy.unit}
+                  />
+                </>
+              )}
+            </>
+          );
+          const verdict = (copy: ReaderCopy) =>
+            copy.verdict && (
+              <p
+                className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
+              >
+                {copy.verdict.ok ? (
+                  <CheckCircle2Icon className="size-3.5 shrink-0" />
+                ) : (
+                  <AlertTriangleIcon className="size-3.5 shrink-0" />
+                )}
+                {copy.verdict.label}
+              </p>
+            );
+          const halfMenu = (
+            side: "order" | "slip",
+            hint: string | null,
+            items: ReactNode,
+          ) =>
+            menu?.key === key &&
+            menu.side === side && (
+              <DropdownMenu
+                open
+                onOpenChange={(next) => {
+                  if (!next) setMenu(null);
+                }}
+              >
+                <DropdownMenuTrigger asChild>
+                  <span
+                    aria-hidden
+                    className={`pointer-events-none absolute inset-y-0 w-1/2 ${side === "order" ? "left-0" : "right-0"}`}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align={side === "order" ? "start" : "end"}
+                  className="w-64"
+                  onCloseAutoFocus={(event) => event.preventDefault()}
+                >
+                  {hint && (
+                    <>
+                      <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                        {hint}
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {items}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          const half = (side: "order" | "slip") =>
+            `relative isolate row-span-5 grid min-w-0 grid-rows-subgrid pt-6 pb-3 transition-[transform,opacity,filter] duration-150 motion-reduce:transition-none ${side === "order" ? "pr-4 pl-3" : "-ml-2 pr-3 pl-5"} ${lifted(side) ? `z-10 -translate-y-1 drop-shadow-lg ${side === "order" ? "-translate-x-1.5" : "translate-x-1.5"}` : ""} ${away === side ? "opacity-30" : ""}`;
+          const orderEmpty = !item,
+            slipEmpty = !!main.missing;
           return (
             <li
               key={key}
-              data-drop-item={accepts ? item.id : undefined}
-              className={`relative ${open ? "bg-muted/30" : ""}`}
+              data-drop={accepts ?? undefined}
+              className="px-3 pt-6 pb-3"
             >
-              {accepts && (
-                <div
-                  aria-hidden
-                  className={`pointer-events-none absolute inset-1.5 z-20 rounded-xl border-2 transition-colors motion-reduce:transition-none ${drag.over === item.id ? "border-primary bg-primary/10" : "border-primary/25 border-dashed"}`}
-                />
-              )}
-              {/* The match number, bracketing the order and the slip it pairs. */}
-              <div
-                aria-hidden
-                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] gap-x-3 px-4 pt-3"
-              >
-                <div className="col-span-2 flex items-start">
-                  <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tl-md border-t border-l" />
-                  <span
-                    data-comparison-state={complete ? "complete" : "pending"}
-                    className={`mx-2 flex size-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
-                  >
-                    {complete ? <CheckIcon className="size-5" /> : n + 1}
-                  </span>
-                  <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tr-md border-t border-r" />
-                </div>
-              </div>
-              {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
-                <div
-                  key={copy.key}
-                  className={`relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pt-2.5 pb-3" : "pt-1 pb-3"}`}
-                >
+              <div className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto_auto]">
+                {accepts && dragging && (
                   <div
-                    className={`relative row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
+                    aria-hidden
+                    className={`pointer-events-none absolute -inset-1.5 z-20 rounded-2xl border-2 transition-colors motion-reduce:transition-none ${drag?.over === accepts ? "border-primary bg-primary/10" : "border-primary/25 border-dashed"}`}
+                  />
+                )}
+                {/* The match number, on the tear between the order and the
+                    slip it pairs. */}
+                <span
+                  aria-hidden
+                  data-comparison-state={complete ? "complete" : "pending"}
+                  className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
+                >
+                  {complete ? <CheckIcon className="size-5" /> : n + 1}
+                </span>
+                <span
+                  aria-hidden
+                  style={tear.seam}
+                  className={`bg-muted-foreground/40 pointer-events-none absolute inset-y-0 left-[calc(50%-8px)] z-[1] w-2 transition-opacity motion-reduce:transition-none ${held("order") || held("slip") ? "opacity-0" : ""}`}
+                />
+                <div
+                  role="group"
+                  aria-label="Order"
+                  {...pressDrag(
+                    item
+                      ? grab("order", !sourceChanged, { side: "order", item })
+                      : null,
+                  )}
+                  className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
+                >
+                  <TornPaper side="order" empty={orderEmpty && !complete} />
+                  <p className={copyLabel}>Order</p>
+                  <h3
+                    aria-label={title}
+                    className={`${copyText} ${orderEmpty ? "text-red-700 dark:text-red-300" : ""}`}
                   >
-                    <p className={copyLabel}>Order</p>
-                    {c === 0 ? (
-                      <h3 aria-label={title} className={copyText}>
-                        {item ? (
-                          <button
-                            type="button"
-                            aria-label={`View material-list item: ${title}`}
-                            onClick={() => showPreview({ kind: "item", item })}
-                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
-                          >
-                            {orderText}
-                          </button>
-                        ) : (
-                          orderText
-                        )}
-                      </h3>
-                    ) : (
-                      <p className={copyText}>
-                        {item ? (
-                          <button
-                            type="button"
-                            aria-label={`View material-list item: ${title}`}
-                            onClick={() => showPreview({ kind: "item", item })}
-                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
-                          >
-                            {orderText}
-                          </button>
-                        ) : (
-                          orderText
-                        )}
-                      </p>
-                    )}
                     {item ? (
-                      <QuantityPair
-                        ordered={item.ordered}
-                        received={item.received}
-                        unit={item.unit}
-                      />
+                      <button
+                        type="button"
+                        aria-label={`View material-list item: ${title}`}
+                        onClick={viewItem}
+                        className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
+                      >
+                        {item.description}
+                      </button>
                     ) : (
-                      <p className="text-muted-foreground border-t pt-2 text-sm">
-                        Not on the order
-                      </p>
+                      "Empty"
                     )}
-                    <div className={copyNote}>
-                      {item && (
-                        <>
-                          {due > 0
-                            ? `${receivingQuantity(due, item.unit)} still due`
-                            : "All received"}
-                          {item.sku && ` · ${item.sku}`}
-                          {c === 0 &&
-                            live.some(({ line }) => !line.orderItemId) && (
-                              <span className={`block ${amber.text}`}>
-                                The slip line is likely this part. Confirm it
-                                in Resolve.
-                              </span>
-                            )}
-                          {c === 0 &&
-                            !live.length &&
-                            item.received === 0 &&
-                            detail.canRemoveOrderItems && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="relative z-10 mt-2"
-                                onClick={() => setRemoveItem(item)}
-                              >
-                                Remove from order
-                              </Button>
-                            )}
-                          {c === 0 && item.received > 0 && (
-                            <ReceivedFrom
-                              item={item}
-                              receipts={detail.receipts?.[item.id]}
-                            />
-                          )}
-                        </>
-                      )}
-                    </div>
+                  </h3>
+                  {item ? (
+                    <QuantityPair
+                      ordered={item.ordered}
+                      received={item.received}
+                      unit={item.unit}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground border-t pt-2 text-xs">
+                      Not on the order
+                    </p>
+                  )}
+                  <div className={copyNote}>
+                    {item ? (
+                      <>
+                        {due > 0
+                          ? `${receivingQuantity(due, item.unit)} still due`
+                          : "All received"}
+                        {item.sku && ` · ${item.sku}`}
+                        {live.some(({ line }) => !line.orderItemId) && (
+                          <span className={`block ${amber.text}`}>
+                            The slip line is likely this part. Confirm it in
+                            Resolve.
+                          </span>
+                        )}
+                        {canRemove && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="relative z-10 mt-2"
+                            onClick={() => setRemoveItem(item)}
+                          >
+                            Remove from order
+                          </Button>
+                        )}
+                        {item.received > 0 && (
+                          <ReceivedFrom
+                            item={item}
+                            receipts={detail.receipts?.[item.id]}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      likely && (
+                        <span className="text-muted-foreground">
+                          Likely {likely}
+                        </span>
+                      )
+                    )}
                   </div>
+                </div>
+                <div
+                  {...pressDrag(
+                    live.length
+                      ? grab("slip", !!mover, { side: "slip", line: mover })
+                      : null,
+                  )}
+                  className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
+                >
+                  <TornPaper side="slip" empty={slipEmpty && !complete} />
                   <div
                     role="group"
-                    aria-label={`${copy.label} reading`}
-                    {...pressDrag(c === 0 ? dragHandlers : null)}
-                    className={`relative row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3 ${c === 0 && mover ? "select-none [-webkit-touch-callout:none]" : ""} ${c === 0 && drag?.from === key ? "opacity-40" : ""}`}
+                    aria-label={`${main.label} reading`}
+                    className="relative row-span-4 grid min-w-0 grid-rows-subgrid"
                   >
-                    <p className={copyLabel}>
-                      {copy.label}
-                      {copy.reviewStatus && (
-                        <span
-                          aria-label={`Review status: ${copy.reviewStatus}`}
-                          className="text-muted-foreground ml-1.5 font-normal normal-case"
-                        >
-                          · {copy.reviewStatus}
-                        </span>
-                      )}
-                      {copy.score !== null && (
-                        <span
-                          className={`ml-1.5 normal-case tabular-nums ${unsure(copy.score) ? amber.text : ""}`}
-                        >
-                          {percent(copy.score)}
-                        </span>
-                      )}
-                    </p>
-                    {copy.missing ? (
-                      <>
-                        <p className={`${copyText} text-muted-foreground`}>
-                          No slip line linked
-                        </p>
-                        {disposition ? (
-                          <p className="text-muted-foreground text-xs">
-                            {
-                              {
-                                outstanding: "Outstanding, still due",
-                                backordered: "Backordered, still due",
-                                "cancel-requested": "Cancellation requested",
-                                unresolved: "Still investigating",
-                              }[disposition.disposition]
-                            }
-                            {disposition.note && ` · ${disposition.note}`}
-                          </p>
-                        ) : (
-                          <span />
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <p className={copyText}>
-                          <button
-                            type="button"
-                            aria-label={`View packing-slip line: ${copy.description || title} (${copy.label})`}
-                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
-                            onClick={() => {
-                              const fromTrial = trialReadings.filter(
-                                ({ reader }) => reader === copy.key,
-                              );
-                              const matching = live.filter(({ line }) =>
-                                modelReadings(line, detail).some(
-                                  (reading) => reading.reader === copy.key,
-                                ),
-                              );
-                              const sources = fromTrial.length
-                                ? fromTrial.map(({ t }) => ({
-                                    page: t.page,
-                                    box: t.box ?? undefined,
-                                  }))
-                                : (matching.length ? matching : lines).map(
-                                    ({ line }) => ({
-                                      page: line.page,
-                                      box:
-                                        line.sourceBox ??
-                                        sourceLine(line, detail)?.box,
-                                    }),
-                                  );
-                              showPreview({
-                                kind: "slip",
-                                title: copy.description || title,
-                                sources,
-                              });
-                            }}
-                          >
-                            {copy.description || "—"}
-                          </button>
-                        </p>
-                        <QuantityPair
-                          ordered={copy.ordered}
-                          received={copy.shipped}
-                          unit={copy.unit}
-                        />
-                      </>
-                    )}
+                    {reading(main, true)}
                     <div>
-                      {!copy.missing && (
+                      {!main.missing && (
                         <>
-                          {copy.verdict && (
-                            <p
-                              className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
-                            >
-                              {copy.verdict.ok ? (
-                                <CheckCircle2Icon className="size-3.5 shrink-0" />
-                              ) : (
-                                <AlertTriangleIcon className="size-3.5 shrink-0" />
-                              )}
-                              {copy.verdict.label}
-                            </p>
-                          )}
-                          {c === 0 && !item && tone && (
+                          {verdict(main)}
+                          {!item && tone && (
                             <p
                               className={`${copyNote} font-medium ${tone.text}`}
                             >
@@ -2813,7 +3010,7 @@ function OrderComparison({
                           )}
                         </>
                       )}
-                      {c === 0 && copies.length > 1 && (
+                      {copies.length > 1 && (
                         <button
                           type="button"
                           aria-expanded={showOthers}
@@ -2830,25 +3027,91 @@ function OrderComparison({
                       )}
                     </div>
                   </div>
-                  {c === 0 && lines.length > 0 ? (
+                  <div>
+                    {showOthers &&
+                      copies.slice(1).map((copy) => (
+                        <div
+                          key={copy.key}
+                          role="group"
+                          aria-label={`${copy.label} reading`}
+                          className="text-muted-foreground relative mt-3 border-t border-dashed pt-2.5"
+                        >
+                          {reading(copy, false)}
+                          {verdict(copy)}
+                        </div>
+                      ))}
+                  </div>
+                  {lines.length > 0 && (
                     <button
                       type="button"
                       aria-label={`Review line: ${title}`}
                       aria-expanded={open}
                       onClick={() => setOpenRow(open ? null : key)}
-                      className="focus-visible:ring-ring relative row-span-4 mt-0 -ml-1 h-8 w-6 rounded focus-visible:ring-2"
+                      className="focus-visible:ring-ring absolute top-5 right-1.5 z-10 flex h-8 w-7 items-center justify-center rounded focus-visible:ring-2"
                     >
                       <ChevronDownIcon
                         aria-hidden
                         className={`text-muted-foreground size-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
                       />
                     </button>
-                  ) : (
-                    <span className="row-span-4" />
                   )}
                 </div>
-              ))}
-              <div className="flex items-start justify-between gap-3 px-4 pb-3">
+                {/* Outside the halves, so pressing an option never lifts one. */}
+                {item &&
+                  halfMenu(
+                    "order",
+                    sourceChanged
+                      ? null
+                      : "Drag onto a slip line to pair them.",
+                    <>
+                      <DropdownMenuItem onSelect={viewItem}>
+                        <EyeIcon />
+                        View item
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={resolve}>
+                        <CheckCircle2Icon />
+                        {complete ? "Review resolution" : "Resolve"}
+                      </DropdownMenuItem>
+                      {canRemove && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setRemoveItem(item)}
+                        >
+                          <Trash2Icon />
+                          Remove from order
+                        </DropdownMenuItem>
+                      )}
+                    </>,
+                  )}
+                {live.length > 0 &&
+                  halfMenu(
+                    "slip",
+                    mover ? "Drag onto an order item to pair them." : null,
+                    <>
+                      <DropdownMenuItem onSelect={() => viewSlip(main)}>
+                        <FileTextIcon />
+                        View on slip
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setOpenRow(key)}>
+                        <SearchIcon />
+                        Review line
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={resolve}>
+                        <CheckCircle2Icon />
+                        {complete ? "Review resolution" : "Resolve"}
+                      </DropdownMenuItem>
+                      {mover?.orderItemId && (
+                        <DropdownMenuItem
+                          onSelect={() => void unpairLine(mover)}
+                        >
+                          <UnlinkIcon />
+                          Unpair from this item
+                        </DropdownMenuItem>
+                      )}
+                    </>,
+                  )}
+              </div>
+              <div className="mt-2 flex items-start justify-between gap-3">
                 {/* What reviewers said is needed, from Resolve. */}
                 <div className="min-w-0 space-y-1">
                   {lines.flatMap(({ line }) =>
@@ -2872,9 +3135,7 @@ function OrderComparison({
                   size="sm"
                   className="shrink-0"
                   variant={complete ? "outline" : "default"}
-                  onClick={() =>
-                    onResolve({ lineId: resolveLine?.id, itemId: item?.id })
-                  }
+                  onClick={resolve}
                 >
                   {complete ? "Review resolution" : "Resolve"}
                 </Button>
@@ -2885,51 +3146,68 @@ function OrderComparison({
                   ? [
                       <p
                         key={`terra:${x.line.id}`}
-                        className={`px-4 pb-3 text-xs ${amber.text}`}
+                        className={`mt-2 text-xs ${amber.text}`}
                       >
                         {readerLabels.terra} {check.reader}.
                       </p>,
                     ]
                   : [];
               })}
-              {open &&
-                lines.map(({ line, index }) => (
-                  <div key={line.id}>
-                    {lines.length > 1 && (
-                      <p className="text-muted-foreground px-4 pb-1 text-xs font-medium">
-                        Slip line {index + 1}
-                      </p>
-                    )}
-                    <LineReview
-                      key={`${line.id}:${r.revision}`}
-                      line={line}
-                      index={index}
-                      detail={detail}
-                      jobId={jobId}
-                      run={run}
-                      onDone={() => setOpenRow(null)}
-                    />
-                  </div>
-                ))}
+              {open && (
+                <div className="bg-muted/30 -mx-3 mt-2 pt-2">
+                  {lines.map(({ line, index }) => (
+                    <div key={line.id}>
+                      {lines.length > 1 && (
+                        <p className="text-muted-foreground px-4 pb-1 text-xs font-medium">
+                          Slip line {index + 1}
+                        </p>
+                      )}
+                      <LineReview
+                        key={`${line.id}:${r.revision}`}
+                        line={line}
+                        index={index}
+                        detail={detail}
+                        jobId={jobId}
+                        run={run}
+                        onDone={() => setOpenRow(null)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
-      {drag && (
+      {drag?.moving && (
         <div
           ref={ghost}
           aria-hidden
           style={{ transform: ghostAt(drag.at) }}
-          className="bg-card pointer-events-none fixed top-0 left-0 z-50 w-60 rounded-xl border px-3 py-2 shadow-xl"
+          className="pointer-events-none fixed top-0 left-0 isolate z-50 w-56 drop-shadow-xl"
         >
-          <p className="line-clamp-2 text-sm font-medium">
-            {drag.line.description}
-          </p>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">
-            {drag.over
-              ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}`
-              : "Drop on an order item"}
-          </p>
+          <div
+            className={`relative py-2 ${drag.side === "order" ? "pr-4 pl-3" : "pr-3 pl-5"}`}
+          >
+            <TornPaper side={drag.side} empty={false} ghost />
+            <p className={copyLabel}>
+              {drag.side === "order" ? "Order" : "Slip"}
+            </p>
+            <p className="line-clamp-2 text-sm font-medium">
+              {drag.side === "order"
+                ? drag.item.description
+                : drag.line?.description}
+            </p>
+            <p className="text-muted-foreground mt-0.5 truncate text-xs">
+              {drag.side === "order"
+                ? drag.over
+                  ? `Pair with ${lineIds.get(drag.over)?.description ?? "this line"}`
+                  : "Drop on a slip line"
+                : drag.over
+                  ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}`
+                  : "Drop on an order item"}
+            </p>
+          </div>
         </div>
       )}
       <Dialog
