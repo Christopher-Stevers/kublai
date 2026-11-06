@@ -2,7 +2,7 @@ import { receivingQuantity } from "./receiving-quantity-display";
 
 /** Compare printed columns in their original unit, before any pack conversion. */
 export function slipBackorderCheck(row: {
-  ordered: number | null | undefined;
+  ordered?: number | null;
   shipped: number | null | undefined;
   backordered?: number | null;
   unit?: string | null;
