@@ -1548,16 +1548,15 @@ function Step({
   );
 }
 const orderSummary = (detail: Detail) => {
-  const r = detail.review;
-  return [
-    detail.document.packingSlip?.orderNumber ?? "No order linked",
-    typeLabel(r.kind),
-    detail.suppliers.find((s) => s.id === r.supplierId)?.name ?? r.supplierName,
-    r.deliveryNumber && `Slip ${r.deliveryNumber}`,
-  ]
+  const link = detail.document.packingSlip;
+  const order = detail.orders.find((o) => o.id === link?.orderId);
+  const listTitle = detail.lists.find((l) => l.id === (order?.listId ?? link?.materialListId))?.name
+    ?? link?.materialListName;
+  return [link?.orderNumber ?? "No order linked", listTitle]
     .filter(Boolean)
     .join(" · ");
 };
+
 /** Step 2: the order the slip was matched to, confirmed in one tap, or chosen
  * with the slip's details when the match is wrong or missing. */
 function Identity({
