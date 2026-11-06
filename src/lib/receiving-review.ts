@@ -1,4 +1,5 @@
 import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
+import { receivedLineQuantity, resolutionBlockers, type ReceivingResolution } from "./receiving-resolution";
 import {
   convertSlipQuantity,
   lineReadings,
@@ -7,8 +8,14 @@ import {
   type ReceiptOrderItem,
 } from "./packing-slip-review";
 
-export type ReceiptKind = "delivery" | "return-replacement" | "return-credit";
+export type ReceiptKind = "delivery" | "return-replacement" | "return-credit" | "credit-only";
 export type ReceivingLine = {
+  /** The source quantity is retained when a reviewer records a different site count. */
+  paper?: { quantity: number | null; ordered: number | null; unit: string; description: string; sku: string };
+  resolution?: ReceivingResolution;
+  allocation?: { sourceLineIds: string[]; operationId: string };
+  /** Current allocation operation owning this excluded source's quantity. */
+  allocatedTo?: string;
   readingSource?: {
     analysisRunId: string;
     reader: "ocr" | "jev" | "terra";
@@ -54,6 +61,8 @@ export type ReceivingLine = {
   autoConfirmed?: boolean;
 };
 export type ReceivingReview = {
+  /** Notes for an order item with no linked slip row. These never post receipt quantities. */
+  orderResolutions?: Record<string, { disposition: "outstanding" | "backordered" | "cancel-requested" | "unresolved"; note: string; by: string; at: string }>;
   sourceTrial?: {
     runId: string;
     reader: import("./packing-slip-trial").TrialReader;
@@ -115,7 +124,7 @@ export function initialReview(
     revision: 1,
     versionId,
     analysisRunId: analysis?.runId,
-    kind: hasReturnEvidence(text) ? "return-replacement" : "delivery",
+    kind: /\bcredit\s+(?:note|memo)\b/i.test(text) ? "credit-only" : hasReturnEvidence(text) ? "return-replacement" : "delivery",
     kindConfirmed: !hasReturnEvidence(text),
     supplierName: "",
     supplierId: null,
@@ -253,13 +262,15 @@ export function normalizeOrderedQuantity(
   );
 }
 export function readyLine(l: ReceivingLine) {
+  const quantity = receivedLineQuantity(l);
   return (
     !l.approved &&
     !l.ignored &&
     !!l.orderItemId &&
-    l.quantity !== null &&
-    Number.isFinite(l.quantity) &&
-    l.quantity > 0 &&
+    quantity !== null &&
+    Number.isFinite(quantity) &&
+    (quantity > 0 || (!!l.resolution && quantity === 0 && l.resolution.delivery !== "confirmed")) &&
+    resolutionBlockers(l).length === 0 &&
     (l.checked === true || l.autoConfirmed === true || l.issues.length === 0)
   );
 }
@@ -349,8 +360,8 @@ export function receiptDelta(
   )
     throw Error("Enter a nonnegative quantity with at most six decimals.");
   const impact = (k: ReceiptKind, q: number) => ({
-    received: k === "delivery" ? q : -q,
-    credit: k === "return-credit" ? q : 0,
+    received: k === "delivery" ? q : k === "credit-only" ? 0 : -q,
+    credit: k === "return-credit" || k === "credit-only" ? q : 0,
   });
   const now = impact(kind, quantity),
     old = before

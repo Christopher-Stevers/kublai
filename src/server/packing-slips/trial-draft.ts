@@ -80,7 +80,7 @@ export function trialDraft(input: {
   const review = initialReview(analysis, input.versionId, input.userId);
   review.kind =
     result.documentKind === "credit"
-      ? "return-credit"
+      ? "credit-only"
       : result.documentKind === "return"
         ? "return-replacement"
         : "delivery";
@@ -111,10 +111,10 @@ export function trialDraft(input: {
     if (prediction.shipped !== null && prediction.shipped < 0) {
       l.kind =
         result.documentKind === "credit"
-          ? "return-credit"
+          ? "credit-only"
           : "return-replacement";
       l.issues.push(
-        "Negative shipped quantity: confirm return and credit or replacement.",
+        "Negative printed quantity: confirm credit only or a physical return.",
       );
     }
   });

@@ -16,7 +16,82 @@ const base = {
   revision: z.number().int().nonnegative(),
   requestId: z.uuid(),
 };
+const sourceBox = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().positive().max(1),
+    height: z.number().positive().max(1),
+  })
+  .refine(
+    (b) => b.x + b.width <= 1.000001 && b.y + b.height <= 1.000001,
+    "The source area must fit on the page.",
+  );
 export const receivingInput = z.discriminatedUnion("action", [
+  z.object({
+    ...base,
+    action: z.literal("orderDisposition"),
+    itemId: z.uuid(),
+    disposition: z.enum([
+      "outstanding",
+      "backordered",
+      "cancel-requested",
+      "unresolved",
+    ]),
+    note: text.max(1000).default(""),
+  }),
+  z.object({
+    ...base,
+    action: z.literal("resolve"),
+    lineId: text.max(100),
+    evidenceFingerprint: text.max(20000),
+    note: text.max(1000).optional(),
+    match: z.enum(["confirmed", "unresolved"]).optional(),
+    specification: z
+      .enum([
+        "confirmed",
+        "substitution-accepted",
+        "substitution-rejected",
+        "unresolved",
+      ])
+      .optional(),
+    quantity: z.enum(["confirmed", "unresolved"]).optional(),
+    delivery: z
+      .enum(["confirmed", "short", "damaged", "wrong", "extra", "unresolved"])
+      .optional(),
+    siteQuantity: qty.nullable().optional(),
+    acceptedQuantity: qty.nullable().optional(),
+    remainder: z
+      .enum(["backordered", "cancelled", "unexplained"])
+      .nullable()
+      .optional(),
+    excess: z.enum(["accepted", "return"]).nullable().optional(),
+    skipped: z.boolean().optional(),
+  }),
+  z.object({
+    ...base,
+    action: z.literal("allocate"),
+    lineIds: z.array(text.max(100)).min(1).max(20),
+    reason: text.min(3).max(1000),
+    outputs: z
+      .array(
+        z.object({
+          description: text.min(1).max(700),
+          sku: text.max(255),
+          quantity: qty.refine((n) => n > 0),
+          unit: text.min(1).max(32),
+          orderItemId: z.uuid().nullable(),
+        }),
+      )
+      .min(1)
+      .max(20),
+  }),
+  z.object({
+    ...base,
+    action: z.literal("undoCorrection"),
+    requestIdToUndo: z.uuid(),
+    reason: text.min(3).max(1000),
+  }),
   z.object({
     ...base,
     action: z.literal("trialDraft"),
@@ -42,7 +117,12 @@ export const receivingInput = z.discriminatedUnion("action", [
   z.object({
     ...base,
     action: z.literal("header"),
-    kind: z.enum(["delivery", "return-replacement", "return-credit"]),
+    kind: z.enum([
+      "delivery",
+      "return-replacement",
+      "return-credit",
+      "credit-only",
+    ]),
     supplierId: z.uuid().nullable(),
     supplierName: text.max(255),
     deliveryNumber: text.max(150),
@@ -55,7 +135,7 @@ export const receivingInput = z.discriminatedUnion("action", [
     ...base,
     action: z.literal("line"),
     kind: z
-      .enum(["delivery", "return-replacement", "return-credit"])
+      .enum(["delivery", "return-replacement", "return-credit", "credit-only"])
       .nullable()
       .optional(),
     lineId: text.max(100),
@@ -83,6 +163,7 @@ export const receivingInput = z.discriminatedUnion("action", [
     ...base,
     action: z.literal("addLine"),
     page: z.number().int().min(1).max(20),
+    sourceBox: sourceBox.optional(),
     description: text.min(1).max(700),
   }),
   z.object({

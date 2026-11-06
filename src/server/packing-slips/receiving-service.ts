@@ -64,6 +64,7 @@ import { jobOrders } from "./find-order-service";
 import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
+import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, pendingOrderResolutions, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -71,6 +72,25 @@ const fail = (
 ): never => {
   throw new TRPCError({ code, message });
 };
+type CorrectionHistory = {
+  operation?: string;
+  undoable?: boolean;
+  before?: ReceivingReview;
+  after?: ReceivingReview;
+};
+const undoActions = new Set(["resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition"]);
+function correctionCanUndo(data: CorrectionHistory, review: ReceivingReview) {
+  if (!data.undoable || !data.operation || !undoActions.has(data.operation) || !data.before || data.after?.revision !== review.revision) return false;
+  if (JSON.stringify(data.after.lines) !== JSON.stringify(review.lines.map(({ autoConfirmed: _auto, ...line }) => line))) return false;
+  if (JSON.stringify(data.after.orderResolutions) !== JSON.stringify(review.orderResolutions)) return false;
+  // Undo is a draft operation, never an implicit receipt reversal.
+  const approvals = (r: ReceivingReview) => r.lines.filter(l => l.approved).map(l => [l.id, l.approved]);
+  return JSON.stringify(approvals(data.before)) === JSON.stringify(approvals(data.after));
+}
+async function latestCorrectionUndo(access: DocumentAccess, doc: JobDocument, review: ReceivingReview) {
+  const [entry] = await db.select({ requestId: packingSlipReviewHistory.runId, data: packingSlipReviewHistory.data }).from(packingSlipReviewHistory).where(and(eq(packingSlipReviewHistory.organizationId, access.job.organizationId), eq(packingSlipReviewHistory.jobId, access.job.id), eq(packingSlipReviewHistory.documentId, doc.id), eq(packingSlipReviewHistory.kind, "confirmation"))).orderBy(desc(packingSlipReviewHistory.createdAt)).limit(1);
+  return entry?.requestId && correctionCanUndo(entry.data as CorrectionHistory, review) ? { requestId: entry.requestId, label: (entry.data as CorrectionHistory).operation! } : null;
+}
 function receiveAccess(access: DocumentAccess) {
   if (!userCan(access.user, "orders.receive"))
     fail("Order receiving permission is required.", "FORBIDDEN");
@@ -155,7 +175,7 @@ export async function receivingOrderCandidates(
   const state = await readWorkspace(access);
   const doc = accessibleDocument(state, documentActor(access, []), documentId);
   const analysis = doc.packingSlipAnalysis;
-  if (!analysis || analysis.versionId !== doc.currentVersionId) return [];
+  if (analysis?.versionId !== doc.currentVersionId) return [];
   const lines = analysis.status === "processing"
     ? analysis.progress?.lines ?? analysis.lines
     : analysis.lines;
@@ -270,10 +290,10 @@ export async function receivingQueue(
         ? r.lines.filter(
             (l) =>
               !l.ignored &&
-              (l.approved?.quantity !== l.quantity ||
+              (l.approved?.quantity !== receivedLineQuantity(l) ||
                 l.approved.kind !== lineKind(l, r.kind) ||
                 (!!r.sourceTrial && l.checked !== true)),
-          ).length
+          ).length + pendingOrderResolutions(r)
         : null;
       return {
         id: d.id,
@@ -541,6 +561,8 @@ export async function receivingQueue(
     orderParts,
     canRemoveOrderItems: userCan(access.user, "orders.send"),
     canEditParts: userCan(access.user, "parts.edit") || mayCreate,
+    canAcceptSubstitution: userCan(access.user, "orders.send"),
+    correctionUndo: await latestCorrectionUndo(access, doc, review),
     scannedBy:
       members.find((m) => m.id === doc.createdBy)?.name ??
       "Organization member",
@@ -582,7 +604,7 @@ async function history(
           id,
           applied
             .filter((l) => l.approved!.itemId === id)
-            .reduce((n, l) => n + l.approved!.quantity, 0),
+            .reduce((n, l) => n + receiptDelta(l.approved!.kind, l.approved!.quantity).received, 0),
         ]),
       ),
     },
@@ -599,9 +621,13 @@ async function history(
     data: {
       schemaVersion: 2,
       operation: developmentImport ? "trial-import" : input.action,
+      undoable: !developmentImport && undoActions.has(input.action) && !(input.action === "line" && input.fit),
       initiator: developmentImport ? "development-trial" : "human",
       targetLineId: "lineId" in input ? input.lineId : undefined,
-      targetLineIds: input.action === "approve" ? input.lineIds : undefined,
+      targetLineIds: "lineIds" in input ? input.lineIds : undefined,
+      targetItemId: "itemId" in input ? input.itemId : undefined,
+      reason: "reason" in input ? input.reason : undefined,
+      undoesRequestId: input.action === "undoCorrection" ? input.requestIdToUndo : undefined,
       requestHash: createHash("sha256")
         .update(JSON.stringify(input))
         .digest("hex"),
@@ -911,6 +937,13 @@ async function mutateReceivingImpl(
         if (!l) fail("Slip line no longer exists.", "CONFLICT");
         return l!;
       };
+      const capturePaper = (line: ReceivingLine) => {
+        if (line.paper) return;
+        const source = review.versionId === doc.packingSlipAnalysis?.versionId && review.analysisRunId === doc.packingSlipAnalysis?.runId && line.sourceIndex !== undefined ? doc.packingSlipAnalysis.lines[line.sourceIndex] : undefined;
+        line.paper = source
+          ? { quantity: source.shipped, ordered: source.ordered ?? null, unit: source.unit ?? "", description: source.description ?? line.description, sku: source.sku ?? "" }
+          : { quantity: line.quantity, ordered: line.ordered, unit: line.unit, description: line.description, sku: line.sku };
+      };
       // Puts a slip line's catalogue part on the linked order and its
       // material list.
       const addToOrder = async (l: ReceivingLine) => {
@@ -930,7 +963,72 @@ async function mutateReceivingImpl(
           l.ordered = l.quantity;
         await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!);
       };
-      if (input.action === "trialDraft") {
+      if (input.action === "orderDisposition") {
+        if (!doc.packingSlip) fail("Choose an order first.");
+        const items = await orderSnapshot(tx, fresh, doc.packingSlip!.orderId);
+        if (!items.some(i => i.id === input.itemId)) fail("Choose an item on this job’s linked order.");
+        if (review.lines.some(l => !l.ignored && l.orderItemId === input.itemId)) fail("This item has a linked slip line. Resolve the linked line instead.");
+        if (input.disposition === "cancel-requested" && input.note.trim().length < 3) fail("Explain the cancellation request. The order is unchanged until an authorized correction.");
+        review.orderResolutions ??= {};
+        review.orderResolutions[input.itemId] = { disposition: input.disposition, note: input.note, by: fresh.user.id, at: now };
+        review.documentChecked = false;
+      } else if (input.action === "resolve") {
+        const line = lineFor(input.lineId);
+        if (line.ignored) fail("Restore this excluded line before resolving it.");
+        if (input.evidenceFingerprint !== resolutionEvidenceFingerprint(line)) fail("This line changed. Reload its evidence before resolving.", "CONFLICT");
+        if (input.specification === "substitution-accepted" && !userCan(fresh.user, "orders.send")) fail("Order permission is required to accept a substitute.", "FORBIDDEN");
+        if (input.match === "confirmed" && !line.orderItemId) fail("Choose an order item before confirming the match.");
+        const items = doc.packingSlip ? await orderSnapshot(tx, fresh, doc.packingSlip.orderId) : [];
+        const counterpart = items.find(item => item.id === line.orderItemId);
+        if (line.orderItemId && !counterpart) fail("The matching item is no longer on this order.", "CONFLICT");
+        const counterpartFingerprint = counterpart ? resolutionCounterpartFingerprint(counterpart) : undefined;
+        capturePaper(line);
+        const previous = line.resolution?.evidenceFingerprint === input.evidenceFingerprint && line.resolution?.counterpartFingerprint === counterpartFingerprint ? line.resolution : newResolution(line, fresh.user.id, now);
+        line.resolution = { ...previous, counterpartFingerprint, by: fresh.user.id, at: now };
+        for (const key of ["match", "specification", "quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess", "skipped", "note"] as const) {
+          if (input[key] !== undefined) Object.assign(line.resolution, { [key]: input[key] });
+        }
+        const r = line.resolution;
+        if (r.acceptedQuantity != null && r.siteQuantity == null) fail("Record the actual site count before the accepted quantity.");
+        if (r.acceptedQuantity != null && r.siteQuantity != null && r.acceptedQuantity > r.siteQuantity) fail("Accepted quantity cannot exceed the actual site count.");
+        line.humanEdited = true;
+        line.checked = resolutionBlockers(line).length === 0;
+        review.documentChecked = false;
+      } else if (input.action === "allocate") {
+        const sources = input.lineIds.map(lineFor);
+        try { assertAllocation(sources, input.outputs, review.kind); } catch (error) { fail(error instanceof Error ? error.message : "Invalid allocation."); }
+        if (review.lines.length + input.outputs.length > 200) fail("This review has reached the 200-line limit.");
+        if (!doc.packingSlip) fail("Choose an order first.");
+        const items = await orderSnapshot(tx, fresh, doc.packingSlip!.orderId);
+        for (const output of input.outputs) {
+          if (!output.orderItemId) continue;
+          const item = items.find(i => i.id === output.orderItemId);
+          if (!item) fail("Choose an item on this job’s linked order.");
+          if (receiptUnit(item!.unit) !== receiptUnit(output.unit)) fail(`Allocate this item in ${item!.unit}. Convert the source first.`);
+        }
+        for (const source of sources) {
+          capturePaper(source);
+          source.ignored = { reason: `Allocated into corrected lines: ${input.reason}`, by: fresh.user.id, at: now };
+          source.allocatedTo = input.requestId;
+        }
+        const first = sources[0]!;
+        for (const output of input.outputs) {
+          const line: ReceivingLine = { id: randomUUID(), page: first.page, sourceBox: sources.length === 1 ? first.sourceBox : undefined, evidence: sources.map(l => l.evidence).join("\n"), description: output.description, sku: output.sku, quantity: output.quantity, ordered: null, unit: output.unit, unitPrice: null, orderItemId: output.orderItemId, kind: first.kind, issues: ["Reviewer allocation: confirm specification, quantity and actual delivery."], humanEdited: true, checked: false, allocation: { sourceLineIds: sources.map(l => l.id), operationId: input.requestId } };
+          line.resolution = newResolution(line, fresh.user.id, now);
+          line.resolution.note = input.reason;
+          review.lines.push(line);
+          if (line.orderItemId && review.orderResolutions) delete review.orderResolutions[line.orderItemId];
+        }
+        review.documentChecked = false;
+      } else if (input.action === "undoCorrection") {
+        const [entry] = await tx.select({ data: packingSlipReviewHistory.data }).from(packingSlipReviewHistory).where(and(eq(packingSlipReviewHistory.organizationId, fresh.job.organizationId), eq(packingSlipReviewHistory.jobId, fresh.job.id), eq(packingSlipReviewHistory.documentId, doc.id), eq(packingSlipReviewHistory.runId, input.requestIdToUndo), eq(packingSlipReviewHistory.kind, "confirmation"))).limit(1);
+        const data = entry?.data as CorrectionHistory | undefined;
+        if (!data || !correctionCanUndo(data, review)) fail("This correction can no longer be undone safely. Reload the review; later decisions and approved receipts are preserved.", "CONFLICT");
+        review.lines = structuredClone(data!.before!.lines);
+        if (data!.before!.orderResolutions) review.orderResolutions = structuredClone(data!.before!.orderResolutions);
+        else delete review.orderResolutions;
+        review.documentChecked = false;
+      } else if (input.action === "trialDraft") {
         const trial = await trialDocument(fresh, doc.id, input.runId, state);
         if (!trial || trial.stale)
           fail(
@@ -1005,7 +1103,10 @@ async function mutateReceivingImpl(
         review.documentChecked = false;
       } else if (input.action === "restoreLine") {
         const l = lineFor(input.lineId);
+        if (hasActiveAllocationDescendant(review.lines, l.id)) fail("Undo the allocation before restoring its source line. The same printed quantity cannot be received twice.");
+        if (!allocationOwnershipValid(review.lines, l)) fail("This allocation was replaced or its source was restored. Restore the current allocation instead of receiving the same source twice.");
         delete l.ignored;
+        delete l.allocatedTo;
         l.checked = false;
         l.humanEdited = true;
         review.documentChecked = false;
@@ -1041,6 +1142,7 @@ async function mutateReceivingImpl(
           deliveryDate: input.deliveryDate,
           orderConfirmed: !!doc.packingSlip,
         });
+        if (before.kind !== input.kind) for (const line of review.lines) if (!line.kind) invalidateResolution(line);
         if (
           before.supplierId !== input.supplierId ||
           before.deliveryNumber !== input.deliveryNumber
@@ -1050,6 +1152,8 @@ async function mutateReceivingImpl(
         }
       } else if (input.action === "line") {
         const l = lineFor(input.lineId);
+        capturePaper(l);
+        const previousEvidence = resolutionEvidenceFingerprint(l);
         if (l.ignored) fail("This line has already been excluded.");
         if (l.approved && input.orderItemId !== l.approved.itemId)
           fail(
@@ -1100,6 +1204,8 @@ async function mutateReceivingImpl(
           orderItemId: input.orderItemId,
           checked: input.checked,
         });
+        if (previousEvidence !== resolutionEvidenceFingerprint(l)) invalidateResolution(l);
+        if (l.orderItemId && review.orderResolutions) delete review.orderResolutions[l.orderItemId];
       } else if (input.action === "addLine") {
         review.documentChecked = false;
         if (review.lines.length >= 200)
@@ -1107,6 +1213,7 @@ async function mutateReceivingImpl(
         review.lines.push({
           id: randomUUID(),
           page: input.page,
+          sourceBox: input.sourceBox,
           evidence: "Added by reviewer from the source document",
           humanEdited: true,
           description: input.description,
@@ -1133,6 +1240,7 @@ async function mutateReceivingImpl(
         if (review.lines.some(l => l.orderItemId === input.itemId && !l.ignored)) fail("This item is matched to a slip line. Resolve that line before removing it.");
         if ((slipReceipts(state.documents).get(input.itemId) ?? []).length) fail("Another slip has receipt records for this item.");
         removedOrderItem = item;
+        if (review.orderResolutions) delete review.orderResolutions[input.itemId];
         await tx.delete(orderItems).where(and(eq(orderItems.id, input.itemId), eq(orderItems.orderId, order.id)));
       } else if (input.action === "ignore") {
         const l = lineFor(input.lineId);
@@ -1145,6 +1253,7 @@ async function mutateReceivingImpl(
             "An approved receipt cannot be moved to another order. Correct it first.",
           );
         const order = await orderFor(tx, fresh, input.orderId);
+        if (doc.packingSlip?.orderId !== input.orderId) delete review.orderResolutions;
         const [list] = await tx
           .select()
           .from(materialLists)
@@ -1172,6 +1281,8 @@ async function mutateReceivingImpl(
           })),
         );
         review.lines.forEach((l, index) => {
+          capturePaper(l);
+          const previousEvidence = resolutionEvidenceFingerprint(l);
           delete l.approved;
           // Confirming the suggested order keeps valid saved detections. Only
           // re-align a line locally when its old item belongs to another order.
@@ -1204,6 +1315,7 @@ async function mutateReceivingImpl(
               "Matched to the selected order. Check the product, quantity and any unit conversion.",
             );
           }
+          if (previousEvidence !== resolutionEvidenceFingerprint(l)) invalidateResolution(l);
         });
         if (doc.packingSlipAnalysis) doc.packingSlipAnalysis.items = freshItems;
         review.orderConfirmed = true;
@@ -1543,6 +1655,8 @@ async function mutateReceivingImpl(
             "CONFLICT",
           );
         const selected = [...new Set(input.lineIds)].map(lineFor);
+        // Snapshot all planned allocations before any selected line is posted.
+        const resolutionLines = structuredClone(review.lines);
         const rows = await tx
           .select()
           .from(orderItems)
@@ -1570,7 +1684,8 @@ async function mutateReceivingImpl(
             l,
             snapshot.find((i) => i.id === l.orderItemId)?.unit,
           );
-          if (l.ignored || !l.orderItemId || l.quantity === null)
+          const quantity = receivedLineQuantity(l);
+          if (l.ignored || !l.orderItemId || quantity === null)
             fail("Every selected line needs a matched part and a quantity.");
           if (
             !l.checked &&
@@ -1589,19 +1704,22 @@ async function mutateReceivingImpl(
           const row = rows.find((i) => i.id === l.orderItemId),
             item = snapshot.find((i) => i.id === l.orderItemId);
           if (!row || !item) fail("A selected part is not on this order.");
+          const blockers = resolutionBlockers(l, item, resolutionLines, review.kind);
+          if (blockers.length) fail(blockers.join(" "));
+          if (l.allocation && !allocationOwnershipValid(review.lines, l)) fail("This allocation no longer owns its source quantity. Resolve the current allocation before approval.", "CONFLICT");
           if (receiptUnit(l.unit) !== receiptUnit(item!.unit))
             fail(`Confirm the quantity in ${item!.unit}.`);
           if (l.approved && !input.reason.trim())
             fail(
               "Describe why the previously approved receipt is being corrected.",
             );
-          if (!l.approved && l.quantity === 0)
+          if (!l.approved && quantity === 0 && !l.resolution)
             fail(
               "Exclude a zero-delivery line with a reason, or leave it in the queue.",
             );
           const delta = receiptDelta(
             lineKind(l, review.kind),
-            l.quantity!,
+            quantity!,
             l.approved,
           );
           // A hand count of the same parts that the slip takes over instead
@@ -1611,7 +1729,7 @@ async function mutateReceivingImpl(
           const fromHand = l.approved
             ? Math.min(
                 handBefore,
-                lineKind(l, review.kind) === "delivery" ? l.quantity! : 0,
+                lineKind(l, review.kind) === "delivery" ? quantity! : 0,
               )
             : Math.max(0, Math.min(hand.get(row!.id)!, delta.received));
           if (!l.approved)
@@ -1625,8 +1743,8 @@ async function mutateReceivingImpl(
             credit = qtyRound(Number(row!.creditedQuantity) + delta.credit);
           const returned = qtyRound(
             Number(row!.returnedQuantity) +
-              (lineKind(l, review.kind) === "delivery" ? 0 : l.quantity!) -
-              (l.approved && l.approved.kind !== "delivery"
+              (["return-credit", "return-replacement"].includes(lineKind(l, review.kind)) ? quantity! : 0) -
+              (l.approved && ["return-credit", "return-replacement"].includes(l.approved.kind)
                 ? l.approved.quantity
                 : 0),
           );
@@ -1641,6 +1759,7 @@ async function mutateReceivingImpl(
             );
           if (
             received > Number(row!.quantity) - credit &&
+            lineKind(l, review.kind) !== "credit-only" &&
             !input.allowOverDelivery
           )
             fail(
@@ -1668,7 +1787,7 @@ async function mutateReceivingImpl(
           row!.returnedQuantity = String(returned);
           l.approved = {
             itemId: l.orderItemId!,
-            quantity: l.quantity!,
+            quantity: quantity!,
             kind: lineKind(l, review.kind),
             by: fresh.user.id,
             at: now,
@@ -1696,9 +1815,7 @@ async function mutateReceivingImpl(
                   .reduce(
                     (n, l) =>
                       n +
-                      (l.approved!.kind === "delivery"
-                        ? l.approved!.quantity
-                        : -l.approved!.quantity),
+                      receiptDelta(l.approved!.kind, l.approved!.quantity).received,
                     0,
                   ),
               ]),

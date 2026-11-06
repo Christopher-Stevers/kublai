@@ -22,6 +22,7 @@ describe("receiving accounting", () => {
       received: -2,
       credit: 2,
     });
+    expect(receiptDelta("credit-only", 2)).toEqual({ received: 0, credit: 2 });
   });
   it("applies a correction as the difference, not another receipt", () => {
     const before = {

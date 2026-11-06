@@ -10,6 +10,7 @@ import {
 } from "vitest";
 import postgres from "postgres";
 import type { SlipProgress } from "~/lib/packing-slip-review";
+import { resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableName, getTableColumns, eq, SQL, sql } from "drizzle-orm";
 import { PgDialect, type PgTable } from "drizzle-orm/pg-core";
@@ -18,6 +19,7 @@ const test = vi.hoisted(() => ({
   select: vi.fn(),
   update: vi.fn(),
   receive: true,
+  send: true,
   trial: null as unknown,
   extractionFails: false,
   extractionStarted: false,
@@ -35,7 +37,7 @@ vi.mock("~/server/db", () => ({
 }));
 vi.mock("~/server/auth/permissions", () => ({
   userCan: (_: unknown, key: string) =>
-    key === "orders.receive" ? test.receive : key !== "documents.manage",
+    key === "orders.receive" ? test.receive : key === "orders.send" ? test.send : key !== "documents.manage",
   hasManagingSeat: () => false,
 }));
 import * as schema from "~/server/db/schema";
@@ -197,6 +199,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
   beforeEach(async () => {
     vi.unstubAllEnvs();
     test.receive = true;
+    test.send = true;
     test.trial = null;
     test.extractionFails = false;
     test.extractionStarted = false;
@@ -988,6 +991,163 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     });
     return fixture;
   }
+  async function resolveAction(fixture: Awaited<ReturnType<typeof confirmedHeader>>, patch: Record<string, unknown> = {}, lineId = "0") {
+    const l = (await workspace()).documents.find(d => d.id === fixture.doc.documentId)!.receivingReview!.lines.find(l => l.id === lineId)!;
+    return reviewAction(fixture.access, fixture.doc.documentId, { action: "resolve", lineId, evidenceFingerprint: resolutionEvidenceFingerprint(l), ...patch });
+  }
+  const allResolved = { match: "confirmed", specification: "confirmed", quantity: "confirmed", delivery: "confirmed", remainder: "backordered", note: "Remainder confirmed backordered" };
+  it("linking or legacy checked flags cannot bypass unresolved specification, quantity or delivery", async () => {
+    const f = await confirmedHeader();
+    await resolveAction(f, {match:"confirmed"});
+    const saved = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    await reviewAction(f.access,f.doc.documentId,{action:"line",lineId:"0",description:saved.description,sku:saved.sku,quantity:saved.quantity,ordered:saved.ordered,unit:saved.unit,unitPrice:saved.unitPrice,orderItemId:saved.orderItemId,checked:true});
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)})).rejects.toThrow("specification");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("records paper, actual site count and accepted count separately and posts only the accepted count", async () => {
+    const f = await confirmedHeader();
+    await resolveAction(f, {...allResolved,delivery:"damaged",siteQuantity:5,acceptedQuantity:4,note:"One missing and one damaged; replacements backordered"});
+    let saved = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    expect(saved.paper?.quantity).toBe(6); expect(saved.quantity).toBe(6); expect(saved.resolution?.siteQuantity).toBe(5);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)});
+    saved = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    expect(saved.approved?.quantity).toBe(4); expect(Number((await item()).receivedQuantity)).toBe(6);
+    expect(saved.paper?.quantity).toBe(6);
+  });
+  it("skipping high confidence evidence leaves it unresolved until explicitly resumed", async () => {
+    const f = await confidentSavedSlip();
+    await resolveAction(f,{...allResolved,skipped:true,note:"Need site check"});
+    expect((await receivingQueue(f.access,f.doc.documentId)).review!.lines[0]!.autoConfirmed).toBe(false);
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)})).rejects.toThrow();
+    await resolveAction(f,{skipped:false});
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)});
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+  });
+  it("requires orders permission for accepting substitutions and receiving permission for every resolution", async () => {
+    const f = await confirmedHeader(); test.send = false;
+    await expect(resolveAction(f,{specification:"substitution-accepted",note:"Equivalent approved part"})).rejects.toMatchObject({code:"FORBIDDEN"});
+    test.receive = false;
+    await expect(resolveAction(f,{match:"confirmed"})).rejects.toMatchObject({code:"FORBIDDEN"});
+  });
+  it("rejects stale line evidence and invalid accepted counts without changing the draft", async () => {
+    const f = await confirmedHeader(), before = await workspace();
+    await expect(resolveAction(f,{evidenceFingerprint:"stale",match:"confirmed"})).rejects.toMatchObject({code:"CONFLICT"});
+    await expect(resolveAction(f,{siteQuantity:3,acceptedQuantity:4})).rejects.toThrow("exceed");
+    expect(await workspace()).toEqual(before);
+  });
+  it("requires reconfirmation when the counterpart order changes after resolving, even with a fresh approval request",async()=>{
+    const f=await confirmedHeader();
+    await resolveAction(f,allResolved);
+    await db.update(schema.orderItems).set({quantity:"11"}).where(eq(schema.orderItems.id,id(6)));
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)})).rejects.toThrow("order item or package changed");
+    await resolveAction(f,{match:"confirmed"});
+    const r=(await workspace()).documents[0]!.receivingReview!.lines[0]!.resolution!;
+    expect(r.match).toBe("confirmed"); expect(r.specification).toBe("unresolved"); expect(r.quantity).toBe("unresolved");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("splits a printed line without double receiving and requires each derived line to be reviewed", async () => {
+    const f = await confirmedHeader();
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Two separately labelled batches",outputs:[{description:"Valve batch A",sku:"",quantity:2,unit:"ea",orderItemId:id(6)},{description:"Valve batch B",sku:"",quantity:4,unit:"ea",orderItemId:id(6)}]});
+    let review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.lines[0]!.ignored).toBeTruthy();
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:"0",reason:"Attempt to reuse allocated source"})).rejects.toThrow("cannot be received twice");
+    const newIds = review.lines.slice(1).map(l => l.id);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:newIds,fingerprint:await finger(f.access)})).rejects.toThrow();
+    for(const lineId of newIds) await resolveAction(f,allResolved,lineId);
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:newIds,fingerprint:await finger(f.access)});
+    review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.lines.filter(l => l.approved).reduce((n,l)=>n+l.approved!.quantity,0)).toBe(6);
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:[newIds[0]],reason:"Cannot duplicate received rows",outputs:[{description:"Valve",sku:"",quantity:2,unit:"ea",orderItemId:id(6)}]})).rejects.toThrow("unapproved");
+  });
+  it.each(["inflated","foreign","unit"])("rejects %s allocations atomically",async mode=>{
+    const f=await confirmedHeader(), before=await workspace();
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Test reviewed allocation",outputs:[{description:"Valve",sku:"",quantity:mode==="inflated"?7:6,unit:mode==="unit"?"box":"ea",orderItemId:mode==="foreign"?id(999):id(6)}]})).rejects.toThrow();
+    expect(await workspace()).toEqual(before);
+  });
+  it("prevents restoring ancestors while a nested allocation owns their quantity",async()=>{
+    const f=await confirmedHeader();
+    const output={description:"Valve",sku:"",quantity:6,unit:"ea",orderItemId:id(6)};
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Initial corrected line",outputs:[output]});
+    const child=(await workspace()).documents[0]!.receivingReview!.lines.at(-1)!.id;
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:[child],reason:"Refined corrected line",outputs:[output]});
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:"0",reason:"Try restoring ancestor"})).rejects.toThrow("cannot be received twice");
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:child,reason:"Try restoring parent"})).rejects.toThrow("cannot be received twice");
+    expect((await workspace()).documents[0]!.receivingReview!.lines.filter(l=>!l.ignored)).toHaveLength(1);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("does not revive retired allocation children after restoring or reallocating their source",async()=>{
+    const f=await confirmedHeader(), output={description:"Valve",sku:"",quantity:6,unit:"ea",orderItemId:id(6)};
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Initial allocation",outputs:[output]});
+    const child=(await workspace()).documents[0]!.receivingReview!.lines.at(-1)!.id;
+    await reviewAction(f.access,f.doc.documentId,{action:"ignore",lineId:child,reason:"Reverting this allocation"});
+    await reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:"0",reason:"Restore original evidence"});
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:child,reason:"Reusing previous allocation"})).rejects.toThrow("same source twice");
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"New replacement allocation",outputs:[output]});
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"restoreLine",lineId:child,reason:"Reusing obsolete allocation"})).rejects.toThrow("same source twice");
+    expect((await workspace()).documents[0]!.receivingReview!.lines.filter(l=>!l.ignored)).toHaveLength(1);
+  });
+  it("undoes the latest unapproved correction with an audit and refuses undo after later changes",async()=>{
+    const f=await confirmedHeader(), before=structuredClone((await workspace()).documents[0]!.receivingReview!.lines), requestId=randomUUID();
+    await resolveAction(f,{...allResolved,requestId});
+    expect((await receivingQueue(f.access,f.doc.documentId)).correctionUndo?.requestId).toBe(requestId);
+    await reviewAction(f.access,f.doc.documentId,{action:"undoCorrection",requestIdToUndo:requestId,reason:"Wrong evidence selected"});
+    expect((await workspace()).documents[0]!.receivingReview!.lines).toEqual(before);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"undoCorrection",requestIdToUndo:requestId,reason:"Cannot undo the same correction twice"})).rejects.toMatchObject({code:"CONFLICT"});
+    const history=await db.select().from(schema.packingSlipReviewHistory);
+    expect(history.find(h=>(h.data as {operation?:string}).operation==="undoCorrection")!.data).toMatchObject({reason:"Wrong evidence selected",undoesRequestId:requestId});
+  });
+  it("preserves source crop for manually recovered lines and leaves them unchecked",async()=>{
+    const f=await confirmedHeader();
+    const sourceBox={x:0.1,y:0.2,width:0.7,height:0.05};
+    await reviewAction(f.access,f.doc.documentId,{action:"addLine",page:2,sourceBox,description:"Missed valve line"});
+    const line=(await workspace()).documents[0]!.receivingReview!.lines.at(-1)!;
+    expect(line.sourceBox).toEqual(sourceBox); expect(line.page).toBe(2); expect(line.checked).toBe(false); expect(line.approved).toBeUndefined();
+  });
+  it("posts a financial credit without recording a physical return or reducing received stock",async()=>{
+    const f=await confirmedHeader();
+    const line=(await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    await reviewAction(f.access,f.doc.documentId,{action:"line",lineId:line.id,kind:"credit-only",description:line.description,sku:line.sku,quantity:3,ordered:line.ordered,unit:"ea",unitPrice:null,orderItemId:id(6),checked:true});
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:[line.id],fingerprint:await finger(f.access)});
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    expect(Number((await item()).returnedQuantity)).toBe(0);
+    expect(Number((await item()).creditedQuantity)).toBe(3);
+    expect((await workspace()).documents[0]!.packingSlipAnalysis!.applied!.quantities[id(6)]).toBe(0);
+  });
+  it("complete split allocations do not acquire a false partial-shipment blocker mid-approval",async()=>{
+    const f=await confirmedHeader();
+    await db.update(schema.orderItems).set({quantity:"8"}).where(eq(schema.orderItems.id,id(6)));
+    await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Two batches of same valve",outputs:[{description:"Valve A",sku:"",quantity:2,unit:"ea",orderItemId:id(6)},{description:"Valve B",sku:"",quantity:4,unit:"ea",orderItemId:id(6)}]});
+    const ids=(await workspace()).documents[0]!.receivingReview!.lines.slice(1).map(l=>l.id);
+    for(const lineId of ids) await resolveAction(f,{...allResolved,remainder:null},lineId);
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:ids,fingerprint:await finger(f.access)});
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+  });
+  it("records and undoes absent-item dispositions without creating receipt rows or changing orders",async()=>{
+    const f=await confirmedHeader();
+    const state=await workspace(); state.documents[0]!.receivingReview!.lines[0]!.orderItemId=null;
+    await db.update(schema.jobDocumentWorkspaces).set({state}).where(eq(schema.jobDocumentWorkspaces.jobId,job));
+    const before=await item(), requestId=randomUUID();
+    await reviewAction(f.access,f.doc.documentId,{action:"orderDisposition",itemId:id(6),disposition:"cancel-requested",note:"Supplier confirmed this was not sent",requestId});
+    expect(await item()).toEqual(before);
+    expect((await workspace()).documents[0]!.receivingReview!.orderResolutions?.[id(6)]?.disposition).toBe("cancel-requested");
+    expect((await receivingQueue(f.access,f.doc.documentId)).documents[0]!.pending).toBe(2);
+    expect((await receivingQueue(f.access,f.doc.documentId)).correctionUndo?.requestId).toBe(requestId);
+    await reviewAction(f.access,f.doc.documentId,{action:"undoCorrection",requestIdToUndo:requestId,reason:"Found the missing line on another page"});
+    expect((await workspace()).documents[0]!.receivingReview!.orderResolutions).toBeUndefined();
+    expect(await item()).toEqual(before);
+  });
+  it("counting an absent item as backordered keeps its order due without adding a pending issue",async()=>{
+    const f=await confirmedHeader(), state=await workspace();
+    state.documents[0]!.receivingReview!.lines[0]!.orderItemId=null;
+    await db.update(schema.jobDocumentWorkspaces).set({state}).where(eq(schema.jobDocumentWorkspaces.jobId,job));
+    await reviewAction(f.access,f.doc.documentId,{action:"orderDisposition",itemId:id(6),disposition:"backordered",note:"Supplier will send the balance"});
+    expect((await receivingQueue(f.access,f.doc.documentId)).documents[0]!.pending).toBe(1);
+    expect(Number((await item()).quantity)).toBe(10);
+  });
   it.each(["success", "received", "matched", "stale", "foreign"])("removing an absent order item: %s", async (mode) => {
     const {access, doc} = await confirmedHeader();
     await db.update(schema.orderItems).set({receivedQuantity: mode === "received" ? "2" : "0"}).where(eq(schema.orderItems.id, id(6)));
@@ -995,7 +1155,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     const review = state.documents.find(d => d.id === doc.documentId)!.receivingReview!;
     if (mode !== "matched") review.lines.forEach(l => { l.orderItemId = null; });
     await db.update(schema.jobDocumentWorkspaces).set({state}).where(eq(schema.jobDocumentWorkspaces.jobId, job));
-    const action = {action: "removeOrderItem", itemId: mode === "foreign" ? id(999) : id(6), fingerprint: mode === "stale" ? "stale" : await orderFingerprint(await orderSnapshot(db, access, order)), confirmed: true};
+    const action = {action: "removeOrderItem", itemId: mode === "foreign" ? id(999) : id(6), fingerprint: mode === "stale" ? "stale" : orderFingerprint(await orderSnapshot(db, access, order)), confirmed: true};
     if (mode !== "success") {
       await expect(reviewAction(access, doc.documentId, action)).rejects.toThrow();
       expect(await db.select().from(schema.orderItems)).toHaveLength(1);

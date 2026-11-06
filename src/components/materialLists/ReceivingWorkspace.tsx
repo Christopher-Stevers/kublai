@@ -3,6 +3,15 @@ import {
   receivingDisplayUnit,
   receivingQuantity,
 } from "~/lib/receiving-quantity-display";
+import { ReceivingResolve, type ResolveTarget } from "./ReceivingResolve";
+import {
+  receivedLineQuantity,
+  pendingOrderResolutions,
+  resolutionEvidenceFingerprint,
+  resolutionCounterpartFingerprint,
+  resolutionBlockers,
+  receivingLineReady,
+} from "~/lib/receiving-resolution";
 import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
@@ -108,7 +117,9 @@ type Part = {
 };
 /** `code`: the slip printed this supplier's code for it. */
 type LikelyPart = Part & { score: number; code: boolean };
-type Detail = {
+export type ReceivingDetail = {
+  correctionUndo?: { requestId: string; label: string } | null;
+  canAcceptSubstitution?: boolean;
   processingJob?: ProcessingJob | null;
   documents: Entry[];
   document: JobDocument;
@@ -151,18 +162,22 @@ type Detail = {
   sourceUrl: string;
   sourceMimeType?: string;
 };
-type Action = Record<string, unknown> & { action: string };
+type Detail = ReceivingDetail;
+export type ReceivingAction = Record<string, unknown> & { action: string };
+type Action = ReceivingAction;
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "The request failed. Please try again.";
 const field =
   "border-input bg-background h-11 w-full min-w-0 rounded-md border px-3 text-base";
 const card = "bg-card rounded-xl border";
 const typeLabel = (k: ReceiptKind) =>
-  k === "delivery"
-    ? "Delivery"
-    : k === "return-credit"
-      ? "Return for credit"
-      : "Return for replacement";
+  k === "credit-only"
+    ? "Credit only (no physical return)"
+    : k === "delivery"
+      ? "Delivery"
+      : k === "return-credit"
+        ? "Return for credit"
+        : "Return for replacement";
 function Label({ name, children }: { name: string; children: ReactNode }) {
   return (
     <label className="grid gap-1.5 text-sm">
@@ -187,14 +202,9 @@ function Callout({
   );
 }
 const changed = (l: ReceivingLine, k: ReceiptKind) =>
-  l.quantity !== l.approved?.quantity || lineKind(l, k) !== l.approved.kind;
-const approvable = (l: ReceivingLine, k: ReceiptKind) =>
-  !l.ignored &&
-  !!l.orderItemId &&
-  l.quantity !== null &&
-  (l.quantity > 0 || !!l.approved) &&
-  (l.checked === true || l.autoConfirmed === true || !l.issues.length) &&
-  changed(l, k);
+  receivedLineQuantity(l) !== l.approved?.quantity ||
+  lineKind(l, k) !== l.approved.kind;
+const approvable = receivingLineReady;
 type LineStatus =
   | "review"
   | "recheck"
@@ -202,7 +212,11 @@ type LineStatus =
   | "ready"
   | "approved"
   | "excluded";
-const lineStatus = (l: ReceivingLine, r: ReceivingReview): LineStatus =>
+const lineStatus = (
+  l: ReceivingLine,
+  r: ReceivingReview,
+  item?: ReceiptOrderItem,
+): LineStatus =>
   l.ignored
     ? "excluded"
     : l.approved
@@ -211,7 +225,7 @@ const lineStatus = (l: ReceivingLine, r: ReceivingReview): LineStatus =>
         : r.sourceTrial && l.checked !== true
           ? "recheck"
           : "approved"
-      : approvable(l, r.kind)
+      : approvable(l, r.kind, item, r.lines)
         ? "ready"
         : "review";
 /** Work first: lines to review, then pending approvals, then finished lines. */
@@ -280,16 +294,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     comparison.trial && !comparison.trial.stale
       ? comparison.trial.results
       : null;
-  // Back from a slip steps up to the queue, not out to the job.
-  useHeaderBackOverride(
-    id
-      ? () => {
-          const queue = `/jobs/${jobId}/receiving`;
-          if (!online) window.location.href = queue;
-          else router.replace(queue);
-        }
-      : null,
-  );
   const [docs, setDocs] = useState<Entry[]>([]),
     [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
@@ -308,6 +312,22 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [lab, setLab] = useState(false),
     [changingOrder, setChangingOrder] = useState(false),
     [showLines, setShowLines] = useState(false);
+  const [resolveTarget, setResolveTarget] = useState<ResolveTarget | null>(
+    null,
+  );
+  // Back from a slip steps up to the queue, not out to the job.
+  useHeaderBackOverride(
+    resolveTarget
+      ? () => setResolveTarget(null)
+      : id
+        ? () => {
+            const queue = `/jobs/${jobId}/receiving`;
+            if (!online) window.location.href = queue;
+            else router.replace(queue);
+          }
+        : null,
+  );
+
   const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const retry = useRef<Action | null>(null),
     scope = useRef(id),
@@ -334,6 +354,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     setError("");
     setNotice("");
     setOpenLine(null);
+    setResolveTarget(null);
     setChangingOrder(false);
     void load().catch((e: unknown) => setError(errorMessage(e)));
   }, [load]);
@@ -356,6 +377,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     if (!fresh) return;
     added.current = null;
     setOpenLine(fresh.id);
+    setResolveTarget((current) => (current ? { lineId: fresh.id } : current));
   }, [detail]);
   const run = async (action: Action, exact = false) => {
     if (busy || !online) return false;
@@ -432,13 +454,21 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   };
   const r = detail?.review,
     a = detail?.document.packingSlipAnalysis;
-  const ready = r?.lines.filter((l) => approvable(l, r.kind)) ?? [];
+  const ready =
+    r?.lines.filter((l) =>
+      approvable(
+        l,
+        r.kind,
+        detail?.items.find((i) => i.id === l.orderItemId),
+        r.lines,
+      ),
+    ) ?? [];
   const remaining =
-    r?.lines.filter(
+    (r?.lines.filter(
       (l) =>
         !l.ignored &&
         (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true)),
-    ).length ?? 0;
+    ).length ?? 0) + (r ? pendingOrderResolutions(r) : 0);
   const active = r?.lines.filter((l) => !l.ignored).length ?? 0;
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
@@ -480,10 +510,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               : !r?.kindConfirmed || !r.orderConfirmed
                 ? "Confirm the order first"
                 : remaining - ready.length > 0
-                    ? `${remaining - ready.length} still to review`
-                    : ready.length
-                      ? "Everything else is done"
-                      : "Every line is approved or excluded";
+                  ? `${remaining - ready.length} still to review`
+                  : ready.length
+                    ? "Everything else is done"
+                    : "Every line is approved or excluded";
   // Approval preview: running totals per order line, as the server applies
   // them, with or without the slip taking over counts made by hand.
   const plan = (linkHand: boolean) => {
@@ -492,7 +522,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     return r
       ? ready.map((l) => {
           const id = l.orderItemId!,
-            delta = receiptDelta(lineKind(l, r.kind), l.quantity!, l.approved),
+            delta = receiptDelta(
+              lineKind(l, r.kind),
+              receivedLineQuantity(l)!,
+              l.approved,
+            ),
             item = detail?.items.find((i) => i.id === id),
             sum = totals.get(id) ?? {
               received: item?.received ?? 0,
@@ -507,7 +541,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             fromHand = l.approved
               ? Math.min(
                   handBefore,
-                  lineKind(l, r.kind) === "delivery" ? l.quantity! : 0,
+                  lineKind(l, r.kind) === "delivery"
+                    ? receivedLineQuantity(l)!
+                    : 0,
                 )
               : linkHand
                 ? canLink
@@ -527,7 +563,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             before,
             after: sum.received,
             due,
-            over: due !== null && sum.received > due,
+            over:
+              lineKind(l, r.kind) !== "credit-only" &&
+              due !== null &&
+              sum.received > due,
           };
         })
       : [];
@@ -547,9 +586,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const shown = docs
     .filter(
       (d) =>
-        (showAll ||
-          d.status === "review" ||
-          d.status === "processing") &&
+        (showAll || d.status === "review" || d.status === "processing") &&
         `${d.name} ${d.order?.orderNumber ?? ""}`
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -558,6 +595,65 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       (a, b) => Number(!!b.hasSuggestedOrder) - Number(!!a.hasSuggestedOrder),
     );
   const signed = (n: number) => `${n > 0 ? "+" : ""}${n}`;
+  const resolvingLine = detail?.review.lines.find(
+    (l) => l.id === resolveTarget?.lineId,
+  );
+  const resolvingItem = detail?.items.find(
+    (i) => i.id === (resolvingLine?.orderItemId ?? resolveTarget?.itemId),
+  );
+  const resolutionKey = [
+    detail?.document.id,
+    resolveTarget?.lineId ?? resolveTarget?.itemId,
+    resolvingLine ? resolutionEvidenceFingerprint(resolvingLine) : "",
+    resolvingItem ? resolutionCounterpartFingerprint(resolvingItem) : "",
+  ].join(":");
+  if (detail && resolveTarget)
+    return (
+      <main className="mx-auto w-full px-4 py-4">
+        {error && (
+          <p
+            role="alert"
+            className="mb-4 rounded border border-red-500/50 p-3 text-sm"
+          >
+            {error}
+          </p>
+        )}
+        <ReceivingResolve
+          key={resolutionKey}
+          detail={detail}
+          jobId={jobId}
+          target={resolveTarget}
+          busy={busy || !online || blocked}
+          run={run}
+          onReload={load}
+          onAddLine={async (value) => {
+            added.current = new Set(detail.review.lines.map((l) => l.id));
+            const done = await run({
+              action: "addLine",
+              page: value.page,
+              description: value.description,
+              sourceBox: value.box,
+            });
+            if (!done) added.current = null;
+            return done;
+          }}
+          onClose={() => setResolveTarget(null)}
+          onSelect={setResolveTarget}
+          renderCorrection={(line, onDone) => (
+            <LineReview
+              key={`${line.id}:${detail.review.revision}`}
+              line={line}
+              index={detail.review.lines.indexOf(line)}
+              detail={detail}
+              jobId={jobId}
+              run={run}
+              onDone={onDone}
+              resolveMode
+            />
+          )}
+        />
+      </main>
+    );
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
       <header className="mb-5 flex items-start justify-between gap-3">
@@ -619,7 +715,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           )}
         </div>
       </header>
-      {detail && <PackingSlipActivity analysis={a} job={detail.processingJob} online={online} receivedAt={receivedAt} />}
+      {detail && (
+        <PackingSlipActivity
+          analysis={a}
+          job={detail.processingJob}
+          online={online}
+          receivedAt={receivedAt}
+        />
+      )}
       {!online && (
         <p
           role="status"
@@ -902,7 +1005,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       jobId={jobId}
                       run={run}
                       onCancel={
-                        orderConfirmed ? () => setChangingOrder(false) : undefined
+                        orderConfirmed
+                          ? () => setChangingOrder(false)
+                          : undefined
                       }
                       onDone={() => setChangingOrder(false)}
                     />
@@ -941,13 +1046,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                         ? "Not needed for a repeat scan."
                         : "After the order is confirmed."
                       : [
-                      active - remaining && `${active - remaining} approved`,
-                      ready.length && `${ready.length} ready`,
-                      remaining - ready.length &&
-                        `${remaining - ready.length} to review`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "No lines yet"
+                          active - remaining &&
+                            `${active - remaining} approved`,
+                          ready.length && `${ready.length} ready`,
+                          remaining - ready.length &&
+                            `${remaining - ready.length} to review`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "No lines yet"
                   }
                 >
                   {!linesWaiting && (!linesDone || showLines) && (
@@ -962,7 +1068,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           />
                           <div
                             className="bg-sky-500 transition-[width] motion-reduce:transition-none"
-                            style={{ width: `${(ready.length / active) * 100}%` }}
+                            style={{
+                              width: `${(ready.length / active) * 100}%`,
+                            }}
                           />
                         </div>
                       )}
@@ -974,13 +1082,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           openRow={openLine}
                           setOpenRow={setOpenLine}
                           trial={trialResults}
+                          onResolve={setResolveTarget}
                         />
                       )}
                       {r.lines.length === 0 && (
                         <div className="border-t px-4 py-8 text-center text-sm">
                           <p className="text-muted-foreground">
-                            Read this slip to propose lines, or add a line from the
-                            source.
+                            Read this slip to propose lines, or add a line from
+                            the source.
                           </p>
                           <Button
                             className="mt-3"
@@ -1047,78 +1156,81 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   await run({ action: "trialDraft", reader, runId });
                 }}
               />
-                <section aria-label="Slip tools" className="space-y-4 rounded-lg border px-4 py-4 text-sm">
-                  <h3 className="font-medium">Slip tools</h3>
-                  {!!r!.warnings.length && (
-                    <div>
-                      <p className="font-medium">Reading notes</p>
-                      <ul className="text-muted-foreground mt-1 list-disc space-y-1 pl-5">
-                        {r!.warnings.map((w, i) => (
-                          <li key={i}>{w}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {a?.cascade && (
-                    <div className="space-y-1">
-                      <p className="font-medium">
-                        {a.cascade.status === "not-needed"
-                          ? "OCR / Jev handled this slip. Terra was not needed."
-                          : a.cascade.status === "completed"
-                            ? "OCR → Jev → Terra assistance"
-                            : `OCR / Jev reading · Terra ${a.cascade.status.replaceAll("-", " ")}`}
-                      </p>
-                      {!!a.cascade.reasons.length && (
-                        <p className="text-muted-foreground">
-                          {a.cascade.reasons.join(" · ")}
-                        </p>
-                      )}
-                      {a.cascade.estimatedUsd != null && (
-                        <p className="text-muted-foreground">
-                          Terra API estimate: US$
-                          {a.cascade.estimatedUsd.toFixed(4)}
-                        </p>
-                      )}
-                      {a.cascade.error && <p>{a.cascade.error}</p>}
-                    </div>
-                  )}
+              <section
+                aria-label="Slip tools"
+                className="space-y-4 rounded-lg border px-4 py-4 text-sm"
+              >
+                <h3 className="font-medium">Slip tools</h3>
+                {!!r!.warnings.length && (
                   <div>
-                    <p className="text-muted-foreground">
-                      Reading again or erasing detection keeps approved
-                      quantities and saved review decisions.
+                    <p className="font-medium">Reading notes</p>
+                    <ul className="text-muted-foreground mt-1 list-disc space-y-1 pl-5">
+                      {r!.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {a?.cascade && (
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {a.cascade.status === "not-needed"
+                        ? "OCR / Jev handled this slip. Terra was not needed."
+                        : a.cascade.status === "completed"
+                          ? "OCR → Jev → Terra assistance"
+                          : `OCR / Jev reading · Terra ${a.cascade.status.replaceAll("-", " ")}`}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    {!!a.cascade.reasons.length && (
+                      <p className="text-muted-foreground">
+                        {a.cascade.reasons.join(" · ")}
+                      </p>
+                    )}
+                    {a.cascade.estimatedUsd != null && (
+                      <p className="text-muted-foreground">
+                        Terra API estimate: US$
+                        {a.cascade.estimatedUsd.toFixed(4)}
+                      </p>
+                    )}
+                    {a.cascade.error && <p>{a.cascade.error}</p>}
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground">
+                    Reading again or erasing detection keeps approved quantities
+                    and saved review decisions.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || a?.status === "processing"}
+                      onClick={() => void detection("analyze")}
+                    >
+                      Rerun detection
+                    </Button>
+                    {a && (
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={busy || a?.status === "processing"}
-                        onClick={() => void detection("analyze")}
+                        disabled={busy}
+                        onClick={() => void detection("clear")}
                       >
-                        Rerun detection
+                        Erase detection
                       </Button>
-                      {a && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void detection("clear")}
-                        >
-                          Erase detection
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                  {r!.sourceText && (
-                    <details>
-                      <summary className="text-muted-foreground cursor-pointer">
-                        Source text
-                      </summary>
-                      <pre className="bg-muted mt-2 max-h-72 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">
-                        {r!.sourceText}
-                      </pre>
-                    </details>
-                  )}
-                </section>
+                </div>
+                {r!.sourceText && (
+                  <details>
+                    <summary className="text-muted-foreground cursor-pointer">
+                      Source text
+                    </summary>
+                    <pre className="bg-muted mt-2 max-h-72 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">
+                      {r!.sourceText}
+                    </pre>
+                  </details>
+                )}
+              </section>
             </DialogContent>
           </Dialog>
           <footer className="bg-background/95 fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
@@ -1136,24 +1248,24 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 <p className="text-muted-foreground truncate">{hint}</p>
               </div>
               <PriorityActionBar className="w-auto min-w-0">
-              <Button
-                className="shrink-0"
-                disabled={busy || !online || !canApprove}
-                onClick={() => {
-                  setReason("");
-                  setOver(false);
-                  setSameAsHand(null);
-                  setAccounted(r?.documentChecked ?? false);
-                  setPreview(true);
-                }}
-              >
-                {busy ? (
-                  <Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />
-                ) : (
-                  <CheckIcon className="size-4" />
-                )}
-                Review & approve
-              </Button>
+                <Button
+                  className="shrink-0"
+                  disabled={busy || !online || !canApprove}
+                  onClick={() => {
+                    setReason("");
+                    setOver(false);
+                    setSameAsHand(null);
+                    setAccounted(r?.documentChecked ?? false);
+                    setPreview(true);
+                  }}
+                >
+                  {busy ? (
+                    <Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <CheckIcon className="size-4" />
+                  )}
+                  Review & approve
+                </Button>
               </PriorityActionBar>
             </div>
           </footer>
@@ -1385,8 +1497,7 @@ const orderSummary = (detail: Detail) => {
   return [
     detail.document.packingSlip?.orderNumber ?? "No order linked",
     typeLabel(r.kind),
-    detail.suppliers.find((s) => s.id === r.supplierId)?.name ??
-      r.supplierName,
+    detail.suppliers.find((s) => s.id === r.supplierId)?.name ?? r.supplierName,
     r.deliveryNumber && `Slip ${r.deliveryNumber}`,
   ]
     .filter(Boolean)
@@ -1423,7 +1534,7 @@ function Identity({
     [linkChoice, setLink] = useState<string | null>(null);
   // Background results can arrive after this form mounts. Follow fresh defaults
   // until the reviewer explicitly chooses a value; polling must not erase edits.
-  const link = linkChoice ?? (linked || match?.id || "");
+  const link = linkChoice ?? (linked || (match?.id ?? ""));
   const supplier = supplierChoice ?? r.supplierId ?? match?.supplierId ?? "";
   const readingKey = `${analysis?.runId}:${analysis?.status}:${analysis?.progress?.completed}:${analysis?.completedAt}`;
   const chooseOrder = (id: string) => {
@@ -1432,11 +1543,15 @@ function Identity({
     const order = detail.orders.find((o) => o.id === id);
     setSupplier(order?.supplierId ?? "");
   };
-  const comparison = link ? <OrderMatchPreview
-    jobId={jobId} documentId={detail.document.id} orderId={link}
-    readingKey={readingKey}
-    sourceUrl={detail.sourceUrl}
-  /> : null;
+  const comparison = link ? (
+    <OrderMatchPreview
+      jobId={jobId}
+      documentId={detail.document.id}
+      orderId={link}
+      readingKey={readingKey}
+      sourceUrl={detail.sourceUrl}
+    />
+  ) : null;
   const suggested = (orderId: string) =>
     analysis?.orderCandidates?.includes(orderId) ?? false;
   const confirm = async (orderId = link) => {
@@ -1484,8 +1599,16 @@ function Identity({
     autoMatched.current = true;
     void confirm(orderId);
   };
-  const candidates = <OrderMatchCandidates jobId={jobId} documentId={detail.document.id}
-    readingKey={readingKey} selectedId={link} onSelect={chooseOrder} onSure={matchSure} />;
+  const candidates = (
+    <OrderMatchCandidates
+      jobId={jobId}
+      documentId={detail.document.id}
+      readingKey={readingKey}
+      selectedId={link}
+      onSelect={chooseOrder}
+      onSure={matchSure}
+    />
+  );
   const confirmButton = (
     <Button onClick={() => void confirm()}>
       <CheckIcon />I confirm this is the correct order
@@ -1530,7 +1653,9 @@ function Identity({
     <div className="p-4" onChange={() => setForm(true)}>
       <div className="mb-4">{candidates}</div>
       {!match && (
-        <p className="mb-3 text-sm">No order matched this slip. Choose it here.</p>
+        <p className="mb-3 text-sm">
+          No order matched this slip. Choose it here.
+        </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Label name="Order in this job">
@@ -1544,8 +1669,12 @@ function Identity({
             </option>
             {[...detail.orders]
               .sort((a, b) => {
-                const candidates = detail.document.packingSlipAnalysis?.orderCandidates ?? [];
-                const rank = (id: string) => candidates.includes(id) ? candidates.indexOf(id) : Number.MAX_SAFE_INTEGER;
+                const candidates =
+                  detail.document.packingSlipAnalysis?.orderCandidates ?? [];
+                const rank = (id: string) =>
+                  candidates.includes(id)
+                    ? candidates.indexOf(id)
+                    : Number.MAX_SAFE_INTEGER;
                 return rank(a.id) - rank(b.id);
               })
               .map((o) => (
@@ -1569,6 +1698,7 @@ function Identity({
             <option value="return-credit">
               Return — credit, no replacement
             </option>
+            <option value="credit-only">Credit only — no goods returned</option>
           </select>
         </Label>
         <Label name="Supplier">
@@ -1692,7 +1822,7 @@ const percent = (v: number) => `${Math.round(v * 100)}%`;
 /** The slip's column headings for a line on `page`, from this file's reading. */
 function headerFor(detail: Detail, page: number) {
   const a = detail.document.packingSlipAnalysis;
-  return a && a.versionId === detail.review.versionId
+  return a?.versionId === detail.review.versionId
     ? slipHeader(a.headers, page)
     : undefined;
 }
@@ -1731,7 +1861,8 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
   if (source)
     return lineReadings(source).map((r) => ({
       ...r,
-      ordered: r.reader === slipReader(source) ? (source.ordered ?? null) : null,
+      ordered:
+        r.reader === slipReader(source) ? (source.ordered ?? null) : null,
       shipped: r.shipped === null ? null : Math.abs(r.shipped),
     }));
   if (!l.readingSource) return [];
@@ -1746,18 +1877,6 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
       quantity: c ? c.quantity : null,
     },
   ];
-}
-function Confidence({ name, value }: { name: string; value: number | null }) {
-  return value === null ? null : (
-    <span>
-      {name}{" "}
-      <span
-        className={`font-medium tabular-nums ${unsure(value) ? amber.text : "text-foreground"}`}
-      >
-        {percent(value)}
-      </span>
-    </span>
-  );
 }
 /** Terra checked this row and did not back the earlier reading. */
 function terraCheck(l: ReceivingLine, detail: Detail) {
@@ -1844,11 +1963,13 @@ function compareToOrder(
       label: "Received",
       text: "text-emerald-700 dark:text-emerald-300",
     };
-  if (pending.some((l) => l.quantity === null))
+  if (pending.some((l) => receivedLineQuantity(l) === null))
     return { ok: false, label: "Quantity not read", text: amber.text };
   if (
     pending.some(
-      (l) => !!l.unit.trim() && l.unit.trim().toLowerCase() !== item.unit.trim().toLowerCase(),
+      (l) =>
+        !!l.unit.trim() &&
+        l.unit.trim().toLowerCase() !== item.unit.trim().toLowerCase(),
     )
   )
     return {
@@ -1858,7 +1979,7 @@ function compareToOrder(
     };
   return dueVerdict(
     item,
-    pending.reduce((n, l) => n + (l.quantity ?? 0), 0),
+    pending.reduce((n, l) => n + (receivedLineQuantity(l) ?? 0), 0),
     byHand,
   );
 }
@@ -1888,7 +2009,9 @@ function QuantityPair({
       <dt className="text-muted-foreground text-xs">Ordered</dt>
       <dd className="font-semibold tabular-nums">{shown(ordered, "—")}</dd>
       <dt className="text-muted-foreground text-xs">Received</dt>
-      <dd className="font-semibold tabular-nums">{shown(received, "Not read")}</dd>
+      <dd className="font-semibold tabular-nums">
+        {shown(received, "Not read")}
+      </dd>
     </dl>
   );
 }
@@ -1940,7 +2063,7 @@ function readingVerdict(
 ): Verdict {
   if (shipped === null)
     return { ok: false, label: "Quantity not read", text: amber.text };
-  const read = readSlipQuantity(shipped, unit || null, item, text);
+  const read = readSlipQuantity(shipped, unit, item, text);
   if (read === null)
     return {
       ok: false,
@@ -1950,7 +2073,10 @@ function readingVerdict(
   const verdict = dueVerdict(item, read.amount, byHand);
   return read.amount === shipped
     ? verdict
-    : { ...verdict, label: `= ${receivingQuantity(read.amount, item.unit)} · ${verdict.label}` };
+    : {
+        ...verdict,
+        label: `= ${receivingQuantity(read.amount, item.unit)} · ${verdict.label}`,
+      };
 }
 type ReaderCopy = {
   key: string;
@@ -2032,7 +2158,7 @@ function readerCopies({
       score: null,
       description: describe(shown.map((l) => l.description)),
       ordered: sum(shown.map((l) => l.ordered)),
-      shipped: sum(shown.map((l) => l.quantity)),
+      shipped: sum(shown.map((l) => receivedLineQuantity(l))),
       unit: shown[0]!.unit,
       verdict: item ? compareToOrder(item, lines, byHand) : null,
     };
@@ -2112,7 +2238,8 @@ function readerCopies({
       ...ranked[0]!,
       verdict: compareToOrder(item, lines, byHand),
     };
-  return ranked;
+  const active = review("Active saved reading");
+  return [active, ...ranked];
 }
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
@@ -2122,6 +2249,7 @@ function OrderComparison({
   openRow,
   setOpenRow,
   trial,
+  onResolve,
 }: {
   detail: Detail;
   jobId: string;
@@ -2129,6 +2257,7 @@ function OrderComparison({
   openRow: string | null;
   setOpenRow: (row: string | null) => void;
   trial: TrialResults | null;
+  onResolve: (target: ResolveTarget) => void;
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
@@ -2182,20 +2311,53 @@ function OrderComparison({
       : [];
   return (
     <div>
-      <Dialog open={!!removeItem} onOpenChange={(open) => { if (!open && !removing) setRemoveItem(null); }}>
+      <Dialog
+        open={!!removeItem}
+        onOpenChange={(open) => {
+          if (!open && !removing) setRemoveItem(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove item from order?</DialogTitle>
-            <DialogDescription>{removeItem?.description} will be removed from this order, including its outstanding quantity. This does not record a delivery or delete the catalogue part or material-list entry. An item missing from a slip may still be on backorder.</DialogDescription>
+            <DialogDescription>
+              {removeItem?.description} will be removed from this order,
+              including its outstanding quantity. This does not record a
+              delivery or delete the catalogue part or material-list entry. An
+              item missing from a slip may still be on backorder.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" disabled={removing} onClick={() => setRemoveItem(null)}>Cancel</Button>
-            <Button variant="destructive" disabled={removing} onClick={async () => {
-              if (!removeItem) return;
-              setRemoving(true);
-              try { if (await run({action: "removeOrderItem", itemId: removeItem.id, fingerprint: detail.fingerprint, confirmed: true})) setRemoveItem(null); }
-              finally { setRemoving(false); }
-            }}>Remove from order</Button>
+            <Button
+              variant="outline"
+              disabled={removing}
+              onClick={() => setRemoveItem(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={removing}
+              onClick={async () => {
+                if (!removeItem) return;
+                setRemoving(true);
+                try {
+                  if (
+                    await run({
+                      action: "removeOrderItem",
+                      itemId: removeItem.id,
+                      fingerprint: detail.fingerprint,
+                      confirmed: true,
+                    })
+                  )
+                    setRemoveItem(null);
+                } finally {
+                  setRemoving(false);
+                }
+              }}
+            >
+              Remove from order
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -2204,7 +2366,7 @@ function OrderComparison({
           const open = openRow === key,
             live = lines.filter((x) => !x.line.ignored),
             status = lines
-              .map((x) => lineStatus(x.line, r))
+              .map((x) => lineStatus(x.line, r, item))
               .sort(
                 (x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y),
               )[0],
@@ -2240,14 +2402,31 @@ function OrderComparison({
           const resolved =
             !!item &&
             live.length > 0 &&
-            live.every(({ line }) => line.checked === true) &&
+            live.every(
+              ({ line }) =>
+                line.checked === true &&
+                resolutionBlockers(line, item, r.lines, r.kind).length === 0,
+            ) &&
             compareToOrder(
               item,
               live.map(({ line }) => line),
               byHand,
             )?.ok === true &&
             status !== "correction";
-          const complete = resolved || status === "approved";
+          const disposition = item ? r.orderResolutions?.[item.id] : undefined;
+          const complete =
+            resolved ||
+            status === "approved" ||
+            (!live.length &&
+              !!disposition &&
+              ["outstanding", "backordered"].includes(disposition.disposition));
+          const resolveLine =
+            live.find(
+              ({ line }) =>
+                !line.approved && !approvable(line, r.kind, item, r.lines),
+            )?.line ??
+            live.find(({ line }) => !line.approved)?.line ??
+            live[0]?.line;
           return (
             <li key={key} className={open ? "bg-muted/30" : undefined}>
               {/* The match number, bracketing the order and the slip it pairs. */}
@@ -2259,13 +2438,9 @@ function OrderComparison({
                   <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tl-md border-t border-l" />
                   <span
                     data-comparison-state={complete ? "complete" : "pending"}
-                    className={`mx-2 flex size-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${complete ? statusStyle.approved.badge : tone?.badge ?? "bg-muted text-muted-foreground"}`}
+                    className={`mx-2 flex size-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
                   >
-                    {complete ? (
-                      <CheckIcon className="size-5" />
-                    ) : (
-                      n + 1
-                    )}
+                    {complete ? <CheckIcon className="size-5" /> : n + 1}
                   </span>
                   <span className="border-muted-foreground/40 mt-5 h-2 flex-1 rounded-tr-md border-t border-r" />
                 </div>
@@ -2273,7 +2448,7 @@ function OrderComparison({
               {(showOthers ? copies : copies.slice(0, 1)).map((copy, c) => (
                 <div
                   key={copy.key}
-                  className={`relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pb-3 pt-2.5" : "pb-3 pt-1"}`}
+                  className={`relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1rem] grid-rows-[auto_1fr_auto_auto] gap-x-3 px-4 ${c ? "border-t border-dashed pt-2.5 pb-3" : "pt-1 pb-3"}`}
                 >
                   <div
                     className={`relative row-span-4 grid min-w-0 grid-rows-subgrid ${c ? "text-muted-foreground" : ""}`}
@@ -2286,7 +2461,7 @@ function OrderComparison({
                             type="button"
                             aria-label={`View material-list item: ${title}`}
                             onClick={() => showPreview({ kind: "item", item })}
-                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
                           >
                             {orderText}
                           </button>
@@ -2301,7 +2476,7 @@ function OrderComparison({
                             type="button"
                             aria-label={`View material-list item: ${title}`}
                             onClick={() => showPreview({ kind: "item", item })}
-                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
                           >
                             {orderText}
                           </button>
@@ -2328,9 +2503,19 @@ function OrderComparison({
                             ? `${receivingQuantity(due, item.unit)} still due`
                             : "All received"}
                           {item.sku && ` · ${item.sku}`}
-                          {c === 0 && !live.length && item.received === 0 && detail.canRemoveOrderItems && (
-                            <Button variant="outline" size="sm" className="relative z-10 mt-2" onClick={() => setRemoveItem(item)}>Remove from order</Button>
-                          )}
+                          {c === 0 &&
+                            !live.length &&
+                            item.received === 0 &&
+                            detail.canRemoveOrderItems && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="relative z-10 mt-2"
+                                onClick={() => setRemoveItem(item)}
+                              >
+                                Remove from order
+                              </Button>
+                            )}
                           {c === 0 && item.received > 0 && (
                             <ReceivedFrom
                               item={item}
@@ -2349,7 +2534,10 @@ function OrderComparison({
                     <p className={copyLabel}>
                       {copy.label}
                       {copy.reviewStatus && (
-                        <span aria-label={`Review status: ${copy.reviewStatus}`} className="text-muted-foreground ml-1.5 font-normal normal-case">
+                        <span
+                          aria-label={`Review status: ${copy.reviewStatus}`}
+                          className="text-muted-foreground ml-1.5 font-normal normal-case"
+                        >
                           · {copy.reviewStatus}
                         </span>
                       )}
@@ -2364,9 +2552,23 @@ function OrderComparison({
                     {copy.missing ? (
                       <>
                         <p className={`${copyText} text-muted-foreground`}>
-                          Not on the slip
+                          No slip line linked
                         </p>
-                        <span />
+                        {disposition ? (
+                          <p className="text-muted-foreground text-xs">
+                            {
+                              {
+                                outstanding: "Outstanding — still due",
+                                backordered: "Backordered — still due",
+                                "cancel-requested": "Cancellation requested",
+                                unresolved: "Still investigating",
+                              }[disposition.disposition]
+                            }
+                            {disposition.note && ` · ${disposition.note}`}
+                          </p>
+                        ) : (
+                          <span />
+                        )}
                       </>
                     ) : (
                       <>
@@ -2374,7 +2576,7 @@ function OrderComparison({
                           <button
                             type="button"
                             aria-label={`View packing-slip line: ${copy.description || title} (${copy.label})`}
-                            className="text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                            className="focus-visible:after:ring-ring text-left outline-none after:absolute after:inset-0 focus-visible:after:ring-2"
                             onClick={() => {
                               const fromTrial = trialReadings.filter(
                                 ({ reader }) => reader === copy.key,
@@ -2461,7 +2663,7 @@ function OrderComparison({
                       aria-label={`Review line: ${title}`}
                       aria-expanded={open}
                       onClick={() => setOpenRow(open ? null : key)}
-                      className="relative row-span-4 mt-0 h-8 w-6 -ml-1 rounded focus-visible:ring-2 focus-visible:ring-ring"
+                      className="focus-visible:ring-ring relative row-span-4 mt-0 -ml-1 h-8 w-6 rounded focus-visible:ring-2"
                     >
                       <ChevronDownIcon
                         aria-hidden
@@ -2473,6 +2675,17 @@ function OrderComparison({
                   )}
                 </div>
               ))}
+              <div className="flex justify-end px-4 pb-3">
+                <Button
+                  size="sm"
+                  variant={complete ? "outline" : "default"}
+                  onClick={() =>
+                    onResolve({ lineId: resolveLine?.id, itemId: item?.id })
+                  }
+                >
+                  {complete ? "Review resolution" : "Resolve"}
+                </Button>
+              </div>
               {live.flatMap((x) => {
                 const check = terraCheck(x.line, detail);
                 return check
@@ -2557,7 +2770,7 @@ function OrderComparison({
             )}
             {preview?.kind === "slip" &&
               (detail.review.versionId !== detail.document.currentVersionId ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   The source file changed. Review the new version before viewing
                   this line.
                 </p>
@@ -2565,7 +2778,7 @@ function OrderComparison({
                 <div className="space-y-4">
                   {preview.sources.map((source, i) => (
                     <div key={i} className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         Page {source.page}
                         {!source.box &&
                           " · Exact line position unavailable; showing the source page."}
@@ -2575,7 +2788,9 @@ function OrderComparison({
                         page={source.page}
                         box={source.box ?? { x: 0, y: 0, width: 1, height: 1 }}
                         header={
-                          source.box ? headerFor(detail, source.page) : undefined
+                          source.box
+                            ? headerFor(detail, source.page)
+                            : undefined
                         }
                         label={`Packing-slip source ${i + 1}, page ${source.page}`}
                         initiallyZoomed
@@ -2603,7 +2818,9 @@ function PartFitDialog({
   unit,
   onClose,
   onChoose,
+  inline = false,
 }: {
+  inline?: boolean;
   fit: PartFit | null;
   item: ReceiptOrderItem | undefined;
   unit: string;
@@ -2617,102 +2834,121 @@ function PartFitDialog({
   const change = !!fit?.rows.length,
     read = fit?.read ?? null,
     counted = fit && item ? receivingQuantity(fit.quantity, item.unit) : "";
-  return (
+  const Title = inline ? "h3" : DialogTitle;
+  const Description = inline ? "p" : DialogDescription;
+  const Header = inline ? "div" : DialogHeader;
+  const body = fit && item && (
+    <>
+      <Header className="space-y-2">
+        <Title className="font-semibold">
+          {change
+            ? "Update this part to match the slip?"
+            : inline
+              ? `Use ${counted} for review?`
+              : `Receive ${counted}?`}
+        </Title>
+        <Description className="text-muted-foreground text-sm">
+          {fit.reason}
+        </Description>
+      </Header>
+      {change && (
+        <div className="min-w-0 space-y-2 text-sm">
+          <p className="font-medium break-words">{item.description}</p>
+          <table className="w-full table-fixed text-left">
+            <thead className="text-muted-foreground text-xs">
+              <tr>
+                <th className="w-[34%] pb-1 font-normal">
+                  <span className="sr-only">Detail</span>
+                </th>
+                <th className="w-[24%] pb-1 font-normal">Now</th>
+                <th className="pb-1 font-normal">Change to</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fit.rows.map((r) => (
+                <tr key={r.label} className="border-t align-top">
+                  <th
+                    scope="row"
+                    className="text-muted-foreground py-2 pr-3 font-normal"
+                  >
+                    {r.label}
+                  </th>
+                  <td className="text-muted-foreground py-2 pr-3">
+                    {r.before}
+                  </td>
+                  <td className="py-2 font-medium break-words">{r.after}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-muted-foreground text-xs">
+            Next time, a slip like this one matches without asking.
+          </p>
+        </div>
+      )}
+      {fit.held && (
+        <p className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+          {fit.held}
+        </p>
+      )}
+      <div className="flex flex-col gap-2">
+        {change && (
+          <Button
+            onClick={() =>
+              onChoose({
+                fit: fit.update,
+                ...(read === null
+                  ? {}
+                  : { quantity: fit.quantity, unit: item.unit }),
+              })
+            }
+          >
+            <CheckIcon />
+            {inline
+              ? "Update part and save for review"
+              : read === null
+                ? "Update part and confirm"
+                : `Update part and receive ${counted}`}
+          </Button>
+        )}
+        {read === null ? (
+          <Button variant="outline" onClick={() => onChoose()}>
+            {inline ? "Save reading only" : "Confirm only"}
+          </Button>
+        ) : (
+          <Button
+            variant={change ? "outline" : "default"}
+            onClick={() =>
+              onChoose({ quantity: fit.quantity, unit: item.unit })
+            }
+          >
+            {!change && <CheckIcon />}
+            {inline
+              ? `Use ${counted} for review`
+              : change
+                ? `Receive ${counted} only`
+                : `Receive ${counted}`}
+          </Button>
+        )}
+        {read !== null && (
+          <Button variant="ghost" onClick={() => onChoose()}>
+            Keep {receivingQuantity(read, unit || item.unit)}
+          </Button>
+        )}
+      </div>
+    </>
+  );
+  return inline ? (
+    <section className="space-y-4 rounded border p-4">
+      {body}
+      <Button variant="ghost" onClick={onClose}>
+        Back to correction
+      </Button>
+    </section>
+  ) : (
     <Dialog open={!!fit && !!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
-        {fit && item && (
-          <>
-            <DialogHeader>
-              <DialogTitle>
-                {change
-                  ? "Update this part to match the slip?"
-                  : `Receive ${counted}?`}
-              </DialogTitle>
-              <DialogDescription>{fit.reason}</DialogDescription>
-            </DialogHeader>
-            {change && (
-              <div className="min-w-0 space-y-2 text-sm">
-                <p className="font-medium break-words">{item.description}</p>
-                <table className="w-full table-fixed text-left">
-                  <thead className="text-muted-foreground text-xs">
-                    <tr>
-                      <th className="w-[34%] pb-1 font-normal">
-                        <span className="sr-only">Detail</span>
-                      </th>
-                      <th className="w-[24%] pb-1 font-normal">Now</th>
-                      <th className="pb-1 font-normal">Change to</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fit.rows.map((r) => (
-                      <tr key={r.label} className="border-t align-top">
-                        <th
-                          scope="row"
-                          className="text-muted-foreground py-2 pr-3 font-normal"
-                        >
-                          {r.label}
-                        </th>
-                        <td className="text-muted-foreground py-2 pr-3">
-                          {r.before}
-                        </td>
-                        <td className="py-2 font-medium break-words">
-                          {r.after}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-muted-foreground text-xs">
-                  Next time, a slip like this one matches without asking.
-                </p>
-              </div>
-            )}
-            {fit.held && (
-              <p className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-                {fit.held}
-              </p>
-            )}
-            <div className="flex flex-col gap-2">
-              {change && (
-                <Button
-                  onClick={() =>
-                    onChoose({
-                      fit: fit.update,
-                      ...(read === null
-                        ? {}
-                        : { quantity: fit.quantity, unit: item.unit }),
-                    })
-                  }
-                >
-                  <CheckIcon />
-                  {read === null
-                    ? "Update part and confirm"
-                    : `Update part and receive ${counted}`}
-                </Button>
-              )}
-              {read === null ? (
-                <Button variant="outline" onClick={() => onChoose()}>
-                  Confirm only
-                </Button>
-              ) : (
-                <Button
-                  variant={change ? "outline" : "default"}
-                  onClick={() =>
-                    onChoose({ quantity: fit.quantity, unit: item.unit })
-                  }
-                >
-                  {!change && <CheckIcon />}
-                  {change ? `Receive ${counted} only` : `Receive ${counted}`}
-                </Button>
-              )}
-              {read !== null && (
-                <Button variant="ghost" onClick={() => onChoose()}>
-                  Keep {receivingQuantity(read, unit || item.unit)}
-                </Button>
-              )}
-            </div>
-          </>
-        )}
+        {body}
       </DialogContent>
     </Dialog>
   );
@@ -2726,6 +2962,7 @@ function LineReview({
   jobId,
   run,
   onDone,
+  resolveMode = false,
 }: {
   line: ReceivingLine;
   index: number;
@@ -2733,6 +2970,7 @@ function LineReview({
   jobId: string;
   run: (a: Action) => Promise<boolean>;
   onDone: () => void;
+  resolveMode?: boolean;
 }) {
   const [name, setName] = useState(l.description),
     [kind, setKind] = useState(l.kind ?? ""),
@@ -2753,7 +2991,7 @@ function LineReview({
     [reason, setReason] = useState(""),
     // Lines missing a quantity or an order part open straight into editing.
     [editing, setEditing] = useState(
-      !l.orderItemId || l.quantity === null,
+      resolveMode || !l.orderItemId || l.quantity === null,
     );
   const a = detail.document.packingSlipAnalysis,
     source =
@@ -2776,13 +3014,16 @@ function LineReview({
       description: name,
       sku,
       quantity: over.quantity ?? (quantity === "" ? null : Number(quantity)),
-      ordered: over.quantity !== undefined
-        ? convertedOrderedQuantity(
-            ordered === "" ? null : Number(ordered),
-            quantity === "" ? null : Number(quantity),
-            over.quantity,
-          )
-        : ordered === "" ? null : Number(ordered),
+      ordered:
+        over.quantity !== undefined
+          ? convertedOrderedQuantity(
+              ordered === "" ? null : Number(ordered),
+              quantity === "" ? null : Number(quantity),
+              over.quantity,
+            )
+          : ordered === ""
+            ? null
+            : Number(ordered),
       unit: over.unit ?? unit,
       unitPrice: price === "" ? null : Number(price),
       orderItemId: item || null,
@@ -2815,12 +3056,23 @@ function LineReview({
           )
         : null;
     if (found) setFit(found);
-    else if (await save(true)) onDone();
+    else if (await save(!resolveMode)) onDone();
   };
   const finish = async (over?: Parameters<typeof save>[1]) => {
     setFit(null);
-    if (await save(true, over)) onDone();
+    if (await save(!resolveMode, over)) onDone();
   };
+  if (resolveMode && fit)
+    return (
+      <PartFitDialog
+        fit={fit}
+        item={chosen}
+        unit={unit}
+        inline
+        onClose={() => setFit(null)}
+        onChoose={(over) => void finish(over)}
+      />
+    );
   if (l.ignored)
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
@@ -2844,273 +3096,290 @@ function LineReview({
     );
   return (
     <div className="space-y-3 px-4 pb-4">
-          {sourceBox && (
-            <SlipLineImage
-              url={detail.sourceUrl}
-              page={l.page}
-              box={sourceBox}
-              header={headerFor(detail, l.page)}
-              label={`Source for line ${index + 1}`}
-            />
-          )}
-          {terra ? (
-            <div className="space-y-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-              <p>{terra.text}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  void run({
-                    action: "ignore",
-                    lineId: l.id,
-                    reason: "Not a product line.",
-                  })
-                }
+      {sourceBox && (
+        <SlipLineImage
+          url={detail.sourceUrl}
+          page={l.page}
+          box={sourceBox}
+          header={headerFor(detail, l.page)}
+          label={`Source for line ${index + 1}`}
+        />
+      )}
+      {terra ? (
+        <div className="space-y-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+          <p>{terra.text}</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void run({
+                action: "ignore",
+                lineId: l.id,
+                reason: "Not a product line.",
+              })
+            }
+          >
+            Not a product, leave it out
+          </Button>
+        </div>
+      ) : (
+        l.issues.length > 0 &&
+        !l.checked &&
+        !l.autoConfirmed && (
+          <p className="text-sm">
+            {sourceBox
+              ? "The reading is unsure. Check the slip image above."
+              : "The reading is unsure. Check it against the slip."}
+          </p>
+        )
+      )}
+      {!l.orderItemId &&
+        !l.approved &&
+        detail.canCreate &&
+        detail.document.packingSlip && (
+          <AddToList line={l} detail={detail} jobId={jobId} run={run} />
+        )}
+      {editing && (
+        <div className="space-y-3 border-t pt-3">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
+            <Label name="Matched order part">
+              <select
+                className={field}
+                value={item}
+                disabled={!!l.approved}
+                onChange={(e) => {
+                  setItem(e.target.value);
+                  const i = detail.items.find((i) => i.id === e.target.value);
+                  if (i) setUnit(i.unit);
+                  setChecked(false);
+                }}
               >
-                Not a product, leave it out
-              </Button>
-            </div>
-          ) : l.issues.length > 0 && !l.checked && !l.autoConfirmed && (
-            <p className="text-sm">
-              {sourceBox
-                ? "The reading is unsure. Check the slip image above."
-                : "The reading is unsure. Check it against the slip."}
-            </p>
-          )}
-          {!l.orderItemId &&
-            !l.approved &&
-            detail.canCreate &&
-            detail.document.packingSlip && (
-              <AddToList line={l} detail={detail} jobId={jobId} run={run} />
-            )}
-          {editing && (
-            <div className="space-y-3 border-t pt-3">
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_7rem]">
-                <Label name="Matched order part">
-                  <select
-                    className={field}
-                    value={item}
-                    disabled={!!l.approved}
-                    onChange={(e) => {
-                      setItem(e.target.value);
-                      const i = detail.items.find(
-                        (i) => i.id === e.target.value,
-                      );
-                      if (i) setUnit(i.unit);
-                      setChecked(false);
-                    }}
-                  >
-                    <option value="">Unmatched</option>
-                    {detail.items.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.description} · due{" "}
-                        {receivingQuantity(Math.max(0, qtyRound(i.ordered - i.received)), i.unit)}
-                      </option>
-                    ))}
-                  </select>
-                </Label>
-                <Label
-                  name={
-                    (kind || detail.review.kind) === "delivery"
-                      ? "Quantity"
-                      : "Return quantity"
-                  }
-                >
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="any"
-                    className={field}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                  />
-                </Label>
-                <Label name="Unit (Optional)">
-                  <input
-                    className={field}
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder={detail.items.find((i) => i.id === item)?.unit ?? "Order unit"}
-                  />
-                </Label>
-              </div>
-              {/* Without an order, a chosen part rebuilds one below. */}
-              {!l.orderItemId &&
-                detail.canCreate &&
-                !detail.document.packingSlip && (
-                  <div className="-mt-1 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="-ml-3"
-                      onClick={() => setPart(!part)}
-                    >
-                      <SearchIcon />
-                      Find or create part
-                    </Button>
-                  </div>
-                )}
-              {part && (
-                <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
-              )}
-              <details className="group text-sm">
-                <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-                  More fields
-                  <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-                </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Label name="Description">
-                    <input
-                      className={field}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </Label>
-                  <Label name="Line type">
-                    <select
-                      className={field}
-                      value={kind}
-                      onChange={(e) =>
-                        setKind(e.target.value as ReceiptKind | "")
-                      }
-                    >
-                      <option value="">Use document type</option>
-                      <option value="delivery">Delivery</option>
-                      <option value="return-replacement">
-                        Return for replacement
-                      </option>
-                      <option value="return-credit">Return for credit</option>
-                    </select>
-                  </Label>
-                  <Label name="Supplier code">
-                    <input
-                      className={field}
-                      value={sku}
-                      onChange={(e) => setSku(e.target.value)}
-                    />
-                  </Label>
-                  <Label name="Printed ordered quantity">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className={field}
-                      value={ordered}
-                      onChange={(e) => setOrdered(e.target.value)}
-                    />
-                  </Label>
-                  <Label name="Price per order unit (optional)">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className={field}
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                    />
-                  </Label>
-                  {(!l.approved || l.approved.quantity === 0) && (
-                    <div className="flex flex-wrap gap-2 sm:col-span-2">
-                      <input
-                        aria-label="Reason for excluding line"
-                        className={`${field} flex-1 basis-56`}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder="Other reason to leave it out: totals, duplicate…"
-                      />
-                      <Button
-                        variant="outline"
-                        className="h-11"
-                        disabled={reason.trim().length < 3}
-                        onClick={() =>
-                          void run({ action: "ignore", lineId: l.id, reason })
-                        }
-                      >
-                        Exclude with reason
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </details>
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button disabled={!complete} onClick={() => void confirm()}>
-              <CheckIcon />
-              {editing ? "Save and confirm" : "Looks right"}
-            </Button>
-            {editing ? (
-              <Button variant="outline" onClick={() => void save(checked)}>
-                Save changes
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                Change
-              </Button>
-            )}
-            {(!l.approved || l.approved.quantity === 0) && (
-              <Button
-                variant="ghost"
-                className="text-muted-foreground ml-auto"
-                onClick={() =>
-                  void run({
-                    action: "ignore",
-                    lineId: l.id,
-                    reason: "Not delivered.",
-                  })
+                <option value="">Unmatched</option>
+                {detail.items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.description} · due{" "}
+                    {receivingQuantity(
+                      Math.max(0, qtyRound(i.ordered - i.received)),
+                      i.unit,
+                    )}
+                  </option>
+                ))}
+              </select>
+            </Label>
+            <Label
+              name={
+                (kind || detail.review.kind) === "delivery"
+                  ? "Quantity"
+                  : (kind || detail.review.kind) === "credit-only"
+                    ? "Credited quantity"
+                    : "Return quantity"
+              }
+            >
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                className={field}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </Label>
+            <Label name="Unit (Optional)">
+              <input
+                className={field}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder={
+                  detail.items.find((i) => i.id === item)?.unit ?? "Order unit"
                 }
-              >
-                Not delivered
-              </Button>
-            )}
+              />
+            </Label>
           </div>
-          <PartFitDialog
-            fit={fit}
-            item={chosen}
-            unit={unit}
-            onClose={() => setFit(null)}
-            onChoose={(over) => void finish(over)}
-          />
-          {!complete && (
-            <p className="text-muted-foreground -mt-1 text-xs">
-              Match a part and enter the quantity to confirm this line.
-            </p>
+          {/* Without an order, a chosen part rebuilds one below. */}
+          {!l.orderItemId &&
+            detail.canCreate &&
+            !detail.document.packingSlip && (
+              <div className="-mt-1 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="-ml-3"
+                  onClick={() => setPart(!part)}
+                >
+                  <SearchIcon />
+                  Find or create part
+                </Button>
+              </div>
+            )}
+          {part && (
+            <PartDraft line={l} detail={detail} jobId={jobId} run={run} />
           )}
           <details className="group text-sm">
             <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-              Reading notes
-              {l.issues.length > 0 && ` (${l.issues.length})`}
+              More fields
               <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
             </summary>
-            <div className="mt-2 space-y-2">
-              {l.issues.length > 0 && (
-                <ul className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-                  {l.issues.map((s, i) => (
-                    <li key={i} className="flex gap-2">
-                      <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Label name="Description">
+                <input
+                  className={field}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Label>
+              <Label name="Line type">
+                <select
+                  className={field}
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as ReceiptKind | "")}
+                >
+                  <option value="">Use document type</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="return-replacement">
+                    Return for replacement
+                  </option>
+                  <option value="return-credit">Return for credit</option>
+                  <option value="credit-only">
+                    Credit only (no physical return)
+                  </option>
+                </select>
+              </Label>
+              <Label name="Supplier code">
+                <input
+                  className={field}
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                />
+              </Label>
+              <Label name="Printed ordered quantity">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  value={ordered}
+                  onChange={(e) => setOrdered(e.target.value)}
+                />
+              </Label>
+              <Label name="Price per order unit (optional)">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={field}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </Label>
+              {(!l.approved || l.approved.quantity === 0) && (
+                <div className="flex flex-wrap gap-2 sm:col-span-2">
+                  <input
+                    aria-label="Reason for excluding line"
+                    className={`${field} flex-1 basis-56`}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Other reason to leave it out: totals, duplicate…"
+                  />
+                  <Button
+                    variant="outline"
+                    className="h-11"
+                    disabled={reason.trim().length < 3}
+                    onClick={() =>
+                      void run({ action: "ignore", lineId: l.id, reason })
+                    }
+                  >
+                    Exclude with reason
+                  </Button>
+                </div>
               )}
-              <p className="text-muted-foreground text-xs">
-                Line {index + 1} · page {l.page} · “{l.evidence}”
-                {l.readingSource && (
-                  <span title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
-                    {" · "}
-                    {l.readingSource.reader === "terra"
-                      ? "Terra assisted"
-                      : l.readingSource.reader === "jev"
-                        ? "Jev image reading"
-                        : "OCR reading"}
-                    {l.readingSource.confidence &&
-                      ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
-                  </span>
-                )}
-              </p>
             </div>
           </details>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button disabled={!complete} onClick={() => void confirm()}>
+          <CheckIcon />
+          {resolveMode
+            ? "Save reading for review"
+            : editing
+              ? "Save and confirm"
+              : "Looks right"}
+        </Button>
+        {editing ? (
+          <Button
+            variant="outline"
+            onClick={() => void save(resolveMode ? false : checked)}
+          >
+            Save changes
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => setEditing(true)}>
+            Change
+          </Button>
+        )}
+        {!resolveMode && (!l.approved || l.approved.quantity === 0) && (
+          <Button
+            variant="ghost"
+            className="text-muted-foreground ml-auto"
+            onClick={() =>
+              void run({
+                action: "ignore",
+                lineId: l.id,
+                reason: "Not delivered.",
+              })
+            }
+          >
+            Not delivered
+          </Button>
+        )}
+      </div>
+      <PartFitDialog
+        fit={fit}
+        item={chosen}
+        unit={unit}
+        onClose={() => setFit(null)}
+        onChoose={(over) => void finish(over)}
+      />
+      {!complete && (
+        <p className="text-muted-foreground -mt-1 text-xs">
+          Match a part and enter the quantity to confirm this line.
+        </p>
+      )}
+      <details className="group text-sm">
+        <summary className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+          Reading notes
+          {l.issues.length > 0 && ` (${l.issues.length})`}
+          <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div className="mt-2 space-y-2">
+          {l.issues.length > 0 && (
+            <ul className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              {l.issues.map((s, i) => (
+                <li key={i} className="flex gap-2">
+                  <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Line {index + 1} · page {l.page} · “{l.evidence}”
+            {l.readingSource && (
+              <span title="Confidence estimates are retained with the original reading; they are not measured accuracy or approval.">
+                {" · "}
+                {l.readingSource.reader === "terra"
+                  ? "Terra assisted"
+                  : l.readingSource.reader === "jev"
+                    ? "Jev image reading"
+                    : "OCR reading"}
+                {l.readingSource.confidence &&
+                  ` · product ${Math.round(l.readingSource.confidence.part * 100)}% · quantity ${Math.round(l.readingSource.confidence.quantity * 100)}% confidence`}
+              </span>
+            )}
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
@@ -3159,7 +3428,12 @@ function PartChoice({
   onAdd: (confirmed?: boolean) => void;
 }) {
   const [confirm, setConfirm] = useState(false);
-  const needsConfirmation = receiptUnit(line.unit) === "ea" && !!p.piecesPerPack && p.piecesPerPack > 1 && !!p.unit && receiptUnit(p.unit) !== "ea";
+  const needsConfirmation =
+    receiptUnit(line.unit) === "ea" &&
+    !!p.piecesPerPack &&
+    p.piecesPerPack > 1 &&
+    !!p.unit &&
+    receiptUnit(p.unit) !== "ea";
   return (
     <li className="flex items-center gap-3 px-3 py-2">
       {p.photoUrl ? (
@@ -3182,7 +3456,7 @@ function PartChoice({
         variant={primary ? "default" : "outline"}
         aria-label={`Add ${p.name} to the list`}
         disabled={disabled}
-        onClick={() => needsConfirmation ? setConfirm(true) : onAdd()}
+        onClick={() => (needsConfirmation ? setConfirm(true) : onAdd())}
       >
         <PlusIcon />
         Add to list
@@ -3192,18 +3466,28 @@ function PartChoice({
           <DialogHeader>
             <DialogTitle>Confirm what “each” means</DialogTitle>
             <DialogDescription>
-              {p.name}: one {p.unit} contains {p.piecesPerPack} {p.individualUnit ?? "pieces"}.
-              Does 1 {line.unit ?? "EA"} on the slip mean one complete {p.unit}?
+              {p.name}: one {p.unit} contains {p.piecesPerPack}{" "}
+              {p.individualUnit ?? "pieces"}. Does 1 {line.unit ?? "EA"} on the
+              slip mean one complete {p.unit}?
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm">
             Ordered: {line.ordered ?? line.quantity ?? "not entered"} {p.unit}.
-            Delivered: {line.quantity ?? "not entered"} {p.unit}.
-            The counts stay the same. You will still review and approve the delivery.
+            Delivered: {line.quantity ?? "not entered"} {p.unit}. The counts
+            stay the same. You will still review and approve the delivery.
           </p>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button onClick={() => { setConfirm(false); onAdd(true); }}>Yes, add as {p.unit}</Button>
+            <Button variant="outline" onClick={() => setConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setConfirm(false);
+                onAdd(true);
+              }}
+            >
+              Yes, add as {p.unit}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

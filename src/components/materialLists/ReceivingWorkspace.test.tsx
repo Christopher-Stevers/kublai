@@ -26,11 +26,25 @@ vi.mock("~/components/jobs/documents/DocumentPdfPreview", () => ({
   DocumentPdfPreview: () => <div>Source PDF</div>,
 }));
 vi.mock("./SlipLineImage", () => ({
-  SlipLineImage: ({page, box, initiallyZoomed}: {page: number; box: unknown; initiallyZoomed?: boolean}) =>
-    <div role="img" aria-label={`Slip crop page ${page}`} data-box={JSON.stringify(box)} data-zoomed={String(initiallyZoomed)} />,
+  SlipLineImage: ({
+    page,
+    box,
+    initiallyZoomed,
+  }: {
+    page: number;
+    box: unknown;
+    initiallyZoomed?: boolean;
+  }) => (
+    <div
+      role="img"
+      aria-label={`Slip crop page ${page}`}
+      data-box={JSON.stringify(box)}
+      data-zoomed={String(initiallyZoomed)}
+    />
+  ),
 }));
 vi.mock("~/hooks/use-replicache-material-list", () => ({
-  useReplicacheMaterialList: () => ({items: [], materialList: null}),
+  useReplicacheMaterialList: () => ({ items: [], materialList: null }),
   useReplicacheSyncing: () => false,
   resolveReplicacheSyncStatus: () => "synced",
 }));
@@ -309,7 +323,9 @@ it("confirms the matched order in one tap and only then compares lines", async (
 });
 it("leaves out a line that was not delivered in one tap", async () => {
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Review line: Valve" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review line: Valve" }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Not delivered" }));
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({
@@ -374,19 +390,25 @@ it("lists every order item beside the slip reading and its reader", async () => 
   ).toEqual(["Valve", "Elbow", "No matching part"]);
   const valve = screen.getByRole("heading", { name: "Valve" }).closest("li")!;
   expect(valve).toHaveTextContent("ValveOrdered10Received28 still due");
+  expect(
+    within(valve).getByRole("group", { name: "Active saved reading reading" }),
+  ).toHaveTextContent("Received6");
+  fireEvent.click(within(valve).getByRole("button", { name: /other reader/ }));
   const terra = within(valve).getByRole("group", { name: "Terra 6.1 reading" });
   expect(terra).toHaveTextContent("98%");
   expect(terra).toHaveTextContent("Received6");
   expect(terra).toHaveTextContent("2 short");
   const elbow = screen.getByRole("heading", { name: "Elbow" }).closest("li")!;
   expect(elbow).toHaveTextContent("4 still due");
-  expect(elbow).toHaveTextContent("Not on the slip");
+  expect(elbow).toHaveTextContent("No slip line linked");
   const pipe = screen
     .getByRole("heading", { name: "Unclear pipe" })
     .closest("li")!;
   expect(pipe).toHaveTextContent("Not on the order");
   expect(pipe).toHaveTextContent("Not read");
-  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review line: Unclear pipe" }),
+  );
   expect(
     screen.getByText("The reading is unsure. Check it against the slip."),
   ).toBeInTheDocument();
@@ -434,7 +456,9 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
   };
   Object.assign(state, { canEditParts: true, orderParts: { item: part } });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   const ask = await screen.findByRole("dialog", {
     name: "Update this part to match the slip?",
@@ -468,7 +492,9 @@ it("offers to set a part's pack size when the slip counts pieces", async () => {
   cleanup();
   Object.assign(state, { canEditParts: false });
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /^Review line: HEX NUT GR2/ }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
   const read = await screen.findByRole("dialog", { name: "Receive 1 box?" });
   fireEvent.click(within(read).getByRole("button", { name: "Keep 2500 box" }));
@@ -635,7 +661,9 @@ it("lists slips to review with one next step each, suggested orders first", asyn
     "true",
   );
   expect(screen.queryByText(/Reader comparison/)).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Refresh receiving queue" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Refresh receiving queue" }),
+  ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "All" }));
   expect(rows()).toHaveLength(3);
   expect(rows()[2]).toHaveTextContent("Done");
@@ -702,11 +730,16 @@ it("shows every reader's part match and quantity confidence", async () => {
     within(valve)
       .getAllByRole("group")
       .map((g) => g.textContent);
-  // The most confident reader first; the others behind one toggle.
-  expect(readers()).toEqual(["Terra 6.197%ValveOrdered—Received62 short2 other readers"]);
-  fireEvent.click(within(valve).getByRole("button", { name: /2 other readers/ }));
+  // Active saved evidence first; alternative scores cannot silently change the receipt.
   expect(readers()).toEqual([
-    "Terra 6.197%ValveOrdered—Received62 shortHide other readers",
+    "Active saved readingValveOrdered10Received62 short3 other readers",
+  ]);
+  fireEvent.click(
+    within(valve).getByRole("button", { name: /3 other readers/ }),
+  );
+  expect(readers()).toEqual([
+    "Active saved readingValveOrdered10Received62 shortHide other readers",
+    "Terra 6.197%ValveOrdered—Received62 short",
     "Jev Image80%ValveOrdered—Received62 short",
     "OCR only48%ValveOrdered—Received53 short",
   ]);
@@ -726,13 +759,14 @@ it("says when Terra found no product on a row and leaves it out in one tap", asy
   const pipe = (
     await screen.findByRole("heading", { name: "Unclear pipe" })
   ).closest("li")!;
+  fireEvent.click(within(pipe).getByRole("button", { name: /other reader/ }));
   expect(
     within(pipe).getByRole("group", { name: "Jev Image reading" }),
-  ).toHaveTextContent(
-    "Jev Image63%Unclear pipeOrdered—ReceivedNot read",
-  );
+  ).toHaveTextContent("Jev Image63%Unclear pipeOrdered—ReceivedNot read");
   expect(pipe).toHaveTextContent("Terra 6.1 found no product here");
-  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review line: Unclear pipe" }),
+  );
   fireEvent.click(
     screen.getByRole("button", { name: "Not a product, leave it out" }),
   );
@@ -862,7 +896,9 @@ it("adds the likely catalogue part to the material list in one tap", async () =>
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);
   expect(await screen.findByText(/Likely Copper pipe/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review line: Unclear pipe" }),
+  );
   expect(screen.getByText(/puts it on Level 3 with 3 ordered/)).toBeVisible();
   const likely = screen.getByRole("list", { name: "Likely catalogue parts" });
   expect(within(likely).getByText("Same supplier code")).toBeVisible();
@@ -882,27 +918,52 @@ it("adds the likely catalogue part to the material list in one tap", async () =>
 it("confirms EA means one complete pipe length before adding it", async () => {
   notOnOrder(1);
   state.review.lines[1]!.unit = "EA";
-  Object.assign((state as typeof state & { likely: Record<string, Array<Record<string, unknown>>> }).likely["1"]![0]!, {
-    unit: "length", piecesPerPack: 12, individualUnit: "ft",
-  });
+  Object.assign(
+    (
+      state as typeof state & {
+        likely: Record<string, Array<Record<string, unknown>>>;
+      }
+    ).likely["1"]![0]!,
+    {
+      unit: "length",
+      piecesPerPack: 12,
+      individualUnit: "ft",
+    },
+  );
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
-  fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
-  const dialog = await screen.findByRole("dialog", { name: "Confirm what “each” means" });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review line: Unclear pipe" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Add Copper pipe to the list" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Confirm what “each” means",
+  });
   expect(dialog).toHaveTextContent("one length contains 12 ft");
   expect(dialog).toHaveTextContent("Delivered: 1 length");
   expect(posts).toHaveLength(0);
   fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
   expect(posts).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Add Copper pipe to the list" }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Yes, add as length" }));
   await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({ action: "part", partId: "pipe", unit: "length", piecesPerPack: 12, packageUnitConfirmed: true });
+  expect(posts[0]).toMatchObject({
+    action: "part",
+    partId: "pipe",
+    unit: "length",
+    piecesPerPack: 12,
+    packageUnitConfirmed: true,
+  });
 });
 it("adds a new part to ForemanHQ and the material list together", async () => {
   notOnOrder(3);
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review line: Unclear pipe" }),
+  );
   const add = screen.getByRole("button", { name: "New part in ForemanHQ" });
   fireEvent.click(add);
   expect(add).toHaveAttribute("aria-expanded", "true");
@@ -922,7 +983,9 @@ it("adds a new part to ForemanHQ and the material list together", async () => {
 it("asks for the quantity before a part goes on the list", async () => {
   notOnOrder(null);
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Review line: Unclear pipe" }),
+  );
   expect(
     screen.getByText("Enter the quantity that came below and save it first."),
   ).toBeVisible();
@@ -999,7 +1062,6 @@ it("folds line by line matching once every line is approved or excluded", async 
   expect(within(step).queryByRole("heading", { name: "Valve" })).toBeNull();
 });
 
-
 it("includes an auto-confirmed flagged line in review without posting on load", async () => {
   Object.assign(state.review.lines[0]!, {
     checked: false,
@@ -1021,7 +1083,6 @@ it("includes an auto-confirmed flagged line in review without posting on load", 
     expect(posts[0]).toMatchObject({ action: "approve", lineIds: ["0"] }),
   );
 });
-
 
 it("opens the material-list item from the left column and closes without editing receipts", async () => {
   Object.assign(state.items[0]!, { sku: "V123" });
@@ -1112,19 +1173,29 @@ it("completes a matching comparison after Looks right, before receiving approval
   const originalFetch = fetchMock.getMockImplementation()!;
   fetchMock.mockImplementation(async (url, opts) => {
     if (opts?.method === "POST") {
-      const body = JSON.parse(typeof opts.body === "string" ? opts.body : "{}") as Record<string, unknown>;
+      const body = JSON.parse(
+        typeof opts.body === "string" ? opts.body : "{}",
+      ) as Record<string, unknown>;
       if (body.action === "line")
-        Object.assign(state.review.lines[0]!, { checked: body.checked === true });
+        Object.assign(state.review.lines[0]!, {
+          checked: body.checked === true,
+        });
     }
     return originalFetch(url, opts);
   });
   render(<ReceivingWorkspace jobId="job" />);
-  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
   const circle = () => row.querySelector("[data-comparison-state]")!;
   expect(circle()).toHaveAttribute("data-comparison-state", "pending");
-  fireEvent.click(within(row).getByRole("button", { name: "Review line: Valve" }));
+  fireEvent.click(
+    within(row).getByRole("button", { name: "Review line: Valve" }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Looks right" }));
-  await waitFor(() => expect(circle()).toHaveAttribute("data-comparison-state", "complete"));
+  await waitFor(() =>
+    expect(circle()).toHaveAttribute("data-comparison-state", "complete"),
+  );
   expect(circle()).toHaveClass("bg-emerald-600");
   expect(posts).toHaveLength(1);
   expect(posts[0]).toMatchObject({ action: "line", checked: true });
@@ -1142,9 +1213,10 @@ it.each([
   render(<ReceivingWorkspace jobId="job" />);
   const headings = await screen.findAllByRole("heading", { name: "Valve" });
   for (const heading of headings)
-    expect(heading.closest("li")!.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "pending");
+    expect(
+      heading.closest("li")!.querySelector("[data-comparison-state]"),
+    ).toHaveAttribute("data-comparison-state", "pending");
 });
-
 
 it.each([
   { checked: true, trial: false },
@@ -1218,18 +1290,81 @@ it("labels a reviewer-added line without model provenance as a manual review", a
 });
 
 it("confirms removal of an unmatched order item without recording delivery", async () => {
-  Object.assign(state, {canRemoveOrderItems: true});
+  Object.assign(state, { canRemoveOrderItems: true });
   state.items[0]!.received = 0;
   state.review.lines[0]!.orderItemId = null;
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(await screen.findByRole("button", {name: "Remove from order"}));
-  let dialog = await screen.findByRole("dialog", {name: "Remove item from order?"});
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Remove from order" }),
+  );
+  let dialog = await screen.findByRole("dialog", {
+    name: "Remove item from order?",
+  });
   expect(posts).toHaveLength(0);
-  fireEvent.click(within(dialog).getByRole("button", {name: "Cancel"}));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
   expect(posts).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", {name: "Remove from order"}));
-  dialog = await screen.findByRole("dialog", {name: "Remove item from order?"});
-  fireEvent.click(within(dialog).getByRole("button", {name: "Remove from order"}));
+  fireEvent.click(screen.getByRole("button", { name: "Remove from order" }));
+  dialog = await screen.findByRole("dialog", {
+    name: "Remove item from order?",
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Remove from order" }),
+  );
   await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0]).toMatchObject({action: "removeOrderItem", itemId: "item", fingerprint: "current-totals", confirmed: true});
+  expect(posts[0]).toMatchObject({
+    action: "removeOrderItem",
+    itemId: "item",
+    fingerprint: "current-totals",
+    confirmed: true,
+  });
+});
+
+it("opens Resolve in the main window and header back returns to lines", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: "Resolve" }))[0]!,
+  );
+  expect(
+    screen.getByRole("region", { name: "Resolve packing-slip line" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(posts).toEqual([]);
+  runHeaderBackOverride();
+  await screen.findByRole("region", { name: "Step 3: Line By Line Matching" });
+  expect(
+    screen.queryByRole("region", { name: "Resolve packing-slip line" }),
+  ).toBeNull();
+});
+
+it("saves a Resolve correction for review without confirming or approving", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: "Resolve" }))[0]!,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Correct reading" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save reading for review" }),
+  );
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    action: "line",
+    lineId: "0",
+    checked: false,
+  });
+  expect(posts.some((p) => p.action === "approve")).toBe(false);
+});
+
+it("keeps unresolved absent-order-item notes in the review count", async () => {
+  Object.assign(state.review, {
+    orderResolutions: {
+      absent: {
+        disposition: "unresolved",
+        note: "Ask supplier",
+        by: "user",
+        at: "now",
+      },
+    },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText("2 still to review");
 });

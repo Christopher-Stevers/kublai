@@ -38,7 +38,7 @@ export function draftReceiving(
     review.deliveryNumber = header.deliveryNumber ?? review.deliveryNumber;
     review.supplierOrderNumber = header.supplierOrderNumber ?? review.supplierOrderNumber;
     review.deliveryDate = header.deliveryDate ?? review.deliveryDate;
-    review.kind = header.kind === "credit" ? "return-credit" : header.kind === "return" ? "return-replacement" : review.kind;
+    review.kind = header.kind === "credit" ? "credit-only" : header.kind === "return" ? "return-replacement" : review.kind;
     review.kindConfirmed = false;
     review.orderConfirmed = false;
     review.documentChecked = false;
@@ -46,7 +46,7 @@ export function draftReceiving(
   }
   const table = readSlipTable(rows);
   if (
-    review.kind !== "return-credit" &&
+    review.kind !== "return-credit" && review.kind !== "credit-only" &&
     table.lines.some(
       (l) => (readQuantity(l.cells.shipped ?? l.cells.qty).value ?? 0) < 0,
     )
@@ -70,7 +70,7 @@ export function draftReceiving(
       line.issues = [
         ...new Set([
           ...line.issues,
-          "Confirm the returned quantity and whether replacement or credit is expected.",
+          review.kind === "credit-only" ? "Confirm the credited quantity. A credit does not record a physical return." : "Confirm the returned quantity and whether replacement or credit is expected.",
         ]),
       ];
   }

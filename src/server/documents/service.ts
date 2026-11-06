@@ -1,4 +1,5 @@
 import { userCan } from "~/server/auth/permissions";
+import { pendingOrderResolutions, receivedLineQuantity } from "~/lib/receiving-resolution";
 import {
   appendPackingSlip,
   appendUnmatchedSlip,
@@ -77,7 +78,7 @@ export async function packingSlipDocuments(
       createdAt: d.createdAt,
       packingSlip: d.packingSlip,
       packingSlipAnalysis: d.packingSlipAnalysis,
-      receivingReview: d.receivingReview ? {pending:d.receivingReview.lines.filter(l=>!l.ignored&&(l.approved?.quantity!==l.quantity||l.approved.kind!==(l.kind??d.receivingReview!.kind))).length,complete:!!d.receivingReview.documentChecked&&!!d.receivingReview.orderConfirmed,retired:!!d.receivingReview.retiredBy||d.receivingReview.duplicateDecision?.action==='supporting'} : d.packingSlipAnalysis ? {pending:d.packingSlipAnalysis.applied?0:d.packingSlipAnalysis.lines.length,complete:!!d.packingSlipAnalysis.applied,retired:false}:undefined,
+      receivingReview: d.receivingReview ? {pending:d.receivingReview.lines.filter(l=>!l.ignored&&(l.approved?.quantity!==receivedLineQuantity(l)||l.approved.kind!==(l.kind??d.receivingReview!.kind))).length+pendingOrderResolutions(d.receivingReview),complete:!!d.receivingReview.documentChecked&&!!d.receivingReview.orderConfirmed,retired:!!d.receivingReview.retiredBy||d.receivingReview.duplicateDecision?.action==='supporting'} : d.packingSlipAnalysis ? {pending:d.packingSlipAnalysis.applied?0:d.packingSlipAnalysis.lines.length,complete:!!d.packingSlipAnalysis.applied,retired:false}:undefined,
       currentVersionId: d.currentVersionId,
     }));
 }
