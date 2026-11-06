@@ -996,7 +996,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               >
                 <Step
                   n={1}
-                  title="Duplicate check"
+                  title="Duplicate Check"
                   state={
                     repeat || recheckingDuplicates ||
                     (a?.status === "processing" && !detail.duplicates.length)
@@ -1039,7 +1039,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               <fieldset disabled={busy || !online || blocked || recheckingDuplicates} className="min-w-0 space-y-4 disabled:opacity-70">
                 <Step
                   n={2}
-                  title="Match Order"
+                  title="Match"
                   state={orderStep}
                   meta={
                     orderStep === "waiting"

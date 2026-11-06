@@ -302,7 +302,7 @@ it("confirms the matched order in one tap and only then compares lines", async (
   state.review.kindConfirmed = false;
   render(<ReceivingWorkspace jobId="job" />);
   const order = await screen.findByRole("region", {
-    name: "Step 2: Match Order",
+    name: "Step 2: Match",
   });
   expect(order).toHaveTextContent("Packing Slip Matched To 'PO-155'");
   expect(order).toHaveTextContent("PO-155");
@@ -348,13 +348,13 @@ it("warns about a repeat scan first and records what it is", async () => {
   ] as typeof state.duplicates;
   render(<ReceivingWorkspace jobId="job" />);
   const check = await screen.findByRole("region", {
-    name: "Step 1: Duplicate check",
+    name: "Step 1: Duplicate Check",
   });
   expect(check).toHaveTextContent("This slip may have been scanned before.");
   expect(check).toHaveTextContent("Earlier slip.jpg");
   expect(check).toHaveTextContent("It has already been received.");
   expect(
-    screen.getByRole("region", { name: "Step 2: Match Order" }),
+    screen.getByRole("region", { name: "Step 2: Match" }),
   ).toHaveTextContent("After the duplicate check.");
   expect(
     screen.getByRole("button", { name: "Review & approve" }),
