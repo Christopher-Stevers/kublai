@@ -242,7 +242,7 @@ it("puts its buttons in the page's bottom bar when given one", async () => {
       bar.querySelectorAll("[data-action-bar-row] button"),
       (button) => button.textContent,
     );
-  expect(labels()).toEqual(["Queue", "Upload", "Capture"]);
+  expect(labels()).toEqual(["Upload", "Queue", "Capture"]);
   expect(screen.queryByRole("button", { name: "Cancel scan" })).toBeNull();
   await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
   expect(labels()).toEqual(["Retake last page", "Next page", "Done"]);

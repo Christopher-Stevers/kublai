@@ -93,7 +93,8 @@ export default function PackingSlipScanner({
   actionBar?: HTMLElement | null;
   /** Lowest-priority actions of the page, shown in the same bar. */
   extraActions?: ReactNode;
-  /** Full-page use: a way to another page, kept low in every mode. It
+  /** Full-page use: a way to another page, second to Capture while the
+   * camera is up and low in the other modes. It
    * calls `leave()` first, which asks before unsaved pages are lost. */
   pageAction?: (leave: () => boolean) => ReactNode;
 }) {
@@ -423,7 +424,6 @@ export default function PackingSlipScanner({
     mode === "camera" ? (
       <>
         {extraActions}
-        {pageAction?.(leave)}
         {onUpload && !pages.length && (
           <Button key="upload" variant="outline" disabled={processing} onClick={onUpload}>
             <UploadIcon />
@@ -436,6 +436,8 @@ export default function PackingSlipScanner({
             Finish with {pages.length} pages
           </Button>
         )}
+        {/* Second only to capturing: the page's way to the waiting slips. */}
+        {pageAction?.(leave)}
         {error ? (
           <Button key="restart" onClick={() => setRestart((n) => n + 1)}>
             <RefreshCwIcon />
