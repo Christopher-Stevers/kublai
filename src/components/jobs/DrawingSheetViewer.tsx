@@ -2924,7 +2924,7 @@ export function DrawingSheetViewer({
               draggable={false}
               decoding="async"
               className="absolute bg-white"
-              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
+              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter, opacity: 0.3 }}
             />
           ))}
           {appearanceMatrix && (
