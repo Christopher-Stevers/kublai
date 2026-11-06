@@ -1673,3 +1673,30 @@ it("splits from the order half menu too", async () => {
   fireEvent.click(await screen.findByRole("menuitem", { name: "Split" }));
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({ action: "splitComparison", lineIds: ["0"] })));
 });
+
+it.each([['Keep material anyway?', 'supplier-keep'], ['Material needs to be returned.', 'supplier-return']])("records supplier entry choice: %s", async (label, decision) => {
+  render(<ReceivingWorkspace jobId="job" />);
+  const card = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  const half = within(card).getAllByRole("group", {name:/ reading$/})[0]!;
+  fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
+  await hold();
+  fireEvent.touchEnd(window,{touches:[]});
+  expect(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
+  fireEvent.click(screen.getByRole("menuitem",{name:"Supplier Entered This Incorrectly"}));
+  expect(posts).toEqual([]);
+  fireEvent.click(await screen.findByRole("button",{name:label}));
+  await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:decision,delivery:"wrong",match:"unresolved",quantity:"unresolved"})));
+  expect(posts.some(p => p.action === 'approve')).toBe(false);
+});
+
+it("records a shipped-material mismatch without approving quantities", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  const card = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  const half = within(card).getAllByRole("group", {name:/ reading$/})[0]!;
+  fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
+  await hold();
+  fireEvent.touchEnd(window,{touches:[]});
+  fireEvent.click(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Record mismatch"}));
+  await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:"shipped-mismatch",specification:"unresolved",delivery:"wrong"})));
+});

@@ -44,6 +44,7 @@ export const receivingInput = z.discriminatedUnion("action", [
   z.object({
     ...base,
     action: z.literal("resolve"),
+    materialIssue: z.enum(["shipped-mismatch", "supplier-keep", "supplier-return"]).optional(),
     lineId: text.max(100),
     evidenceFingerprint: text.max(20000),
     /** Counterpart facts shown to the reviewer; null means no counterpart was shown. */

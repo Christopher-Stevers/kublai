@@ -1,4 +1,5 @@
 "use client";
+import { materialIssueLabels } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
   receivingQuantity,
@@ -495,7 +496,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     (r?.lines.filter(
       (l) =>
         !l.ignored &&
-        (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true)),
+        (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true) || (!!l.resolution?.materialIssue && resolutionBlockers(l, detail?.items.find(i => i.id === l.orderItemId), r.lines, r.kind).length > 0)),
     ).length ?? 0) + (r ? pendingOrderResolutions(r) : 0);
   const active = r?.lines.filter((l) => !l.ignored).length ?? 0;
   const sourceChanged =
@@ -2411,6 +2412,27 @@ function OrderComparison({
     previewTrigger.current = document.activeElement as HTMLElement | null;
     setPreview(value);
   };
+  const [materialIssue, setMaterialIssue] = useState<{ kind: "mismatch" | "supplier"; lineIds: string[]; selected: string } | null>(null);
+  const [savingIssue, setSavingIssue] = useState(false);
+  const saveMaterialIssue = async (choice: keyof typeof materialIssueLabels) => {
+    const line = detail.review.lines.find(l => l.id === materialIssue?.selected);
+    if (!line || savingIssue) return;
+    const item = detail.items.find(i => i.id === line.orderItemId);
+    setSavingIssue(true);
+    try {
+      if (await run({ action: "resolve", lineId: line.id,
+        evidenceFingerprint: resolutionEvidenceFingerprint(line),
+        counterpartFingerprint: item ? resolutionCounterpartFingerprint(item) : null,
+        materialIssue: choice, match: "unresolved", quantity: "unresolved",
+        specification: choice === "supplier-return" ? "substitution-rejected" : "unresolved",
+        delivery: "wrong", skipped: false,
+      })) {
+        setMaterialIssue(null);
+        notify("Material issue recorded. Review the line before approval.");
+        onResolve({ lineId: line.id, itemId: item?.id });
+      }
+    } finally { setSavingIssue(false); }
+  };
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
   const known = new Set(detail.items.map((i) => i.id));
@@ -2574,6 +2596,7 @@ function OrderComparison({
   ];
   const rowComplete = ({ item, lines }: Pick<(typeof rows)[number], "item" | "lines">) => {
     const live = lines.filter(x => !x.line.ignored);
+    if (live.some(({line}) => line.resolution?.materialIssue && resolutionBlockers(line, item, r.lines, r.kind).length > 0)) return false;
     const status = lines.map(x => lineStatus(x.line, r, item)).sort((x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y))[0];
     const byHand = item ? (detail.receipts?.[item.id]?.byHand ?? 0) : 0;
     const resolved =
@@ -2616,6 +2639,24 @@ function OrderComparison({
       : [];
   return (
     <div>
+      <Dialog open={!!materialIssue} onOpenChange={open => { if (!open && !savingIssue) setMaterialIssue(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{materialIssue?.kind === "supplier" ? "Supplier Entered This Incorrectly" : "Shipped Material Doesn’t Match Slip"}</DialogTitle>
+            <DialogDescription>{materialIssue?.kind === "supplier" ? "What should happen to the material?" : "Record the mismatch, then review what was actually delivered."}</DialogDescription>
+          </DialogHeader>
+          {materialIssue && materialIssue.lineIds.length > 1 && <select aria-label="Affected slip line" className={field} value={materialIssue.selected} onChange={e => setMaterialIssue({...materialIssue, selected:e.target.value})}>
+            {materialIssue.lineIds.map(id => <option key={id} value={id}>{detail.review.lines.find(l => l.id === id)?.description}</option>)}
+          </select>}
+          <div className="flex flex-col gap-3">
+            {materialIssue?.kind === "supplier" ? <>
+              <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-keep")}>Keep material anyway?</Button>
+              <Button variant="outline" disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-return")}>Material needs to be returned.</Button>
+            </> : <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("shipped-mismatch")}>Record mismatch</Button>}
+            <Button variant="ghost" disabled={savingIssue} onClick={() => setMaterialIssue(null)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!removeItem}
         onOpenChange={(open) => {
@@ -3177,12 +3218,15 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
+                      <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
+                      <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
                       {splitOption}
                     </>,
                   )}
               </div>
               <div className="mt-2 flex items-start justify-between gap-3">
                 {/* What reviewers said is needed, from Resolve. */}
+                {lines.map(({line}) => line.resolution?.materialIssue ? <p key={`issue:${line.id}`} className="text-amber-700 dark:text-amber-300 text-sm">{materialIssueLabels[line.resolution.materialIssue]}</p> : null)}
                 <div className="min-w-0 space-y-1">
                   {lines.flatMap(({ line }) =>
                     line.note

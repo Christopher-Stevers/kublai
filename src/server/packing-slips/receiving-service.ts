@@ -1013,7 +1013,7 @@ async function mutateReceivingImpl(
         capturePaper(line);
         const previous = line.resolution?.evidenceFingerprint === input.evidenceFingerprint && line.resolution?.counterpartFingerprint === counterpartFingerprint ? line.resolution : newResolution(line, fresh.user.id, now);
         line.resolution = { ...previous, counterpartFingerprint, by: fresh.user.id, at: now };
-        for (const key of ["match", "specification", "quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess", "skipped", "note"] as const) {
+        for (const key of ["materialIssue", "match", "specification", "quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess", "skipped", "note"] as const) {
           if (input[key] !== undefined) Object.assign(line.resolution, { [key]: input[key] });
         }
         const r = line.resolution;
