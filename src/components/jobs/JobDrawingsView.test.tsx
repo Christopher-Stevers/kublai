@@ -728,6 +728,17 @@ it("shows a renamed drawing instead of stale extracted numbering in grid and tab
   expect(screen.getByRole("button", { name: "Open Level 2 North" })).toHaveTextContent("Level 2 North");
 });
 
+it("shows the sheet title under its number in the bottom bar", () => {
+  state.summaries = [{ sheetId: "s1", favorite: false, metadata: { number: "M-101", title: "Sleeving plan", discipline: "", tags: [], status: "" } }];
+  render(<JobDrawingsView jobId="job" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open M-101" }));
+  const name = screen.getByTitle("M-101"), title = screen.getByTitle("Sleeving plan");
+  expect(title).toHaveTextContent("Sleeving plan");
+  expect(name.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText("1 of 2")).toBeInTheDocument();
+});
+
 it("shows the extracted number when the cached card still has a Sheet placeholder", () => {
   state.sheets = state.sheets.map(sheet => sheet.id === "s1" ? { ...sheet, name: "Sheet 32" } : sheet);
   state.summaries = [{ sheetId: "s1", favorite: false, metadata: { number: "3112-L01-U13 BR-02", title: "Bathroom plan", discipline: "", tags: [], status: "" } }];

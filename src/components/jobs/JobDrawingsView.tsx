@@ -606,6 +606,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
         {!quickWheel && <DrawingPageNavigation
           scrollPages={scroll}
           name={sheet.name}
+          title={bySheet.get(sheet.id)?.metadata.title?.trim()}
           index={sheetIndex}
           count={sheets.length}
           onPrevious={() => openSheet(sheets[sheetIndex - 1]!.id, true)}

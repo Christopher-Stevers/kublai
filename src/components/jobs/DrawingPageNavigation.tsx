@@ -66,6 +66,7 @@ export function DrawingZoomReadout({
 /** Shared navigation for Drawings and document PDFs. */
 export function DrawingPageNavigation({
   name,
+  title,
   index,
   count,
   onPrevious,
@@ -73,6 +74,8 @@ export function DrawingPageNavigation({
 }: {
   scrollPages?: boolean;
   name: string;
+  /** The sheet title, shown under its number. */
+  title?: string;
   index: number;
   count: number;
   onPrevious: () => void;
@@ -83,7 +86,7 @@ export function DrawingPageNavigation({
       data-drawing-chrome
       className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.3fr)] items-center gap-2">
+      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-2">
         <Button
           variant="outline"
           className="h-9 min-w-0 rounded-lg px-2 text-sm"
@@ -96,12 +99,20 @@ export function DrawingPageNavigation({
         <div className="flex min-w-0 flex-col items-center">
           <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
             <span
-              className="min-w-0 truncate py-1 text-center text-sm"
+              className={`min-w-0 truncate text-center text-sm ${title && title !== name ? "leading-5" : "py-1"}`}
               title={name}
             >
               {name}
             </span>
           </div>
+          {title && title !== name && (
+            <span
+              className="line-clamp-2 w-full min-w-0 text-center text-xs leading-4 break-words"
+              title={title}
+            >
+              {title}
+            </span>
+          )}
           <span className="text-muted-foreground text-xs tabular-nums">
             {index + 1} of {count}
           </span>
