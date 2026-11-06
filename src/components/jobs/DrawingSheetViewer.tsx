@@ -1352,6 +1352,9 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
+    // The drafting surface sits behind the sheet and follows just 15% of its pan.
+    frame.current?.style.setProperty("--drawing-grid-x", `${x * 0.15 - 1}px`);
+    frame.current?.style.setProperty("--drawing-grid-y", `${y * 0.15 - 1}px`);
     pdfPaint.current?.(live.current);
     overlayPaint.current?.(live.current);
     if (fit && frame.current) {

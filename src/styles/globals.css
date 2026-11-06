@@ -106,7 +106,13 @@
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-position: -1px -1px;
+  background-position: var(--drawing-grid-x, -1px) var(--drawing-grid-y, -1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blueprint-grid {
+    background-position: -1px -1px;
+  }
 }
 
 /* Menus and panels that open upward spring into place. */
