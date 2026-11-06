@@ -1,3 +1,4 @@
+import { newResolution } from "~/lib/receiving-resolution";
 import type { ReceivingLine } from "~/lib/receiving-review";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
@@ -1699,4 +1700,16 @@ it("records a shipped-material mismatch without approving quantities", async () 
   fireEvent.click(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"}));
   fireEvent.click(await screen.findByRole("button",{name:"Record mismatch"}));
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:"shipped-mismatch",specification:"unresolved",delivery:"wrong"})));
+});
+
+it("marks linked halves with caution borders for a return, but not for kept material", async () => {
+  Object.assign(state.review.lines[0]!, { resolution: { ...newResolution(state.review.lines[0]!, "user", "now"), materialIssue: "supplier-return" } });
+  const view = render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.getAllByRole("img", {name:"Material marked for return"})).toHaveLength(2);
+  view.unmount();
+  Object.assign(state.review.lines[0]!, { resolution: { ...newResolution(state.review.lines[0]!, "user", "now"), materialIssue: "supplier-keep" } });
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByRole("img", {name:"Material marked for return"})).not.toBeInTheDocument();
 });

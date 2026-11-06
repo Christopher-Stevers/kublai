@@ -1,5 +1,5 @@
 "use client";
-import { materialIssueLabels } from "~/lib/receiving-resolution";
+import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
   receivingQuantity,
@@ -2360,17 +2360,27 @@ function TornPaper({
   side,
   empty,
   needsConfirmation = false,
+  markedForReturn = false,
 }: {
   side: "order" | "slip";
   empty: boolean;
   needsConfirmation?: boolean;
+  markedForReturn?: boolean;
 }) {
-  return (
+  const paper = needsConfirmation ? "border-yellow-200/60 bg-yellow-50 dark:border-yellow-900/50 dark:bg-[#25251b]" : empty ? "border-red-500/30 bg-red-50 dark:bg-red-950" : "bg-zinc-100 dark:bg-zinc-800";
+  const corners = side === "order" ? "rounded-l-xl" : "rounded-r-xl";
+  return markedForReturn ? (
     <span
-      aria-hidden
-      style={tear[side]}
-      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${needsConfirmation ? "border-yellow-200/60 bg-yellow-50 dark:border-yellow-900/50 dark:bg-[#25251b]" : empty ? "border-red-500/30 bg-red-50 dark:bg-red-950" : "bg-zinc-100 dark:bg-zinc-800"}`}
-    />
+      role="img"
+      aria-label="Material marked for return"
+      data-return-caution={side}
+      style={{...tear[side], backgroundImage: "repeating-linear-gradient(135deg, #facc15 0px, #facc15 7px, #171717 7px, #171717 14px)"}}
+      className={`pointer-events-none absolute inset-0 -z-10 ${corners}`}
+    >
+      <span style={{...tear[side], maskPosition: side === "order" ? "left top, right -3px" : "right top, left -3px", WebkitMaskPosition: side === "order" ? "left top, right -3px" : "right top, left -3px"}} className={`absolute inset-[3px] ${corners} ${paper}`} />
+    </span>
+  ) : (
+    <span aria-hidden style={tear[side]} className={`pointer-events-none absolute inset-0 -z-10 border-y ${corners} ${side === "order" ? "border-l" : "border-r"} ${paper}`} />
   );
 }
 
@@ -3041,7 +3051,7 @@ function OrderComparison({
                   )}
                   className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="order" empty={orderEmpty && !complete} needsConfirmation={orderNeedsConfirmation} />
+                  <TornPaper side="order" markedForReturn={live.some(({line}) => line.orderItemId === item?.id && materialMarkedForReturn(line, r.kind))} empty={orderEmpty && !complete} needsConfirmation={orderNeedsConfirmation} />
                   <p className={copyLabel}>Order</p>
                   <h3
                     aria-label={title}
@@ -3120,7 +3130,7 @@ function OrderComparison({
                   )}
                   className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="slip" empty={slipEmpty && !complete} needsConfirmation={slipNeedsConfirmation} />
+                  <TornPaper side="slip" markedForReturn={live.some(({line}) => materialMarkedForReturn(line, r.kind))} empty={slipEmpty && !complete} needsConfirmation={slipNeedsConfirmation} />
                   <div
                     role="group"
                     aria-label={`${main.label} reading`}

@@ -358,3 +358,10 @@ export function assertAllocation(
       "Allocated quantities must add up to the source quantity. Correct the source reading first if it is wrong.",
     );
 }
+
+/** A return is explicit; a shortage or an unconfirmed mismatch alone is not a return. */
+export function materialMarkedForReturn(line: ReceivingLine, kind: ReceiptKind) {
+  const receiptKind = line.kind ?? kind;
+  return receiptKind === "return-replacement" || receiptKind === "return-credit" ||
+    line.resolution?.materialIssue === "supplier-return" || line.resolution?.excess === "return";
+}
