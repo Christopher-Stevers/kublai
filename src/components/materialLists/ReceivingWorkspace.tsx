@@ -334,6 +334,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [openLine, setOpenLine] = useState<string | null>(null),
     [lab, setLab] = useState(false),
     [changingOrder, setChangingOrder] = useState(false),
+    [recheckingDuplicates, setRecheckingDuplicates] = useState(false),
     [showLines, setShowLines] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<ResolveTarget | null>(
     null,
@@ -379,6 +380,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     setOpenLine(null);
     setResolveTarget(null);
     setChangingOrder(false);
+    setRecheckingDuplicates(false);
     void load().catch((e: unknown) => setError(errorMessage(e)));
   }, [load]);
   useEffect(() => {
@@ -520,6 +522,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     !!r.orderConfirmed &&
     ready.length > 0 &&
     !blocked &&
+    !recheckingDuplicates &&
     !repeat;
   const hint = !online
     ? "Reconnect to approve"
@@ -531,7 +534,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           ? "This slip was replaced"
           : supporting
             ? "Supporting file · nothing to receive"
-            : repeat
+            : repeat || recheckingDuplicates
               ? "Finish the duplicate check first"
               : !r?.kindConfirmed || !r.orderConfirmed
                 ? "Confirm the order first"
@@ -988,19 +991,25 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           <div className="grid gap-5">
             <div className="min-w-0 space-y-4">
               <fieldset
-                disabled={busy || !online || blocked}
+                disabled={busy || !online || sourceChanged || !!r?.retiredBy || a?.status === "processing"}
                 className="min-w-0 space-y-4 disabled:opacity-70"
               >
                 <Step
                   n={1}
                   title="Duplicate check"
                   state={
-                    repeat ||
+                    repeat || recheckingDuplicates ||
                     (a?.status === "processing" && !detail.duplicates.length)
                       ? "active"
                       : "done"
                   }
                   warn={repeat}
+                  action={!repeat && !recheckingDuplicates && (
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      setRecheckingDuplicates(true);
+                      void load().catch((e: unknown) => setError(errorMessage(e)));
+                    }}>Recheck</Button>
+                  )}
                   meta={
                     repeat
                       ? "This slip may have been scanned before."
@@ -1015,8 +1024,19 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                             : "Checked. A different delivery."
                   }
                 >
-                  {repeat && <DuplicateReview detail={detail} run={run} />}
+                  {(repeat || recheckingDuplicates) && <DuplicateReview detail={detail} recheck={recheckingDuplicates} run={async action => {
+                    const saved = await run(action);
+                    if (saved) setRecheckingDuplicates(false);
+                    return saved;
+                  }} />}
+                  {recheckingDuplicates && <div className="px-4 pb-4">
+                    {!detail.duplicates.length && <p className="mb-3 text-sm text-muted-foreground">No possible duplicates found.</p>}
+                    <Button variant="ghost" size="sm" onClick={() => setRecheckingDuplicates(false)}>Cancel</Button>
+                  </div>}
+
                 </Step>
+              </fieldset>
+              <fieldset disabled={busy || !online || blocked || recheckingDuplicates} className="min-w-0 space-y-4 disabled:opacity-70">
                 <Step
                   n={2}
                   title="Match Order"
@@ -1806,13 +1826,15 @@ const duplicateReasons = {
 function DuplicateReview({
   detail,
   run,
+  recheck = false,
 }: {
   detail: Detail;
+  recheck?: boolean;
   run: (a: Action) => Promise<boolean>;
 }) {
   const [other, setOther] = useState("");
   const unresolved = detail.duplicates.filter(
-    (d) => !detail.review.duplicateChecked?.includes(d.key),
+    (d) => recheck || !detail.review.duplicateChecked?.includes(d.key),
   );
   const earlier = unresolved.find((d) => d.id === other) ?? unresolved[0];
   if (!earlier) return null;

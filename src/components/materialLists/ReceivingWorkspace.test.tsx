@@ -1630,3 +1630,23 @@ it("an order item dragged onto another slip line leaves the line it was paired w
     await screen.findByText("Paired with Unclear pipe. Valve unpaired."),
   ).toBeInTheDocument();
 });
+
+it("reopens a completed repeat-scan decision without changing it until saved", async () => {
+  state.duplicates = [{ id: "old", name: "Earlier slip.jpg", reason: "Same delivery", key: "old:v1", received: false }] as typeof state.duplicates;
+  Object.assign(state.review, {
+    duplicateChecked: ["old:v1"],
+    duplicateDecision: { action: "supporting", documentId: "old", reason: "Repeat", by: "user", at: "now" },
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const recheck = await screen.findByRole("button", { name: "Recheck" });
+  expect(recheck).toBeEnabled();
+  fireEvent.click(recheck);
+  expect(await screen.findByRole("button", { name: "Different delivery" })).toBeEnabled();
+  expect(posts).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+  expect(screen.queryByRole("button", { name: "Different delivery" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Recheck" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Different delivery" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "duplicate", decision: "additional", otherDocumentId: "old" });
+});
