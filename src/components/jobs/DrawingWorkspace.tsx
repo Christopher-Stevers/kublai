@@ -2880,12 +2880,17 @@ export function DrawingWorkspace({
                                 ? old.hidden.filter((item) => item !== type)
                                 : [...(old.hidden ?? []), type],
                             }));
+                          // Only what is on this sheet: an empty type has nothing to hide.
+                          const present = (types: DrawingTool[]) =>
+                            types.filter((type) => (counts.get(type) ?? 0) > 0);
                           const group = (
                             key: "markups" | "issues",
                             label: string,
                             icon: LucideIcon,
-                            types: DrawingTool[],
-                          ) => (
+                            all: DrawingTool[],
+                          ) => {
+                            const types = present(all);
+                            return types.length ? (
                             <details key={key} className="group/layers">
                               <summary
                                 className="flex min-h-11 cursor-pointer items-center gap-1 rounded-lg text-sm font-medium hover:bg-muted/70"
@@ -2909,14 +2914,26 @@ export function DrawingWorkspace({
                                 </ArrowColumn>
                               ))}
                             </details>
-                          );
+                            ) : null;
+                          };
+                          const empty =
+                            !total(MEASUREMENT_TYPES) &&
+                            !total(MARKUP_TYPES) &&
+                            !total(PIN_TYPES);
                           return (
                             <>
+                              {empty && (
+                                <p className="text-muted-foreground px-2 py-3 text-sm">
+                                  Nothing has been added to this sheet yet.
+                                </p>
+                              )}
+                              {total(MEASUREMENT_TYPES) > 0 && (
                               <ArrowColumn>
                                 <LayerRow label="Measure" icon={RulerIcon} count={total(MEASUREMENT_TYPES)}
                                   on={layers.measurements !== false}
                                   onToggle={() => setLayers(old => ({ ...old, measurements: old.measurements === false }))} />
                               </ArrowColumn>
+                              )}
                               {group("markups", "Markup", PenLineIcon, MARKUP_TYPES)}
                               {group("issues", "Tools", WrenchIcon, PIN_TYPES)}
                               <PeopleLayers entities={entities} sourceId={sourceId}

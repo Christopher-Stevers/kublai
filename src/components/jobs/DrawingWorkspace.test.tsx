@@ -1937,6 +1937,12 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
 });
 
 it("opens layers directly from the drawing corner, including full screen", () => {
+  const base = existingMarkup("published");
+  mocks.data!.entities = (["arrow", "dimension"] as const).map((type) => ({
+    ...base,
+    id: crypto.randomUUID(),
+    data: { ...base.data, type },
+  })) as DrawingEntity[];
   open();
   const layers = screen.getByRole("button", { name: "Layers" });
   expect(layers).toHaveClass("rounded-full", "size-10");
@@ -1956,12 +1962,20 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   expect(arrow).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("button", { name: "Measure layer" })).toHaveAttribute("aria-pressed", "true");
   expect(screen.queryByText("On this sheet")).toBeNull();
-  const toolGroup = screen.getByText("Tools", { selector: "summary span" }).closest("details")!;
-  expect(toolGroup).not.toHaveAttribute("open");
-  fireEvent.click(toolGroup.querySelector("summary")!);
-  expect(screen.getByRole("button", { name: "Hyperlink layer" })).toBeVisible();
+  // Only what is on the sheet: no rectangles, and no pins at all.
+  expect(screen.queryByRole("button", { name: "Rectangle layer" })).toBeNull();
+  expect(screen.queryByText("Tools", { selector: "summary span" })).toBeNull();
   fireEvent.click(layers);
   expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
+});
+
+it("says when a sheet has nothing to show or hide", () => {
+  mocks.data!.entities = [];
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  expect(screen.getByText("Nothing has been added to this sheet yet.")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Measure layer" })).toBeNull();
+  expect(screen.queryByText("Markup", { selector: "summary span" })).toBeNull();
 });
 
 it("keeps individual annotations out of Layers and remembers hidden drawing content after reopening", () => {
