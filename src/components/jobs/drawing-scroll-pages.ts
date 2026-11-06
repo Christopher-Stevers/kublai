@@ -11,7 +11,7 @@ export type ScrollStack = {
 };
 type Size = { width: number; height: number };
 /** Space between pages, in screen pixels at fit. */
-export const SCROLL_PAGE_GAP = 8;
+export const SCROLL_PAGE_GAP = 12;
 /** Pages drawn each side of the open one; a flick travels at most this far. */
 const NEIGHBORS = 3;
 
