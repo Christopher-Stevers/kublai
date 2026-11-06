@@ -163,7 +163,7 @@ export function useCatalogueVisibility(
       className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden rounded-[inherit]"
       aria-label="Hidden from material lists"
     >
-      <span className="bg-background/60 text-foreground flex w-[140%] shrink-0 -rotate-12 items-center justify-center gap-2 border-y border-foreground/25 py-2 text-xl font-bold uppercase tracking-widest shadow-sm">
+      <span className="bg-background/10 text-foreground/35 flex w-[140%] shrink-0 -rotate-12 items-center justify-center gap-2 border-y border-foreground/10 py-2 text-xl font-bold uppercase tracking-widest">
         <EyeOff className="size-5" />
         Hidden
       </span>
