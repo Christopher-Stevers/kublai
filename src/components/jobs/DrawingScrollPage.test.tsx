@@ -25,3 +25,13 @@ it("keeps a paper placeholder before loading, after errors, and during thumbnail
   expect(screen.queryByText("Preview unavailable")).toBeNull();
   expect(paper.style.height).toBe("400px");
 });
+
+it("lays the full page over the small copy when shown large", () => {
+  const view = render(<DrawingScrollPage {...props} loadPreview sharp={false} />);
+  expect(view.container.querySelector("[data-drawing-full-page]")).toBeNull();
+  view.rerender(<DrawingScrollPage {...props} loadPreview sharp />);
+  expect(view.container.querySelector("[data-drawing-full-page]")).toHaveAttribute("src", page.imageUrl);
+  expect(screen.getByAltText("M-308")).toHaveAttribute("src", `${page.imageUrl}?thumb=1`);
+  view.rerender(<DrawingScrollPage {...props} loadPreview={false} sharp />);
+  expect(view.container.querySelector("img")).toBeNull();
+});

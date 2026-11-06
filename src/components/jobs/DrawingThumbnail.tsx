@@ -2,12 +2,8 @@
 import { useEffect, useState } from "react";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { drawingThumbnailUrl } from "./drawing-scroll-pages";
 
-/** Drawing pages on the private file route have a small copy for cards. */
-const thumbnailOf = (src: string) =>
-  /^\/api\/job-rooms\/files\/[^?]+\/floor-\d+\.webp$/i.test(src)
-    ? `${src}?thumb=1`
-    : null;
 
 export function DrawingThumbnail(
   props: React.ImgHTMLAttributes<HTMLImageElement> & { src: string },
@@ -18,7 +14,7 @@ export function DrawingThumbnail(
   // stutters, so cards use the small copy whenever the server can be reached.
   const [thumbnailFailed, setThumbnailFailed] = useState<string | null>(null);
   const thumbnail =
-    online && thumbnailFailed !== props.src ? thumbnailOf(props.src) : null;
+    online && thumbnailFailed !== props.src ? drawingThumbnailUrl(props.src) : null;
   const [resolved, setResolved] = useState<{
     src: string;
     url: string;

@@ -159,6 +159,7 @@ import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
+import { drawingThumbnailUrl } from "./drawing-scroll-pages";
 
 /** Tools menu: everything that is not a markup type. */
 const OTHER_TOOLS = new Set<DrawingTool>([
@@ -2368,6 +2369,7 @@ export function DrawingWorkspace({
               }}
               initialViewport={viewport.current}
               src={resolved.src}
+              placeholderSrc={online ? drawingThumbnailUrl(source.imageUrl) : null}
               sourceSize={{ width: source.width, height: source.height }}
               alt={source.name}
               onPdfReady={onReady}

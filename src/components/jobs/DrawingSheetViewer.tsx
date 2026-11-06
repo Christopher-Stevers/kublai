@@ -122,7 +122,7 @@ import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } fr
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
 import { DrawingScrollPage } from "./DrawingScrollPage";
-import { pageAtCentre, pagePanLimit, pageStack, scrollLimits, scrollPreviewOffsets, type ScrollStack } from "./drawing-scroll-pages";
+import { needsFullPage, pageAtCentre, pagePanLimit, pageStack, scrollLimits, scrollPreviewOffsets, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 0.1;
@@ -191,6 +191,7 @@ export function DrawingSheetViewer({
   editMeasurementRequest,
   scrollPages = false,
   scrollStack,
+  placeholderSrc,
   ...editorProps
 }: DrawingEditorProps & {
   /** A text markup typed in place on the drawing. */
@@ -200,6 +201,8 @@ export function DrawingSheetViewer({
   /** The pages either side in continuous scroll. */
   scrollStack?: ScrollStack;
   src: string;
+  /** A small copy of the sheet that shows while `src` loads. */
+  placeholderSrc?: string | null;
   /** Known page dimensions let PDF detail start before a preview image arrives. */
   sourceSize?: { width: number; height: number };
   alt: string;
@@ -2916,6 +2919,7 @@ export function DrawingSheetViewer({
               page={page}
               offset={offset}
               loadPreview={previewOffsets.has(offset)}
+              sharp={needsFullPage(width, view.scale, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1)}
               style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
             />
           ))}
@@ -2930,6 +2934,20 @@ export function DrawingSheetViewer({
             className="absolute inset-0"
             style={{ filter: appearanceFilter, backgroundColor: "#fff" }}
           >
+            {/* After a page handoff the small copy is usually already decoded:
+                it fills the sheet until the full image covers it. */}
+            {placeholderSrc && !usesInkComparison && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={placeholderSrc}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                decoding="async"
+                data-drawing-sheet-placeholder
+                className="absolute inset-0 h-full w-full"
+              />
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={image}

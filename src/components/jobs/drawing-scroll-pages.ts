@@ -76,6 +76,19 @@ export function pageAtCentre(pages: StackedPage[], view: { scale: number; x: num
   };
 }
 
+/** Drawing pages on the private file route have a 640px copy for cards. */
+export const DRAWING_THUMBNAIL_WIDTH = 640;
+export const drawingThumbnailUrl = (src: string) =>
+  /^\/api\/job-rooms\/files\/[^?]+\/floor-\d+\.webp$/i.test(src)
+    ? `${src}?thumb=1`
+    : null;
+
+/** Small on screen, the 640px copy is as sharp as the page and decodes in a
+ * fraction of the time; the full image loads only once a page is shown large. */
+export function needsFullPage(width: number, scale: number, dpr: number) {
+  return width * scale * dpr > DRAWING_THUMBNAIL_WIDTH * 1.25;
+}
+
 /** Load previews in and just beyond the viewport without decoding the whole set.
  * Every other page still has its correctly sized placeholder in the stack. */
 export function scrollPreviewOffsets(pages: StackedPage[], frame: Size, view: { scale: number; y: number }) {

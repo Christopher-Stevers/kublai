@@ -5,10 +5,12 @@ import { DrawingThumbnail } from "./DrawingThumbnail";
 import type { ScrollPage } from "./drawing-scroll-pages";
 
 /** The paper exists before its preview, including when offline or loading fails. */
-export function DrawingScrollPage({ page, offset, loadPreview, style }: {
+export function DrawingScrollPage({ page, offset, loadPreview, sharp = false, style }: {
   page: ScrollPage;
   offset: number;
   loadPreview: boolean;
+  /** Shown large enough that the small copy blurs: the full page goes on top. */
+  sharp?: boolean;
   style: CSSProperties;
 }) {
   const [loaded, setLoaded] = useState<string | null>(null);
@@ -34,6 +36,18 @@ export function DrawingScrollPage({ page, offset, loadPreview, style }: {
         onLoad={() => { setLoaded(page.imageUrl); setFailed(null); }}
         onError={() => { setLoaded(null); setFailed(page.imageUrl); }}
       />}
+      {loadPreview && sharp && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={page.imageUrl}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          decoding="async"
+          data-drawing-full-page
+          className="absolute inset-0 h-full w-full"
+        />
+      )}
     </div>
   );
 }

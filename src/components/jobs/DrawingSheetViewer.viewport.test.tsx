@@ -289,3 +289,28 @@ it("reserves every page even when distant previews have not been requested", () 
   expect(near).toHaveAttribute("data-preview-ready", "true");
   expect(near.style.height).toBe("400px");
 });
+
+it("puts the full page over a neighbour's small copy only while it is shown large", () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("devicePixelRatio", 2);
+  const { rerender, props, frame, container } = open(null);
+  const next = [1, 2].map(n => ({ id: String(n), name: `Page ${n}`, imageUrl: `/${n}.webp`, width: 1000, height: 500 }));
+  rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next, onPage: vi.fn() }} />);
+  const full = () => container.querySelector('[data-drawing-scroll-page="1"] [data-drawing-full-page]');
+  // At fit an 800px page on a 2x screen is past the 640px copy.
+  expect(full()).toHaveAttribute("src", "/1.webp");
+  fireEvent.wheel(frame, { deltaY: 800, ctrlKey: true, clientX: 400, clientY: 300 });
+  void act(() => vi.advanceTimersByTime(120));
+  expect(full()).toBeNull();
+  expect(container.querySelector('[data-drawing-scroll-page="1"] img')).not.toBeNull();
+  vi.useRealTimers();
+});
+
+it("fills the open sheet with its small copy while the full image loads", () => {
+  const { rerender, props, container } = open(null);
+  rerender(<DrawingSheetViewer {...props} placeholderSrc="/sheet.webp?thumb=1" />);
+  const layer = container.querySelector("[data-drawing-image-layer]")!;
+  expect(layer.querySelector("[data-drawing-sheet-placeholder]")).toHaveAttribute("src", "/sheet.webp?thumb=1");
+  // The full image sits above it.
+  expect(layer.querySelector("img:last-of-type")).toHaveAttribute("alt", "Sheet");
+});

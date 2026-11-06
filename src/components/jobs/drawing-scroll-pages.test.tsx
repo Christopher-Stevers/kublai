@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
-import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors, scrollPreviewOffsets } from "./drawing-scroll-pages";
+import { drawingThumbnailUrl, needsFullPage, pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors, scrollPreviewOffsets } from "./drawing-scroll-pages";
 
 const identity = vi.hoisted(() => ({accountKey:"org:user-a"}));
 vi.mock("./DrawingAccountProvider", () => ({useDrawingAccount: () => identity}));
@@ -113,4 +113,12 @@ it("keeps the whole set reachable before any preview has loaded", () => {
   expect(previews.size).toBeLessThanOrEqual(24);
   const overview = scrollPreviewOffsets(pages, { width: 400, height: 700 }, { scale: 0.1, y: 0 });
   expect(overview.size).toBe(24);
+});
+
+it("serves small copies of drawing pages and the full page only when shown large", () => {
+  expect(drawingThumbnailUrl("/api/job-rooms/files/job/up/floor-3.webp")).toBe("/api/job-rooms/files/job/up/floor-3.webp?thumb=1");
+  expect(drawingThumbnailUrl("/api/job-documents/pages/v/1?jobId=j")).toBeNull();
+  expect(needsFullPage(800, 0.5, 2)).toBe(false);
+  expect(needsFullPage(800, 1, 2)).toBe(true);
+  expect(needsFullPage(800, 1, 1)).toBe(false);
 });
