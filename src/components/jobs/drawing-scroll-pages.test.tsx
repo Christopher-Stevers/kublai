@@ -67,17 +67,16 @@ describe("continuous scroll pages", () => {
     expect(next).toMatchObject({ width: 250, height: 500, top: 250 + SCROLL_PAGE_GAP });
   });
 
-  it("travels through the drawn pages but not past the first page's top", () => {
+  it("allows overscroll past the end pages at fit and while zoomed in", () => {
     const pages = pageStack(frame, fit, { ...scrollNeighbors(sheets, 0), onPage: vi.fn() });
     const fitted = scrollLimits(pages, frame, 1);
-    // A page smaller than the viewport can remain centred.
-    expect(fitted.maxY).toBeCloseTo(0);
-    expect(fitted.maxX).toBe(0);
+    expect(fitted.maxY).toBe(430);
+    expect(fitted.maxX).toBe(360);
     const zoomed = scrollLimits(pages, frame, 4);
-    expect(zoomed.maxY).toBe(4 * (100 - 350 / 4));
-    expect(zoomed.maxX).toBe((400 * 4 - 400) / 2);
+    expect(zoomed.maxY).toBe(680);
+    expect(zoomed.maxX).toBe(960);
     const last = pages[pages.length - 1]!;
-    expect(zoomed.minY).toBe(-4 * (last.top + last.height - 350 / 4));
+    expect(zoomed.minY).toBe(-4 * (last.top + last.height / 2) - 680);
   });
 
   it("finds the page under the centre and keeps the view on it", () => {
@@ -94,6 +93,6 @@ describe("continuous scroll pages", () => {
 it("keeps either end page reachable when the entire stack fits inside the viewport", () => {
   const pages = pageStack({ width: 800, height: 600 }, { width: 800, height: 400 }, { previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage: vi.fn() });
   const limits = scrollLimits(pages, { width: 800, height: 600 }, 0.1);
-  expect(limits.maxY).toBeCloseTo(0);
-  expect(limits.minY).toBeCloseTo(-(400 + SCROLL_PAGE_GAP) * 0.1);
+  expect(limits.maxY).toBeCloseTo(316);
+  expect(limits.minY).toBeCloseTo(-(400 + SCROLL_PAGE_GAP) * 0.1 - 316);
 });

@@ -121,7 +121,7 @@ import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
-import { pageAtCentre, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
+import { pageAtCentre, pagePanLimit, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 0.1;
@@ -1336,14 +1336,8 @@ export function DrawingSheetViewer({
         const { maxX, minY, maxY } = scrollLimits(stacked, { width: el.clientWidth, height: el.clientHeight }, scale);
         return { scale, x: Math.min(maxX, Math.max(-maxX, next.x)), y: Math.min(maxY, Math.max(minY, next.y)) };
       }
-      const maxX = Math.max(
-        0,
-        (fit.width * scale - el.clientWidth) / 2 + el.clientWidth * 0.4,
-      );
-      const maxY = Math.max(
-        0,
-        (fit.height * scale - el.clientHeight) / 2 + el.clientHeight * 0.4,
-      );
+      const maxX = pagePanLimit(fit.width * scale, el.clientWidth);
+      const maxY = pagePanLimit(fit.height * scale, el.clientHeight);
       return {
         scale,
         x: Math.min(maxX, Math.max(-maxX, next.x)),

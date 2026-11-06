@@ -252,3 +252,22 @@ it("zooms continuous pages below fit without jumping away from the first sheet",
   expect(onPage).not.toHaveBeenCalled();
   vi.useRealTimers();
 });
+
+it.each([0.1, 1, 4])("pans beyond sheet edges at zoom %s in both viewing modes", zoom => {
+  for (const scrollPages of [false, true]) {
+    const { rerender, props, onViewportChange, unmount } = open({ center: { x: 0.5, y: 0.5 }, zoom });
+    rerender(<DrawingSheetViewer {...props} scrollPages={scrollPages} scrollStack={{ previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage: vi.fn() }} />);
+    for (let i = 0; i < 100; i++) {
+      fireEvent.keyDown(window, { key: "a" });
+      fireEvent.keyDown(window, { key: "w" });
+    }
+    const view = onViewportChange.mock.lastCall![0];
+    expect(view.zoom).toBe(zoom);
+    expect(view.center.x).toBeLessThan(0);
+    expect(view.center.y).toBeLessThan(0);
+    // The sheet still overlaps the viewport at the pan limit.
+    expect(800 * zoom * view.center.x + 400).toBeGreaterThan(0);
+    expect(400 * zoom * view.center.y + 300).toBeGreaterThan(0);
+    unmount();
+  }
+});

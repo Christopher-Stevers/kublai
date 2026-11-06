@@ -48,18 +48,20 @@ export function pageStack(frame: Size, fit: Size, stack: ScrollStack): StackedPa
   return pages;
 }
 
-/** Camera bounds keep the end pages reachable, even below fit, and allow
- * sideways travel when zoomed past the widest page. */
+/** Pan beyond either edge, retaining a small visible strip of the sheet. */
+export function pagePanLimit(sheetExtent: number, viewportExtent: number) {
+  return (sheetExtent + viewportExtent) / 2 - Math.min(sheetExtent, viewportExtent) * 0.1;
+}
+
+/** Keep the outer pages reachable while permitting overscroll at every zoom. */
 export function scrollLimits(pages: StackedPage[], frame: Size, scale: number) {
   const first = pages[0]!, last = pages[pages.length - 1]!;
-  const half = frame.height / 2 / scale;
-  // At overview zoom, retain the focused page instead of forcing the camera
-  // to the middle of the loaded stack and unexpectedly switching sheets.
-  const low = Math.min(first.top + half, first.top + first.height / 2);
-  const high = Math.max(last.top + last.height - half, last.top + last.height / 2);
   const width = Math.max(...pages.map(page => page.width));
-  // The camera's y is the opposite of the frame centre's place on the stack.
-  return { maxX: Math.max(0, (width * scale - frame.width) / 2), minY: -high * scale, maxY: -low * scale };
+  return {
+    maxX: pagePanLimit(width * scale, frame.width),
+    minY: -(last.top + last.height / 2) * scale - pagePanLimit(last.height * scale, frame.height),
+    maxY: -(first.top + first.height / 2) * scale + pagePanLimit(first.height * scale, frame.height),
+  };
 }
 
 /** The page under the frame centre, and the same view as that page's own. */
