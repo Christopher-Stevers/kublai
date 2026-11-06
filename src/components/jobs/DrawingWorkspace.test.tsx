@@ -1895,6 +1895,23 @@ it("keeps the scrolling drawing toolbar in the host dock and its controls workin
   dock.remove();
 });
 
+it("pins full screen, layers and the layers panel to the viewer while pages scroll", () => {
+  const corners = document.createElement("div");
+  document.body.append(corners);
+  const view = render(
+    <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} scrollPages
+      cornerContainer={corners} onFullscreen={vi.fn()} />,
+  );
+  expect(within(view.container).queryByRole("button", { name: "Layers" })).toBeNull();
+  expect(within(view.container).queryByRole("button", { name: "Full screen" })).toBeNull();
+  expect(within(corners).getByRole("button", { name: "Full screen" })).toBeVisible();
+  fireEvent.click(within(corners).getByRole("button", { name: "Layers" }));
+  expect(within(corners).getByRole("complementary", { name: "Drawing tools panel" })).toBeVisible();
+  view.unmount();
+  expect(corners).toBeEmptyDOMElement();
+  corners.remove();
+});
+
 it("remembers the captured source drawing view before following an internal hyperlink",()=>{
  const entity=existingMarkup();
  if(entity.kind!=="markup")throw Error("fixture");

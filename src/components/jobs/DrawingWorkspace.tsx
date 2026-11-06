@@ -518,6 +518,7 @@ export function DrawingWorkspace({
   onDocumentDetails,
   scrollPages = false,
   toolbarContainer,
+  cornerContainer,
   onClose,
   onPrepareOffline,
   onFullscreen,
@@ -542,6 +543,8 @@ export function DrawingWorkspace({
   onDocumentDetails?: () => void;
   scrollPages?: boolean;
   toolbarContainer?: HTMLElement | null;
+  /** Viewer-level layer for the corner buttons, so scrolling pages never carries them off. */
+  cornerContainer?: HTMLElement | null;
   onClose?: () => void;
   onPrepareOffline?: () => Promise<void>;
   /** Shows a full screen button in the middle of the toolbar. */
@@ -2229,6 +2232,7 @@ export function DrawingWorkspace({
             <CheckIcon aria-hidden="true" />
           </Button>
         )}
+        <DrawingToolbarDock target={scrollPages ? cornerContainer : null}>
         <div className="pointer-events-none absolute top-3 left-3 z-20 flex gap-2 [&>*]:pointer-events-auto">
           {/* In full screen the viewer's own exit button takes this spot. */}
           {onFullscreen && (
@@ -2285,6 +2289,7 @@ export function DrawingWorkspace({
             <LayersIcon aria-hidden="true" />
           </Button>
         </div>
+        </DrawingToolbarDock>
 
         <div className="min-h-0 min-w-0 flex-1">
           {compare && compareFirst ? (
@@ -2585,12 +2590,13 @@ export function DrawingWorkspace({
           </DropdownMenu>
         )}
         {panel && (data || panel === "markups" || panel === "search") && (
+          <DrawingToolbarDock target={scrollPages ? cornerContainer : null}>
           <aside
             data-drawing-chrome={panel === "markups" ? undefined : true}
             aria-label="Drawing tools panel"
             className={panel === "markups"
-              ? "bg-background/60 border-border/60 absolute top-16 right-3 bottom-3 z-30 flex w-[min(22rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-sm lg:w-80"
-              : "bg-background absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"}
+              ? "bg-background/60 border-border/60 pointer-events-auto absolute top-16 right-3 bottom-3 z-30 flex w-[min(22rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-sm lg:w-80"
+              : "bg-background pointer-events-auto absolute inset-y-0 right-0 z-30 flex w-[min(22rem,calc(100%-1rem))] flex-col border-l shadow-xl lg:w-80"}
           >
             <div className="flex items-center justify-between border-b p-3">
               <h2 className="font-semibold">
@@ -3671,6 +3677,7 @@ export function DrawingWorkspace({
                 ))}
             </div>
           </aside>
+          </DrawingToolbarDock>
         )}
       </div>
       <span role="status" className="sr-only">

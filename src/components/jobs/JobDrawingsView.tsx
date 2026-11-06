@@ -151,6 +151,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     setSheetId(id);
   };
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
+  const [cornerContainer, setCornerContainer] = useState<HTMLDivElement | null>(null);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
@@ -577,6 +578,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           <DrawingWorkspace
             scrollPages={scroll}
             toolbarContainer={toolbarContainer}
+            cornerContainer={cornerContainer}
             pageNavigation={{ index: sheetIndex, count: sheets.length,
               onPrevious: () => { if (sheetIndex > 0) openSheet(sheets[sheetIndex - 1]!.id, true); },
               onNext: () => { if (sheetIndex < sheets.length - 1) openSheet(sheets[sheetIndex + 1]!.id, true); },
@@ -600,6 +602,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             }}
           />
           </DrawingScrollPages>
+          {/* Corner buttons and the side panel stay put while the pages scroll under them. */}
+          <div ref={setCornerContainer} data-drawing-corners className="pointer-events-none absolute inset-0 z-20" />
           {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={lastViewport.current?.zoom ?? entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />}
         </div>
         <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
