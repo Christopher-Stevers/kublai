@@ -1847,3 +1847,180 @@ it("prefills an explicitly stated package size when the slip is counted in boxes
   expect(screen.getByLabelText("Individual unit")).toHaveValue("ea");
   expect(posts).toEqual([]);
 });
+
+// "This Information Is Correct" plays its wave on a canvas; with reduced
+// motion it saves and shows the check straight away.
+function confirmSetup(
+  apply: (body: Record<string, unknown>) => boolean = () => true,
+) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query.includes("reduced-motion"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  );
+  const serve = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") {
+        const body = JSON.parse(
+          typeof opts.body === "string" ? opts.body : "{}",
+        ) as Record<string, unknown>;
+        if (!apply(body)) {
+          posts.push(body);
+          return Response.json({ error: "Could not save." }, { status: 500 });
+        }
+        if (body.action === "line")
+          Object.assign(state.review.lines.find((l) => l.id === body.lineId)!, {
+            orderItemId: body.orderItemId,
+            quantity: body.quantity,
+            checked: body.checked === true,
+          });
+        if (body.action === "orderDisposition")
+          Object.assign(state.review, {
+            orderResolutions: {
+              [body.itemId as string]: {
+                disposition: body.disposition,
+                note: "",
+                by: "receiver",
+                at: "now",
+              },
+            },
+          });
+      }
+      return serve(url, opts);
+    }),
+  );
+}
+const confirmButton = (row: HTMLElement) =>
+  within(row).queryByRole("button", { name: "This Information Is Correct" });
+it("confirms a matching comparison with This Information Is Correct", async () => {
+  confirmSetup();
+  state.review.lines[0]!.quantity = 8;
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  const circle = () => row.querySelector("[data-comparison-state]")!;
+  expect(circle()).toHaveAttribute("data-comparison-state", "pending");
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() =>
+    expect(circle()).toHaveAttribute("data-comparison-state", "complete"),
+  );
+  expect(posts).toEqual([
+    expect.objectContaining({
+      action: "line",
+      lineId: "0",
+      orderItemId: "item",
+      quantity: 8,
+      checked: true,
+    }),
+  ]);
+  await waitFor(() => expect(confirmButton(row)).not.toBeInTheDocument());
+  expect(state.review.lines[0]!.approved).toBeUndefined();
+});
+it("offers This Information Is Correct only when it settles the row", async () => {
+  confirmSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  // 6 of the 8 still due, and a line with no quantity.
+  const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  expect(confirmButton(valve)).not.toBeInTheDocument();
+  const pipe = screen
+    .getByRole("heading", { name: "Unclear pipe" })
+    .closest("li")!;
+  expect(confirmButton(pipe)).not.toBeInTheDocument();
+});
+it("links a slip line shown beside its likely order item when confirmed", async () => {
+  confirmSetup();
+  notOnOrder(3);
+  state.items.push({
+    ...state.items[0]!,
+    id: "item2",
+    description: "Copper pipe 1/2",
+    ordered: 3,
+    received: 0,
+  });
+  Object.assign(state, { pairs: { "1": "item2" } });
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (
+    await screen.findByRole("heading", { name: "Copper pipe 1/2" })
+  ).closest("li")!;
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() =>
+    expect(row.querySelector("[data-comparison-state]")).toHaveAttribute(
+      "data-comparison-state",
+      "complete",
+    ),
+  );
+  expect(posts).toEqual([
+    expect.objectContaining({
+      action: "line",
+      lineId: "1",
+      orderItemId: "item2",
+      checked: true,
+    }),
+  ]);
+});
+it("confirms an order item with nothing on the slip as still due, and it keeps its place", async () => {
+  confirmSetup();
+  state.items.push({
+    ...state.items[0]!,
+    id: "item-2",
+    description: "Elbow",
+    received: 0,
+  });
+  render(<ReceivingWorkspace jobId="job" />);
+  const elbow = (await screen.findByRole("heading", { name: "Elbow" })).closest(
+    "li",
+  )!;
+  fireEvent.click(confirmButton(elbow)!);
+  await waitFor(() =>
+    expect(elbow.querySelector("[data-comparison-state]")).toHaveAttribute(
+      "data-comparison-state",
+      "complete",
+    ),
+  );
+  expect(posts).toEqual([
+    expect.objectContaining({
+      action: "orderDisposition",
+      itemId: "item-2",
+      disposition: "outstanding",
+    }),
+  ]);
+  // Still above the slip line that needs work.
+  const pipe = screen.getByRole("heading", { name: "Unclear pipe" });
+  expect(
+    screen
+      .getByRole("heading", { name: "Elbow" })
+      .compareDocumentPosition(pipe) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(
+    within(
+      screen.getByRole("heading", { name: "Elbow" }).closest("li")!,
+    ).getByRole("group", { name: "Slip reading" }),
+  ).toHaveTextContent(/^Slip/);
+});
+it("brings This Information Is Correct back when the save fails", async () => {
+  confirmSetup(() => false);
+  state.review.lines[0]!.quantity = 8;
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
+    "li",
+  )!;
+  fireEvent.click(confirmButton(row)!);
+  expect(await screen.findByText("Could not save.")).toBeInTheDocument();
+  await waitFor(() => expect(confirmButton(row)).toBeEnabled());
+  expect(confirmButton(row)).toBeVisible();
+  expect(row.querySelector("[data-comparison-state]")).toHaveAttribute(
+    "data-comparison-state",
+    "pending",
+  );
+});

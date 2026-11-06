@@ -18,8 +18,10 @@ import {
   resolutionCounterpartFingerprint,
   resolutionBlockers,
   receivingLineReady,
+  newResolution,
 } from "~/lib/receiving-resolution";
 import { PartTileContent, PART_TILE_CARD_CLASS } from "./wizard/PartTileContent";
+import { playConfirmWave } from "./confirm-wave";
 import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
@@ -2490,6 +2492,25 @@ function OrderComparison({
     | { side: "order"; item: ReceiptOrderItem }
   );
   const [drag, setDrag] = useState<Grab | null>(null);
+  // "This Information Is Correct": the row whose confirmation is playing.
+  // Rows confirmed here keep their place until the next visit, so a card
+  // never jumps away from under its new check.
+  const [cheer, setCheer] = useState<{
+    key: string;
+    badge: string;
+    tint: { order: boolean; slip: boolean };
+    covered: boolean;
+    burst: boolean;
+  } | null>(null);
+  const [kept, setKept] = useState<ReadonlySet<string>>(() => new Set());
+  const [asking, setAsking] = useState<{
+    fit: PartFit;
+    item: ReceiptOrderItem;
+    unit: string;
+    go: (fit?: PartUpdate) => void;
+  } | null>(null);
+  const stopCheer = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopCheer.current?.(), []);
   const [menu, setMenu] = useState<{
     key: string;
     side: "order" | "slip";
@@ -2661,7 +2682,228 @@ function OrderComparison({
     return complete;
   };
   // Keep source order within each group, but always bring unfinished work first.
-  rows.sort((a, b) => Number(rowComplete(a)) - Number(rowComplete(b)) || a.n - b.n);
+  const finished = (row: (typeof rows)[number]) =>
+    rowComplete(row) && !kept.has(row.key);
+  rows.sort((a, b) => Number(finished(a)) - Number(finished(b)) || a.n - b.n);
+  // What "This Information Is Correct" saves for a row: each slip line
+  // linked to the order item and confirmed as read, or an order item no slip
+  // line covers marked still due. Null unless that alone settles the row, so
+  // a short count or an open decision still goes through Resolve.
+  type Plan = {
+    actions: Action[];
+    fit?: { fit: PartFit; unit: string; index: number };
+  };
+  const confirmPlan = (
+    item: ReceiptOrderItem | undefined,
+    lines: Array<{ line: ReceivingLine }>,
+    byHand: number,
+  ): Plan | null => {
+    if (!item || sourceChanged) return null;
+    const live = lines.map((x) => x.line).filter((l) => !l.ignored);
+    if (!live.length)
+      return qtyRound(item.ordered - item.received) > 0 &&
+        !r.orderResolutions?.[item.id]
+        ? {
+            actions: [
+              {
+                action: "orderDisposition",
+                itemId: item.id,
+                disposition: "outstanding",
+                note: "",
+              },
+            ],
+          }
+        : null;
+    // A correction, or a material issue or return recorded in Resolve, is
+    // settled there.
+    if (
+      live.some(
+        (l) =>
+          lineStatus(l, r, item) === "correction" ||
+          !!l.resolution?.materialIssue ||
+          materialMarkedForReturn(l, r.kind),
+      )
+    )
+      return null;
+    const actions: Action[] = [];
+    const fits: NonNullable<Plan["fit"]>[] = [];
+    const after = new Map<string, ReceivingLine>();
+    for (const l of live) {
+      if (l.approved) continue;
+      if (
+        l.orderItemId !== item.id &&
+        (l.orderItemId || detail.pairs?.[l.id] !== item.id)
+      )
+        return null;
+      let next = l;
+      if (l.orderItemId !== item.id || l.checked !== true) {
+        // Linked and confirmed as read, as "Looks right" saves it.
+        const link = linkLineAction(l, item.id, detail.items);
+        if (!link) return null;
+        const fit = partFit(
+          item,
+          {
+            quantity: l.quantity,
+            read: l.quantity,
+            unit: l.unit,
+            description: l.description,
+            sku: l.sku,
+            evidence: l.evidence,
+          },
+          detail.orderParts?.[item.id],
+          {
+            byHand: l.orderItemId !== item.id,
+            canEdit: !!detail.canEditParts,
+          },
+        );
+        // Counted in packs: "Looks right" asks how to read it first.
+        if (fit && fit.read !== null) return null;
+        if (fit?.rows.length)
+          fits.push({ fit, unit: l.unit, index: actions.length });
+        actions.push({ ...link, checked: true });
+        next = {
+          ...l,
+          orderItemId: item.id,
+          quantity: link.quantity as number | null,
+          ordered: link.ordered as number | null,
+          unit: link.unit as string,
+          checked: true,
+        };
+        if (
+          next.resolution &&
+          resolutionEvidenceFingerprint(next) !==
+            resolutionEvidenceFingerprint(l)
+        )
+          next = {
+            ...next,
+            checked: false,
+            resolution: {
+              ...newResolution(next, "", ""),
+              note: next.resolution.note,
+            },
+          };
+      }
+      // A line already in Resolve: confirm the checks still open, and keep
+      // every decision already recorded.
+      const was = next.resolution;
+      if (was) {
+        const evidence = resolutionEvidenceFingerprint(next),
+          counterpart = resolutionCounterpartFingerprint(item);
+        const base =
+          was.evidenceFingerprint === evidence &&
+          was.counterpartFingerprint === counterpart
+            ? was
+            : newResolution(next, "", "");
+        const open = {
+          ...(base.match !== "confirmed" && { match: "confirmed" as const }),
+          ...(base.specification === "unresolved" && {
+            specification: "confirmed" as const,
+          }),
+          ...(base.quantity !== "confirmed" && {
+            quantity: "confirmed" as const,
+          }),
+          ...(base.delivery === "unresolved" && {
+            delivery: "confirmed" as const,
+          }),
+        };
+        if (Object.keys(open).length || base.skipped || base !== was) {
+          actions.push({
+            action: "resolve",
+            lineId: l.id,
+            evidenceFingerprint: evidence,
+            counterpartFingerprint: counterpart,
+            ...open,
+            skipped: false,
+          });
+          next = {
+            ...next,
+            resolution: {
+              ...base,
+              ...open,
+              skipped: false,
+              evidenceFingerprint: evidence,
+              counterpartFingerprint: counterpart,
+            },
+          };
+          next = { ...next, checked: resolutionBlockers(next).length === 0 };
+        }
+      }
+      after.set(l.id, next);
+    }
+    if (!actions.length) return null;
+    const all = r.lines.map((l) => after.get(l.id) ?? l),
+      settled = live.map((l) => after.get(l.id) ?? l);
+    return settled.every(
+      (l) =>
+        l.checked === true &&
+        resolutionBlockers(l, item, all, r.kind).length === 0,
+    ) && compareToOrder(item, settled, byHand)?.ok === true
+      ? { actions, fit: fits.length === 1 ? fits[0] : undefined }
+      : null;
+  };
+  const confirmRow = (
+    key: string,
+    item: ReceiptOrderItem,
+    plan: Plan,
+    badge: string,
+    tint: { order: boolean; slip: boolean },
+    from: HTMLElement,
+  ) => {
+    if (cheer) return;
+    const row = from.closest("li");
+    const go = (fit?: PartUpdate) => {
+      setAsking(null);
+      const actions = plan.actions.map((a, i) =>
+        fit && Object.keys(fit).length && i === plan.fit?.index
+          ? { ...a, fit }
+          : a,
+      );
+      // The circle must be in view for its burst.
+      const circle = row?.querySelector<HTMLElement>("[data-comparison-state]");
+      const top = circle?.getBoundingClientRect().top ?? 200;
+      if (top < 96) {
+        const by = { top: top - 120, behavior: "smooth" as const };
+        const scroller = scrollParent(list.current);
+        if (scroller) scroller.scrollBy(by);
+        else window.scrollBy(by);
+      }
+      const saved = (async () => {
+        for (const action of actions) if (!(await run(action))) return false;
+        return true;
+      })();
+      setKept((k) => new Set(k).add(key));
+      setCheer({ key, badge, tint, covered: false, burst: false });
+      stopCheer.current = playConfirmWave({
+        targets: () => {
+          const button = row?.querySelector<HTMLElement>(
+              "[data-confirm-button]",
+            ),
+            card = row?.querySelector<HTMLElement>("[data-confirm-card]"),
+            circle = row?.querySelector<HTMLElement>("[data-comparison-state]");
+          return row?.isConnected && button && card && circle
+            ? { button, card, circle }
+            : null;
+        },
+        saved,
+        onCovered: () => setCheer((c) => c && { ...c, covered: true }),
+        onBurst: () => setCheer((c) => c && { ...c, burst: true }),
+        onDone: (ok) => {
+          stopCheer.current = null;
+          setCheer(null);
+          if (!ok)
+            setKept((k) => {
+              const next = new Set(k);
+              next.delete(key);
+              return next;
+            });
+          else if (actions.length === 1) notify("Confirmed.", true);
+        },
+      });
+    };
+    if (plan.fit)
+      setAsking({ fit: plan.fit.fit, unit: plan.fit.unit, item, go });
+    else go();
+  };
   // Independent trial readers, when this slip was part of a comparison.
   const others = (itemId: string, skip: Set<string>) =>
     trial
@@ -2796,7 +3038,13 @@ function OrderComparison({
           });
           const disposition = item ? r.orderResolutions?.[item.id] : undefined;
           const complete = rowComplete({ item, lines });
-          const orderNeedsConfirmation = !complete && (
+          // While its confirmation plays, a row keeps its old circle until
+          // the burst shows the check.
+          const mine = cheer?.key === key ? cheer : null;
+          const done = mine ? mine.burst : complete;
+          const plan =
+            complete || mine || cheer ? null : confirmPlan(item, lines, byHand);
+          const orderNeedsNow = !complete && (
             !item || !live.length || live.some(({ line }) =>
               !line.orderItemId || (line.resolution && (
                 line.resolution.match !== "confirmed" ||
@@ -2804,11 +3052,14 @@ function OrderComparison({
                 (!!item && line.resolution.counterpartFingerprint !== resolutionCounterpartFingerprint(item))
               )))
           );
-          const slipNeedsConfirmation = !complete && (
+          const slipNeedsNow = !complete && (
             !live.length || live.some(({ line }) =>
               (!line.approved || status === "correction" || resolutionBlockers(line, item, r.lines, r.kind).length > 0) &&
               !approvable(line, r.kind, item, r.lines))
           );
+          // The pale tint stays until the burst, like the circle.
+          const orderNeedsConfirmation = mine && !mine.burst ? mine.tint.order : orderNeedsNow,
+            slipNeedsConfirmation = mine && !mine.burst ? mine.tint.slip : slipNeedsNow;
           const resolveLine =
             live.find(
               ({ line }) =>
@@ -3088,7 +3339,10 @@ function OrderComparison({
               data-drop={accepts ?? undefined}
               className={`px-3 pt-6 pb-3 ${away ? "relative z-50" : ""}`}
             >
-              <div className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto_auto]">
+              <div
+                data-confirm-card
+                className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto_auto]"
+              >
                 {accepts && dragging && (
                   <div
                     aria-hidden
@@ -3102,10 +3356,10 @@ function OrderComparison({
                   onClick={resolve}
                   aria-label={complete ? "Review resolution" : "Resolve"}
                   title={`${complete ? "Review resolution" : "Resolve"}: ${title}`}
-                  data-comparison-state={complete ? "complete" : "pending"}
-                  className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
+                  data-comparison-state={done ? "complete" : "pending"}
+                  className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${done ? statusStyle.approved.badge : (mine?.badge ?? tone?.badge ?? "bg-muted text-muted-foreground")}`}
                 >
-                  {complete ? <CheckIcon aria-hidden className="size-5" /> : n + 1}
+                  {done ? <CheckIcon aria-hidden className="size-5" /> : n + 1}
                 </button>
                 <span
                   aria-hidden
@@ -3124,7 +3378,7 @@ function OrderComparison({
                   )}
                   className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="order" markedForReturn={live.some(({line}) => line.orderItemId === item?.id && materialMarkedForReturn(line, r.kind))} empty={orderEmpty && !complete} needsConfirmation={orderNeedsConfirmation} />
+                  <TornPaper side="order" markedForReturn={live.some(({line}) => line.orderItemId === item?.id && materialMarkedForReturn(line, r.kind))} empty={orderEmpty && !done} needsConfirmation={orderNeedsConfirmation} />
                   <p className={copyLabel}>Order</p>
                   <h3
                     aria-label={title}
@@ -3203,7 +3457,7 @@ function OrderComparison({
                   )}
                   className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="slip" markedForReturn={live.some(({line}) => materialMarkedForReturn(line, r.kind))} empty={slipEmpty && !complete} needsConfirmation={slipNeedsConfirmation} />
+                  <TornPaper side="slip" markedForReturn={live.some(({line}) => materialMarkedForReturn(line, r.kind))} empty={slipEmpty && !done} needsConfirmation={slipNeedsConfirmation} />
                   <div
                     role="group"
                     aria-label={`${main.label} reading`}
@@ -3325,6 +3579,37 @@ function OrderComparison({
                     </>,
                   )}
               </div>
+              {(plan ?? mine) && item && (
+                // Folds away under the burst, leaving only the check.
+                <div
+                  className={`grid transition-[grid-template-rows,margin-top] duration-300 motion-reduce:transition-none ${mine?.burst ? "mt-0 grid-rows-[0fr] delay-100" : "mt-3 grid-rows-[1fr]"}`}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <button
+                      type="button"
+                      data-confirm-button
+                      disabled={!!cheer}
+                      onClick={(event) =>
+                        plan &&
+                        confirmRow(
+                          key,
+                          item,
+                          plan,
+                          tone?.badge ?? "bg-muted text-muted-foreground",
+                          {
+                            order: orderNeedsConfirmation,
+                            slip: slipNeedsConfirmation,
+                          },
+                          event.currentTarget,
+                        )
+                      }
+                      className={`focus-visible:ring-ring h-11 w-full cursor-pointer rounded-xl border border-emerald-600/40 bg-emerald-500/10 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-500/15 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset disabled:cursor-default dark:border-emerald-400/30 dark:text-emerald-200 ${mine?.covered ? "invisible" : ""}`}
+                    >
+                      This Information Is Correct
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="mt-2 flex items-start justify-between gap-3">
                 {/* What reviewers said is needed, from Resolve. */}
                 {lines.map(({line}) => line.resolution?.materialIssue ? <p key={`issue:${line.id}`} className="text-amber-700 dark:text-amber-300 text-sm">{materialIssueLabels[line.resolution.materialIssue]}</p> : null)}
@@ -3409,6 +3694,13 @@ function OrderComparison({
           );
         })}
       </ul>
+      <PartFitDialog
+        fit={asking?.fit ?? null}
+        item={asking?.item}
+        unit={asking?.unit ?? ""}
+        onClose={() => setAsking(null)}
+        onChoose={(over) => asking?.go(over?.fit)}
+      />
       {drag?.moving && (
         <span role="status" className="sr-only">
           {drag.side === "order"
