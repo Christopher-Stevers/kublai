@@ -1458,7 +1458,12 @@ it("moves a slip line onto an order item by long pressing and dragging, and the 
   expect(screen.queryByText(/Move to/)).not.toBeInTheDocument();
   fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 300 }] });
   expect(screen.getByText("Move to Copper pipe 1/2")).toBeInTheDocument();
+  const half = reading.closest<HTMLElement>("[data-drag-half]")!;
+  expect(half.style.transform).toBe("translate(0px, -300px)");
+  expect(half).toHaveClass("pointer-events-none");
+  expect(screen.getAllByText("Unclear pipe")).toHaveLength(1);
   fireEvent.touchEnd(window, { touches: [] });
+  expect(half.style.transform).toBe("");
   await waitFor(() =>
     expect(posts).toContainEqual(
       expect.objectContaining({

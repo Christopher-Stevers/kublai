@@ -2311,9 +2311,6 @@ function scrollParent(node: HTMLElement | null) {
 const dropTarget = (at: DragPoint) =>
   document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>("[data-drop]")
     ?.dataset.drop ?? null;
-// The dragged half floats above the finger, so the finger never hides it.
-const ghostAt = (at: DragPoint) =>
-  `translate(${Math.round(Math.max(8, Math.min(window.innerWidth - 232, at.x - 112)))}px, ${Math.round(at.y < 140 ? at.y + 28 : at.y - 96)}px)`;
 // Once lifted, this far moved is a drag; less, and letting go opens the menu.
 const DRAG_FROM = 8;
 
@@ -2438,11 +2435,26 @@ function OrderComparison({
     side: "order" | "slip";
   } | null>(null);
   const list = useRef<HTMLUListElement>(null);
-  const ghost = useRef<HTMLDivElement>(null);
+  const draggedHalf = useRef<{ node: HTMLElement; left: number; top: number } | null>(null);
+  const positionHalf = useCallback((at: DragPoint, start: DragPoint) => {
+    const held = draggedHalf.current;
+    if (!held) return;
+    // Keep the original grid layout, including subgrid row heights. Translate
+    // the real half and compensate for scrolling while the pointer is held.
+    held.node.style.translate = "0px 0px";
+    held.node.style.transform = "none";
+    const origin = held.node.getBoundingClientRect();
+    held.node.style.transform = `translate(${held.left + at.x - start.x - origin.left}px, ${held.top + at.y - start.y - origin.top}px)`;
+  }, []);
   const pointer = useRef<DragPoint | null>(null);
   // The press handlers read the grab as it is now, not as last rendered.
   const grabbed = useRef<Grab | null>(null);
   const setGrab = (next: Grab | null) => {
+    if (!next && draggedHalf.current) {
+      draggedHalf.current.node.style.removeProperty("transform");
+      draggedHalf.current.node.style.removeProperty("translate");
+      draggedHalf.current = null;
+    }
     grabbed.current = next;
     setDrag(next);
   };
@@ -2472,6 +2484,7 @@ function OrderComparison({
           const by = Math.round(speed * 14);
           if (scroller) scroller.scrollBy(0, by);
           else window.scrollBy(0, by);
+          if (grabbed.current) positionHalf(at, grabbed.current.start);
           const over = dropTarget(at),
             d = grabbed.current;
           if (d && d.over !== over) {
@@ -2484,7 +2497,7 @@ function OrderComparison({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [dragging]);
+  }, [dragging, positionHalf]);
   const sourceChanged = r.versionId !== detail.document.currentVersionId;
   const moveLine = async (line: ReceivingLine, itemId: string) => {
     const target = detail.items.find((i) => i.id === itemId);
@@ -2742,6 +2755,12 @@ function OrderComparison({
               | { side: "order"; item: ReceiptOrderItem },
           ) => ({
             onLift: (at: DragPoint) => {
+              const node = Array.from(list.current?.querySelectorAll<HTMLElement>("[data-drag-half]") ?? [])
+                .find((el) => el.dataset.dragKey === key && el.dataset.dragHalf === side);
+              if (node) {
+                const bounds = node.getBoundingClientRect();
+                draggedHalf.current = { node, left: bounds.left, top: bounds.top };
+              }
               pointer.current = at;
               if ("vibrate" in navigator) navigator.vibrate(10);
               setMenu(null);
@@ -2763,7 +2782,7 @@ function OrderComparison({
                 (canDrag &&
                   Math.hypot(at.x - d.start.x, at.y - d.start.y) > DRAG_FROM);
               if (!moving) return;
-              if (ghost.current) ghost.current.style.transform = ghostAt(at);
+              positionHalf(at, d.start);
               const over = dropTarget(at);
               if (!d.moving || d.over !== over)
                 setGrab({ ...d, moving, over, at });
@@ -2923,14 +2942,14 @@ function OrderComparison({
               </DropdownMenu>
             );
           const half = (side: "order" | "slip") =>
-            `relative isolate row-span-5 grid min-w-0 grid-rows-subgrid pt-6 pb-3 transition-[transform,opacity,filter] duration-150 motion-reduce:transition-none ${side === "order" ? "pr-4 pl-3" : "-ml-2 pr-3 pl-5"} ${lifted(side) ? `z-10 -translate-y-1 drop-shadow-lg ${side === "order" ? "-translate-x-1.5" : "translate-x-1.5"}` : ""} ${away === side ? "opacity-30" : ""}`;
+            `relative isolate row-span-5 grid min-w-0 grid-rows-subgrid pt-6 pb-3 transition-[transform,opacity,filter] duration-150 motion-reduce:transition-none ${side === "order" ? "pr-4 pl-3" : "-ml-2 pr-3 pl-5"} ${lifted(side) ? `z-10 -translate-y-1 drop-shadow-lg ${side === "order" ? "-translate-x-1.5" : "translate-x-1.5"}` : ""} ${away === side ? "pointer-events-none z-50 !transition-none drop-shadow-xl" : ""}`;
           const orderEmpty = !item,
             slipEmpty = !!main.missing;
           return (
             <li
               key={key}
               data-drop={accepts ?? undefined}
-              className="px-3 pt-6 pb-3"
+              className={`px-3 pt-6 pb-3 ${away ? "relative z-50" : ""}`}
             >
               <div className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto_auto]">
                 {accepts && dragging && (
@@ -2959,6 +2978,8 @@ function OrderComparison({
                 <div
                   role="group"
                   aria-label="Order"
+                  data-drag-half="order"
+                  data-drag-key={key}
                   {...pressDrag(
                     item
                       ? grab("order", !sourceChanged, { side: "order", item })
@@ -2966,7 +2987,7 @@ function OrderComparison({
                   )}
                   className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="order" empty={orderEmpty && !complete} />
+                  <TornPaper side="order" empty={orderEmpty && !complete} ghost={away === "order"} />
                   <p className={copyLabel}>Order</p>
                   <h3
                     aria-label={title}
@@ -3036,6 +3057,8 @@ function OrderComparison({
                   </div>
                 </div>
                 <div
+                  data-drag-half="slip"
+                  data-drag-key={key}
                   {...pressDrag(
                     live.length
                       ? grab("slip", !!mover, { side: "slip", line: mover })
@@ -3043,7 +3066,7 @@ function OrderComparison({
                   )}
                   className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="slip" empty={slipEmpty && !complete} />
+                  <TornPaper side="slip" empty={slipEmpty && !complete} ghost={away === "slip"} />
                   <div
                     role="group"
                     aria-label={`${main.label} reading`}
@@ -3219,35 +3242,11 @@ function OrderComparison({
         })}
       </ul>
       {drag?.moving && (
-        <div
-          ref={ghost}
-          aria-hidden
-          style={{ transform: ghostAt(drag.at) }}
-          className="pointer-events-none fixed top-0 left-0 isolate z-50 w-56 drop-shadow-xl"
-        >
-          <div
-            className={`relative py-2 ${drag.side === "order" ? "pr-4 pl-3" : "pr-3 pl-5"}`}
-          >
-            <TornPaper side={drag.side} empty={false} ghost />
-            <p className={copyLabel}>
-              {drag.side === "order" ? "Order" : "Slip"}
-            </p>
-            <p className="line-clamp-2 text-sm font-medium">
-              {drag.side === "order"
-                ? drag.item.description
-                : drag.line?.description}
-            </p>
-            <p className="text-muted-foreground mt-0.5 truncate text-xs">
-              {drag.side === "order"
-                ? drag.over
-                  ? `Pair with ${lineIds.get(drag.over)?.description ?? "this line"}`
-                  : "Drop on a slip line"
-                : drag.over
-                  ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}`
-                  : "Drop on an order item"}
-            </p>
-          </div>
-        </div>
+        <span role="status" className="sr-only">
+          {drag.side === "order"
+            ? drag.over ? `Pair with ${lineIds.get(drag.over)?.description ?? "this line"}` : "Drop on a slip line"
+            : drag.over ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}` : "Drop on an order item"}
+        </span>
       )}
       <Dialog
         open={!!preview}
