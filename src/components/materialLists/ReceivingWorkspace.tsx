@@ -686,23 +686,12 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     );
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-5 pb-32 sm:px-6">
-      <header className="mb-5 flex items-start justify-between gap-3">
+      <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
             {id ? "Review Packing Slip" : "Receiving queue"}
           </h1>
-          {detail && (
-            <p className="text-muted-foreground mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm">
-              <FileTextIcon className="size-4 shrink-0" />
-              <span className="min-w-0 break-words">
-                <Link href={slipViewerHref(jobId, detail)} className="text-foreground rounded-sm font-medium underline decoration-current/30 underline-offset-4 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  {detail.document.name}
-                </Link>{" "}
-                · Received:{" "}
-                {new Date(detail.document.createdAt).toLocaleDateString()}
-              </span>
-            </p>
-          )}
+
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {detail && a?.status === "processing" && (
@@ -734,6 +723,21 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           )}
 
         </div>
+        {detail && (
+          <p className="text-muted-foreground col-span-2 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
+            <FileTextIcon className="size-4 shrink-0" />
+            <Link
+              href={slipViewerHref(jobId, detail)}
+              title={detail.document.name}
+              className="text-foreground min-w-0 truncate rounded-sm font-medium underline decoration-current/30 underline-offset-4 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {detail.document.name}
+            </Link>
+            <span className="shrink-0">
+              · Received: {new Date(detail.document.createdAt).toLocaleDateString()}
+            </span>
+          </p>
+        )}
       </header>
       {detail && (
         <PackingSlipActivity
