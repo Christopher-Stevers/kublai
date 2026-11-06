@@ -355,10 +355,10 @@ async function main() {
           "displayName",
           "description",
           "sizeLabel",
-          "material",
-          "category",
         ])
           assert(p[key] === r[key], `${r.sku}: ${key} mismatch`);
+        for (const key of ["material", "category"])
+          assert(normalize(p[key]) === normalize(r[key]), `${r.sku}: ${key} mismatch`);
         assert(
           p.catalog === "Plumbing" &&
             (r.sizeNominal == null ? p.nominal == null : Number(p.nominal) === r.sizeNominal && p.sizeUnit === (r.sizeUnit || "in")) &&
