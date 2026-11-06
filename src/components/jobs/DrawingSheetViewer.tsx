@@ -121,7 +121,7 @@ import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
-import { pageAtCentre, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
+import { pageAtCentre, pageStack, scrollLimits, scrollPageFade, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
@@ -2924,7 +2924,7 @@ export function DrawingSheetViewer({
               draggable={false}
               decoding="async"
               className="absolute bg-white"
-              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter, opacity: 0.3 }}
+              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter, maskImage: scrollPageFade(fit.height, top, height), WebkitMaskImage: scrollPageFade(fit.height, top, height) }}
             />
           ))}
           {appearanceMatrix && (

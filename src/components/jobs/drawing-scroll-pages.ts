@@ -12,6 +12,18 @@ export type ScrollStack = {
 type Size = { width: number; height: number };
 /** Space between pages, in screen pixels at fit. */
 export const SCROLL_PAGE_GAP = 12;
+/** Fade continuously away from either edge of the focused page. */
+export function scrollPageFade(focusedHeight: number, top: number, height: number) {
+  const span = Math.max(1, focusedHeight);
+  const stops = [0, 0.25, 0.5, 0.75, 1].map(fraction => {
+    const y = top + height * fraction;
+    const distance = Math.max(0, Math.abs(y) - span / 2);
+    const alpha = Math.max(0.03, 0.85 * Math.exp(-2 * distance / span));
+    return `rgba(0, 0, 0, ${alpha.toFixed(3)}) ${fraction * 100}%`;
+  });
+  return `linear-gradient(to bottom, ${stops.join(", ")})`;
+}
+
 /** Pages drawn each side of the open one; a flick travels at most this far. */
 const NEIGHBORS = 3;
 
