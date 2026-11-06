@@ -1650,3 +1650,12 @@ it("reopens a completed repeat-scan decision without changing it until saved", a
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({ action: "duplicate", decision: "additional", otherDocumentId: "old" });
 });
+
+it("puts unresolved comparisons before received comparisons", async () => {
+  state.review.lines[0]!.approved = { itemId: "item", quantity: 6, kind: "delivery", by: "receiver", at: "now" };
+  render(<ReceivingWorkspace jobId="job" />);
+  const unresolved = await screen.findByText("Unclear pipe");
+  const received = screen.getByRole("heading", { name: "Valve" });
+  expect(unresolved.compareDocumentPosition(received) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Review resolution" })).toBeInTheDocument();
+});

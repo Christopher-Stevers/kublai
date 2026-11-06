@@ -2579,6 +2579,35 @@ function OrderComparison({
         lines: [x],
       })),
   ];
+  const rowComplete = ({ item, lines }: Pick<(typeof rows)[number], "item" | "lines">) => {
+    const live = lines.filter(x => !x.line.ignored);
+    const status = lines.map(x => lineStatus(x.line, r, item)).sort((x, y) => statusOrder.indexOf(x) - statusOrder.indexOf(y))[0];
+    const byHand = item ? (detail.receipts?.[item.id]?.byHand ?? 0) : 0;
+    const resolved =
+      !!item &&
+      live.length > 0 &&
+      live.every(
+        ({ line }) =>
+          line.checked === true &&
+          resolutionBlockers(line, item, r.lines, r.kind).length === 0,
+      ) &&
+      compareToOrder(
+        item,
+        live.map(({ line }) => line),
+        byHand,
+      )?.ok === true &&
+      status !== "correction";
+    const disposition = item ? r.orderResolutions?.[item.id] : undefined;
+    const complete =
+      resolved ||
+      status === "approved" ||
+      (!live.length &&
+        !!disposition &&
+        ["outstanding", "backordered"].includes(disposition.disposition));
+    return complete;
+  };
+  // Keep source order within each group, but always bring unfinished work first.
+  rows.sort((a, b) => Number(rowComplete(a)) - Number(rowComplete(b)) || a.n - b.n);
   // Independent trial readers, when this slip was part of a comparison.
   const others = (itemId: string, skip: Set<string>) =>
     trial
@@ -2677,27 +2706,8 @@ function OrderComparison({
             readings,
             trialReadings,
           });
-          const resolved =
-            !!item &&
-            live.length > 0 &&
-            live.every(
-              ({ line }) =>
-                line.checked === true &&
-                resolutionBlockers(line, item, r.lines, r.kind).length === 0,
-            ) &&
-            compareToOrder(
-              item,
-              live.map(({ line }) => line),
-              byHand,
-            )?.ok === true &&
-            status !== "correction";
           const disposition = item ? r.orderResolutions?.[item.id] : undefined;
-          const complete =
-            resolved ||
-            status === "approved" ||
-            (!live.length &&
-              !!disposition &&
-              ["outstanding", "backordered"].includes(disposition.disposition));
+          const complete = rowComplete({ item, lines });
           const resolveLine =
             live.find(
               ({ line }) =>
