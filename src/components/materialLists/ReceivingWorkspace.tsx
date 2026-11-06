@@ -2952,13 +2952,16 @@ function OrderComparison({
                 )}
                 {/* The match number, on the tear between the order and the
                     slip it pairs. */}
-                <span
-                  aria-hidden
+                <button
+                  type="button"
+                  onClick={resolve}
+                  aria-label={complete ? "Review resolution" : "Resolve"}
+                  title={`${complete ? "Review resolution" : "Resolve"}: ${title}`}
                   data-comparison-state={complete ? "complete" : "pending"}
-                  className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
+                  className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${complete ? statusStyle.approved.badge : (tone?.badge ?? "bg-muted text-muted-foreground")}`}
                 >
-                  {complete ? <CheckIcon className="size-5" /> : n + 1}
-                </span>
+                  {complete ? <CheckIcon aria-hidden className="size-5" /> : n + 1}
+                </button>
                 <span
                   aria-hidden
                   style={tear.seam}
@@ -3192,14 +3195,6 @@ function OrderComparison({
                       : [],
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  className="shrink-0"
-                  variant={complete ? "outline" : "default"}
-                  onClick={resolve}
-                >
-                  {complete ? "Review resolution" : "Resolve"}
-                </Button>
               </div>
               {live.flatMap((x) => {
                 const check = terraCheck(x.line, detail);
