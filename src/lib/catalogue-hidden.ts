@@ -19,7 +19,7 @@ export const catalogueHideCriteriaSchema = z
   .object(criteriaShape)
   .refine(hidesSomething, "Choose at least one thing to hide.");
 export const catalogueHideRuleSchema = z
-  .object({ id: z.string().min(1).max(64), ...criteriaShape })
+  .object({ id: z.string().min(1).max(64), ...criteriaShape, exceptions: z.array(catalogueHideCriteriaSchema).max(500).optional() })
   .refine(hidesSomething);
 export type CatalogueHideRule = z.infer<typeof catalogueHideRuleSchema>;
 export type CatalogueHideCriteria = z.infer<typeof catalogueHideCriteriaSchema>;
@@ -53,8 +53,12 @@ export function ruleMatches(rule: CatalogueHideCriteria, part: HideablePart) {
   return true;
 }
 
-export function isPartHidden(part: HideablePart, rules: readonly CatalogueHideCriteria[]) {
-  return rules.some((rule) => ruleMatches(rule, part));
+export function isPartHidden(part: HideablePart, rules: readonly (CatalogueHideCriteria & { exceptions?: CatalogueHideCriteria[] })[]) {
+  return rules.some((rule) => ruleMatches(rule, part) && !rule.exceptions?.some(exception => {
+    const group = { ...exception };
+    delete group.partId;
+    return ruleMatches(part.id ? exception : group, part);
+  }));
 }
 
 export function visibleParts<T extends HideablePart>(parts: T[], rules: readonly CatalogueHideCriteria[]) {
@@ -70,4 +74,27 @@ export function sameCriteria(a: CatalogueHideCriteria, b: CatalogueHideCriteria)
     a.size?.nominal === b.size?.nominal &&
     a.size?.unit === b.size?.unit
   );
+}
+
+/** True when every item in target belongs to scope. */
+export function criteriaContains(scope: CatalogueHideCriteria, target: CatalogueHideCriteria) {
+  return (!scope.catalogId || scope.catalogId === target.catalogId) &&
+    (!scope.materialId || scope.materialId === target.materialId) &&
+    (!scope.categoryId || scope.categoryId === target.categoryId) &&
+    (!scope.partId || scope.partId === target.partId) &&
+    (!scope.size || (scope.size.nominal === target.size?.nominal && scope.size.unit === target.size?.unit));
+}
+/** Restore only the requested selection, preserving hidden siblings. */
+export function restoreHiddenSelection(rules: CatalogueHideRule[], targets: CatalogueHideCriteria[]) {
+  return rules.filter(rule => !targets.some(target => criteriaContains(target, rule))).map(rule => {
+    const exceptions = [...(rule.exceptions ?? [])];
+    for (const target of targets) {
+      const overlaps = ["catalogId", "materialId", "categoryId", "partId"].every(key => {
+        const k = key as "catalogId" | "materialId" | "categoryId" | "partId";
+        return !rule[k] || !target[k] || rule[k] === target[k];
+      }) && (!rule.size || !target.size || (rule.size.nominal === target.size.nominal && rule.size.unit === target.size.unit));
+      if (overlaps && !exceptions.some(existing => criteriaContains(existing, target))) exceptions.push(target);
+    }
+    return {...rule, exceptions};
+  });
 }

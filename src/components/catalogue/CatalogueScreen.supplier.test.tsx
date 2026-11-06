@@ -8,7 +8,7 @@ vi.mock("~/hooks/use-online-status",()=>({useOnlineStatus:()=>true}));
 vi.mock("~/trpc/react",()=>({api:{
  useUtils:()=>({}),user:{getMyRole:{useQuery:()=>({data:{permissions:{canEditParts:true,can:{"financial.view":true}}}})}},
  supplier:{list:{useQuery:()=>({data:[{id:"one",name:"Next"},{id:"two",name:"Fastening House"}]})},getById:{useQuery:({id,partDefinitionIds}:{id:string;partDefinitionIds:string[]},options:{enabled:boolean})=>{state.listings({id,partDefinitionIds},options);return {isPending:false,data:options.enabled?{id,name:id==="one"?"Next":"Fastening House",supplierParts:[{id:`listing-${id}`,supplierId:id,partDefinitionId:`part-${id}`,supplierSku:`SKU-${id}`,supplierName:`Description ${id}`,packSize:"1",lastKnownUnitCost:"25",currency:"CAD",packUom:null}]}:undefined}}}},
- catalogue:{hideParts:{useMutation:()=>({mutate:vi.fn()})},recentOrderWheelUsage:{useQuery:()=>({})},importCatalogueRows:{useMutation:()=>({})}},
+ catalogue:{showHiddenParts:{useMutation:()=>({mutate:vi.fn()})},hideParts:{useMutation:()=>({mutate:vi.fn()})},recentOrderWheelUsage:{useQuery:()=>({})},importCatalogueRows:{useMutation:()=>({})}},
 }}));
 vi.mock("~/components/materialLists/wizard/use-part-wizard",()=>({usePartWizard:(_open:unknown,_sort:unknown,_kw:unknown,_kind:unknown,supplierId?:string)=>{
  state.wizard(supplierId);

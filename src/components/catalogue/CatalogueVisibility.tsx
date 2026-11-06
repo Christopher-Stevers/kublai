@@ -20,6 +20,7 @@ const Visibility = createContext<{
   acrossAll?: boolean;
   hiddenPartIds?: string[];
   hide: (criteria: CatalogueHideCriteria[]) => void;
+  show?: (criteria: CatalogueHideCriteria[]) => void;
 } | null>(null);
 export const CatalogueVisibilityProvider = Visibility.Provider;
 
@@ -52,7 +53,7 @@ export function useCatalogueVisibility(
     targets.every((t) =>
       t.partId && context.hiddenPartIds
         ? context.hiddenPartIds.includes(t.partId)
-        : context.rules.some((r) => hidesCriteria(r, t)),
+        : context.rules.some((r) => hidesCriteria(r, t) && !r.exceptions?.some(exception => hidesCriteria(exception, t))),
     );
   const press = useRef<{
     id: number;
@@ -102,7 +103,7 @@ export function useCatalogueVisibility(
               if (press.current !== p || p.cancelled) return;
               p.fired = true;
               suppressClick.current = true;
-              context.hide(
+              (hidden ? context.show : context.hide)?.(
                 (context.acrossAll
                   ? Array.isArray(criteria)
                     ? criteria
@@ -159,11 +160,11 @@ export function useCatalogueVisibility(
       };
   const overlay: ReactNode = hidden ? (
     <span
-      className="bg-background/65 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] backdrop-grayscale"
+      className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden rounded-[inherit]"
       aria-label="Hidden from material lists"
     >
-      <span className="bg-background/95 flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold">
-        <EyeOff className="size-3.5" />
+      <span className="bg-background/60 text-foreground flex w-[140%] shrink-0 -rotate-12 items-center justify-center gap-2 border-y border-foreground/25 py-2 text-xl font-bold uppercase tracking-widest shadow-sm">
+        <EyeOff className="size-5" />
         Hidden
       </span>
     </span>

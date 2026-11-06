@@ -243,6 +243,10 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
     onSuccess: data => utils.catalogue.getHiddenParts.setData(undefined,data),
     onError: () => notify("Could not hide those items. Try again.", "error"),
   });
+  const quickShow = api.catalogue.showHiddenParts.useMutation({
+    onSuccess: data => utils.catalogue.getHiddenParts.setData(undefined, data),
+    onError: () => notify("Could not unhide those items. Try again.", "error"),
+  });
   const hidingScope = {
     ...(wizardStage !== "catalog" && selectedCatalogId ? {catalogId:selectedCatalogId} : {}),
     ...(["size","category","part"].includes(wizardStage) && selectedMaterialId ? {materialId:selectedMaterialId} : {}),
@@ -531,7 +535,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
         </div>
       </LandscapeSubBar>
 
-      <CatalogueVisibilityProvider value={{scope:hidingScope,rules:hiddenRules,acrossAll:hideAcrossAll,hiddenPartIds:Object.keys(hiddenNotes),enabled:canEditParts && isCatalogueOnline,hide:criteria => { if(!quickHide.isPending) quickHide.mutate({criteria}); }}}>
+      <CatalogueVisibilityProvider value={{scope:hidingScope,rules:hiddenRules,acrossAll:hideAcrossAll,hiddenPartIds:Object.keys(hiddenNotes),enabled:canEditParts && isCatalogueOnline,show:criteria => { if(!quickHide.isPending && !quickShow.isPending) quickShow.mutate({criteria}); },hide:criteria => { if(!quickHide.isPending && !quickShow.isPending) quickHide.mutate({criteria}); }}}>
       <ArcScrollerSurface onBack={wizardStage === "catalog" ? undefined : () => {
         const order = ["catalog", "material", "size", "category", "part"] as const;
         const index = order.findIndex(stage => stage === wizardStage);

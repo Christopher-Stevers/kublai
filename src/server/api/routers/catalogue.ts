@@ -1,3 +1,4 @@
+import { restoreHiddenSelection } from "~/lib/catalogue-hidden";
 import { normalizePartSize } from "~/lib/part-size-input";
 import { partDeletionUsage, permanentlyDeletePart } from "~/server/catalogue/delete-part";
 import { orderWheelUsage, type OrderedFacet } from "~/lib/order-wheel-usage";
@@ -3194,12 +3195,12 @@ export const catalogueRouter = createTRPCRouter({
     }),
 
   showHiddenParts: hasAppAccess
-    .input(z.object({ ruleId: z.string().min(1).max(64) }))
+    .input(z.union([z.object({ ruleId: z.string().min(1).max(64) }), z.object({ criteria: z.array(catalogueHideCriteriaSchema).min(1).max(500) })]))
     .mutation(async ({ ctx, input }) => {
       assertCanEditParts(ctx.user);
       assertCanAccessTab(ctx.user, "catalogue");
       const organizationId = ctx.user.organizationId;
       if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
-      return { rules: await changeHiddenPartRules(ctx.db, organizationId, removeHideRule(input.ruleId)) };
+      return { rules: await changeHiddenPartRules(ctx.db, organizationId, "ruleId" in input ? removeHideRule(input.ruleId) : rules => restoreHiddenSelection(rules, input.criteria)) };
     }),
 });

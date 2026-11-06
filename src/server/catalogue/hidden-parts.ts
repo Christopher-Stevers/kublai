@@ -42,7 +42,7 @@ export async function changeHiddenPartRules(
 
 export const addHideRule = (criteria: CatalogueHideCriteria) => (rules: CatalogueHideRule[]) =>
   rules.some((rule) => sameCriteria(rule, criteria))
-    ? rules
+    ? rules.some(rule => sameCriteria(rule, criteria) && rule.exceptions?.length) ? rules.map(rule => sameCriteria(rule, criteria) ? { ...rule, exceptions: [] } : rule) : rules
     : [...rules, { ...criteria, id: crypto.randomUUID() }];
 
 export const removeHideRule = (id: string) => (rules: CatalogueHideRule[]) =>

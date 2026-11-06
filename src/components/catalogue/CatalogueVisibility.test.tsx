@@ -11,6 +11,7 @@ import {
   hidesCriteria,
 } from "./CatalogueVisibility";
 import { WizardOptionCard } from "~/components/materialLists/wizard/WizardOptionGrid";
+const show = vi.fn();
 const hide = vi.fn(),
   tap = vi.fn();
 const scope = { catalogId: "catalog", materialId: "material" };
@@ -27,7 +28,7 @@ function Card({
         scope,
         rules: hidden ? [{ id: "rule", ...scope }] : [],
         enabled,
-        hide,
+        hide, show,
       }}
     >
       <WizardOptionCard
@@ -111,7 +112,7 @@ it("only treats a group as hidden when a rule covers that group", () => {
   ).toBe(false);
   expect(hidesCriteria({ materialId: "other" }, scope)).toBe(false);
 });
-it("hides across all groups when checked, even if already hidden in this path", () => {
+it("unhides across all groups when checked and already hidden", () => {
   render(
     <CatalogueVisibilityProvider
       value={{
@@ -119,7 +120,7 @@ it("hides across all groups when checked, even if already hidden in this path", 
         rules: [{ id: "rule", ...scope, size: { nominal: 2, unit: "in" } }],
         enabled: true,
         acrossAll: true,
-        hide,
+        hide, show,
       }}
     >
       <WizardOptionCard
@@ -132,7 +133,7 @@ it("hides across all groups when checked, even if already hidden in this path", 
   );
   fireEvent.pointerDown(screen.getByRole("button"), { button: 0 });
   act(() => vi.advanceTimersByTime(600));
-  expect(hide).toHaveBeenCalledExactlyOnceWith([
+  expect(show).toHaveBeenCalledExactlyOnceWith([
     { size: { nominal: 2, unit: "in" } },
   ]);
 });
@@ -143,7 +144,7 @@ it("hides every material in a group in one request", () => {
         scope: { catalogId: "catalog" },
         rules: [],
         enabled: true,
-        hide,
+        hide, show,
       }}
     >
       <WizardOptionCard
@@ -164,7 +165,7 @@ it("hides every material in a group in one request", () => {
 it("hides individual parts by identity and marks parts hidden by parent rules", () => {
   render(
     <CatalogueVisibilityProvider
-      value={{ scope, rules: [], hiddenPartIds: ["part"], enabled: true, hide }}
+      value={{ scope, rules: [], hiddenPartIds: ["part"], enabled: true, hide, show }}
     >
       <WizardOptionCard onClick={tap} hideCriteria={{ partId: "part" }}>
         Part
@@ -174,5 +175,5 @@ it("hides individual parts by identity and marks parts hidden by parent rules", 
   expect(screen.getByText("Hidden")).toBeInTheDocument();
   fireEvent.pointerDown(screen.getByRole("button"), { button: 0 });
   act(() => vi.advanceTimersByTime(600));
-  expect(hide).toHaveBeenCalledExactlyOnceWith([{ partId: "part" }]);
+  expect(show).toHaveBeenCalledExactlyOnceWith([{ partId: "part" }]);
 });

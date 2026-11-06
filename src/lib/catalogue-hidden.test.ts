@@ -32,3 +32,14 @@ it("adds a rule once and removes it by id", () => {
   expect(twice).toHaveLength(2);
   expect(removeHideRule(once[0]!.id)(twice)).toEqual([twice[1]]);
 });
+
+
+import { restoreHiddenSelection } from "./catalogue-hidden";
+it("restores a child without exposing siblings and can hide it again", () => {
+  const rules = restoreHiddenSelection([{ id: "rule", catalogId: "catalog" }], [{ partId: "one" }]);
+  const part = { catalogId: "catalog", materialId: null, sizeNominal: null, sizeUnit: null, categoryId: null };
+  expect(isPartHidden({ ...part, id: "one" }, rules)).toBe(false);
+  expect(isPartHidden({ ...part, id: "two" }, rules)).toBe(true);
+  expect(isPartHidden({ ...part, id: "one" }, [...rules, { id: "new", partId: "one" }])).toBe(true);
+  expect(restoreHiddenSelection(rules, [{ catalogId: "catalog" }])).toEqual([]);
+});
