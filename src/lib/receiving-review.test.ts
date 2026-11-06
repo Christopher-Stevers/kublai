@@ -413,3 +413,16 @@ describe("ordered counts during pack conversion", () => {
     expect(f.draft.ordered).toBe(300);
   });
 });
+
+import { splitComparisonLines, type ReceivingLine } from "./receiving-review";
+it("splits every line atomically without changing counts or source evidence", () => {
+  const line: ReceivingLine = {id:"a", page:1, evidence:"pipe 5", description:"Pipe", sku:"P", unit:"ea", quantity:5, ordered:5, unitPrice:2, orderItemId:"order", checked:true, issues:[]};
+  const second = {...line, id:"b"};
+  splitComparisonLines([line, second]);
+  expect(line).toMatchObject({orderItemId:null, pairingDismissed:true, checked:false, quantity:5, ordered:5, evidence:"pipe 5"});
+  expect(second.orderItemId).toBeNull();
+  const pending = {...line, orderItemId:"order"};
+  const approved = {...second, approved:{itemId:"order", quantity:5, kind:"delivery" as const, by:"user", at:"now"}};
+  expect(() => splitComparisonLines([pending, approved])).toThrow("Approved receipts");
+  expect(pending.orderItemId).toBe("order");
+});

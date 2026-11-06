@@ -1573,14 +1573,13 @@ it("letting go of a held half opens its options", async () => {
   ).toBeInTheDocument();
   expect(screen.getByRole("menuitem", { name: "View on slip" })).toBeVisible();
   fireEvent.click(
-    screen.getByRole("menuitem", { name: "Unpair from this item" }),
+    screen.getByRole("menuitem", { name: "Split" }),
   );
   await waitFor(() =>
     expect(posts).toContainEqual(
       expect.objectContaining({
-        action: "line",
-        lineId: "0",
-        orderItemId: null,
+        action: "splitComparison",
+        lineIds: ["0"],
       }),
     ),
   );
@@ -1658,4 +1657,15 @@ it("puts unresolved comparisons before received comparisons", async () => {
   const received = screen.getByRole("heading", { name: "Valve" });
   expect(unresolved.compareDocumentPosition(received) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.getByRole("button", { name: "Review resolution" })).toBeInTheDocument();
+});
+
+it("splits from the order half menu too", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  const card = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  const half = within(card).getByRole("group", { name: "Order" });
+  fireEvent.touchStart(half, { touches: [{ clientX: 80, clientY: 300 }] });
+  await hold();
+  fireEvent.touchEnd(window, { touches: [] });
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Split" }));
+  await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({ action: "splitComparison", lineIds: ["0"] })));
 });

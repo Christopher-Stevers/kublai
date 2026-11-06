@@ -33,6 +33,8 @@ export type ReceivingLine = {
   };
   kind?: ReceiptKind;
   humanEdited?: boolean;
+  /** Reviewer separated this line; do not suggest it back into a comparison. */
+  pairingDismissed?: boolean;
   id: string;
   page: number;
   sourceIndex?: number;
@@ -433,4 +435,17 @@ export function duplicateEvidence(
       return "The same order, products and printed quantities appeared on another slip.";
   }
   return null;
+}
+
+/** Split the comparison without changing order contents or received quantities. */
+export function splitComparisonLines(lines: ReceivingLine[]) {
+  if (lines.some(line => line.approved)) throw new Error("Approved receipts cannot be split. Correct the receipt first.");
+  if (lines.some(line => line.ignored)) throw new Error("Restore excluded lines before splitting.");
+  for (const line of lines) {
+    line.orderItemId = null;
+    line.pairingDismissed = true;
+    line.humanEdited = true;
+    line.checked = false;
+    delete line.resolution;
+  }
 }

@@ -1,3 +1,4 @@
+import { splitComparisonLines } from "~/lib/receiving-review";
 import { randomUUID, createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql, desc } from "drizzle-orm";
@@ -79,7 +80,7 @@ type CorrectionHistory = {
   before?: ReceivingReview;
   after?: ReceivingReview;
 };
-const undoActions = new Set(["resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition", "note"]);
+const undoActions = new Set(["splitComparison", "resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition", "note"]);
 function correctionCanUndo(data: CorrectionHistory, review: ReceivingReview) {
   if (!data.undoable || !data.operation || !undoActions.has(data.operation) || !data.before || data.after?.revision !== review.revision) return false;
   if (JSON.stringify(data.after.lines) !== JSON.stringify(review.lines.map(({ autoConfirmed: _auto, ...line }) => line))) return false;
@@ -1021,6 +1022,11 @@ async function mutateReceivingImpl(
         line.humanEdited = true;
         line.checked = resolutionBlockers(line).length === 0;
         review.documentChecked = false;
+      } else if (input.action === "splitComparison") {
+        const lines = [...new Set(input.lineIds)].map(lineFor);
+        for (const line of lines) capturePaper(line);
+        try { splitComparisonLines(lines); } catch (error) { fail(error instanceof Error ? error.message : "Cannot split this comparison."); }
+        review.documentChecked = false;
       } else if (input.action === "allocate") {
         const sources = input.lineIds.map(lineFor);
         try { assertAllocation(sources, input.outputs, review.kind); } catch (error) { fail(error instanceof Error ? error.message : "Invalid allocation."); }
@@ -1229,6 +1235,7 @@ async function mutateReceivingImpl(
           unit: quantityUnit,
           unitPrice: input.unitPrice,
           orderItemId: input.orderItemId,
+          pairingDismissed: !input.orderItemId,
           checked: input.checked,
         });
         if (previousEvidence !== resolutionEvidenceFingerprint(l)) invalidateResolution(l);

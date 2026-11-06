@@ -74,3 +74,7 @@ describe("slipOrderPairs", () => {
     ).toEqual({});
   });
 });
+
+it("does not automatically rejoin a comparison the reviewer split", () => {
+  expect(slipOrderPairs([{...line("1"), pairingDismissed: true}], {"1": [part("socket", 1, true)]}, parts)).toEqual({});
+});

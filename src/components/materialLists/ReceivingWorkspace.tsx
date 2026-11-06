@@ -2510,12 +2510,6 @@ function OrderComparison({
       );
     if (await run(action)) notify(`Moved to ${target.description}.`, true);
   };
-  const unpairLine = async (line: ReceivingLine) => {
-    const from = detail.items.find((i) => i.id === line.orderItemId);
-    const action = linkLineAction(line, null, detail.items);
-    if (action && (await run(action)))
-      notify(`Unpaired from ${from?.description ?? "the order item"}.`, true);
-  };
   const lineIds = new Map(r.lines.map((line) => [line.id, line]));
   const dropOn = (grab: Grab, over: string) => {
     if (grab.side === "slip") {
@@ -2717,6 +2711,15 @@ function OrderComparison({
             live[0]?.line;
           const resolve = () =>
             onResolve({ lineId: resolveLine?.id, itemId: item?.id });
+          const split = async () => {
+            if (await run({ action: "splitComparison", lineIds: live.map(x => x.line.id) }))
+              notify("Split into separate comparisons.", true);
+          };
+          const splitOption = <DropdownMenuItem
+            disabled={sourceChanged || !item || !live.length || live.some(x => !!x.line.approved)}
+            title={live.some(x => !!x.line.approved) ? "Correct the approved receipt before splitting." : undefined}
+            onSelect={() => void split()}
+          ><UnlinkIcon />Split</DropdownMenuItem>;
           const canRemove =
             !!item &&
             !live.length &&
@@ -3136,6 +3139,7 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
+                      {splitOption}
                       {canRemove && (
                         <DropdownMenuItem
                           variant="destructive"
@@ -3164,14 +3168,7 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
-                      {mover?.orderItemId && (
-                        <DropdownMenuItem
-                          onSelect={() => void unpairLine(mover)}
-                        >
-                          <UnlinkIcon />
-                          Unpair from this item
-                        </DropdownMenuItem>
-                      )}
+                      {splitOption}
                     </>,
                   )}
               </div>

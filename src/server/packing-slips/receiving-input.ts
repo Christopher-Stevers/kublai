@@ -28,6 +28,7 @@ const sourceBox = z
     "The source area must fit on the page.",
   );
 export const receivingInput = z.discriminatedUnion("action", [
+  z.object({ ...base, action: z.literal("splitComparison"), lineIds: z.array(text.max(100)).min(1).max(200) }),
   z.object({
     ...base,
     action: z.literal("orderDisposition"),

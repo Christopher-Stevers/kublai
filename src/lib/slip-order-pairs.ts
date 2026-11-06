@@ -7,6 +7,7 @@ type Line = {
   orderItemId: string | null;
   ignored?: unknown;
   approved?: unknown;
+  pairingDismissed?: boolean;
 };
 type Likely = { id: string; score: number; code: boolean };
 
@@ -30,6 +31,7 @@ export function slipOrderPairs(
   const want = new Map<string, string[]>();
   for (const l of lines) {
     if (
+      l.pairingDismissed ||
       l.ignored ||
       l.approved ||
       (l.orderItemId && items.includes(l.orderItemId))
