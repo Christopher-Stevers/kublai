@@ -91,15 +91,16 @@ describe("continuous scroll pages", () => {
   });
 });
 
-it("brightens approaching pages continuously and stays unchanged when focus rebases", () => {
-  const top=212, height=400;
-  const alpha=(mask:string)=>mask==="none"?1:Number(mask.match(/rgba\(0, 0, 0, ([\d.]+)\)/)![1]);
-  expect(alpha(scrollPageFade(top,height,100))).toBeGreaterThan(alpha(scrollPageFade(top,height,0)));
-  expect(alpha(scrollPageFade(top,height,175))).toBeGreaterThan(alpha(scrollPageFade(top,height,100)));
-  expect(scrollPageFade(top,height,206)).toBe("none");
-  // Rebase around the next page's centre, without changing the physical view.
-  for(const centre of [100,206,300,700]){
-    expect(scrollPageFade(top,height,centre)).toBe(scrollPageFade(-200,height,centre-412));
-    expect(scrollPageFade(-200,height,centre)).toBe(scrollPageFade(-612,height,centre-412));
+it("limits fading to the outer five percent of the viewport at every zoom", () => {
+  // Viewport spans -300..300; its bottom fade begins at 270.
+  expect(scrollPageFade(200, 400, 0, 600)).toBe(
+    "linear-gradient(to bottom, rgba(0, 0, 0, 0.03) -125.0000%, black -117.5000%, black 17.5000%, rgba(0, 0, 0, 0.03) 25.0000%)",
+  );
+  expect(scrollPageFade(200, 50, 0, 600)).toBe("none");
+  expect(scrollPageFade(-200, 400, 0, 600)).toBe("none");
+  expect(scrollPageFade(200, 400, 0, 600, true)).toBe("none");
+  // Changing the stack origin preserves the mask, including when zoomed in.
+  for (const viewportHeight of [600, 300, 150]) {
+    expect(scrollPageFade(200, 400, 0, viewportHeight)).toBe(scrollPageFade(-212, 400, -412, viewportHeight));
   }
 });

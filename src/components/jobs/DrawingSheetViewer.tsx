@@ -1364,10 +1364,12 @@ export function DrawingSheetViewer({
     // would make the incoming page brighten only after scrolling settles.
     if (stacked) {
       const centre = -y / scale;
+      const viewportHeight = (frame.current?.clientHeight ?? 0) / scale;
+      const focusedOffset = pageAtCentre(stacked, live.current).offset;
       for (const page of stacked) {
         const element = page.offset === 0 ? pageImageLayer.current : scrollImages.current.get(page.offset);
         if (!element) continue;
-        const mask = scrollPageFade(page.top, page.height, centre);
+        const mask = scrollPageFade(page.top, page.height, centre, viewportHeight, page.offset === 0 || page.offset === focusedOffset);
         if (element.style.maskImage !== mask) {
           element.style.maskImage = mask;
           element.style.webkitMaskImage = mask;

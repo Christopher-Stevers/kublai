@@ -12,21 +12,15 @@ export type ScrollStack = {
 type Size = { width: number; height: number };
 /** Space between pages, in screen pixels at fit. */
 export const SCROLL_PAGE_GAP = 12;
-/** Brightness follows the live viewport, independent of which page owns focus.
- * Both sides of a focus boundary are fully revealed before the page switches. */
-export function scrollPageFade(top: number, height: number, centre: number) {
-  const span = Math.max(1, height);
-  const distanceToPage = Math.max(0, top - centre, centre - top - height);
-  const progress = Math.max(0, 1 - Math.max(0, distanceToPage - SCROLL_PAGE_GAP) / (span * 0.65));
-  const reveal = progress * progress * (3 - 2 * progress);
-  if (reveal === 1) return "none";
-  const stops = [0, 0.25, 0.5, 0.75, 1].map(fraction => {
-    const distance = Math.abs(top + height * fraction - centre);
-    const faded = Math.max(0.03, 0.85 * Math.exp(-2 * distance / span));
-    const alpha = faded + (1 - faded) * reveal;
-    return `rgba(0, 0, 0, ${alpha.toFixed(3)}) ${fraction * 100}%`;
-  });
-  return `linear-gradient(to bottom, ${stops.join(", ")})`;
+/** Only the outer 5% of the viewport fades; focused pages stay fully visible.
+ * Coordinates are in stack pixels, so viewportHeight must account for zoom. */
+export function scrollPageFade(top: number, height: number, centre: number, viewportHeight: number, focused = false) {
+  if (focused || height <= 0 || viewportHeight <= 0 || (centre >= top && centre <= top + height)) return "none";
+  const start = centre - viewportHeight / 2;
+  const band = viewportHeight * 0.05;
+  if (top >= start + band && top + height <= start + viewportHeight - band) return "none";
+  const stop = (position: number) => `${((position - top) / height * 100).toFixed(4)}%`;
+  return `linear-gradient(to bottom, rgba(0, 0, 0, 0.03) ${stop(start)}, black ${stop(start + band)}, black ${stop(start + viewportHeight - band)}, rgba(0, 0, 0, 0.03) ${stop(start + viewportHeight)})`;
 }
 
 /** Pages drawn each side of the open one; a flick travels at most this far. */
