@@ -803,8 +803,7 @@ it("shows a suggestion arriving after mount and confirms that order explicitly",
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByText("Finding the order while the slip is read…");
   state.document.packingSlipAnalysis.orderCandidates = ["order"];
-  await screen.findByText("Suggested order", {}, { timeout: 6000 });
-  expect(screen.getByText("PO-155")).toBeInTheDocument();
+  await screen.findByText("Packing Slip Matched To 'PO-155'", {}, { timeout: 6000 });
   expect(
     screen.getByRole("button", {
       name: "I confirm this is the correct order",
