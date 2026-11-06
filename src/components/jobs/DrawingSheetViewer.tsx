@@ -2885,13 +2885,16 @@ export function DrawingSheetViewer({
         }}
         onWheel={(event) => {
           stopAnimation();
-          // Wheel zoom always follows the cursor, including continuous pages.
+          // Shift scrolls vertically; the wheel alone zooms about the cursor.
           const step = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (frame.current?.clientHeight ?? 600) : 1;
-          move(zoomAt(
-            live.current,
-            Math.exp(-event.deltaY * step * 0.0015),
-            fromCentre(event.clientX, event.clientY),
-          ));
+          move(event.shiftKey
+            // Some browsers remap Shift + wheel from deltaY to deltaX.
+            ? { ...live.current, y: live.current.y - (event.deltaY || event.deltaX) * step }
+            : zoomAt(
+                live.current,
+                Math.exp(-event.deltaY * step * 0.0015),
+                fromCentre(event.clientX, event.clientY),
+              ));
           if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
           wheelSettleTimer.current = setTimeout(() => {
             wheelSettleTimer.current = null;

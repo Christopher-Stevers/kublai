@@ -296,3 +296,25 @@ it("fills the open sheet with its small copy while the full image loads", () => 
   // The full image sits above it.
   expect(layer.querySelector("img:last-of-type")).toHaveAttribute("alt", "Sheet");
 });
+
+it.each([false, true])("Shift + wheel scrolls without zooming when continuous pages are %s", scrollPages => {
+  vi.useFakeTimers();
+  const { rerender, props, frame, onViewportChange } = open(null);
+  const onPage = vi.fn<(offset: number, viewport: DrawingViewport) => void>();
+  rerender(<DrawingSheetViewer {...props} scrollPages={scrollPages} scrollStack={{ previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage }} />);
+  fireEvent.wheel(frame, { shiftKey: true, deltaY: 100, clientX: 400, clientY: 300 });
+  void act(() => vi.advanceTimersByTime(120));
+  expect(onViewportChange.mock.lastCall![0]).toEqual({ center: { x: 0.5, y: 0.75 }, zoom: 1 });
+  // Horizontal remapping by the browser still scrolls up/down the drawings.
+  fireEvent.wheel(frame, { shiftKey: true, deltaX: -100, clientX: 400, clientY: 300 });
+  void act(() => vi.advanceTimersByTime(120));
+  expect(onViewportChange.mock.lastCall![0]).toEqual({ center: { x: 0.5, y: 0.5 }, zoom: 1 });
+  if (scrollPages) {
+    fireEvent.wheel(frame, { shiftKey: true, deltaY: 28, deltaMode: 1, clientX: 400, clientY: 300 });
+    void act(() => vi.advanceTimersByTime(120));
+    expect(onPage).toHaveBeenCalledOnce();
+    expect(onPage.mock.lastCall![0]).toBe(1);
+    expect(onPage.mock.lastCall![1].zoom).toBe(1);
+  }
+  vi.useRealTimers();
+});
