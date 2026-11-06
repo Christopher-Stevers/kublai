@@ -304,7 +304,7 @@ it("confirms the matched order in one tap and only then compares lines", async (
   const order = await screen.findByRole("region", {
     name: "Step 2: Match Order",
   });
-  expect(order).toHaveTextContent("Matched order");
+  expect(order).toHaveTextContent("Packing Slip Matched To 'PO-155'");
   expect(order).toHaveTextContent("PO-155");
   expect(
     screen.getByRole("region", { name: "Step 3: Line By Line Matching" }),

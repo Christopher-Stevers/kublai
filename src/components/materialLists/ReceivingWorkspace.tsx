@@ -1692,19 +1692,8 @@ function Identity({
     return (
       <div className="space-y-3 p-4">
         <div className="rounded-lg border p-3">
-          <p className="text-muted-foreground text-sm">
-            {linked ? "Matched order" : "Suggested order"}
-          </p>
-          <p className="font-medium">{match.name ?? "Order"}</p>
-          <p className="text-muted-foreground text-sm">
-            {[
-              detail.lists.find((l) => l.id === match.listId)?.name,
-              detail.suppliers.find((s) => s.id === supplier)?.name ??
-                r.supplierName,
-              typeLabel(kind),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+          <p className="font-medium">
+            Packing Slip Matched To &apos;{match.name ?? "Order"}&apos;
           </p>
         </div>
         {candidates}
