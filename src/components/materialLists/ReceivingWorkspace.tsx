@@ -3,7 +3,12 @@ import {
   receivingDisplayUnit,
   receivingQuantity,
 } from "~/lib/receiving-quantity-display";
-import { ReceivingResolve, type ResolveTarget } from "./ReceivingResolve";
+import {
+  ReceivingResolve,
+  linkLineAction,
+  type ResolveTarget,
+} from "./ReceivingResolve";
+import { useLongPressDrag, type DragPoint } from "~/hooks/use-long-press-drag";
 import {
   receivedLineQuantity,
   pendingOrderResolutions,
@@ -306,6 +311,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [showAll, setShowAll] = useState(false),
     [search, setSearch] = useState(""),
     [notice, setNotice] = useState(""),
+    // The notice that offers Undo, such as a line moved by dragging.
+    [undoNotice, setUndoNotice] = useState(""),
     [progress, setProgress] = useState(true),
     [preview, setPreview] = useState(false),
     [reason, setReason] = useState(""),
@@ -372,9 +379,12 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   }, [load, online, busy]);
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(() => setNotice(""), 4000);
+    const t = setTimeout(
+      () => setNotice(""),
+      notice === undoNotice ? 6000 : 4000,
+    );
     return () => clearTimeout(t);
-  }, [notice]);
+  }, [notice, undoNotice]);
   useEffect(() => {
     // Open a line the reviewer just added so it can be filled in straight away.
     const before = added.current,
@@ -767,9 +777,27 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       {notice && !error && (
         <p
           role="status"
-          className="bg-foreground text-background fixed bottom-24 left-1/2 z-40 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg"
+          className="bg-foreground text-background fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-sm shadow-lg"
         >
-          {notice}
+          <span className="min-w-0">{notice}</span>
+          {notice === undoNotice && detail?.correctionUndo && (
+            <button
+              type="button"
+              disabled={busy}
+              className="shrink-0 font-semibold underline-offset-2 hover:underline"
+              onClick={() => {
+                const undo = detail.correctionUndo;
+                if (undo)
+                  void run({
+                    action: "undoCorrection",
+                    requestIdToUndo: undo.requestId,
+                    reason: "Reviewer undid a line move",
+                  });
+              }}
+            >
+              Undo
+            </button>
+          )}
         </p>
       )}
       {!id ? (
@@ -1088,6 +1116,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           setOpenRow={setOpenLine}
                           trial={trialResults}
                           onResolve={setResolveTarget}
+                          notify={(text, undo) => {
+                            setNotice(text);
+                            setUndoNotice(undo ? text : "");
+                          }}
                         />
                       )}
                       {r.lines.length === 0 && (
@@ -2246,6 +2278,24 @@ function readerCopies({
   const active = review("Active saved reading");
   return [active, ...ranked];
 }
+/** The element that scrolls the comparison, for scrolling while dragging. */
+function scrollParent(node: HTMLElement | null) {
+  for (let el = node?.parentElement; el; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el);
+    if (/auto|scroll/.test(overflowY) && el.scrollHeight > el.clientHeight)
+      return el;
+  }
+  return null;
+}
+/** The order item under a dragged slip line, if it accepts the drop. */
+const dropTarget = (at: DragPoint) =>
+  document
+    .elementFromPoint(at.x, at.y)
+    ?.closest<HTMLElement>("[data-drop-item]")?.dataset.dropItem ?? null;
+// The dragged card floats above the finger, so the finger never hides it.
+const ghostAt = (at: DragPoint) =>
+  `translate(${Math.round(Math.max(8, Math.min(window.innerWidth - 248, at.x - 120)))}px, ${Math.round(at.y < 140 ? at.y + 28 : at.y - 84)}px)`;
+
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
   detail,
@@ -2255,6 +2305,7 @@ function OrderComparison({
   setOpenRow,
   trial,
   onResolve,
+  notify,
 }: {
   detail: Detail;
   jobId: string;
@@ -2263,6 +2314,7 @@ function OrderComparison({
   setOpenRow: (row: string | null) => void;
   trial: TrialResults | null;
   onResolve: (target: ResolveTarget) => void;
+  notify: (text: string, undo?: boolean) => void;
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
@@ -2285,6 +2337,64 @@ function OrderComparison({
   const r = detail.review,
     slip = r.lines.map((line, index) => ({ line, index }));
   const known = new Set(detail.items.map((i) => i.id));
+  // Long press a slip reading and drop it on another order item to pair them.
+  // A row that only held a likely part goes with its line.
+  const pressDrag = useLongPressDrag();
+  const [drag, setDrag] = useState<{
+    line: ReceivingLine;
+    from: string;
+    over: string | null;
+    at: DragPoint;
+  } | null>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const ghost = useRef<HTMLDivElement>(null);
+  const pointer = useRef<DragPoint | null>(null);
+  const dragging = !!drag;
+  useEffect(() => {
+    if (!dragging) return;
+    // Near the top or bottom of the screen, scroll to reach other rows.
+    const scroller = scrollParent(list.current);
+    let frame = 0;
+    const tick = () => {
+      const at = pointer.current;
+      if (at) {
+        const box = scroller?.getBoundingClientRect() ?? {
+          top: 0,
+          bottom: window.innerHeight,
+        };
+        const zone = 140,
+          up = box.top + zone - at.y,
+          down = at.y - (box.bottom - zone);
+        const speed =
+          up > 0
+            ? -Math.min(1, up / zone)
+            : down > 0
+              ? Math.min(1, down / zone)
+              : 0;
+        if (speed) {
+          const by = Math.round(speed * 14);
+          if (scroller) scroller.scrollBy(0, by);
+          else window.scrollBy(0, by);
+          const over = dropTarget(at);
+          setDrag((d) => (d && d.over !== over ? { ...d, over, at } : d));
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [dragging]);
+  const sourceChanged = r.versionId !== detail.document.currentVersionId;
+  const moveLine = async (line: ReceivingLine, itemId: string) => {
+    const target = detail.items.find((i) => i.id === itemId);
+    if (!target) return;
+    const action = linkLineAction(line, itemId, detail.items);
+    if (!action)
+      return notify(
+        "Units differ. Use Resolve to link it and confirm the count.",
+      );
+    if (await run(action)) notify(`Moved to ${target.description}.`, true);
+  };
   const rows = [
     ...detail.items.map((item, n) => ({
       key: `item:${item.id}`,
@@ -2375,7 +2485,7 @@ function OrderComparison({
           </div>
         </DialogContent>
       </Dialog>
-      <ul className="divide-y">
+      <ul ref={list} className="divide-y">
         {rows.map(({ key, n, item, lines }) => {
           const open = openRow === key,
             live = lines.filter((x) => !x.line.ignored),
@@ -2441,8 +2551,49 @@ function OrderComparison({
             )?.line ??
             live.find(({ line }) => !line.approved)?.line ??
             live[0]?.line;
+          // One slip line moves at a time; Resolve splits a row of several.
+          const mover =
+            !sourceChanged && live.length === 1 && !live[0]!.line.approved
+              ? live[0]!.line
+              : null;
+          // Any order item the line isn't linked to, so a line only shown
+          // beside its likely order item can be dropped there to link it.
+          const accepts = !!drag && !!item && drag.line.orderItemId !== item.id;
+          const dragHandlers = mover && {
+            onLift: (at: DragPoint) => {
+              pointer.current = at;
+              if ("vibrate" in navigator) navigator.vibrate(10);
+              setDrag({ line: mover, from: key, over: null, at });
+            },
+            onMove: (at: DragPoint) => {
+              pointer.current = at;
+              if (ghost.current) ghost.current.style.transform = ghostAt(at);
+              const over = dropTarget(at);
+              setDrag((d) => (d && d.over !== over ? { ...d, over, at } : d));
+            },
+            onDrop: (at: DragPoint) => {
+              const over = dropTarget(at);
+              pointer.current = null;
+              setDrag(null);
+              if (over) void moveLine(mover, over);
+            },
+            onCancel: () => {
+              pointer.current = null;
+              setDrag(null);
+            },
+          };
           return (
-            <li key={key} className={open ? "bg-muted/30" : undefined}>
+            <li
+              key={key}
+              data-drop-item={accepts ? item.id : undefined}
+              className={`relative ${open ? "bg-muted/30" : ""}`}
+            >
+              {accepts && (
+                <div
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-1.5 z-20 rounded-xl border-2 transition-colors motion-reduce:transition-none ${drag.over === item.id ? "border-primary bg-primary/10" : "border-primary/25 border-dashed"}`}
+                />
+              )}
               {/* The match number, bracketing the order and the slip it pairs. */}
               <div
                 aria-hidden
@@ -2550,7 +2701,8 @@ function OrderComparison({
                   <div
                     role="group"
                     aria-label={`${copy.label} reading`}
-                    className="relative row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3"
+                    {...pressDrag(c === 0 ? dragHandlers : null)}
+                    className={`relative row-span-4 grid min-w-0 grid-rows-subgrid border-l pl-3 ${c === 0 && mover ? "select-none [-webkit-touch-callout:none]" : ""} ${c === 0 && drag?.from === key ? "opacity-40" : ""}`}
                   >
                     <p className={copyLabel}>
                       {copy.label}
@@ -2763,6 +2915,23 @@ function OrderComparison({
           );
         })}
       </ul>
+      {drag && (
+        <div
+          ref={ghost}
+          aria-hidden
+          style={{ transform: ghostAt(drag.at) }}
+          className="bg-card pointer-events-none fixed top-0 left-0 z-50 w-60 rounded-xl border px-3 py-2 shadow-xl"
+        >
+          <p className="line-clamp-2 text-sm font-medium">
+            {drag.line.description}
+          </p>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            {drag.over
+              ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}`
+              : "Drop on an order item"}
+          </p>
+        </div>
+      )}
       <Dialog
         open={!!preview}
         onOpenChange={(open) => {

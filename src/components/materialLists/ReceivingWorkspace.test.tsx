@@ -1,7 +1,8 @@
 import type { ReceivingLine } from "~/lib/receiving-review";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -11,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { ReceivingWorkspace } from "./ReceivingWorkspace";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
+import { LONG_PRESS_MS } from "~/hooks/use-long-press-drag";
 const push = vi.fn();
 const replace = vi.fn();
 const navigation = vi.hoisted(() => ({ query: "document=doc" }));
@@ -910,7 +912,9 @@ it("puts a missed slip line with the order line of its likely part", async () =>
       await screen.findByText(/The slip line is likely this part/),
     ).toBeVisible();
     expect(screen.queryByText("Not on the order")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "Copper pipe" })).toHaveLength(1);
+    expect(
+      screen.getAllByRole("heading", { name: "Copper pipe" }),
+    ).toHaveLength(1);
   } finally {
     state.items.pop();
     delete (state as { pairs?: unknown }).pairs;
@@ -1401,4 +1405,126 @@ it("shows what's needed from Resolve on the line's row", async () => {
   expect(
     await screen.findByText("Supplier to confirm the box size"),
   ).toBeInTheDocument();
+});
+
+// What the finger is over while dragging; jsdom does no layout.
+let under: () => Element | null = () => null;
+function dragSetup() {
+  Object.defineProperty(document, "elementFromPoint", {
+    configurable: true,
+    value: () => under(),
+  });
+  onTestFinished(() => {
+    Reflect.deleteProperty(document, "elementFromPoint");
+    under = () => null;
+  });
+  notOnOrder(3);
+  state.items.push({
+    ...state.items[0]!,
+    id: "item2",
+    description: "Copper pipe 1/2",
+    ordered: 3,
+    received: 0,
+  });
+  Object.assign(state, {
+    correctionUndo: { requestId: "move-request", label: "Line" },
+  });
+  // The server pairs the line, so the comparison reloads with it moved.
+  const serve = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, opts?: RequestInit) => {
+      const res = await serve(url, opts);
+      const last = posts.at(-1);
+      if (opts?.method === "POST" && last?.action === "line")
+        Object.assign(state.review.lines.find((l) => l.id === last.lineId)!, {
+          orderItemId: last.orderItemId,
+        });
+      return res;
+    }),
+  );
+}
+const hold = () =>
+  act(() => new Promise((done) => setTimeout(done, LONG_PRESS_MS + 50)));
+it("moves a slip line onto an order item by long pressing and dragging, and the likely row goes with it", async () => {
+  dragSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(await screen.findByText(/Likely Copper pipe/)).toBeInTheDocument();
+  const reading = screen.getByText("Unclear pipe").closest("[role=group]")!;
+  const target = screen.getByRole("heading", { name: "Copper pipe 1/2" });
+  under = () => target;
+  fireEvent.touchStart(reading, { touches: [{ clientX: 200, clientY: 600 }] });
+  await hold();
+  expect(screen.getByText("Drop on an order item")).toBeInTheDocument();
+  fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 300 }] });
+  expect(screen.getByText("Move to Copper pipe 1/2")).toBeInTheDocument();
+  fireEvent.touchEnd(window, { touches: [] });
+  await waitFor(() =>
+    expect(posts).toContainEqual(
+      expect.objectContaining({
+        action: "line",
+        lineId: "1",
+        orderItemId: "item2",
+        quantity: 3,
+        checked: false,
+      }),
+    ),
+  );
+  expect(posts.at(-1)).not.toHaveProperty("approved");
+  expect(
+    await screen.findByText("Moved to Copper pipe 1/2."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Likely Copper pipe/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+  await waitFor(() =>
+    expect(posts.at(-1)).toMatchObject({
+      action: "undoCorrection",
+      requestIdToUndo: "move-request",
+    }),
+  );
+});
+it("a slip line shown beside its likely order item can be dropped there to link it", async () => {
+  dragSetup();
+  Object.assign(state, { pairs: { "1": "item2" } });
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(
+    await screen.findByText(/The slip line is likely this part/),
+  ).toBeVisible();
+  const reading = screen.getByText("Unclear pipe").closest("[role=group]")!;
+  under = () => reading;
+  fireEvent.touchStart(reading, { touches: [{ clientX: 200, clientY: 600 }] });
+  await hold();
+  fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 590 }] });
+  expect(screen.getByText("Move to Copper pipe 1/2")).toBeInTheDocument();
+  fireEvent.touchEnd(window, { touches: [] });
+  await waitFor(() =>
+    expect(posts).toContainEqual(
+      expect.objectContaining({
+        action: "line",
+        lineId: "1",
+        orderItemId: "item2",
+      }),
+    ),
+  );
+});
+it("scrolling past a slip line or tapping it never starts a drag", async () => {
+  dragSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText(/Likely Copper pipe/);
+  const reading = screen.getByText("Unclear pipe").closest("[role=group]")!;
+  under = () => screen.getByRole("heading", { name: "Copper pipe 1/2" });
+  fireEvent.touchStart(reading, { touches: [{ clientX: 200, clientY: 600 }] });
+  fireEvent.touchMove(window, { touches: [{ clientX: 200, clientY: 560 }] });
+  await hold();
+  fireEvent.touchEnd(window, { touches: [] });
+  expect(screen.queryByText("Drop on an order item")).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: /View packing-slip line: Unclear pipe/,
+    }),
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Packing-slip line" }),
+  ).toBeInTheDocument();
+  expect(posts).toEqual([]);
 });
