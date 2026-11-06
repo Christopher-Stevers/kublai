@@ -115,7 +115,7 @@ export function DocumentDrawingWorkspace({
               fullscreenRef={enterButton}
               fullscreen={fullscreen}
               onFullscreen={fullscreen ? exit : enter}
-              key={sheet.id}
+              key={`workspace:${sheet.id}`}
               jobId={jobId}
               sheet={sheet}
               initialViewport={camera}
@@ -134,7 +134,8 @@ export function DocumentDrawingWorkspace({
                 if (next >= 0) openPage(next);
               }}
             />
-            {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={viewport.current.zoom} zoomRef={zoomLabel} />}
+            {/* The viewer and readout are siblings: their keys must never collide. */}
+            {!quickWheel && <DrawingZoomReadout key={`zoom:${sheet.id}`} zoom={viewport.current.zoom} zoomRef={zoomLabel} />}
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />
           {!quickWheel && <DrawingPageNavigation

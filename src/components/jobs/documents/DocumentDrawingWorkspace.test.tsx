@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type { DrawingWorkspace } from "../DrawingWorkspace";
@@ -175,4 +175,19 @@ it("shares the folder preference across documents and keeps the root separate", 
   expect(fixture.props?.pageModeScope).toBe("document-folder:job:root");
   expect(fixture.props?.scrollPages).toBe(true);
   localStorage.removeItem(key);
+});
+
+it.each(["buttons", "scroll"])("replaces the previous viewer during repeated %s page changes", (mode) => {
+  render(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
+  for (const offset of [1, -1, 1, -1, 1]) {
+    const previous = screen.getByLabelText("Full drawing workspace");
+    if (mode === "buttons") {
+      fireEvent.click(screen.getByRole("button", { name: offset > 0 ? "Next" : "Previous" }));
+    } else {
+      act(() => fixture.props?.scrollStack?.onPage(offset, { center: { x: 0.5, y: 0.5 }, zoom: 1 }));
+    }
+    expect(screen.getAllByLabelText("Full drawing workspace")).toHaveLength(1);
+    expect(previous).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Drawing zoom")).toHaveLength(1);
+  }
 });
