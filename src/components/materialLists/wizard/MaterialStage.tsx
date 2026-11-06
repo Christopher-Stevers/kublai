@@ -1,4 +1,5 @@
 "use client";
+import { isInMaterialGroup } from "~/lib/material-groups";
 
 import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { useState } from "react";
@@ -12,9 +13,9 @@ import {
 import {
   WIZARD_OPTION_LABEL_CLASS,
   WizardAllOption,
+  WizardOptionCard,
   WIZARD_OPTION_GRID_CLASS,
   wizardOptionGridStyle,
-  WIZARD_OPTION_ITEM_SIZE_CLASS,
   WizardOptionPagination,
 } from "./WizardOptionGrid";
 
@@ -109,15 +110,15 @@ export function MaterialStage({
           />
         )}
         {pagination.paginatedItems.map((entry) => (
-          <button
-            type="button"
+          <WizardOptionCard
             key={entry.key}
-            data-tutorial-choice={entry.name}
-            className={`flex ${WIZARD_OPTION_ITEM_SIZE_CLASS} cursor-pointer items-center justify-center rounded-xl border bg-card p-2 text-center shadow-[0_1px_2px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06)] transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-blue-600 sm:p-4 ${entry.kind === "material" && selectedMaterialId === entry.material.id ? "border-primary border-2" : ""}`}
+            hideCriteria={entry.kind === "material" ? {materialId: entry.material.id} : materials.filter(m => isInMaterialGroup(materialPath(m),entry.path)).map(m => ({materialId:m.id}))}
+            tutorialChoice={entry.name}
+            selected={entry.kind === "material" && selectedMaterialId === entry.material.id}
             onClick={() => entry.kind === "group" ? browse(entry.path) : onMaterialSelect(entry.material.id)}
           >
             <p className={WIZARD_OPTION_LABEL_CLASS}>{entry.name}</p>
-          </button>
+          </WizardOptionCard>
         ))}
       </div>
       <WizardOptionPagination

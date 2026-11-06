@@ -1,0 +1,172 @@
+"use client";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactNode,
+  type PointerEvent,
+} from "react";
+import { EyeOff } from "lucide-react";
+import type {
+  CatalogueHideCriteria,
+  CatalogueHideRule,
+} from "~/lib/catalogue-hidden";
+
+const Visibility = createContext<{
+  scope: CatalogueHideCriteria;
+  rules: CatalogueHideRule[];
+  enabled: boolean;
+  acrossAll?: boolean;
+  hiddenPartIds?: string[];
+  hide: (criteria: CatalogueHideCriteria[]) => void;
+} | null>(null);
+export const CatalogueVisibilityProvider = Visibility.Provider;
+
+/** Group rules cover descendants, but a rule for one descendant doesn't hide its parent. */
+export function hidesCriteria(
+  rule: CatalogueHideCriteria,
+  target: CatalogueHideCriteria,
+) {
+  return (
+    (!rule.catalogId || rule.catalogId === target.catalogId) &&
+    (!rule.materialId || rule.materialId === target.materialId) &&
+    (!rule.categoryId || rule.categoryId === target.categoryId) &&
+    (!rule.partId || rule.partId === target.partId) &&
+    (!rule.size ||
+      (rule.size.nominal === target.size?.nominal &&
+        rule.size.unit === target.size?.unit))
+  );
+}
+export function useCatalogueVisibility(
+  criteria: CatalogueHideCriteria | CatalogueHideCriteria[] | undefined,
+  onTap: () => void,
+) {
+  const context = useContext(Visibility);
+  const targets = (
+    criteria ? (Array.isArray(criteria) ? criteria : [criteria]) : []
+  ).map((c) => (c.partId ? c : { ...context?.scope, ...c }));
+  const hidden =
+    !!context &&
+    targets.length > 0 &&
+    targets.every((t) =>
+      t.partId && context.hiddenPartIds
+        ? context.hiddenPartIds.includes(t.partId)
+        : context.rules.some((r) => hidesCriteria(r, t)),
+    );
+  const press = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    cancelled: boolean;
+    fired: boolean;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  const clear = () => {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+  };
+  useEffect(() => () => clear(), []);
+  const enabled = !!context?.enabled && targets.length > 0;
+  useEffect(() => {
+    if (!enabled) clear();
+  }, [enabled]);
+  const stop = (e: PointerEvent<HTMLElement>) => {
+    if (press.current) e.stopPropagation();
+  };
+  const handlers = !enabled
+    ? {}
+    : {
+        "data-arc-ignore": true,
+        onPointerDownCapture: (e: PointerEvent<HTMLElement>) => {
+          if (e.button !== 0 || e.isPrimary === false) return;
+          // Leave embedded supplier/editor controls to their own actions.
+          if (
+            e.target instanceof Element &&
+            e.target !== e.currentTarget &&
+            e.target.closest("button,input,select,a,textarea") &&
+            e.target.closest("button,input,select,a,textarea") !== e.currentTarget
+          )
+            return;
+          clear();
+          suppressClick.current = false;
+          e.stopPropagation();
+          const p = {
+            id: e.pointerId,
+            x: e.clientX,
+            y: e.clientY,
+            cancelled: false,
+            fired: false,
+            timer: setTimeout(() => {
+              if (press.current !== p || p.cancelled) return;
+              p.fired = true;
+              suppressClick.current = true;
+              context.hide(
+                (context.acrossAll
+                  ? Array.isArray(criteria)
+                    ? criteria
+                    : [criteria!]
+                  : targets
+                ).map((t) => (t.partId ? { partId: t.partId } : t)),
+              );
+            }, 600),
+          };
+          press.current = p;
+        },
+        onPointerMoveCapture: (e: PointerEvent<HTMLElement>) => {
+          const p = press.current;
+          if (!p) return;
+          e.stopPropagation();
+          if (
+            p.id !== e.pointerId ||
+            Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8
+          ) {
+            p.cancelled = true;
+            clearTimeout(p.timer);
+          }
+        },
+        onPointerUpCapture: (e: PointerEvent<HTMLElement>) => {
+          const p = press.current;
+          if (!p) return;
+          e.stopPropagation();
+          suppressClick.current = true;
+          clear();
+          if (p.id === e.pointerId && !p.cancelled && !p.fired) onTap();
+        },
+        onPointerCancelCapture: (e: PointerEvent<HTMLElement>) => {
+          stop(e);
+          clear();
+          suppressClick.current = true;
+        },
+        onPointerLeave: () => {
+          if (press.current) {
+            press.current.cancelled = true;
+            clearTimeout(press.current.timer);
+          }
+        },
+        onClickCapture: (e: React.MouseEvent<HTMLElement>) => {
+          if (suppressClick.current && e.detail !== 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            suppressClick.current = false;
+          }
+        },
+        onContextMenuCapture: (e: React.MouseEvent<HTMLElement>) => {
+          e.preventDefault();
+          e.stopPropagation();
+        },
+      };
+  const overlay: ReactNode = hidden ? (
+    <span
+      className="bg-background/65 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] backdrop-grayscale"
+      aria-label="Hidden from material lists"
+    >
+      <span className="bg-background/95 flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold">
+        <EyeOff className="size-3.5" />
+        Hidden
+      </span>
+    </span>
+  ) : null;
+  return { handlers, overlay, hidden };
+}

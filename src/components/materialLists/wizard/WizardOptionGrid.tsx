@@ -1,5 +1,7 @@
 "use client";
 
+import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
+import type { CatalogueHideCriteria } from "~/lib/catalogue-hidden";
 import type { CSSProperties, ReactNode } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import {
@@ -44,12 +46,15 @@ export function WizardOptionCard({
   onClick,
   tutorialChoice,
   children,
+  hideCriteria,
 }: {
+  hideCriteria?: CatalogueHideCriteria | CatalogueHideCriteria[];
   selected?: boolean;
   onClick: () => void;
   tutorialChoice?: string;
   children: ReactNode;
 }) {
+  const visibility = useCatalogueVisibility(hideCriteria, onClick);
   return (
     <Card
       data-tutorial-choice={tutorialChoice}
@@ -61,9 +66,11 @@ export function WizardOptionCard({
           onClick();
         }
       }}
-      className={`${WIZARD_OPTION_CARD_CLASS} ${selected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      className={`relative select-none ${WIZARD_OPTION_CARD_CLASS} ${selected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       onClick={onClick}
+      {...visibility.handlers}
     >
+      {visibility.overlay}
       <CardContent className="flex h-full items-center justify-center p-2 text-center sm:p-4">
         {children}
       </CardContent>

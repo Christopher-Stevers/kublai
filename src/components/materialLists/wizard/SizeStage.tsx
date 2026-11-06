@@ -1,4 +1,5 @@
 "use client";
+import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
 
 import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { wizardSizeOptions } from "~/lib/wizard-size-options";
@@ -58,6 +59,7 @@ function SizeCard({
   onSizeSelect: (size: SizeSelection) => void;
   onPreviewChange: (preview: SubSizePreview | null) => void;
 }) {
+  const visibility = useCatalogueVisibility({size: {nominal:size.nominal,unit:size.unit}}, () => onSizeSelect({nominal:size.nominal,unit:size.unit,sizeLabel:null}));
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const pointerStartYRef = useRef<number | null>(null);
@@ -263,7 +265,7 @@ function SizeCard({
           onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
         }
       }}
-      className={`${WIZARD_OPTION_ITEM_SIZE_CLASS} min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      className={`relative ${WIZARD_OPTION_ITEM_SIZE_CLASS} min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
       style={{
         WebkitTouchCallout: "none",
         WebkitUserSelect: "none",
@@ -278,7 +280,9 @@ function SizeCard({
         if (longPressTriggeredRef.current) return;
         clearTimer();
       }}
+      {...visibility.handlers}
     >
+      {visibility.overlay}
       <CardContent className="flex h-full min-w-0 items-center justify-center p-3 text-center sm:p-4">
         <p className={WIZARD_OPTION_LABEL_CLASS}>{formatSizeDimensions(size.nominal, size.unit)}</p>
       </CardContent>

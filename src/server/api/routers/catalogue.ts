@@ -3184,13 +3184,13 @@ export const catalogueRouter = createTRPCRouter({
   }),
 
   hideParts: hasAppAccess
-    .input(z.object({ criteria: catalogueHideCriteriaSchema }))
+    .input(z.object({ criteria: z.union([catalogueHideCriteriaSchema, z.array(catalogueHideCriteriaSchema).min(1).max(500)]) }))
     .mutation(async ({ ctx, input }) => {
       assertCanEditParts(ctx.user);
       assertCanAccessTab(ctx.user, "catalogue");
       const organizationId = ctx.user.organizationId;
       if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
-      return { rules: await changeHiddenPartRules(ctx.db, organizationId, addHideRule(input.criteria)) };
+      return { rules: await changeHiddenPartRules(ctx.db, organizationId, rules => (Array.isArray(input.criteria) ? input.criteria : [input.criteria]).reduce((current,criteria) => addHideRule(criteria)(current), rules)) };
     }),
 
   showHiddenParts: hasAppAccess

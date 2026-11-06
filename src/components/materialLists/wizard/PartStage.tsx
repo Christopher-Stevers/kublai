@@ -1,3 +1,4 @@
+import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
 import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
 import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
 import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
@@ -103,6 +104,7 @@ export function PartCard({
   footer,
   photoAction,
 }: PartCardProps) {
+  const visibility = useCatalogueVisibility({partId:part.id}, () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part));
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const pointerStartYRef = useRef<number | null>(null);
@@ -348,7 +350,7 @@ export function PartCard({
           else onPartSelect(part);
         }
       }}
-      className={`${PART_TILE_CARD_CLASS} transition-all hover:shadow-md ${
+      className={`relative ${PART_TILE_CARD_CLASS} transition-all hover:shadow-md ${
         isPending ? "border-primary border-2 shadow-md" : ""
       } cursor-pointer`}
       style={{
@@ -365,7 +367,9 @@ export function PartCard({
         if (longPressTriggeredRef.current) return;
         clearLongPressTimer();
       }}
+      {...visibility.handlers}
     >
+      {visibility.overlay}
       <CardContent className="p-0">
         <PartTileContent part={part} quantity={pendingQuantity} details={details}
           photoAction={photoAction && <div onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{photoAction}</div>} />
@@ -390,6 +394,7 @@ function PartListRow({
   actionLabel,
   details,
 }: PartCardProps) {
+  const visibility = useCatalogueVisibility({partId:part.id}, () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part));
   const [quantityInput, setQuantityInput] = useState(() =>
     pendingQuantity > 0 ? String(pendingQuantity) : "",
   );
@@ -400,11 +405,13 @@ function PartListRow({
 
   return (
     <div
+      {...visibility.handlers}
       data-tutorial-part-selected={isPending || undefined}
-      className={`parts-picker-row ${
+      className={`relative parts-picker-row ${
         isPending ? "ring-1 ring-inset ring-primary" : ""
       }`}
     >
+      {visibility.overlay}
       <div className="grid grid-cols-[3rem_minmax(16rem,1fr)_10rem] parts-sheet-cells">
         <div className="relative min-h-11 w-12 overflow-hidden">
           {part.imageUrl ? (

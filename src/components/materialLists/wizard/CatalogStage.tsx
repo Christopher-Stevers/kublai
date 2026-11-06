@@ -73,6 +73,7 @@ export function CatalogStage({
         {pagination.paginatedItems.map((catalog) => (
           <WizardOptionCard
             key={catalog.id}
+            hideCriteria={{ catalogId: catalog.id }}
             tutorialChoice={catalog.name}
             selected={selectedCatalogId === catalog.id}
             onClick={() => choose(catalog.name)}

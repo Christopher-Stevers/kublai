@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { SupplierPartDetails, SupplierPartEditor, type SupplierListing } from "./SupplierPartEditor";
+import { CatalogueVisibilityProvider } from "./CatalogueVisibility";
 import { HiddenPartsDialog } from "./HiddenPartsDialog";
 import { isPartHidden } from "~/lib/catalogue-hidden";
 import { api } from "~/trpc/react";
@@ -236,6 +237,18 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
     hiddenRules,
     hideSource,
   } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined, includeToolCatalogs);
+
+  const [hideAcrossAll, setHideAcrossAll] = useState(false);
+  const quickHide = api.catalogue.hideParts.useMutation({
+    onSuccess: data => utils.catalogue.getHiddenParts.setData(undefined,data),
+    onError: () => notify("Could not hide those items. Try again.", "error"),
+  });
+  const hidingScope = {
+    ...(wizardStage !== "catalog" && selectedCatalogId ? {catalogId:selectedCatalogId} : {}),
+    ...(["size","category","part"].includes(wizardStage) && selectedMaterialId ? {materialId:selectedMaterialId} : {}),
+    ...(["category","part"].includes(wizardStage) && selectedSize ? {size:{nominal:selectedSize.nominal,unit:selectedSize.unit}} : {}),
+    ...(wizardStage === "part" && selectedCategory?.categoryId ? {categoryId:selectedCategory.categoryId} : {}),
+  };
 
   // Every part shows here; the ones hidden from adding to lists say so.
   const hiddenNotes = useMemo(() => Object.fromEntries(
@@ -511,9 +524,14 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             onStageClick={handleStageClick}
             hideSearch
           />}
+          {canEditParts && <label className="flex min-h-10 cursor-pointer items-center gap-2 px-2 text-sm" title="Apply size, material and category hiding across every catalogue and group">
+            <input type="checkbox" checked={hideAcrossAll} onChange={event => setHideAcrossAll(event.target.checked)} />
+            Hide across all parts
+          </label>}
         </div>
       </LandscapeSubBar>
 
+      <CatalogueVisibilityProvider value={{scope:hidingScope,rules:hiddenRules,acrossAll:hideAcrossAll,hiddenPartIds:Object.keys(hiddenNotes),enabled:canEditParts && isCatalogueOnline,hide:criteria => { if(!quickHide.isPending) quickHide.mutate({criteria}); }}}>
       <ArcScrollerSurface onBack={wizardStage === "catalog" ? undefined : () => {
         const order = ["catalog", "material", "size", "category", "part"] as const;
         const index = order.findIndex(stage => stage === wizardStage);
@@ -638,6 +656,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
           )}
         </>}
       </ArcScrollerSurface>
+      </CatalogueVisibilityProvider>
 
       <input
         ref={fileInputRef}

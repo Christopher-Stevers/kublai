@@ -68,6 +68,7 @@ export function CategoryStage({
         {pagination.paginatedItems.map((category) => (
           <WizardOptionCard
             key={category.categoryId}
+            hideCriteria={{ categoryId: category.categoryId }}
             tutorialChoice={category.name}
             selected={selectedCategory?.categoryId === category.categoryId}
             onClick={() => choose(category.name)}
