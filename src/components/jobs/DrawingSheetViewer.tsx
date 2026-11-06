@@ -121,10 +121,10 @@ import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
-import { pageAtCentre, pageStack, scrollLimits, scrollPageFade, type ScrollStack } from "./drawing-scroll-pages";
+import { pageAtCentre, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
-const MIN_ZOOM = 1;
+const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 50;
 const ZOOM_LIMITS = { min: MIN_ZOOM, max: MAX_ZOOM };
 /** A tap this close to a line, in screen pixels, lands on that line. */
@@ -242,8 +242,6 @@ export function DrawingSheetViewer({
     : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const pageImageLayer = useRef<HTMLDivElement>(null);
-  const scrollImages = useRef(new Map<number, HTMLImageElement>());
   const overlayPaint = useRef<((view: View) => void) | null>(null);
   const pdfPaint = useRef<((view: View) => void) | null>(null);
   const annotationViewport = useRef<SVGSVGElement>(null);
@@ -1360,25 +1358,6 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
-    // Follow finger/wheel motion directly; waiting for committed React state
-    // would make the incoming page brighten only after scrolling settles.
-    if (stacked) {
-      const centre = -y / scale;
-      const viewportHeight = (frame.current?.clientHeight ?? 0) / scale;
-      const focusedOffset = pageAtCentre(stacked, live.current).offset;
-      for (const page of stacked) {
-        const element = page.offset === 0 ? pageImageLayer.current : scrollImages.current.get(page.offset);
-        if (!element) continue;
-        const mask = scrollPageFade(page.top, page.height, centre, viewportHeight, page.offset === 0 || page.offset === focusedOffset);
-        if (element.style.maskImage !== mask) {
-          element.style.maskImage = mask;
-          element.style.webkitMaskImage = mask;
-        }
-      }
-    } else if (pageImageLayer.current) {
-      pageImageLayer.current.style.maskImage = "none";
-      pageImageLayer.current.style.webkitMaskImage = "none";
-    }
     pdfPaint.current?.(live.current);
     overlayPaint.current?.(live.current);
     if (fit && frame.current) {
@@ -2942,7 +2921,6 @@ export function DrawingSheetViewer({
               src={page.imageUrl}
               alt={page.name}
               data-drawing-scroll-page={offset}
-              ref={element => { if (element) scrollImages.current.set(offset, element); else scrollImages.current.delete(offset); }}
               draggable={false}
               decoding="async"
               className="absolute bg-white"
@@ -2956,7 +2934,6 @@ export function DrawingSheetViewer({
             />
           )}
           <div
-            ref={pageImageLayer}
             data-drawing-image-layer="true"
             className="absolute inset-0"
             style={{ filter: appearanceFilter, backgroundColor: imageReady ? "#fff" : undefined }}

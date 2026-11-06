@@ -96,7 +96,7 @@ describe("drawing and document keyboard camera controls", () => {
     expect(onViewportChange.mock.lastCall![0].zoom).toBe(50);
     for (let i = 0; i < 60; i++)
       fireEvent.keyDown(window, { key: "e", repeat: true });
-    expect(onViewportChange.mock.lastCall![0].zoom).toBe(1);
+    expect(onViewportChange.mock.lastCall![0].zoom).toBe(0.1);
   });
   it("does not move sheets while typing, composing or using modifier shortcuts", () => {
     const { frame, onViewportChange } = open(null);
@@ -208,7 +208,7 @@ describe("drawing viewport navigation", () => {
 it("scrolls through the pages either side with the wheel and opens the one it settles on, keeping the zoom", () => {
   vi.useFakeTimers();
   const { rerender, props, frame, onViewportChange, container } = open(null);
-  const onPage = vi.fn();
+  const onPage = vi.fn<(offset: number, viewport: DrawingViewport) => void>();
   const page = (n: number) => ({ id: String(n), name: `Page ${n}`, imageUrl: `/${n}.webp`, width: 1000, height: 500 });
   rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next: [page(1), page(2)], onPage }} />);
   expect(frame.style.touchAction).toBe("none");
@@ -216,10 +216,10 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   const next = within(container).getByAltText("Page 1");
   expect(next.style.top).toBe(`${200 + 200 + SCROLL_PAGE_GAP}px`);
   expect(next.style.height).toBe("400px");
-  const initialMask = next.style.maskImage;
+  expect(next.style.maskImage).toBe("");
   fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
-  act(() => vi.advanceTimersByTime(20));
-  expect(next.style.maskImage).not.toBe(initialMask);
+  void act(() => vi.advanceTimersByTime(20));
+  expect(next.style.maskImage).toBe("");
   expect(onPage).not.toHaveBeenCalled();
   // The first page rests against the top of the frame.
   expect(onViewportChange).toHaveBeenLastCalledWith({ center: { x: 0.5, y: 0.75 }, zoom: 1 });
@@ -228,8 +228,8 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   expect(zoom).toBeGreaterThan(1);
   fireEvent.wheel(frame, { deltaY: 400, clientX: 400, clientY: 300 });
   expect(onPage).not.toHaveBeenCalled();
-  act(() => vi.advanceTimersByTime(20));
-  expect(next.style.maskImage).toBe("none");
+  void act(() => vi.advanceTimersByTime(20));
+  expect(next.style.maskImage).toBe("");
   expect(onPage).not.toHaveBeenCalled();
   vi.advanceTimersByTime(100);
   expect(onPage).toHaveBeenCalledOnce();
@@ -238,5 +238,17 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   expect(viewport.zoom).toBe(zoom);
   expect(viewport.center.y).toBeGreaterThan(0);
   expect(viewport.center.y).toBeLessThan(1);
+  vi.useRealTimers();
+});
+
+it("zooms continuous pages below fit without jumping away from the first sheet", () => {
+  vi.useFakeTimers();
+  const { rerender, props, frame, onViewportChange } = open(null);
+  const onPage = vi.fn<(offset: number, viewport: DrawingViewport) => void>();
+  rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage }} />);
+  fireEvent.wheel(frame, { deltaY: 4000, ctrlKey: true, clientX: 400, clientY: 300 });
+  void act(() => vi.advanceTimersByTime(120));
+  expect(onViewportChange.mock.lastCall![0]).toEqual({ center: { x: 0.5, y: 0.5 }, zoom: 0.1 });
+  expect(onPage).not.toHaveBeenCalled();
   vi.useRealTimers();
 });

@@ -12,17 +12,6 @@ export type ScrollStack = {
 type Size = { width: number; height: number };
 /** Space between pages, in screen pixels at fit. */
 export const SCROLL_PAGE_GAP = 12;
-/** Only the outer 5% of the viewport fades; focused pages stay fully visible.
- * Coordinates are in stack pixels, so viewportHeight must account for zoom. */
-export function scrollPageFade(top: number, height: number, centre: number, viewportHeight: number, focused = false) {
-  if (focused || height <= 0 || viewportHeight <= 0 || (centre >= top && centre <= top + height)) return "none";
-  const start = centre - viewportHeight / 2;
-  const band = viewportHeight * 0.05;
-  if (top >= start + band && top + height <= start + viewportHeight - band) return "none";
-  const stop = (position: number) => `${((position - top) / height * 100).toFixed(4)}%`;
-  return `linear-gradient(to bottom, rgba(0, 0, 0, 0.03) ${stop(start)}, black ${stop(start + band)}, black ${stop(start + viewportHeight - band)}, rgba(0, 0, 0, 0.03) ${stop(start + viewportHeight)})`;
-}
-
 /** Pages drawn each side of the open one; a flick travels at most this far. */
 const NEIGHBORS = 3;
 
@@ -59,14 +48,15 @@ export function pageStack(frame: Size, fit: Size, stack: ScrollStack): StackedPa
   return pages;
 }
 
-/** How far the camera may travel: through the drawn pages, but never past the
- * first page's top or the last page's bottom, and sideways only when zoomed
- * past the widest page. */
+/** Camera bounds keep the end pages reachable, even below fit, and allow
+ * sideways travel when zoomed past the widest page. */
 export function scrollLimits(pages: StackedPage[], frame: Size, scale: number) {
   const first = pages[0]!, last = pages[pages.length - 1]!;
   const half = frame.height / 2 / scale;
-  let low = first.top + half, high = last.top + last.height - half;
-  if (low > high) low = high = (first.top + last.top + last.height) / 2;
+  // At overview zoom, retain the focused page instead of forcing the camera
+  // to the middle of the loaded stack and unexpectedly switching sheets.
+  const low = Math.min(first.top + half, first.top + first.height / 2);
+  const high = Math.max(last.top + last.height - half, last.top + last.height / 2);
   const width = Math.max(...pages.map(page => page.width));
   // The camera's y is the opposite of the frame centre's place on the stack.
   return { maxX: Math.max(0, (width * scale - frame.width) / 2), minY: -high * scale, maxY: -low * scale };

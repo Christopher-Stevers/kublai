@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
-import { pageAtCentre, pageStack, scrollPageFade, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
+import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
 
 const identity = vi.hoisted(() => ({accountKey:"org:user-a"}));
 vi.mock("./DrawingAccountProvider", () => ({useDrawingAccount: () => identity}));
@@ -70,8 +70,8 @@ describe("continuous scroll pages", () => {
   it("travels through the drawn pages but not past the first page's top", () => {
     const pages = pageStack(frame, fit, { ...scrollNeighbors(sheets, 0), onPage: vi.fn() });
     const fitted = scrollLimits(pages, frame, 1);
-    // The first page sits at the top of the frame, not floating in the middle.
-    expect(fitted.maxY).toBe(-(-100 + 350));
+    // A page smaller than the viewport can remain centred.
+    expect(fitted.maxY).toBeCloseTo(0);
     expect(fitted.maxX).toBe(0);
     const zoomed = scrollLimits(pages, frame, 4);
     expect(zoomed.maxY).toBe(4 * (100 - 350 / 4));
@@ -91,16 +91,9 @@ describe("continuous scroll pages", () => {
   });
 });
 
-it("limits fading to the outer five percent of the viewport at every zoom", () => {
-  // Viewport spans -300..300; its bottom fade begins at 270.
-  expect(scrollPageFade(200, 400, 0, 600)).toBe(
-    "linear-gradient(to bottom, rgba(0, 0, 0, 0.03) -125.0000%, black -117.5000%, black 17.5000%, rgba(0, 0, 0, 0.03) 25.0000%)",
-  );
-  expect(scrollPageFade(200, 50, 0, 600)).toBe("none");
-  expect(scrollPageFade(-200, 400, 0, 600)).toBe("none");
-  expect(scrollPageFade(200, 400, 0, 600, true)).toBe("none");
-  // Changing the stack origin preserves the mask, including when zoomed in.
-  for (const viewportHeight of [600, 300, 150]) {
-    expect(scrollPageFade(200, 400, 0, viewportHeight)).toBe(scrollPageFade(-212, 400, -412, viewportHeight));
-  }
+it("keeps either end page reachable when the entire stack fits inside the viewport", () => {
+  const pages = pageStack({ width: 800, height: 600 }, { width: 800, height: 400 }, { previous: [], next: [{ id: "next", name: "Next", imageUrl: "/next.webp", width: 1000, height: 500 }], onPage: vi.fn() });
+  const limits = scrollLimits(pages, { width: 800, height: 600 }, 0.1);
+  expect(limits.maxY).toBeCloseTo(0);
+  expect(limits.minY).toBeCloseTo(-(400 + SCROLL_PAGE_GAP) * 0.1);
 });
