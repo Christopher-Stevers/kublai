@@ -2359,17 +2359,17 @@ const tear = {
 function TornPaper({
   side,
   empty,
-  ghost = false,
+  needsConfirmation = false,
 }: {
   side: "order" | "slip";
   empty: boolean;
-  ghost?: boolean;
+  needsConfirmation?: boolean;
 }) {
   return (
     <span
       aria-hidden
       style={tear[side]}
-      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${empty ? "border-red-500/30 bg-red-500/[0.07] dark:bg-red-500/10" : ghost ? "bg-card" : "bg-muted/30"}`}
+      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${needsConfirmation ? "border-orange-300 bg-orange-100 dark:border-orange-800 dark:bg-orange-950" : empty ? "border-red-500/30 bg-red-50 dark:bg-red-950" : "bg-zinc-100 dark:bg-zinc-800"}`}
     />
   );
 }
@@ -2742,6 +2742,19 @@ function OrderComparison({
           });
           const disposition = item ? r.orderResolutions?.[item.id] : undefined;
           const complete = rowComplete({ item, lines });
+          const orderNeedsConfirmation = !complete && (
+            !item || !live.length || live.some(({ line }) =>
+              !line.orderItemId || (line.resolution && (
+                line.resolution.match !== "confirmed" ||
+                line.resolution.specification === "unresolved" ||
+                (!!item && line.resolution.counterpartFingerprint !== resolutionCounterpartFingerprint(item))
+              )))
+          );
+          const slipNeedsConfirmation = !complete && (
+            !live.length || live.some(({ line }) =>
+              (!line.approved || status === "correction" || resolutionBlockers(line, item, r.lines, r.kind).length > 0) &&
+              !approvable(line, r.kind, item, r.lines))
+          );
           const resolveLine =
             live.find(
               ({ line }) =>
@@ -3028,7 +3041,7 @@ function OrderComparison({
                   )}
                   className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="order" empty={orderEmpty && !complete} ghost={away === "order"} />
+                  <TornPaper side="order" empty={orderEmpty && !complete} needsConfirmation={orderNeedsConfirmation} />
                   <p className={copyLabel}>Order</p>
                   <h3
                     aria-label={title}
@@ -3107,7 +3120,7 @@ function OrderComparison({
                   )}
                   className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
-                  <TornPaper side="slip" empty={slipEmpty && !complete} ghost={away === "slip"} />
+                  <TornPaper side="slip" empty={slipEmpty && !complete} needsConfirmation={slipNeedsConfirmation} />
                   <div
                     role="group"
                     aria-label={`${main.label} reading`}
