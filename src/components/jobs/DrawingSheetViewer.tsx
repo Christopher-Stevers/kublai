@@ -249,7 +249,7 @@ export function DrawingSheetViewer({
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
-  // Until the sheet arrives, a faint drafting grid stands in for it.
+  // Keep the sheet surface opaque once its image arrives.
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const imageReady = loadedSrc === src;
   const [fit, setFit] = useState<{
@@ -2263,7 +2263,7 @@ export function DrawingSheetViewer({
         aria-keyshortcuts="W A S D Q E"
         // Camera transforms own panning. Clip must not become a native scroll container
         // when an annotation gains focus or a menu restores focus to the canvas.
-        className={`${imageReady ? "bg-muted" : "blueprint-grid"} relative min-h-0 w-full flex-1 overflow-clip select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
+        className={`blueprint-grid relative min-h-0 w-full flex-1 overflow-clip select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
         style={{ WebkitTouchCallout: "none", touchAction: "none" }}

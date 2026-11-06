@@ -95,7 +95,7 @@
   .card-lift:hover, .card-lift:active { transform: none; }
 }
 
-/* Faint drafting grid shown behind a drawing until it has loaded. */
+/* Permanent drafting grid behind the drawing, including while it loads. */
 .blueprint-grid {
   --grid-line: color-mix(in oklab, var(--brand) 14%, transparent);
   --grid-major: color-mix(in oklab, var(--brand) 22%, transparent);
