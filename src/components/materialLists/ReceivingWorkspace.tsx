@@ -688,19 +688,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {id ? "Review packing slip" : "Receiving queue"}
+            {id ? "Review Packing Slip" : "Receiving queue"}
           </h1>
           {detail && (
             <p className="text-muted-foreground mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm">
               <FileTextIcon className="size-4 shrink-0" />
-              <span className="text-foreground max-w-full truncate font-medium">
-                {detail.document.name}
-              </span>
-              <span className="basis-full pl-5.5 sm:basis-auto sm:pl-0">
-                <span className="hidden sm:inline">· </span>
-                {detail.document.packingSlip?.orderNumber ??
-                  "No order linked"}{" "}
-                · {detail.scannedBy} ·{" "}
+              <span className="min-w-0 break-words">
+                <span className="text-foreground font-medium">
+                  {detail.document.name}
+                </span>{" "}
+                · Received:{" "}
                 {new Date(detail.document.createdAt).toLocaleDateString()}
               </span>
             </p>
