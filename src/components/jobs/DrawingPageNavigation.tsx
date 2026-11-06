@@ -95,7 +95,7 @@ export function DrawingPageNavigation({
       <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <Button
           variant="outline"
-          className="h-9 min-w-9 rounded-lg px-2 text-sm"
+          className="h-9 w-14 rounded-lg px-2 text-sm sm:w-auto"
           disabled={index <= 0}
           onClick={onPrevious}
         >
@@ -133,7 +133,7 @@ export function DrawingPageNavigation({
         </div>
         <Button
           variant="outline"
-          className="h-9 min-w-9 rounded-lg px-2 text-sm"
+          className="h-9 w-14 rounded-lg px-2 text-sm sm:w-auto"
           disabled={index >= count - 1}
           onClick={onNext}
         >
