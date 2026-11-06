@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
 import { SCROLL_PAGE_GAP } from "./drawing-scroll-pages";
@@ -216,13 +216,20 @@ it("scrolls through the pages either side with the wheel and opens the one it se
   const next = within(container).getByAltText("Page 1");
   expect(next.style.top).toBe(`${200 + 200 + SCROLL_PAGE_GAP}px`);
   expect(next.style.height).toBe("400px");
+  const initialMask = next.style.maskImage;
   fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
+  act(() => vi.advanceTimersByTime(20));
+  expect(next.style.maskImage).not.toBe(initialMask);
+  expect(onPage).not.toHaveBeenCalled();
   // The first page rests against the top of the frame.
   expect(onViewportChange).toHaveBeenLastCalledWith({ center: { x: 0.5, y: 0.75 }, zoom: 1 });
   fireEvent.wheel(frame, { deltaY: -100, ctrlKey: true, clientX: 400, clientY: 300 });
   const zoom = onViewportChange.mock.lastCall![0].zoom;
   expect(zoom).toBeGreaterThan(1);
   fireEvent.wheel(frame, { deltaY: 400, clientX: 400, clientY: 300 });
+  expect(onPage).not.toHaveBeenCalled();
+  act(() => vi.advanceTimersByTime(20));
+  expect(next.style.maskImage).toBe("none");
   expect(onPage).not.toHaveBeenCalled();
   vi.advanceTimersByTime(100);
   expect(onPage).toHaveBeenCalledOnce();

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingPageModeSetting, useDrawingPageMode } from "./DrawingPageMode";
-import { pageAtCentre, pageStack, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
+import { pageAtCentre, pageStack, scrollPageFade, SCROLL_PAGE_GAP, scrollLimits, scrollNeighbors } from "./drawing-scroll-pages";
 
 const identity = vi.hoisted(() => ({accountKey:"org:user-a"}));
 vi.mock("./DrawingAccountProvider", () => ({useDrawingAccount: () => identity}));
@@ -89,4 +89,17 @@ describe("continuous scroll pages", () => {
     expect(landed).toEqual({ offset: 1, viewport: { center: { x: 0.5 - 120 / 1200, y: 0.25 }, zoom: 3 } });
     expect(pageAtCentre(pages, { scale: 1, x: 0, y: 260 }).offset).toBe(-1);
   });
+});
+
+it("brightens approaching pages continuously and stays unchanged when focus rebases", () => {
+  const top=212, height=400;
+  const alpha=(mask:string)=>mask==="none"?1:Number(mask.match(/rgba\(0, 0, 0, ([\d.]+)\)/)![1]);
+  expect(alpha(scrollPageFade(top,height,100))).toBeGreaterThan(alpha(scrollPageFade(top,height,0)));
+  expect(alpha(scrollPageFade(top,height,175))).toBeGreaterThan(alpha(scrollPageFade(top,height,100)));
+  expect(scrollPageFade(top,height,206)).toBe("none");
+  // Rebase around the next page's centre, without changing the physical view.
+  for(const centre of [100,206,300,700]){
+    expect(scrollPageFade(top,height,centre)).toBe(scrollPageFade(-200,height,centre-412));
+    expect(scrollPageFade(-200,height,centre)).toBe(scrollPageFade(-612,height,centre-412));
+  }
 });

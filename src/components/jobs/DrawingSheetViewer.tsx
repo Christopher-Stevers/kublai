@@ -242,6 +242,8 @@ export function DrawingSheetViewer({
     : undefined;
   const frame = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
+  const pageImageLayer = useRef<HTMLDivElement>(null);
+  const scrollImages = useRef(new Map<number, HTMLImageElement>());
   const overlayPaint = useRef<((view: View) => void) | null>(null);
   const pdfPaint = useRef<((view: View) => void) | null>(null);
   const annotationViewport = useRef<SVGSVGElement>(null);
@@ -1358,6 +1360,23 @@ export function DrawingSheetViewer({
     const { x, y, scale } = live.current;
     const transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     if (layer.current) layer.current.style.transform = transform;
+    // Follow finger/wheel motion directly; waiting for committed React state
+    // would make the incoming page brighten only after scrolling settles.
+    if (stacked) {
+      const centre = -y / scale;
+      for (const page of stacked) {
+        const element = page.offset === 0 ? pageImageLayer.current : scrollImages.current.get(page.offset);
+        if (!element) continue;
+        const mask = scrollPageFade(page.top, page.height, centre);
+        if (element.style.maskImage !== mask) {
+          element.style.maskImage = mask;
+          element.style.webkitMaskImage = mask;
+        }
+      }
+    } else if (pageImageLayer.current) {
+      pageImageLayer.current.style.maskImage = "none";
+      pageImageLayer.current.style.webkitMaskImage = "none";
+    }
     pdfPaint.current?.(live.current);
     overlayPaint.current?.(live.current);
     if (fit && frame.current) {
@@ -2921,10 +2940,11 @@ export function DrawingSheetViewer({
               src={page.imageUrl}
               alt={page.name}
               data-drawing-scroll-page={offset}
+              ref={element => { if (element) scrollImages.current.set(offset, element); else scrollImages.current.delete(offset); }}
               draggable={false}
               decoding="async"
               className="absolute bg-white"
-              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter, maskImage: scrollPageFade(fit.height, top, height), WebkitMaskImage: scrollPageFade(fit.height, top, height) }}
+              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
             />
           ))}
           {appearanceMatrix && (
@@ -2934,6 +2954,7 @@ export function DrawingSheetViewer({
             />
           )}
           <div
+            ref={pageImageLayer}
             data-drawing-image-layer="true"
             className="absolute inset-0"
             style={{ filter: appearanceFilter, backgroundColor: imageReady ? "#fff" : undefined }}
