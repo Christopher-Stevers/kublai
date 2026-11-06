@@ -1,6 +1,6 @@
 "use client";
 import { useDrawingPageMode } from "../DrawingPageMode";
-import { DrawingScrollPages } from "../DrawingScrollPages";
+import { scrollNeighbors } from "../drawing-scroll-pages";
 import { useEffect, useRef, useState } from "react";
 import { MinimizeIcon } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -71,8 +71,7 @@ export function DocumentDrawingWorkspace({
     left: 0,
     top: 0,
   }));
-  const openPage = (next: number) => {
-    const nextCamera = { center: { x: 0.5, y: 0.5 }, zoom: 1 };
+  const openPage = (next: number, nextCamera: DrawingViewport = { center: { x: 0.5, y: 0.5 }, zoom: 1 }) => {
     viewport.current = nextCamera;
     setCamera(nextCamera);
     setIndex(next);
@@ -101,9 +100,9 @@ export function DocumentDrawingWorkspace({
       {sheet ? (
         <>
           <div className="relative min-h-0 flex-1">
-            <DrawingScrollPages enabled={scroll} sheets={sheets} index={actualIndex} onPage={openPage}>
             <DrawingWorkspace
               scrollPages={scroll}
+              scrollStack={scroll ? { ...scrollNeighbors(sheets, actualIndex), onPage: (offset, view) => openPage(actualIndex + offset, view) } : undefined}
               toolbarContainer={toolbarContainer}
               pageNavigation={{ index: actualIndex, count: sheets.length,
                 onPrevious: () => { if (actualIndex > 0) openPage(actualIndex - 1); },
@@ -131,7 +130,6 @@ export function DocumentDrawingWorkspace({
                 if (next >= 0) openPage(next);
               }}
             />
-            </DrawingScrollPages>
             {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={viewport.current.zoom} zoomRef={zoomLabel} />}
           </div>
           <div ref={setToolbarContainer} data-drawing-chrome className="relative z-30 shrink-0" />

@@ -121,6 +121,7 @@ import type { PipeTakeoff } from "~/lib/pipe-spec";
 import { pipeComponentSourceKey, pipeSymbolTemplates, reviewedPipeComponent } from "~/lib/pipe-component-review";
 import type { PipeComponentCandidate, PipeComponentKind } from "~/lib/pipe-components-types";
 import { lassoPathData, simplifyLasso } from "~/lib/pipe-lasso";
+import { pageAtCentre, pageStack, scrollLimits, type ScrollStack } from "./drawing-scroll-pages";
 export type { DrawingEditorProps } from "./useDrawingEditor";
 
 const MIN_ZOOM = 1;
@@ -188,12 +189,15 @@ export function DrawingSheetViewer({
   textEditing,
   editMeasurementRequest,
   scrollPages = false,
+  scrollStack,
   ...editorProps
 }: DrawingEditorProps & {
   /** A text markup typed in place on the drawing. */
   textEditing?: InlineTextEditing | null;
   editMeasurementRequest?: { id: number; entityId: string } | null;
   scrollPages?: boolean;
+  /** The pages either side in continuous scroll. */
+  scrollStack?: ScrollStack;
   src: string;
   /** Known page dimensions let PDF detail start before a preview image arrives. */
   sourceSize?: { width: number; height: number };
@@ -257,6 +261,12 @@ export function DrawingSheetViewer({
   const fitRef = useRef(fit);
   fitRef.current = fit;
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const stacked = useMemo(
+    () => scrollPages && scrollStack && fit && frameSize.height && (scrollStack.previous.length || scrollStack.next.length)
+      ? pageStack(frameSize, fit, scrollStack) : null,
+    [scrollPages, scrollStack, fit, frameSize],
+  );
+  const leftPage = useRef(false);
   const [manifest, setManifest] = useState<TileManifest | null>(null);
   // `live` follows every pointer move; `view` is committed for tiles/redraws.
   const live = useRef<View>(REST);
@@ -1322,6 +1332,10 @@ export function DrawingSheetViewer({
       const el = frame.current;
       if (!el || !fit) return next;
       const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next.scale));
+      if (stacked) {
+        const { maxX, minY, maxY } = scrollLimits(stacked, { width: el.clientWidth, height: el.clientHeight }, scale);
+        return { scale, x: Math.min(maxX, Math.max(-maxX, next.x)), y: Math.min(maxY, Math.max(minY, next.y)) };
+      }
       const maxX = Math.max(
         0,
         (fit.width * scale - el.clientWidth) / 2 + el.clientWidth * 0.4,
@@ -1336,7 +1350,7 @@ export function DrawingSheetViewer({
         y: Math.min(maxY, Math.max(-maxY, next.y)),
       };
     },
-    [fit],
+    [fit, stacked],
   );
 
   const paint = () => {
@@ -1400,6 +1414,12 @@ export function DrawingSheetViewer({
       commitTimer.current = null;
       wheelSettleTimer.current = null;
       setView(live.current);
+      // Settling on another page opens it with the same view.
+      const landed = stacked && !leftPage.current ? pageAtCentre(stacked, live.current) : null;
+      if (landed?.offset) {
+        leftPage.current = true;
+        scrollStack?.onPage(landed.offset, landed.viewport);
+      }
     } else {
       commitTimer.current ??= setTimeout(() => {
         commitTimer.current = null;
@@ -2252,7 +2272,7 @@ export function DrawingSheetViewer({
         className={`${imageReady ? "bg-muted" : "blueprint-grid"} relative min-h-0 w-full flex-1 overflow-clip select-none [&_img]:pointer-events-none${middlePanning || dragIndex !== null ? " cursor-grabbing" : measuring ? " cursor-crosshair" : viewing ? " cursor-grab" : ""}`}
         // No phone long-press menu (copy/save image, open link) on the drawing:
         // long presses are for working on the sheet.
-        style={{ WebkitTouchCallout: "none", touchAction: scrollPages && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && view.scale <= 1.01 ? "pan-y" : "none" }}
+        style={{ WebkitTouchCallout: "none", touchAction: "none" }}
         onContextMenu={(event) => {
           event.preventDefault();
           // Touch long-press remains available for selecting and editing items.
@@ -2631,7 +2651,6 @@ export function DrawingSheetViewer({
               };
               return;
             }
-            if (scrollPages && event.pointerType === "touch" && !measuring && !pipeMode && (annotationTool === "pan" || viewing) && live.current.scale <= 1.01) return;
             move({
               ...base,
               x: base.x + p.x - before[0].x,
@@ -2866,14 +2885,17 @@ export function DrawingSheetViewer({
             clearAim();
         }}
         onWheel={(event) => {
-          if (scrollPages && !event.ctrlKey && !event.metaKey) return;
           stopAnimation();
+          // Scrolling pages: the wheel scrolls; pinch or a modifier zooms.
+          const step = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (frame.current?.clientHeight ?? 600) : 1;
           move(
-            zoomAt(
-              live.current,
-              Math.exp(-event.deltaY * 0.0015),
-              fromCentre(event.clientX, event.clientY),
-            ),
+            scrollPages && !event.ctrlKey && !event.metaKey
+              ? { ...live.current, x: live.current.x - event.deltaX * step, y: live.current.y - event.deltaY * step }
+              : zoomAt(
+                  live.current,
+                  Math.exp(-event.deltaY * 0.0015),
+                  fromCentre(event.clientX, event.clientY),
+                ),
           );
           if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current);
           wheelSettleTimer.current = setTimeout(() => {
@@ -2892,6 +2914,19 @@ export function DrawingSheetViewer({
             visibility: fit ? "visible" : "hidden",
           }}
         >
+          {stacked && fit && stacked.map(({ offset, page, top, width, height }) => page && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={page.id}
+              src={page.imageUrl}
+              alt={page.name}
+              data-drawing-scroll-page={offset}
+              draggable={false}
+              decoding="async"
+              className="absolute bg-white"
+              style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
+            />
+          ))}
           {appearanceMatrix && (
             <DrawingAppearanceFilter
               id={appearanceId}

@@ -142,6 +142,7 @@ import {
   type DrawingText,
 } from "~/lib/drawing-text";
 import { DrawingSheetViewer, type DrawingViewport } from "./DrawingSheetViewer";
+import type { ScrollStack } from "./drawing-scroll-pages";
 import {
   DrawingEntityForm,
   DrawingField,
@@ -517,6 +518,7 @@ export function DrawingWorkspace({
   onReady,
   onDocumentDetails,
   scrollPages = false,
+  scrollStack,
   toolbarContainer,
   cornerContainer,
   onClose,
@@ -542,6 +544,7 @@ export function DrawingWorkspace({
   onReady?: () => void;
   onDocumentDetails?: () => void;
   scrollPages?: boolean;
+  scrollStack?: ScrollStack;
   toolbarContainer?: HTMLElement | null;
   /** Viewer-level layer for the corner buttons, so scrolling pages never carries them off. */
   cornerContainer?: HTMLElement | null;
@@ -2331,6 +2334,7 @@ export function DrawingWorkspace({
           ) : (
             <DrawingSheetViewer
             scrollPages={scrollPages}
+            scrollStack={scrollStack}
               appearance={appearance}
               key={source.id}
               toolControls={{

@@ -7,7 +7,7 @@ import { scheduleBackgroundWork, canWarmInBackground } from "~/lib/background-wo
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingPageMode } from "./DrawingPageMode";
-import { DrawingScrollPages } from "./DrawingScrollPages";
+import { scrollNeighbors } from "./drawing-scroll-pages";
 import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "./DrawingPageNavigation";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useRootFlag } from "~/hooks/use-root-flag";
@@ -574,9 +574,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </Button>
         )}
         <div data-tutorial="drawing-view" className="relative min-h-0 flex-1">
-          <DrawingScrollPages enabled={scroll} sheets={sheets} index={sheetIndex} onPage={next => openSheet(sheets[next]!.id)}>
           <DrawingWorkspace
             scrollPages={scroll}
+            scrollStack={scroll ? { ...scrollNeighbors(sheets, sheetIndex), onPage: (offset, viewport) => {
+              lastViewport.current = viewport;
+              openSheet(sheets[sheetIndex + offset]!.id, true);
+            } } : undefined}
             toolbarContainer={toolbarContainer}
             cornerContainer={cornerContainer}
             pageNavigation={{ index: sheetIndex, count: sheets.length,
@@ -601,7 +604,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               openSheet(target.id);
             }}
           />
-          </DrawingScrollPages>
           {/* Corner buttons and the side panel stay put while the pages scroll under them. */}
           <div ref={setCornerContainer} data-drawing-corners className="pointer-events-none absolute inset-0 z-20" />
           {!quickWheel && <DrawingZoomReadout key={sheet.id} zoom={lastViewport.current?.zoom ?? entryViewport?.zoom ?? 1} zoomRef={zoomLabel} />}

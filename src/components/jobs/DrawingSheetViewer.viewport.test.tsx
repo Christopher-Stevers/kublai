@@ -204,12 +204,31 @@ describe("drawing viewport navigation", () => {
   });
 });
 
-it("lets ordinary wheel movement scroll pages while retaining modifier zoom", () => {
-  const { rerender, props, frame, onViewportChange } = open(null);
-  rerender(<DrawingSheetViewer {...props} scrollPages />);
-  onViewportChange.mockClear();
+it("scrolls through the pages either side with the wheel and opens the one it settles on, keeping the zoom", () => {
+  vi.useFakeTimers();
+  const { rerender, props, frame, onViewportChange, container } = open(null);
+  const onPage = vi.fn();
+  const page = (n: number) => ({ id: String(n), name: `Page ${n}`, imageUrl: `/${n}.webp`, width: 1000, height: 500 });
+  rerender(<DrawingSheetViewer {...props} scrollPages scrollStack={{ previous: [], next: [page(1), page(2)], onPage }} />);
+  expect(frame.style.touchAction).toBe("none");
+  // Fit is 800 by 400; the next page starts a short gap below.
+  const next = within(container).getByAltText("Page 1");
+  expect(next.style.top).toBe(`${200 + 200 + 8}px`);
+  expect(next.style.height).toBe("400px");
   fireEvent.wheel(frame, { deltaY: 100, clientX: 400, clientY: 300 });
-  expect(onViewportChange).not.toHaveBeenCalled();
+  // The first page rests against the top of the frame.
+  expect(onViewportChange).toHaveBeenLastCalledWith({ center: { x: 0.5, y: 0.75 }, zoom: 1 });
   fireEvent.wheel(frame, { deltaY: -100, ctrlKey: true, clientX: 400, clientY: 300 });
-  expect(onViewportChange).toHaveBeenCalled();
+  const zoom = onViewportChange.mock.lastCall![0].zoom;
+  expect(zoom).toBeGreaterThan(1);
+  fireEvent.wheel(frame, { deltaY: 400, clientX: 400, clientY: 300 });
+  expect(onPage).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(100);
+  expect(onPage).toHaveBeenCalledOnce();
+  const [offset, viewport] = onPage.mock.lastCall!;
+  expect(offset).toBe(1);
+  expect(viewport.zoom).toBe(zoom);
+  expect(viewport.center.y).toBeGreaterThan(0);
+  expect(viewport.center.y).toBeLessThan(1);
+  vi.useRealTimers();
 });
