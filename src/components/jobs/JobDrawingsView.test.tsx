@@ -737,6 +737,9 @@ it("shows the sheet title under its number in the bottom bar", () => {
   expect(title).toHaveTextContent("Sleeving plan");
   expect(name.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.getByText("1 of 2")).toBeInTheDocument();
+  // One line each, in a fixed height, so a long title never makes the bar taller.
+  expect(title).toHaveClass("truncate");
+  expect(title.parentElement).toHaveClass("h-11");
 });
 
 it("shows the extracted number when the cached card still has a Sheet placeholder", () => {

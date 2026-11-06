@@ -81,50 +81,64 @@ export function DrawingPageNavigation({
   onPrevious: () => void;
   onNext: () => void;
 }) {
+  const subtitle = title && title !== name ? title : null;
+  const position = (
+    <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+      {index + 1} of {count}
+    </span>
+  );
   return (
     <div
       data-drawing-chrome
       className="bg-card shrink-0 px-3 pt-0.5 pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-2">
+      <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <Button
           variant="outline"
-          className="h-9 min-w-0 rounded-lg px-2 text-sm"
+          className="h-9 min-w-9 rounded-lg px-2 text-sm"
           disabled={index <= 0}
           onClick={onPrevious}
         >
-          <ChevronLeftIcon className="mr-1 h-4 w-4" />
-          Previous
+          <ChevronLeftIcon className="h-4 w-4 sm:mr-1" />
+          <span className="sr-only sm:not-sr-only">Previous</span>
         </Button>
-        <div className="flex min-w-0 flex-col items-center">
-          <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-            <span
-              className={`min-w-0 truncate text-center text-sm ${title && title !== name ? "leading-5" : "py-1"}`}
-              title={name}
-            >
-              {name}
-            </span>
-          </div>
-          {title && title !== name && (
-            <span
-              className="line-clamp-2 w-full min-w-0 text-center text-xs leading-4 break-words"
-              title={title}
-            >
-              {title}
-            </span>
+        {/* The same height with or without a title, so the bar never grows. */}
+        <div className="flex h-11 min-w-0 flex-col items-center justify-center">
+          {subtitle ? (
+            <>
+              <div className="flex w-full min-w-0 items-baseline justify-center gap-1.5 leading-5">
+                <span className="min-w-0 truncate text-sm" title={name}>
+                  {name}
+                </span>
+                {position}
+              </div>
+              <span
+                className="w-full min-w-0 truncate text-center text-xs leading-4"
+                title={subtitle}
+              >
+                {subtitle}
+              </span>
+            </>
+          ) : (
+            <>
+              <span
+                className="w-full min-w-0 truncate text-center text-sm leading-5"
+                title={name}
+              >
+                {name}
+              </span>
+              {position}
+            </>
           )}
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {index + 1} of {count}
-          </span>
         </div>
         <Button
           variant="outline"
-          className="h-9 min-w-0 rounded-lg px-2 text-sm"
+          className="h-9 min-w-9 rounded-lg px-2 text-sm"
           disabled={index >= count - 1}
           onClick={onNext}
         >
-          Next
-          <ChevronRightIcon className="ml-1 h-4 w-4" />
+          <span className="sr-only sm:not-sr-only">Next</span>
+          <ChevronRightIcon className="h-4 w-4 sm:ml-1" />
         </Button>
       </div>
     </div>
