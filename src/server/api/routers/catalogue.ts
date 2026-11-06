@@ -8,6 +8,8 @@ import { expandLegacyFacets, facetCount } from "~/lib/catalogue-facets";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { materialGroupPathSchema } from "~/lib/material-groups";
+import { catalogueHideCriteriaSchema } from "~/lib/catalogue-hidden";
+import { addHideRule, changeHiddenPartRules, readHiddenPartRules, removeHideRule } from "~/server/catalogue/hidden-parts";
 import type { db as appDb } from "~/server/db";
 import {
   sql,
@@ -3172,5 +3174,32 @@ export const catalogueRouter = createTRPCRouter({
             }
           : null,
       };
+    }),
+
+  /** The company's rules for parts hidden from adding to material lists. */
+  getHiddenParts: hasAppAccess.query(async ({ ctx }) => {
+    const organizationId = ctx.user.organizationId;
+    if (!organizationId) return { rules: [] };
+    return { rules: await readHiddenPartRules(ctx.db, organizationId) };
+  }),
+
+  hideParts: hasAppAccess
+    .input(z.object({ criteria: catalogueHideCriteriaSchema }))
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      assertCanAccessTab(ctx.user, "catalogue");
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
+      return { rules: await changeHiddenPartRules(ctx.db, organizationId, addHideRule(input.criteria)) };
+    }),
+
+  showHiddenParts: hasAppAccess
+    .input(z.object({ ruleId: z.string().min(1).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      assertCanEditParts(ctx.user);
+      assertCanAccessTab(ctx.user, "catalogue");
+      const organizationId = ctx.user.organizationId;
+      if (!organizationId) throw new TRPCError({ code: "FORBIDDEN" });
+      return { rules: await changeHiddenPartRules(ctx.db, organizationId, removeHideRule(input.ruleId)) };
     }),
 });

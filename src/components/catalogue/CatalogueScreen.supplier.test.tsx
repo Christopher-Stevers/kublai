@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import { CatalogueScreen } from "./CatalogueScreen";
-const state=vi.hoisted(()=>({wizard:vi.fn(),invalid:vi.fn(),listings:vi.fn()}));
+const state=vi.hoisted(()=>({wizard:vi.fn(),invalid:vi.fn(),listings:vi.fn(),hidden:[] as Array<{id:string;partId:string}>}));
 vi.mock("~/lib/snapshot-source",()=>({currentSnapshotState:()=>null}));
 vi.mock("~/hooks/use-online-status",()=>({useOnlineStatus:()=>true}));
 vi.mock("~/trpc/react",()=>({api:{
@@ -12,7 +12,7 @@ vi.mock("~/trpc/react",()=>({api:{
 }}));
 vi.mock("~/components/materialLists/wizard/use-part-wizard",()=>({usePartWizard:(_open:unknown,_sort:unknown,_kw:unknown,_kind:unknown,supplierId?:string)=>{
  state.wizard(supplierId);
- return{wizardStage:"part",wizardSearchQuery:"",hasCatalogSelection:true,hasMaterialSelection:true,hasSizeSelection:true,hasCategorySelection:true,allUnits:[],catalogs:[],filteredPartsForSelection:[{id:`part-${supplierId??"all"}`,displayName:"Core description"}]};
+ return{wizardStage:"part",wizardSearchQuery:"",hasCatalogSelection:true,hasMaterialSelection:true,hasSizeSelection:true,hasCategorySelection:true,allUnits:[],catalogs:[],hiddenRules:state.hidden,hideSource:{catalogs:[],materials:[],categories:[],parts:[],namedParts:[]},filteredPartsForSelection:[{id:`part-${supplierId??"all"}`,displayName:"Core description"}]};
 }}));
 vi.mock("~/components/materialLists/WizardHeader",()=>({WizardHeader:()=>null}));
 vi.mock("./SupplierPartEditor",()=>({SupplierPartDetails:({listing}:{listing:{supplierSku:string}})=><span>{listing.supplierSku}</span>,SupplierPartEditor:({listings,onClose}:{listings:{id:string}[];onClose:()=>void})=><div role="dialog">Editing {listings[0]?.id}<button onClick={onClose}>Close supplier editor</button></div>}));
@@ -36,4 +36,13 @@ it("switches supplier scope and opens that supplier's editor, with the normal ca
  fireEvent.change(screen.getByLabelText("Catalogue mode"),{target:{value:"all"}});
  fireEvent.click(screen.getByRole("button",{name:"Open part-all"}));
  await waitFor(()=>expect(screen.getByRole("dialog")).toHaveTextContent("Core part editor"));
+});
+
+it("shows every part in the Catalogue and marks the ones hidden from lists",()=>{
+ state.hidden=[{id:"r",partId:"part-all"}];
+ try{
+  render(<CatalogueScreen/>);
+  expect(screen.getByRole("button",{name:"Open part-all"})).toBeInTheDocument();
+  expect(screen.getByText("Hidden from lists")).toBeInTheDocument();
+ }finally{state.hidden=[];}
 });

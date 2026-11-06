@@ -10,6 +10,7 @@ import {
 } from "react";
 import { wizardExactSizeLabel, sortWizardSizeFamily } from "~/lib/wizard-size-selection";
 import { facetCount } from "~/lib/catalogue-facets";
+import { visibleParts, type CatalogueHideRule } from "~/lib/catalogue-hidden";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
@@ -57,7 +58,7 @@ export type WizardCatalogKind = "materials" | "assets";
 const catalogKindOf = (catalog: { kind?: string | null }) =>
   catalog.kind === "assets" ? "assets" : "materials";
 
-export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials", supplierId?: string, includeToolCatalogs = false) {
+export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordGroups: readonly NameKeywordGroup[] = EMPTY_NAME_KEYWORD_GROUPS, catalogKind: WizardCatalogKind = "materials", supplierId?: string, includeToolCatalogs = false, applyHiddenParts = false) {
   const sandbox = useTutorialSandbox();
   const [saved] = useState(() => {
     const entry = currentSnapshotState()?.catalogue;
@@ -125,6 +126,20 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     };
   }, [rawReplicacheCatalogue, catalogKind, includeToolCatalogs]);
   const hasReplicacheCatalogue = !supplierId && rawReplicacheCatalogue.catalogs.length > 0;
+  // Adding parts to a list leaves out what the company hid from it; the
+  // Catalogue always shows everything. The tutorial's sandbox never hides.
+  const { data: hiddenData } = api.catalogue.getHiddenParts.useQuery(undefined, {
+    enabled: open && !sandbox && isOnline,
+    staleTime: 1000 * 60 * 5,
+  });
+  const hiddenRules = useMemo<CatalogueHideRule[]>(
+    () => (sandbox ? [] : hiddenData?.rules ?? []),
+    [sandbox, hiddenData],
+  );
+  const activeHiddenRules = useMemo(
+    () => (applyHiddenParts ? hiddenRules : []),
+    [applyHiddenParts, hiddenRules],
+  );
   const [summaryReady, setSummaryReady] = useState(false);
   useEffect(() => {
     if (!open) { setSummaryReady(false); return; }
@@ -219,11 +234,15 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     : isOnline
       ? serverSummary?.categories
       : undefined;
-  const summaryParts: PartFacet[] | undefined = hasReplicacheCatalogue
+  const allSummaryParts: PartFacet[] | undefined = hasReplicacheCatalogue
     ? replicacheCatalogue.parts
     : isOnline
       ? serverSummary?.parts
       : undefined;
+  const summaryParts = useMemo(
+    () => allSummaryParts && visibleParts(allSummaryParts, activeHiddenRules),
+    [allSummaryParts, activeHiddenRules],
+  );
   const filterSelectionParts = useCallback((parts: PreloadedPart[], searchLocally = true) => {
     const query = deferredWizardSearchQuery.trim().toLowerCase();
     return parts.filter((part) => {
@@ -318,9 +337,13 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     );
   }, [filterSelectionParts, serverSelectionParts, serverAllowedCatalogIds, catalogKind]);
 
-  const selectionParts =
+  const unhiddenSelectionParts =
     replicacheFilteredSelectionParts ??
     (isOnline ? filteredServerSelectionParts : undefined);
+  const selectionParts = useMemo(
+    () => unhiddenSelectionParts && visibleParts(unhiddenSelectionParts, activeHiddenRules),
+    [unhiddenSelectionParts, activeHiddenRules],
+  );
 
   const partsByCatalog = useMemo(
     () =>
@@ -837,5 +860,14 @@ export function usePartWizard(open = true, sortMode?: MaterialListSort, keywordG
     selectedSizeName,
     selectedCategoryName,
     wizardSearchPlaceholder,
+    hiddenRules,
+    /** Everything the hide dialog counts, hidden parts included. */
+    hideSource: {
+      catalogs: catalogs ?? [],
+      materials: materials ?? [],
+      categories: categoryTree ?? [],
+      parts: allSummaryParts ?? [],
+      namedParts: supplierId ? [] : replicacheCatalogue.parts,
+    },
   };
 }

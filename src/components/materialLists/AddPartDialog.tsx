@@ -156,6 +156,7 @@ export function AddPartDialog({
     isToolRequest ? "assets" : "materials",
     undefined,
     !managePrefabs && !isToolRequest,
+    !managePrefabs,
   );
 
   const selectingTools = isToolRequest || catalogsWithCounts.some(catalog => catalog.id === selectedCatalogId && catalog.kind === "assets");

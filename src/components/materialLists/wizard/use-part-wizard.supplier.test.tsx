@@ -17,6 +17,7 @@ vi.mock("~/trpc/react",()=>({api:{
  catalogue:{
   getPartWizardSummary:{useQuery:(input:unknown,options:unknown)=>{fixtures.summaryQuery(input,options);return{data:fixtures.summary,isPending:false,error:null};}},
   searchParts:{useQuery:(input:unknown,options:unknown)=>{fixtures.searchQuery(input,options);return{data:[fixtures.part],isPending:false,error:null};}},
+  getHiddenParts:{useQuery:()=>({data:undefined})},
   createCatalog:{useMutation:()=>({})},createMaterial:{useMutation:()=>({})},createSize:{useMutation:()=>({})},createCategoryType:{useMutation:()=>({})},
  },
 }}));

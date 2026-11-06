@@ -42,6 +42,8 @@ vi.mock("~/trpc/react", () => ({
     },
     catalogue: {
       recentOrderWheelUsage:{useQuery:()=>({data:undefined})},
+      hideParts: { useMutation: () => ({ mutate: vi.fn() }) },
+      showHiddenParts: { useMutation: () => ({ mutate: vi.fn() }) },
       importCatalogueRows: {
         useMutation: () => ({ mutateAsync: state.mutate }),
       },
@@ -69,6 +71,8 @@ vi.mock("~/components/materialLists/wizard/use-part-wizard", () => ({
     allUnits: [],
     wizardStage: "review",
     wizardSearchQuery: "",
+    hiddenRules: [],
+    hideSource: { catalogs: [], materials: [], categories: [], parts: [], namedParts: [] },
   }),
 }));
 vi.mock("~/components/materialLists/WizardHeader", () => ({
@@ -116,6 +120,12 @@ describe("catalogue workbook controls", () => {
     expect(screen.getByRole("dialog", { name: "Manage prefabs" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close prefabs" }));
     expect(screen.queryByRole("dialog", { name: "Manage prefabs" })).not.toBeInTheDocument();
+  });
+  it("opens hiding parts from lists in Options", () => {
+    render(<CatalogueScreen />);
+    openMore();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hide from lists" }));
+    expect(screen.getByRole("dialog", { name: "Hide from material lists" })).toHaveTextContent("Nothing is hidden.");
   });
   it("backs up before uploading unchanged rows and prevents competing operations", async () => {
     let release!: () => void;

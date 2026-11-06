@@ -17,6 +17,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { SupplierPartDetails, SupplierPartEditor, type SupplierListing } from "./SupplierPartEditor";
+import { HiddenPartsDialog } from "./HiddenPartsDialog";
+import { isPartHidden } from "~/lib/catalogue-hidden";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import {
@@ -54,6 +56,7 @@ import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connect
 import {
   Download,
   Ellipsis,
+  EyeOff,
   Grid2X2,
   Images,
   PackagePlus,
@@ -89,6 +92,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
   const [isPrefabsOpen, setIsPrefabsOpen] = useState(false);
   const [isPhotoQueueOpen, setIsPhotoQueueOpen] = useState(false);
   const [isMaterialGroupsOpen, setIsMaterialGroupsOpen] = useState(false);
+  const [isHidePartsOpen, setIsHidePartsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [exportCatalogId, setExportCatalogId] = useState<string | null>(null);
@@ -229,8 +233,16 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
     selectedSizeName,
     selectedCategoryName,
     filteredPartsForSelection,
+    hiddenRules,
+    hideSource,
   } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined, includeToolCatalogs);
 
+  // Every part shows here; the ones hidden from adding to lists say so.
+  const hiddenNotes = useMemo(() => Object.fromEntries(
+    filteredPartsForSelection.filter(part => isPartHidden(part, hiddenRules)).map(part => [part.id,
+      <p key={part.id} className="text-muted-foreground flex items-center justify-center gap-1 text-xs"><EyeOff className="h-3.5 w-3.5 shrink-0" />Hidden from lists</p>,
+    ]),
+  ), [filteredPartsForSelection, hiddenRules]);
   const catalogOptions = catalogs ?? [];
   const editingCatalogId = filteredPartsForSelection.find(part => part.id === editingPartId)?.catalogId ?? selectedCatalogId;
   const editorCatalogKind = catalogOptions.find(catalog => catalog.id === editingCatalogId)?.kind === "assets" ? "assets" : catalogKind;
@@ -518,7 +530,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
         {isWizardSearchActive ? (
           <PartStage
             onVisiblePartsChange={supplierMode ? setVisiblePartIds : undefined}
-            detailsByPartId={supplierMode ? detailsByPartId : undefined}
+            detailsByPartId={supplierMode ? detailsByPartId : hiddenNotes}
             partsForSelection={filteredPartsForSelection}
             pendingParts={[]}
             onPartSelect={(part) => setEditingPartId(part.id)}
@@ -612,7 +624,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
           hasCategorySelection && (
             <PartStage
               onVisiblePartsChange={supplierMode ? setVisiblePartIds : undefined}
-              detailsByPartId={supplierMode ? detailsByPartId : undefined}
+              detailsByPartId={supplierMode ? detailsByPartId : hiddenNotes}
             partsForSelection={filteredPartsForSelection}
               pendingParts={[]}
               onPartSelect={(part) => setEditingPartId(part.id)}
@@ -703,6 +715,10 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
               <DropdownMenuItem onSelect={() => setIsPrefabsOpen(true)}>
                 <Grid2X2 />
                 Prefabs
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setIsHidePartsOpen(true)}>
+                <EyeOff />
+                Hide from lists
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -813,6 +829,18 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
           if (!open) setEditingPartId(null);
         }}
         partId={editingPartId}
+      />
+      <HiddenPartsDialog
+        open={isHidePartsOpen}
+        onOpenChange={setIsHidePartsOpen}
+        source={hideSource}
+        rules={hiddenRules}
+        initial={{
+          ...(hasCatalogSelection && selectedCatalogId && { catalogId: selectedCatalogId }),
+          ...(hasMaterialSelection && selectedMaterialId && { materialId: selectedMaterialId }),
+          ...(hasSizeSelection && selectedSize && { size: { nominal: selectedSize.nominal, unit: selectedSize.unit } }),
+          ...(hasCategorySelection && selectedCategory?.categoryId && { categoryId: selectedCategory.categoryId }),
+        }}
       />
       <MaterialGroupsDialog
         open={isMaterialGroupsOpen}
