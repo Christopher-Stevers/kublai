@@ -179,7 +179,7 @@ it("shows source issues and never receives automatically", async () => {
   await screen.findByRole("heading", { name: "Valve" });
   expect(screen.getByText("Unclear pipe")).toBeInTheDocument();
   expect(posts).toEqual([]);
-  expect(screen.getByRole("link", { name: "View source" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Packing slip.pdf" })).toHaveAttribute(
     "href",
     "/jobs/job/documents?document=doc&from=receiving",
   );
@@ -201,12 +201,14 @@ it("keeps reader comparison and slip tools in the lab", async () => {
     within(lab).getByRole("button", { name: "Rerun detection" }),
   ).toBeInTheDocument();
 });
-it("opens the slip in the documents viewer from step 3", async () => {
+it("opens the full document from its name and removes both redundant buttons", async () => {
   render(<ReceivingWorkspace jobId="job" />);
   const step = await screen.findByRole("region", {
     name: "Step 3: Line By Line Matching",
   });
-  expect(within(step).getByRole("link", { name: "View slip" })).toHaveAttribute(
+  expect(within(step).queryByRole("link", { name: "View slip" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "View source" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Packing slip.pdf" })).toHaveAttribute(
     "href",
     "/jobs/job/documents?document=doc&from=receiving",
   );

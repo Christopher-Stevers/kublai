@@ -695,9 +695,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             <p className="text-muted-foreground mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm">
               <FileTextIcon className="size-4 shrink-0" />
               <span className="min-w-0 break-words">
-                <span className="text-foreground font-medium">
+                <Link href={slipViewerHref(jobId, detail)} className="text-foreground rounded-sm font-medium underline decoration-current/30 underline-offset-4 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {detail.document.name}
-                </span>{" "}
+                </Link>{" "}
                 · Received:{" "}
                 {new Date(detail.document.createdAt).toLocaleDateString()}
               </span>
@@ -732,14 +732,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               )}
             </Button>
           )}
-          {detail && (
-            <Button variant="outline" size="sm" asChild>
-              <Link href={slipViewerHref(jobId, detail)}>
-                <EyeIcon />
-                View source
-              </Link>
-            </Button>
-          )}
+
         </div>
       </header>
       {detail && (
@@ -1088,16 +1081,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       >
                         {showLines ? "Hide lines" : "Show lines"}
                       </Button>
-                    ) : (
-                      !linesWaiting && (
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={slipViewerHref(jobId, detail)}>
-                            <FileTextIcon />
-                            View slip
-                          </Link>
-                        </Button>
-                      )
-                    )
+                    ) : null
                   }
                   state={
                     linesWaiting ? "waiting" : linesDone ? "done" : "active"

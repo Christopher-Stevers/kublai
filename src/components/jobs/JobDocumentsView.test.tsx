@@ -1,3 +1,4 @@
+import { runHeaderBackOverride } from "~/lib/header-back-events";
 import {
   act,
   cleanup,
@@ -92,6 +93,8 @@ async function ready() {
 }
 
 beforeEach(() => {
+  router.back.mockClear();
+  router.replace.mockClear();
   requests = [];
   scanSaved.mockClear();
   vi.mocked(confirmAction).mockClear().mockResolvedValue(true);
@@ -290,6 +293,13 @@ describe("job documents workspace", () => {
     window.history.replaceState(null, "", "/?document=doc-1&from=receiving");
     render(<JobDocumentsView jobId="job-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Close" }));
+    expect(router.back).toHaveBeenCalledTimes(1);
+  });
+  it("returns to the comparison using the app header Back from a receiving document", async () => {
+    window.history.replaceState(null, "", "/?document=doc-1&from=receiving");
+    render(<JobDocumentsView jobId="job-1" />);
+    await screen.findByRole("button", { name: "Close" });
+    act(() => { runHeaderBackOverride(); });
     expect(router.back).toHaveBeenCalledTimes(1);
   });
   it("does not expose a missing or inaccessible document from a drawing link", async () => {
