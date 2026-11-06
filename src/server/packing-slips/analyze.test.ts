@@ -229,3 +229,13 @@ it("finds pack sizes in descriptions without taking dimensions for them", () => 
   expect(packSizesIn("2 PC union 1-1/4")).toEqual([]);
   expect(packSizesIn("Flange CL-150 / CS-300")).toEqual([]);
 });
+it("keeps missing backorder quantities unknown instead of inventing the shortage", async () => {
+  const withoutBO = (r: SlipRow): SlipRow => ({ ...r, text: r.words.filter((_, i) => i !== 4).map(w => w.text).join(" "), words: r.words.filter((_, i) => i !== 4) });
+  const result = await analyzeSlip([withoutBO(header), withoutBO(line)], [item], run);
+  expect(result.lines[0]!.backordered).toBeNull();
+});
+it("recognizes BO as a backorder column", async () => {
+  const bo = row(["SKU", "Description", "Ordered", "Shipped", "BO", "Unit"], 0.1);
+  const result = await analyzeSlip([bo, line], [item], run);
+  expect(result.lines[0]!.backordered).toBe(4);
+});

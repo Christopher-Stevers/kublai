@@ -1,4 +1,5 @@
 "use client";
+import { slipBackorderCheck } from "~/lib/slip-backorder-check";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -1882,6 +1883,7 @@ type ModelReading = {
   reader: TrialReader;
   /** The slip's ordered column, when this reader's row is the one kept. */
   ordered: number | null;
+  backordered?: number | null;
   shipped: number | null;
   unit: string | null;
   match: number | null;
@@ -1908,6 +1910,7 @@ function modelReadings(l: ReceivingLine, detail: Detail): ModelReading[] {
       ...r,
       ordered:
         r.reader === slipReader(source) ? (source.ordered ?? null) : null,
+      backordered: r.reader === slipReader(source) ? source.backordered : null,
       shipped: r.shipped === null ? null : Math.abs(r.shipped),
     }));
   if (!l.readingSource) return [];
@@ -2134,6 +2137,7 @@ type ReaderCopy = {
   verdict: Verdict | null;
   missing?: boolean;
   reviewStatus?: "Confirmed" | "Edited";
+  backorderChecks?: Array<NonNullable<ReturnType<typeof slipBackorderCheck>>>;
 };
 const meanScore = (...values: Array<number | null | undefined>) => {
   const known = values.filter((v): v is number => typeof v === "number");
@@ -2150,6 +2154,8 @@ function readerCopies({
   live,
   readings,
   trialReadings,
+  detail,
+  trial,
 }: {
   item: ReceiptOrderItem | undefined;
   /** What the order has counted by hand, not from any slip. */
@@ -2158,6 +2164,8 @@ function readerCopies({
   live: ReceivingLine[];
   readings: Array<ModelReading & { line: ReceivingLine }>;
   trialReadings: Array<{ reader: TrialReader; t: TrialLine }>;
+  detail: Detail;
+  trial: TrialResults | null;
 }): ReaderCopy[] {
   if (!lines.length)
     return [
@@ -2200,6 +2208,19 @@ function readerCopies({
           : "Manual review"
         : label,
       reviewStatus,
+      backorderChecks: shown.flatMap((line) => {
+        const prediction = line.predictionSource;
+        const analyzed = sourceLine(line, detail);
+        const source = prediction
+          ? trial?.[prediction.reader]?.lines.find((t) => t.lineId === prediction.lineId)
+          : analyzed && (!line.readingSource || line.readingSource.reader === slipReader(analyzed)) ? analyzed : undefined;
+        const check = slipBackorderCheck(source ?? {
+          ordered: line.paper?.ordered ?? line.ordered,
+          shipped: line.paper?.quantity ?? line.quantity,
+          unit: line.paper?.unit ?? line.unit,
+        });
+        return check ? [check] : [];
+      }),
       score: null,
       description: describe(shown.map((l) => l.description)),
       ordered: sum(shown.map((l) => l.ordered)),
@@ -2216,7 +2237,9 @@ function readerCopies({
     unit: string | null,
     score: number | null,
     text: string,
+    backordered?: number | null,
   ) => {
+    const check = slipBackorderCheck({ ordered, shipped, backordered, unit });
     const copy = byReader.get(reader);
     if (copy) {
       copy.ordered =
@@ -2227,6 +2250,7 @@ function readerCopies({
         copy.shipped === null || shipped === null
           ? null
           : qtyRound(copy.shipped + shipped);
+      if (check) copy.backorderChecks?.push(check);
       copy.texts.push(text);
       copy.score = meanScore(copy.score, score);
       return;
@@ -2241,6 +2265,7 @@ function readerCopies({
       unit: unit ?? "",
       verdict: null,
       texts: [text],
+      backorderChecks: check ? [check] : [],
     });
   };
   for (const x of readings)
@@ -2251,6 +2276,7 @@ function readerCopies({
       x.unit,
       meanScore(x.match, x.quantity),
       x.line.description,
+      x.backordered,
     );
   for (const { reader, t } of trialReadings)
     add(
@@ -2260,6 +2286,7 @@ function readerCopies({
       t.unit,
       meanScore(t.confidence.match.value, t.confidence.quantity.value),
       t.description,
+      t.backordered,
     );
   const ranked: ReaderCopy[] = [...byReader.values()]
     .map(({ texts, ...copy }) => {
@@ -2737,6 +2764,8 @@ function OrderComparison({
             live: live.map((x) => x.line),
             readings,
             trialReadings,
+            detail,
+            trial,
           });
           const disposition = item ? r.orderResolutions?.[item.id] : undefined;
           const complete = rowComplete({ item, lines });
@@ -2944,8 +2973,8 @@ function OrderComparison({
               )}
             </>
           );
-          const verdict = (copy: ReaderCopy) =>
-            copy.verdict && (
+          const verdict = (copy: ReaderCopy) => (<>
+            {copy.verdict && (
               <p
                 className={`${copyNote} flex items-center gap-1 font-medium ${copy.verdict.text}`}
               >
@@ -2956,7 +2985,15 @@ function OrderComparison({
                 )}
                 {copy.verdict.label}
               </p>
-            );
+            )}
+            {copy.backorderChecks?.map((check, i) => (
+              <p key={i} className={`${copyNote} ${check.ok ? "text-muted-foreground" : amber.text} flex items-start gap-1`}>
+                {!check.ok && <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />}
+                {check.label}
+              </p>
+            ))}
+          </>);
+
           const halfMenu = (
             side: "order" | "slip",
             hint: string | null,

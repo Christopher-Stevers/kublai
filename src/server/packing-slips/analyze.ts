@@ -160,7 +160,7 @@ export function explicitSlipQuantity(
   const pattern =
     field === "shipped"
       ? /^(?:shipped|ship|delivered)$/i
-      : /^(?:backordered|backorder|b\/o)$/i;
+      : /^(?:backordered|backorder|b\/?o)$/i;
   const headers = rows.filter(
     (r) =>
       r.page === row.page &&
@@ -595,17 +595,7 @@ function tableLines(
       shipped = Math.max(0, ordered - previous - backordered);
     if (!shippedColumn && ordered !== null && backordered !== null)
       shipped = Math.max(0, ordered - previous - backordered);
-    if (
-      backordered === null &&
-      !has("backordered") &&
-      ordered !== null &&
-      shipped !== null &&
-      has("ordered")
-    )
-      backordered = Math.max(
-        0,
-        Math.round((ordered - previous - shipped) * 1e6) / 1e6,
-      );
+    // Missing BO is unknown; deriving it from the shortage would hide discrepancies.
     if (shipped !== null && shipped < 0)
       issues.push(
         "Negative quantity: confirm this return and its disposition.",
