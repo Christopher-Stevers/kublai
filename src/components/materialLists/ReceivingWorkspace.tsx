@@ -2369,7 +2369,7 @@ function TornPaper({
     <span
       aria-hidden
       style={tear[side]}
-      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${needsConfirmation ? "border-orange-300 bg-orange-100 dark:border-orange-800 dark:bg-orange-950" : empty ? "border-red-500/30 bg-red-50 dark:bg-red-950" : "bg-zinc-100 dark:bg-zinc-800"}`}
+      className={`pointer-events-none absolute inset-0 -z-10 border-y ${side === "order" ? "rounded-l-xl border-l" : "rounded-r-xl border-r"} ${needsConfirmation ? "border-yellow-200/60 bg-yellow-50 dark:border-yellow-900/50 dark:bg-[#25251b]" : empty ? "border-red-500/30 bg-red-50 dark:bg-red-950" : "bg-zinc-100 dark:bg-zinc-800"}`}
     />
   );
 }
