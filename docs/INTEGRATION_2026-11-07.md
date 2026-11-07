@@ -43,3 +43,18 @@ the preceding image if startup fails; it does not undo applied database migratio
 Full user login, representative drawing/upload acceptance, and real billing
 acceptance remain separate operational checks. Stripe checkout stays guarded by
 its existing explicit enablement flag.
+
+## Validation and inherited lint debt
+
+The combined production build passed with TypeScript validation. Local isolated
+PostgreSQL tests passed 86 receiving and 43 purchasing cases, plus fresh/repeated
+AWS migrations and runtime/trigger checks. Corrected fixture regressions passed
+192 tests; catalogue importer tests passed 16 and reliability checks passed 28.
+The two initial UI/auth failures passed on Node 22 after aligning the existing
+Journeyman permission expectation; CI also uses Node 22.
+
+The saved lint baseline predates the deployed app. Its additional 411 findings
+were traced to unchanged source lines in the integration parents: 404 in PR #8
+and seven in development's additive XLSX utilities. Those inherited findings are
+recorded in the baseline; no lint rules were disabled. This does not claim the
+application is free of lint debt. Newly introduced findings remain blocking.
