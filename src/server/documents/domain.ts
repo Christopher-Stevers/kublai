@@ -1,3 +1,4 @@
+import { isDefaultDocumentFolder } from "~/lib/default-document-folders";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type {
@@ -437,6 +438,10 @@ export function applyDocumentAction(
       const folder = state.folders.find(
         (entry) => entry.id === action.folderId,
       )!;
+      if (isDefaultDocumentFolder(folder) &&
+          ((action.name !== undefined && action.name !== folder.name) ||
+           (action.parentId !== undefined && action.parentId !== null)))
+        fail("BAD_REQUEST", "Default job folders cannot be renamed or moved.");
       const parent =
         action.parentId === undefined ? folder.parentId : action.parentId;
       assertFolderRole(state, actor, parent, "manager");

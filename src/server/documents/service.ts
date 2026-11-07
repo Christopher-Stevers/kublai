@@ -1,3 +1,4 @@
+import { ensureDefaultDocumentFolders } from "./default-folders";
 import { userCan } from "~/server/auth/permissions";
 import { pendingOrderResolutions, receivedLineQuantity } from "~/lib/receiving-resolution";
 import {
@@ -97,7 +98,7 @@ export async function readWorkspace(
       ),
     )
     .limit(1);
-  return row?.state ?? emptyDocumentState();
+  return ensureDefaultDocumentFolders(row?.state ?? emptyDocumentState(), access.job.id, access.user.id);
 }
 export async function documentOverview(
   access: DocumentAccess,
@@ -150,7 +151,7 @@ export async function mutateWorkspace<T>(
         ),
       )
       .limit(1);
-    const state: DocumentState = row?.state ?? emptyDocumentState();
+    const state: DocumentState = ensureDefaultDocumentFolders(row?.state ?? emptyDocumentState(), jobId, access.user.id);
     const result = await mutate(
       state,
       documentActor(

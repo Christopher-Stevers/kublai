@@ -1,4 +1,5 @@
 "use client";
+import { isDefaultDocumentFolder } from "~/lib/default-document-folders";
 import {
   BarSearchButton,
   PriorityActionBar,
@@ -979,7 +980,7 @@ export function JobDocumentsView({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem
+                        {!isDefaultDocumentFolder(folder) && <DropdownMenuItem
                           onSelect={() =>
                             openModal({
                               kind: "rename-folder",
@@ -988,7 +989,7 @@ export function JobDocumentsView({
                           }
                         >
                           Rename folder
-                        </DropdownMenuItem>
+                        </DropdownMenuItem>}
                         <DropdownMenuItem
                           onSelect={() =>
                             openModal({
@@ -1054,7 +1055,7 @@ export function JobDocumentsView({
             </div>
           )}
           <div
-            className={`overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
+            className={`${!loading && filtered.length === 0 && !query && !status && !kind && view === "files" ? "hidden" : ""} overflow-hidden rounded-lg border ${dragging ? "border-primary bg-primary/5 ring-primary/20 ring-4" : "bg-card"}`}
             aria-label="Document file list"
             onDragOver={(event) => {
               event.preventDefault();
@@ -1103,22 +1104,7 @@ export function JobDocumentsView({
                   </p>
                 </div>
               ) : (
-                <EmptyState
-                  art="folder"
-                  title="No documents yet."
-                  action={
-                    canWrite && (
-                      <Button
-                        variant="outline"
-                        disabled={processing}
-                        onClick={() => pickFiles()}
-                      >
-                        <UploadIcon />
-                        Upload files
-                      </Button>
-                    )
-                  }
-                />
+                null
               )
             ) : (
               <>
