@@ -154,6 +154,7 @@ import { DrawingAppearanceDialog } from "./DrawingAppearanceDialog";
 import { useDrawingAppearance } from "./useDrawingAppearance";
 import { useDrawingMarkupVisibility } from "./useDrawingMarkupVisibility";
 import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
+import { FileComparison } from "./FileComparison";
 import { DrawingCompare } from "./DrawingCompare";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
 import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
@@ -759,6 +760,7 @@ export function DrawingWorkspace({
       : null,
   );
   const [overlayPickerOpen, setOverlayPickerOpen] = useState(false);
+  const [fileComparisonOpen, setFileComparisonOpen] = useState(false);
   const [navigate, setNavigate] = useState<{
     center: { x: number; y: number };
     zoom: number;
@@ -1745,6 +1747,7 @@ export function DrawingWorkspace({
     legendOpen ? () => setLegendOpen(false) :
     autoHyperlinkOpen ? () => setAutoHyperlinkOpen(false) :
     appearanceOpen ? () => setAppearanceOpen(false) :
+    fileComparisonOpen ? () => setFileComparisonOpen(false) :
     overlayPickerOpen ? () => setOverlayPickerOpen(false) :
     markupMenu ? () => setMarkupMenu(null) :
     form ? () => setForm(null) :
@@ -1910,6 +1913,7 @@ export function DrawingWorkspace({
   });
   const commands = {
     fit: { label: "Fit to screen", Icon: ScanIcon, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
+    compare: { label: "Compare files", Icon: LayersIcon, run: () => setFileComparisonOpen(true) },
     overlay: { label: "Overlay drawings", Icon: LayersIcon, run: () => setOverlayPickerOpen(true), disabled: overlayChoices.length < 2 },
     appearance: { label: "Drawing appearance", Icon: PaletteIcon, run: () => setAppearanceOpen(true) },
     "auto-hyperlink": { label: "Auto Hyperlink", Icon: Link2Icon, run: openAutoHyperlink, disabled: !viewData.canUseSheetTools || !writable || !online, barVisible: viewData.canUseSheetTools && viewData.canAnnotate !== false },
@@ -1986,7 +1990,7 @@ export function DrawingWorkspace({
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       ...wheelCommands("legend-items", "auto-hyperlink"),
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
-      ...wheelCommands("overlay", "appearance", "super-equipment", "super-spec-material", "super-label", "super-scale"),
+      ...wheelCommands("compare", "overlay", "appearance", "super-equipment", "super-spec-material", "super-label", "super-scale"),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, disabled: !data && id !== "search", run: () => { setPanel(id); setForm(null); } };
@@ -2095,6 +2099,7 @@ export function DrawingWorkspace({
           onClose={() => setAppearanceOpen(false)}
         />
       )}
+      {fileComparisonOpen && <FileComparison jobId={jobId} sheets={viewData.jobSheets} initialSheetId={sourceId} resolveAssetUrl={resolveAssetUrl} onClose={() => setFileComparisonOpen(false)} />}
       {overlayPickerOpen && (
         <DrawingOverlayPicker
           drawings={overlayChoices}
@@ -3799,7 +3804,7 @@ export function DrawingWorkspace({
             onClick={() => setDefaultMarkupVisibility(defaultMarkupVisibility === "private" ? "published" : "private")}>
             <PenLineIcon />{defaultMarkupVisibility === "private" ? "Private Markups" : "Public Markups"}
           </Button>
-          {commandButtons("fit", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
+          {commandButtons("fit", "compare", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
             barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups" && id !== "search", panel === id)
           )}

@@ -554,6 +554,7 @@ export async function receivingQueue(
     documents: docs,
     processingJob: processingJob ?? null,
     document: doc,
+    canDeleteDocument: access.canWrite && folderRole(state, actor, doc.folderId) !== "viewer" && (!doc.lockedBy || doc.lockedBy === actor.userId),
     review,
     items: linked,
     fingerprint: orderFingerprint(linked),

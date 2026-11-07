@@ -104,7 +104,7 @@ it("searches across pages and navigates/highlights results inside the drawing vi
     ),
   );
   expect(state.props?.annotations).toHaveLength(2);
-  expect(state.props?.navigateTo?.center.x).toBeGreaterThan(0);
+  await waitFor(() => expect(state.props?.navigateTo?.center.x).toBeGreaterThan(0));
   fireEvent.click(screen.getByRole("button", { name: "Next search result" }));
   fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Enter" });
   await screen.findByLabelText("Searchable PDF, page 2");

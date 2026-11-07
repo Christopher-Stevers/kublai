@@ -1,4 +1,6 @@
 "use client";
+import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
+import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
@@ -143,6 +145,7 @@ type Part = {
 /** `code`: the slip printed this supplier's code for it. */
 type LikelyPart = Part & { score: number; code: boolean };
 export type ReceivingDetail = {
+  canDeleteDocument?: boolean;
   correctionUndo?: { requestId: string; label: string } | null;
   canAcceptSubstitution?: boolean;
   processingJob?: ProcessingJob | null;
@@ -1026,7 +1029,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                             : "Checked. A different delivery."
                   }
                 >
-                  {(repeat || recheckingDuplicates) && <DuplicateReview detail={detail} recheck={recheckingDuplicates} run={async action => {
+                  {(repeat || recheckingDuplicates) && <DuplicateReview onDeleted={() => { setDetail(null); router.replace(`/jobs/${jobId}/receiving`); }} disabled={busy || !online} detail={detail} recheck={recheckingDuplicates} run={async action => {
                     const saved = await run(action);
                     if (saved) setRecheckingDuplicates(false);
                     return saved;
@@ -1788,14 +1791,19 @@ const duplicateReasons = {
 /** Step 1: an earlier scan that looks the same, and what this one is. */
 function DuplicateReview({
   detail,
+  onDeleted,
+  disabled,
   run,
   recheck = false,
 }: {
   detail: Detail;
+  onDeleted: () => void;
+  disabled: boolean;
   recheck?: boolean;
   run: (a: Action) => Promise<boolean>;
 }) {
   const [other, setOther] = useState("");
+  const [comparing, setComparing] = useState(false);
   const unresolved = detail.duplicates.filter(
     (d) => recheck || !detail.review.duplicateChecked?.includes(d.key),
   );
@@ -1810,6 +1818,8 @@ function DuplicateReview({
     });
   return (
     <div className="space-y-3 p-4 text-sm">
+      {comparing && <FileComparison jobId={detail.document.jobId} initialDocumentIds={[detail.document.id, earlier.id]} onClose={() => setComparing(false)} />}
+      <Button variant="outline" onClick={() => setComparing(true)}>Compare files</Button>
       {unresolved.length > 1 && (
         <Label name="Earlier scan">
           <select
@@ -1847,6 +1857,7 @@ function DuplicateReview({
         <Button variant="ghost" onClick={() => decide("replace")}>
           Replace the earlier scan
         </Button>
+        {detail.canDeleteDocument && <DeletePackingSlipButton jobId={detail.document.jobId} documentId={detail.document.id} name={detail.document.name} disabled={disabled} onDeleted={onDeleted} />}
       </div>
     </div>
   );

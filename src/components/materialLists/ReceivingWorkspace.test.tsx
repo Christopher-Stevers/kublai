@@ -1800,8 +1800,6 @@ it("does not offer adding parts to a reviewer without creation permission", asyn
   await hold();
   fireEvent.touchEnd(window, {touches:[]});
   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
-  expect(screen.queryByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).not.toBeInTheDocument();
-  expect(screen.queryByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).not.toBeInTheDocument();
   expect(screen.queryByRole("menuitem", {name:"Add this part to material list"})).not.toBeInTheDocument();
 });
 it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
@@ -2106,6 +2104,8 @@ it("opens slip options by holding the empty left card", async () => {
   fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
   await hold();fireEvent.touchEnd(window, {touches:[]});
   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+  expect(screen.queryByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("menuitem", {name:"Add this part to material list"}));
   expect(await screen.findByRole("dialog", {name:"Add this part to material list"})).toBeVisible();
   expect(posts).toEqual([]);
