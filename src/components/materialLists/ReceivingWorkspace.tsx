@@ -2394,6 +2394,8 @@ function TornPaper({
   );
 }
 
+const NOT_AN_ITEM_REASON = "This is not an item";
+
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
   actionError,
@@ -2421,6 +2423,27 @@ function OrderComparison({
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
   const modifying = useRef(false);
+  const [notItem, setNotItem] = useState<{ ids: string[]; selected: string } | null>(null);
+  const [removingDetection, setRemovingDetection] = useState(false);
+  const removingDetectionRef = useRef(false);
+  const [removeDetectionFailed, setRemoveDetectionFailed] = useState(false);
+  const detectedLine = detail.review.lines.find(line => line.id === notItem?.selected);
+  const removeDetection = async () => {
+    if (!detectedLine || detectedLine.ignored || (detectedLine.approved?.quantity ?? 0) !== 0 ||
+        addBlocked || removingDetectionRef.current || detail.review.versionId !== detail.document.currentVersionId) return;
+    removingDetectionRef.current = true;
+    setRemovingDetection(true);
+    setRemoveDetectionFailed(false);
+    try {
+      if (await run({action: "ignore", lineId: detectedLine.id, reason: NOT_AN_ITEM_REASON})) {
+        setNotItem(null);
+        notify("Removed from detected items.", true);
+      } else setRemoveDetectionFailed(true);
+    } finally {
+      removingDetectionRef.current = false;
+      setRemovingDetection(false);
+    }
+  };
   const [addLineId, setAddLineId] = useState<string | null>(null);
   const [addingPart, setAddingPart] = useState(false);
   const [addFailed, setAddFailed] = useState(false);
@@ -2485,7 +2508,7 @@ function OrderComparison({
     } finally { setSavingIssue(false); }
   };
   const r = detail.review,
-    slip = r.lines.map((line, index) => ({ line, index }));
+    slip = r.lines.map((line, index) => ({ line, index })).filter(({line}) => line.ignored?.reason !== NOT_AN_ITEM_REASON);
   const known = new Set(detail.items.map((i) => i.id));
   // Long press either half of a card to lift it and see its options. Drag it
   // to pair it with the other half of another card: a slip line onto an
@@ -2938,6 +2961,23 @@ function OrderComparison({
       : [];
   return (
     <div>
+      <Dialog open={!!notItem} onOpenChange={open => { if (!open && !removingDetection) setNotItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>This is not an item?</DialogTitle>
+            <DialogDescription>Remove this detected line from the packing slip review? The original slip, order items and received quantities stay unchanged.</DialogDescription>
+          </DialogHeader>
+          {notItem && notItem.ids.length > 1 && <select aria-label="Detected line to remove" className={field} disabled={removingDetection} value={notItem.selected} onChange={event => setNotItem({...notItem, selected:event.target.value})}>
+            {notItem.ids.map(id => <option key={id} value={id}>{detail.review.lines.find(line => line.id === id)?.description}</option>)}
+          </select>}
+          <p className="break-words font-medium">{detectedLine?.description}</p>
+          {removeDetectionFailed && <p role="alert" className="text-sm text-destructive">{actionError || "Could not remove this line. Try again."}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={removingDetection} onClick={() => setNotItem(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={addBlocked || removingDetection || !detectedLine || !!detectedLine.ignored || (detectedLine.approved?.quantity ?? 0) !== 0} onClick={() => void removeDetection()}>{removingDetection ? "Removing…" : "Remove item"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!addLineId && canAddLine} onOpenChange={open => { if (!open && !addingPart) setAddLineId(null); }}>
         <DialogContent className="max-h-[85dvh] max-w-full overflow-y-auto p-4 sm:max-w-3xl sm:p-6">
           <DialogHeader className="pr-6">
@@ -3363,6 +3403,12 @@ function OrderComparison({
             ))}
           </>);
 
+          const removableDetections = live.filter(({line}) => (line.approved?.quantity ?? 0) === 0);
+          const notItemOption = live.length > 0 ? <DropdownMenuItem
+            disabled={sourceChanged || addBlocked || removableDetections.length === 0}
+            title={removableDetections.length === 0 ? "Correct the recorded receipt before removing this line." : undefined}
+            onSelect={() => { setRemoveDetectionFailed(false); setNotItem({ids:removableDetections.map(x => x.line.id), selected:removableDetections[0]!.line.id}); }}
+          ><Trash2Icon />This is not an item</DropdownMenuItem> : null;
           const slipOptions = (
             <>
               <DropdownMenuItem onSelect={() => viewSlip(main)}>
@@ -3377,6 +3423,7 @@ function OrderComparison({
               )}
               <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
               <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
+              {notItemOption}
               {splitOption}
             </>
           );
@@ -3628,6 +3675,7 @@ function OrderComparison({
                         View item
                       </DropdownMenuItem>
                       {modifyOption}
+                      {notItemOption}
                       {splitOption}
                       {canRemove && (
                         <DropdownMenuItem

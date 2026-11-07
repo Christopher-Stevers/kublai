@@ -2106,3 +2106,34 @@ it("opens slip options by holding the empty left card", async () => {
   expect(await screen.findByRole("dialog", {name:"Add this part to material list"})).toBeVisible();
   expect(posts).toEqual([]);
 });
+
+it("confirms not-an-item removal and hides only that detection without receiving anything", async () => {
+  notOnOrder(3);
+  const serve = fetch;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, opts?: RequestInit) => {
+    if (opts?.method === "POST") {
+      const body = JSON.parse(String(opts.body));
+      if (body.action === "ignore") Object.assign(state.review.lines.find(line => line.id === body.lineId)!, {ignored:{reason:body.reason,by:"receiver",at:"now"}});
+    }
+    return serve(url,opts);
+  }));
+  render(<ReceivingWorkspace jobId="job" />);
+  const open = async () => {
+    const row = (await screen.findByRole("heading", {name:"Unclear pipe"})).closest("li")!;
+    fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
+    await hold();fireEvent.touchEnd(window, {touches:[]});
+    fireEvent.click(await screen.findByRole("menuitem", {name:"This is not an item"}));
+    return screen.findByRole("dialog", {name:"This is not an item?"});
+  };
+  let dialog = await open();
+  expect(posts).toEqual([]);
+  fireEvent.click(within(dialog).getByRole("button", {name:"Cancel"}));
+  expect(screen.getByRole("heading", {name:"Unclear pipe"})).toBeVisible();
+  expect(posts).toEqual([]);
+  dialog = await open();
+  fireEvent.click(within(dialog).getByRole("button", {name:"Remove item"}));
+  await waitFor(() => expect(screen.queryByRole("heading", {name:"Unclear pipe"})).not.toBeInTheDocument());
+  expect(posts).toEqual([expect.objectContaining({action:"ignore",lineId:"1",reason:"This is not an item"})]);
+  expect(state.items[0]!.received).toBe(2);
+  expect(state.review.lines).toHaveLength(2);
+});
