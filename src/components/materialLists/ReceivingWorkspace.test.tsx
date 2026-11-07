@@ -2094,3 +2094,15 @@ it("Modify reopens an accepted order-only pair and allows accepting it again", a
   fireEvent.click(confirmButton(row)!);
   await waitFor(() => expect(posts.at(-1)).toMatchObject({action:"orderDisposition",itemId:"item-2",disposition:"outstanding"}));
 });
+
+it("opens slip options by holding the empty left card", async () => {
+  notOnOrder(3);
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", {name:"Unclear pipe"})).closest("li")!;
+  fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
+  await hold();fireEvent.touchEnd(window, {touches:[]});
+  expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+  fireEvent.click(screen.getByRole("menuitem", {name:"Add this part to material list"}));
+  expect(await screen.findByRole("dialog", {name:"Add this part to material list"})).toBeVisible();
+  expect(posts).toEqual([]);
+});

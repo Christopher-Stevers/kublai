@@ -3363,6 +3363,23 @@ function OrderComparison({
             ))}
           </>);
 
+          const slipOptions = (
+            <>
+              <DropdownMenuItem onSelect={() => viewSlip(main)}>
+                <FileTextIcon />
+                View on slip
+              </DropdownMenuItem>
+              {modifyOption}
+              {detail.canCreate && detail.document.packingSlip && live.length === 1 && !live[0]!.line.orderItemId && !live[0]!.line.approved && (
+                <DropdownMenuItem disabled={sourceChanged || addBlocked} onSelect={() => { setAddFailed(false); setAddLineId(live[0]!.line.id); }}>
+                  <PlusIcon />Add this part to material list
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
+              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
+              {splitOption}
+            </>
+          );
           const halfMenu = (
             side: "order" | "slip",
             hint: string | null,
@@ -3444,9 +3461,14 @@ function OrderComparison({
                   {...pressDrag(
                     item
                       ? grab("order", !sourceChanged, { side: "order", item })
-                      : null,
+                      : live.length ? {
+                          onLift: () => {},
+                          onMove: () => {},
+                          onDrop: () => setMenu({ key, side: "order" }),
+                          onCancel: () => {},
+                        } : null,
                   )}
-                  className={`${half("order")} ${item ? "select-none [-webkit-touch-callout:none]" : ""}`}
+                  className={`${half("order")} ${item || live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
                   <TornPaper side="order" markedForReturn={live.some(({line}) => line.orderItemId === item?.id && materialMarkedForReturn(line, r.kind))} empty={orderEmpty && !done} needsConfirmation={orderNeedsConfirmation} />
                   <p className={copyLabel}>Order</p>
@@ -3594,13 +3616,13 @@ function OrderComparison({
                   )}
                 </div>
                 {/* Outside the halves, so pressing an option never lifts one. */}
-                {item &&
+                {(item || live.length > 0) &&
                   halfMenu(
                     "order",
-                    sourceChanged
+                    sourceChanged || !item
                       ? null
                       : "Drag onto a slip line to pair them.",
-                    <>
+                    item ? <>
                       <DropdownMenuItem onSelect={viewItem}>
                         <EyeIcon />
                         View item
@@ -3616,27 +3638,13 @@ function OrderComparison({
                           Remove from order
                         </DropdownMenuItem>
                       )}
-                    </>,
+                    </> : slipOptions,
                   )}
                 {live.length > 0 &&
                   halfMenu(
                     "slip",
                     mover ? "Drag onto an order item to pair them." : null,
-                    <>
-                      <DropdownMenuItem onSelect={() => viewSlip(main)}>
-                        <FileTextIcon />
-                        View on slip
-                      </DropdownMenuItem>
-                      {modifyOption}
-                      {detail.canCreate && detail.document.packingSlip && live.length === 1 && !live[0]!.line.orderItemId && !live[0]!.line.approved && (
-                        <DropdownMenuItem disabled={sourceChanged || addBlocked} onSelect={() => { setAddFailed(false); setAddLineId(live[0]!.line.id); }}>
-                          <PlusIcon />Add this part to material list
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
-                      <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
-                      {splitOption}
-                    </>,
+                    slipOptions,
                   )}
               </div>
               {(plan ?? mine) && item && (
