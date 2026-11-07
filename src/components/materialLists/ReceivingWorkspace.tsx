@@ -50,6 +50,7 @@ import {
   PlusIcon,
   Trash2Icon,
   UnlinkIcon,
+  PencilIcon,
   SearchIcon,
   AlertTriangleIcon,
   XIcon,
@@ -2410,6 +2411,7 @@ function OrderComparison({
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
+  const modifying = useRef(false);
   const [addLineId, setAddLineId] = useState<string | null>(null);
   const [addingPart, setAddingPart] = useState(false);
   const [addFailed, setAddFailed] = useState(false);
@@ -2702,7 +2704,7 @@ function OrderComparison({
     const live = lines.map((x) => x.line).filter((l) => !l.ignored);
     if (!live.length)
       return qtyRound(item.ordered - item.received) > 0 &&
-        !r.orderResolutions?.[item.id]
+        (!r.orderResolutions?.[item.id] || r.orderResolutions[item.id]?.disposition === "unresolved")
         ? {
             actions: [
               {
@@ -3073,6 +3075,28 @@ function OrderComparison({
             if (await run({ action: "splitComparison", lineIds: live.map(x => x.line.id) }))
               notify("Split into separate comparisons.", true);
           };
+          const canModify = (complete || live.some(x => x.line.checked === true)) && !live.some(x => !!x.line.approved);
+          const modify = async () => {
+            if (!canModify || sourceChanged || addBlocked || modifying.current) return;
+            modifying.current = true;
+            try {
+              if (live.length) {
+                for (const {line} of live) {
+                  if (!await run({
+                    action: "resolve", lineId: line.id,
+                    evidenceFingerprint: resolutionEvidenceFingerprint(line),
+                    counterpartFingerprint: item ? resolutionCounterpartFingerprint(item) : null,
+                    match: "unresolved", specification: "unresolved",
+                    quantity: "unresolved", delivery: "unresolved", skipped: false,
+                    remainder: null, excess: null,
+                  })) return;
+                }
+              } else if (item && !await run({action: "orderDisposition", itemId: item.id, disposition: "unresolved", note: ""})) return;
+              setOpenRow(key);
+              notify("Acceptance undone. Modify the pair, then accept it again.");
+            } finally { modifying.current = false; }
+          };
+          const modifyOption = canModify ? <DropdownMenuItem disabled={sourceChanged || addBlocked || !!cheer} onSelect={() => void modify()}><PencilIcon />Modify</DropdownMenuItem> : null;
           const splitOption = <DropdownMenuItem
             disabled={sourceChanged || !item || !live.length || live.some(x => !!x.line.approved)}
             title={live.some(x => !!x.line.approved) ? "Correct the approved receipt before splitting." : undefined}
@@ -3539,6 +3563,7 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
+                      {modifyOption}
                       {splitOption}
                       {canRemove && (
                         <DropdownMenuItem
@@ -3568,6 +3593,7 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
+                      {modifyOption}
                       {detail.canCreate && detail.document.packingSlip && live.length === 1 && !live[0]!.line.orderItemId && !live[0]!.line.approved && (
                         <DropdownMenuItem disabled={sourceChanged || addBlocked} onSelect={() => { setAddFailed(false); setAddLineId(live[0]!.line.id); }}>
                           <PlusIcon />Add this part to material list

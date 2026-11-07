@@ -2024,3 +2024,45 @@ it("brings This Information Is Correct back when the save fails", async () => {
     "pending",
   );
 });
+
+it("Modify reverses pair acceptance without unlinking the part or receiving quantities", async () => {
+  confirmSetup(body => {
+    if (body.action === "resolve") {
+      const line = state.review.lines.find(l => l.id === body.lineId)!;
+      Object.assign(line, {checked:false, resolution:{...newResolution(line as ReceivingLine,"receiver","now"), counterpartFingerprint:body.counterpartFingerprint}});
+    }
+    return true;
+  });
+  state.review.lines[0]!.quantity = 8;
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", {name:"Valve"})).closest("li")!;
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() => expect(confirmButton(row)).not.toBeInTheDocument());
+  const half = within(row).getAllByRole("group", {name:/ reading$/})[0]!;
+  fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
+  await hold();fireEvent.touchEnd(window, {touches:[]});
+  fireEvent.click(await screen.findByRole("menuitem", {name:"Modify"}));
+  await waitFor(() => expect(row.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state","pending"));
+  expect(confirmButton(row)).toBeVisible();
+  expect(posts.at(-1)).toMatchObject({action:"resolve",lineId:"0",match:"unresolved",specification:"unresolved",quantity:"unresolved",delivery:"unresolved"});
+  expect(state.review.lines[0]!.orderItemId).toBe("item");
+  expect(state.review.lines[0]!.quantity).toBe(8);
+  expect(state.items[0]!.received).toBe(2);
+  expect(posts.some(p => p.action === "approve")).toBe(false);
+});
+
+it("Modify reopens an accepted order-only pair and allows accepting it again", async () => {
+  confirmSetup();
+  state.items.push({...state.items[0]!,id:"item-2",description:"Elbow",received:0});
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", {name:"Elbow"})).closest("li")!;
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() => expect(confirmButton(row)).not.toBeInTheDocument());
+  fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
+  await hold();fireEvent.touchEnd(window, {touches:[]});
+  fireEvent.click(await screen.findByRole("menuitem", {name:"Modify"}));
+  await waitFor(() => expect(confirmButton(row)).toBeVisible());
+  expect(posts.at(-1)).toMatchObject({action:"orderDisposition",itemId:"item-2",disposition:"unresolved"});
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() => expect(posts.at(-1)).toMatchObject({action:"orderDisposition",itemId:"item-2",disposition:"outstanding"}));
+});
