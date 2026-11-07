@@ -11,7 +11,9 @@ authentication), on the existing EC2 host `i-04896ee80d2ebcdf7`. Production uses
 container/service `foremanhq`, Docker network `foremanhq`, and
 `/srv/foremanhq/uploads`. Development uses `foremanhq-dev`, network
 `foremanhq-dev`, and `/srv/foremanhq/dev/uploads`. Only Caddy joins both networks.
-The apex is canonical; www and the old aws hostname redirect to it.
+The apex is canonical; browser traffic on www and the old aws hostname redirects
+to it. Existing `/api/webhooks/*` URLs on those aliases still reach production
+directly, preserving Clerk/Stripe subscriptions.
 
 The existing RDS instance hosts production database `kublai` and development
 `foremanhq_dev`. Each has separate schema-owner and runtime login roles. PUBLIC

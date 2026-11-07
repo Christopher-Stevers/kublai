@@ -18,7 +18,13 @@ systemctl daemon-reload
 systemctl start foremanhq.slice
 cat > /etc/foremanhq/Caddyfile <<'CADDY'
 www.foremanhq.ca, aws.foremanhq.ca {
-  redir https://foremanhq.ca{uri} permanent
+  # Existing Clerk/Stripe subscriptions must not receive an HTTP redirect.
+  handle /api/webhooks/* {
+    reverse_proxy foremanhq:3000
+  }
+  handle {
+    redir https://foremanhq.ca{uri} permanent
+  }
 }
 foremanhq.ca {
   encode zstd gzip
