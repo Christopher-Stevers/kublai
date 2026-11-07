@@ -2152,3 +2152,16 @@ it("explains unavailable duplicate scans instead of opening a broken comparison"
   expect(screen.getByRole("button", { name: "Review & approve" })).toBeDisabled();
   expect(posts).toHaveLength(0);
 });
+
+it("opens the new-list form from Match without creating anything until submitted", async () => {
+  state.review.orderConfirmed = false;
+  state.canCreate = true;
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", {name: /New List/}));
+  expect(screen.getByText("New List From This Slip")).toBeInTheDocument();
+  expect(screen.getByLabelText("New list name")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Material list")).not.toBeInTheDocument();
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", {name: "Back to matches"}));
+  expect(screen.queryByText("New List From This Slip")).not.toBeInTheDocument();
+});

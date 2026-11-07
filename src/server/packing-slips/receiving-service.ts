@@ -1551,7 +1551,8 @@ async function mutateReceivingImpl(
         if (input.addToOrder) await addToOrder(l);
       } else if (input.action === "reconstruct") {
         await requireCreate(fresh, tx);
-        if (doc.packingSlip) fail("This slip already has an order.");
+        if (review.lines.some((line) => line.approved) || doc.packingSlipAnalysis?.applied)
+          fail("Correct existing receipts before moving this slip to a new list.");
         if (
           review.kind !== "delivery" ||
           review.lines.some((l) => l.kind && l.kind !== "delivery")
@@ -1618,6 +1619,13 @@ async function mutateReceivingImpl(
             notes: `Reconstructed from saved packing slip ${doc.id}. No order was sent to the supplier.`,
           })
           .returning();
+        delete doc.packingSlip;
+        // A reviewer can choose a new list instead of an incorrect suggested order.
+        // No old order lines or receipts are changed; clear their review links.
+        for (const line of review.lines) {
+          line.orderItemId = null;
+          invalidateResolution(line);
+        }
         for (const id of new Set(input.lineIds))
           await addOrderLine(tx, fresh, doc, lineFor(id), order!, quoteId);
         doc.packingSlip = {

@@ -10,6 +10,7 @@ export function OrderMatchCandidates({
   selectedId,
   onSelect,
   onSure,
+  onNewList,
 }: {
   jobId: string;
   documentId: string;
@@ -18,6 +19,7 @@ export function OrderMatchCandidates({
   onSelect: (orderId: string) => void;
   /** Called with the one order at 90% match confidence or more, once it is ranked. */
   onSure?: (orderId: string) => void;
+  onNewList: () => void;
 }) {
   const [retry, setRetry] = useState(0);
   const key = JSON.stringify([jobId, documentId, readingKey, retry]);
@@ -52,7 +54,7 @@ export function OrderMatchCandidates({
   }, [sure, onSure]);
   return (
     <section aria-label="Top order matches" className="space-y-2">
-      <p className="text-sm font-medium">Top 5 Order Matches</p>
+      <p className="text-sm font-medium">Top 3 Order Matches</p>
       <p className="text-muted-foreground text-xs">
         Ranked from the saved product reading. Select one to compare before
         confirming.
@@ -75,18 +77,18 @@ export function OrderMatchCandidates({
       ) : !current.rows.length ? (
         <p className="text-muted-foreground text-sm">
           No saved reading or eligible orders yet. You can still choose an order
-          below.
+          or create a new list.
         </p>
       ) : (
-        <ol className="space-y-1.5">
-          {current.rows.slice(0, 5).map((order, index) => (
+        <ol className="grid grid-cols-2 gap-2">
+          {current.rows.slice(0, 3).map((order, index) => (
             <li key={order.orderId}>
               <button
                 type="button"
                 aria-pressed={selectedId === order.orderId}
                 aria-label={`Compare rank ${index + 1}: ${order.orderNumber}`}
                 onClick={() => onSelect(order.orderId)}
-                className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm ${selectedId === order.orderId ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"}`}
+                className={`flex h-full w-full items-center gap-3 rounded-lg border p-3 text-left text-sm ${selectedId === order.orderId ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"}`}
               >
                 <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-full font-semibold">
                   {index + 1}
@@ -116,8 +118,14 @@ export function OrderMatchCandidates({
               </button>
             </li>
           ))}
+          <li>
+            <button type="button" onClick={onNewList} className="bg-background hover:bg-muted flex h-full min-h-24 w-full items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium">
+              <span aria-hidden="true" className="text-xl">+</span> New List
+            </button>
+          </li>
         </ol>
       )}
+      {(!current?.rows?.length) && <Button variant="outline" onClick={onNewList}>+ New List</Button>}
     </section>
   );
 }

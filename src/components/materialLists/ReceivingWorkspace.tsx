@@ -1572,6 +1572,7 @@ function Identity({
       (o) => o.id === (linked || analysis?.orderCandidates?.[0]),
     ),
     [form, setForm] = useState(!!onCancel),
+    [newList, setNewList] = useState(false),
     [kind, setKind] = useState(r.kind),
     [supplierChoice, setSupplier] = useState<string | null>(null),
     [delivery, setDelivery] = useState(r.deliveryNumber),
@@ -1653,12 +1654,21 @@ function Identity({
       selectedId={link}
       onSelect={chooseOrder}
       onSure={matchSure}
+      onNewList={() => { setForm(true); setNewList(true); }}
     />
   );
   const confirmButton = (
     <Button onClick={() => void confirm()}>
       <CheckIcon />I confirm this is the correct order
     </Button>
+  );
+  if (newList) return (
+    <div className="space-y-3 p-4">
+      {detail.canCreate && !detail.document.packingSlipAnalysis?.applied && !detail.review.lines.some((line) => line.approved) ?
+        <Reconstruct detail={detail} run={run} newListOnly /> :
+        <p className="text-sm">{detail.canCreate ? "This slip already has approved receipts. Correct those receipts before moving it to a new list." : "A foreman, lead hand or executive must create a list from this slip."}</p>}
+      <Button variant="outline" onClick={() => setNewList(false)}>Back to matches</Button>
+    </div>
   );
   if (!match && analysis?.status === "processing")
     return (
@@ -4978,7 +4988,9 @@ function PartDraft({
 function Reconstruct({
   detail,
   run,
+  newListOnly = false,
 }: {
+  newListOnly?: boolean;
   detail: Detail;
   run: (a: Action) => Promise<boolean>;
 }) {
@@ -4994,16 +5006,16 @@ function Reconstruct({
     (l) => !l.ignored && l.partId && l.ordered !== null && l.ordered > 0,
   );
   return (
-    <details className={`${card} px-4 py-3`}>
+    <details open={newListOnly || undefined} className={`${card} px-4 py-3`}>
       <summary className="cursor-pointer font-medium">
-        Reconstruct an order from this slip
+        {newListOnly ? "New List From This Slip" : "Reconstruct an order from this slip"}
       </summary>
       <p className="text-muted-foreground my-3 text-sm">
         Log an order already placed outside FormanHQ. Nothing is sent to the
         supplier. Choose catalogue parts and confirm ordered quantities first.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Label name="Material list">
+        {!newListOnly && <Label name="Material list">
           <select
             className={field}
             value={list}
@@ -5016,7 +5028,7 @@ function Reconstruct({
               </option>
             ))}
           </select>
-        </Label>
+        </Label>}
         {!list && (
           <Label name="New list name">
             <input
@@ -5051,7 +5063,7 @@ function Reconstruct({
           })
         }
       >
-        Approve reconstructed order
+        {newListOnly ? "Create New List" : "Approve reconstructed order"}
       </Button>
     </details>
   );

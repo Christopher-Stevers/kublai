@@ -2179,14 +2179,14 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     const snap = (await orderSnapshot(db, access, order))[0]!;
     expect(snap.ordered - snap.received).toBe(9);
   });
-  it("reconstructs a job-local order and shared catalogue part without receiving or sending", async () => {
+  it.each([false, true])("reconstructs a job-local order without receiving or sending (already linked: %s)", async (alreadyLinked) => {
     const { access, doc } = await confirmedHeader();
     await db
       .update(schema.jobs)
       .set({ foremanUserId: "receiver" })
       .where(sql`"id"=${job}`);
     const state = await workspace();
-    delete state.documents[0]!.packingSlip;
+    if (!alreadyLinked) delete state.documents[0]!.packingSlip;
     state.documents[0]!.receivingReview!.orderConfirmed = false;
     await db
       .update(schema.jobDocumentWorkspaces)
@@ -2278,6 +2278,10 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         )!.receivedQuantity,
       ),
     ).toBe(6);
+    await expect(reviewAction(access, doc.documentId, {
+      action: "reconstruct", materialListId: null, listName: "Duplicate list",
+      orderNumber: "NO-SECOND-RECEIPT", lineIds: ["0"], confirmed: true,
+    })).rejects.toThrow("Correct existing receipts");
   });
   it("rejects creating a material part in another organization or an asset catalogue", async () => {
     const { access, doc } = await confirmedHeader();
