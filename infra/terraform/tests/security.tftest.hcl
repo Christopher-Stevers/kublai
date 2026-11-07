@@ -59,3 +59,15 @@ run "dns_migration_preserves_production" {
     error_message = "Preserve all Clerk, CAA and wildcard records during DNS migration."
   }
 }
+
+run "separate_environment_routing" {
+  command = plan
+  assert {
+    condition     = aws_route53_record.development.name == "dev.foremanhq.ca" && aws_route53_record.production.name == "foremanhq.ca"
+    error_message = "Production and development require distinct hostnames."
+  }
+  assert {
+    condition     = toset(jsondecode(aws_iam_role.ci.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"]) == toset(["repo:Christopher-Stevers/kublai:ref:refs/heads/production", "repo:Christopher-Stevers/kublai:ref:refs/heads/development"])
+    error_message = "Only production and development branches may assume the release role."
+  }
+}

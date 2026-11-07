@@ -19,6 +19,7 @@ for (const server of servers) {
   resolver.setServers([ (await resolve4(server))[0] ]);
   assert.deepEqual(normalize(await resolver.resolveNs('foremanhq.ca')), normalize(servers));
   assert.deepEqual((await resolver.resolve4('foremanhq.ca')).sort(), (vercel ? ['216.198.79.1', '64.29.17.1'] : ['3.150.51.3']).sort());
+  assert.deepEqual(await resolver.resolve4('dev.foremanhq.ca'), ['3.150.51.3']);
   assert.deepEqual(await resolver.resolve4('aws.foremanhq.ca'), ['3.150.51.3']);
   for (const [name, value] of Object.entries(cnames)) {
     assert.deepEqual(normalize(await resolver.resolveCname(`${name}.foremanhq.ca`)), [value]);

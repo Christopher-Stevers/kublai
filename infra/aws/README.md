@@ -1,13 +1,10 @@
 # ForemanHQ AWS release
 
-The November 7 integration brings this pipeline and PR #8 into `development`.
-See [the integration record](../../docs/INTEGRATION_2026-11-07.md) for conflict
-choices, schema compatibility and automatic deployment behavior. Historical
-launch prerequisites below describe the original November 2 rollout.
-
-Work starts on `ci/foremanhq-aws`, based on the October 21 integration revision.
-Terraform lives in `infra/terraform`; this branch includes the infrastructure PR.
-Existing Vercel production and DNS remain unchanged until explicit cutover.
+Current environments and release rules are documented in
+[Deployment environments](../../docs/DEPLOYMENT_ENVIRONMENTS.md): `production`
+releases to `foremanhq.ca`, and `development` releases to `dev.foremanhq.ca`.
+Both use the existing EC2/RDS infrastructure with separate app services and
+databases. The original rollout notes below are historical context.
 
 ## Pipeline
 
@@ -18,19 +15,19 @@ Node 22 Docker image. Pull requests never authenticate to AWS or deploy.
 Set repository variables `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
 `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to the actual public configuration (and
 `NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL` if used). Set `AWS_RELEASE_READY=true`
-only once these are correct. Subsequent branch pushes publish immutable images
+only once these are correct. Pushes to `development` and `production` publish immutable images
 to ECR using GitHub OIDC; no permanent AWS keys are stored in GitHub.
 Without this switch, synthetic public keys are used solely for build validation,
 and the image is not published or deployed.
 
 Set `AWS_DEPLOY_ENABLED=true` after the launch prerequisites below pass.
-A branch push then deploys its exact image digest to the dedicated EC2 through
+A push to either release branch then deploys its exact image digest to the dedicated EC2 through
 SSM. The script first checks a candidate against RDS, then replaces the active
 container and rolls back the container on healthcheck failure. Uploads persist
 on the encrypted volume. It runs the committed Drizzle migrations with separate owner credentials before starting the candidate.
 The CI role is scoped to this ECR repository and this EC2 instance. Code on the
 two trusted branches can administer that host; protect branch writes accordingly.
-Remove the feature branch from the IAM trust after merging and cutover.
+Only `development` and `production` are trusted by the release role.
 
 ## Fresh launch prerequisites
 
