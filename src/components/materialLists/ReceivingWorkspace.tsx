@@ -3409,7 +3409,7 @@ function OrderComparison({
             title={removableDetections.length === 0 ? "Correct the recorded receipt before removing this line." : undefined}
             onSelect={() => { setRemoveDetectionFailed(false); setNotItem({ids:removableDetections.map(x => x.line.id), selected:removableDetections[0]!.line.id}); }}
           ><Trash2Icon />This is not an item</DropdownMenuItem> : null;
-          const slipOptions = (
+          const slipOptions = (side: "order" | "slip") => (
             <>
               <DropdownMenuItem onSelect={() => viewSlip(main)}>
                 <FileTextIcon />
@@ -3421,8 +3421,10 @@ function OrderComparison({
                   <PlusIcon />Add this part to material list
                 </DropdownMenuItem>
               )}
+              {side === "slip" && <>
               <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
               <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
+              </>}
               {notItemOption}
               {splitOption}
             </>
@@ -3686,13 +3688,13 @@ function OrderComparison({
                           Remove from order
                         </DropdownMenuItem>
                       )}
-                    </> : slipOptions,
+                    </> : slipOptions("order"),
                   )}
                 {live.length > 0 &&
                   halfMenu(
                     "slip",
                     mover ? "Drag onto an order item to pair them." : null,
-                    slipOptions,
+                    slipOptions("slip"),
                   )}
               </div>
               {(plan ?? mine) && item && (

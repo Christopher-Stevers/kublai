@@ -1579,6 +1579,8 @@ it("letting go of a held half opens its options", async () => {
     await screen.findByText("Drag onto an order item to pair them."),
   ).toBeInTheDocument();
   expect(screen.getByRole("menuitem", { name: "View on slip" })).toBeVisible();
+  expect(screen.getByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
+  expect(screen.getByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).toBeVisible();
   fireEvent.click(
     screen.getByRole("menuitem", { name: "Split" }),
   );
@@ -1798,6 +1800,8 @@ it("does not offer adding parts to a reviewer without creation permission", asyn
   await hold();
   fireEvent.touchEnd(window, {touches:[]});
   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+  expect(screen.queryByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).not.toBeInTheDocument();
   expect(screen.queryByRole("menuitem", {name:"Add this part to material list"})).not.toBeInTheDocument();
 });
 it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
