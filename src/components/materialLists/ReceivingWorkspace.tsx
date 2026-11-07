@@ -160,6 +160,7 @@ export type ReceivingDetail = {
     reason: string;
     key: string;
     received: boolean;
+    unavailable?: string | null;
   }>;
   /** Where each order item's received count came from. */
   receipts?: Record<string, ItemReceipts>;
