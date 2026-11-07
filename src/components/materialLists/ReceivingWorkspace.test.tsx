@@ -1715,6 +1715,91 @@ it("marks linked halves with caution borders for a return, but not for kept mate
   await screen.findByRole("heading", { name: "Valve" });
   expect(screen.queryByRole("img", {name:"Material marked for return"})).not.toBeInTheDocument();
 });
+
+async function openSlipPartChooser() {
+  const line = await screen.findByText("Unclear pipe");
+  const reading = line.closest('[role="group"]')!;
+  fireEvent.touchStart(reading, { touches: [{ clientX: 300, clientY: 300 }] });
+  await hold();
+  fireEvent.touchEnd(window, { touches: [] });
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Add this part to material list" }));
+  return screen.findByRole("dialog", { name: "Add this part to material list" });
+}
+
+it("offers the top three part cards and create instead from the slip menu", async () => {
+  notOnOrder(3);
+  const candidates = (state as typeof state & { likely: Record<string, Array<Record<string, unknown>>> }).likely["1"]!;
+  const original = candidates[0]!;
+  candidates.push(...[2, 3, 4].map(n => ({ ...original, id: `pipe-${n}`, name: `Pipe choice ${n}`, code: false })));
+  render(<ReceivingWorkspace jobId="job" />);
+  const dialog = await openSlipPartChooser();
+  const choices = within(dialog).getByRole("list", { name: "Likely catalogue parts" });
+  expect(within(choices).getAllByRole("listitem")).toHaveLength(4);
+  expect(within(choices).getByRole("button", { name: /Create A Part Instead/ })).toBeVisible();
+  expect(within(choices).queryByText("Pipe choice 4")).not.toBeInTheDocument();
+  expect(posts).toEqual([]);
+  fireEvent.click(within(choices).getByRole("button", { name: "Add Pipe choice 2 to the list" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({action: "part", lineId: "1", partId: "pipe-2", addToOrder: true});
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+});
+
+it("opens a prefilled create form from the fourth card without saving until submitted", async () => {
+  notOnOrder(3);
+  state.review.lines[1]!.sku = "PIPE-123";
+  state.review.lines[1]!.unit = "ft";
+  Object.assign(state.review.lines[1]!, {unitPrice: 12.5});
+  render(<ReceivingWorkspace jobId="job" />);
+  const dialog = await openSlipPartChooser();
+  fireEvent.click(within(dialog).getByRole("button", {name: /Create A Part Instead/}));
+  expect(within(dialog).getByLabelText("Part name")).toHaveValue("Unclear pipe");
+  expect(within(dialog).getByLabelText("Description")).toHaveValue("Unclear pipe");
+  expect(within(dialog).getByLabelText("Order unit")).toHaveValue("ft");
+  expect(within(dialog).getByText("Supplier code: PIPE-123")).toBeVisible();
+  expect(within(dialog).getByText("Job unit price: 12.5")).toBeVisible();
+  expect(posts).toEqual([]);
+  fireEvent.click(within(dialog).getByRole("button", {name: "Add to ForemanHQ and the list"}));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({action:"part", lineId:"1", partId:null, name:"Unclear pipe", unit:"ft", addToOrder:true});
+});
+
+it("takes a missing-quantity line back to its editor instead of adding an uncounted part", async () => {
+  notOnOrder(null);
+  render(<ReceivingWorkspace jobId="job" />);
+  const dialog = await openSlipPartChooser();
+  expect(within(dialog).getByRole("button", {name:"Add Copper pipe to the list"})).toBeDisabled();
+  fireEvent.click(within(dialog).getByRole("button", {name:"Review quantity"}));
+  expect(dialog).not.toBeInTheDocument();
+  expect(screen.getByText("Enter the quantity that came below and save it first.")).toBeVisible();
+  expect(posts).toEqual([]);
+});
+
+it("shows a rejected add inside the chooser and keeps the draft available", async () => {
+  notOnOrder(3);
+  const fetchNormally = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (url, opts) => opts?.method === "POST"
+    ? Response.json({error: "A part with this name already exists. Search the catalogue and select it."}, {status:409})
+    : fetchNormally(url, opts));
+  render(<ReceivingWorkspace jobId="job" />);
+  const dialog = await openSlipPartChooser();
+  fireEvent.click(within(dialog).getByRole("button", {name:/Create A Part Instead/}));
+  fireEvent.click(within(dialog).getByRole("button", {name:"Add to ForemanHQ and the list"}));
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("A part with this name already exists");
+  expect(within(dialog).getByLabelText("Part name")).toHaveValue("Unclear pipe");
+  expect(dialog).toBeVisible();
+});
+
+it("does not offer adding parts to a reviewer without creation permission", async () => {
+  notOnOrder(3);
+  state.canCreate = false;
+  render(<ReceivingWorkspace jobId="job" />);
+  const line = await screen.findByText("Unclear pipe");
+  fireEvent.touchStart(line.closest('[role="group"]')!, {touches:[{clientX:300,clientY:300}]});
+  await hold();
+  fireEvent.touchEnd(window, {touches:[]});
+  expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+  expect(screen.queryByRole("menuitem", {name:"Add this part to material list"})).not.toBeInTheDocument();
+});
 it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
   state.items[0]!.received = 0;
   state.review.lines[0]!.quantity = 0;
@@ -1748,4 +1833,17 @@ it("uses the same confirmation action with standard wording for a matching deliv
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0", delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6 });
   expect(state.items[0]!.received).toBe(0);
+});
+
+it("prefills an explicitly stated package size when the slip is counted in boxes", async () => {
+  notOnOrder(2);
+  state.review.lines[1]!.description = "Screws — box of 100";
+  state.review.lines[1]!.unit = "box";
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", {name:"Review line: Screws — box of 100"}));
+  fireEvent.click(screen.getByRole("button", {name:"New part in ForemanHQ"}));
+  expect(screen.getByLabelText("Pieces per pack (if packaged)")).toHaveValue(100);
+  expect(screen.getByLabelText("Order unit")).toHaveValue("box");
+  expect(screen.getByLabelText("Individual unit")).toHaveValue("ea");
+  expect(posts).toEqual([]);
 });

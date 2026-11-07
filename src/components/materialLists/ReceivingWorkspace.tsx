@@ -19,6 +19,7 @@ import {
   resolutionBlockers,
   receivingLineReady,
 } from "~/lib/receiving-resolution";
+import { PartTileContent, PART_TILE_CARD_CLASS, PART_TILE_GRID_CLASS } from "./wizard/PartTileContent";
 import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
@@ -87,6 +88,7 @@ import {
   lineReadings,
   readSlipQuantity,
   receiptUnit,
+  packSizesIn,
   slipHeader,
   slipReader,
 } from "~/lib/packing-slip-review";
@@ -1127,6 +1129,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       )}
                       {(detail.items.length > 0 || r.lines.length > 0) && (
                         <OrderComparison
+                          actionError={error}
+                          addBlocked={busy || blocked || !online}
                           detail={detail}
                           jobId={jobId}
                           run={run}
@@ -2380,6 +2384,8 @@ function TornPaper({
 
 /** Step 3: every order item beside what the slip says arrived for it. */
 function OrderComparison({
+  actionError,
+  addBlocked,
   detail,
   jobId,
   run,
@@ -2389,6 +2395,8 @@ function OrderComparison({
   onResolve,
   notify,
 }: {
+  actionError: string;
+  addBlocked: boolean;
   detail: Detail;
   jobId: string;
   run: (a: Action) => Promise<boolean>;
@@ -2400,6 +2408,32 @@ function OrderComparison({
 }) {
   // One toggle for every row: opening the other readers on one opens them all.
   const [showOthers, setShowOthers] = useState(false);
+  const [addLineId, setAddLineId] = useState<string | null>(null);
+  const [addingPart, setAddingPart] = useState(false);
+  const [addFailed, setAddFailed] = useState(false);
+  const addingPartRef = useRef(false);
+  const addLine = detail.review.lines.find(line => line.id === addLineId);
+  const canAddLine = !!addLine && !addLine.orderItemId && !addLine.approved &&
+    !addLine.ignored && detail.canCreate && !!detail.document.packingSlip &&
+    detail.review.versionId === detail.document.currentVersionId;
+  const addFromSlip = async (action: Action) => {
+    if (!canAddLine || addBlocked || addingPartRef.current) return false;
+    addingPartRef.current = true;
+    setAddingPart(true);
+    setAddFailed(false);
+    try {
+      const saved = await run(action);
+      if (saved) {
+        setAddLineId(null);
+        notify("Part added to the material list. Review the delivery before approval.");
+      }
+      setAddFailed(!saved);
+      return saved;
+    } finally {
+      addingPartRef.current = false;
+      setAddingPart(false);
+    }
+  };
   const [removeItem, setRemoveItem] = useState<ReceiptOrderItem | null>(null);
   const [removing, setRemoving] = useState(false);
   const [preview, setPreview] = useState<
@@ -2643,6 +2677,20 @@ function OrderComparison({
       : [];
   return (
     <div>
+      <Dialog open={!!addLineId && canAddLine} onOpenChange={open => { if (!open && !addingPart) setAddLineId(null); }}>
+        <DialogContent className="max-h-[85dvh] max-w-full overflow-y-auto p-4 sm:max-w-3xl sm:p-6">
+          <DialogHeader>
+            <DialogTitle>Add this part to material list</DialogTitle>
+            <DialogDescription>{addLine?.description}</DialogDescription>
+          </DialogHeader>
+          {addLine && canAddLine && <fieldset disabled={addingPart || addBlocked} aria-busy={addingPart} className="min-w-0">
+            <AddToList key={addLine.id} line={addLine} detail={detail} jobId={jobId} run={addFromSlip} cards
+              onReviewQuantity={() => { setAddLineId(null); setOpenRow(rows.find(row => row.lines.some(x => x.line.id === addLine.id))?.key ?? addLine.id); }} />
+            {addFailed && <p role="alert" className="mt-3 text-sm text-destructive">{actionError || "Could not add the part. Check your connection and try again."}</p>}
+            {addingPart && <p role="status" className="mt-3 text-sm">Adding part…</p>}
+          </fieldset>}
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!materialIssue} onOpenChange={open => { if (!open && !savingIssue) setMaterialIssue(null); }}>
         <DialogContent>
           <DialogHeader>
@@ -3266,6 +3314,11 @@ function OrderComparison({
                         <CheckCircle2Icon />
                         {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
+                      {detail.canCreate && detail.document.packingSlip && live.length === 1 && !live[0]!.line.orderItemId && !live[0]!.line.approved && (
+                        <DropdownMenuItem disabled={sourceChanged || addBlocked} onSelect={() => { setAddFailed(false); setAddLineId(live[0]!.line.id); }}>
+                          <PlusIcon />Add this part to material list
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
                       <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
                       {splitOption}
@@ -4060,7 +4113,9 @@ function PartChoice({
   disabled,
   onAdd,
   line,
+  card = false,
 }: {
+  card?: boolean;
   line: ReceivingLine;
   part: Part;
   note?: string;
@@ -4076,7 +4131,14 @@ function PartChoice({
     !!p.unit &&
     receiptUnit(p.unit) !== "ea";
   return (
-    <li className="flex items-center gap-3 px-3 py-2">
+    <li className={card ? `${PART_TILE_CARD_CLASS} border bg-card shadow-sm` : "flex items-center gap-3 px-3 py-2"}>
+      {card ? <button type="button" className="h-full w-full text-left disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={`Add ${p.name} to the list`} disabled={disabled}
+        onClick={() => (needsConfirmation ? setConfirm(true) : onAdd())}>
+        <PartTileContent part={{displayName:p.name, imageUrl:p.photoUrl, piecesPerPack:p.piecesPerPack}}
+          details={<><span className="text-muted-foreground text-xs">{note}</span><span className="mt-1 text-sm">Add to list</span></>} />
+      </button> : <>
+
       {p.photoUrl ? (
         <PartImage
           width={48}
@@ -4102,6 +4164,7 @@ function PartChoice({
         <PlusIcon />
         Add to list
       </Button>
+      </>}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogHeader>
@@ -4142,23 +4205,33 @@ function AddToList({
   detail,
   jobId,
   run,
+  cards = false,
+  onReviewQuantity,
 }: {
+  cards?: boolean;
+  onReviewQuantity?: () => void;
   line: ReceivingLine;
   detail: Detail;
   jobId: string;
   run: (a: Action) => Promise<boolean>;
 }) {
   const [mode, setMode] = useState<"search" | "new" | null>(null);
-  const likely = detail.likely?.[line.id] ?? [],
+  const section = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!cards) return;
+    const dialog = section.current?.closest('[role="dialog"]');
+    if (dialog) dialog.scrollTop = 0;
+  }, [cards, mode]);
+  const likely = (detail.likely?.[line.id] ?? []).slice(0, 3),
     order = detail.document.packingSlip!,
     count = line.ordered ?? line.quantity,
     counted = count !== null && count > 0;
   const toggle = (next: "search" | "new") =>
     setMode(mode === next ? null : next);
   return (
-    <section className="space-y-3 rounded-lg border p-3">
+    <section ref={section} className={cards ? "space-y-4" : "space-y-3 rounded-lg border p-3"}>
       <div>
-        <h4 className="font-medium">Add it to the material list</h4>
+        {!cards && <h4 className="font-medium">Add it to the material list</h4>}
         <p className="text-muted-foreground text-sm">
           This part is not on order {order.orderNumber}. Adding it puts it on{" "}
           {order.materialListName}
@@ -4167,17 +4240,19 @@ function AddToList({
         </p>
         {!counted && (
           <p className={`mt-1 text-sm ${amber.text}`}>
-            Enter the quantity that came below and save it first.
+            {cards ? "Save the slip quantity before adding this part." : "Enter the quantity that came below and save it first."}
+            {cards && <Button variant="link" onClick={onReviewQuantity}>Review quantity</Button>}
           </p>
         )}
       </div>
-      {likely.length > 0 ? (
+      {(!cards || !mode) && (likely.length > 0 || cards) ? (
         <ul
           aria-label="Likely catalogue parts"
-          className="divide-y rounded-md border"
+          className={cards ? PART_TILE_GRID_CLASS : "divide-y rounded-md border"}
         >
           {likely.map((p, i) => (
             <PartChoice
+              card={cards}
               key={p.id}
               part={p}
               line={line}
@@ -4195,10 +4270,18 @@ function AddToList({
               onAdd={(confirmed) => void addPart(run, line, p, confirmed)}
             />
           ))}
+          {cards && <li className={`${PART_TILE_CARD_CLASS} border bg-card shadow-sm`}>
+            <button type="button" className="h-full w-full p-3 focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setMode("new")}>
+              <span className="bg-muted mb-3 flex aspect-square w-full items-center justify-center rounded-xl"><PlusIcon className="size-10" /></span>
+              <span className="block text-sm font-medium">Create A Part Instead</span>
+              <span className="text-muted-foreground mt-1 block text-xs">Start with the information on this slip</span>
+            </button>
+          </li>}
         </ul>
-      ) : (
+      ) : !mode ? (
         <p className="text-sm">No close match in your catalogue.</p>
-      )}
+      ) : null}
+      {cards && !mode && likely.length === 0 && <p className="text-muted-foreground text-sm">No close match in your catalogue. Search or create a part.</p>}
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -4209,7 +4292,7 @@ function AddToList({
           <SearchIcon />
           Search catalogue
         </Button>
-        <Button
+        {!cards && <Button
           size="sm"
           variant={likely.length ? "outline" : "default"}
           aria-expanded={mode === "new"}
@@ -4217,7 +4300,8 @@ function AddToList({
         >
           <PlusIcon />
           New part in ForemanHQ
-        </Button>
+        </Button>}
+        {cards && mode && <Button size="sm" variant="outline" onClick={() => setMode(null)}>Back to matches</Button>}
       </div>
       {mode && (
         <PartDraft
@@ -4247,12 +4331,18 @@ function PartDraft({
   run: (a: Action) => Promise<boolean>;
   mode?: "all" | "search" | "new";
 }) {
+  // Only prefill an explicit package size for a slip already counted in
+  // packages. A dimension or an EA count must not silently change its unit.
+  const packaged = ["box", "pack", "bag", "bundle", "case", "carton", "roll", "coil", "pail"].includes(receiptUnit(line.unit));
+  const slipPacks = packaged ? packSizesIn(line.description) : [];
+  const slipPack = slipPacks.length === 1 ? String(slipPacks[0]) : "";
+  const slipIndividual = slipPack && /\b\d[\d,]*\s*(?:ft|feet)\s*(?:\/|per\s+)(?:roll|rl|coil)\b/i.test(line.description) ? "ft" : "ea";
   const [name, setName] = useState(line.description.slice(0, 255)),
     [description, setDescription] = useState(line.description),
     [catalog, setCatalog] = useState(detail.catalogs[0]?.id ?? ""),
     [unit, setUnit] = useState(line.unit || "ea"),
-    [pack, setPack] = useState(""),
-    [individual, setIndividual] = useState("ea"),
+    [pack, setPack] = useState(slipPack),
+    [individual, setIndividual] = useState(slipIndividual),
     [parts, setParts] = useState<Part[]>([]),
     [selected, setSelected] = useState<Part | null>(null),
     [search, setSearch] = useState(line.description.slice(0, 70)),
@@ -4299,6 +4389,13 @@ function PartDraft({
             ? "It joins your catalogue and this order's material list. Prices stay with this job."
             : "Reuse an existing part, or approve a new entry for your organization. Prices stay with this job."}
       </p>
+      {mode === "new" && <div className="bg-muted/40 space-y-1 rounded-md p-3 text-sm" aria-label="Information from packing slip">
+        {line.sku && <p>Supplier code: {line.sku}</p>}
+        <p>Ordered: {line.ordered ?? line.quantity ?? "Needs review"} {line.unit}</p>
+        <p>Received on slip: {line.quantity ?? "Needs review"} {line.unit}</p>
+        {line.unitPrice !== null && <p>Job unit price: {line.unitPrice}</p>}
+        <p className="text-muted-foreground text-xs">The supplier code, quantities and job price are carried over from this slip.</p>
+      </div>}
       {mode !== "new" && (
         <div className="flex gap-2">
           <input
