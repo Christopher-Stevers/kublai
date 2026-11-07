@@ -1848,7 +1848,7 @@ it("prefills an explicitly stated package size when the slip is counted in boxes
   expect(posts).toEqual([]);
 });
 
-// "This Information Is Correct" plays its wave on a canvas; with reduced
+// Accept plays its wave on a canvas; with reduced
 // motion it saves and shows the check straight away.
 function confirmSetup(
   apply: (body: Record<string, unknown>) => boolean = () => true,
@@ -1882,6 +1882,16 @@ function confirmSetup(
             quantity: body.quantity,
             checked: body.checked === true,
           });
+        if (body.action === "resolve") {
+          const line = state.review.lines.find((l) => l.id === body.lineId)!;
+          const resolution: Record<string, unknown> = {
+            ...newResolution(line as ReceivingLine, "receiver", "now"),
+          };
+          for (const [key, value] of Object.entries(body))
+            if (!["action", "lineId", "evidenceFingerprint"].includes(key))
+              resolution[key] = value;
+          Object.assign(line, { checked: true, resolution });
+        }
         if (body.action === "orderDisposition")
           Object.assign(state.review, {
             orderResolutions: {
@@ -1899,33 +1909,40 @@ function confirmSetup(
   );
 }
 const confirmButton = (row: HTMLElement) =>
-  within(row).queryByRole("button", { name: "This Information Is Correct" });
-it("confirms a matching comparison with This Information Is Correct", async () => {
+  within(row).queryByRole("button", { name: "Accept" });
+it("accepts a matching comparison with the animated button", async () => {
   confirmSetup();
-  state.review.lines[0]!.quantity = 8;
+  state.items[0]!.received = 0;
+  state.items[0]!.ordered = 6;
+  state.review.lines[0]!.ordered = 6;
   render(<ReceivingWorkspace jobId="job" />);
   const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
     "li",
   )!;
   const circle = () => row.querySelector("[data-comparison-state]")!;
   expect(circle()).toHaveAttribute("data-comparison-state", "pending");
+  // One button per row, not a second plain Accept beside it.
+  expect(within(row).getAllByRole("button", { name: "Accept" })).toHaveLength(1);
   fireEvent.click(confirmButton(row)!);
   await waitFor(() =>
     expect(circle()).toHaveAttribute("data-comparison-state", "complete"),
   );
   expect(posts).toEqual([
     expect.objectContaining({
-      action: "line",
+      action: "resolve",
       lineId: "0",
-      orderItemId: "item",
-      quantity: 8,
-      checked: true,
+      delivery: "confirmed",
+      siteQuantity: 6,
+      acceptedQuantity: 6,
     }),
   ]);
+  expect(
+    await screen.findByText("Information confirmed. Ready for final approval."),
+  ).toBeInTheDocument();
   await waitFor(() => expect(confirmButton(row)).not.toBeInTheDocument());
   expect(state.review.lines[0]!.approved).toBeUndefined();
 });
-it("offers This Information Is Correct only when it settles the row", async () => {
+it("offers Accept only when it settles the row", async () => {
   confirmSetup();
   render(<ReceivingWorkspace jobId="job" />);
   // 6 of the 8 still due, and a line with no quantity.
@@ -2008,9 +2025,11 @@ it("confirms an order item with nothing on the slip as still due, and it keeps i
     ).getByRole("group", { name: "Slip reading" }),
   ).toHaveTextContent(/^Slip/);
 });
-it("brings This Information Is Correct back when the save fails", async () => {
+it("brings Accept back when the save fails", async () => {
   confirmSetup(() => false);
-  state.review.lines[0]!.quantity = 8;
+  state.items[0]!.received = 0;
+  state.items[0]!.ordered = 6;
+  state.review.lines[0]!.ordered = 6;
   render(<ReceivingWorkspace jobId="job" />);
   const row = (await screen.findByRole("heading", { name: "Valve" })).closest(
     "li",
@@ -2034,6 +2053,8 @@ it("Modify reverses pair acceptance without unlinking the part or receiving quan
     return true;
   });
   state.review.lines[0]!.quantity = 8;
+  // No printed ordered column, so no BO check holds Accept back.
+  state.review.lines[0]!.ordered = null;
   render(<ReceivingWorkspace jobId="job" />);
   const row = (await screen.findByRole("heading", {name:"Valve"})).closest("li")!;
   fireEvent.click(confirmButton(row)!);

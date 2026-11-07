@@ -2494,12 +2494,13 @@ function OrderComparison({
     | { side: "order"; item: ReceiptOrderItem }
   );
   const [drag, setDrag] = useState<Grab | null>(null);
-  // "This Information Is Correct": the row whose confirmation is playing.
+  // Accept: the row whose confirmation is playing.
   // Rows confirmed here keep their place until the next visit, so a card
   // never jumps away from under its new check.
   const [cheer, setCheer] = useState<{
     key: string;
     badge: string;
+    label: string;
     tint: { order: boolean; slip: boolean };
     covered: boolean;
     burst: boolean;
@@ -2687,13 +2688,15 @@ function OrderComparison({
   const finished = (row: (typeof rows)[number]) =>
     rowComplete(row) && !kept.has(row.key);
   rows.sort((a, b) => Number(finished(a)) - Number(finished(b)) || a.n - b.n);
-  // What "This Information Is Correct" saves for a row: each slip line
+  // What Accept saves for a row: each slip line
   // linked to the order item and confirmed as read, or an order item no slip
   // line covers marked still due. Null unless that alone settles the row, so
   // a short count or an open decision still goes through Resolve.
   type Plan = {
     actions: Action[];
     fit?: { fit: PartFit; unit: string; index: number };
+    label?: string;
+    message?: string;
   };
   const confirmPlan = (
     item: ReceiptOrderItem | undefined,
@@ -2874,7 +2877,8 @@ function OrderComparison({
         return true;
       })();
       setKept((k) => new Set(k).add(key));
-      setCheer({ key, badge, tint, covered: false, burst: false });
+      const label = plan.label ?? "Accept";
+      setCheer({ key, badge, label, tint, covered: false, burst: false });
       stopCheer.current = playConfirmWave({
         targets: () => {
           const button = row?.querySelector<HTMLElement>(
@@ -2898,7 +2902,11 @@ function OrderComparison({
               next.delete(key);
               return next;
             });
-          else if (actions.length === 1) notify("Confirmed.", true);
+          else
+            notify(
+              plan.message ?? "Information confirmed. Ready for final approval.",
+              actions.length === 1,
+            );
         },
       });
     };
@@ -3044,7 +3052,7 @@ function OrderComparison({
           // the burst shows the check.
           const mine = cheer?.key === key ? cheer : null;
           const done = mine ? mine.burst : complete;
-          const plan =
+          const linkPlan =
             complete || mine || cheer ? null : confirmPlan(item, lines, byHand);
           const orderNeedsNow = !complete && (
             !item || !live.length || live.some(({ line }) =>
@@ -3229,6 +3237,34 @@ function OrderComparison({
             compareToOrder(item, [backorderLine], byHand)?.ok === true &&
             !main.backorderChecks?.some(check => !check.ok)
           );
+          // One Accept button: the slip's own confirmation when it fits,
+          // otherwise the links and decisions that settle the row.
+          const plan: Plan | null =
+            complete || mine || cheer
+              ? null
+              : canConfirmInformation && backorderLine && item
+                ? {
+                    actions: [{
+                      action: "resolve",
+                      lineId: backorderLine.id,
+                      evidenceFingerprint: resolutionEvidenceFingerprint(backorderLine),
+                      counterpartFingerprint: resolutionCounterpartFingerprint(item),
+                      match: "confirmed",
+                      specification: "confirmed",
+                      quantity: "confirmed",
+                      delivery: canAcceptBackorder ? "short" : "confirmed",
+                      siteQuantity: backorderLine.quantity,
+                      acceptedQuantity: backorderLine.quantity,
+                      remainder: canAcceptBackorder ? "backordered" : null,
+                      skipped: false,
+                      note: canAcceptBackorder ? "Nothing delivered; the slip BO accounts for the full outstanding quantity." : "Reviewer confirmed the displayed information is correct.",
+                    }],
+                    label: canAcceptBackorder ? "Accept With Backorder" : "Accept",
+                    message: canAcceptBackorder ? "Backorder accepted. Nothing received; the full quantity remains outstanding." : undefined,
+                  }
+                : main.backorderChecks?.some((check) => !check.ok)
+                  ? null
+                  : linkPlan;
 
 
           // The heading, score and verdict of one reader's copy of the line.
@@ -3617,9 +3653,10 @@ function OrderComparison({
                           event.currentTarget,
                         )
                       }
-                      className={`focus-visible:ring-ring h-11 w-full cursor-pointer rounded-xl border border-emerald-600/40 bg-emerald-500/10 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-500/15 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset disabled:cursor-default dark:border-emerald-400/30 dark:text-emerald-200 ${mine?.covered ? "invisible" : ""}`}
+                      className={`focus-visible:ring-ring flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-emerald-600/40 bg-emerald-500/10 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-500/15 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset disabled:cursor-default dark:border-emerald-400/30 dark:text-emerald-200 ${mine?.covered ? "invisible" : ""}`}
                     >
-                      This Information Is Correct
+                      <CheckIcon className="size-4" />
+                      {mine?.label ?? plan?.label ?? "Accept"}
                     </button>
                   </div>
                 </div>
@@ -3646,29 +3683,6 @@ function OrderComparison({
                   )}
                 </div>
               </div>
-              {canConfirmInformation && backorderLine && item && (
-                <div className="mt-3">
-                  <Button variant="outline" onClick={async () => {
-                    if (await run({
-                      action: "resolve",
-                      lineId: backorderLine.id,
-                      evidenceFingerprint: resolutionEvidenceFingerprint(backorderLine),
-                      counterpartFingerprint: resolutionCounterpartFingerprint(item),
-                      match: "confirmed",
-                      specification: "confirmed",
-                      quantity: "confirmed",
-                      delivery: canAcceptBackorder ? "short" : "confirmed",
-                      siteQuantity: backorderLine.quantity,
-                      acceptedQuantity: backorderLine.quantity,
-                      remainder: canAcceptBackorder ? "backordered" : null,
-                      skipped: false,
-                      note: canAcceptBackorder ? "Nothing delivered; the slip BO accounts for the full outstanding quantity." : "Reviewer confirmed the displayed information is correct.",
-                    })) notify(canAcceptBackorder ? "Backorder accepted. Nothing received; the full quantity remains outstanding." : "Information confirmed. Ready for final approval.");
-                  }}>
-                    <CheckIcon />{canAcceptBackorder ? "Accept With Backorder" : "Accept"}
-                  </Button>
-                </div>
-              )}
               {live.flatMap((x) => {
                 const check = terraCheck(x.line, detail);
                 return check
