@@ -40,6 +40,6 @@ it("restores a child without exposing siblings and can hide it again", () => {
   const part = { catalogId: "catalog", materialId: null, sizeNominal: null, sizeUnit: null, categoryId: null };
   expect(isPartHidden({ ...part, id: "one" }, rules)).toBe(false);
   expect(isPartHidden({ ...part, id: "two" }, rules)).toBe(true);
-  expect(isPartHidden({ ...part, id: "one" }, [...rules, { id: "new", partId: "one" }])).toBe(true);
+  expect(isPartHidden({ ...part, id: "one" }, [...rules, { partId: "one" }])).toBe(true);
   expect(restoreHiddenSelection(rules, [{ catalogId: "catalog" }])).toEqual([]);
 });

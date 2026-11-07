@@ -2263,7 +2263,7 @@ it.each([false, true])("locks and unlocks a markup from its basic menu (fullscre
   await waitFor(() => expect(within(bar).getByRole("button", { name: "Unlock markup" })).toBeEnabled());
   expect(within(bar).getByRole("button", { name: "Unlock markup" })).toHaveAttribute("aria-pressed", "true");
   for (const name of ["Move", "Resize", "Delete markup", "Blue", "Fill"]) {
-    expect(within(bar).getByRole("button", { name, exact: true })).toBeDisabled();
+    expect(within(bar).getByRole("button", { name })).toBeDisabled();
   }
   expect(viewer().canEditAnnotation?.(entityId)).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Move selected annotation" }));
@@ -2275,7 +2275,7 @@ it.each([false, true])("locks and unlocks a markup from its basic menu (fullscre
   fireEvent.click(within(reopened).getByRole("button", { name: "Unlock markup" }));
   await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
   expect(mocks.save.mock.lastCall?.[0]).toMatchObject({ id: entityId, data: { locked: false } });
-  await waitFor(() => expect(within(reopened).getByRole("button", { name: "Move", exact: true })).toBeEnabled());
+  await waitFor(() => expect(within(reopened).getByRole("button", { name: "Move" })).toBeEnabled());
 });
 
 it("does not let a reader unlock someone else's markup", () => {

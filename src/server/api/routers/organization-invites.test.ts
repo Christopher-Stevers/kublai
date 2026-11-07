@@ -63,6 +63,7 @@ describe("QR invites", () => {
       "orders.receive",
       "parts.create",
       "parts.edit",
+      "tab.chat",
       "tab.dashboard",
       "tab.orders",
       "tab.timesheets",

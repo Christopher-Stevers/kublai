@@ -34,3 +34,41 @@ BEGIN
   END IF;
 END $$;
 ROLLBACK;
+
+-- PR8 requires these custom tables, triggers and validation rules in addition
+-- to the generated schema. Exercise runtime access, and roll everything back.
+BEGIN;
+SET LOCAL ROLE foreman_app;
+DO $$
+DECLARE org uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO kublai_organization(id,name,"createdAt") VALUES (org,'PR8 migration check',now());
+  INSERT INTO kublai_order_number_counter ("organizationId","lastNumber") VALUES (org,42);
+  UPDATE kublai_order_number_counter SET "lastNumber"="lastNumber"+1 WHERE "organizationId"=org;
+  IF (SELECT "lastNumber" FROM kublai_order_number_counter WHERE "organizationId"=org) <> 43 THEN
+    RAISE EXCEPTION 'Order counter unavailable';
+  END IF;
+  PERFORM 1 FROM kublai_diagnostic_count LIMIT 1;
+  PERFORM 1 FROM kublai_material_sort_preference LIMIT 1;
+  PERFORM 1 FROM kublai_packing_slip_review_history LIMIT 1;
+  PERFORM 1 FROM kublai_packing_slip_job WHERE "orderId" IS NULL LIMIT 1;
+  PERFORM 1 FROM kublai_packing_slip_terra_call LIMIT 1;
+  PERFORM 1 FROM kublai_hyperlink_reader_run LIMIT 1;
+  IF (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal
+      AND tgrelid IN ('kublai_job_price_list'::regclass,'kublai_job_price_entry'::regclass)
+      AND tgname IN ('sync_revision_row','sync_revision_truncate')) <> 4 THEN
+    RAISE EXCEPTION 'Job pricing sync triggers missing';
+  END IF;
+  IF (SELECT count(*) FROM pg_constraint WHERE conname IN
+      ('packing_slip_job_status_check','packing_slip_terra_call_status_check',
+       'packing_slip_terra_call_budget_check','hyperlink_reader_run_reader_check',
+       'hyperlink_reader_run_status_check')) <> 5 THEN
+    RAISE EXCEPTION 'PR8 worker validation constraints missing';
+  END IF;
+  BEGIN
+    UPDATE kublai_order_number_counter SET "lastNumber"=-1 WHERE "organizationId"=org;
+    RAISE EXCEPTION 'Negative order counter accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+END $$;
+ROLLBACK;

@@ -29,7 +29,7 @@ function choose(file: File) {
     target: { files: [file] },
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Replace source", exact: true }),
+    screen.getByRole("button", { name: "Replace source" }),
   );
 }
 
@@ -62,7 +62,7 @@ it("replaces only the existing document version without starting another reading
   expect(form.has("action")).toBe(false);
   expect(screen.getByRole("status")).toHaveTextContent("Replacement saved");
   expect(
-    screen.queryByRole("button", { name: "Replace source", exact: true }),
+    screen.queryByRole("button", { name: "Replace source" }),
   ).not.toBeInTheDocument();
 });
 
@@ -137,7 +137,7 @@ it("does not allow replacing a source while disabled or without a version guard"
   const view = render(<ReceivingReplaceSource {...p} disabled />);
   expect(screen.getByLabelText("Replacement PDF or image")).toBeDisabled();
   expect(
-    screen.getByRole("button", { name: "Replace source", exact: true }),
+    screen.getByRole("button", { name: "Replace source" }),
   ).toBeDisabled();
   view.rerender(<ReceivingReplaceSource {...p} expectedVersionId="" />);
   expect(screen.getByLabelText("Replacement PDF or image")).toBeDisabled();
@@ -166,7 +166,7 @@ it("does not re-upload if refreshing after a confirmed save fails", async () => 
     "replacement was saved",
   );
   expect(
-    screen.queryByRole("button", { name: "Replace source", exact: true }),
+    screen.queryByRole("button", { name: "Replace source" }),
   ).not.toBeInTheDocument();
   expect(fetcher).toHaveBeenCalledTimes(1);
 });

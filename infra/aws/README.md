@@ -1,5 +1,10 @@
 # ForemanHQ AWS release
 
+The November 7 integration brings this pipeline and PR #8 into `development`.
+See [the integration record](../../docs/INTEGRATION_2026-11-07.md) for conflict
+choices, schema compatibility and automatic deployment behavior. Historical
+launch prerequisites below describe the original November 2 rollout.
+
 Work starts on `ci/foremanhq-aws`, based on the October 21 integration revision.
 Terraform lives in `infra/terraform`; this branch includes the infrastructure PR.
 Existing Vercel production and DNS remain unchanged until explicit cutover.

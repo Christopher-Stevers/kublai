@@ -5,7 +5,7 @@ const { validate, nominal } = require("../import-weld-fittings.cjs");
 const manifest = JSON.parse(
   fs.readFileSync("data/catalogue/weld-fittings.json", "utf8"),
 );
-const article = (sku) => manifest.rows.find((r) => r.sku === sku);
+const article = (/** @type {string} */ sku) => manifest.rows.find((/** @type {any} */ r) => r.sku === sku);
 
 test("all published articles and image files pass the independent import checks", () => {
   assert.equal(validate().articles, 2268);
@@ -46,7 +46,7 @@ test("rejects duplicate specifications even with a different manufacturer articl
 test("rejects lost SKU aliases and manufacturer text in descriptions", () => {
   const copy = structuredClone(manifest);
   copy.rows[0].aliases = copy.rows[0].aliases.filter(
-    (a) => a !== copy.rows[0].sku,
+    (/** @type {any} */ a) => a !== copy.rows[0].sku,
   );
   assert.throws(() => validate(copy));
   const other = structuredClone(manifest);
@@ -57,16 +57,16 @@ test("rejects lost SKU aliases and manufacturer text in descriptions", () => {
 
 test("rejects missing grade, changed connection size, mixed weld category and pricing", () => {
   for (const mutate of [
-    (d) => {
-      d.rows.find((r) => r.grade).grade = "304";
+    (/** @type {any} */ d) => {
+      d.rows.find((/** @type {any} */ r) => r.grade).grade = "304";
     },
-    (d) => {
+    (/** @type {any} */ d) => {
       d.rows[0].sizeNominal = 5;
     },
-    (d) => {
+    (/** @type {any} */ d) => {
       d.rows[0].category = "Socket-Weld Fittings";
     },
-    (d) => {
+    (/** @type {any} */ d) => {
       d.rows[0].price = 99;
     },
   ]) {
