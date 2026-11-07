@@ -19,7 +19,7 @@ import {
   resolutionBlockers,
   receivingLineReady,
 } from "~/lib/receiving-resolution";
-import { PartTileContent, PART_TILE_CARD_CLASS, PART_TILE_GRID_CLASS } from "./wizard/PartTileContent";
+import { PartTileContent, PART_TILE_CARD_CLASS } from "./wizard/PartTileContent";
 import PartImage from "~/components/catalogue/PartImage";
 import { OrderMatchCandidates } from "./OrderMatchCandidates";
 import { OrderMatchPreview } from "./OrderMatchPreview";
@@ -4248,7 +4248,7 @@ function AddToList({
       {(!cards || !mode) && (likely.length > 0 || cards) ? (
         <ul
           aria-label="Likely catalogue parts"
-          className={cards ? PART_TILE_GRID_CLASS : "divide-y rounded-md border"}
+          className={cards ? "grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-4" : "divide-y rounded-md border"}
         >
           {likely.map((p, i) => (
             <PartChoice
