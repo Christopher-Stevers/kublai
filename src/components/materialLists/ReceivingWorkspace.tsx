@@ -3559,10 +3559,6 @@ function OrderComparison({
                         <EyeIcon />
                         View item
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={resolve}>
-                        <CheckCircle2Icon />
-                        {complete ? "Review resolution" : "Resolve"}
-                      </DropdownMenuItem>
                       {modifyOption}
                       {splitOption}
                       {canRemove && (
@@ -3584,14 +3580,6 @@ function OrderComparison({
                       <DropdownMenuItem onSelect={() => viewSlip(main)}>
                         <FileTextIcon />
                         View on slip
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setOpenRow(key)}>
-                        <SearchIcon />
-                        Review line
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={resolve}>
-                        <CheckCircle2Icon />
-                        {complete ? "Review resolution" : "Resolve"}
                       </DropdownMenuItem>
                       {modifyOption}
                       {detail.canCreate && detail.document.packingSlip && live.length === 1 && !live[0]!.line.orderItemId && !live[0]!.line.approved && (
