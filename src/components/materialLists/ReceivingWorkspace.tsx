@@ -2679,7 +2679,7 @@ function OrderComparison({
     <div>
       <Dialog open={!!addLineId && canAddLine} onOpenChange={open => { if (!open && !addingPart) setAddLineId(null); }}>
         <DialogContent className="max-h-[85dvh] max-w-full overflow-y-auto p-4 sm:max-w-3xl sm:p-6">
-          <DialogHeader>
+          <DialogHeader className="pr-6">
             <DialogTitle>Add this part to material list</DialogTitle>
             <DialogDescription>{addLine?.description}</DialogDescription>
           </DialogHeader>
