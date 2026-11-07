@@ -1,4 +1,7 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { api } from "~/trpc/react";
 import {
@@ -11,6 +14,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { format } from "date-fns";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface ExistingQuotesOrdersDialogProps {
   open: boolean;
@@ -29,16 +33,17 @@ export function ExistingQuotesOrdersDialog({
   onGenerateNew,
   onOpenExisting,
 }: ExistingQuotesOrdersDialogProps) {
+  const isOnline = useOnlineStatus();
   const { data: quotes, isLoading: quotesLoading } =
     api.materialList.getQuotesForMaterialList.useQuery(
       { materialListId },
-      { enabled: open && type === "quote" && !!materialListId },
+      { enabled: isOnline && open && type === "quote" && !!materialListId },
     );
 
   const { data: orders, isLoading: ordersLoading } =
     api.materialList.getOrdersForMaterialList.useQuery(
       { materialListId },
-      { enabled: open && type === "order" && !!materialListId },
+      { enabled: isOnline && open && type === "order" && !!materialListId },
     );
 
   const isLoading = type === "quote" ? quotesLoading : ordersLoading;
@@ -77,7 +82,7 @@ export function ExistingQuotesOrdersDialog({
                   key={item.id}
                   className={`flex items-center justify-between rounded-lg border p-3 ${
                     onOpenExisting
-                      ? "cursor-pointer transition-colors hover:bg-gray-50"
+                      ? "cursor-pointer transition-colors hover:bg-accent"
                       : ""
                   }`}
                   onClick={() => {
@@ -95,11 +100,11 @@ export function ExistingQuotesOrdersDialog({
                           {(item as { quoteNumber?: string | null })
                             ?.quoteNumber || `#${item.id.slice(0, 8)}`}
                           {(item as { total?: string | null })?.total && (
-                            <span className="ml-2 text-muted-foreground">
+                            <FinancialOnly><span className="ml-2 text-muted-foreground">
                               - ${parseFloat(
                                 (item as { total: string }).total,
                               ).toFixed(2)}
-                            </span>
+                            </span></FinancialOnly>
                           )}
                         </>
                       ) : (
@@ -111,10 +116,7 @@ export function ExistingQuotesOrdersDialog({
                             ?.supplier?.name && (
                             <span className="ml-2 text-muted-foreground">
                               -{" "}
-                              {
-                                (item as { supplier: { name: string } })
-                                  .supplier.name
-                              }
+                              <SupplierLabel name={(item as {supplier:{name:string}}).supplier.name} bookName={(item as {supplier:{priceBookName?:string}}).supplier.priceBookName ?? "Not recorded"} />
                             </span>
                           )}
                           {(item as { status?: string })?.status && (
@@ -122,7 +124,7 @@ export function ExistingQuotesOrdersDialog({
                               className={`ml-2 text-xs ${
                                 (item as { status: string }).status === "sent"
                                   ? "text-green-600"
-                                  : "text-gray-600"
+                                  : "text-muted-foreground"
                               }`}
                             >
                               ({(item as { status: string }).status})
@@ -140,7 +142,7 @@ export function ExistingQuotesOrdersDialog({
                     </div>
                   </div>
                   {onOpenExisting && (
-                    <div className="ml-4 text-sm text-blue-600">
+                    <div className="ml-4 text-sm text-primary">
                       Open →
                     </div>
                   )}

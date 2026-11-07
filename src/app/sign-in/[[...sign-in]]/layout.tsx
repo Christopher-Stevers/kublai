@@ -1,29 +1,34 @@
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import { waitForUser } from "~/server/utils/wait-for-user";
+
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasUsableClerkKey =
+  typeof publishableKey === "string" &&
+  /^(pk|test|live)_/.test(publishableKey) &&
+  publishableKey.length > 20;
 
 export default async function SignInLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  if (!hasUsableClerkKey) {
+    return <>{children}</>;
+  }
+
+  const { userId, user: requestUser } = await getRequestIdentity(
+    await headers(),
+  );
 
   // If user is authenticated, redirect them away from sign-in page
   if (userId) {
     // Get user from database (webhook should have created it)
-    let [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const user = requestUser;
 
-    // If user exists and has organizationId, redirect to dashboard
+    // If user exists and has organizationId, redirect to Jobs
     if (user?.organizationId) {
-      redirect("/dashboard");
+      redirect("/jobs");
     }
 
     // If user exists but no organizationId, redirect to onboarding

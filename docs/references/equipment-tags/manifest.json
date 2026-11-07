@@ -1,0 +1,349 @@
+{
+  "retrieved": "2026-10-20 America/Toronto",
+  "purpose": "Public MEP bid sets used to tune and check equipment-tag recognition (src/lib/equipment-tags.ts). PDFs are not committed; scripts/benchmark-equipment-tags.ts downloads them, checks the hash and evaluates the expectations.",
+  "expectations": {
+    "find": "Recognised by the automatic scan on at least one page",
+    "schedule": "Learned from a schedule (identifier column, transposed header row or panel heading)",
+    "reject": "Never recognised automatically: model numbers, standards, ZIP codes, quantities, sheet and room numbers",
+    "sheets": "Recognised as sheet numbers"
+  },
+  "sources": {
+    "asc67-mech": {
+      "title": "Mechanical Drawings (2018 open problem set)",
+      "publisher": "ASC Region 6 & 7 student competition",
+      "url": "https://asc67.org/ASC_Previous_Problems/Open/IP/2018/Drawings/Mechanical%20Drawings.pdf",
+      "pdf_sha256": "dbaa4a9a2b6faebbf77ef328d06f43496a54ef5f8f35c19324fb598ea6bc53aa",
+      "bytes": 43547241,
+      "expect": {
+        "find": [
+          "AHU-10-1",
+          "AHU-2-Z-1",
+          "AC-P-1-1"
+        ],
+        "schedule": [
+          "AHU-2-1",
+          "CT-R-1"
+        ]
+      }
+    },
+    "austell-m601": {
+      "title": "M601 Mechanical Equipment Schedules",
+      "publisher": "City of Austell, GA",
+      "url": "https://austellga.gov/Assets/Files/M601.R1.AD2%20-%20MECHANICAL%20EQUIPMENT%20SCHEDULES.pdf",
+      "pdf_sha256": "7db26195f6c40cb71ef3f2a8b0b09011908d091ea64ea29120b31b53c291a91a",
+      "bytes": 235751,
+      "expect": {
+        "schedule": [
+          "P-1",
+          "P-4",
+          "B-1",
+          "B-5",
+          "GUH-1",
+          "HX-1",
+          "AS-1",
+          "CT-1"
+        ]
+      }
+    },
+    "clpccd": {
+      "title": "Bid B25-26-14 drawings",
+      "publisher": "Chabot-Las Positas Community College District",
+      "url": "https://clpccd.org/business/guide/files/docs/purchasing/B25-26-14_DRAW.pdf",
+      "pdf_sha256": "7eb0db044f01a9925b39690bc3d66c4495c42ef80af459a8961d06d3c21dbd23",
+      "bytes": 1423204,
+      "expect": {
+        "find": [
+          "AHU-1",
+          "MAU-1"
+        ]
+      }
+    },
+    "cook-plumbing": {
+      "title": "Plumbing drawings",
+      "publisher": "Cook County Health",
+      "url": "https://cookcountyhealth.org/wp-content/uploads/PLUMBING.pdf",
+      "pdf_sha256": "34b782c52378efad10d641c2226fb8b6ceb984f15b070c67b471d341eb2a27ce",
+      "bytes": 5473415,
+      "expect": {
+        "schedule": [
+          "WC-1A",
+          "TMV-1",
+          "BFP-1",
+          "S-1"
+        ],
+        "reject": [
+          "FS-730-150",
+          "CR-P-2",
+          "N-2OM",
+          "O-2"
+        ]
+      }
+    },
+    "dallas-isd": {
+      "title": "Lida Hooe Elementary Addendum 1 drawings",
+      "publisher": "Dallas ISD",
+      "url": "https://resources.finalsite.net/images/v1743435352/dallasisdorg/zvcye6uxuhtpat1ibux7/1582025-03-27LidaHooeAdd1Drawings_1.pdf",
+      "pdf_sha256": "62ae78832d2f057b2ce467b580f3cf29ca7b9b5b2aaa89dca52a4262705e4406",
+      "bytes": 1214627,
+      "expect": {
+        "find": [
+          "WC-1",
+          "FD-1"
+        ],
+        "reject": [
+          "TX-75211",
+          "A-311",
+          "G-002"
+        ]
+      }
+    },
+    "dayton-plumbing": {
+      "title": "Terminal restroom plumbing drawings",
+      "publisher": "Dayton International Airport",
+      "url": "https://flydayton.com/wp-content/uploads/2016/11/DAY-Terminal-Plumbing_95.pdf",
+      "pdf_sha256": "3aee8571cfc244a6afc7e6573e875c344520807be629096568186adb1852214e",
+      "bytes": 4348864,
+      "expect": {
+        "find": [
+          "WH-1",
+          "FD-1"
+        ],
+        "schedule": [
+          "A-1",
+          "SE-1"
+        ],
+        "reject": [
+          "P-001",
+          "P-101",
+          "P-501"
+        ],
+        "sheets": [
+          "P-101",
+          "P-501"
+        ]
+      }
+    },
+    "fayette": {
+      "title": "Bid 26029-B drawings",
+      "publisher": "Fayette County, GA",
+      "url": "https://fayettecountyga.gov/Documents/Departments/Purchasing/Bids/2026/26029-B%20Drawings.pdf",
+      "pdf_sha256": "129efc2da49af8d936f227ed07c23a5dd1caf99c1be175a222bd56d1c4f28b8d",
+      "bytes": 4521932
+    },
+    "grady": {
+      "title": "Boiler Plant Replacement MEP/architectural design development",
+      "publisher": "Grady Health",
+      "url": "https://www.gradyhealth.org/wp-content/uploads/25014_Grady-Boiler-Plant-MEPARCH-Design-DEvelopment-101625.pdf",
+      "pdf_sha256": "c1f4fd634ee51c4f254ce3f95523237bac7cb71890b3cafa789a66e0b07508c9",
+      "bytes": 8031864,
+      "expect": {
+        "schedule": [
+          "PHWP-1",
+          "B-1",
+          "SF-1",
+          "DA-1",
+          "FOP-1"
+        ],
+        "reject": [
+          "CB-900",
+          "DA-45-840"
+        ]
+      }
+    },
+    "hacp": {
+      "title": "Public Safety Center drawings (IFB 600-19-21)",
+      "publisher": "Housing Authority of the City of Pittsburgh",
+      "url": "https://hacp.org/app/uploads/2021/04/Drawings-IFB600-19-21-Public-Safety-Center.pdf",
+      "pdf_sha256": "38bd1631d9271955b1b6aba02b9888bc23bef42bd0db20c08b81a51464a0c2dd",
+      "bytes": 4997093
+    },
+    "isf-ahu": {
+      "title": "HVAC AHU Renovation Phase IX drawings",
+      "publisher": "Illinois Sports Facilities Authority",
+      "url": "https://www.isfauthority.com/wp-content/uploads/2019/10/HVAC-AHU-Renovation-Phase-IX-Drawings-10.08.19.pdf",
+      "pdf_sha256": "85613e85e63e6e3e527a722dc93a9797b2b1edd57a8ec22fc96b4a808bc0f0a5",
+      "bytes": 3402469,
+      "expect": {
+        "find": [
+          "FCU-1",
+          "CH-1"
+        ],
+        "reject": [
+          "SP-58",
+          "SP-69",
+          "FCU-1000",
+          "FCU-300"
+        ]
+      }
+    },
+    "mdm-elec": {
+      "title": "Drawings 31-38 (electrical)",
+      "publisher": "MDM Construction",
+      "url": "http://www.mdm-construction.com/wp-content/uploads/Drawings-31-38.pdf",
+      "pdf_sha256": "8e643e6277e18f0ac89e6648612e52b9901231b1e41806e6b7f770ead98eb562",
+      "bytes": 737051,
+      "expect": {
+        "schedule": [
+          "ERV-1",
+          "P-1A",
+          "LPN-102"
+        ],
+        "reject": [
+          "LED-500K"
+        ]
+      }
+    },
+    "mdm-mech": {
+      "title": "Attachment 11 mechanical and plumbing drawings",
+      "publisher": "MDM Construction",
+      "url": "http://www.mdm-construction.com/wp-content/uploads/ATTACHMENT11-Drawings-Mechanical-Plumbing.pdf",
+      "pdf_sha256": "2a6b14c00303b44c5941c853982fab31e83d61faf0f4ed9adcccf1a9c0602855",
+      "bytes": 4236350,
+      "expect": {
+        "find": [
+          "P-103",
+          "HWB-1"
+        ],
+        "schedule": [
+          "E-1-A",
+          "LVR-1"
+        ],
+        "reject": [
+          "SP-58",
+          "HP-15",
+          "WCO-148",
+          "P-001",
+          "ZONE-14",
+          "RA.CO-2"
+        ]
+      }
+    },
+    "mountainrides": {
+      "title": "Exhibit C drawings",
+      "publisher": "Mountain Rides Transportation Authority",
+      "url": "https://www.mountainrides.org/site/wp-content/uploads/2020/12/Exhibit-C-Drawings.pdf",
+      "pdf_sha256": "bea85dc694e51ea8df49ca6f92e2c4f2960b5fe4e0710bbf01e1dcf896bff6e5",
+      "bytes": 4276467
+    },
+    "nfc": {
+      "title": "BID NFC-04-2024 engineering drawings, part 3",
+      "publisher": "North Florida College",
+      "url": "https://www.nfc.edu/about/procurement-and-contracts/BID-NFC-04-2024%20NBP%20Engineering%20Drawings%20Specs%20Manual%20PART%203.pdf",
+      "pdf_sha256": "de2d3ad58a4a04c30f1439fb170d8b1bfe5b37764e0c1b2a9bb28795babddb27",
+      "bytes": 3303561,
+      "expect": {
+        "find": [
+          "VRF-1",
+          "DOAS-1"
+        ],
+        "schedule": [
+          "VRC-1"
+        ],
+        "reject": [
+          "B-225"
+        ]
+      }
+    },
+    "nist-plumbing": {
+      "title": "Reference Building Plumbing Models — plumbing drawings",
+      "publisher": "NIST",
+      "url": "https://www.nist.gov/system/files/documents/2023/07/31/NIST_Reference_Building_Plumbing_Models_Plumbing_Drawings.pdf",
+      "pdf_sha256": "d07c7deb657d1de73304c1244f596261633f48b9415b145e44a80fc041f7e525",
+      "bytes": 6647410,
+      "expect": {
+        "schedule": [
+          "DOAS-001",
+          "RTU-001",
+          "P-11A",
+          "WH-1"
+        ],
+        "reject": [
+          "CT-06468",
+          "SS-3103",
+          "ST-12V",
+          "SE-100"
+        ],
+        "sheets": [
+          "P-101"
+        ]
+      }
+    },
+    "redding-elec": {
+      "title": "Bid schedule 5651 plans",
+      "publisher": "City of Redding, CA",
+      "url": "https://files.cityofredding.gov/PWBids/COR%20BS%205651%20Plans.pdf",
+      "pdf_sha256": "45e3d0478be7d646114eb35ced9b3c016ad8c3f99e66dc25c3dd154ee0c5280c",
+      "bytes": 4232817
+    },
+    "sc-edu": {
+      "title": "Solicitation drawings and product data",
+      "publisher": "University of South Carolina",
+      "url": "https://sc.edu/purchasing/solicitations/documents/s_1494258391.pdf",
+      "pdf_sha256": "afbf4a3660f67d7ae5f0bfa957ed78acff10178c500a374818a8a1d6a83a882f",
+      "bytes": 11473287,
+      "expect": {
+        "schedule": [
+          "P-1",
+          "WH-1"
+        ],
+        "reject": [
+          "B-0231",
+          "HC-9-02",
+          "CT-06410"
+        ]
+      }
+    },
+    "sprague": {
+      "title": "Project 5850 drawing set",
+      "publisher": "Town of Sprague, CT",
+      "url": "https://www.ctsprague.org/resources/5850_drawingset.pdf",
+      "pdf_sha256": "1d79aba014941c3cfb06b5d4f7d963c4b9fd122d9e9436f11d4f99c7676e15b5",
+      "bytes": 9064598,
+      "expect": {
+        "schedule": [
+          "SG-1",
+          "WEF-1"
+        ],
+        "reject": [
+          "CT-06359"
+        ]
+      }
+    },
+    "statetech": {
+      "title": "Ground loop drawings and specifications",
+      "publisher": "State Technical College of Missouri",
+      "url": "https://statetechmo.edu/wp-content/uploads/2019/11/Full-Ground-Loop-Specs-State-Tech.pdf",
+      "pdf_sha256": "a0a79c99a7700cc771a2daa84be873d18056d38cd89e951252210019b00795b5",
+      "bytes": 9119246,
+      "expect": {
+        "find": [
+          "HX-1"
+        ],
+        "reject": [
+          "L-10",
+          "CF-1200"
+        ]
+      }
+    },
+    "tarrant-mech": {
+      "title": "Bid 2018-191 drawing 2, mechanical",
+      "publisher": "Tarrant County, TX",
+      "url": "https://www.tarrantcountytx.gov/content/dam/main/purchasing/Bids%20and%20RFPs/2018_Bids-RFPs/2018-191_Drawing2-Mechanic_2018-07-02r.pdf",
+      "pdf_sha256": "b6804c4d812fcaa86360c985a348e4350a60b753dd0825c3774947d3f60eb38b",
+      "bytes": 3348281
+    },
+    "worcester-wtp": {
+      "title": "Mystic Harbour WTP HVAC permit set",
+      "publisher": "Worcester County, MD",
+      "url": "https://www.worcestermd.gov/sites/default/files/2026-08/Mystic%20Harbour%20WTP%20HVAC%20-%20Permit%20Set%20-%207-31-2026.pdf",
+      "pdf_sha256": "5080c5bef41e5f32e6d26ba403231bc96fac7bb094c2c7ef2d51ac362c8899d5",
+      "bytes": 3584012,
+      "expect": {
+        "schedule": [
+          "EF-1",
+          "DH-1"
+        ]
+      }
+    }
+  }
+}

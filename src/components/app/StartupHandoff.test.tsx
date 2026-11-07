@@ -1,0 +1,63 @@
+import { act, cleanup, render } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { RouteLoading } from "./RouteLoading";
+import { StartupHandoff } from "./StartupHandoff";
+beforeEach(()=>{
+ vi.useFakeTimers();
+ document.body.innerHTML='<div id="app-startup-content"><div data-app-startup-loading>Loading</div></div>';
+ vi.spyOn(HTMLElement.prototype,"getClientRects").mockImplementation(function(this:HTMLElement){return (this.hidden||this.style.display==="none"?[]:[{width:100,height:100}]) as unknown as DOMRectList;});
+ vi.stubGlobal("requestAnimationFrame",(fn:FrameRequestCallback)=>setTimeout(()=>fn(0),16));
+ vi.stubGlobal("cancelAnimationFrame",(id:number)=>clearTimeout(id));
+ vi.stubGlobal("matchMedia",()=>({matches:false}));
+});
+afterEach(()=>{cleanup();document.body.innerHTML="";vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
+it("keeps the cover while a route is pending, then waits for page paint before fading",async()=>{
+ render(<StartupHandoff><span>Logo</span></StartupHandoff>);
+ await act(()=>vi.advanceTimersByTimeAsync(5000));
+ const cover=document.getElementById("app-startup-cover")!;
+ expect(cover.style.opacity).toBe("1");
+ await act(async()=>{document.getElementById("app-startup-content")!.innerHTML="<main>Ready page</main>";});
+ expect(cover.style.opacity).toBe("1");
+ await act(()=>vi.advanceTimersByTimeAsync(32));
+ expect(cover.style.opacity).toBe("0");expect(cover.style.pointerEvents).toBe("none");
+ await act(()=>vi.advanceTimersByTimeAsync(220));
+ expect(document.getElementById("app-startup-cover")).toBeNull();
+});
+it("does not mistake script-only streaming content for a ready page",async()=>{
+ document.getElementById("app-startup-content")!.innerHTML="<script>/* stream */</script>";
+ render(<StartupHandoff><span>Logo</span></StartupHandoff>);await act(()=>vi.advanceTimersByTimeAsync(1000));
+ expect(document.getElementById("app-startup-cover")!.style.opacity).toBe("1");
+});
+it("does not hold a fast page for a minimum animation duration",async()=>{
+ document.getElementById("app-startup-content")!.innerHTML="<main>Ready</main>";
+ render(<StartupHandoff><span>Logo</span></StartupHandoff>);await act(()=>vi.advanceTimersByTimeAsync(32));
+ expect(document.getElementById("app-startup-cover")!.style.opacity).toBe("0");
+});
+
+it("keeps React navigation working after the startup cover finishes",async()=>{
+ document.body.innerHTML="";
+ function Page({banner=false}:{banner?:boolean}){
+  return <>{banner&&<aside>New route banner</aside>}<StartupHandoff><span>Logo</span></StartupHandoff><div id="app-startup-content"><main>Ready page</main></div></>;
+ }
+ const page=render(<Page/>);
+ await act(()=>vi.advanceTimersByTimeAsync(300));
+ expect(()=>page.rerender(<Page banner/>)).not.toThrow();
+});
+
+it("waits for the first route, without replaying startup on subsequent routes",async()=>{
+ document.body.innerHTML="";
+ function App({pending}:{pending:boolean}){
+  return <><StartupHandoff><span>Startup animation</span></StartupHandoff><div id="app-startup-content">{pending?<RouteLoading/>:<main>Ready page</main>}</div></>;
+ }
+ const app=render(<App pending/>);
+ await act(()=>vi.advanceTimersByTimeAsync(1000));
+ expect(document.getElementById("app-startup-cover")!.style.opacity).toBe("1");
+ app.rerender(<App pending={false}/>);
+ await act(()=>vi.advanceTimersByTimeAsync(300));
+ expect(document.getElementById("app-startup-cover")).toBeNull();
+ app.rerender(<App pending/>);
+ await act(()=>vi.advanceTimersByTimeAsync(1000));
+ expect(document.querySelector("[data-route-loading]")).not.toBeNull();
+ expect(document.getElementById("app-startup-cover")).toBeNull();
+ expect(document.body.textContent).not.toContain("Startup animation");
+});

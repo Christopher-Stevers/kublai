@@ -1,0 +1,1 @@
+ALTER TABLE "kublai_supplier" ADD COLUMN IF NOT EXISTS "contactName" varchar(255);

@@ -1,205 +1,164 @@
 "use client";
+import type { SupplierVersion } from "~/lib/job-supplier-defaults";
+import { supplierVersionLabel } from "~/lib/supplier-label";
+import {
+  buildSupplierChoices,
+  type SupplierChoice,
+} from "~/lib/supplier-choices";
+import { SupplierChoiceItems } from "~/components/suppliers/SupplierChoiceItems";
+import {
+  SupplierLabelContext,
+  useSupplierLabel,
+} from "~/components/suppliers/SupplierLabel";
 
-import { useState, useEffect, useMemo } from "react";
-import { api } from "~/trpc/react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Search, ChevronDownIcon } from "lucide-react";
-import { SupplierFormDialog } from "~/components/suppliers/SupplierFormDialog";
+import { ChevronDownIcon } from "lucide-react";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
+import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
+import { api } from "~/trpc/react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  getOfflineSupplierPartsByPart,
+  setOfflineSupplierPartsByPart,
+  type OfflineSupplierPartOption,
+} from "~/lib/offline-supplier-parts";
 
 interface SupplierSelectorProps {
+  currentVersion?: SupplierVersion | null;
   itemId: string;
   partDefinitionId: string;
   currentSupplierPartId: string | null | undefined;
+  currentSupplierId?: string | null;
   materialListId: string;
+  suppliers?: ReplicacheSupplier[];
+  compact?: boolean;
 }
 
+const NO_SUPPLIER_PARTS: OfflineSupplierPartOption[] = [];
+const NO_CHOICES: ReturnType<typeof buildSupplierChoices> = {
+  standard: [],
+  jobSpecific: [],
+};
+
 export function SupplierSelector({
+  currentVersion,
   itemId,
   partDefinitionId,
   currentSupplierPartId,
+  currentSupplierId,
   materialListId,
+  suppliers,
+  compact = false,
 }: SupplierSelectorProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const supplierLabel = useSupplierLabel();
+  const { entries } = useContext(SupplierLabelContext);
+  const sandbox = useTutorialSandbox();
+  const {
+    getReplicache: getMaterialListReplicache,
+    mutateAndSync: mutateMaterialListAndSync,
+  } = useWorkspaceMutations();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const [pendingSupplierName, setPendingSupplierName] = useState("");
-
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const utils = api.useUtils();
-  const updateItem = api.materialList.updateMaterialListItem.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      // Snapshot previous value
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      // Optimistically update item supplier and recalculate if needed
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-
-        const updatedItems = old.items.map((item) => {
-          if (item.id === variables.itemId) {
-            // If supplierPartId is being updated, we need to fetch supplier info
-            // For now, just update the supplierPartId - the server will handle the rest
-            return {
-              ...item,
-              supplierPartId: variables.supplierPartId ?? item.supplierPart?.id,
-            };
-          }
-          return item;
-        });
-
-        return {
-          ...old,
-          items: updatedItems,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-    },
-  });
-
-  const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onSuccess: (supplierPart) => {
-      if (!supplierPart) return;
-      // Assign the supplier part to the material list item
-      updateItem.mutate({
-        itemId,
-        supplierPartId: supplierPart.id,
-      });
-      void utils.supplier.getSupplierPartsByPart.invalidate({
-        partDefinitionId,
-      });
-      setIsDropdownOpen(false);
-      setSearchQuery("");
-    },
-  });
-
-  // Handle supplier creation - this will be called from SupplierFormDialog callback
-  const handleSupplierCreated = async (supplierId: string) => {
-    try {
-      // Create supplier part linking supplier to part definition
-      addSupplierPart.mutate({
-        supplierId,
-        partDefinitionId,
-      });
-      setIsSupplierDialogOpen(false);
-      setPendingSupplierName("");
-    } catch (error) {
-      console.error("Error creating supplier part:", error);
-    }
-  };
-
-  // Get all suppliers for the organization
-  const { data: allSuppliers } = api.supplier.list.useQuery();
-
-  // Get supplier parts for this part definition
-  const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
-    { partDefinitionId },
-    { enabled: !!partDefinitionId },
+  const [optimisticSupplierPartId, setOptimisticSupplierPartId] = useState(
+    currentSupplierPartId ?? null,
   );
+  const [optimisticSupplierId, setOptimisticSupplierId] = useState(
+    currentSupplierId ?? null,
+  );
+  const [optimisticDisplayLabel, setOptimisticDisplayLabel] = useState<
+    string | null
+  >(null);
+  // The choices are only worked out once the menu has been opened.
+  const [hasOpened, setHasOpened] = useState(false);
+  if (isDropdownOpen && !hasOpened) setHasOpened(true);
+  // A job's quoted price must never overwrite another job's cached price.
+  const cacheKey = `${partDefinitionId}:${materialListId}:standard`;
+
+  // A saved choice replaces whatever was picked optimistically.
+  const savedChoice = JSON.stringify([currentSupplierPartId ?? null, currentSupplierId ?? null, currentVersion?.bookId ?? null, currentVersion?.label ?? null]);
+  const [shownChoice, setShownChoice] = useState(savedChoice);
+  if (savedChoice !== shownChoice) {
+    setShownChoice(savedChoice);
+    setOptimisticSupplierPartId(currentSupplierPartId ?? null);
+    setOptimisticSupplierId(currentSupplierId ?? null);
+    setOptimisticDisplayLabel(null);
+  }
+
+  const subscribedSuppliers = useReplicacheSuppliers({ enabled: !suppliers });
+  const allSuppliers = suppliers ?? subscribedSuppliers;
+
+  // Saved prices are read again each time the menu opens or closes.
+  const cachedSupplierParts = useMemo(
+    () =>
+      sandbox
+        ? NO_SUPPLIER_PARTS
+        : (getOfflineSupplierPartsByPart(cacheKey) ?? NO_SUPPLIER_PARTS),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isDropdownOpen re-reads the saved prices.
+    [cacheKey, isDropdownOpen, sandbox],
+  );
+
+  const online = useOnlineStatus();
+  const freshParts = api.supplier.getSupplierPartsByPart.useQuery(
+    { partDefinitionId, materialListId, pricingMode: "standard" },
+    { enabled: !sandbox && online && isDropdownOpen, staleTime: 0 },
+  );
+  useEffect(() => {
+    if (freshParts.data && !sandbox) {
+      setOfflineSupplierPartsByPart(cacheKey, freshParts.data);
+    }
+  }, [freshParts.data, cacheKey, sandbox]);
+  const supplierParts = freshParts.data ?? cachedSupplierParts;
 
   // Find current supplier part
   const currentSupplierPart = supplierParts?.find(
-    (sp) => sp.id === currentSupplierPartId,
+    (sp) => sp.id === optimisticSupplierPartId,
+  );
+  const currentSupplier = allSuppliers?.find(
+    (supplier) => supplier.id === optimisticSupplierId,
   );
 
-  const displayValue = currentSupplierPart
-    ? `${currentSupplierPart.supplier.name}${
-        currentSupplierPart.supplierSku
-          ? ` (${currentSupplierPart.supplierSku})`
-          : ""
-      }`
-    : "No supplier";
+  const displayValue =
+    optimisticDisplayLabel ??
+    (currentSupplierPart
+      ? currentSupplierPart.supplier.name
+      : (currentSupplier?.name ?? "No supplier"));
 
-  // Filter suppliers based on search query
-  const filteredSuppliers = useMemo(() => {
-    if (!allSuppliers) return [];
-    if (!debouncedSearchQuery.trim()) return allSuppliers;
-
-    const query = debouncedSearchQuery.toLowerCase().trim();
-    return allSuppliers.filter((supplier) =>
-      supplier.name.toLowerCase().includes(query),
-    );
-  }, [allSuppliers, debouncedSearchQuery]);
-
-  // Get supplier IDs that already have supplier parts for this part
-  const supplierIdsWithParts = new Set(
-    supplierParts?.map((sp) => sp.supplierId) ?? [],
+  const groups = useMemo(
+    () =>
+      hasOpened
+        ? buildSupplierChoices(
+            partDefinitionId,
+            allSuppliers,
+            supplierParts,
+            entries,
+          )
+        : NO_CHOICES,
+    [hasOpened, partDefinitionId, allSuppliers, supplierParts, entries],
   );
-
-  // Filter out suppliers that already have supplier parts
-  const suppliersWithoutParts = filteredSuppliers.filter(
-    (supplier) => !supplierIdsWithParts.has(supplier.id),
-  );
-
-  // Check if search query matches any existing supplier
-  const hasMatchingSupplier = filteredSuppliers.length > 0;
-  const showCreateOption =
-    debouncedSearchQuery.trim().length > 0 &&
-    !hasMatchingSupplier &&
-    !supplierParts?.some(
-      (sp) =>
-        sp.supplier.name.toLowerCase() === debouncedSearchQuery.toLowerCase(),
-    );
-
-  const handleSupplierPartSelect = (supplierPartId: string) => {
-    updateItem.mutate({
-      itemId,
-      supplierPartId: supplierPartId === "none" ? null : supplierPartId,
-    });
+  const handleSelect = (choice: SupplierChoice) => {
+    setOptimisticSupplierPartId(choice.listing.id);
+    setOptimisticSupplierId(choice.listing.supplierId);
+    setOptimisticDisplayLabel(choice.label);
     setIsDropdownOpen(false);
-    setSearchQuery("");
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.updateItemSupplierPart({
+        materialListId,
+        itemId,
+        supplierPartId: choice.listing.id,
+        supplierId: choice.listing.supplierId,
+        supplierPartSnapshot: choice.listing,
+        supplierVersionSnapshot: choice.version,
+        unitCost: Number(choice.listing.lastKnownUnitCost ?? 0),
+      }),
+    );
   };
-
-  const handleSupplierSelect = (supplierId: string) => {
-    // Create supplier part for this supplier and part
-    addSupplierPart.mutate({
-      supplierId,
-      partDefinitionId,
-    });
-  };
-
-  const handleCreateSupplier = () => {
-    setPendingSupplierName(debouncedSearchQuery.trim());
-    setIsDropdownOpen(false);
-    setIsSupplierDialogOpen(true);
-  };
-
 
   return (
     <div className="w-full">
@@ -207,159 +166,54 @@ export function SupplierSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="h-11 w-full justify-between"
-            disabled={updateItem.isPending || addSupplierPart.isPending}
+            className={`${compact ? "min-h-8 text-xs" : "min-h-10 sm:min-h-11"} h-auto w-full justify-between py-2`}
+            style={compact ? { touchAction: "auto" } : undefined}
           >
-            <span className="truncate">{displayValue}</span>
+            <span className="min-w-0 text-left whitespace-normal">
+              {optimisticDisplayLabel ??
+                (currentVersion
+                  ? supplierVersionLabel(currentVersion)
+                  : optimisticSupplierId
+                    ? supplierLabel(
+                        displayValue,
+                        optimisticSupplierId,
+                        partDefinitionId,
+                        optimisticSupplierPartId,
+                      )
+                    : displayValue)}
+            </span>
             <ChevronDownIcon className="h-4 w-4 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-(--radix-dropdown-menu-trigger-width) p-2"
+          className="p-2"
+          style={{
+            width:
+              "min(max(calc(var(--radix-dropdown-menu-trigger-width) * 2), 18rem), calc(100vw - 2rem))",
+          }}
           align="start"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="space-y-2">
-            <div className="relative">
-              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-              <Input
-                placeholder="Search suppliers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-            </div>
-            <div className="max-h-[200px] overflow-y-auto">
-              {/* Existing supplier parts */}
-              {supplierParts && supplierParts.length > 0 && (
-                <>
-                  {supplierParts
-                    .filter((sp) => {
-                      if (!debouncedSearchQuery.trim()) return true;
-                      const query = debouncedSearchQuery.toLowerCase();
-                      return (
-                        sp.supplier.name.toLowerCase().includes(query) ||
-                        sp.supplierSku?.toLowerCase().includes(query)
-                      );
-                    })
-                    .map((sp) => (
-                      <DropdownMenuItem
-                        key={sp.id}
-                        onClick={() => handleSupplierPartSelect(sp.id)}
-                        className="cursor-pointer"
-                      >
-                        {sp.supplier.name}
-                        {sp.supplierSku ? ` (${sp.supplierSku})` : ""}
-                        {sp.isPreferred && " ⭐"}
-                      </DropdownMenuItem>
-                    ))}
-                </>
-              )}
-
-              {/* Suppliers without supplier parts (can be linked) */}
-              {suppliersWithoutParts.length > 0 && (
-                <>
-                  {supplierParts && supplierParts.length > 0 && (
-                    <DropdownMenuSeparator />
-                  )}
-                  {suppliersWithoutParts.map((supplier) => (
-                    <DropdownMenuItem
-                      key={supplier.id}
-                      onClick={() => handleSupplierSelect(supplier.id)}
-                      className="cursor-pointer"
-                    >
-                      {supplier.name} (Link to part)
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-
-              {/* No results message */}
-              {debouncedSearchQuery.trim() &&
-                supplierParts?.filter((sp) => {
-                  const query = debouncedSearchQuery.toLowerCase();
-                  return (
-                    sp.supplier.name.toLowerCase().includes(query) ||
-                    sp.supplierSku?.toLowerCase().includes(query)
-                  );
-                }).length === 0 &&
-                suppliersWithoutParts.length === 0 &&
-                !showCreateOption && (
-                  <div className="text-muted-foreground px-2 py-1.5 text-sm">
-                    No suppliers found
-                  </div>
-                )}
-
-              {/* Initial state message */}
-              {!debouncedSearchQuery.trim() &&
-                (!supplierParts || supplierParts.length === 0) &&
-                (!allSuppliers || allSuppliers.length === 0) && (
-                  <div className="text-muted-foreground px-2 py-1.5 text-sm">
-                    Start typing to search or create...
-                  </div>
-                )}
-            </div>
-
-            {/* Clear selection */}
-            {currentSupplierPart && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleSupplierPartSelect("none")}
-                  className="text-muted-foreground cursor-pointer"
-                >
-                  Clear selection
-                </DropdownMenuItem>
-              </>
+          <div className="max-h-[min(320px,60vh)] overflow-y-auto">
+            <SupplierChoiceItems
+              groups={groups}
+              onSelect={handleSelect}
+              showPrices
+            />
+            {freshParts.isError && (
+              <div
+                role="status"
+                className="text-muted-foreground px-2 py-2 text-xs"
+              >
+                Could not refresh supplier prices.{" "}
+                {supplierParts.length
+                  ? "Showing saved prices."
+                  : "Try again when connected."}
+              </div>
             )}
-
-            {/* Create new supplier option */}
-            {showCreateOption && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleCreateSupplier}
-                  className="cursor-pointer font-medium"
-                >
-                  + Create new supplier: {debouncedSearchQuery.trim()}
-                </DropdownMenuItem>
-              </>
-            )}
-
-            {/* Always show create option if no suppliers exist */}
-            {(!allSuppliers || allSuppliers.length === 0) &&
-              !debouncedSearchQuery.trim() && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setPendingSupplierName("");
-                      setIsDropdownOpen(false);
-                      setIsSupplierDialogOpen(true);
-                    }}
-                    className="cursor-pointer font-medium"
-                  >
-                    + Create new supplier...
-                  </DropdownMenuItem>
-                </>
-              )}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <SupplierFormDialog
-        open={isSupplierDialogOpen}
-        onOpenChange={(open) => {
-          setIsSupplierDialogOpen(open);
-          if (!open) {
-            setPendingSupplierName("");
-          }
-        }}
-        initialName={pendingSupplierName}
-        onSupplierCreated={handleSupplierCreated}
-      />
     </div>
   );
 }

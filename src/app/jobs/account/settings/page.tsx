@@ -1,0 +1,480 @@
+"use client";
+
+import { OfflineTestSettings } from "~/components/account/OfflineTestSettings";
+import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
+import { FrequentJobCardsSetting } from "~/components/jobs/FrequentJobCards";
+import { DiagnosticsSettings } from "~/components/account/DiagnosticsSettings";
+import { ExperimentalSettings } from "~/components/account/ExperimentalSettings";
+import { useLandingPage } from "~/hooks/use-landing-page";
+import { useLandingPagePicker } from "~/components/app/LandingPageProvider";
+import { api } from "~/trpc/react";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { isIosDevice, useInstallPrompt } from "~/lib/install-prompt";
+import { CheckCircle2Icon, DownloadIcon } from "lucide-react";
+import { RestartTutorialCard } from "~/components/tutorial/TutorialGate";
+import { Button } from "~/components/ui/button";
+import { PageHeader } from "~/components/ui/page-header";
+import { Input } from "~/components/ui/input";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Monitor, Moon, Sun, Palette, ListOrdered, Mail } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { useThemePreference } from "~/components/app/ThemeProvider";
+import type { ThemePreference } from "~/lib/theme";
+import {
+  EMAIL_CLIENT_OPTIONS,
+  getPreferredEmailClient,
+  setPreferredEmailClient,
+  isEmailClientPreference,
+  type EmailClientPreference,
+} from "~/lib/mailto";
+import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
+import {
+  MATERIAL_LIST_SORT_OPTIONS,
+  EXAMPLE_NAME_KEYWORD_GROUPS,
+  type NameKeywordGroup,
+  isMaterialListSort,
+} from "~/lib/material-list-sort";
+
+const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
+
+export default function SettingsPage() {
+  const online = useOnlineStatus();
+  const { data: me } = api.user.getMe.useQuery(undefined, { enabled: online });
+  const { source: landingSource, setLandingPage } = useLandingPage(me?.id);
+  const landingPicker = useLandingPagePicker();
+  const {
+    prompt: installPrompt,
+    installed: isInstalled,
+    install,
+  } = useInstallPrompt();
+  const [usesAppleInstallFlow, setUsesAppleInstallFlow] = useState(false);
+  const handleInstallApp = async () => {
+    if (!isInstalled) await install();
+  };
+  const { theme, setTheme } = useThemePreference();
+  const {
+    editorSettings: { sortMode, keywordGroups },
+    setSortMode,
+    setKeywordGroups,
+    custom,
+    setCustom,
+    editingExecutive,
+    setEditingExecutive,
+    canEditExecutive,
+    editable,
+    saving,
+    error: sortingError,
+  } = useMaterialListSortPreference();
+  const [emailClient, setEmailClient] =
+    useState<EmailClientPreference>("default");
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    setEmailClient(getPreferredEmailClient());
+    setUsesAppleInstallFlow(isIosDevice());
+  }, []);
+
+  const updateKeywords = (groups: readonly NameKeywordGroup[]) => {
+    setKeywordGroups(groups);
+    setMessage("Keyword sorting updated.");
+  };
+  const moveKeywordGroup = (index: number, offset: number) => {
+    const groups = [...keywordGroups];
+    const next = index + offset;
+    if (next < 0 || next >= groups.length) return;
+    [groups[index], groups[next]] = [groups[next]!, groups[index]!];
+    updateKeywords(groups);
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+      <PageHeader
+        title="Settings"
+        description="Make ForemanHQ work the way you prefer. Changes save automatically on this device."
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Navigation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm font-medium">Logo destination</p>
+          <p className="text-muted-foreground text-sm">
+            {landingSource?.title ?? "Jobs"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={!me?.id || !landingPicker || landingPicker.active}
+              onClick={() => landingPicker?.start()}
+            >
+              Choose destination
+            </Button>
+            {landingSource && (
+              <Button variant="outline" onClick={() => setLandingPage(null)}>
+                Reset to default
+              </Button>
+            )}
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Browse to the page you want, then tap the checkmark. Saved for your
+            account on this device. The back arrow always goes up one level.
+          </p>
+          <FrequentJobCardsSetting />
+        </CardContent>
+      </Card>
+
+      <RestartTutorialCard />
+      <AssessmentAiSettings key={me?.id} />
+      <ExperimentalSettings />
+      <OfflineTestSettings />
+      <DiagnosticsSettings />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>App</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-foreground text-sm font-medium">
+              Install ForemanHQ
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Add the app to your device for a faster, full-screen experience.
+            </p>
+          </div>
+
+          {isInstalled ? (
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-900">
+              <CheckCircle2Icon className="h-3 w-3" /> App installed
+            </div>
+          ) : installPrompt ? (
+            <Button onClick={handleInstallApp} className="w-full sm:w-auto">
+              <DownloadIcon className="mr-2 h-4 w-4" /> Install App
+            </Button>
+          ) : (
+            <div className="border-border bg-muted/50 text-foreground/80 rounded-md border p-4 text-sm">
+              <p className="text-foreground font-medium">
+                {usesAppleInstallFlow
+                  ? "Use Add to Home Screen"
+                  : "Install from the browser menu"}
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {usesAppleInstallFlow
+                  ? "On iPhone or iPad, open the browser share menu and choose Add to Home Screen."
+                  : "Open your browser menu and choose Install app or Add to Home Screen."}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" /> Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="grid grid-cols-3 gap-2"
+            role="group"
+            aria-label="Appearance"
+          >
+            {themes.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={theme === value}
+                onClick={() => {
+                  setTheme(value);
+                  setMessage("Appearance saved.");
+                }}
+                className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium ${theme === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-muted-foreground mt-3 text-sm">
+            System follows your device’s light or dark setting.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ListOrdered className="h-5 w-5" /> Material lists
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm font-medium">
+            {editingExecutive
+              ? "Editing executive sorting"
+              : custom
+                ? "Using your own sorting"
+                : "Following executive sorting"}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {editingExecutive
+              ? "Changes apply to everyone following executive sorting."
+              : custom
+                ? "Your choices apply only to your account."
+                : "Sort order and keyword priorities stay in sync with your executive’s settings."}
+          </p>
+          <div className="flex flex-wrap gap-2 py-2">
+            <Button
+              variant="outline"
+              disabled={!editable || saving}
+              onClick={() => setCustom(!custom)}
+            >
+              {custom ? "Use executive sorting" : "Set my own sorting"}
+            </Button>
+            {canEditExecutive && (
+              <Button
+                variant="outline"
+                disabled={!editable || saving}
+                onClick={() => setEditingExecutive(!editingExecutive)}
+              >
+                {editingExecutive
+                  ? "Close executive settings"
+                  : "Edit executive sorting"}
+              </Button>
+            )}
+          </div>
+          <p role="status" className="text-muted-foreground text-sm">
+            {sortingError ||
+              (saving
+                ? "Saving sorting…"
+                : !editable
+                  ? "Connect to change sorting settings."
+                  : "Sorting is saved to your account and available for offline lists.")}
+          </p>
+          {(custom || editingExecutive) && (
+            <fieldset disabled={!editable} className="space-y-2">
+              <label
+                htmlFor="settings-list-sort"
+                className="block text-sm font-medium"
+              >
+                Preferred sort order
+              </label>
+              <select
+                id="settings-list-sort"
+                value={sortMode}
+                onChange={(e) => {
+                  if (isMaterialListSort(e.target.value)) {
+                    setSortMode(e.target.value);
+                    setMessage("");
+                  }
+                }}
+                className="bg-background text-foreground h-11 w-full rounded-md border px-3 text-sm"
+              >
+                {MATERIAL_LIST_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-muted-foreground text-sm">
+                Applies to grid and table views, including offline lists.
+              </p>
+              <div className="mt-4 space-y-3 border-t pt-4">
+                <h3 className="text-sm font-semibold">Name keyword priority</h3>
+                <p className="text-muted-foreground text-sm">
+                  Within each catalog, material, size, and category, groups
+                  higher in this list come first. Separate related keywords with
+                  commas. The first matching group wins; unmatched parts go
+                  last. Names sort alphabetically within each group.
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Matches whole words or phrases, ignoring capitalization. Add
+                  alternate names such as “adapter, adaptor” to the same group.
+                  A part must match an Includes keyword and none of that group’s
+                  Excludes keywords. For example, include “90” and exclude
+                  “reducing” to keep reducing 90s out of that group. Excluded
+                  parts can match a later group and stay visible in the list.
+                  Applies to material lists and the Add menu.
+                </p>
+                {keywordGroups.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    No keyword groups yet. Names currently sort alphabetically.
+                  </p>
+                )}
+                <ol className="space-y-3" aria-label="Keyword priority groups">
+                  {keywordGroups.map((group, index) => (
+                    <li key={index} className="space-y-2 rounded-md border p-3">
+                      <h4 className="text-sm font-medium">Group {index + 1}</h4>
+                      <label
+                        htmlFor={`keyword-group-${index}-includes`}
+                        className="block text-sm"
+                      >
+                        Includes
+                      </label>
+                      <Input
+                        id={`keyword-group-${index}-includes`}
+                        aria-label={`Group ${index + 1} includes`}
+                        value={group.includes}
+                        placeholder="e.g. 90, elbow"
+                        onChange={(event) =>
+                          updateKeywords(
+                            keywordGroups.map((value, i) =>
+                              i === index
+                                ? { ...value, includes: event.target.value }
+                                : value,
+                            ),
+                          )
+                        }
+                      />
+                      <label
+                        htmlFor={`keyword-group-${index}-excludes`}
+                        className="block text-sm"
+                      >
+                        Excludes
+                      </label>
+                      <Input
+                        id={`keyword-group-${index}-excludes`}
+                        aria-label={`Group ${index + 1} excludes`}
+                        value={group.excludes}
+                        placeholder="e.g. reducing"
+                        onChange={(event) =>
+                          updateKeywords(
+                            keywordGroups.map((value, i) =>
+                              i === index
+                                ? { ...value, excludes: event.target.value }
+                                : value,
+                            ),
+                          )
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={index === 0}
+                          aria-label={`Move group ${index + 1} up`}
+                          onClick={() => moveKeywordGroup(index, -1)}
+                        >
+                          Move up
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={index === keywordGroups.length - 1}
+                          aria-label={`Move group ${index + 1} down`}
+                          onClick={() => moveKeywordGroup(index, 1)}
+                        >
+                          Move down
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Remove group ${index + 1}`}
+                          onClick={() =>
+                            updateKeywords(
+                              keywordGroups.filter((_, i) => i !== index),
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      updateKeywords([
+                        ...keywordGroups,
+                        { includes: "", excludes: "" },
+                      ])
+                    }
+                  >
+                    Add keyword group
+                  </Button>
+                  {keywordGroups.length === 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        updateKeywords(EXAMPLE_NAME_KEYWORD_GROUPS)
+                      }
+                    >
+                      Use example groups
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </fieldset>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" /> Email
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <label
+            htmlFor="settings-email-client"
+            className="block text-sm font-medium"
+          >
+            Preferred email app
+          </label>
+          <select
+            id="settings-email-client"
+            value={emailClient}
+            onChange={(e) => {
+              if (isEmailClientPreference(e.target.value)) {
+                setPreferredEmailClient(e.target.value);
+                setEmailClient(e.target.value);
+                setMessage("Email preference saved.");
+              }
+            }}
+            className="bg-background text-foreground h-11 w-full rounded-md border px-3 text-sm"
+          >
+            {EMAIL_CLIENT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-muted-foreground text-sm">
+            Choose where email links open when you contact a supplier.
+          </p>
+        </CardContent>
+      </Card>
+
+      <p
+        role="status"
+        aria-live="polite"
+        className="text-muted-foreground min-h-5 text-sm"
+      >
+        {message}
+      </p>
+      <p className="text-muted-foreground text-sm">
+        For your profile and subscription, go to{" "}
+        <Link
+          href="/jobs/account"
+          className="text-foreground font-medium underline underline-offset-4"
+        >
+          Manage Account
+        </Link>
+        .
+      </p>
+      <Link
+        href="/licenses"
+        className="text-muted-foreground text-sm underline underline-offset-4"
+      >
+        Open-source notices
+      </Link>
+    </div>
+  );
+}

@@ -10,9 +10,14 @@ import { createTRPCContext } from "~/server/api/trpc";
  * handling a HTTP request (e.g. when you make requests from Client Components).
  */
 const createContext = async (req: NextRequest) => {
-  return createTRPCContext({
+  const start = Date.now();
+  const context = await createTRPCContext({
     headers: req.headers,
   });
+  // Sign-in checks run before the timed procedures; show them for drawings.
+  if (req.nextUrl.pathname.includes("drawingsWorkspace."))
+    console.log(`[TRPC] sign-in check took ${Date.now() - start}ms`);
+  return context;
 };
 
 const handler = (req: NextRequest) =>
@@ -30,5 +35,7 @@ const handler = (req: NextRequest) =>
           }
         : undefined,
   });
+
+export const maxDuration = 180;
 
 export { handler as GET, handler as POST };

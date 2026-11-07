@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -10,20 +9,9 @@ import { MarketingHeader } from "../_components/MarketingHeader";
 import { Loader2 } from "lucide-react";
 
 export default function PricingPage() {
-  const router = useRouter();
+  const availability = api.payment.getCheckoutAvailability.useQuery();
+  const checkoutEnabled = availability.data?.enabled === true;
   const [isCreatingCheckout, setIsCreatingCheckout] = useState<string | null>(null);
-
-  const createOneTimeCheckout = api.payment.createOneTimeCheckout.useMutation({
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error) => {
-      console.error("Failed to create checkout:", error);
-      setIsCreatingCheckout(null);
-    },
-  });
 
   const createSubscriptionCheckout = api.payment.createSubscriptionCheckout.useMutation({
     onSuccess: (data) => {
@@ -37,44 +25,37 @@ export default function PricingPage() {
     },
   });
 
-  const handleOneTimePurchase = () => {
-    setIsCreatingCheckout("one-time");
-    createOneTimeCheckout.mutate();
-  };
-
   const handleSubscription = () => {
     setIsCreatingCheckout("subscription");
     createSubscriptionCheckout.mutate();
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-card">
       <MarketingHeader />
       <main className="flex-1 px-6 py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <h1 className="mb-4 text-5xl font-bold text-gray-900">
-              Choose Your Plan
+            <h1 className="mb-4 text-5xl font-bold text-foreground">
+              Choose Your Account
             </h1>
-            <p className="text-xl text-gray-600">
-              Get access to the dashboard with a one-time purchase or subscription
+            <p className="text-xl text-muted-foreground">
+              Standard Accounts are free. Executive Accounts require a paid subscription.
             </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2">
-            {/* One-Time Purchase */}
             <Card className="relative">
               <CardHeader>
-                <CardTitle className="text-2xl">One-Time Purchase</CardTitle>
+                <CardTitle className="text-2xl">Standard Account</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">
-                    $20
+                  <span className="text-4xl font-bold text-foreground">
+                    Free
                   </span>
-                  <span className="text-gray-600"> one-time</span>
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="mb-6 space-y-3 text-sm text-gray-600">
+                <ul className="mb-6 space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-center">
                     <svg
                       className="mr-2 h-5 w-5 text-green-500"
@@ -89,7 +70,7 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Lifetime dashboard access
+                    Jobs access
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -105,7 +86,7 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    No recurring charges
+                    Create jobs and material lists
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -121,27 +102,15 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    All features included
+                    Add and track parts
                   </li>
                 </ul>
-                <Button
-                  className="w-full"
-                  onClick={handleOneTimePurchase}
-                  disabled={isCreatingCheckout !== null}
-                >
-                  {isCreatingCheckout === "one-time" ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Purchase Now"
-                  )}
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/jobs">Use Standard Account</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Subscription */}
             <Card className="relative border-2 border-primary">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <span className="rounded-full bg-primary px-4 py-1 text-sm font-semibold text-white">
@@ -149,16 +118,16 @@ export default function PricingPage() {
                 </span>
               </div>
               <CardHeader>
-                <CardTitle className="text-2xl">Monthly Subscription</CardTitle>
+                <CardTitle className="text-2xl">Executive Account</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-foreground">
                     $2
                   </span>
-                  <span className="text-gray-600"> /month</span>
+                  <span className="text-muted-foreground"> /month</span>
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="mb-6 space-y-3 text-sm text-gray-600">
+                <ul className="mb-6 space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-center">
                     <svg
                       className="mr-2 h-5 w-5 text-green-500"
@@ -173,7 +142,39 @@ export default function PricingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Full dashboard access
+                    Generate quotes and orders
+                  </li>
+                  <li className="flex items-center">
+                    <svg
+                      className="mr-2 h-5 w-5 text-green-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Delete jobs, material lists, suppliers, and parts
+                  </li>
+                  <li className="flex items-center">
+                    <svg
+                      className="mr-2 h-5 w-5 text-green-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Full management permissions
                   </li>
                   <li className="flex items-center">
                     <svg
@@ -191,43 +192,11 @@ export default function PricingPage() {
                     </svg>
                     Cancel anytime
                   </li>
-                  <li className="flex items-center">
-                    <svg
-                      className="mr-2 h-5 w-5 text-green-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    All features included
-                  </li>
-                  <li className="flex items-center">
-                    <svg
-                      className="mr-2 h-5 w-5 text-green-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Regular updates
-                  </li>
                 </ul>
                 <Button
                   className="w-full"
                   onClick={handleSubscription}
-                  disabled={isCreatingCheckout !== null}
+                  disabled={!checkoutEnabled || isCreatingCheckout !== null}
                 >
                   {isCreatingCheckout === "subscription" ? (
                     <>
@@ -235,18 +204,21 @@ export default function PricingPage() {
                       Processing...
                     </>
                   ) : (
-                    "Subscribe Now"
+                    "Upgrade to Executive Account"
                   )}
                 </Button>
+                {availability.data && !checkoutEnabled && (
+                  <p className="mt-3 text-sm text-muted-foreground">Paid subscriptions are temporarily unavailable. You can still use a free Standard Account.</p>
+                )}
               </CardContent>
             </Card>
           </div>
 
           <div className="mt-12 text-center">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Already have access?{" "}
-              <Link href="/dashboard" className="text-primary hover:underline">
-                Go to Dashboard
+              <Link href="/jobs" className="text-primary hover:underline">
+                Go to Jobs
               </Link>
             </p>
           </div>
@@ -255,4 +227,3 @@ export default function PricingPage() {
     </div>
   );
 }
-

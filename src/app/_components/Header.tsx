@@ -1,139 +1,439 @@
 "use client";
+import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
-import { api } from "~/trpc/react";
+import { NewWindowButton } from "~/components/app/NewWindowButton";
+import { DrawingDownloadStatus } from "~/components/jobs/DrawingDownloadStatus";
+import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
+import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
+import { InstallAppButton } from "~/components/app/InstallAppButton";
+
+import { useClerk, useUser } from "@clerk/nextjs";
+import {
+  ArrowLeftIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  CameraIcon,
+  CalculatorIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  FileTextIcon,
+  MenuIcon,
+  MessageSquareIcon,
+  ReceiptIcon,
+  SettingsIcon,
+  ShoppingCartIcon,
+  TruckIcon,
+  UserIcon,
+  WrenchIcon,
+  XIcon,
+  type LucideIcon,
+} from "lucide-react";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSnapshot } from "~/components/chat/SnapshotProvider";
+import { NotificationCenter } from "~/components/notifications/NotificationCenter";
+import {
+  EndSimulationButton,
+  useEmployeeSimulation,
+} from "~/components/simulation/SimulationProvider";
+import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
+import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Button } from "~/components/ui/button";
-import { UserIcon, ChevronDownIcon, MenuIcon, XIcon } from "lucide-react";
+import { useLandingPage } from "~/hooks/use-landing-page";
 import { APP_NAME } from "~/constants/app";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import {
+  HEADER_BACK_STATE_EVENT,
+  requestHeaderBack,
+  runHeaderBackOverride,
+  useHeaderBackOverride,
+  type HeaderBackStateDetail,
+} from "~/lib/header-back-events";
+import { parentRoute } from "~/lib/parent-navigation";
+import { resetJobWorkspaceNavigation, restoreJobWorkspaceNavigationFromSnapshot } from "~/hooks/use-job-workspace-navigation";
+import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
-export function Header() {
-  const pathname = usePathname();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
-    enabled: !!user,
-  });
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasUsableClerkKey =
+  typeof publishableKey === "string" &&
+  /^(pk|test|live)_/.test(publishableKey) &&
+  publishableKey.length > 20;
 
-  const navLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/dashboard/catalogue", label: "Catalogue" },
-    { href: "/dashboard/suppliers", label: "Suppliers" },
-    { href: "/dashboard/quotes", label: "Quotes" },
-    { href: "/dashboard/orders", label: "Orders" },
-    ...(userRole?.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
+function HeaderFrame({
+  pathname,
+  mobileMenuOpen,
+  setMobileMenuOpen,
+  userName,
+  signOut,
+  showAccount,
+  tabAccess,
+  sessionKey,
+}: {
+  pathname: string | null;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
+  userName: string;
+  signOut?: () => void | Promise<void>;
+  showAccount: boolean;
+  tabAccess: {
+    dashboard: boolean;
+    chat: boolean;
+    catalogue: boolean;
+    suppliers: boolean;
+    quotes: boolean;
+    orders: boolean;
+    draws: boolean;
+    estimating: boolean;
+    assets: boolean;
+    timesheets: boolean;
+    organization: boolean;
+  };
+  sessionKey?: string;
+}) {
+  const landscape = useLandscapeLayout();
+  const simulation = useEmployeeSimulation();
+  const router = useRouter();
+  const snapshot = useSnapshot();
+  const nameParts = userName.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    (
+      (Array.from(nameParts[0] ?? "")[0] ?? "") +
+      (nameParts.length > 1
+        ? (Array.from(nameParts.at(-1) ?? "")[0] ?? "")
+        : "")
+    ).toLocaleUpperCase() || "?";
+  const sandbox = useTutorialSandbox();
+  const isOnline = useOnlineStatus();
+  const [showRequestedBackButton, setShowRequestedBackButton] = useState(false);
+  const { landingPage, source: landingSource } = useLandingPage(sessionKey);
+  const openLandingPage = () => {
+    if (sandbox) return;
+    if (!landingSource) { navigate("/jobs"); return; }
+    // Restore the captured nested view even when already on the same route.
+    const state = { ...(window.history.state as Record<string, unknown> | null) };
+    delete state.foremenhqWorkspace;
+    window.history.replaceState(state, "");
+    const target = new URL(landingPage, window.location.origin);
+    const sameRoute = target.pathname === window.location.pathname && target.search === window.location.search;
+    if (sameRoute) {
+      window.history.pushState(state, "", landingPage);
+      restoreJobWorkspaceNavigationFromSnapshot();
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } else {
+      router.push(landingPage);
+    }
+  };
+  const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
+    ...(tabAccess.dashboard
+      ? [{ href: "/jobs", label: "Jobs", icon: BriefcaseIcon }]
+      : []),
+    ...(tabAccess.chat
+      ? [{ href: "/jobs/chat", label: "Chat", icon: MessageSquareIcon }]
+      : []),
+    ...(tabAccess.catalogue
+      ? [
+          {
+            href: "/jobs/catalogue",
+            label: "Catalogue",
+            icon: BookOpenIcon,
+          },
+        ]
+      : []),
+    ...(tabAccess.suppliers
+      ? [{ href: "/jobs/suppliers", label: "Suppliers", icon: TruckIcon }]
+      : []),
+    ...(tabAccess.quotes
+      ? [{ href: "/jobs/quotes", label: "Quotes", icon: FileTextIcon }]
+      : []),
+    ...(tabAccess.orders
+      ? [{ href: "/jobs/orders", label: "Orders", icon: ShoppingCartIcon }]
+      : []),
+    ...(tabAccess.draws
+      ? [{ href: "/jobs/draws", label: "Draws", icon: ReceiptIcon }]
+      : []),
+    ...(tabAccess.estimating
+      ? [{ href: "/jobs/estimating", label: "Estimating", icon: CalculatorIcon }]
+      : []),
+    ...(tabAccess.timesheets
+      ? [
+          {
+            href: "/jobs/timesheets",
+            label: "Timesheets",
+            icon: ClockIcon,
+          },
+        ]
+      : []),
+    ...(tabAccess.assets
+      ? [
+          {
+            href: "/jobs/assets",
+            label: "Asset Management",
+            icon: WrenchIcon,
+          },
+        ]
+      : []),
+    ...(tabAccess.organization
+      ? [
+          {
+            href: "/jobs/organization",
+            label: "Organization",
+            icon: Building2Icon,
+          },
+        ]
+      : []),
   ];
-
   const isActive = (href: string) => {
-    if (href === "/dashboard") {
-      // Active for /dashboard and /dashboard/jobs/* but not /dashboard/material-lists/*
+    if (href === "/jobs") {
       return (
-        pathname === "/dashboard" ||
-        (pathname?.startsWith("/dashboard/jobs/") ?? false)
+        pathname === "/jobs" ||
+        (/^\/jobs\/[0-9a-f-]{36}(?:\/|$)/i.test(pathname ?? "")) ||
+        (pathname?.startsWith("/jobs/material-lists/") ?? false)
       );
     }
     return pathname?.startsWith(href);
   };
 
-  return (
-    <header className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
-      <div className="flex items-center gap-4 sm:gap-8">
-        <Link
-          href="/dashboard"
-          className="text-lg font-bold text-gray-900 sm:text-xl"
+  const showRouteBackButton = Boolean(pathname && pathname !== "/jobs" && pathname.startsWith("/jobs/"));
+  const hasHyperlinkParent = useHyperlinkBack(pathname, sessionKey);
+  const showBackButton = showRouteBackButton || showRequestedBackButton || hasHyperlinkParent;
+
+  useEffect(() => {
+    const handleBackState = (event: Event) => {
+      const detail = (event as CustomEvent<HeaderBackStateDetail>).detail;
+      setShowRequestedBackButton(Boolean(detail?.visible));
+    };
+
+    window.addEventListener(HEADER_BACK_STATE_EVENT, handleBackState);
+
+    return () => {
+      window.removeEventListener(HEADER_BACK_STATE_EVENT, handleBackState);
+    };
+  }, []);
+
+  const navigate = (href: string) => {
+    if (sandbox) return;
+    if (href === "/jobs") resetJobWorkspaceNavigation();
+    if (!isOnline) {
+      window.location.href = href;
+      return;
+    }
+
+    router.push(href);
+  };
+
+  const handleSignOut = async () => {
+    if (sandbox) return;
+    try {
+      const { clearDrawingDownloadsOnSignOut } =
+        await import("~/components/jobs/DrawingAccountProvider");
+      await clearDrawingDownloadsOnSignOut();
+    } catch {
+      /* Signing out must still work if offline storage is unavailable. */
+    }
+    try {
+      const { disconnectPushDevice } =
+        await import("~/components/notifications/PushNotifications");
+      await disconnectPushDevice();
+    } catch {
+      // Local revocation is retained for retry; signing out must still work offline.
+    } finally {
+      await signOut?.();
+    }
+  };
+
+  const goUp = () => {
+    if (showRequestedBackButton) {
+      requestHeaderBack();
+      return;
+    }
+    if (sandbox) return;
+    const parent = parentRoute(pathname ?? "/jobs");
+    if (parent === "/jobs") resetJobWorkspaceNavigation();
+    if (!isOnline) window.location.href = parent;
+    else router.replace(parent);
+  };
+  // Routed screens provide the base level; in-page viewers and wizard steps
+  // take precedence even if their effects mount before the header.
+  useHeaderBackOverride(pathname?.startsWith("/jobs/") ? goUp : null, {
+    priority: -100, scope: pathname ?? "",
+  });
+  const handleBack = () => { runHeaderBackOverride(); };
+
+  const navigation = <>
+        {showBackButton && (
+          <Button
+            variant={landscape ? "outline" : "ghost"}
+            size="icon"
+            onClick={handleBack}
+            className="h-10 w-10 shrink-0"
+            data-landscape-back
+            aria-label="Go up one level"
+            data-tutorial="back"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </Button>
+        )}
+        <button
+          type="button"
+          aria-label={`ForemanHQ — ${landingSource?.title ?? "Jobs"}`}
+          onClick={openLandingPage}
+          data-landscape-logo
+          className="text-foreground flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight lg:shrink-0"
         >
-          {APP_NAME}
-        </Link>
-        {/* Desktop Navigation */}
-        <nav className="hidden gap-6 lg:flex">
+          <Image
+            src="/foremanhq/icon-dark-v2-32.png"
+            alt=""
+            width={28}
+            height={28}
+            className="shrink-0 rounded-md"
+            priority
+          />
+          <span className={cn("truncate", simulation && "hidden sm:inline")}>
+            {APP_NAME}
+          </span>
+        </button>
+  </>;
+
+  return (
+    <>
+    <LandscapeNavigation active={landscape}>{navigation}</LandscapeNavigation>
+    <header data-app-header hidden={landscape} className="border-border bg-card sticky top-0 z-50 flex h-14 items-center justify-between border-b px-3 shadow-[0_2px_3px_rgba(0,0,0,0.35),0_6px_16px_rgba(0,0,0,0.6)] sm:h-16 sm:px-6 [[data-flat-header]_&]:border-b-transparent [[data-flat-header]_&]:shadow-none">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-8">
+        {!landscape && navigation}
+        <EndSimulationButton />
+        <nav className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
           {navLinks.map((link) => (
-            <Link
+            <button
               key={link.href}
-              href={link.href}
-              className={`text-sm font-medium transition-colors ${
+              type="button"
+              onClick={() => navigate(link.href)}
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={cn(
+                "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                 isActive(link.href)
-                  ? "text-gray-900 underline"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
             >
               {link.label}
-            </Link>
+            </button>
           ))}
         </nav>
       </div>
 
-      {/* Desktop Actions */}
-      <div className="hidden items-center gap-4 lg:flex">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-11 gap-2 px-3">
-              <UserIcon className="h-5 w-5" />
-              <ChevronDownIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex items-center gap-3">
-                <UserIcon className="text-muted-foreground h-5 w-5" />
-                <span className="truncate text-sm text-gray-700">
-                  {user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
-                </span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/account">Manage Account</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
+      <div className="ml-2 flex shrink-0 items-center gap-2">
+        {!sandbox && !simulation && <NewWindowButton className="hidden lg:inline-flex" />}
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          {tabAccess.dashboard && (
+            <Button
+              variant="ghost"
+              aria-label="Snapshot"
               onClick={() => {
-                void signOut();
+                if (!sandbox) snapshot?.start();
               }}
             >
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Mobile Menu Button */}
-      <div className="flex items-center gap-2 lg:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? (
-            <XIcon className="h-6 w-6" />
-          ) : (
-            <MenuIcon className="h-6 w-6" />
+              <CameraIcon className="h-4 w-4" />
+              Snapshot
+            </Button>
           )}
-        </Button>
+        </div>
+        <DrawingDownloadStatus />
+        <InstallAppButton compact />
+        {!sandbox && !simulation && sessionKey && (
+          <AppDeviceReporter key={sessionKey} userId={sessionKey} />
+        )}
+        {!sandbox && (
+          <NotificationCenter key={sessionKey} sessionKey={sessionKey} />
+        )}
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-11 gap-2 px-3"
+                aria-label="User menu"
+              >
+                <UserIcon className="h-5 w-5" />
+                <ChevronDownIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={() => navigate("/jobs/account/settings")}
+              >
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="flex items-center justify-between gap-3 px-2 py-1">
+                {signOut ? (
+                  <DropdownMenuItem
+                    className="flex-1"
+                    onClick={() => {
+                      void handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </DropdownMenuItem>
+                ) : (
+                  <span />
+                )}
+                {showAccount && (
+                  <DropdownMenuItem
+                    asChild
+                    className="bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground h-10 min-h-10 w-10 justify-center rounded-full p-0 font-semibold"
+                    onSelect={() => navigate("/jobs/account")}
+                  >
+                    <button
+                      type="button"
+                      aria-label="Manage account"
+                      title="Manage account"
+                    >
+                      {initials}
+                    </button>
+                  </DropdownMenuItem>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <XIcon className="h-6 w-6" />
+            ) : (
+              <MenuIcon className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-lg lg:hidden">
+          <div className="bg-card fixed inset-y-0 right-0 z-50 w-64 shadow-lg lg:hidden">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b px-4 py-4">
-                <span className="font-semibold text-gray-900">Menu</span>
+                <span className="text-foreground font-semibold">Menu</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -146,46 +446,86 @@ export function Header() {
               </div>
               <nav className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-1">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`block rounded-md px-3 py-3 text-base font-medium transition-colors ${
-                        isActive(link.href)
-                          ? "bg-gray-100 text-gray-900"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
+                  {!sandbox && !simulation && <NewWindowButton className="h-12 w-full justify-start px-3 text-base" />}
+                  {tabAccess.dashboard && (
+                    <button
+                      type="button"
+                      className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-base font-medium"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        if (!sandbox) snapshot?.start();
+                      }}
                     >
+                      <CameraIcon className="h-5 w-5 shrink-0" />
+                      Snapshot
+                    </button>
+                  )}
+                  {navLinks.map((link) => (
+                    <button
+                      key={link.href}
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate(link.href);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-base font-medium transition-colors",
+                        isActive(link.href)
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground/80 hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      <link.icon className="h-5 w-5 shrink-0" />
                       {link.label}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </nav>
               <div className="border-t px-4 py-4">
-                <div className="mb-3 flex items-center gap-3 rounded-md px-3 py-2">
-                  <UserIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="truncate text-sm text-gray-700">
-                    {user?.primaryEmailAddress?.emailAddress ?? "Not signed in"}
-                  </span>
-                </div>
                 <div className="space-y-1">
-                  <Link
-                    href="/dashboard/account"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                  >
-                    Manage Account
-                  </Link>
                   <button
+                    type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
-                      void signOut();
+                      navigate("/jobs/account/settings");
                     }}
-                    className="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    className="text-foreground/80 hover:bg-accent flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base font-medium"
                   >
-                    Sign out
+                    <SettingsIcon
+                      aria-hidden="true"
+                      className="h-5 w-5 shrink-0"
+                    />{" "}
+                    Settings
                   </button>
+                  <div className="flex items-center justify-between gap-3 px-3 py-2">
+                    {signOut ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          void handleSignOut();
+                        }}
+                        className="text-foreground/80 hover:bg-accent hover:text-foreground flex-1 rounded-md py-2 text-left text-base font-medium transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    {showAccount && (
+                      <button
+                        type="button"
+                        aria-label="Manage account"
+                        title="Manage account"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate("/jobs/account");
+                        }}
+                      >
+                        {initials}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -193,5 +533,124 @@ export function Header() {
         </>
       )}
     </header>
+    </>
+  );
+}
+
+function HeaderWithClerk() {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const isOnline = useOnlineStatus();
+  const simulation = useEmployeeSimulation();
+  const { data: effectiveUser } = api.user.getMe.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const { data: userRole } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline,
+  });
+
+  return (
+    <HeaderFrame
+      pathname={pathname}
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userName={
+        simulation?.employeeName ??
+        effectiveUser?.name ??
+        user?.fullName ??
+        (effectiveUser?.email ?? user?.primaryEmailAddress?.emailAddress ?? "")
+          .split("@")[0]
+          ?.replace(/[._-]+/g, " ") ??
+        ""
+      }
+      signOut={async () => {
+        try {
+          await fetch("/api/auth/signout", { method: "POST" });
+        } finally {
+          await signOut({ redirectUrl: "/sign-in" });
+        }
+      }}
+      showAccount={true}
+      sessionKey={
+        simulation?.employeeId ?? effectiveUser?.id ?? user?.id ?? "guest"
+      }
+      tabAccess={
+        userRole?.permissions.tabAccess ?? {
+          dashboard: true,
+          chat: true,
+          catalogue: true,
+          suppliers: true,
+          quotes: true,
+          orders: true,
+          draws: false,
+          estimating: false,
+          assets: true,
+          timesheets: true,
+          organization: false,
+        }
+      }
+    />
+  );
+}
+
+function HeaderWithoutClerk() {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
+    <HeaderFrame
+      pathname={pathname}
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userName="Auth disabled"
+      showAccount={false}
+      tabAccess={{
+        dashboard: true,
+        chat: true,
+        catalogue: true,
+        suppliers: true,
+        quotes: true,
+        orders: true,
+        draws: false,
+        estimating: false,
+        assets: true,
+        timesheets: true,
+        organization: false,
+      }}
+    />
+  );
+}
+
+export function Header() {
+  const sandbox = useTutorialSandbox();
+  if (sandbox) return <HeaderForPractice />;
+  return hasUsableClerkKey ? <HeaderWithClerk /> : <HeaderWithoutClerk />;
+}
+
+function HeaderForPractice() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  return (
+    <HeaderFrame
+      pathname="/jobs"
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+      userName="Practice workspace"
+      showAccount={true}
+      tabAccess={{
+        dashboard: true,
+        chat: true,
+        catalogue: true,
+        suppliers: true,
+        quotes: true,
+        orders: true,
+        draws: false,
+        estimating: false,
+        assets: true,
+        timesheets: false,
+        organization: false,
+      }}
+    />
   );
 }

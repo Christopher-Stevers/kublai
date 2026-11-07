@@ -1,0 +1,38 @@
+.section {
+  position: relative;
+}
+
+.section::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: 20;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 45%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--primary) 15%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.section[data-material-focused]::after {
+  animation: focusFlare 900ms ease-out both;
+}
+
+@keyframes focusFlare {
+  0% { opacity: 0; }
+  15% { opacity: 0.9; }
+  45% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section::after { box-shadow: none; }
+  .section[data-material-focused]::after {
+    animation: focusNotice 650ms linear both;
+  }
+  @keyframes focusNotice {
+    0%, 80% { opacity: 0.45; }
+    100% { opacity: 0; }
+  }
+}

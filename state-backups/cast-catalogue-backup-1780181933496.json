@@ -1,0 +1,22 @@
+{
+  "createdAt": "2026-05-30T22:58:53.496Z",
+  "sourcePath": "/home/halvor/.openclaw/workspace/kublai/data/catalogue/cast-catalogue.json",
+  "existingCast": [
+    {
+      "id": "dc377fa5-0b28-4fe2-be76-65f544bc1d98",
+      "displayName": "4\" MJ Clamp"
+    },
+    {
+      "id": "223d0b20-36dc-4f3a-9610-67403aaffce6",
+      "displayName": "4\" Cast Pipe"
+    },
+    {
+      "id": "6ba04000-02d2-4058-93ee-d6b02eb25fa0",
+      "displayName": "8\" Cast Pipe"
+    },
+    {
+      "id": "24b2ef97-f1dc-4f2c-aafa-6d0d423834fc",
+      "displayName": "6\" Cast Pipe"
+    }
+  ]
+}

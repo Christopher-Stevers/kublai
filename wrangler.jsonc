@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "foremanhq",
+  "account_id": "572389bd857af8ef630528d94e8be6ea",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "r2_buckets": [
+    {
+      "binding": "CATALOGUE_IMAGES",
+      "bucket_name": "foremenhq-catalogue-images",
+    },
+  ],
+  "vars": {
+    "PHOTO_STORAGE_BACKEND": "r2",
+  },
+  "routes": [
+    {
+      "pattern": "foremanhq.stellarator.work",
+      "custom_domain": true,
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+}

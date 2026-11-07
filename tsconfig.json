@@ -52,6 +52,7 @@
     "**/build/**",
     "**/dist/**",
     "**/.next/**",
-    "apps/mobile/android/**"
+    "apps/mobile/android/**",
+    "tmp/**"
   ]
 }

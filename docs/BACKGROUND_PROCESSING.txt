@@ -1,0 +1,60 @@
+ForemanHQ background processing — 2026-10-24
+
+Production topology
+The web process runs with FOREMANHQ_BACKGROUND_MODE=separate and persists requests.
+foremanhq-worker.service runs a release-pinned compiled bundle from .background/current.
+A PostgreSQL session advisory lock admits one service. The round-robin scheduler
+allows two heavy features concurrently, at most one per feature: packing slips,
+systems assessments, room detection, model conversion, and Super Scale. Existing
+feature-specific claims, cancellation/version guards and child-process limits remain.
+CPU-heavy descendants share foremanhq-background.slice: 400% CPU quota, 8 GiB high
+memory threshold, 10 GiB hard ceiling, no swap. Detection retains its 4 GiB child
+ceiling and single-worker queue. Notifications use their existing durable outboxes.
+
+Packing-slip jobs are recorded in the same transaction as analysis status, before
+returning to the browser. Claims have 90-second leases renewed every 15 seconds.
+After repeated interruption, the result is failed for human retry. Result commits
+check lease ownership, run, document version, order association and current access.
+No background action marks quantities received. Only the confirmation flow does.
+Systems reuse their existing frozen provider, source fingerprints and checkpoints.
+Models reject results with a replaced lease. Room detection retains its existing
+run identities, process recovery, global file lock and manual-edit protections.
+
+PostgreSQL NOTIFY carries only identifier hints between web and worker processes.
+Recipients re-authorize snapshots. Durable revisions and polling recover missed
+hints; the transport is neither the job queue nor an authorization mechanism.
+
+Release procedure
+1. Drain active processing before first enabling separate mode; do not synthesize
+   runs for old documents. Apply scripts/migrate-packing-slip-jobs.ts. It only adds
+   an empty queue, with an atomic migration checksum/journal update.
+2. From a clean release checkout, build Next and run:
+   node scripts/build-background.mjs /absolute/path/to/.background/releases/COMMIT
+   Keep the bundle inside this installation (or supply matching node_modules).
+   The bundle includes child extractors and the detection launcher. Private files
+   remain in the configured existing storage roots; never copy .env into the bundle.
+3. Point .background/current to that immutable directory. Install the templates
+   from ops/systemd after adapting absolute paths and Node version for another host.
+   The web drop-in is foremenhq-background.conf. The launcher resolves the worker
+   bundle once, before processing, so a later symlink swap cannot retarget its children.
+4. Restart foremanhq-worker independently, verify its ready log and advisory lock,
+   then restart the new web release with separate mode. Verify /api/health and
+   inspect both services' errors. A web-only restart must leave the worker PID intact.
+   Changes to shared worker code require a new worker bundle and explicit restart;
+   do not silently let running jobs read modified TypeScript from the checkout.
+5. Roll back web/worker as a pair when changing queue contracts. Leave the additive
+   queue table in place. To return to inline processing, first drain queued/running
+   work, stop the worker and remove the web drop-in, then restart the previous web
+   release. Removing separate mode while queued slips exist would strand those runs.
+
+Verification and scope
+Isolated PostgreSQL tests cover queue persistence, duplicate claims, expired-claim
+recovery, stale-owner rejection, clear/cancel preservation, revoked access, receipt
+idempotence, assessment recovery, and conversion deletion/lease changes. Separate
+process tests exercise the actual hint transport. Synthetic extraction tests run
+compiled children and verify complete text parity/cache reuse.
+
+This service isolates asynchronous processing already represented by these queues.
+Synchronous preview/upload/order-identification request helpers retain their bounded
+child processes. This is not multi-host storage or a web-replica rollout. The scheduler
+rotates feature classes; it does not promise equal completion times across companies.

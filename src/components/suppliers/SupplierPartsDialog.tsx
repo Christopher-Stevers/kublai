@@ -1,4 +1,9 @@
 "use client";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
+import { isValidOrderMultiple } from "~/lib/purchase-quantity";
+import { notify } from "~/components/ui/app-dialogs";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -26,6 +31,12 @@ import {
   StarIcon,
   SearchIcon,
 } from "lucide-react";
+import {
+  ListPagination,
+  useClientPagination,
+} from "~/components/ui/list-pagination";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { confirmAction } from "~/components/ui/app-dialogs";
 
 interface SupplierPartsDialogProps {
   open: boolean;
@@ -41,155 +52,48 @@ export function SupplierPartsDialog({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPartId, setSelectedPartId] = useState<string>("");
+  const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && open,
+  });
+  const canDeleteCoreRecords =
+    userData?.permissions.can["suppliers.delete"] ?? true;
 
   const { data: supplierData, isLoading } = api.supplier.getById.useQuery(
     { id: supplierId },
-    { enabled: open && !!supplierId },
+    { enabled: isOnline && open && !!supplierId },
   );
 
   const { data: searchResults } = api.catalogue.searchParts.useQuery(
     { query: searchQuery },
-    { enabled: isAddDialogOpen && searchQuery.length > 0 },
+    { enabled: isOnline && isAddDialogOpen && searchQuery.length > 0 },
   );
+  const paginatedSupplierParts = useClientPagination(
+    supplierData?.supplierParts ?? [],
+  );
+  const paginatedSearchResults = useClientPagination(searchResults ?? []);
 
   const utils = api.useUtils();
   const removeSupplierPart = api.supplier.removeSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
-
-      // Optimistically remove supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: old.supplierParts.filter(
-            (sp) => sp.id !== variables.id,
-          ),
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       void utils.supplier.getById.invalidate({ id: supplierId });
     },
   });
 
   const updateSupplierPart = api.supplier.updateSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
-
-      // Optimistically update supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: old.supplierParts.map((sp) =>
-            sp.id === variables.id
-              ? {
-                  ...sp,
-                  isPreferred:
-                    variables.isPreferred !== undefined
-                      ? variables.isPreferred
-                      : sp.isPreferred,
-                  supplierSku:
-                    variables.supplierSku !== undefined
-                      ? variables.supplierSku
-                      : sp.supplierSku,
-                  lastKnownUnitCost:
-                    variables.lastKnownUnitCost !== undefined
-                      ? variables.lastKnownUnitCost
-                      : sp.lastKnownUnitCost,
-                }
-              : sp,
-          ),
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
-      }
-    },
-    onSettled: () => {
+    onError: (error) =>
+      notify(
+        error.message ?? "Could not save supplier order multiple",
+        "error",
+      ),
+    onSuccess: () => {
       void utils.supplier.getById.invalidate({ id: supplierId });
     },
   });
 
   const addSupplierPart = api.supplier.addSupplierPart.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.getById.cancel({ id: supplierId });
-
-      // Snapshot previous value
-      const previousSupplier = utils.supplier.getById.getData({ id: supplierId });
-
-      // Find part definition from search results
-      const partDef = searchResults?.find((p) => p.id === variables.partDefinitionId);
-
-      // Create temporary supplier part with all required fields
-      const tempId = `temp-${Date.now()}`;
-      const tempSupplierPart = {
-        id: tempId,
-        supplierId: variables.supplierId,
-        partDefinitionId: variables.partDefinitionId,
-        supplierSku: variables.supplierSku ?? null,
-        supplierName: null,
-        packSize: null,
-        packUomId: null,
-        lastKnownUnitCost: null,
-        currency: "CAD",
-        notes: null,
-        isPreferred: false,
-        createdAt: new Date(),
-        partDefinition: partDef
-          ? {
-              id: partDef.id,
-              displayName: partDef.displayName,
-              description: partDef.description,
-            }
-          : null,
-        packUom: null,
-      };
-
-      // Optimistically add supplier part
-      utils.supplier.getById.setData({ id: supplierId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          supplierParts: [...old.supplierParts, tempSupplierPart],
-        };
-      });
-
-      return { previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousSupplier) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.getById.invalidate({ id: supplierId });
-    },
     onSuccess: () => {
+      void utils.supplier.getById.invalidate({ id: supplierId });
       setIsAddDialogOpen(false);
       setSearchQuery("");
       setSelectedPartId("");
@@ -217,9 +121,15 @@ export function SupplierPartsDialog({
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!canDeleteCoreRecords) return;
+
     if (
-      confirm("Are you sure you want to remove this part from the supplier?")
+      await confirmAction({
+        title: "Remove this part from the supplier?",
+        confirmLabel: "Remove part",
+        destructive: true,
+      })
     ) {
       removeSupplierPart.mutate({ id });
     }
@@ -241,7 +151,7 @@ export function SupplierPartsDialog({
         <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>
-              Parts for {supplierData?.name || "Supplier"}
+              Parts for <SupplierLabel name={supplierData?.name} bookName="Standard" fallback="Supplier" />
             </DialogTitle>
             <DialogDescription>
               Manage parts available from this supplier
@@ -266,7 +176,7 @@ export function SupplierPartsDialog({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {supplierData.supplierParts.map((sp) => (
+                  {paginatedSupplierParts.paginatedItems.map((sp) => (
                     <div
                       key={sp.id}
                       className="flex items-center justify-between rounded-lg border p-4"
@@ -289,10 +199,46 @@ export function SupplierPartsDialog({
                             <div>Supplier Name: {sp.supplierName}</div>
                           )}
                           {sp.lastKnownUnitCost && (
-                            <div>
-                              Cost: {sp.currency} {sp.lastKnownUnitCost}
-                            </div>
+                            <FinancialOnly>
+                              <div>
+                                Cost: {sp.currency} {sp.lastKnownUnitCost}
+                              </div>
+                            </FinancialOnly>
                           )}
+                          <label className="block">
+                            Minimum / order multiple
+                            <Input
+                              key={`${sp.id}:${sp.packSize}`}
+                              type="text"
+                              inputMode="decimal"
+                              defaultValue={sp.packSize ?? "1"}
+                              className="mt-1 w-28"
+                              disabled={
+                                !isOnline ||
+                                !(
+                                  userData?.permissions.can["suppliers.edit"] ||
+                                  userData?.permissions.can["parts.edit"]
+                                )
+                              }
+                              onBlur={(event) => {
+                                const value = event.target.value.trim();
+                                if (Number(value) === Number(sp.packSize ?? 1))
+                                  return;
+                                if (!isValidOrderMultiple(value)) {
+                                  notify(
+                                    "Enter a positive order multiple",
+                                    "error",
+                                  );
+                                  event.target.value = sp.packSize ?? "1";
+                                  return;
+                                }
+                                updateSupplierPart.mutate({
+                                  id: sp.id,
+                                  packSize: value,
+                                });
+                              }}
+                            />
+                          </label>
                           {sp.packSize && sp.packUom && (
                             <div>
                               Pack: {sp.packSize} {sp.packUom.displayName}
@@ -322,13 +268,15 @@ export function SupplierPartsDialog({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleDelete(sp.id)}
-                            >
-                              <TrashIcon className="mr-2 h-4 w-4" />
-                              Remove
-                            </DropdownMenuItem>
+                            {canDeleteCoreRecords && (
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => void handleDelete(sp.id)}
+                              >
+                                <TrashIcon className="mr-2 h-4 w-4" />
+                                Remove
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -336,6 +284,15 @@ export function SupplierPartsDialog({
                   ))}
                 </div>
               )}
+              <ListPagination
+                page={paginatedSupplierParts.page}
+                totalPages={paginatedSupplierParts.totalPages}
+                totalItems={paginatedSupplierParts.totalItems}
+                startItem={paginatedSupplierParts.startItem}
+                endItem={paginatedSupplierParts.endItem}
+                itemLabel="supplier parts"
+                onPageChange={paginatedSupplierParts.setPage}
+              />
             </div>
           </div>
 
@@ -381,12 +338,12 @@ export function SupplierPartsDialog({
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {searchResults.map((part) => (
+                    {paginatedSearchResults.paginatedItems.map((part) => (
                       <button
                         key={part.id}
                         type="button"
                         onClick={() => setSelectedPartId(part.id)}
-                        className={`w-full p-3 text-left hover:bg-gray-50 ${
+                        className={`hover:bg-accent w-full p-3 text-left ${
                           selectedPartId === part.id ? "bg-blue-50" : ""
                         }`}
                       >
@@ -408,11 +365,21 @@ export function SupplierPartsDialog({
               </div>
             )}
 
+            <ListPagination
+              page={paginatedSearchResults.page}
+              totalPages={paginatedSearchResults.totalPages}
+              totalItems={paginatedSearchResults.totalItems}
+              startItem={paginatedSearchResults.startItem}
+              endItem={paginatedSearchResults.endItem}
+              itemLabel="parts"
+              onPageChange={paginatedSearchResults.setPage}
+            />
+
             {selectedPartId && (
               <div className="rounded-md bg-blue-50 p-3 text-sm">
                 Part selected:{" "}
                 {searchResults?.find((p) => p.id === selectedPartId)
-                  ?.displayName || "Unknown"}
+                  ?.displayName ?? "Unknown"}
               </div>
             )}
           </div>

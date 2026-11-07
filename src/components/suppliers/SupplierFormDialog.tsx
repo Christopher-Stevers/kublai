@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "~/trpc/react";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,13 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
+import {
+  createEmptySupplierContact,
+  getPrimarySupplierContact,
+  normalizeSupplierContacts,
+  type SupplierContact,
+  type SupplierContactEmailRole,
+} from "~/lib/supplier-contacts";
 
 interface SupplierFormDialogProps {
   open: boolean;
@@ -21,8 +28,10 @@ interface SupplierFormDialogProps {
   initialName?: string;
   initialData?: {
     name: string;
+    contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+    contacts?: SupplierContact[] | null;
     orderingNotes?: string | null;
     locationId?: string | null;
   };
@@ -37,12 +46,19 @@ export function SupplierFormDialog({
   initialData,
   onSupplierCreated,
 }: SupplierFormDialogProps) {
+  const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const [name, setName] = useState(initialData?.name || initialName || "");
+  const [contactName, setContactName] = useState(
+    initialData?.contactName || "",
+  );
   const [contactEmail, setContactEmail] = useState(
     initialData?.contactEmail || "",
   );
   const [contactPhone, setContactPhone] = useState(
     initialData?.contactPhone || "",
+  );
+  const [contacts, setContacts] = useState<SupplierContact[]>(() =>
+    normalizeSupplierContacts(initialData?.contacts, initialData),
   );
   const [orderingNotes, setOrderingNotes] = useState(
     initialData?.orderingNotes || "",
@@ -51,69 +67,32 @@ export function SupplierFormDialog({
     initialData?.locationId ?? null,
   );
 
-  const utils = api.useUtils();
-  const createSupplier = api.supplier.create.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.list.cancel();
-
-      // Snapshot previous value
-      const previousSuppliers = utils.supplier.list.getData();
-
-      // Create temporary supplier object
-      const tempId = `temp-${Date.now()}`;
-      const newSupplier = {
-        id: tempId,
-        organizationId: "",
-        name: variables.name,
-        contactEmail: variables.contactEmail ?? null,
-        contactPhone: variables.contactPhone ?? null,
-        orderingNotes: variables.orderingNotes ?? null,
-        locationId: variables.locationId,
-        createdAt: new Date(),
-        location: variables.locationId
-          ? {
-              id: variables.locationId,
-              name: "",
-              city: null,
-              region: null,
-            }
-          : null,
-      };
-
-      // Invalidate supplier list to refetch with new supplier
-      void utils.supplier.list.invalidate();
-
-      return { previousSuppliers, tempId };
-    },
-    onError: (err, variables, context) => {
-      // Can't rollback without query params, just invalidate
-      if (context?.previousSuppliers !== undefined) {
-        void utils.supplier.list.invalidate();
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.list.invalidate();
-    },
-    onSuccess: (newSupplier) => {
-      if (onSupplierCreated && newSupplier) {
-        onSupplierCreated(newSupplier.id);
-      }
-      onOpenChange(false);
-      // Reset form but preserve initialName if provided
-      setName(initialName || "");
-      setContactEmail("");
-      setContactPhone("");
-      setOrderingNotes("");
-      setLocationId(null);
-    },
-  });
-
-  // Update form when initialData changes (e.g., when dialog opens for editing)
   useEffect(() => {
     if (open) {
       if (initialName && !initialData?.name) {
         setName(initialName);
+      }
+      if (initialData?.name !== undefined) {
+        setName(initialData.name);
+      }
+      if (initialData?.contactName !== undefined) {
+        setContactName(initialData.contactName ?? "");
+      }
+      if (initialData?.contactEmail !== undefined) {
+        setContactEmail(initialData.contactEmail ?? "");
+      }
+      if (initialData?.contactPhone !== undefined) {
+        setContactPhone(initialData.contactPhone ?? "");
+      }
+      if (initialData) {
+        setContacts(
+          normalizeSupplierContacts(initialData.contacts, initialData),
+        );
+      } else if (!supplierId) {
+        setContacts([]);
+      }
+      if (initialData?.orderingNotes !== undefined) {
+        setOrderingNotes(initialData.orderingNotes ?? "");
       }
       if (initialData?.locationId !== undefined) {
         setLocationId(initialData.locationId);
@@ -121,88 +100,90 @@ export function SupplierFormDialog({
     }
   }, [initialName, initialData, open]);
 
-  const updateSupplier = api.supplier.update.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.supplier.list.cancel();
-      if (supplierId) {
-        await utils.supplier.getById.cancel({ id: supplierId });
-      }
-
-      // Snapshot previous values
-      const previousSuppliers = utils.supplier.list.getData();
-      const previousSupplier = supplierId
-        ? utils.supplier.getById.getData({ id: supplierId })
-        : undefined;
-
-      // Invalidate supplier list to refetch with updated supplier
-      void utils.supplier.list.invalidate();
-
-      // Optimistically update supplier detail
-      if (supplierId) {
-        utils.supplier.getById.setData({ id: supplierId }, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            name: variables.name,
-            contactEmail: variables.contactEmail ?? null,
-            contactPhone: variables.contactPhone ?? null,
-            orderingNotes: variables.orderingNotes ?? null,
-            locationId: variables.locationId ?? null,
-          };
-        });
-      }
-
-      return { previousSuppliers, previousSupplier };
-    },
-    onError: (err, variables, context) => {
-      // Can't rollback without query params, just invalidate
-      if (context?.previousSuppliers !== undefined) {
-        void utils.supplier.list.invalidate();
-      }
-      if (context?.previousSupplier && supplierId) {
-        utils.supplier.getById.setData({ id: supplierId }, context.previousSupplier);
-      }
-    },
-    onSettled: () => {
-      void utils.supplier.list.invalidate();
-      if (supplierId) {
-        void utils.supplier.getById.invalidate({ id: supplierId });
-      }
-    },
-    onSuccess: () => {
-      onOpenChange(false);
-    },
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const normalizedContacts = normalizeSupplierContacts(contacts, {
+      contactName,
+      contactEmail,
+      contactPhone,
+    });
+    const primaryContact = getPrimarySupplierContact(normalizedContacts);
+    const fields = {
+      name,
+      contactName: primaryContact?.name ?? null,
+      contactEmail: primaryContact?.email ?? null,
+      contactPhone: primaryContact?.phone ?? null,
+      contacts: normalizedContacts,
+      orderingNotes: orderingNotes || null,
+      locationId: locationId ?? null,
+    };
+
     if (supplierId) {
-      updateSupplier.mutate({
-        id: supplierId,
-        name,
-        contactEmail: contactEmail || undefined,
-        contactPhone: contactPhone || undefined,
-        orderingNotes: orderingNotes || undefined,
-        locationId: locationId ?? null,
-      });
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.updateSupplier({
+          supplierId,
+          ...fields,
+        }),
+      );
     } else {
-      createSupplier.mutate({
-        name,
-        contactEmail: contactEmail || undefined,
-        contactPhone: contactPhone || undefined,
-        orderingNotes: orderingNotes || undefined,
-        locationId: locationId ?? null,
-      });
+      const newId = crypto.randomUUID();
+      void mutateMaterialListAndSync(
+        getMaterialListReplicache().mutate.createSupplier({
+          supplierId: newId,
+          ...fields,
+        }),
+      );
+      onSupplierCreated?.(newId);
     }
+
+    onOpenChange(false);
+    setName(initialName || "");
+    setContactName("");
+    setContactEmail("");
+    setContactPhone("");
+    setContacts([]);
+    setOrderingNotes("");
+    setLocationId(null);
   };
 
-  const isLoading = createSupplier.isPending || updateSupplier.isPending;
+  const updateContact = (
+    contactId: string,
+    updates: Partial<Omit<SupplierContact, "id">>,
+  ) => {
+    setContacts((current) =>
+      current.map((contact) =>
+        contact.id === contactId
+          ? {
+              id: contact.id,
+              name: "name" in updates ? (updates.name ?? null) : contact.name,
+              email:
+                "email" in updates ? (updates.email ?? null) : contact.email,
+              phone:
+                "phone" in updates ? (updates.phone ?? null) : contact.phone,
+              emailRole: (updates.emailRole ??
+                contact.emailRole) as SupplierContactEmailRole,
+            }
+          : contact,
+      ),
+    );
+  };
+
+  const addContact = () => {
+    setContacts((current) => [...current, createEmptySupplierContact()]);
+  };
+
+  const removeContact = (contactId: string) => {
+    setContacts((current) =>
+      current.filter((contact) => contact.id !== contactId),
+    );
+  };
+
+  const isPending = false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {supplierId ? "Edit Supplier" : "Add Supplier"}
@@ -210,90 +191,119 @@ export function SupplierFormDialog({
           <DialogDescription>
             {supplierId
               ? "Update supplier information."
-              : "Add a new supplier to your organization."}
+              : "Add a new supplier for parts and orders."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Supplier Name *
-              </label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter supplier name"
-                required
-                disabled={isLoading}
-              />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Supplier name"
+            required
+          />
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium">Contacts</h3>
+                <p className="text-muted-foreground text-xs">
+                  Choose who goes in To or CC when emailing orders.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addContact}
+              >
+                Add Contact
+              </Button>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="contactEmail" className="text-sm font-medium">
-                Contact Email
-              </label>
-              <Input
-                id="contactEmail"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="supplier@example.com"
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="contactPhone" className="text-sm font-medium">
-                Contact Phone
-              </label>
-              <Input
-                id="contactPhone"
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="location" className="text-sm font-medium">
-                Location (Optional)
-              </label>
-              <LocationSelector
-                value={locationId}
-                onChange={setLocationId}
-                disabled={isLoading}
-                placeholder="Select location..."
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="orderingNotes" className="text-sm font-medium">
-                Ordering Notes
-              </label>
-              <textarea
-                id="orderingNotes"
-                value={orderingNotes}
-                onChange={(e) => setOrderingNotes(e.target.value)}
-                placeholder="Any special instructions for ordering..."
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isLoading}
-              />
-            </div>
+
+            {contacts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                No contacts added.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {contacts.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_5rem_auto]"
+                  >
+                    <Input
+                      value={contact.name ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          name: e.target.value || null,
+                        })
+                      }
+                      placeholder="Name"
+                    />
+                    <Input
+                      value={contact.email ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          email: e.target.value || null,
+                        })
+                      }
+                      placeholder="Email"
+                      type="email"
+                    />
+                    <Input
+                      value={contact.phone ?? ""}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          phone: e.target.value || null,
+                        })
+                      }
+                      placeholder="Phone"
+                    />
+                    <select
+                      value={contact.emailRole}
+                      onChange={(e) =>
+                        updateContact(contact.id, {
+                          emailRole: e.target.value as SupplierContactEmailRole,
+                        })
+                      }
+                      className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border bg-card px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                    >
+                      <option value="to">To</option>
+                      <option value="cc">CC</option>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeContact(contact.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+          <Input
+            value={orderingNotes}
+            onChange={(e) => setOrderingNotes(e.target.value)}
+            placeholder="Ordering notes"
+          />
+          <LocationSelector
+            value={locationId ?? undefined}
+            onChange={setLocationId}
+            placeholder="Select location..."
+          />
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !name.trim()}>
-              {isLoading
-                ? "Saving..."
-                : supplierId
-                  ? "Update Supplier"
-                  : "Add Supplier"}
+            <Button type="submit" disabled={isPending || !name.trim()}>
+              {isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
@@ -301,4 +311,3 @@ export function SupplierFormDialog({
     </Dialog>
   );
 }
-

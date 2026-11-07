@@ -1,0 +1,9 @@
+# Replace this hostname with the --editor-origin hostname passed to prepare.py.
+# Caddy runs on the same host as the loopback-published editor port.
+office.example.com {
+    @administration path /cool/adminws /cool/getMetrics /browser/*/admin/*
+    respond @administration 404
+    reverse_proxy 127.0.0.1:9980
+    # Caddy handles TLS certificates and WebSocket upgrades, including /cool/ws.
+    # No access log: editor request URLs can contain access tokens and WOPISrc.
+}

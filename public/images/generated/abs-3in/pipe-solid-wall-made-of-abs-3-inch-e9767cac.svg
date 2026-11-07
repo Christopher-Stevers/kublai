@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    
+    <defs>
+      <radialGradient id="bgGlow" cx="50%" cy="35%" r="70%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#efefeb"/>
+      </radialGradient>
+    </defs>
+  
+    
+    <rect width="1024" height="1024" rx="72" fill="#f8f8f6"/>
+    <ellipse cx="512" cy="820" rx="270" ry="74" fill="#000" fill-opacity="0.08"/>
+    <rect x="90" y="90" width="844" height="844" rx="64" fill="url(#bgGlow)" fill-opacity="0.8"/>
+  
+    
+    <line x1="190" y1="554" x2="854" y2="554" stroke="#000" stroke-opacity="0.12" stroke-width="142" stroke-linecap="round"/>
+    <line x1="180" y1="540" x2="844" y2="540" stroke="#151515" stroke-width="142" stroke-linecap="round"/>
+    <line x1="180" y1="508.76" x2="844" y2="508.76" stroke="#444" stroke-opacity="0.55" stroke-width="12" stroke-linecap="round"/>
+    <line x1="180" y1="571.24" x2="844" y2="571.24" stroke="#000" stroke-opacity="0.2" stroke-width="12" stroke-linecap="round"/>
+    <ellipse cx="180" cy="540" rx="71" ry="50.714285714285715" fill="#2b2b2b" transform="rotate(0 180 540)" />
+    <ellipse cx="180" cy="540" rx="56.8" ry="40.57142857142857" fill="#111" transform="rotate(0 180 540)" />
+    <ellipse cx="844" cy="540" rx="71" ry="50.714285714285715" fill="#2b2b2b" transform="rotate(0 844 540)" />
+    <ellipse cx="844" cy="540" rx="56.8" ry="40.57142857142857" fill="#111" transform="rotate(0 844 540)" />
+  
+    <rect x="92" y="92" width="840" height="840" rx="64" stroke="#e6e6e0" stroke-width="4"/>
+  </svg>

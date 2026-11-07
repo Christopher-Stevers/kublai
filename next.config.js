@@ -6,8 +6,14 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // CI and local verification can build beside the live server instead of
+  // replacing the .next directory that `next start` is currently serving.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // For Next.js 13+ App Router, we need to configure route handlers differently
   experimental: {
+    // Forward complete 50 MB document uploads plus multipart metadata.
+    // Each route continues to enforce its own file and request limits.
+    proxyClientMaxBodySize: 51 * 1024 * 1024,
     serverActions: {
       bodySizeLimit: "5gb",
     },
@@ -17,6 +23,35 @@ const config = {
   // Ignore TypeScript errors during build (typecheck should be run separately)
   typescript: {
     ignoreBuildErrors: false, // Keep TypeScript checking during build
+  },
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "node:sqlite"],
+  async redirects() {
+    return [
+      { source: "/dashboard/jobs/:path*", destination: "/jobs/:path*", permanent: true },
+      { source: "/dashboard/:path*", destination: "/jobs/:path*", permanent: true },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/offline.html",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
   },
 };
 

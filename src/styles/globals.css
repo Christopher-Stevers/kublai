@@ -1,16 +1,267 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes notification-bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15%, 45%, 75% { transform: rotate(18deg); }
+  30%, 60%, 90% { transform: rotate(-18deg); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notification-bell-ring {
+    animation: notification-bell-ring 700ms ease-in-out;
+    transform-origin: top center;
+  }
+}
+
+@keyframes chat-drawer-item {
+  from { opacity: 0; transform: translateX(-16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chat-drawer-item {
+    animation: chat-drawer-item 340ms cubic-bezier(0.22, 1.3, 0.36, 1) both;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
+/* A markup gives a little shake when it is picked up. */
+@keyframes annotation-shake {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-3deg); }
+  40% { transform: rotate(3deg); }
+  60% { transform: rotate(-2deg); }
+  80% { transform: rotate(1deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .annotation-shake {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: annotation-shake 380ms ease-in-out;
+  }
+}
+
+/* Arc scroller: the arc fades in beside the thumb. */
+@keyframes arc-scroller-in {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .arc-scroller { animation: arc-scroller-in 140ms ease-out backwards; }
+}
+
+/* Loading placeholders: a soft highlight sweeps across instead of a spinner. */
+@keyframes skeleton-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+.skeleton-shimmer {
+  background-color: var(--muted);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--background) 55%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-shimmer { animation: skeleton-shimmer 1.4s ease-in-out infinite; }
+}
+
+/* Tappable cards lift slightly under a mouse and press in on touch. */
+.card-lift {
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* Compose with Tailwind's ring variables so merge-mode rings survive hover. */
+  .card-lift:hover {
+    transform: translateY(-2px) scale(1.01);
+    --tw-shadow:
+      0 10px 24px -12px rgb(0 0 0 / 0.22),
+      0 2px 6px -2px rgb(0 0 0 / 0.08);
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--tw-shadow);
+  }
+}
+.card-lift:active { transform: scale(0.985); }
+@media (prefers-reduced-motion: reduce) {
+  .card-lift:hover, .card-lift:active { transform: none; }
+}
+
+/* Permanent drafting grid behind the drawing, including while it loads. */
+.blueprint-grid {
+  --grid-line: color-mix(in oklab, var(--brand) 14%, transparent);
+  --grid-major: color-mix(in oklab, var(--brand) 22%, transparent);
+  background-color: color-mix(in oklab, var(--brand) 4%, var(--canvas, var(--background)));
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  background-position: var(--drawing-grid-x, -1px) var(--drawing-grid-y, -1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blueprint-grid {
+    background-position: -1px -1px;
+  }
+}
+
+/* Menus and panels that open upward spring into place. */
+@keyframes spring-up {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Radix menus keep their own close animation. */
+  .spring-up:not([data-state="closed"]) {
+    transform-origin: var(--radix-dropdown-menu-content-transform-origin, bottom center);
+    animation: spring-up 260ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  }
+}
+
+/* Saved: the circle pops and the tick draws itself. */
+@keyframes save-check-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes save-check-draw {
+  from { stroke-dashoffset: 1; }
+}
+.save-check { transform-origin: center; }
+.save-check-tick { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .save-check { animation: save-check-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+  .save-check-tick { animation: save-check-draw 260ms 140ms ease-out backwards; }
+}
+
+/* Reading a slip: a light sweeps down the paper and each line inks in as it
+   passes. Done, the lines settle and a tick draws; failed, the slip shakes. */
+@keyframes slip-scan-beam {
+  0% { transform: translateY(0); opacity: 0; }
+  12%, 82% { opacity: 1; }
+  100% { transform: translateY(24px); opacity: 0; }
+}
+@keyframes slip-scan-ink {
+  0%, 8% { transform: scaleX(0.12); opacity: 0.35; }
+  40%, 78% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0.35; }
+}
+@keyframes slip-scan-wait {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
+}
+@keyframes slip-scan-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1.5px); }
+  75% { transform: translateX(1.5px); }
+}
+.slip-scan-ink { transform-box: fill-box; transform-origin: left; }
+.slip-scan-beam { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .slip-scan[data-state="running"] .slip-scan-beam { animation: slip-scan-beam 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+  .slip-scan[data-state="running"] .slip-scan-ink { animation: slip-scan-ink 1.8s ease-out infinite backwards; }
+  .slip-scan[data-state="waiting"] .slip-scan-ink { animation: slip-scan-wait 2.4s ease-in-out infinite; }
+  .slip-scan[data-state="failed"] { animation: slip-scan-shake 180ms 2 ease-in-out; }
+}
+
+/* Keep each complete source photo contained; the separate dark-mode treatment
+   below preserves the original softened frame appearance. */
+.part-photo {
+  object-fit: contain;
+  object-position: center;
+  padding: 0.25rem;
+  transform: none;
+}
+/* Part photos are shot on white. In dark mode, dim them and soften the
+   border: a narrow fade straddles the photo's edge, half inside and half
+   outside it. In a .part-photo-frame the photo is drawn 3% larger on each
+   side and the frame stops clipping, so the outer half shows past the edge. */
+.dark .part-photo {
+  filter: brightness(0.78) contrast(0.96);
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      rgb(0 0 0 / 0.5) 2.83%,
+      #000 5.66%,
+      #000 94.34%,
+      rgb(0 0 0 / 0.5) 97.17%,
+      transparent
+    );
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+.dark .part-photo-frame:has(> .part-photo) {
+  overflow: visible;
+  background: transparent;
+}
+/* next/image sets the fill position inline, so these need !important. */
+.dark .part-photo-frame > .part-photo {
+  inset: -3% !important;
+  width: 106% !important;
+  max-width: none;
+  height: 106% !important;
+}
+
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Keep mobile browser pinches from scaling app navigation, including portalled
+   dialogs and nested scrollers. Low specificity preserves viewer/quick-wheel
+   touch-action: none and pan-y rules; custom pinch handlers remain in control.
+   Browser menu/keyboard zoom and public pages remain available. The shell
+   covers itself before hydration; AppTouchGestures flags <html> for the rest.
+   No html:has() here: it rechecks every element's style on each DOM change,
+   which cost drawing zooms a frame per tile. */
+@layer base {
+  :where([data-app-shell], [data-app-shell] *, html[data-app-touch], html[data-app-touch] body, html[data-app-touch] body *) {
+    touch-action: pan-x pan-y;
+  }
 }
 
 /* Smooth scroll behavior */
 html {
+  min-height: 100%;
+  background: var(--background);
   scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--background);
+}
+
+html,
+body,
+body *:not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-touch-callout: none;
+}
+
+img,
+svg,
+a {
+  -webkit-user-drag: none;
 }
 
 /* Performance optimizations for animations */
@@ -43,7 +294,9 @@ html {
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
   --color-background: var(--background);
+  --color-canvas: var(--canvas);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -51,6 +304,10 @@ html {
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -79,13 +336,20 @@ html {
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
+  /* The page behind cards: light grey so white cards, buttons and inputs stand out. */
+  --canvas: oklch(0.955 0.005 250);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Brand: change --brand here and in .dark below to re-colour the app. */
+  --brand: oklch(0.5 0.075 250);
+  --brand-foreground: oklch(0.99 0 0);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --success: oklch(0.56 0.14 155);
+  --warning: oklch(0.72 0.16 70);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -93,9 +357,10 @@ html {
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Clearly visible edges on cards, buttons and inputs (was 0.922, near white). */
+  --border: oklch(0.83 0.006 250);
+  --input: oklch(0.78 0.006 250);
+  --ring: var(--brand);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -103,8 +368,8 @@ html {
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
@@ -112,14 +377,20 @@ html {
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
+  --canvas: oklch(0.12 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --brand: oklch(0.7 0.07 250);
+  --brand-foreground: oklch(0.18 0.02 250);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --success: oklch(0.68 0.14 155);
+  --warning: oklch(0.78 0.15 75);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -127,9 +398,9 @@ html {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: oklch(1 0 0 / 20%);
+  --input: oklch(1 0 0 / 28%);
+  --ring: var(--brand);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -151,5 +422,606 @@ html {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Drop-downs: every native <select> matches the outline drop-down buttons
+   (Orders filters) — same border, shadow, chevron and focus ring — while
+   phones still open their own picker. Unlayered so it applies over each
+   select's own padding utilities, which would otherwise hide the chevron. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  cursor: pointer;
+  text-overflow: ellipsis;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.dark select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+select.border-0 {
+  box-shadow: none;
+}
+select:not([multiple]):not([size]):hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--ring) 45%, var(--border));
+}
+select:focus-visible,
+input[type="date"]:focus-visible,
+input[type="time"]:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Date and time boxes sit beside drop-downs; give them the same finish. */
+input[type="date"],
+input[type="time"] {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+@layer utilities {
+  /* Filled bottom actions match their neighboring outline buttons. */
+  :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary {
+    @apply border border-input bg-card text-foreground shadow-sm;
+  }
+  :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary:hover {
+    @apply bg-accent text-accent-foreground;
+  }
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary {
+    @apply border-input bg-input/30;
+    --tw-shadow-color: oklch(0 0 0 / 35%);
+  }
+  .dark :where(.pin-viewport-bottom, [data-bottom-menu]) :is(button, [data-slot="button"]).bg-primary:hover {
+    @apply bg-input/50;
+  }
+
+  /* Fixed bottom bars: see src/lib/viewport-bottom.ts. */
+  .pin-viewport-bottom {
+    translate: 0 var(--viewport-bottom, 0px);
+  }
+
+  .dark .bg-white,
+  .dark .bg-gray-50,
+  .dark .bg-slate-50,
+  .dark .bg-zinc-50,
+  .dark .bg-neutral-50 {
+    background-color: var(--card);
+  }
+
+  .dark .bg-gray-100,
+  .dark .bg-slate-100,
+  .dark .bg-zinc-100,
+  .dark .bg-neutral-100 {
+    background-color: var(--muted);
+  }
+
+  .dark .bg-gray-200,
+  .dark .bg-gray-300,
+  .dark .bg-slate-200,
+  .dark .bg-slate-300,
+  .dark .bg-zinc-200,
+  .dark .bg-zinc-300,
+  .dark .bg-neutral-200,
+  .dark .bg-neutral-300 {
+    background-color: color-mix(in oklch, var(--muted) 72%, white 8%);
+  }
+
+  .dark .text-gray-400,
+  .dark .text-gray-500,
+  .dark .text-gray-600,
+  .dark .text-slate-400,
+  .dark .text-slate-500,
+  .dark .text-slate-600,
+  .dark .text-zinc-400,
+  .dark .text-zinc-500,
+  .dark .text-zinc-600,
+  .dark .text-neutral-400,
+  .dark .text-neutral-500,
+  .dark .text-neutral-600 {
+    color: var(--muted-foreground);
+  }
+
+  .dark .text-black,
+  .dark .text-gray-700,
+  .dark .text-gray-800,
+  .dark .text-gray-900,
+  .dark .text-gray-950,
+  .dark .text-slate-700,
+  .dark .text-slate-800,
+  .dark .text-slate-900,
+  .dark .text-slate-950,
+  .dark .text-zinc-700,
+  .dark .text-zinc-800,
+  .dark .text-zinc-900,
+  .dark .text-zinc-950,
+  .dark .text-neutral-700,
+  .dark .text-neutral-800,
+  .dark .text-neutral-900,
+  .dark .text-neutral-950 {
+    color: var(--foreground);
+  }
+
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-slate-300,
+  .dark .border-zinc-100,
+  .dark .border-zinc-200,
+  .dark .border-zinc-300,
+  .dark .border-neutral-100,
+  .dark .border-neutral-200,
+  .dark .border-neutral-300,
+  .dark .divide-gray-200 > :not(:last-child),
+  .dark .divide-slate-200 > :not(:last-child) {
+    border-color: var(--border);
+  }
+
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover,
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-slate-100:hover {
+    background-color: var(--accent);
+  }
+
+  .dark .hover\:text-gray-900:hover,
+  .dark .hover\:text-slate-900:hover {
+    color: var(--foreground);
+  }
+
+  .dark .bg-blue-50,
+  .dark .bg-blue-100 {
+    background-color: oklch(0.35 0.11 255 / 45%);
+  }
+
+  .dark .bg-emerald-50,
+  .dark .bg-emerald-100,
+  .dark .bg-green-50,
+  .dark .bg-green-100 {
+    background-color: oklch(0.34 0.09 160 / 42%);
+  }
+
+  .dark .bg-amber-50,
+  .dark .bg-amber-100,
+  .dark .bg-yellow-50,
+  .dark .bg-yellow-100 {
+    background-color: oklch(0.36 0.08 75 / 46%);
+  }
+
+  .dark .bg-red-50,
+  .dark .bg-red-100 {
+    background-color: oklch(0.34 0.1 25 / 44%);
+  }
+
+  .dark .text-blue-800,
+  .dark .text-blue-900,
+  .dark .text-blue-950 {
+    color: oklch(0.82 0.09 250);
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-800,
+  .dark .text-emerald-900,
+  .dark .text-green-700,
+  .dark .text-green-800,
+  .dark .text-green-900 {
+    color: oklch(0.84 0.11 155);
+  }
+
+  .dark .text-amber-700,
+  .dark .text-amber-800,
+  .dark .text-amber-900,
+  .dark .text-yellow-700,
+  .dark .text-yellow-800,
+  .dark .text-yellow-900 {
+    color: oklch(0.87 0.12 85);
+  }
+
+  .dark .border-blue-100,
+  .dark .border-blue-200,
+  .dark .border-emerald-200,
+  .dark .border-green-200,
+  .dark .border-amber-200,
+  .dark .border-amber-300,
+  .dark .border-yellow-200,
+  .dark .border-red-200,
+  .dark .border-red-300 {
+    border-color: color-mix(in oklch, currentColor 38%, transparent);
+  }
+
+  .dark .shadow-sm,
+  .dark .shadow-md,
+  .dark .shadow-lg,
+  .dark .shadow-xl {
+    --tw-shadow-color: oklch(0 0 0 / 35%);
+  }
+
+  .dark input:not([type="checkbox"]):not([type="radio"]),
+  .dark textarea,
+  .dark select {
+    color: var(--foreground);
+  }
+
+  .dark ::selection {
+    background-color: color-mix(in oklch, var(--ring) 55%, transparent);
+    color: var(--foreground);
+  }
+}
+
+/* Continuous spreadsheet rows shared by material lists and part pickers. */
+.parts-sheet-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+}
+.parts-sheet { font-variant-numeric: tabular-nums; }
+.parts-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .025em;
+}
+.parts-sheet-row, .parts-picker-row {
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  align-items: stretch;
+}
+.parts-sheet-row:nth-child(odd), .parts-picker-row:nth-child(odd) { background: color-mix(in srgb, var(--muted) 28%, var(--background)); }
+.parts-sheet-row:hover, .parts-sheet-row:focus-within, .parts-picker-row:hover, .parts-picker-row:focus-within { background: color-mix(in srgb, var(--primary) 6%, var(--background)); }
+.parts-sheet-row:last-child, .parts-picker-row:last-child { border-bottom: 0; }
+.parts-sheet-header > *, .parts-sheet-row > * {
+  padding: 6px 8px;
+  border-right: 1px solid var(--border);
+  min-height: 44px;
+  height: auto;
+  align-self: stretch;
+  align-content: center;
+}
+.parts-sheet-header > * { min-height: 32px; }
+.parts-sheet-header > :last-child, .parts-sheet-row > :last-child { border-right: 0; }
+.parts-sheet-row > .parts-sheet-photo { width: 48px; }
+.parts-sheet-photo img { object-fit: contain; padding: 5px; }
+.parts-sheet-row [data-slot="button"], .parts-sheet-row input { border-radius: 2px; }
+
+.parts-sheet-photo > div { height: 32px; width: 32px; }
+.parts-sheet > div:has(> .parts-picker-row) { border-bottom: 1px solid var(--border); }
+
+/* Catalogue and saved material lists use identical cell spacing and borders. */
+.parts-sheet-cells { align-items: stretch; }
+.parts-sheet-cells > * {
+  border-right: 1px solid var(--border);
+  padding: 6px 8px;
+}
+.parts-sheet-cells > :last-child { border-right: 0; }
+
+/* The standard bottom bar (src/components/ui/priority-action-bar.tsx). Not in
+   a layer, so it wins over the sizes each screen gives its buttons: every bar
+   has the same button height, type and symbol size. The drawing viewer's
+   tool bar is ViewerActionBar and keeps its own. */
+[data-action-bar] {
+  --action-height: 2.75rem;
+  --action-inset: 0.5rem;
+  font-family: var(--font-action), var(--font-sans);
+}
+[data-action-bar-row],
+[data-action-bar-shelf] {
+  display: grid;
+  gap: 0.375rem;
+}
+[data-action-bar-shelf] {
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px dashed var(--border);
+}
+[data-action-bar-shelf][hidden],
+[data-action-bar-row][hidden] {
+  display: none;
+}
+/* The bar's search, widened across the whole bar. */
+[data-action-bar-search] {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: var(--action-height);
+}
+[data-action-bar-search] input {
+  font-size: 1rem;
+}
+[data-landscape-action-row] > [data-action-bar-search] { min-width: 0; flex: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-action-bar-shelf] {
+    animation: action-shelf-rise 180ms ease-out;
+  }
+}
+@keyframes action-shelf-rise {
+  from { opacity: 0; transform: translateY(0.75rem); }
+}
+[data-action-slot] {
+  min-width: 0;
+  height: var(--action-height);
+}
+[data-action-slot] > *,
+[data-action-slot] > div > :is(button, a) {
+  width: 100%;
+  height: 100%;
+}
+[data-action-slot] :is(button, a) {
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
+}
+[data-action-slot] :is(button, a) > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+}
+[data-action-slot] input {
+  height: 100%;
+  font-size: 1rem;
+}
+[data-action-bar-label]:empty {
+  display: none;
+}
+[data-action-bar-label] {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+[data-action-bar-label],
+[data-action-bar-label] * {
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+[data-action-bar-tab] {
+  position: absolute;
+  bottom: calc(100% + var(--action-inset) - 0.25rem);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.5rem;
+  padding: 0 0.625rem 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* A larger touch target than the drawn tab. */
+[data-action-bar-tab]::before {
+  content: "";
+  position: absolute;
+  inset: -0.625rem -0.75rem -0.25rem;
+}
+[data-action-bar-tab]:not([data-count])::after { display: none; }
+[data-action-bar-tab]::after {
+  content: attr(data-count);
+  min-width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+  text-align: center;
+}
+[data-action-bar-tab] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: rotate 180ms ease-out;
+}
+[data-action-bar-tab][aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+[data-action-bar-tab]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* App chrome follows device orientation. All full-page workspaces use the
+   same header height, so hiding it also returns that space to the content. */
+:root {
+  --app-header-height: 3.5rem;
+  --landscape-fallback-height: 0px;
+  --app-content-height: calc(100dvh - var(--app-header-height) - var(--landscape-fallback-height));
+}
+@media (min-width: 640px) { :root { --app-header-height: 4rem; } }
+.app-below-header { top: var(--app-header-height); }
+[data-landscape-navigation-slot] { display: none; }
+[data-landscape-action-row] > [data-action-bar-row] { min-width: 0; flex: 1; }
+html[data-app-landscape] { --app-header-height: 0px; }
+html[data-app-landscape] [data-app-header] { display: none !important; }
+html[data-app-landscape] [data-landscape-navigation-slot] {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  align-items: center;
+}
+html[data-app-landscape] [data-landscape-navigation-slot]:empty { width: 0; min-height: 1px; }
+html[data-app-landscape] [data-landscape-action-row] { display: flex; align-items: end; gap: 0.375rem; }
+html[data-app-landscape] [data-viewer-action-bar]:has([data-landscape-navigation]) {
+  grid-template-columns: auto repeat(var(--viewer-action-count), minmax(0, 1fr)) !important;
+}
+html[data-app-landscape] [data-viewer-action-bar] > [data-landscape-navigation-slot]:empty { display: none; }
+[data-landscape-navigation] { display: flex; gap: 0.375rem; align-items: center; }
+[data-landscape-navigation] > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--foreground);
+}
+[data-landscape-navigation] > button:hover { background: var(--accent); }
+[data-landscape-navigation] [data-landscape-logo] span { display: none; }
+[data-landscape-fallback-bar] {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 80;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+html[data-app-landscape][data-landscape-fallback] { --landscape-fallback-height: calc(60px + env(safe-area-inset-bottom)); }
+html[data-app-landscape][data-landscape-fallback] [data-app-shell] > main { padding-bottom: var(--landscape-fallback-height); }
+html[data-app-landscape][data-landscape-fallback] .app-below-header { bottom: var(--landscape-fallback-height); }
+
+html[data-app-landscape] .pin-viewport-bottom:has([data-landscape-navigation-slot]) { display: block; }
+
+/* A screen's second top bar joins its bottom bar in landscape, above the
+   shelf and buttons. */
+[data-landscape-subbar-slot]:empty { display: none; }
+[data-landscape-subbar-slot] {
+  margin-bottom: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* One label convention for shared, native, and custom button controls. */
+:is(button, [role="button"], [data-slot="button"], input[type="button"], input[type="submit"], input[type="reset"]),
+:is(button, [role="button"], [data-slot="button"]) :where(span, small, strong, em) {
+  text-transform: capitalize;
+}
+
+/* Full-screen drawings use all available space. Navigation remains in the arc menu.
+   The viewer flags <html>; see useRootFlag. */
+html:root[data-drawing-quick-wheel-page] {
+  --app-header-height: 0px;
+  --landscape-fallback-height: 0px;
+}
+html:root[data-drawing-quick-wheel-page] [data-app-header],
+html:root[data-drawing-quick-wheel-page] [data-landscape-fallback-bar] {
+  display: none !important;
+}
+html:root[data-drawing-quick-wheel-page] .app-below-header { bottom: 0; }
+html:root[data-drawing-quick-wheel-page] [data-app-shell] > main { padding-bottom: 0; }
+
+/* A dark icon with a light outline stays legible over either drawing colour. */
+.drawing-corner-control svg {
+  color: #111827;
+  filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
+    drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff);
+}
+
+
+/* Drawing selections must remain unmistakable over translucent controls and
+   either sheet background. Rings and badges never change the control's size. */
+.drawing-swatch-control,
+.drawing-state-control:not(.drawing-corner-control) {
+  position: relative;
+}
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]) {
+  background: #0369a1;
+  color: #fff;
+  border-color: #7dd3fc;
+  box-shadow: inset 0 0 0 2px #7dd3fc;
+  font-weight: 700;
+}
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]):hover {
+  background: #075985;
+  color: #fff;
+}
+.drawing-swatch-control:is([aria-pressed="true"], [aria-checked="true"])::after,
+.drawing-state-control:is([aria-pressed="true"], [aria-expanded="true"], [aria-checked="true"]):not([role^="menuitem"])::after {
+  content: "✓";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #0369a1;
+  border-radius: 50%;
+  background: #fff;
+  color: #075985;
+  font: 700 11px/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.drawing-state-control.drawing-corner-control[aria-expanded="true"] svg {
+  color: #fff;
+  filter: none;
+}
+
+.drawing-swatch-control:is([aria-pressed="true"], [aria-checked="true"]) {
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px #0369a1;
+}
+
+/* The item the arrow keys moved to, ringed like a darksaber: a black blade
+   with a white edge, wrapped in dark smoke (seen on light pages) and a pale
+   glow (seen on dark ones) that hums. Unlayered so it shows through
+   outline-none and the item's own shadow. */
+[data-key-focus]:focus-visible {
+  outline: 3px solid #050507;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 2px 8px rgb(255 255 255 / 0.95),
+    0 0 10px 9px rgb(8 10 18 / 0.45),
+    0 0 26px 12px rgb(205 218 255 / 0.5);
+  animation: darksaber-hum 1.8s ease-in-out infinite;
+}
+@keyframes darksaber-hum {
+  50% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 3px 8px #fff,
+      0 0 14px 11px rgb(8 10 18 / 0.6),
+      0 0 34px 15px rgb(205 218 255 / 0.75);
+  }
+  54% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 2px 8px rgb(255 255 255 / 0.8),
+      0 0 9px 9px rgb(8 10 18 / 0.38),
+      0 0 22px 11px rgb(205 218 255 / 0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-key-focus]:focus-visible {
+    animation: none;
   }
 }

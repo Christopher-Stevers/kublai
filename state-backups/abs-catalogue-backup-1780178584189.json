@@ -1,0 +1,302 @@
+{
+  "createdAt": "2026-05-30T22:03:04.189Z",
+  "sourcePath": "/home/halvor/.openclaw/workspace/kublai/data/catalogue/abs-catalogue.json",
+  "existingAbs": [
+    {
+      "id": "16ab5445-c341-47f9-8a51-fb48559820be",
+      "displayName": "1-1/2\" ABS 22 1/2"
+    },
+    {
+      "id": "bfb72616-1b74-4d8e-be37-1b670d5b0c99",
+      "displayName": "1-1/2\" ABS 45"
+    },
+    {
+      "id": "5d492033-49af-4714-b7a8-be7dc20bf6a6",
+      "displayName": "1-1/2\" ABS 45 H x SP"
+    },
+    {
+      "id": "29d8dabd-3565-42c6-8573-5a0ec45bc172",
+      "displayName": "1-1/2\" ABS 45 Long"
+    },
+    {
+      "id": "f4d9a900-65ed-433d-8326-0265745b9b41",
+      "displayName": "1-1/2\" ABS 60"
+    },
+    {
+      "id": "2afe6bb7-c686-46d7-b079-95b1a92a42ee",
+      "displayName": "1-1/2\" ABS 90 3 Way"
+    },
+    {
+      "id": "240205f9-bd67-40b2-beb6-30d04feee370",
+      "displayName": "1-1/2\" ABS 90 Extra Long"
+    },
+    {
+      "id": "68977046-3b7d-4f76-95d6-a3a6b6c3ed83",
+      "displayName": "1-1/2\" ABS 90 Extra Long H x SP"
+    },
+    {
+      "id": "d95c8807-4fd8-401a-8f86-d775feb3733c",
+      "displayName": "1-1/2\" ABS 90 H x SP"
+    },
+    {
+      "id": "5adb8940-9f49-44f6-8879-6a97505e7bed",
+      "displayName": "1-1/2\" ABS 90 Long"
+    },
+    {
+      "id": "a92e3e5c-2ba3-4394-9e35-f55c037ce91f",
+      "displayName": "1-1/2\" ABS 90 Short Turn"
+    },
+    {
+      "id": "0e0242be-c08d-4280-a369-69bbd5849f0d",
+      "displayName": "1-1/2\" ABS 90 SJ NUT x H"
+    },
+    {
+      "id": "962d1f4a-3a48-4ad5-a958-723ecd4e5786",
+      "displayName": "1-1/2\" ABS 90 Vent"
+    },
+    {
+      "id": "028079df-5d5b-4116-b52c-abc1b8f28d17",
+      "displayName": "1-1/2\" ABS C/O Adapter SP x FPT"
+    },
+    {
+      "id": "8b5bdebb-17f9-4173-9074-71be19b3b2d9",
+      "displayName": "1-1/2\" ABS C/O Adapter W/ Plug SP x FPT"
+    },
+    {
+      "id": "92ad5b20-0bd2-4e8d-a89e-42b42f6e0f9f",
+      "displayName": "1-1/2\" ABS C/O Plug MPT"
+    },
+    {
+      "id": "ea6bd86c-5eed-46fb-876e-d5daf4894b9a",
+      "displayName": "1-1/2\" ABS C/O Tee w/plug H x H x FPT"
+    },
+    {
+      "id": "3f1371b2-4ae3-4b00-bbf2-b9c40e86ab41",
+      "displayName": "1-1/2\" ABS Cap Threaded"
+    },
+    {
+      "id": "c6c9f708-487e-4e28-96dd-bbb15043b03b",
+      "displayName": "1-1/2\" ABS Combo Trap Adapter"
+    },
+    {
+      "id": "c25f98b2-bae5-4ac4-be5c-b13e0c70494c",
+      "displayName": "1-1/2\" ABS Continuous Waste Centre Outlet"
+    },
+    {
+      "id": "8ae9fc62-8e86-4f4c-adbb-c713319a6d89",
+      "displayName": "1-1/2\" ABS Continuous Waste End Outlet"
+    },
+    {
+      "id": "fa452afa-1ad1-43bd-8e28-bc4cc2060c5b",
+      "displayName": "1-1/2\" ABS COP To DWV Adapter H x SJ"
+    },
+    {
+      "id": "486cabd4-327f-47ef-84b8-cd0fa41f018a",
+      "displayName": "1-1/2\" ABS Coupling"
+    },
+    {
+      "id": "5058d6b7-6e4d-4720-b189-fa4ccb0a897c",
+      "displayName": "1-1/2\" ABS Double TY"
+    },
+    {
+      "id": "87c1e41c-02c5-41f5-a0e6-6b9240fbb72f",
+      "displayName": "1-1/2\" ABS Double Wye"
+    },
+    {
+      "id": "11677368-cc5a-4fb9-a58a-20831f72c2b5",
+      "displayName": "1-1/2\" ABS Expansion Joint"
+    },
+    {
+      "id": "59a8b161-80bc-489d-93b1-696b59e85bd3",
+      "displayName": "1-1/2\" ABS Female Adapter H x FPT"
+    },
+    {
+      "id": "49651fea-3219-4e5b-9bc6-ac4f01919f8d",
+      "displayName": "1-1/2\" ABS Female Trap Adapter Plastic NUT x H"
+    },
+    {
+      "id": "7e4518c9-d27f-4786-9867-7332bfbd9b65",
+      "displayName": "1-1/2\" ABS Male Adapter H x MPT"
+    },
+    {
+      "id": "968041d5-7824-4276-84f2-10309940a72f",
+      "displayName": "1-1/2\" ABS Male Trap Adapter SP x NUT"
+    },
+    {
+      "id": "8ef03215-fca5-4745-ba84-31f694707835",
+      "displayName": "1-1/2\" ABS P Trap"
+    },
+    {
+      "id": "cf626338-0773-4ec9-82b5-efc5d6744c70",
+      "displayName": "1-1/2\" ABS P Trap Union"
+    },
+    {
+      "id": "d8805840-cdd4-49c5-ad2c-fbca12393788",
+      "displayName": "1-1/2\" ABS P Trap Union W/ C/O"
+    },
+    {
+      "id": "38dab061-c75a-46e7-b7cc-fdd9b844a850",
+      "displayName": "1-1/2\" ABS P Trap W/ C/O"
+    },
+    {
+      "id": "1c5addde-d3d7-4564-aefc-7030968b590b",
+      "displayName": "1-1/2\" ABS Permanent Cap"
+    },
+    {
+      "id": "9676f6b4-2ce9-411b-85f5-ca155d8b2b42",
+      "displayName": "1-1/2\" ABS Pivoting P Trap Union W/ C/O"
+    },
+    {
+      "id": "f155a886-1d77-41d9-a2e6-2661a63bd68e",
+      "displayName": "1-1/2\" ABS S Trap W/ C/O"
+    },
+    {
+      "id": "7c4b5213-3a8e-4b1d-b0d1-a97240eb64f4",
+      "displayName": "1-1/2\" ABS Slip Joint Nut FPT"
+    },
+    {
+      "id": "9f191413-5df7-4396-998e-e8f242e41ea6",
+      "displayName": "1-1/2\" ABS Strainer Adapter"
+    },
+    {
+      "id": "6bfbfa2d-6340-4721-b3b1-9df1ecbc6c27",
+      "displayName": "1-1/2\" ABS Swivel Tray Plug Adapter W/ Washer"
+    },
+    {
+      "id": "f106de8a-f6c5-4de2-87e5-21937adb1fcc",
+      "displayName": "1-1/2\" ABS Tee"
+    },
+    {
+      "id": "0381c76c-75a8-4fd5-bad8-c46f18c770e7",
+      "displayName": "1-1/2\" ABS TY"
+    },
+    {
+      "id": "13202534-b90f-45d8-a056-26a3a1f6d683",
+      "displayName": "1-1/2\" ABS Union W/ Washer"
+    },
+    {
+      "id": "3b1398a7-6e60-4c4f-b483-9114210f5056",
+      "displayName": "1-1/2\" ABS Washer SJ"
+    },
+    {
+      "id": "f31014e1-166a-43ee-93b6-e82d4481b3f7",
+      "displayName": "1-1/2\" ABS Wye"
+    },
+    {
+      "id": "786e60f5-f1ad-4cbf-85ea-c0464c176a23",
+      "displayName": "1-1/2\" x 1-1/4\" ABS 45 Dwvwye"
+    },
+    {
+      "id": "0f18cbba-093d-434b-aed4-598749ec6903",
+      "displayName": "1-1/2\" x 1-1/4\" ABS 90 Dwvelbow SJ NUT x H"
+    },
+    {
+      "id": "6fb4bbec-e1b0-446b-85f6-ccece8cce51c",
+      "displayName": "1-1/2\" x 1-1/4\" ABS COP To DWV Adapter H x SJ"
+    },
+    {
+      "id": "0f71ae43-68f4-45b2-a70a-a18f11579604",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Female Trap Adapter Plastic NUT x H"
+    },
+    {
+      "id": "183e3f0a-8186-445e-93f1-df833d04b26b",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Male Adapter H x MPT"
+    },
+    {
+      "id": "83eaf629-7e10-466a-90b0-d3156842dee0",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Male Trap Adapter SP x NUT"
+    },
+    {
+      "id": "27662b08-9755-4bbc-bccb-6e5db7a765b4",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Reducing Bushing SP x FPT"
+    },
+    {
+      "id": "9c316049-6b04-40cb-9d55-00a28e92c3fa",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Reducing Bushing SP x H"
+    },
+    {
+      "id": "561fb5a0-bcd1-4cac-bdfa-934947099eeb",
+      "displayName": "1-1/2\" x 1-1/4\" ABS Reducing Coupling"
+    },
+    {
+      "id": "40d19301-0555-43be-a034-c0caa64146e2",
+      "displayName": "1-1/2\" x 1-1/4\" ABS TY"
+    },
+    {
+      "id": "13e91cf9-8882-402e-aefa-1760236284c4",
+      "displayName": "1-1/2\" x 1-1/4\" x 1-1/2\" ABS TY"
+    },
+    {
+      "id": "49e86af8-b6a1-4f68-b91f-33c92fda365e",
+      "displayName": "1-1/2\" x 1/2\" ABS Dishwasher Adapter SP x FPT"
+    },
+    {
+      "id": "f65c272e-c066-4c6a-98fb-f059a13eed2d",
+      "displayName": "1-1/2\" x 1/2\" ABS Dishwasher Adapter W/ Barb SP"
+    },
+    {
+      "id": "90abb0d8-f9df-4801-9ae2-0fb305618943",
+      "displayName": "1-1/2\" x 1/2\" ABS Dishwasher Wye H X H X Hosebarb"
+    },
+    {
+      "id": "e3b3a85e-bc85-47fc-a176-1757c169db18",
+      "displayName": "1-1/2\" x 1/2\" ABS Dishwasher Wye SP x H"
+    },
+    {
+      "id": "8a6ba295-3e78-47f4-a8ae-f9c7e1195330",
+      "displayName": "1-1/2\" x 3/4\" ABS Dishwasher Wye H X H X Hosebarb"
+    },
+    {
+      "id": "03399272-1676-45ce-9dac-363ffa0cfeee",
+      "displayName": "1-1/2\" x 3/4\" ABS Reducing Bushing SP x FPT"
+    },
+    {
+      "id": "94847837-8d2f-4d19-9e0b-905d0c219db5",
+      "displayName": "1-1/2\" x 7\" ABS Male Trap Adapter SP X Plastic Nut"
+    },
+    {
+      "id": "4962d539-29cd-45f3-8dc0-ebf4fa5247a6",
+      "displayName": "1-1/4\" ABS 22 1/2"
+    },
+    {
+      "id": "e23995fd-269b-4c69-beac-d39884628071",
+      "displayName": "1-1/4\" ABS 45"
+    },
+    {
+      "id": "87199482-3c4c-4aa5-91cf-27ff1db56bfa",
+      "displayName": "1-1/4\" ABS 45 H x SP"
+    },
+    {
+      "id": "4b61fa04-a81e-4534-bb74-165b31d0fc0f",
+      "displayName": "1-1/4\" ABS 90"
+    },
+    {
+      "id": "cc44d318-a959-4ae3-ac31-45bd9769f799",
+      "displayName": "1-1/4\" ABS 90 H x SP"
+    },
+    {
+      "id": "54ad31ef-9349-4dba-b879-7f5fb40ef4dd",
+      "displayName": "1-1/4\" ABS C/O Adapter SP x FPT"
+    },
+    {
+      "id": "bae25697-9f92-4931-989c-cb2871d2d879",
+      "displayName": "1-1/4\" ABS C/O Adapter W/ Plug SP x FPT"
+    },
+    {
+      "id": "a12683d6-2025-40a5-bead-cc08cbbc4b97",
+      "displayName": "1-1/4\" ABS C/O Plug MPT"
+    },
+    {
+      "id": "55ffa090-8636-4213-a7d4-1d5461b31b8e",
+      "displayName": "1-1/4\" ABS COP To DWV Adapter H x SJ"
+    },
+    {
+      "id": "34e72975-db88-414b-8976-a851e0166a15",
+      "displayName": "1-1/4\" ABS Coupling"
+    },
+    {
+      "id": "ede772e7-4b05-469a-9285-520d80a7a09e",
+      "displayName": "1-1/4\" ABS Female Adapter H x FPT"
+    }
+  ]
+}

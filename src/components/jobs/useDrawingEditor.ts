@@ -1,0 +1,306 @@
+"use client";
+
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { DrawingEntity, DrawingMarkup, DrawingPoint, DrawingStyle, DrawingTool } from "~/lib/drawing-workspace";
+import type { SheetScale } from "~/lib/sheet-measure";
+import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, simplifyDrawingStroke, translateDrawingPoints, type DrawingResizeHandle } from "~/lib/drawing-annotation-geometry";
+
+export type DrawingEditorProps = {
+  annotations?: DrawingEntity[];
+  pipeReviewAnnotations?: DrawingEntity[];
+  measurementLayers?: string[];
+  onAddMeasurementLayer?: (name: string) => Promise<void>;
+  sourceSheetId?: string;
+  tool?: DrawingTool;
+  style?: DrawingStyle;
+  selectedId?: string | null;
+  selectionMode?: "move" | "resize";
+  canEditAnnotation?: (entityId: string) => boolean;
+  canDeleteAnnotation?: (entityId: string) => boolean;
+  hideAnnotations?: boolean;
+  onCreate?: (data: DrawingMarkup) => void;
+  loadPipeLegendReferences?: () => Promise<import("~/lib/pipe-components-types").PipeLegendReferences>;
+  onSavePipeComponent?: (data: DrawingMarkup) => Promise<boolean>;
+  /** Lets a selected pipe system become a new material list on this job. */
+  pipeMaterialList?: { jobId: string; sheetName: string };
+  onMeasurementComplete?: (data: DrawingMarkup, existingId?: string) => void;
+  onSelect?: (id: string | null) => void;
+  /** A mouse right-click while panning or selecting, with the item under it. */
+  onContextMenu?: (id: string | null, point: { x: number; y: number }) => void;
+  /** Select an item for the wheel without opening the regular context menu. */
+  onQuickWheelSelect?: (id: string) => void;
+  onLongPressSelect?: (id: string) => void;
+  onPoint?: (type: "issue" | "rfi", point: DrawingPoint) => void;
+  onUpdate?: (id: string, data: DrawingMarkup) => void;
+  onDelete?: (id: string) => void;
+  onRemoveMeasurement?: (id: string) => Promise<boolean>;
+  onActivate?: (data: DrawingMarkup) => void;
+  sharedScale?: SheetScale | null;
+  onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
+};
+type Gesture = {
+  start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle;
+  activate?: boolean; edited?: DrawingMarkup; latest?: DrawingPoint;
+  /** Selection is immediate; a drag can edit only after the pickup shake. */
+  navigationPress?: boolean;
+  armed?: boolean; holdTimer?: ReturnType<typeof setTimeout>;
+  /** Moved before the hold completed: the drag pans the drawing instead. */
+  panning?: boolean;
+};
+/** Matches annotation-shake in globals.css; edits unlock after the animation. */
+export const MARKUP_SHAKE_MS = 380;
+export const MARKUP_LONG_PRESS_MS = 700;
+const holdsToSelect = (entity: DrawingEntity) => entity.kind === "markup" && entity.data.type !== "link";
+
+export function useDrawingEditor(props: DrawingEditorProps, aspect: number, screenWidth: number) {
+  const tool = props.tool ?? "pan";
+  const [points, setPoints] = useState<DrawingPoint[]>([]);
+  const [preview, setPreview] = useState<DrawingPoint[]>([]);
+  const [editing, setEditing] = useState<{ id: string; data: DrawingMarkup } | null>(null);
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const gesture = useRef<Gesture | null>(null);
+  const selectionLock = useRef({ id: "", until: 0 });
+  useLayoutEffect(() => {
+    if (props.selectedId && selectionLock.current.id !== props.selectedId)
+      selectionLock.current = { id: props.selectedId, until: Date.now() + MARKUP_SHAKE_MS };
+  }, [props.selectedId]);
+  const committed = useRef(points);
+  committed.current = points;
+  const { annotations, canEditAnnotation } = props;
+  const previewFrame = useRef<number | null>(null);
+  const publishRef = useRef<(show?: boolean) => void>(() => undefined);
+  const cancelPreview = useCallback(() => {
+    if (previewFrame.current !== null) cancelAnimationFrame(previewFrame.current);
+    previewFrame.current = null;
+  }, []);
+  useEffect(() => cancelPreview, [cancelPreview]);
+  const schedulePreview = () => {
+    if (previewFrame.current !== null) return;
+    previewFrame.current = requestAnimationFrame(() => {
+      previewFrame.current = null;
+      // Use current permissions and callbacks, even if the workspace changed
+      // between a pointer sample and the next display frame.
+      publishRef.current();
+    });
+  };
+  const stopHold = (active: Gesture | null) => { if (active?.holdTimer) clearTimeout(active.holdTimer); setHeldId(null); };
+  /** Select immediately; the pickup shake is an edit lock, not a selection delay. */
+  const startHold = (active: Gesture) => {
+    const entity = active.entity;
+    if (!entity) return;
+    const existing = props.selectedId === entity.id && selectionLock.current.id === entity.id;
+    if (!existing) {
+      selectionLock.current = { id: entity.id, until: Date.now() + MARKUP_SHAKE_MS };
+      setHeldId(entity.id);
+      // A text tap opens its editor on release, leaving a stationary hold
+      // available for the annotation wheel before any keyboard opens.
+      if (!(entity.kind === "markup" && entity.data.type === "text" && props.onQuickWheelSelect))
+        props.onSelect?.(entity.id);
+    }
+    const arm = () => {
+      active.holdTimer = undefined;
+      if (gesture.current !== active || active.moved) return;
+      active.armed = true;
+      if (active.activate) { active.activate = false; active.start = active.latest ?? active.start; }
+    };
+    const delay = Math.max(0, selectionLock.current.until - Date.now());
+    if (!delay) arm();
+    else active.holdTimer = setTimeout(arm, delay);
+  };
+  const clear = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; committed.current = []; setPoints([]); setPreview([]); setEditing(null); };
+  useEffect(() => () => { stopHold(gesture.current); gesture.current = null; }, []);
+  useEffect(clear, [tool, props.sourceSheetId, props.selectionMode, props.hideAnnotations, cancelPreview]);
+  const canEdit = useCallback((entity: DrawingEntity) => entity.kind === "markup" && entity.visibility !== "archived"
+    && annotations?.some(current => current.id === entity.id && current.revision === entity.revision && current.visibility !== "archived")
+    && (canEditAnnotation?.(entity.id) ?? true), [annotations, canEditAnnotation]);
+
+  const dataFor = (next: DrawingPoint[]): DrawingMarkup | null => {
+    if (tool === "pan" || tool === "viewing" || tool === "select" || tool === "issue" || tool === "rfi") return null;
+    return {
+      sourceSheetId: props.sourceSheetId ?? "", type: tool, points: next,
+      stroke: props.style?.stroke ?? "#ef4444", width: props.style?.width ?? 2,
+      ...(props.style?.fill ? { fill: props.style.fill } : {}),
+      ...(props.style?.opacity !== undefined ? { opacity: props.style.opacity } : {}),
+      ...((tool === "dimension" || tool === "area") && props.sharedScale
+        ? { scale: props.sharedScale.unitsPerSheetWidth, unit: props.sharedScale.unit } : {}),
+    };
+  };
+  const finish = (next = committed.current) => {
+    if (next.length < minimumDrawingPoints(tool)) return;
+    if (next.length > 1 && !next.some(point => Math.hypot(point.x - next[0]!.x, point.y - next[0]!.y) > 0.000001)) return;
+    const data = dataFor(next);
+    if (data && props.onCreate) { props.onCreate(data); clear(); }
+  };
+  const undo = () => { cancelPreview(); const next = committed.current.slice(0, -1); committed.current = next; setPoints(next); setPreview([]); };
+  const cancelGesture = () => { cancelPreview(); stopHold(gesture.current); gesture.current = null; setPreview([]); setEditing(null); };
+  useEffect(() => {
+    const active = gesture.current;
+    if (active?.entity?.kind === "markup" && !active.activate && (!props.onUpdate || !canEdit(active.entity))) {
+      active.edited = undefined;
+      setEditing(null);
+    }
+  }, [props.onUpdate, canEdit]);
+  const distance = (a: DrawingPoint, b: DrawingPoint) => Math.hypot(a.x - b.x, (a.y - b.y) * aspect);
+  const down = (point: DrawingPoint | null, target: EventTarget | null) => {
+    if (!point) return false;
+    const element = target instanceof Element ? target.closest<SVGElement>("[data-annotation-id]") : null;
+    const entity = props.hideAnnotations ? undefined : props.annotations?.find(item => item.id === element?.dataset.annotationId);
+    if (tool === "pan" || tool === "viewing") {
+      if (entity?.kind !== "markup") return false;
+      const active: Gesture = { start: point, points: [point], moved: false, entity, activate: true, navigationPress: true };
+      gesture.current = active;
+      active.holdTimer = setTimeout(() => {
+        active.holdTimer = undefined;
+        if (gesture.current !== active || active.moved) return;
+        active.activate = false;
+        active.panning = true;
+        (props.onLongPressSelect ?? props.onSelect)?.(entity.id);
+      }, MARKUP_LONG_PRESS_MS);
+      return true;
+    }
+    if (tool === "select") {
+      if (!entity) { props.onSelect?.(null); return false; }
+      // Selection may resize the viewport; a stationary release never edits geometry.
+      const handleElement = target instanceof Element ? target.closest<SVGElement>("[data-annotation-handle]") : null;
+      const handleName = handleElement?.dataset.annotationHandle;
+      const corner = handleName && ["nw", "ne", "sw", "se"].includes(handleName) ? handleName as DrawingResizeHandle : undefined;
+      const vertex = handleName !== undefined ? Number(handleName) : undefined;
+      const handle = props.selectionMode === "move" ? undefined : corner ??
+        (vertex !== undefined && Number.isInteger(vertex) && vertex >= 0 && entity.kind === "markup" && vertex < entity.data.points.length ? vertex : undefined);
+      // Both handles and the body obey the selection shake lock.
+      const active: Gesture = { start: point, points: [point], moved: false, entity, handle, armed: !holdsToSelect(entity) };
+      gesture.current = active;
+      if (!active.armed) startHold(active);
+      return true;
+    }
+    if (!props.onCreate && !props.onPoint) return false;
+    gesture.current = { start: point, points: [point], moved: false };
+    if (isStrokeTool(tool)) setPreview([point]);
+    return true;
+  };
+  const publishPreview = (show = true) => {
+    const active = gesture.current;
+    const point = active?.latest;
+    if (!active || !point || active.activate) return;
+    if (active.entity?.kind === "markup") {
+      if (!active.armed || !props.onUpdate || !canEdit(active.entity)) {
+        active.edited = undefined;
+        if (show) setEditing(null);
+        return;
+      }
+      if (!active.moved) return;
+      const original = active.entity.data;
+      active.edited = typeof active.handle === "string"
+        ? resizeDrawingMarkup(original, active.handle, point, aspect)
+        : { ...original, points: active.handle !== undefined
+          ? original.points.map((p, index) => index === active.handle ? point : p)
+          : translateDrawingPoints(original.points, { x: point.x - active.start.x, y: point.y - active.start.y }) };
+      if (show) setEditing({ id: active.entity.id, data: active.edited });
+    } else if (show && isStrokeTool(tool)) {
+      setPreview([...active.points]);
+    } else if (show && tool !== "select" && tool !== "issue" && tool !== "rfi" && tool !== "text") {
+      setPreview(isPathTool(tool) ? [...committed.current, point] : [committed.current[0] ?? active.start, point]);
+    }
+  };
+  publishRef.current = publishPreview;
+  const move = (point: DrawingPoint | null) => {
+    const active = gesture.current;
+    if (!active) return false;
+    if (!point) {
+      if (active.activate) { active.moved = true; return false; }
+      return true;
+    }
+    if (active.panning) return false;
+    active.moved ||= distance(point, active.start) * screenWidth > 6;
+    if (active.activate) {
+      if (active.moved) stopHold(active);
+      else active.latest = point;
+      return !active.moved;
+    }
+    if (active.entity && !active.armed) {
+      if (!active.moved) return true;
+      // Dragged before the hold completed: this is a pan, not a move.
+      stopHold(active); active.panning = true; active.moved = false;
+      return false;
+    }
+    active.latest = point;
+    if (active.entity?.kind === "markup") {
+      if (!active.moved) return true;
+    } else if (isStrokeTool(tool)) {
+      // Retain input samples independently of display rate. Rendering once per
+      // frame must not throw away a pen corner or change the final saved path.
+      if (distance(point, active.points.at(-1)!) * screenWidth < 1 || active.points.length >= 3900) return true;
+      active.points.push(point);
+    }
+    schedulePreview();
+    return true;
+  };
+  const up = (point: DrawingPoint | null) => {
+    const active = gesture.current;
+    if (!active) return false;
+    stopHold(active);
+    if (active.panning) { gesture.current = null; return false; }
+    if (point && (active.moved || !active.entity)) move(point);
+    cancelPreview();
+    // Release can happen before the scheduled frame. Commit the final geometry
+    // synchronously so a fast drag never saves an earlier pointer position.
+    publishPreview(false);
+    gesture.current = null;
+    setPreview([]);
+    if (!point) { setEditing(null); return true; }
+    if (active.navigationPress) {
+      if (active.activate && !active.moved && active.entity?.kind === "markup" && active.entity.data.type === "link")
+        props.onActivate?.(active.entity.data);
+      return true;
+    }
+    if (active.entity) {
+      if (!active.moved && active.entity.kind === "markup" && active.entity.data.type === "text" && props.onQuickWheelSelect)
+        props.onSelect?.(active.entity.id);
+      // Links and issue pins activate on release; ordinary markups were selected on press.
+      if (active.activate && !active.moved) {
+        if (active.entity.kind === "markup" && active.entity.data.type === "link") props.onActivate?.(active.entity.data);
+        else if (!holdsToSelect(active.entity)) props.onSelect?.(active.entity.id);
+      }
+      if (active.edited && active.moved && props.onUpdate && canEdit(active.entity)) props.onUpdate(active.entity.id, active.edited);
+      if (!active.activate && active.armed && !holdsToSelect(active.entity)) props.onSelect?.(active.entity.id);
+      setEditing(null);
+      return !active.activate || !active.moved;
+    }
+    if (tool === "issue" || tool === "rfi") { if (!active.moved) props.onPoint?.(tool, point); return true; }
+    if (tool === "text") { if (!active.moved) finish([point]); return true; }
+    if (isStrokeTool(tool)) {
+      const next = simplifyDrawingStroke([...active.points, point], 0.7 / Math.max(1, screenWidth), aspect);
+      if (next.length >= 2) finish(next);
+    } else if (isPathTool(tool)) {
+      if (active.moved) return true;
+      const next = [...committed.current, point].slice(0, 1000);
+      committed.current = next; setPoints(next);
+      if (tool === "angle" && next.length === 3) finish(next);
+    } else if (active.moved || committed.current.length) finish([committed.current[0] ?? active.start, point]);
+    else { committed.current = [point]; setPoints([point]); }
+    return true;
+  };
+  useEffect(() => {
+    if (tool === "pan" || tool === "viewing") return;
+    const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      if (event.key === "Escape") { event.preventDefault(); clear(); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
+      if (event.key === "Enter" && committed.current.length >= minimumDrawingPoints(tool)) { event.preventDefault(); finish(); }
+      const selected = props.annotations?.find(entity => entity.id === props.selectedId);
+      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && selected && props.onDelete && canEdit(selected) && (selectionLock.current.id !== selected.id || Date.now() >= selectionLock.current.until)) {
+        event.preventDefault(); props.onDelete(selected.id);
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+  return {
+    down, move, up, cancelGesture, clear, undo, finish: () => finish(), editing, heldId,
+    draft: dataFor(preview.length ? preview : points),
+    pointCount: points.length, canFinish: points.length >= minimumDrawingPoints(tool),
+    active: () => gesture.current !== null,
+  };
+}

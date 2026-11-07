@@ -1,0 +1,19 @@
+{
+  "name": "hybrid-gap-25",
+  "threshold": 245,
+  "openRadius": 1,
+  "join": 3,
+  "bandLengthFraction": 0.008,
+  "doorFraction": 0.0095,
+  "gapFactor": 2.5,
+  "windowFactor": 3.5,
+  "envelope": true,
+  "grow": true,
+  "maxRoomFactor": 4,
+  "maxUnlabelledFraction": 0.01,
+  "nudgeFraction": 0.004,
+  "partition": "geodesic",
+  "densitySource": "combined",
+  "densityRadiusFraction": 0.025,
+  "densityPenalty": 20
+}

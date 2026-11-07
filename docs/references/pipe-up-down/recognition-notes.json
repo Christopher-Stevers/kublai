@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-19",
+  "author": "Codex",
+  "status": "Reference research only; no runtime changes",
+  "notes": [
+    "Use the reviewed legend for the current drawing set as the authority. These are reference examples, not universal symbol definitions or a deployed detector.",
+    "Prioritize endpoints of the known pipe for turned elbows. Search along the run too: vertical tee outlets and rise/drop transitions can occur where the plan line continues.",
+    "In these two legends, single-line up elbows have a closed round end; down elbows have an interrupted round end. The connection to the pipe and the gap orientation matter. Do not infer direction from a circle alone.",
+    "Grady also uses internal curved detail and both single-line and double-line depictions. Preserve those differences when matching rather than reducing every symbol to a generic circle.",
+    "Normalize rotation and scale using the local pipe direction; keep the exact source geometry and open/closed topology. Adjacent symbols must remain separate.",
+    "A simple endpoint is not sufficient evidence: caps, disconnected geometry, cropped lines, fixture connections and line breaks can look similar.",
+    "UP/DN text can describe pipe pitch. Flow arrows are not necessarily rise/drop symbols. Grady labels one transition as drop OR rise, so its shape alone does not resolve direction.",
+    "Locate the matched shape on the pipe; nearby text may identify it but must not become the placement coordinate. Keep unresolved direction or identity as review candidates.",
+    "All five PNGs were visually checked against their original PDF graphics and labels. These are legend examples; no in-plan occurrence has been labeled as verified ground truth in this reference collection."
+  ]
+}

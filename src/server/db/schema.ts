@@ -3,8 +3,22 @@
 // with circular references. This is a known limitation and doesn't affect runtime behavior.
 // The build succeeds correctly - these are only strict TypeScript checking issues.
 
-import { relations } from "drizzle-orm";
-import { index, pgTableCreator, primaryKey, unique } from "drizzle-orm/pg-core";
+import { chatPushSubscriptions } from "./chat-push-schema";
+import type { DeliveryCalendar } from "~/lib/delivery-calendar";
+import type { PipeSpec } from "~/lib/pipe-spec";
+import { relations, sql } from "drizzle-orm";
+import type { DocumentState } from "~/server/documents/types";
+import {
+  type AnyPgColumn,
+  check,
+  foreignKey,
+  index,
+  jsonb,
+  pgTableCreator,
+  primaryKey,
+  unique,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 /**
  * Trades MVP schema (ordering + quoting) in Drizzle format
@@ -16,6 +30,17 @@ import { index, pgTableCreator, primaryKey, unique } from "drizzle-orm/pg-core";
  */
 
 export const createTable = pgTableCreator((name) => `kublai_${name}`);
+
+// One atomic, bounded workspace per job. Binary versions live in private storage;
+// their immutable content hashes and all authorization metadata live here.
+export const jobDocumentWorkspaces = createTable("job_document_workspace", (d) => ({
+  jobId: d.uuid().primaryKey().references(() => jobs.id, { onDelete: "cascade" }),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  state: jsonb().$type<DocumentState>().notNull(),
+  revision: d.integer().notNull().default(1),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_document_workspace_org_idx").on(t.organizationId, t.jobId)]);
 
 // ============================
 // NEXTAUTH: USER
@@ -31,6 +56,11 @@ export const users = createTable("user", (d) => ({
 
   // App fields
   role: d.varchar({ length: 50 }).default("user"), // user | admin | foreman etc.
+  permissionConfig: jsonb(),
+  defaultLandingPage: jsonb().$type<import("~/lib/snapshot-source").SnapshotSource>(),
+  permissionPresetId: d.uuid().references(() => organizationPermissionPresets.id, { onDelete: "restrict" }),
+  organizationAccessStatus: d.varchar({ length: 50 }).default("approved"),
+  department: d.varchar({ length: 100 }),
 
   // Org membership (single-org MVP; if you need multi-org later, use a join table)
   organizationId: d
@@ -50,6 +80,10 @@ export const users = createTable("user", (d) => ({
   subscriptionEndsAt: d.timestamp({ withTimezone: true }),
   oneTimePurchaseDate: d.timestamp({ withTimezone: true }),
 
+  // The tutorial uses isolated client demo state; only its terminal state is persisted.
+  tutorialCompletedAt: d.timestamp({ withTimezone: true }),
+  tutorialOutcome: d.varchar({ length: 20 }).$type<"completed" | "skipped">(),
+
   // Current job preference
   currentJobId: d.uuid().references(() => jobs.id, { onDelete: "set null" }),
 
@@ -62,7 +96,37 @@ export const users = createTable("user", (d) => ({
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
-}));
+}), (t) => [unique("user_organization_id_uniq").on(t.organizationId, t.id)]);
+
+/** Named departments and their designated leads, scoped to one company. */
+export const organizationDepartments = createTable("organization_department", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 100 }).notNull(),
+  revision: d.integer().notNull().default(1),
+}), (t) => [unique("organization_department_org_id_uniq").on(t.organizationId, t.id)]);
+export const organizationDepartmentLeads = createTable("organization_department_lead", (d) => ({
+  organizationId: d.uuid().notNull(),
+  departmentId: d.uuid().notNull(),
+  userId: d.varchar({ length: 255 }).notNull(),
+}), (t) => [
+  primaryKey({ columns: [t.departmentId, t.userId] }),
+  foreignKey({ columns: [t.organizationId, t.departmentId], foreignColumns: [organizationDepartments.organizationId, organizationDepartments.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [(users as { organizationId: AnyPgColumn }).organizationId, (users as { id: AnyPgColumn }).id] }).onDelete("cascade"),
+]);
+
+/** Organization reporting lines: a member may report to several people. */
+export const organizationReportingLines = createTable("organization_reporting_line", (d) => ({
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: d.varchar({ length: 255 }).notNull(),
+  reportsToUserId: d.varchar({ length: 255 }).notNull(),
+}), (t) => [
+  primaryKey({ columns: [t.organizationId, t.userId, t.reportsToUserId] }),
+  foreignKey({ columns: [t.organizationId, t.userId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+  foreignKey({ columns: [t.organizationId, t.reportsToUserId], foreignColumns: [users.organizationId, users.id] }).onDelete("cascade"),
+  check("organization_reporting_line_not_self", sql`${t.userId} <> ${t.reportsToUserId}`),
+  index("organization_reporting_line_manager_idx").on(t.organizationId, t.reportsToUserId),
+]);
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
@@ -172,8 +236,21 @@ export const organizations = createTable(
   (t) => [unique("organization_name_uniq").on(t.name)],
 );
 
+/** Named organization presets. Assigned users are updated atomically by the DB trigger. */
+export const organizationPermissionPresets = createTable("organization_permission_preset", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 100 }).notNull(),
+  permissionConfig: jsonb().notNull(),
+  memberDetails: jsonb().$type<{ department: string | null; reportsToUserIds: string[] }>(),
+  revision: d.integer().notNull().default(1),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("organization_permission_preset_org_idx").on(t.organizationId)]);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
+  invites: many(organizationInvites),
   locations: many(locations),
   pricingProfiles: many(pricingProfiles),
   suppliers: many(suppliers),
@@ -185,6 +262,53 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   quotes: many(quotes),
   orders: many(orders),
 }));
+
+export const organizationInvites = createTable(
+  "organization_invite",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    token: d.varchar({ length: 128 }).notNull(),
+    defaultLandingPage: jsonb().$type<import("~/lib/snapshot-source").SnapshotSource>(),
+    name: d.varchar({ length: 255 }),
+    role: d.varchar({ length: 50 }).notNull().default("user"),
+    permissionConfig: jsonb(),
+    createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    revokedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("organization_invite_token_uniq").on(t.token),
+    index("organization_invite_org_idx").on(t.organizationId),
+  ],
+);
+
+export const organizationInvitesRelations = relations(
+  organizationInvites,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationInvites.organizationId],
+      references: [organizations.id],
+    }),
+    createdBy: one(users, {
+      fields: [organizationInvites.createdByUserId],
+      references: [users.id],
+    }),
+  }),
+);
 
 // ============================
 // LOCATIONS
@@ -290,9 +414,12 @@ export const suppliers = createTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
 
     name: d.varchar({ length: 255 }).notNull(),
+    contactName: d.varchar({ length: 255 }),
     contactEmail: d.varchar({ length: 255 }),
     contactPhone: d.varchar({ length: 50 }),
+    contacts: d.jsonb(),
     orderingNotes: d.text(),
+    preferJobPricing: d.boolean().notNull().default(true),
     locationId: d
       .uuid()
       .references(() => locations.id, { onDelete: "set null" }),
@@ -301,10 +428,18 @@ export const suppliers = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+    /** external | tool_room (the company's own tool room, one per organization) */
+    kind: d.varchar({ length: 20 }).notNull().default("external"),
   }),
   (t) => [
     unique("supplier_org_name_uniq").on(t.organizationId, t.name),
     index("supplier_org_idx").on(t.organizationId),
+    index("supplier_org_updated_idx").on(t.organizationId, t.updatedAt, t.id),
     index("supplier_location_idx").on(t.locationId),
   ],
 );
@@ -327,6 +462,12 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
 // UNITS
 // ============================
 
+export const quantityUnits = createTable("quantity_unit", d => ({
+  organizationId: d.uuid().notNull().references(() => organizations.id, {onDelete:"cascade"}),
+  kind: d.varchar({length:16}).notNull(),
+  name: d.varchar({length:32}).notNull(),
+}), t => [primaryKey({columns:[t.organizationId,t.kind,t.name]}), check("quantity_unit_kind", sql`${t.kind} IN ('bulk', 'individual')`), check("quantity_unit_name", sql`length(trim(${t.name})) > 0`)]);
+
 export const units = createTable(
   "unit",
   (d) => ({
@@ -343,9 +484,6 @@ export const units = createTable(
 );
 
 export const unitsRelations = relations(units, ({ many }) => ({
-  partDefinitionsDefaultUom: many(partDefinitions, {
-    relationName: "pd_default_uom",
-  }),
   partDefinitionsSizeUnit: many(partDefinitions, {
     relationName: "pd_size_unit",
   }),
@@ -373,6 +511,7 @@ export const materials = createTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     name: d.varchar({ length: 100 }).notNull(),
+    groupPath: jsonb("groupPath").$type<string[]>().notNull().default([]),
     createdAt: d
       .timestamp({ withTimezone: true })
       .notNull()
@@ -442,12 +581,12 @@ export const sizesRelations = relations(sizes, ({ one, many }) => ({
 }));
 
 // ============================
-// PART TYPES (custom part types)
+// CATALOGS
 // org-specific
 // ============================
 
-export const partTypes = createTable(
-  "part_type",
+export const catalogs = createTable(
+  "catalog",
   (d) => ({
     id: d
       .uuid()
@@ -458,28 +597,31 @@ export const partTypes = createTable(
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    name: d.varchar({ length: 100 }).notNull(),
+    name: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
     createdAt: d
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** materials | assets (tools & equipment managed in Asset Management) */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
   }),
   (t) => [
-    unique("part_type_org_name_uniq").on(t.organizationId, t.name),
-    index("part_type_org_idx").on(t.organizationId),
+    unique("catalog_org_name_uniq").on(t.organizationId, t.name),
+    index("catalog_org_idx").on(t.organizationId),
   ],
 );
 
-export const partTypesRelations = relations(partTypes, ({ one, many }) => ({
+export const catalogsRelations = relations(catalogs, ({ one, many }) => ({
   organization: one(organizations, {
-    fields: [partTypes.organizationId],
+    fields: [catalogs.organizationId],
     references: [organizations.id],
   }),
   partDefinitions: many(partDefinitions),
 }));
 
 // ============================
-// CATEGORIES (tree)
+// CATEGORIES
 // org-specific
 // ============================
 
@@ -492,19 +634,14 @@ export const categories: any = createTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-
     organizationId: d
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-
     name: d.varchar({ length: 255 }).notNull(),
     sortOrder: d.integer().notNull().default(0),
   }),
-  (t) => [
-    // Unique constraint: category name must be unique within an organization
-    unique("category_org_name_uniq").on(t.organizationId, t.name),
-  ],
+  (t) => [unique("category_org_name_uniq").on(t.organizationId, t.name)],
 );
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -514,6 +651,43 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   }),
   partDefinitions: many(partDefinitions),
 }));
+
+export const photoAssets = createTable(
+  "photo_asset",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    storageKey: d.text().notNull(),
+    url: d.text().notNull(),
+    originalFilename: d.varchar({ length: 255 }),
+    contentType: d.varchar({ length: 100 }).notNull().default("image/webp"),
+    byteSize: d.integer(),
+    checksum: d.varchar({ length: 64 }),
+    sourceUrl: d.text(),
+    notes: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("photo_asset_org_url_uniq").on(t.organizationId, t.url),
+    index("photo_asset_org_created_idx").on(t.organizationId, t.createdAt),
+    index("photo_asset_checksum_idx").on(t.organizationId, t.checksum),
+  ],
+);
 
 // ============================
 // PART DEFINITIONS (generic catalog + facets)
@@ -533,43 +707,57 @@ export const partDefinitions = createTable(
       .uuid()
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    catalogId: d
+      .uuid()
+      .notNull()
+      .references(() => catalogs.id, { onDelete: "restrict" }),
     categoryId: d
       .uuid()
       .references(() => categories.id, { onDelete: "set null" }),
 
     displayName: d.varchar({ length: 255 }).notNull(),
+    piecesPerPack: d.integer(),
+    bulkUnit: d.varchar({ length: 32 }),
+    individualUnit: d.varchar({ length: 32 }),
     description: d.text(),
     imageUrl: d.text(),
+    imageAssetId: d
+      .uuid()
+      .references(() => photoAssets.id, { onDelete: "set null" }),
+    sizeLabel: d.varchar({ length: 100 }),
 
     // Facets (MVP)
-    partTypeId: d
-      .uuid()
-      .references(() => partTypes.id, { onDelete: "set null" }),
     materialId: d
       .uuid()
       .references(() => materials.id, { onDelete: "set null" }),
-    sizeId: d
-      .uuid()
-      .notNull()
-      .references(() => sizes.id, { onDelete: "set null" }),
-
-    defaultUomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
+    sizeId: d.uuid().references(() => sizes.id, { onDelete: "set null" }),
+    sortOrder: d.integer().notNull().default(0),
 
     isActive: d.boolean().notNull().default(true),
-    sortOrder: d.integer().notNull().default(0),
 
     createdAt: d
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** Tool types only: serialized (each unit tagged) | quantity */
+    assetTracking: d.varchar({ length: 20 }),
   }),
   (t) => [
     index("part_def_org_idx").on(t.organizationId),
+    index("part_def_catalog_idx").on(t.catalogId),
     index("part_def_category_idx").on(t.categoryId),
-    index("part_def_facets_idx").on(t.partTypeId, t.materialId, t.sizeId),
+    index("part_def_facets_idx").on(t.materialId, t.sizeId),
     index("part_def_material_idx").on(t.materialId),
-    index("part_def_part_type_idx").on(t.partTypeId),
     index("part_def_size_idx").on(t.sizeId),
+    index("part_def_image_asset_idx").on(t.imageAssetId),
+    index("part_def_group_sort_idx").on(
+      t.organizationId,
+      t.catalogId,
+      t.materialId,
+      t.sizeId,
+      t.categoryId,
+      t.sortOrder,
+    ),
   ],
 );
 
@@ -580,6 +768,14 @@ export const partDefinitionsRelations = relations(
       fields: [partDefinitions.organizationId],
       references: [organizations.id],
     }),
+    photoAsset: one(photoAssets, {
+      fields: [partDefinitions.imageAssetId],
+      references: [photoAssets.id],
+    }),
+    catalog: one(catalogs, {
+      fields: [partDefinitions.catalogId],
+      references: [catalogs.id],
+    }),
     category: one(categories, {
       fields: [partDefinitions.categoryId],
       references: [categories.id],
@@ -588,18 +784,9 @@ export const partDefinitionsRelations = relations(
       fields: [partDefinitions.sizeId],
       references: [sizes.id],
     }),
-    defaultUom: one(units, {
-      fields: [partDefinitions.defaultUomId],
-      references: [units.id],
-      relationName: "pd_default_uom",
-    }),
     material: one(materials, {
       fields: [partDefinitions.materialId],
       references: [materials.id],
-    }),
-    partType: one(partTypes, {
-      fields: [partDefinitions.partTypeId],
-      references: [partTypes.id],
     }),
     synonyms: many(partSynonyms),
     attributes: many(partAttributes),
@@ -782,6 +969,9 @@ export const jobs = createTable(
     foremanUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
     }),
+    foremanName: d.varchar({ length: 255 }),
+    poNumber: d.varchar({ length: 100 }),
+    supplierDefaults: d.jsonb().$type<import("~/lib/job-supplier-defaults").JobSupplierDefaults>(),
 
     status: d.varchar({ length: 50 }).notNull().default("draft"), // draft|quoted|ordered|completed
     pricingProfileId: d
@@ -792,9 +982,16 @@ export const jobs = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   }),
   (t) => [
     index("job_org_idx").on(t.organizationId),
+    index("job_org_updated_idx").on(t.organizationId, t.updatedAt, t.id),
+    uniqueIndex("estimating_job_org_unique").on(t.id, t.organizationId),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
     index("job_location_idx").on(t.locationId as any),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
@@ -829,6 +1026,384 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
   materialLists: many(materialLists),
   quotes: many(quotes),
   orders: many(orders),
+  floorPlans: many(jobFloorPlans),
+  floors: many(jobFloors),
+  rooms: many(jobRooms),
+  drawLines: many(jobDrawLines),
+  draws: many(jobDraws),
+}));
+
+export const jobFloorPlans = createTable(
+  "job_floor_plan",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    originalFilename: d.varchar({ length: 255 }).notNull(),
+    storageKey: d.varchar({ length: 512 }).notNull(),
+    status: d.varchar({ length: 50 }).notNull().default("processing"),
+    pageCount: d.integer().notNull().default(0),
+    error: d.text(),
+    uploadedByUserId: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("job_floor_plan_job_uniq").on(t.jobId),
+    index("job_floor_plan_org_idx").on(t.organizationId),
+  ],
+);
+
+export const jobFloors = createTable(
+  "job_floor",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    floorPlanId: d
+      .uuid()
+      .notNull()
+      .references(() => jobFloorPlans.id, { onDelete: "cascade" }),
+    pageNumber: d.integer().notNull(),
+    name: d.varchar({ length: 255 }).notNull(),
+    imageUrl: d.text().notNull(),
+    width: d.integer().notNull(),
+    height: d.integer().notNull(),
+    status: d.varchar({ length: 50 }).notNull().default("detected"),
+    confirmedAt: d.timestamp({ withTimezone: true }),
+    completenessReviewedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_floor_job_idx").on(t.jobId),
+    index("job_floor_plan_idx").on(t.floorPlanId),
+    unique("job_floor_plan_page_uniq").on(t.floorPlanId, t.pageNumber),
+  ],
+);
+
+export const jobRooms = createTable(
+  "job_room",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    floorId: d
+      .uuid()
+      .notNull()
+      .references(() => jobFloors.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    notes: d.text().notNull().default(""),
+    notesRevision: d.integer().notNull().default(0),
+    source: d.varchar({ length: 50 }).notNull().default("auto"),
+    confirmed: d.boolean().notNull().default(false),
+    reviewStatus: d.varchar({ length: 20 }).notNull().default("pending"),
+    detection: jsonb(),
+    shape: jsonb().notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_room_floor_idx").on(t.floorId),
+    index("job_room_job_idx").on(t.jobId),
+  ],
+);
+
+export const roomDetectionFeedback = createTable("room_detection_feedback", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  organizationId: d.uuid().notNull().references(() => (organizations as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull().references(() => (jobs as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  floorId: d.uuid().notNull().references(() => (jobFloors as {id:AnyPgColumn}).id, { onDelete: "cascade" }),
+  roomId: d.uuid().notNull(),
+  userId: d.varchar({ length: 255 }).references((): AnyPgColumn => (users as {id:AnyPgColumn}).id, { onDelete: "set null" }),
+  decision: d.varchar({ length: 20 }).notNull(),
+  drawingKey: d.text().notNull(),
+  name: d.varchar({ length: 255 }).notNull(),
+  proposalShape: jsonb().notNull(),
+  correctedShape: jsonb(),
+  detection: jsonb(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("room_feedback_floor_idx").on(t.organizationId, t.floorId, t.createdAt),
+  index("room_feedback_room_idx").on(t.roomId, t.createdAt),
+  check("kublai_room_detection_feedback_decision_check", sql`${t.decision} in ('approved', 'rejected', 'pending', 'corrected', 'added', 'renamed', 'cleared')`)]);
+
+export const roomDetectionJobs = createTable(
+  "room_detection_job",
+  (d) => ({
+    floorId: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .references(() => jobFloors.id, { onDelete: "cascade" }),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    runId: d.uuid().notNull().defaultRandom(),
+    workerBootId: d.text(),
+    workerStartTicks: d.text(),
+    status: d.varchar({ length: 20 }).notNull(),
+    startedAt: d.timestamp({ withTimezone: true }).notNull(),
+    heartbeatAt: d.timestamp({ withTimezone: true }).notNull(),
+    finishedAt: d.timestamp({ withTimezone: true }),
+    workerPid: d.integer(),
+    error: d.text(),
+    result: jsonb(),
+    log: jsonb().notNull().default([]),
+  }),
+  (t) => [index("room_detection_job_org_idx").on(t.organizationId)],
+);
+
+export const jobFloorPlansRelations = relations(
+  jobFloorPlans,
+  ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [jobFloorPlans.organizationId],
+      references: [organizations.id],
+    }),
+    job: one(jobs, {
+      fields: [jobFloorPlans.jobId],
+      references: [jobs.id],
+    }),
+    floors: many(jobFloors),
+  }),
+);
+
+export const jobFloorsRelations = relations(jobFloors, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [jobFloors.organizationId],
+    references: [organizations.id],
+  }),
+  job: one(jobs, {
+    fields: [jobFloors.jobId],
+    references: [jobs.id],
+  }),
+  floorPlan: one(jobFloorPlans, {
+    fields: [jobFloors.floorPlanId],
+    references: [jobFloorPlans.id],
+  }),
+  rooms: many(jobRooms),
+}));
+
+export const jobRoomsRelations = relations(jobRooms, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [jobRooms.organizationId],
+    references: [organizations.id],
+  }),
+  job: one(jobs, {
+    fields: [jobRooms.jobId],
+    references: [jobs.id],
+  }),
+  floor: one(jobFloors, {
+    fields: [jobRooms.floorId],
+    references: [jobFloors.id],
+  }),
+}));
+
+export const roomDetectionJobsRelations = relations(
+  roomDetectionJobs,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [roomDetectionJobs.organizationId],
+      references: [organizations.id],
+    }),
+    floor: one(jobFloors, {
+      fields: [roomDetectionJobs.floorId],
+      references: [jobFloors.id],
+    }),
+  }),
+);
+
+// ============================
+// JOB DRAWS (progress billing)
+// ============================
+
+// Schedule of values: the contract broken into billable line items.
+export const jobDrawLines = createTable(
+  "job_draw_line",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    itemNumber: d.varchar({ length: 50 }),
+    description: d.varchar({ length: 500 }).notNull(),
+    scheduledValue: d
+      .numeric({ precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    sortOrder: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("job_draw_line_job_idx").on(t.jobId, t.sortOrder)],
+);
+
+export const jobDraws = createTable(
+  "job_draw",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d
+      .uuid()
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    drawNumber: d.integer().notNull(),
+    periodEnd: d.date(),
+    status: d.varchar({ length: 20 }).notNull().default("draft"), // draft|submitted|paid
+    retainagePercent: d
+      .numeric({ precision: 6, scale: 3 })
+      .notNull()
+      .default("10"),
+    notes: d.text(),
+    submittedAt: d.timestamp({ withTimezone: true }),
+    paidAt: d.timestamp({ withTimezone: true }),
+    createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("job_draw_org_idx").on(t.organizationId),
+    unique("job_draw_job_number_uniq").on(t.jobId, t.drawNumber),
+  ],
+);
+
+// Cumulative amount completed to date for one line on one draw.
+export const jobDrawItems = createTable(
+  "job_draw_item",
+  (d) => ({
+    drawId: d
+      .uuid()
+      .notNull()
+      .references(() => jobDraws.id, { onDelete: "cascade" }),
+    lineId: d
+      .uuid()
+      .notNull()
+      .references(() => jobDrawLines.id, { onDelete: "cascade" }),
+    completedToDate: d
+      .numeric({ precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.drawId, t.lineId] }),
+    index("job_draw_item_line_idx").on(t.lineId),
+  ],
+);
+
+export const jobDrawLinesRelations = relations(jobDrawLines, ({ one }) => ({
+  job: one(jobs, {
+    fields: [jobDrawLines.jobId],
+    references: [jobs.id],
+  }),
+}));
+
+export const jobDrawsRelations = relations(jobDraws, ({ one, many }) => ({
+  job: one(jobs, {
+    fields: [jobDraws.jobId],
+    references: [jobs.id],
+  }),
+  items: many(jobDrawItems),
+}));
+
+export const jobDrawItemsRelations = relations(jobDrawItems, ({ one }) => ({
+  draw: one(jobDraws, {
+    fields: [jobDrawItems.drawId],
+    references: [jobDraws.id],
+  }),
+  line: one(jobDrawLines, {
+    fields: [jobDrawItems.lineId],
+    references: [jobDrawLines.id],
+  }),
 }));
 
 // ============================
@@ -854,8 +1429,10 @@ export const materialLists = createTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
 
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     name: d.varchar({ length: 255 }).notNull(),
-    quoteId: d.uuid().references(() => quotes.id, { onDelete: "set null" }),
+    quoteId: d.uuid().references((): AnyPgColumn => quotes.id, { onDelete: "set null" }),
 
     createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
@@ -870,16 +1447,25 @@ export const materialLists = createTable(
       .notNull()
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date()),
+    /** materials | tools (a tool request list for the tool room) */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
   }),
   (t) => [
+    index("material_list_room_idx").on(t.roomId),
     index("material_list_job_idx").on(t.jobId),
     index("material_list_org_idx").on(t.organizationId),
+    index("material_list_org_updated_idx").on(
+      t.organizationId,
+      t.updatedAt,
+      t.id,
+    ),
     // @ts-expect-error - Drizzle type inference limitation with nullable columns
     index("material_list_quote_idx").on(t.quoteId as any),
   ],
 );
 
 export const materialListsRelations = relations(materialLists, ({ one }) => ({
+  room: one(jobRooms, { fields: [materialLists.roomId], references: [jobRooms.id] }),
   organization: one(organizations, {
     fields: [materialLists.organizationId],
     references: [organizations.id],
@@ -951,11 +1537,14 @@ export const quotes = createTable(
 
     materialListId: d
       .uuid()
-      .references(() => materialLists.id, { onDelete: "cascade" }),
+      .references((): AnyPgColumn => materialLists.id, { onDelete: "cascade" }),
 
     jobId: d.uuid().references(() => jobs.id, { onDelete: "cascade" }),
 
     quoteNumber: d.varchar({ length: 100 }),
+    // Material lists use quote rows internally; only explicit generation saves
+    // a document in quote history.
+    generatedAt: d.timestamp({ withTimezone: true }),
     createdByUserId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
     }),
@@ -1015,17 +1604,25 @@ export const quoteItems = createTable(
       .notNull()
       .references(() => quotes.id, { onDelete: "cascade" }),
 
+    /** Permanent sent-order link; duplicates intentionally leave this empty. */
+    sentOrderItemId: d.uuid().references(() => orderItems.id, { onDelete: "restrict" }),
+
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
+    supplierId: d
+      .uuid()
+      .references(() => suppliers.id, { onDelete: "set null" }),
     partDefinitionId: d
       .uuid()
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    supplierVersion: d.jsonb().$type<import("~/lib/job-supplier-defaults").SupplierVersion>(),
     // One-off part fields (used when partDefinitionId is null)
     oneOffDisplayName: d.varchar({ length: 255 }),
     oneOffDescription: d.text(),
     oneOffMaterial: d.varchar({ length: 100 }),
-    oneOffPartType: d.varchar({ length: 100 }),
     oneOffSizeNominal: d.numeric({ precision: 12, scale: 6 }),
     oneOffSizeUnitId: d
       .uuid()
@@ -1041,18 +1638,208 @@ export const quoteItems = createTable(
 
     descriptionSnapshot: d.text(),
     notes: d.text(),
+    addedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   }),
   (t) => [
+    index("quote_item_sent_order_idx").on(t.sentOrderItemId),
+    index("quote_item_room_idx").on(t.roomId),
     index("quote_item_quote_idx").on(t.quoteId),
+    index("quote_item_updated_idx").on(t.updatedAt, t.id),
     index("quote_item_part_idx").on(t.partDefinitionId),
+    index("quote_item_supplier_idx").on(t.supplierId),
+    index("quote_item_added_by_idx").on(t.addedByUserId),
+  ],
+);
+
+export const materialListSyncMutations = createTable(
+  "material_list_sync_mutation",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    materialListId: d
+      .uuid()
+      .notNull()
+      .references((): AnyPgColumn => materialLists.id, { onDelete: "cascade" }),
+    clientMutationId: d.varchar({ length: 255 }).notNull(),
+    mutationType: d.varchar({ length: 80 }).notNull(),
+    serverItemId: d.uuid(),
+    clientItemId: d.varchar({ length: 255 }),
+    status: d.varchar({ length: 40 }).notNull().default("applied"),
+    error: d.text(),
+    payload: d.jsonb(),
+    appliedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("material_list_sync_mutation_client_uniq").on(
+      t.organizationId,
+      t.clientMutationId,
+    ),
+    index("material_list_sync_mutation_list_idx").on(t.materialListId),
+  ],
+);
+
+export const entitySyncMutations = createTable(
+  "entity_sync_mutation",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    clientMutationId: d.varchar({ length: 255 }).notNull(),
+    mutationType: d.varchar({ length: 80 }).notNull(),
+    entityType: d.varchar({ length: 80 }).notNull(),
+    clientEntityId: d.varchar({ length: 255 }).notNull(),
+    serverEntityId: d.uuid(),
+    status: d.varchar({ length: 40 }).notNull().default("applied"),
+    error: d.text(),
+    payload: d.jsonb(),
+    appliedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("entity_sync_mutation_client_uniq").on(
+      t.organizationId,
+      t.clientMutationId,
+    ),
+    index("entity_sync_mutation_entity_idx").on(
+      t.organizationId,
+      t.entityType,
+      t.serverEntityId,
+    ),
+  ],
+);
+
+export const materialListSyncTombstones = createTable(
+  "material_list_sync_tombstone",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    materialListId: d.uuid().notNull(),
+    entityType: d.varchar({ length: 40 }).notNull(),
+    entityId: d.varchar({ length: 255 }).notNull(),
+    deletedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    unique("material_list_sync_tombstone_entity_uniq").on(
+      t.organizationId,
+      t.entityType,
+      t.entityId,
+    ),
+    index("material_list_sync_tombstone_list_idx").on(t.materialListId),
+    index("material_list_sync_tombstone_deleted_idx").on(t.deletedAt),
+    index("material_list_sync_tombstone_org_deleted_idx").on(
+      t.organizationId,
+      t.deletedAt,
+      t.entityId,
+    ),
+  ],
+);
+
+export const replicacheClientGroups = createTable(
+  "replicache_client_group",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    schemaVersion: d.varchar({ length: 80 }).notNull(),
+    cvrVersion: d.integer().notNull().default(0),
+    lastPullOrder: d.bigint({ mode: "number" }).notNull().default(0),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("replicache_client_group_org_idx").on(t.organizationId)],
+);
+
+export const replicacheClients = createTable(
+  "replicache_client",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    clientGroupId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => replicacheClientGroups.id, { onDelete: "cascade" }),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    lastMutationId: d.integer().notNull().default(0),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("replicache_client_group_idx").on(t.clientGroupId),
+    index("replicache_client_org_idx").on(t.organizationId),
   ],
 );
 
 export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
+  room: one(jobRooms, { fields: [quoteItems.roomId], references: [jobRooms.id] }),
   quote: one(quotes, { fields: [quoteItems.quoteId], references: [quotes.id] }),
   supplierPart: one(supplierParts, {
     fields: [quoteItems.supplierPartId],
     references: [supplierParts.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [quoteItems.supplierId],
+    references: [suppliers.id],
   }),
   partDefinition: one(partDefinitions, {
     fields: [quoteItems.partDefinitionId],
@@ -1067,6 +1854,10 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
     fields: [quoteItems.uomId],
     references: [units.id],
     relationName: "qi_uom",
+  }),
+  addedBy: one(users, {
+    fields: [quoteItems.addedByUserId],
+    references: [users.id],
   }),
 }));
 
@@ -1092,6 +1883,9 @@ export const orders = createTable(
       .uuid()
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    materialListId: d
+      .uuid()
+      .references(() => materialLists.id, { onDelete: "set null" }),
 
     orderNumber: d.varchar({ length: 100 }),
 
@@ -1115,11 +1909,23 @@ export const orders = createTable(
       .timestamp({ withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** materials | tool_request | tool_return */
+    kind: d.varchar({ length: 20 }).notNull().default("materials"),
+    /** Tool orders: open | partial | fulfilled | cancelled */
+    fulfillmentStatus: d.varchar({ length: 20 }),
+    fulfilledAt: d.timestamp({ withTimezone: true }),
   }),
   (t) => [
     index("order_job_idx").on(t.jobId),
+    // @ts-expect-error - Drizzle type inference limitation with nullable columns
+    index("order_material_list_idx").on(t.materialListId as any),
     index("order_supplier_idx").on(t.supplierId),
     index("order_org_idx").on(t.organizationId),
+    unique("order_org_job_number_uniq").on(
+      t.organizationId,
+      t.jobId,
+      t.orderNumber,
+    ),
   ],
 );
 
@@ -1129,6 +1935,10 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     references: [organizations.id],
   }),
   job: one(jobs, { fields: [orders.jobId], references: [jobs.id] }),
+  materialList: one(materialLists, {
+    fields: [orders.materialListId],
+    references: [materialLists.id],
+  }),
   supplier: one(suppliers, {
     fields: [orders.supplierId],
     references: [suppliers.id],
@@ -1154,6 +1964,8 @@ export const orderItems = createTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
 
+    roomId: d.uuid().references(() => jobRooms.id, { onDelete: "set null" }),
+
     supplierPartId: d
       .uuid()
       .references(() => supplierParts.id, { onDelete: "set null" }),
@@ -1163,20 +1975,40 @@ export const orderItems = createTable(
       .references(() => partDefinitions.id, { onDelete: "restrict" }),
 
     quantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("1"),
+    /** Material list display order captured when sending. */
+    position: d.integer(),
+    /** Exact demand when sent; quantity is the actual supplier-adjusted order. */
+    requestedQuantity: d.numeric({ precision: 12, scale: 6 }),
+    orderMultipleSnapshot: d.numeric({ precision: 12, scale: 6 }),
+    receivedQuantity: d
+      .numeric({ precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    returnedQuantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("0"),
+    creditedQuantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("0"),
+    verificationStatus: d.varchar({ length: 50 }).notNull().default("pending"),
     uomId: d.uuid().references(() => units.id, { onDelete: "set null" }),
 
     unitCostAtOrderTime: d.numeric({ precision: 12, scale: 4 }),
+    priceStatusSnapshot:d.varchar({length:20}),
+    priceBookNameSnapshot: d.varchar({length:255}),
     descriptionSnapshot: d.text(),
     supplierSkuSnapshot: d.varchar({ length: 255 }),
     notes: d.text(),
+    /** Tool returns: the specific tool being sent back. */
+    assetId: d.uuid(),
+    /** Tool requests: how many the tool room has checked out so far. */
+    fulfilledQuantity: d.numeric({ precision: 12, scale: 6 }),
   }),
   (t) => [
+    index("order_item_room_idx").on(t.roomId),
     index("order_item_order_idx").on(t.orderId),
     index("order_item_part_idx").on(t.partDefinitionId),
   ],
 );
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  room: one(jobRooms, { fields: [orderItems.roomId], references: [jobRooms.id] }),
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
   supplierPart: one(supplierParts, {
     fields: [orderItems.supplierPartId],
@@ -1192,3 +2024,697 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
     relationName: "oi_uom",
   }),
 }));
+
+// ============================
+// ASSET MANAGEMENT (tools & equipment)
+// ============================
+// Tool types are part definitions in catalogs of kind "assets". Where a tool
+// or quantity of tools sits is a "holder": an asset location (warehouse,
+// vehicle), a job, or a person. holderId is a location/job uuid or user id.
+
+export const assetLocations = createTable(
+  "asset_location",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** warehouse | vehicle */
+    kind: d.varchar({ length: 20 }).notNull(),
+    name: d.varchar({ length: 255 }).notNull(),
+    notes: d.text(),
+    isActive: d.boolean().notNull().default(true),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [index("asset_location_org_idx").on(t.organizationId)],
+);
+
+/** One individually tracked tool (serialized tool types). */
+export const assets = createTable(
+  "asset",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    /** Printed on the QR label; unique within the organization. */
+    assetTag: d.varchar({ length: 40 }).notNull(),
+    serialNumber: d.varchar({ length: 120 }),
+    /** available | in_use | damaged | missing | retired */
+    status: d.varchar({ length: 20 }).notNull().default("available"),
+    /** location | job | user */
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    notes: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("asset_org_tag_uniq").on(t.organizationId, t.assetTag),
+    index("asset_org_holder_idx").on(t.organizationId, t.holderType, t.holderId),
+    index("asset_part_idx").on(t.partDefinitionId),
+  ],
+);
+
+/** Quantity-tracked tools held by one holder. */
+export const assetStock = createTable(
+  "asset_stock",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    quantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("0"),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    unique("asset_stock_holding_uniq").on(
+      t.organizationId,
+      t.partDefinitionId,
+      t.holderType,
+      t.holderId,
+    ),
+    index("asset_stock_holder_idx").on(t.organizationId, t.holderType, t.holderId),
+  ],
+);
+
+/** Every change of holder, quantity or status: the audit trail. */
+export const assetMovements = createTable(
+  "asset_movement",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** receive | checkout | return | transfer | adjust | status | count */
+    kind: d.varchar({ length: 20 }).notNull(),
+    assetId: d.uuid().references(() => assets.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    quantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("1"),
+    fromType: d.varchar({ length: 20 }),
+    fromId: d.varchar({ length: 255 }),
+    toType: d.varchar({ length: 20 }),
+    toId: d.varchar({ length: 255 }),
+    statusFrom: d.varchar({ length: 20 }),
+    statusTo: d.varchar({ length: 20 }),
+    orderId: d.uuid().references(() => orders.id, { onDelete: "set null" }),
+    countId: d.uuid(),
+    note: d.text(),
+    userId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  }),
+  (t) => [
+    index("asset_movement_org_created_idx").on(t.organizationId, t.createdAt),
+    index("asset_movement_asset_idx").on(t.assetId),
+  ],
+);
+
+/** A count/audit of everything one holder should have. */
+export const assetCounts = createTable(
+  "asset_count",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    holderType: d.varchar({ length: 20 }).notNull(),
+    holderId: d.varchar({ length: 255 }).notNull(),
+    /** open | completed | cancelled */
+    status: d.varchar({ length: 20 }).notNull().default("open"),
+    notes: d.text(),
+    startedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completedByUserId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    completedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [index("asset_count_org_idx").on(t.organizationId, t.status)],
+);
+
+export const assetCountLines = createTable(
+  "asset_count_line",
+  (d) => ({
+    id: d
+      .uuid()
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    countId: d
+      .uuid()
+      .notNull()
+      .references(() => assetCounts.id, { onDelete: "cascade" }),
+    /** Set for serialized tools; null for quantity lines. */
+    assetId: d.uuid().references(() => assets.id, { onDelete: "cascade" }),
+    partDefinitionId: d
+      .uuid()
+      .notNull()
+      .references(() => partDefinitions.id, { onDelete: "restrict" }),
+    expectedQuantity: d.numeric({ precision: 12, scale: 3 }).notNull().default("0"),
+    countedQuantity: d.numeric({ precision: 12, scale: 3 }),
+  }),
+  (t) => [
+    index("asset_count_line_count_idx").on(t.countId),
+    unique("asset_count_line_asset_uniq").on(t.countId, t.assetId),
+  ],
+);
+
+// Transactional sync invalidation counters maintained by PostgreSQL triggers.
+export const syncRevisions = createTable("sync_revision", (d) => ({
+  kind: d.text().notNull(),
+  scope: d.text().notNull(),
+  revision: d.bigint({ mode: "bigint" }).notNull().default(sql`0`),
+}), (t) => [primaryKey({ columns: [t.kind, t.scope] })]);
+
+// Job chat: job-scoped lobby, durable ordered events and private attachments.
+// Constrain the existing circular user/job schema at this boundary.
+const chatJobId: AnyPgColumn = (jobs as { id: AnyPgColumn }).id;
+const chatUserId: AnyPgColumn = (users as { id: AnyPgColumn }).id;
+export const jobChatMembers = createTable("job_chat_member", (d) => ({
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  userId: d.varchar({ length: 255 }).notNull().references(() => chatUserId, { onDelete: "cascade" }),
+  muted: d.boolean().notNull().default(false),
+  lastReadSequence: d.bigint({ mode: "number" }).notNull().default(0),
+  joinedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [primaryKey({ columns: [t.jobId, t.userId] }), index("job_chat_member_user_idx").on(t.userId)]);
+
+export const jobChatMessages = createTable("job_chat_message", (d) => ({
+  id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sequence: d.bigserial({ mode: "number" }).notNull().unique(),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  authorId: d.varchar({ length: 255 }).references(() => chatUserId, { onDelete: "set null" }),
+  clientId: d.uuid().notNull(),
+  requestHash: d.varchar({ length: 64 }).notNull(),
+  body: d.text().notNull(),
+  replyToId: d.uuid().references((): AnyPgColumn => jobChatMessages.id, { onDelete: "set null" }),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  editedAt: d.timestamp({ withTimezone: true }),
+  deletedAt: d.timestamp({ withTimezone: true }),
+}), (t) => [unique("job_chat_message_retry_uniq").on(t.jobId, t.authorId, t.clientId), index("job_chat_message_page_idx").on(t.jobId, t.sequence), index("job_chat_message_author_time_idx").on(t.authorId, t.createdAt)]);
+
+export const jobChatEvents = createTable("job_chat_event", (d) => ({
+  sequence: d.bigserial({ mode: "number" }).notNull().primaryKey(),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  messageId: d.uuid().notNull().references(() => jobChatMessages.id, { onDelete: "cascade" }),
+  type: d.varchar({ length: 16 }).notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_chat_event_page_idx").on(t.jobId, t.sequence)]);
+
+export const jobChatAttachments = createTable("job_chat_attachment", (d) => ({
+  id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  jobId: d.uuid().notNull().references(() => chatJobId, { onDelete: "cascade" }),
+  uploadedById: d.varchar({ length: 255 }).references(() => chatUserId, { onDelete: "set null" }),
+  messageId: d.uuid().references(() => jobChatMessages.id, { onDelete: "cascade" }),
+  name: d.varchar({ length: 255 }).notNull(),
+  mimeType: d.varchar({ length: 80 }).notNull(),
+  size: d.integer().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [index("job_chat_attachment_message_idx").on(t.messageId), index("job_chat_attachment_pending_idx").on(t.uploadedById, t.createdAt)]);
+
+
+// Drawings: folders of plain drawing sheets (no room detection). A PDF uploaded
+// into a set is split into one sheet per page, stored like Rooms uploads.
+export const jobDrawingSets = createTable(
+  "job_drawing_set",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    documentVersionId: d.uuid(),
+    name: d.varchar({ length: 255 }).notNull(),
+    labelBoxes: d.jsonb().$type<import("~/lib/super-label").SuperLabelBoxes>(),
+    createdByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("job_drawing_set_job_idx").on(t.organizationId, t.jobId), uniqueIndex("drawing_document_version_set_idx").on(t.documentVersionId).where(sql`${t.documentVersionId} is not null`)],
+);
+
+export const jobDrawingSheets = createTable(
+  "job_drawing_sheet",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    setId: d.uuid().notNull().references(() => jobDrawingSets.id, { onDelete: "cascade" }),
+    documentVersionId: d.uuid(),
+    name: d.varchar({ length: 255 }).notNull(),
+    imageUrl: d.text().notNull(),
+    width: d.integer().notNull(),
+    height: d.integer().notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    sourceFilename: d.varchar({ length: 255 }),
+    uploadedByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("job_drawing_sheet_set_idx").on(t.setId, t.sortOrder), uniqueIndex("drawing_document_version_page_idx").on(t.documentVersionId, t.sortOrder).where(sql`${t.documentVersionId} is not null`)],
+);
+
+// Prefabs: named, company-wide sets of parts (e.g. a whole room) that are added
+// to a material list in one go, times a multiplier.
+export const materialPrefabs = createTable(
+  "material_prefab",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    kind: d.varchar({ length: 16 }).$type<"materials" | "tools">().notNull().default("materials"),
+    name: d.varchar({ length: 255 }).notNull(),
+    createdByUserId: d.varchar({ length: 255 }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("material_prefab_org_idx").on(t.organizationId, t.name)],
+);
+
+export const materialPrefabItems = createTable(
+  "material_prefab_item",
+  (d) => ({
+    id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    prefabId: d.uuid().notNull().references(() => materialPrefabs.id, { onDelete: "cascade" }),
+    partDefinitionId: d.uuid().notNull().references(() => partDefinitions.id, { onDelete: "cascade" }),
+    supplierPartId: d.uuid().references(() => supplierParts.id, { onDelete: "set null" }),
+    quantity: d.numeric({ precision: 12, scale: 6 }).notNull().default("1"),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [unique("material_prefab_item_part_uniq").on(t.prefabId, t.partDefinitionId)],
+);
+
+export * from "./chat-push-schema";
+
+// Organization-scoped time recording. Approved periods are immutable until returned.
+export const timeSettings = createTable("time_settings", (d) => ({
+  organizationId: d
+    .uuid()
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  cadence: d.varchar({ length: 10 }).notNull().default("weekly"),
+  weekStartsOn: d.integer().notNull().default(1),
+  timezone: d.varchar({ length: 100 }).notNull().default("America/Toronto"),
+  revision: d.integer().notNull().default(0),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}));
+export const timeSheets = createTable(
+  "time_sheet",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => chatUserId, { onDelete: "restrict" }),
+    startDate: d.date().notNull(),
+    endDate: d.date().notNull(),
+    status: d.varchar({ length: 20 }).notNull().default("draft"),
+    revision: d.integer().notNull().default(0),
+    reviewNote: d.text().notNull().default(""),
+    submittedAt: d.timestamp({ withTimezone: true }),
+    reviewedAt: d.timestamp({ withTimezone: true }),
+    reviewerId: d
+      .varchar({ length: 255 })
+      .references(() => chatUserId, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    unique("time_sheet_period_unique").on(
+      table.organizationId,
+      table.userId,
+      table.startDate,
+    ),
+    index("time_sheet_org_period_idx").on(
+      table.organizationId,
+      table.startDate,
+    ),
+  ],
+);
+export const timeEntries = createTable(
+  "time_entry",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    sheetId: d
+      .uuid()
+      .notNull()
+      .references(() => timeSheets.id, { onDelete: "cascade" }),
+    date: d.date().notNull(),
+    jobId: d.uuid().references(() => chatJobId, { onDelete: "set null" }),
+    jobName: d.varchar({ length: 255 }).notNull().default("General"),
+    category: d.varchar({ length: 20 }).notNull().default("work"),
+    minutes: d.integer().notNull(),
+    breakMinutes: d.integer().notNull().default(0),
+    costCode: d.varchar({ length: 100 }).notNull().default(""),
+    notes: d.text().notNull().default(""),
+    source: d.varchar({ length: 10 }).notNull().default("manual"),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [index("time_entry_sheet_idx").on(table.sheetId)],
+);
+export const timeClocks = createTable(
+  "time_clock",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => chatUserId, { onDelete: "restrict" }),
+    jobId: d.uuid().references(() => chatJobId, { onDelete: "set null" }),
+    jobName: d.varchar({ length: 255 }).notNull().default("General"),
+    notes: d.text().notNull().default(""),
+    timezone: d.varchar({ length: 100 }).notNull(),
+    periods: jsonb()
+      .$type<import("~/lib/timesheets").ClockPeriod[]>()
+      .notNull(),
+    revision: d.integer().notNull().default(0),
+    startedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    unique("time_clock_user_unique").on(table.organizationId, table.userId),
+  ],
+);
+export const timeEvents = createTable(
+  "time_event",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: d
+      .uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    sheetId: d.uuid().references(() => timeSheets.id, { onDelete: "cascade" }),
+    userId: d.varchar({ length: 255 }).notNull(),
+    actorId: d.varchar({ length: 255 }).notNull(),
+    actorName: d.varchar({ length: 255 }).notNull(),
+    action: d.varchar({ length: 50 }).notNull(),
+    data: jsonb().notNull(),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    index("time_event_sheet_idx").on(table.sheetId, table.createdAt),
+    index("time_event_org_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id,
+    ),
+    index("time_event_user_idx").on(
+      table.organizationId,
+      table.userId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export { conversations, conversationMembers, conversationMessages, conversationAttachments, conversationPushOutbox } from "./conversation-schema";
+
+export { employeeSimulationSessions, employeeSimulationAudit } from "./simulation-schema";
+export { estimates, estimateRevisions, estimatingPricing, estimatingPricingRevisions } from "./estimating-schema";
+
+// Reporting-manager material alerts are stored independently of push devices.
+export const materialNotifications = createTable("material_notification", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  organizationId: d.uuid().notNull().references(() => (organizations as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  materialListId: d.uuid().notNull().references(() => (materialLists as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  senderId: d.varchar({ length: 255 }).notNull().references(() => (users as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  recipientId: d.varchar({ length: 255 }).notNull().references(() => (users as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  eventKey: d.text().notNull(),
+  action: d.varchar({ length: 16 }).$type<"added" | "edited">().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  readAt: d.timestamp({ withTimezone: true }),
+}), (t) => [
+  unique("material_notification_event_recipient_uniq").on(t.organizationId,t.eventKey,t.recipientId),
+  index("material_notification_recipient_idx").on(t.recipientId,t.createdAt,t.id),
+  check("material_notification_action_check",sql`${t.action} in ('added','edited')`),
+]);
+export const materialPushOutbox = createTable("material_push_outbox", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  notificationId: d.uuid().notNull().references(() => (materialNotifications as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  subscriptionId: d.uuid().notNull().references(() => (chatPushSubscriptions as unknown as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  attempts: d.integer().notNull().default(0),
+  availableAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  leaseToken: d.uuid(),
+  leasedUntil: d.timestamp({ withTimezone: true }),
+  completedAt: d.timestamp({ withTimezone: true }),
+  outcome: d.varchar({ length: 32 }),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [
+  unique("material_push_notification_device_uniq").on(t.notificationId,t.subscriptionId),
+  index("material_push_ready_idx").on(t.completedAt,t.availableAt,t.leasedUntil),
+]);
+
+export * from "./app-devices-schema";
+
+/** Each account's delivery calendar is shared across its devices. */
+export const orderDeliveryPreferences = createTable("order_delivery_preferences", (d) => ({
+  userId: d.varchar({ length: 255 }).primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  calendar: jsonb().$type<DeliveryCalendar>().notNull(),
+  revision: d.integer().notNull().default(1),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}));
+
+export * from "./bim-schema";
+
+const pricingReferenceId=(table:unknown)=>(table as {id:AnyPgColumn}).id;
+
+// Job purchasing lists: supplier listings reference the catalogue's permanent part ID.
+export const supplierPriceBooks = createTable("supplier_price_book", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"cascade"}),
+  name:d.varchar({length:255}).notNull(),
+  revision:d.integer().notNull().default(1),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}),t=>[unique("supplier_price_book_name_uniq").on(t.supplierId,t.name)]);
+export const supplierPriceBookEntries = createTable("supplier_price_book_entry", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  bookId:d.uuid().notNull().references(()=>supplierPriceBooks.id,{onDelete:"cascade"}),
+  supplierPartId:d.uuid().notNull().references(()=>supplierParts.id,{onDelete:"cascade"}),
+  unitCost:d.numeric({precision:12,scale:4}),
+  priceStatus:d.varchar({length:20}).notNull().default("none"),
+  priceBasis:d.varchar({length:100}).notNull().default("each"),
+  priceSource:d.text(),sourceDescription:d.text(),
+}),t=>[unique("supplier_price_book_entry_uniq").on(t.bookId,t.supplierPartId)]);
+export const jobSupplierPriceBooks = createTable("job_supplier_price_book", d => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"cascade"}),
+  bookId:d.uuid().notNull().references(()=>supplierPriceBooks.id,{onDelete:"cascade"}),
+}),t=>[unique("job_supplier_price_book_uniq").on(t.jobId,t.supplierId)]);
+
+export const jobPriceLists = createTable("job_price_list", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  name:d.varchar({length:255}).notNull(),currency:d.varchar({length:10}).notNull().default("CAD"),
+  active:d.boolean().notNull().default(true),requireApproval:d.boolean().notNull().default(true),
+  revision:d.integer().notNull().default(1),updatedAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}), t=>[unique("job_price_list_job_uniq").on(t.jobId), index("job_price_list_org_idx").on(t.organizationId)]);
+
+export const jobPriceEntries = createTable("job_price_entry", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  priceListId:d.uuid().notNull().references(()=>jobPriceLists.id,{onDelete:"cascade"}),
+  supplierPriceBookEntryId:d.uuid().references(()=>supplierPriceBookEntries.id,{onDelete:"cascade"}),
+  supplierPartId:d.uuid().notNull().references(()=>supplierParts.id,{onDelete:"restrict"}),
+  sourceDescription:d.text(), unitCost:d.numeric({precision:12,scale:4}),
+  priceStatus:d.varchar({length:20}).notNull().default("none"),
+  priceBasis:d.varchar({length:100}).notNull().default("each"),priceSource:d.text(),
+  active:d.boolean().notNull().default(true),updatedAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}),t=>[unique("job_price_entry_listing_uniq").on(t.priceListId,t.supplierPartId),check("job_price_entry_cost_check",sql`${t.unitCost} is null or ${t.unitCost} >= 0`),check("job_price_entry_status_check",sql`${t.priceStatus} in ('none','estimated','confirmed')`)]);
+
+export const jobOrderApprovals = createTable("job_order_approval", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  materialListId:d.uuid().notNull().references(()=>pricingReferenceId(materialLists),{onDelete:"cascade"}),
+  supplierId:d.uuid().notNull().references(()=>pricingReferenceId(suppliers),{onDelete:"restrict"}),
+  fingerprint:d.varchar({length:64}).notNull(),status:d.varchar({length:20}).notNull().default("pending"),
+  snapshot:d.jsonb().$type<import("~/lib/job-pricing").ApprovalSnapshotItem[]>().notNull(),
+  requestNote:d.text().notNull(),reviewNote:d.text(),
+  requestedBy:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  requestedByActor:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  reviewedBy:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  reviewedByActor:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),reviewedAt:d.timestamp({withTimezone:true}),usedAt:d.timestamp({withTimezone:true}),
+}),t=>[unique("job_order_approval_content_uniq").on(t.organizationId,t.materialListId,t.supplierId,t.fingerprint),index("job_order_approval_queue_idx").on(t.organizationId,t.jobId,t.status),check("job_order_approval_status_check",sql`${t.status} in ('pending','approved','rejected','superseded')`)]);
+
+export const jobPricingAudit = createTable("job_pricing_audit", (d) => ({
+  id:d.uuid().primaryKey().$defaultFn(()=>crypto.randomUUID()),
+  organizationId:d.uuid().notNull().references(()=>organizations.id,{onDelete:"cascade"}),
+  jobId:d.uuid().notNull().references(()=>pricingReferenceId(jobs),{onDelete:"cascade"}),
+  action:d.varchar({length:60}).notNull(),detail:d.jsonb().notNull(),
+  userId:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  actorUserId:d.varchar({length:255}).references(()=>pricingReferenceId(users),{onDelete:"set null"}),
+  createdAt:d.timestamp({withTimezone:true}).notNull().defaultNow(),
+}), t=>[index("job_pricing_audit_job_idx").on(t.organizationId,t.jobId,t.createdAt)]);
+
+export { supplierEmailPreferences } from "./supplier-email-preferences-schema";
+
+export { superScaleJobs } from "./super-scale-schema";
+
+// Reviewed symbol references are scoped to one drawing set and retain the exact
+// source sheet/crop. The source PDF and existing tiles remain the image assets.
+export const drawingLegendItems = createTable("drawing_legend_item", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  setId: d.uuid().notNull().references(() => jobDrawingSets.id, { onDelete: "cascade" }),
+  sourceSheetId: d.uuid().notNull().references(() => jobDrawingSheets.id, { onDelete: "cascade" }),
+  sourceKey: d.varchar({ length: 100 }).notNull(),
+  data: d.jsonb().$type<import("~/lib/drawing-legend").LegendItemData>().notNull(),
+  revision: d.integer().notNull().default(1),
+  reviewedBy: d.varchar({ length: 255 }).notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("drawing_legend_source_idx").on(t.setId, t.sourceSheetId, t.sourceKey),
+  index("drawing_legend_set_idx").on(t.organizationId, t.setId),
+]);
+
+// A pipe system's material standard. Company rows have no job; a job row
+// overrides the company standard for that system on that job only.
+export const pipeSystemSpecs = createTable("pipe_system_spec", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().references(() => jobs.id, { onDelete: "cascade" }),
+  system: d.varchar({ length: 40 }).notNull(),
+  data: d.jsonb().$type<PipeSpec>().notNull(),
+  revision: d.integer().notNull().default(1),
+  updatedBy: d.varchar({ length: 255 }).notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("pipe_system_spec_company_idx").on(t.organizationId, t.system).where(sql`"jobId" IS NULL`),
+  uniqueIndex("pipe_system_spec_job_idx").on(t.jobId, t.system).where(sql`"jobId" IS NOT NULL`),
+  index("pipe_system_spec_org_idx").on(t.organizationId),
+]);
+
+// Latest explicitly requested specification assessment, including empty/failed runs.
+export const jobSystemAssessments = createTable("job_system_assessment", d => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull().references(() => (jobs as { id: AnyPgColumn }).id, { onDelete: "cascade" }),
+  requestedBy: d.varchar({ length: 255 }).notNull(),
+  status: d.varchar({ length: 20 }).notNull(),
+  data: d.jsonb().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), t => [
+  uniqueIndex("job_system_assessment_job_idx").on(t.jobId),
+  index("job_system_assessment_org_idx").on(t.organizationId, t.jobId),
+  check("job_system_assessment_status_check", sql`${t.status} in ('processing', 'ready', 'failed')`),
+]);
+
+export { diagnosticCounts } from "./diagnostics-schema";
+
+/** Durable, company-scoped evidence for reviewing packing-slip reader failures. */
+export const packingSlipReviewHistory = createTable("packing_slip_review_history", (d) => ({
+  id: d.uuid().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: d.uuid().notNull(),
+  documentId: d.uuid().notNull(),
+  versionId: d.uuid().notNull(),
+  runId: d.uuid().notNull(),
+  kind: d.varchar({ length: 24 }).notNull(),
+  userId: d.varchar({ length: 255 }).notNull(),
+  release: d.varchar({ length: 100 }).notNull(),
+  data: d.jsonb().notNull(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}), (t) => [
+  uniqueIndex("packing_slip_history_run_kind_idx").on(t.organizationId, t.runId, t.kind),
+  index("packing_slip_history_job_idx").on(t.organizationId, t.jobId, t.createdAt),
+  check("packing_slip_history_kind_check", sql`${t.kind} in ('analysis', 'failure', 'confirmation')`),
+]);
+
+export { packingSlipJobs } from "../background/packing-schema";
+export { packingSlipTerraCalls } from "../packing-slips/terra-call-schema";
+
+/** Shared executive default and explicit per-account sorting overrides. */
+export const materialSortPreferences = createTable("material_sort_preference", (d) => ({
+  organizationId: d.uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  scope: d.varchar({ length: 255 }).notNull(),
+  settings: d.jsonb().notNull(),
+  custom: d.boolean().notNull().default(false),
+}), (t) => [primaryKey({ columns: [t.organizationId, t.scope] })]);
+
+export { hyperlinkReaderRuns } from "../drawings/hyperlink-reader-schema";

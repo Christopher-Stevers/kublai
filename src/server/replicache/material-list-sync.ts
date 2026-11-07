@@ -1,0 +1,1557 @@
+import { jobSupplierDefaultsSchema, supplierVersionSchema } from "~/lib/job-supplier-defaults";
+import { resolveDefaultSupplier, supplierVersionPrice, validateJobSupplierDefaults } from "~/server/job-supplier-defaults";
+import { getJobPriceBooks } from "~/server/job-pricing";
+import { jobPriceStatus } from "~/lib/job-price-status";
+import { indexJobPrices } from "~/lib/job-pricing";
+import { createMaterialListSummaries } from "~/lib/material-list-summary";
+import { loadOrderVerification } from "~/server/material-lists/order-verification";
+import { ensureToolRoomSupplier } from "~/server/assets/service";
+import { recalculatePurchaseTotals } from "~/server/purchasing";
+import { purchaseLineTotal } from "~/lib/purchase-quantity";
+import { enqueueMaterialNotification } from "~/server/notifications/materials";
+import { pullSnapshot, ensureClientGroup, ReplicacheOwnershipError } from "./pull";
+export { ReplicacheOwnershipError } from "./pull";
+import { resolvePermissions, type PermissionKey } from "~/server/auth/permissions";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import type {
+  PatchOperation,
+  PullRequest as PullRequestV1,
+  PullResponse as PullResponseV1,
+  PushRequest as PushRequestV1,
+} from "replicache";
+import { z } from "zod";
+
+import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
+import {
+  getPrimarySupplierContact,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
+import { db } from "~/server/db";
+import {
+  jobs,
+  jobRooms,
+  locations,
+  materials,
+  materialLists,
+  materialListSyncTombstones,
+  orderItems,
+  orders,
+  partDefinitions,
+  catalogs,
+  quoteItems,
+  quotes,
+  replicacheClientGroups,
+  replicacheClients,
+  supplierParts,
+  suppliers,
+  users,
+} from "~/server/db/schema";
+import {
+  publishMaterialListEvent,
+  publishOrganizationReplicachePoke,
+} from "~/server/material-list-events";
+import {
+  getNextDefaultMaterialListName,
+  isDefaultMaterialListName,
+} from "~/server/material-list-names";
+
+import { MaterialRoomAssignmentError, resolveMaterialRoom } from "~/server/material-room";
+
+type ReplicacheUser = {
+  id: string;
+  organizationId: string | null;
+  role?: string | null;
+  permissionConfig?: unknown;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionEndsAt?: Date | string | null;
+};
+
+/** Permission needed for each offline mutation. */
+const MUTATION_PERMISSION: Record<string, PermissionKey> = {
+  createJob: "jobs.create",
+  updateJob: "jobs.edit",
+  deleteJob: "jobs.delete",
+  createMaterialList: "lists.edit",
+  renameMaterialList: "lists.edit",
+  addItem: "lists.edit",
+  removeItem: "lists.edit",
+  updateItemQuantity: "lists.edit",
+  updateItemSupplierPart: "lists.edit",
+  deleteMaterialList: "lists.delete",
+  createSupplier: "suppliers.edit",
+  updateSupplier: "suppliers.edit",
+  deleteSupplier: "suppliers.delete",
+};
+
+type ReplicacheTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type ReplicacheMutationSideEffects = {
+  quoteIdsToRecalculate: Set<string>;
+  materialListIdsToTouch: Set<string>;
+};
+
+// ---------------------------------------------------------------------------
+// Zod schemas for all mutator args
+// ---------------------------------------------------------------------------
+
+const renameMaterialListArgs = z.object({
+  materialListId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+});
+
+const updateItemQuantityArgs = z.object({
+  materialListId: z.string().uuid().optional(),
+  itemId: z.string().uuid(),
+  quantity: z.number().positive(),
+});
+
+const removeItemArgs = z.object({
+  materialListId: z.string().uuid(),
+  itemId: z.string().uuid(),
+});
+
+const uuidOrOfflineSupplierPartId = z.union([
+  z.string().uuid(),
+  z.string().regex(/^offline-supplier-part:[^:]+:[^:]+$/),
+]);
+
+function parseOfflineSupplierPartId(value: string | null | undefined) {
+  if (!value) return null;
+  const match = /^offline-supplier-part:([^:]+):([^:]+)$/.exec(value);
+  if (!match?.[1] || !match[2]) return null;
+  return { partDefinitionId: match[1], supplierId: match[2] };
+}
+
+function isUuid(value: string | null | undefined) {
+  return (
+    !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
+}
+
+const addItemArgs = z.object({
+  supplierVersionSnapshot: supplierVersionSchema.nullable().optional(),
+  useJobDefaults: z.boolean().optional(),
+  roomId: z.string().uuid().nullable().optional(),
+  materialListId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  partDefinitionId: z.string().uuid().nullable().optional(),
+  supplierPartId: uuidOrOfflineSupplierPartId.nullable().optional(),
+  supplierId: z.string().uuid().nullable().optional(),
+  quantity: z.number().positive(),
+  unitCost: z.number().nullable().optional(),
+  descriptionSnapshot: z.string().nullable().optional(),
+});
+
+const updateItemSupplierPartArgs = z.object({
+  supplierVersionSnapshot: supplierVersionSchema.nullable().optional(),
+  itemId: z.string().uuid(),
+  materialListId: z.string().uuid().optional(),
+  supplierPartId: uuidOrOfflineSupplierPartId.nullable(),
+  supplierId: z.string().uuid().nullable(),
+  unitCost: z.number().nullable().optional(),
+});
+
+const createJobArgs = z.object({
+  jobId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  locationId: z.string().uuid().nullable().optional(),
+});
+
+const updateJobArgs = z.object({
+  supplierDefaults: jobSupplierDefaultsSchema.nullable().optional(),
+  jobId: z.string().uuid(),
+  name: z.string().min(1).max(255).optional(),
+  locationId: z.string().uuid().nullable().optional(),
+  foremanName: z.string().max(255).nullable().optional(),
+  poNumber: z.string().max(100).nullable().optional(),
+});
+
+const deleteJobArgs = z.object({
+  jobId: z.string().uuid(),
+});
+
+const createMaterialListArgs = z.object({
+  roomId: z.string().uuid().nullable().optional(),
+  materialListId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  /** tools = a tool request list filled by the tool room. */
+  kind: z.enum(["materials", "tools"]).default("materials"),
+});
+
+const deleteMaterialListArgs = z.object({
+  materialListId: z.string().uuid(),
+});
+
+const createSupplierArgs = z.object({
+  supplierId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  contactName: z.string().max(255).nullable().optional(),
+  contactEmail: z.string().max(255).nullable().optional(),
+  contactPhone: z.string().max(50).nullable().optional(),
+  contacts: z.unknown().nullable().optional(),
+  orderingNotes: z.string().nullable().optional(),
+  locationId: z.string().uuid().nullable().optional(),
+});
+
+const updateSupplierArgs = z.object({
+  supplierId: z.string().uuid(),
+  name: z.string().min(1).max(255).optional(),
+  contactName: z.string().max(255).nullable().optional(),
+  contactEmail: z.string().max(255).nullable().optional(),
+  contactPhone: z.string().max(50).nullable().optional(),
+  contacts: z.unknown().nullable().optional(),
+  orderingNotes: z.string().nullable().optional(),
+  locationId: z.string().uuid().nullable().optional(),
+});
+
+const deleteSupplierArgs = z.object({
+  supplierId: z.string().uuid(),
+});
+
+// ---------------------------------------------------------------------------
+// Replicache bookkeeping helpers
+// ---------------------------------------------------------------------------
+
+async function ensureClient(
+  tx: ReplicacheTx,
+  input: {
+    clientId: string;
+    clientGroupId: string;
+    organizationId: string;
+    userId: string;
+  },
+) {
+  const [existing] = await tx
+    .select({
+      id: replicacheClients.id,
+      clientGroupId: replicacheClients.clientGroupId,
+      organizationId: replicacheClients.organizationId,
+      userId: replicacheClients.userId,
+    })
+    .from(replicacheClients)
+    .where(eq(replicacheClients.id, input.clientId))
+    .limit(1);
+
+  if (existing) {
+    if (
+      existing.clientGroupId !== input.clientGroupId ||
+      existing.organizationId !== input.organizationId ||
+      existing.userId !== input.userId
+    ) {
+      throw new ReplicacheOwnershipError(
+        "Replicache client ownership mismatch",
+      );
+    }
+    return;
+  }
+
+  await tx
+    .insert(replicacheClients)
+    .values({
+      id: input.clientId,
+      clientGroupId: input.clientGroupId,
+      organizationId: input.organizationId,
+      userId: input.userId,
+      lastMutationId: 0,
+    })
+    .onConflictDoNothing();
+}
+
+async function getClientLastMutationId(
+  tx: ReplicacheTx,
+  input: { clientId: string; clientGroupId: string; organizationId: string },
+) {
+  const [client] = await tx
+    .select({ lastMutationId: replicacheClients.lastMutationId })
+    .from(replicacheClients)
+    .where(
+      and(
+        eq(replicacheClients.id, input.clientId),
+        eq(replicacheClients.clientGroupId, input.clientGroupId),
+        eq(replicacheClients.organizationId, input.organizationId),
+      ),
+    )
+    .limit(1);
+
+  return client?.lastMutationId ?? 0;
+}
+
+async function setClientLastMutationId(
+  tx: ReplicacheTx,
+  input: {
+    clientId: string;
+    clientGroupId: string;
+    organizationId: string;
+    lastMutationId: number;
+  },
+) {
+  await tx
+    .update(replicacheClients)
+    .set({ lastMutationId: input.lastMutationId, updatedAt: new Date() })
+    .where(
+      and(
+        eq(replicacheClients.id, input.clientId),
+        eq(replicacheClients.clientGroupId, input.clientGroupId),
+        eq(replicacheClients.organizationId, input.organizationId),
+      ),
+    );
+}
+
+async function bumpClientGroupVersion(tx: ReplicacheTx, clientGroupId: string) {
+  const [group] = await tx
+    .select({ cvrVersion: replicacheClientGroups.cvrVersion })
+    .from(replicacheClientGroups)
+    .where(eq(replicacheClientGroups.id, clientGroupId))
+    .limit(1);
+
+  await tx
+    .update(replicacheClientGroups)
+    .set({
+      cvrVersion: (group?.cvrVersion ?? 0) + 1,
+      updatedAt: new Date(),
+    })
+    .where(eq(replicacheClientGroups.id, clientGroupId));
+}
+
+// ---------------------------------------------------------------------------
+// Domain helpers
+// ---------------------------------------------------------------------------
+
+const recalculateQuoteTotals = recalculatePurchaseTotals;
+
+async function touchMaterialList(tx: ReplicacheTx, materialListId: string) {
+  await tx
+    .update(materialLists)
+    .set({ updatedAt: new Date() })
+    .where(eq(materialLists.id, materialListId));
+}
+
+async function recordMaterialListItemTombstone(
+  tx: ReplicacheTx,
+  input: { organizationId: string; materialListId: string; itemId: string },
+) {
+  await tx
+    .insert(materialListSyncTombstones)
+    .values({
+      organizationId: input.organizationId,
+      materialListId: input.materialListId,
+      entityType: "quoteItem",
+      entityId: input.itemId,
+      deletedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [
+        materialListSyncTombstones.organizationId,
+        materialListSyncTombstones.entityType,
+        materialListSyncTombstones.entityId,
+      ],
+      set: { deletedAt: new Date(), materialListId: input.materialListId },
+    });
+}
+
+async function recordMaterialListTombstone(
+  tx: ReplicacheTx,
+  input: { organizationId: string; materialListId: string },
+) {
+  await tx
+    .insert(materialListSyncTombstones)
+    .values({
+      organizationId: input.organizationId,
+      materialListId: input.materialListId,
+      entityType: "materialList",
+      entityId: input.materialListId,
+      deletedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [
+        materialListSyncTombstones.organizationId,
+        materialListSyncTombstones.entityType,
+        materialListSyncTombstones.entityId,
+      ],
+      set: { deletedAt: new Date(), materialListId: input.materialListId },
+    });
+}
+
+class MissingMaterialListError extends Error {}
+
+async function getMaterialListForMutation(
+  tx: ReplicacheTx,
+  input: { organizationId: string; materialListId: string },
+) {
+  const [materialList] = await tx
+    .select({ id: materialLists.id, quoteId: materialLists.quoteId, jobId: materialLists.jobId, roomId: materialLists.roomId })
+    .from(materialLists)
+    .where(
+      and(
+        eq(materialLists.id, input.materialListId),
+        eq(materialLists.organizationId, input.organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (!materialList?.quoteId) {
+    throw new MissingMaterialListError("Material list not found");
+  }
+
+  return {...materialList, quoteId: materialList.quoteId};
+}
+
+async function getUnitCostFromSupplierPart(
+  tx: ReplicacheTx,
+  supplierPartId: string,
+): Promise<number> {
+  const [sp] = await tx
+    .select({ lastKnownUnitCost: supplierParts.lastKnownUnitCost })
+    .from(supplierParts)
+    .where(eq(supplierParts.id, supplierPartId))
+    .limit(1);
+  const raw = sp?.lastKnownUnitCost
+    ? parseFloat(String(sp.lastKnownUnitCost))
+    : 0;
+  return Number.isFinite(raw) ? raw : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Mutator dispatch
+// ---------------------------------------------------------------------------
+
+/** Row lock shares the send transaction's lock; acknowledge stale offline edits without applying them. */
+async function sentItemIsLocked(tx: ReplicacheTx, itemId: string, organizationId: string) {
+  const [item] = await tx.select({ sentOrderItemId: quoteItems.sentOrderItemId }).from(quoteItems)
+    .where(and(eq(quoteItems.id, itemId), sql`exists (select 1 from ${quotes} where ${quotes.id} = ${quoteItems.quoteId} and ${quotes.organizationId} = ${organizationId})`))
+    .for("update");
+  return Boolean(item?.sentOrderItemId);
+}
+
+async function applyReplicacheMutation(
+  tx: ReplicacheTx,
+  input: {
+    name: string;
+    eventKey: string;
+    args: unknown;
+    organizationId: string;
+    userId: string;
+    sideEffects: ReplicacheMutationSideEffects;
+  },
+) {
+  switch (input.name) {
+    // -----------------------------------------------------------------------
+    case "renameMaterialList": {
+      const args = renameMaterialListArgs.parse(input.args);
+      await getMaterialListForMutation(tx, {
+        organizationId: input.organizationId,
+        materialListId: args.materialListId,
+      });
+      await tx
+        .update(materialLists)
+        .set({ name: args.name, updatedAt: new Date() })
+        .where(eq(materialLists.id, args.materialListId));
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "updateItemQuantity": {
+      const args = updateItemQuantityArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
+      const [item] = await tx
+        .select({
+          id: quoteItems.id,
+          quoteId: quoteItems.quoteId,
+          unitCost: quoteItems.unitCost,
+          quantity: quoteItems.quantity,
+          materialListId: quotes.materialListId,
+        })
+        .from(quoteItems)
+        .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+        .where(
+          and(
+            eq(quoteItems.id, args.itemId),
+            eq(quotes.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!item?.materialListId) {
+        throw new Error(
+          `Cannot update missing material-list item ${args.itemId}`,
+        );
+      }
+      if (args.materialListId && item.materialListId !== args.materialListId) {
+        // A merge may have moved this row while this device was offline.
+        // Acknowledge the stale edit; the authoritative pull relocates the row.
+        return;
+      }
+
+      if (Number(item.quantity) === args.quantity) return;
+      const unitCost = item.unitCost ? parseFloat(String(item.unitCost)) : 0;
+      const extendedPrice =
+        args.quantity * (Number.isFinite(unitCost) ? unitCost : 0);
+      await tx
+        .update(quoteItems)
+        .set({
+          quantity: args.quantity.toString(),
+          extendedPrice: extendedPrice.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(quoteItems.id, args.itemId));
+      await enqueueMaterialNotification(tx, { ...input, materialListId: item.materialListId, senderId: input.userId, action: "edited" });
+      input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(item.materialListId);
+      publishMaterialListEvent(
+        item.materialListId,
+        "updated",
+        input.organizationId,
+      );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "removeItem": {
+      const args = removeItemArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
+      let materialList: Awaited<ReturnType<typeof getMaterialListForMutation>>;
+      try {
+        materialList = await getMaterialListForMutation(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+        });
+      } catch {
+        return;
+      }
+      const [item] = await tx
+        .select({ id: quoteItems.id, quoteId: quoteItems.quoteId })
+        .from(quoteItems)
+        .where(eq(quoteItems.id, args.itemId))
+        .limit(1);
+
+      if (item && item.quoteId !== materialList.quoteId) return;
+      if (!item) {
+        await recordMaterialListItemTombstone(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+          itemId: args.itemId,
+        });
+        return;
+      }
+
+      await tx.delete(quoteItems).where(eq(quoteItems.id, args.itemId));
+      await recordMaterialListItemTombstone(tx, {
+        organizationId: input.organizationId,
+        materialListId: args.materialListId,
+        itemId: args.itemId,
+      });
+      input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(args.materialListId);
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "addItem": {
+      const args = addItemArgs.parse(input.args);
+      const materialList = await getMaterialListForMutation(tx, {
+        organizationId: input.organizationId,
+        materialListId: args.materialListId,
+      });
+
+      const roomId = await resolveMaterialRoom(tx, {
+        organizationId: input.organizationId, jobId: materialList.jobId,
+        roomId: args.roomId, defaultRoomId: materialList.roomId,
+      });
+
+      const [part] = args.partDefinitionId ? await tx.select({ catalogKind: catalogs.kind })
+        .from(partDefinitions).innerJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id)).where(and(eq(partDefinitions.id, args.partDefinitionId), eq(partDefinitions.organizationId, input.organizationId))).limit(1) : [];
+      const isTool = part?.catalogKind === "assets";
+      const offlineSupplierPart = parseOfflineSupplierPartId(
+        args.supplierPartId,
+      );
+      let serverSupplierPartId = !isTool && isUuid(args.supplierPartId)
+        ? args.supplierPartId
+        : null;
+      let resolvedSupplierId =
+        isTool ? await ensureToolRoomSupplier(tx, input.organizationId) : args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+
+      let unitCost = args.unitCost ?? 0;
+      if (serverSupplierPartId) {
+        unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
+      }
+      const version = !isTool && args.partDefinitionId
+        ? args.useJobDefaults
+          ? await resolveDefaultSupplier(tx,input.organizationId,materialList.jobId,args.partDefinitionId)
+          : args.supplierVersionSnapshot ?? null
+        : null;
+      if(version && args.partDefinitionId){
+        const selected=await supplierVersionPrice(tx,input.organizationId,version,args.partDefinitionId,serverSupplierPartId);
+        resolvedSupplierId=version.supplierId;serverSupplierPartId=selected.listing?.id??null;unitCost=Number(selected.unitCost??0);
+      }
+      if (isTool || !Number.isFinite(unitCost)) unitCost = 0;
+
+      const extendedPrice = args.quantity * unitCost;
+
+      const inserted = await tx
+        .insert(quoteItems)
+        .values({
+          id: args.itemId,
+          quoteId: materialList.quoteId,
+          roomId,
+          partDefinitionId: args.partDefinitionId ?? null,
+          supplierPartId: serverSupplierPartId,
+          supplierVersion: version,
+          supplierId: resolvedSupplierId,
+          quantity: args.quantity.toString(),
+          unitCost: unitCost.toString(),
+          extendedPrice: extendedPrice.toString(),
+          descriptionSnapshot: args.descriptionSnapshot ?? null,
+          addedByUserId: input.userId,
+        })
+        .onConflictDoNothing().returning({ id: quoteItems.id }); // Idempotent: skip if already applied
+      if (!inserted.length) return;
+      await enqueueMaterialNotification(tx, { ...input, materialListId: args.materialListId, senderId: input.userId, action: "added" });
+
+      input.sideEffects.quoteIdsToRecalculate.add(materialList.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(args.materialListId);
+      publishMaterialListEvent(
+        args.materialListId,
+        "updated",
+        input.organizationId,
+      );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "updateItemSupplierPart": {
+      const args = updateItemSupplierPartArgs.parse(input.args);
+      if (await sentItemIsLocked(tx, args.itemId, input.organizationId)) return;
+      const [item] = await tx
+        .select({
+          id: quoteItems.id,
+          quoteId: quoteItems.quoteId,
+          quantity: quoteItems.quantity,
+          supplierPartId: quoteItems.supplierPartId,
+          partDefinitionId: quoteItems.partDefinitionId,
+          supplierVersion: quoteItems.supplierVersion,
+          supplierId: quoteItems.supplierId,
+          unitCost: quoteItems.unitCost,
+          materialListId: quotes.materialListId,
+        })
+        .from(quoteItems)
+        .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+        .where(
+          and(
+            eq(quoteItems.id, args.itemId),
+            eq(quotes.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!item?.materialListId) {
+        throw new Error(
+          `Cannot update supplier for missing material-list item ${args.itemId}`,
+        );
+      }
+      if (args.materialListId && item.materialListId !== args.materialListId) {
+        // A merge may have moved this row while this device was offline.
+        // Acknowledge the stale edit; the authoritative pull relocates the row.
+        return;
+      }
+
+      const offlineSupplierPart = parseOfflineSupplierPartId(
+        args.supplierPartId,
+      );
+      let serverSupplierPartId = isUuid(args.supplierPartId)
+        ? args.supplierPartId
+        : null;
+      let resolvedSupplierId =
+        args.supplierId ?? offlineSupplierPart?.supplierId ?? null;
+
+      let unitCost = args.unitCost ?? 0;
+      if (serverSupplierPartId) {
+        unitCost = await getUnitCostFromSupplierPart(tx, serverSupplierPartId);
+      }
+      const version = args.supplierVersionSnapshot ?? null;
+      if (version) {
+        if (!item.partDefinitionId) throw new Error("A supplier version requires a catalogue part.");
+        const selected = await supplierVersionPrice(tx, input.organizationId, version, item.partDefinitionId, serverSupplierPartId);
+        resolvedSupplierId = version.supplierId;
+        serverSupplierPartId = selected.listing?.id ?? null;
+        unitCost = Number(selected.unitCost ?? 0);
+      }
+      if (!Number.isFinite(unitCost)) unitCost = 0;
+
+      if (JSON.stringify(item.supplierVersion ?? null) === JSON.stringify(version) && item.supplierPartId === serverSupplierPartId && item.supplierId === resolvedSupplierId && Number(item.unitCost ?? 0) === unitCost) return;
+      const quantity = parseFloat(String(item.quantity));
+      const extendedPrice =
+        (Number.isFinite(quantity) ? quantity : 0) * unitCost;
+
+      await tx
+        .update(quoteItems)
+        .set({
+          supplierPartId: serverSupplierPartId,
+          supplierVersion: version,
+          supplierId: resolvedSupplierId,
+          unitCost: unitCost.toString(),
+          extendedPrice: extendedPrice.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(quoteItems.id, args.itemId));
+
+      await enqueueMaterialNotification(tx, { ...input, materialListId: item.materialListId, senderId: input.userId, action: "edited" });
+      input.sideEffects.quoteIdsToRecalculate.add(item.quoteId);
+      input.sideEffects.materialListIdsToTouch.add(item.materialListId);
+      publishMaterialListEvent(
+        item.materialListId,
+        "updated",
+        input.organizationId,
+      );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "createJob": {
+      const args = createJobArgs.parse(input.args);
+      await tx
+        .insert(jobs)
+        .values({
+          id: args.jobId,
+          organizationId: input.organizationId,
+          name: args.name,
+          locationId: args.locationId ?? null,
+          createdByUserId: input.userId,
+        })
+        .onConflictDoNothing(); // Idempotent
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "updateJob": {
+      const args = updateJobArgs.parse(input.args);
+      const setValues: Partial<typeof jobs.$inferInsert> = {};
+      if(args.supplierDefaults !== undefined){
+        if(args.supplierDefaults)await validateJobSupplierDefaults(tx,input.organizationId,args.supplierDefaults);
+        setValues.supplierDefaults=args.supplierDefaults;
+      }
+      if (args.name !== undefined) setValues.name = args.name;
+      if ("locationId" in args) setValues.locationId = args.locationId ?? null;
+      if ("foremanName" in args)
+        setValues.foremanName = args.foremanName ?? null;
+      if ("poNumber" in args) setValues.poNumber = args.poNumber ?? null;
+
+      if (Object.keys(setValues).length > 0) {
+        setValues.updatedAt = new Date();
+        await tx
+          .update(jobs)
+          .set(setValues)
+          .where(
+            and(
+              eq(jobs.id, args.jobId),
+              eq(jobs.organizationId, input.organizationId),
+            ),
+          );
+      }
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "deleteJob": {
+      const args = deleteJobArgs.parse(input.args);
+
+      // Find all material lists and their quotes
+      const jobMaterialLists = await tx
+        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.jobId, args.jobId),
+            eq(materialLists.organizationId, input.organizationId),
+          ),
+        );
+
+      const quoteIds = jobMaterialLists
+        .map((ml) => ml.quoteId)
+        .filter((id): id is string => id !== null);
+
+      if (quoteIds.length > 0) {
+        await tx
+          .delete(quoteItems)
+          .where(inArray(quoteItems.quoteId, quoteIds));
+        await tx.delete(quotes).where(inArray(quotes.id, quoteIds));
+      }
+
+      const mlIds = jobMaterialLists.map((ml) => ml.id);
+      if (mlIds.length > 0) {
+        await tx.delete(materialLists).where(inArray(materialLists.id, mlIds));
+      }
+
+      await tx
+        .delete(jobs)
+        .where(
+          and(
+            eq(jobs.id, args.jobId),
+            eq(jobs.organizationId, input.organizationId),
+          ),
+        );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "createMaterialList": {
+      const args = createMaterialListArgs.parse(input.args);
+
+      // Verify the job belongs to this org
+      const [job] = await tx
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, args.jobId),
+            eq(jobs.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!job) {
+        throw new Error(
+          `Cannot create material list ${args.materialListId}; parent job ${args.jobId} is missing`,
+        );
+      }
+
+      const roomId = await resolveMaterialRoom(tx, {
+        organizationId: input.organizationId, jobId: args.jobId, roomId: args.roomId,
+      });
+
+      const materialListName = args.kind === "materials" && isDefaultMaterialListName(args.name)
+        ? await getNextDefaultMaterialListName(tx, {
+            organizationId: input.organizationId,
+            jobId: args.jobId,
+          })
+        : args.name.trim();
+
+      // Insert materialList first (quoteId null to break the circular FK)
+      await tx
+        .insert(materialLists)
+        .values({
+          id: args.materialListId,
+          organizationId: input.organizationId,
+          jobId: args.jobId,
+          name: materialListName,
+          roomId,
+          kind: args.kind,
+          quoteId: null,
+          createdByUserId: input.userId,
+        })
+        .onConflictDoNothing();
+
+      // Insert the associated quote
+      const quoteId = crypto.randomUUID();
+      await tx
+        .insert(quotes)
+        .values({
+          id: quoteId,
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+          jobId: args.jobId,
+          createdByUserId: input.userId,
+        })
+        .onConflictDoNothing();
+
+      // Back-fill the quoteId onto the materialList (if not already set)
+      await tx
+        .update(materialLists)
+        .set({ quoteId })
+        .where(
+          and(
+            eq(materialLists.id, args.materialListId),
+            eq(materialLists.organizationId, input.organizationId),
+          ),
+        );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "deleteMaterialList": {
+      const args = deleteMaterialListArgs.parse(input.args);
+
+      const [materialList] = await tx
+        .select({ id: materialLists.id, quoteId: materialLists.quoteId })
+        .from(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, args.materialListId),
+            eq(materialLists.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!materialList) {
+        // The server may already have applied this delete before tombstones were
+        // recorded. Still emit a material-list tombstone so Replicache can clear
+        // any stale base value when the client retries the delete.
+        await recordMaterialListTombstone(tx, {
+          organizationId: input.organizationId,
+          materialListId: args.materialListId,
+        });
+        return;
+      }
+
+      if (materialList.quoteId) {
+        const listItems = await tx
+          .select({ id: quoteItems.id, sentOrderItemId: quoteItems.sentOrderItemId })
+          .from(quoteItems)
+          .where(eq(quoteItems.quoteId, materialList.quoteId)).orderBy(quoteItems.id).for("update");
+
+        if (listItems.some(item => item.sentOrderItemId)) return;
+
+        for (const item of listItems) {
+          await recordMaterialListItemTombstone(tx, {
+            organizationId: input.organizationId,
+            materialListId: materialList.id,
+            itemId: item.id,
+          });
+        }
+
+        await tx
+          .delete(quoteItems)
+          .where(eq(quoteItems.quoteId, materialList.quoteId));
+        await tx.delete(quotes).where(eq(quotes.id, materialList.quoteId));
+      }
+
+      await recordMaterialListTombstone(tx, {
+        organizationId: input.organizationId,
+        materialListId: materialList.id,
+      });
+
+      await tx
+        .delete(materialLists)
+        .where(
+          and(
+            eq(materialLists.id, args.materialListId),
+            eq(materialLists.organizationId, input.organizationId),
+          ),
+        );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "createSupplier": {
+      const args = createSupplierArgs.parse(input.args);
+      const contacts = normalizeSupplierContacts(args.contacts, args);
+      const primaryContact = getPrimarySupplierContact(contacts);
+      await tx
+        .insert(suppliers)
+        .values({
+          id: args.supplierId,
+          organizationId: input.organizationId,
+          name: args.name,
+          contactName: primaryContact?.name ?? args.contactName ?? null,
+          contactEmail: primaryContact?.email ?? args.contactEmail ?? null,
+          contactPhone: primaryContact?.phone ?? args.contactPhone ?? null,
+          contacts,
+          orderingNotes: args.orderingNotes ?? null,
+          locationId: args.locationId ?? null,
+        })
+        .onConflictDoNothing();
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "updateSupplier": {
+      const args = updateSupplierArgs.parse(input.args);
+      const setValues: Partial<typeof suppliers.$inferInsert> = {};
+      if (args.name !== undefined) setValues.name = args.name;
+      if ("contacts" in args) {
+        const contacts = normalizeSupplierContacts(args.contacts, args);
+        const primaryContact = getPrimarySupplierContact(contacts);
+        setValues.contacts = contacts;
+        setValues.contactName =
+          primaryContact?.name ?? args.contactName ?? null;
+        setValues.contactEmail =
+          primaryContact?.email ?? args.contactEmail ?? null;
+        setValues.contactPhone =
+          primaryContact?.phone ?? args.contactPhone ?? null;
+      } else {
+        if ("contactName" in args)
+          setValues.contactName = args.contactName ?? null;
+        if ("contactEmail" in args)
+          setValues.contactEmail = args.contactEmail ?? null;
+        if ("contactPhone" in args)
+          setValues.contactPhone = args.contactPhone ?? null;
+      }
+      if ("orderingNotes" in args)
+        setValues.orderingNotes = args.orderingNotes ?? null;
+      if ("locationId" in args) setValues.locationId = args.locationId ?? null;
+
+      if (Object.keys(setValues).length > 0) {
+        setValues.updatedAt = new Date();
+        await tx
+          .update(suppliers)
+          .set(setValues)
+          .where(
+            and(
+              eq(suppliers.id, args.supplierId),
+              eq(suppliers.organizationId, input.organizationId),
+            ),
+          );
+      }
+      return;
+    }
+    // -----------------------------------------------------------------------
+    case "deleteSupplier": {
+      const args = deleteSupplierArgs.parse(input.args);
+      await tx
+        .delete(suppliers)
+        .where(
+          and(
+            eq(suppliers.id, args.supplierId),
+            eq(suppliers.organizationId, input.organizationId),
+          ),
+        );
+      return;
+    }
+    // -----------------------------------------------------------------------
+    default:
+      // Unknown/obsolete mutators: silently swallow so stale clients don't block sync.
+      return;
+  }
+}
+
+function assertSupportedSchema(schemaVersion: string) {
+  if (schemaVersion !== MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION) {
+    return {
+      error: "VersionNotSupported" as const,
+      versionType: "schema" as const,
+    };
+  }
+  return null;
+}
+
+function isRetryableTransactionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; cause?: unknown };
+  if (candidate.code === "40P01" || candidate.code === "40001") return true;
+  return isRetryableTransactionError(candidate.cause);
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetryableReplicacheTransaction<T>(
+  work: (tx: ReplicacheTx) => Promise<T>,
+): Promise<T> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await db.transaction(work);
+    } catch (error) {
+      if (!isRetryableTransactionError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+      await sleep(50 * attempt);
+    }
+  }
+  throw new Error("Unreachable retry state");
+}
+
+// ---------------------------------------------------------------------------
+// Push handler
+// ---------------------------------------------------------------------------
+
+export async function handleMaterialListReplicachePush(
+  request: PushRequestV1,
+  user: ReplicacheUser,
+) {
+  const organizationId = user.organizationId;
+  if (!organizationId) throw new Error("User must belong to an organization");
+  const permissions = resolvePermissions(user);
+
+  const unsupported = assertSupportedSchema(request.schemaVersion);
+  if (unsupported) return unsupported;
+  if (request.pushVersion !== 1) {
+    return {
+      error: "VersionNotSupported" as const,
+      versionType: "push" as const,
+    };
+  }
+
+  let appliedMutationCount = 0;
+
+  await withRetryableReplicacheTransaction(async (tx) => {
+    const sideEffects: ReplicacheMutationSideEffects = {
+      quoteIdsToRecalculate: new Set(),
+      materialListIdsToTouch: new Set(),
+    };
+
+    await ensureClientGroup(tx, {
+      clientGroupId: request.clientGroupID,
+      organizationId,
+      userId: user.id,
+      schemaVersion: request.schemaVersion,
+    });
+
+    for (const mutation of request.mutations) {
+      await ensureClient(tx, {
+        clientId: mutation.clientID,
+        clientGroupId: request.clientGroupID,
+        organizationId,
+        userId: user.id,
+      });
+
+      const clientIdentity = {
+        clientId: mutation.clientID,
+        clientGroupId: request.clientGroupID,
+        organizationId,
+      };
+      const lastMutationId = await getClientLastMutationId(tx, clientIdentity);
+      const nextMutationId = lastMutationId + 1;
+
+      if (mutation.id < nextMutationId) continue;
+      if (mutation.id > nextMutationId) {
+        throw new Error(
+          `Mutation ${mutation.id} is out of order for client ${mutation.clientID}; expected ${nextMutationId}`,
+        );
+      }
+
+      // A change the member isn't allowed to make is acknowledged without being
+      // applied, so the device drops it on its next pull instead of retrying forever.
+      const needed = MUTATION_PERMISSION[mutation.name];
+      if (needed && !permissions[needed]) {
+        console.warn(
+          `[replicache] denied ${mutation.name} for ${user.id} (needs ${needed})`,
+        );
+      } else {
+        try {
+          await applyReplicacheMutation(tx, {
+            name: mutation.name,
+            eventKey: `replicache:${mutation.clientID}:${mutation.id}`,
+            args: mutation.args,
+            organizationId,
+            userId: user.id,
+            sideEffects,
+          });
+          appliedMutationCount += 1;
+        } catch (error) {
+          // The parent room/list may disappear while a device is offline. These
+          // validation failures happen before writes, so acknowledge them and
+          // let the next authoritative pull remove the rejected optimistic row.
+          // A foreign room is rejected the same way; never silently reassign it.
+          if (!(error instanceof MaterialRoomAssignmentError) && !(error instanceof MissingMaterialListError)) throw error;
+          console.warn(`[replicache] rejected ${mutation.name}: ${error.message}`);
+        }
+      }
+      await setClientLastMutationId(tx, {
+        ...clientIdentity,
+        lastMutationId: mutation.id,
+      });
+    }
+
+    // A single Replicache push can contain dozens of local mutations. Recomputing
+    // quote totals and touching the same material list after every mutation makes
+    // large offline batches degrade to O(n²), which was slow enough to trip
+    // Cloudflare's 100s origin timeout. Coalesce those side effects once per
+    // affected quote/list while staying inside the same transaction.
+    for (const quoteId of sideEffects.quoteIdsToRecalculate) {
+      await recalculateQuoteTotals(tx, quoteId);
+    }
+
+    for (const materialListId of sideEffects.materialListIdsToTouch) {
+      await touchMaterialList(tx, materialListId);
+    }
+
+    if (request.mutations.length > 0) {
+      await bumpClientGroupVersion(tx, request.clientGroupID);
+    }
+  });
+
+  if (appliedMutationCount > 0) {
+    publishOrganizationReplicachePoke(organizationId, {
+      sourceClientGroupId: request.clientGroupID,
+      mutationCount: appliedMutationCount,
+    });
+  }
+
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Pull handler
+// ---------------------------------------------------------------------------
+
+export async function handleMaterialListReplicachePull(
+  request: PullRequestV1,
+  user: ReplicacheUser,
+): Promise<PullResponseV1> {
+  const organizationId = user.organizationId;
+  if (!organizationId) throw new Error("User must belong to an organization");
+
+  const unsupported = assertSupportedSchema(request.schemaVersion);
+  if (unsupported) return unsupported;
+  if (request.pullVersion !== 1) {
+    return { error: "VersionNotSupported", versionType: "pull" };
+  }
+
+  return pullSnapshot("material-lists", request, user, async (tx) => {
+      // Jobs with location + foreman joins
+      const jobRows = await tx
+        .select({
+          id: jobs.id,
+          name: jobs.name,
+          locationId: jobs.locationId,
+          status: jobs.status,
+          foremanName: jobs.foremanName,
+          poNumber: jobs.poNumber,
+          supplierDefaults: sql<import("~/lib/job-supplier-defaults").JobSupplierDefaults | null>`${jobs}."supplierDefaults"`,
+          createdAt: jobs.createdAt,
+          updatedAt: jobs.updatedAt,
+          locationName: locations.name,
+          locationAddress1: locations.address1,
+          locationCity: locations.city,
+          locationRegion: locations.region,
+          locationPostalCode: locations.postalCode,
+          locationCountry: locations.country,
+          foremanUserName: users.name,
+        })
+        .from(jobs)
+        .leftJoin(locations, eq(jobs.locationId, locations.id))
+        .leftJoin(users, eq(jobs.foremanUserId, users.id))
+        .where(eq(jobs.organizationId, organizationId))
+        .orderBy(asc(jobs.updatedAt), asc(jobs.id));
+
+      const materialListRows = await tx
+        .select({
+          id: materialLists.id,
+          name: materialLists.name,
+          roomId: materialLists.roomId,
+          roomName: jobRooms.name,
+          kind: materialLists.kind,
+          jobId: materialLists.jobId,
+          quoteId: materialLists.quoteId,
+          createdByUserId: materialLists.createdByUserId,
+          createdAt: materialLists.createdAt,
+          updatedAt: materialLists.updatedAt,
+        })
+        .from(materialLists)
+        .leftJoin(jobRooms, eq(materialLists.roomId, jobRooms.id))
+        .where(eq(materialLists.organizationId, organizationId))
+        .orderBy(asc(materialLists.updatedAt), asc(materialLists.id));
+
+      const itemRows = await tx
+        .select({
+          id: quoteItems.id,
+          sentOrderItemId: quoteItems.sentOrderItemId,
+          sentOrderId: orderItems.orderId,
+          priceBookNameSnapshot: orderItems.priceBookNameSnapshot,
+          sentOrderNumber: orders.orderNumber,
+          sentOrderStatus: orders.status,
+          sentAt: orders.sentAt,
+          sentQuantity: sql<string>`(${orderItems.quantity}-${orderItems.creditedQuantity})::text`,
+          originalSentQuantity: orderItems.quantity,
+          creditedQuantity: orderItems.creditedQuantity,
+          receivedQuantity: orderItems.receivedQuantity,
+          verificationStatus: orderItems.verificationStatus,
+          roomId: quoteItems.roomId,
+          roomName: jobRooms.name,
+          quoteId: quoteItems.quoteId,
+          materialListId: quotes.materialListId,
+          quantity: quoteItems.quantity,
+          unitCost: quoteItems.unitCost,
+          extendedPrice: quoteItems.extendedPrice,
+          descriptionSnapshot: quoteItems.descriptionSnapshot,
+          partDefinitionId: quoteItems.partDefinitionId,
+          partDefinitionDisplayName: partDefinitions.displayName,
+          partDefinitionAssetTracking: sql<string | null>`case when ${catalogs.kind} = 'assets' then coalesce(${partDefinitions.assetTracking}, 'serialized') else null end`,
+          partDefinitionPiecesPerPack: partDefinitions.piecesPerPack,
+          partDefinitionBulkUnit: partDefinitions.bulkUnit,
+          partDefinitionIndividualUnit: partDefinitions.individualUnit,
+          partDefinitionImageUrl: partDefinitions.imageUrl,
+          partDefinitionMaterial: materials.name,
+          supplierPartId: quoteItems.supplierPartId,
+          supplierId: quoteItems.supplierId,
+          supplierVersion: quoteItems.supplierVersion,
+          supplierPartSupplierId: supplierParts.supplierId,
+          supplierPartSku: supplierParts.supplierSku,
+          supplierPartLastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            supplierPartPackSize: supplierParts.packSize,
+          supplierName: suppliers.name,
+          addedByUserId: quoteItems.addedByUserId,
+          updatedAt: quoteItems.updatedAt,
+          createdAt: quoteItems.createdAt,
+        })
+        .from(quoteItems)
+        .leftJoin(orderItems, eq(quoteItems.sentOrderItemId, orderItems.id))
+        .leftJoin(orders, eq(orderItems.orderId, orders.id))
+        .leftJoin(jobRooms, eq(quoteItems.roomId, jobRooms.id))
+        .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+        .leftJoin(
+          partDefinitions,
+          eq(quoteItems.partDefinitionId, partDefinitions.id),
+        )
+        .leftJoin(catalogs, eq(partDefinitions.catalogId, catalogs.id))
+        .leftJoin(materials, eq(partDefinitions.materialId, materials.id))
+        .leftJoin(
+          supplierParts,
+          eq(quoteItems.supplierPartId, supplierParts.id),
+        )
+        .leftJoin(suppliers, eq(quoteItems.supplierId, suppliers.id))
+        .where(eq(quotes.organizationId, organizationId))
+        .orderBy(asc(quoteItems.updatedAt), asc(quoteItems.id));
+
+      const supplierRows = await tx
+        .select({
+          id: suppliers.id,
+          name: suppliers.name,
+          kind: suppliers.kind,
+          contactName: suppliers.contactName,
+          contactEmail: suppliers.contactEmail,
+          contactPhone: suppliers.contactPhone,
+          contacts: suppliers.contacts,
+          orderingNotes: suppliers.orderingNotes,
+          locationId: suppliers.locationId,
+          createdAt: suppliers.createdAt,
+          updatedAt: suppliers.updatedAt,
+        })
+        .from(suppliers)
+        .where(eq(suppliers.organizationId, organizationId))
+        .orderBy(asc(suppliers.updatedAt), asc(suppliers.id));
+
+      const contributorUserIds = Array.from(
+        new Set(
+          [
+            ...materialListRows.map(
+              (materialList) => materialList.createdByUserId,
+            ),
+            ...itemRows.map((item) => item.addedByUserId),
+          ].filter((userId): userId is string => !!userId),
+        ),
+      );
+      const contributorUserRows =
+        contributorUserIds.length > 0
+          ? await tx
+              .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                department: sql<string | null>`${users}."department"`,
+              })
+              .from(users)
+              .where(and(inArray(users.id, contributorUserIds), sql`${users}."organizationId" = ${organizationId}`))
+          : [];
+      const contributorUserMap = new Map<string, { id: string; name: string | null; email: string | null; department: string | null }>(
+        contributorUserRows.map((user) => [user.id, user]),
+      );
+
+      const supplierNamesById = new Map(supplierRows.map(supplier => [supplier.id, supplier.name]));
+      const materialListIds = materialListRows.map(
+        (materialList) => materialList.id,
+      );
+      const orderRows = materialListIds.length
+        ? await tx
+            .select({
+              id: orders.id,
+              materialListId: orders.materialListId,
+              orderNumber: orders.orderNumber,
+              supplierId: orders.supplierId,
+              status: orders.status,
+              sentAt: orders.sentAt,
+            })
+            .from(orders)
+            .where(inArray(orders.materialListId, materialListIds))
+        : [];
+
+      const verificationByOrderId = await loadOrderVerification(tx, orderRows.map(row=>row.id));
+      const summarizeList = createMaterialListSummaries(itemRows.map(row=>({...row, supplierId:row.supplierId ?? row.supplierPartSupplierId, supplierName:supplierNamesById.get(row.supplierId ?? row.supplierPartSupplierId ?? "")})), orderRows, verificationByOrderId);
+
+      // Build a consistent full view; pullSnapshot diffs the client's exact base.
+      const patch: PatchOperation[] = [{ op: "clear" }];
+
+      for (const job of jobRows) {
+        patch.push({
+          op: "put",
+          key: `job/${job.id}`,
+          value: {
+            id: job.id,
+            name: job.name,
+            locationId: job.locationId ?? null,
+            status: job.status,
+            foremanName: job.foremanName ?? job.foremanUserName ?? null,
+            poNumber: job.poNumber ?? null,
+            supplierDefaults: job.supplierDefaults,
+            createdAt: job.createdAt?.toISOString?.() ?? String(job.createdAt),
+            updatedAt: job.updatedAt?.toISOString?.() ?? String(job.updatedAt),
+            location: job.locationName
+              ? {
+                  name: job.locationName,
+                  address1: job.locationAddress1 ?? null,
+                  city: job.locationCity ?? null,
+                  region: job.locationRegion ?? null,
+                  postalCode: job.locationPostalCode ?? null,
+                  country: job.locationCountry ?? null,
+                }
+              : null,
+          },
+        });
+      }
+
+      for (const materialList of materialListRows) {
+        patch.push({
+          op: "put",
+          key: `materialList/${materialList.id}`,
+          value: {
+            ...materialList,
+          ...summarizeList(materialList),
+            createdBy: materialList.createdByUserId
+              ? (() => {
+                  const createdByUser = contributorUserMap.get(
+                    materialList.createdByUserId,
+                  );
+                  return {
+                    id: materialList.createdByUserId,
+                    name:
+                      createdByUser?.name ?? createdByUser?.email ?? "Unknown",
+                    email: createdByUser?.email ?? null,
+                    department: createdByUser?.department ?? null,
+                  };
+                })()
+              : null,
+            createdAt:
+              materialList.createdAt?.toISOString?.() ??
+              String(materialList.createdAt),
+            updatedAt:
+              materialList.updatedAt?.toISOString?.() ??
+              String(materialList.updatedAt),
+          },
+        });
+      }
+
+      const books = await getJobPriceBooks(tx, organizationId, jobRows.map(job => job.id));
+      const priceBooks = new Map([...books].map(([jobId, book]) =>
+        [jobId, { ...book, entries: indexJobPrices(book.entries) }] as const));
+      const listJobs = new Map(materialListRows.map(list => [list.id, list.jobId]));
+      for (const item of itemRows) {
+        patch.push({
+          op: "put",
+          key: `materialListItem/${item.id}`,
+          value: {
+            id: item.id,
+            jobPriceStatus: jobPriceStatus(priceBooks.get(listJobs.get(item.materialListId ?? "") ?? ""), item.partDefinitionId, item.supplierId ?? item.supplierPartSupplierId, item.supplierPartId),
+            sentOrderItemId: item.sentOrderItemId,
+            priceBookNameSnapshot: item.priceBookNameSnapshot,
+            sentOrder: item.sentOrderId ? {
+              id: item.sentOrderId, number: item.sentOrderNumber, status: item.sentOrderStatus,
+              quantity: item.sentQuantity, originalQuantity:item.originalSentQuantity, creditedQuantity:item.creditedQuantity, receivedQuantity: item.receivedQuantity,
+              verificationStatus: item.verificationStatus,
+            } : null,
+            roomId: item.roomId,
+            roomName: item.roomName,
+            quoteId: item.quoteId,
+            materialListId: item.materialListId,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            extendedPrice: item.sentOrderItemId ? item.extendedPrice : String(purchaseLineTotal(item.quantity, item.unitCost, item.supplierPartPackSize, item.partDefinitionPiecesPerPack)),
+            descriptionSnapshot: item.descriptionSnapshot,
+            partDefinitionId: item.partDefinitionId,
+            supplierPartId: item.supplierPartId,
+            supplierId: item.supplierId,
+            selectedSupplierId: item.supplierId,
+            supplierVersion: item.supplierVersion,
+            partDefinition: item.partDefinitionId
+              ? {
+                  id: item.partDefinitionId,
+                  displayName:
+                    item.partDefinitionDisplayName ??
+                    item.descriptionSnapshot ??
+                    "Unknown Part",
+                  assetTracking: item.partDefinitionAssetTracking,
+                  piecesPerPack: item.partDefinitionPiecesPerPack,
+                  bulkUnit: item.partDefinitionBulkUnit,
+                  individualUnit: item.partDefinitionIndividualUnit,
+                  imageUrl: item.partDefinitionImageUrl ?? null,
+                  material: item.partDefinitionMaterial ?? null,
+                }
+              : null,
+            supplierPart: item.supplierPartId
+              ? {
+                  id: item.supplierPartId,
+                  supplierId: item.supplierId ?? "",
+                  supplierSku: item.supplierPartSku ?? null,
+                  packSize: item.supplierPartPackSize,
+              lastKnownUnitCost: item.supplierPartLastKnownUnitCost ?? null,
+                  supplier: item.supplierId
+                    ? {
+                        id: item.supplierId,
+                        name: item.supplierName ?? "Supplier",
+                      }
+                    : null,
+                }
+              : null,
+            addedBy: item.addedByUserId
+              ? (() => {
+                  const addedByUser = contributorUserMap.get(
+                    item.addedByUserId,
+                  );
+                  return {
+                    id: item.addedByUserId,
+                    name: addedByUser?.name ?? addedByUser?.email ?? "Unknown",
+                    email: addedByUser?.email ?? null,
+                    department: addedByUser?.department ?? null,
+                  };
+                })()
+              : null,
+            createdAt:
+              item.createdAt?.toISOString?.() ?? String(item.createdAt),
+            updatedAt:
+              item.updatedAt?.toISOString?.() ?? String(item.updatedAt),
+          },
+        });
+      }
+
+      for (const supplier of supplierRows) {
+        const contacts = normalizeSupplierContacts(supplier.contacts, supplier);
+        patch.push({
+          op: "put",
+          key: `supplier/${supplier.id}`,
+          value: {
+            ...supplier,
+            contacts,
+            createdAt:
+              supplier.createdAt?.toISOString?.() ?? String(supplier.createdAt),
+            updatedAt:
+              supplier.updatedAt?.toISOString?.() ?? String(supplier.updatedAt),
+          },
+        });
+      }
+
+      return patch;
+  });
+}
+
+/** Voice uses an explicit subset; never expose the general mutation dispatcher. */
+export async function applyVoiceMaterialMutation(
+  user: ReplicacheUser,
+  name: "createJob" | "updateJob" | "createMaterialList" | "renameMaterialList" | "addItem" | "updateItemQuantity",
+  args: unknown,
+  check: (tx: ReplicacheTx) => Promise<void>,
+) {
+  const allowed = ["createJob", "updateJob", "createMaterialList", "renameMaterialList", "addItem", "updateItemQuantity"];
+  if (!allowed.includes(name) || !user.organizationId || !resolvePermissions(user)[MUTATION_PERMISSION[name]!])
+    throw new Error("You cannot make this change.");
+  const organizationId = user.organizationId;
+  await db.transaction(async (tx) => {
+    await check(tx);
+    const sideEffects: ReplicacheMutationSideEffects = {
+      quoteIdsToRecalculate: new Set(),
+      materialListIdsToTouch: new Set(),
+    };
+    await applyReplicacheMutation(tx, {
+      name, args, organizationId, userId: user.id,
+      eventKey: `voice:${crypto.randomUUID()}`, sideEffects,
+    });
+    for (const quoteId of sideEffects.quoteIdsToRecalculate)
+      await recalculateQuoteTotals(tx, quoteId);
+    for (const listId of sideEffects.materialListIdsToTouch)
+      await touchMaterialList(tx, listId);
+  });
+  publishOrganizationReplicachePoke(organizationId, { mutationCount: 1 });
+}

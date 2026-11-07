@@ -1,0 +1,3 @@
+ALTER TABLE kublai_job_room
+  ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS "notesRevision" integer NOT NULL DEFAULT 0;

@@ -1,0 +1,1 @@
+{"name":"wider-seals","threshold":245,"openRadius":1,"join":1,"bandLengthFraction":0.0016666667,"doorFraction":0.0095,"gapFactor":1.8,"windowFactor":3.5,"envelope":true,"grow":false,"maxRoomFactor":4,"maxUnlabelledFraction":0.01,"nudgeFraction":0.004}

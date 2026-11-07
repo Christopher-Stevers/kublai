@@ -1,20 +1,39 @@
-import { parseSizeInput, formatSize } from "~/lib/size-utils";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+"use client";
+import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
+
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
+import { wizardSizeOptions } from "~/lib/wizard-size-options";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { formatSize, formatSizeDimensions } from "~/lib/size-utils";
 import { Card, CardContent } from "~/components/ui/card";
-import { LoopingScrollGrid } from "./LoopingScrollGrid";
+import { useClientPagination } from "~/components/ui/list-pagination";
+import {
+  WIZARD_OPTION_GRID_CLASS,
+  wizardOptionGridStyle,
+  WIZARD_OPTION_ITEM_SIZE_CLASS,
+  WIZARD_OPTION_LABEL_CLASS,
+  WIZARD_OPTION_SELECTED_CLASS,
+  WizardAllOption,
+  WizardOptionPagination,
+} from "./WizardOptionGrid";
+import { VerticalPickerOverlay } from "./VerticalPickerOverlay";
+
+type SizeSelection = { nominal: number; unit: string; sizeLabel?: string | null };
+type AvailableSize = SizeSelection & {
+  count: number;
+  subSizes?: Array<{ label: string; count: number }>;
+};
+
+type SubSizePreview = {
+  size: AvailableSize;
+  selectedIndex: number;
+};
 
 export interface SizeStageProps {
-  availableSizes?: Array<{ nominal: number; unit: string; count: number }>;
-  selectedSize: { nominal: number; unit: string } | null;
-  onSizeSelect: (size: { nominal: number; unit: string }) => void;
+  availableSizes?: AvailableSize[];
+  selectedSize: SizeSelection | null;
+  allSelected?: boolean;
+  onSizeSelect: (size: SizeSelection | null) => void;
   showCustomSize: boolean;
   onShowCustomSize: (show: boolean) => void;
   customSizeInput: string;
@@ -26,12 +45,256 @@ export interface SizeStageProps {
     mutate: (variables: { nominal: number; unitId: string }) => void;
     isPending: boolean;
   };
+  isOnline?: boolean;
+}
+
+function SizeCard({
+  size,
+  selectedSize,
+  onSizeSelect,
+  onPreviewChange,
+}: {
+  size: AvailableSize;
+  selectedSize: SizeSelection | null;
+  onSizeSelect: (size: SizeSelection) => void;
+  onPreviewChange: (preview: SubSizePreview | null) => void;
+}) {
+  const visibility = useCatalogueVisibility({size: {nominal:size.nominal,unit:size.unit}}, () => onSizeSelect({nominal:size.nominal,unit:size.unit,sizeLabel:null}));
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const pointerStartYRef = useRef<number | null>(null);
+  const pointerStartXRef = useRef<number | null>(null);
+  const movedRef = useRef(false);
+  const selectedIndexRef = useRef(0);
+  const activePointerIdRef = useRef<number | null>(null);
+  const activePointerTypeRef = useRef<string | null>(null);
+  const pointerElementRef = useRef<HTMLDivElement | null>(null);
+  // Window listeners are removed by the closures that added them, so a later
+  // render's handlers can't leave the earlier ones attached.
+  const windowListenersRef = useRef<(() => void) | null>(null);
+  const subSizes = size.subSizes ?? [];
+  const canPickSubSize = subSizes.length > 1;
+  const isSelected =
+    selectedSize?.nominal === size.nominal &&
+    selectedSize?.unit === size.unit &&
+    (selectedSize?.sizeLabel ?? null) === (size.sizeLabel ?? null);
+
+  const clearTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const teardownWindowListeners = () => {
+    windowListenersRef.current?.();
+    windowListenersRef.current = null;
+  };
+
+  const updateSelectedIndex = (clientY: number) => {
+    if (!longPressTriggeredRef.current || pointerStartYRef.current === null || subSizes.length === 0) return;
+    const deltaY = clientY - pointerStartYRef.current;
+    const lastIndex = subSizes.length - 1;
+    const nextIndex = Math.max(0, Math.min(lastIndex, Math.round(deltaY / 34)));
+
+    if (selectedIndexRef.current === nextIndex) return;
+    selectedIndexRef.current = nextIndex;
+    onPreviewChange({ size, selectedIndex: nextIndex });
+  };
+
+  const resetInteraction = () => {
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
+    pointerElementRef.current = null;
+    teardownWindowListeners();
+  };
+
+  const finishSubSizeSelection = () => {
+    const selectedSubSize = subSizes[selectedIndexRef.current];
+    if (selectedSubSize) {
+      onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: selectedSubSize.label });
+    }
+    onPreviewChange(null);
+    resetInteraction();
+  };
+
+  const cancelSubSizeSelection = () => {
+    onPreviewChange(null);
+    resetInteraction();
+  };
+
+  function handleWindowPointerMove(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+    event.preventDefault();
+    updateSelectedIndex(event.clientY);
+  }
+
+  function handleWindowPointerUp(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    clearTimer();
+    if (longPressTriggeredRef.current) finishSubSizeSelection();
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    clearTimer();
+    cancelSubSizeSelection();
+  }
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    longPressTriggeredRef.current = false;
+    activePointerIdRef.current = event.pointerId;
+    activePointerTypeRef.current = event.pointerType;
+    pointerElementRef.current = event.currentTarget;
+    pointerStartYRef.current = event.clientY;
+    pointerStartXRef.current = event.clientX;
+    movedRef.current = false;
+    selectedIndexRef.current = 0;
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    if (!canPickSubSize) return;
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      if (
+        pointerElementRef.current &&
+        activePointerIdRef.current !== null &&
+        pointerElementRef.current.hasPointerCapture(activePointerIdRef.current)
+      ) {
+        pointerElementRef.current.releasePointerCapture(activePointerIdRef.current);
+      }
+      onPreviewChange({ size, selectedIndex: 0 });
+      window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
+      window.addEventListener("pointerup", handleWindowPointerUp, { passive: false });
+      window.addEventListener("pointercancel", handleWindowPointerCancel);
+      windowListenersRef.current = () => {
+        window.removeEventListener("pointermove", handleWindowPointerMove);
+        window.removeEventListener("pointerup", handleWindowPointerUp);
+        window.removeEventListener("pointercancel", handleWindowPointerCancel);
+      };
+    }, 200);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Moving before the hold opens the sub-sizes is a scroll, not a hold.
+    if (
+      !longPressTriggeredRef.current &&
+      !movedRef.current &&
+      pointerStartXRef.current !== null &&
+      pointerStartYRef.current !== null &&
+      Math.hypot(
+        event.clientX - pointerStartXRef.current,
+        event.clientY - pointerStartYRef.current,
+      ) > 8
+    ) {
+      movedRef.current = true;
+      clearTimer();
+      return;
+    }
+    if (!longPressTriggeredRef.current) return;
+    event.preventDefault();
+    updateSelectedIndex(event.clientY);
+  };
+
+  const handlePointerUp = () => {
+    clearTimer();
+    if (longPressTriggeredRef.current) {
+      if (activePointerTypeRef.current === "touch") {
+        return;
+      }
+
+      finishSubSizeSelection();
+      return;
+    }
+    if (!movedRef.current)
+      onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
+    resetInteraction();
+  };
+
+  const handlePointerCancel = () => {
+    clearTimer();
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    cancelSubSizeSelection();
+  };
+
+  useEffect(() => {
+    const longPressTimer = longPressTimerRef;
+    const windowListeners = windowListenersRef;
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      windowListeners.current?.();
+    };
+  }, []);
+
+  return (
+    <Card
+      data-tutorial-choice={formatSize(size.nominal, size.unit)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
+        }
+      }}
+      className={`relative ${WIZARD_OPTION_ITEM_SIZE_CLASS} min-w-0 cursor-pointer justify-center gap-0 overflow-hidden py-0 transition-all hover:shadow-md ${isSelected ? WIZARD_OPTION_SELECTED_CLASS : ""}`}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
+      onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={() => {
+        if (longPressTriggeredRef.current) return;
+        clearTimer();
+      }}
+      {...visibility.handlers}
+    >
+      {visibility.overlay}
+      <CardContent className="flex h-full min-w-0 items-center justify-center p-3 text-center sm:p-4">
+        <p className={WIZARD_OPTION_LABEL_CLASS}>{formatSizeDimensions(size.nominal, size.unit)}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function SizeStage({
   availableSizes,
   selectedSize,
-  onSizeSelect,
+  allSelected = false,
+  onSizeSelect: commitSize,
   showCustomSize,
   onShowCustomSize,
   customSizeInput,
@@ -40,116 +303,173 @@ export function SizeStage({
   onCustomSizeUnitIdChange,
   allUnits,
   onCreateSize,
+  isOnline = true,
 }: SizeStageProps) {
-  return (
-    <div className="space-y-3 sm:space-y-4">
-      <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
-      <LoopingScrollGrid
-        items={[
-          ...(availableSizes ?? []).map((s, i) => ({ type: "size" as const, key: `${s.nominal}_${i}`, ...s })),
-          { type: "other" as const, key: "__other__", nominal: 0, unit: "", count: 0 },
-        ]}
-        getKey={(item) => item.key}
-        renderItem={(item) =>
-          item.type === "other" ? (
-            <Card
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                showCustomSize ? "border-primary border-2 shadow-md" : ""
-              }`}
-              onClick={() => onShowCustomSize(true)}
-            >
-              <CardContent className="p-3 text-center sm:p-4">
-                <p className="text-sm font-medium sm:text-base">Other</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedSize?.nominal === item.nominal && selectedSize?.unit === item.unit
-                  ? "border-primary border-2 shadow-md"
-                  : ""
-              }`}
-              onClick={() => onSizeSelect({ nominal: item.nominal, unit: item.unit })}
-            >
-              <CardContent className="p-3 text-center sm:p-4">
-                <p className="text-sm font-medium sm:text-base">
-                  {formatSize(item.nominal, item.unit)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  {item.count} part{item.count !== 1 ? "s" : ""}
-                </p>
-              </CardContent>
-            </Card>
-          )
+  const pagination = useClientPagination(availableSizes ?? []);
+  useArcScrollerOptions("Select Size", [
+    { label: "All", select: () => commitSize(null) },
+    ...wizardSizeOptions(
+      (availableSizes ?? []).flatMap<SizeSelection>((size) =>
+        size.subSizes?.length
+          ? size.subSizes.map((sub) => ({
+              nominal: size.nominal,
+              unit: size.unit,
+              sizeLabel: sub.label,
+            }))
+          : [size],
+      ),
+    ).map((option) => ({
+      label: option.label,
+      select: () => commitSize(option.size),
+    })),
+  ]);
+  // Regular cards retain their broad nominal-size filter and sub-size picker.
+  const onSizeSelect = commitSize;
+  const [subSizePreview, setSubSizePreview] = useState<SubSizePreview | null>(null);
+  const subSizePreviewRef = useRef<SubSizePreview | null>(null);
+  const pickerTouchYRef = useRef<number | null>(null);
+  const pickerTouchAccumulatorRef = useRef(0);
+  void showCustomSize;
+  void onShowCustomSize;
+  void customSizeInput;
+  void onCustomSizeInputChange;
+  void customSizeUnitId;
+  void onCustomSizeUnitIdChange;
+  void allUnits;
+  void onCreateSize;
+  void isOnline;
+
+  useEffect(() => {
+    subSizePreviewRef.current = subSizePreview;
+  }, [subSizePreview]);
+
+  useEffect(() => {
+    if (!subSizePreview) {
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      return;
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const touchY = event.touches[0]?.clientY;
+      if (touchY === undefined) {
+        return;
+      }
+
+      if (pickerTouchYRef.current === null) {
+        pickerTouchYRef.current = touchY;
+        return;
+      }
+
+      const deltaY = touchY - pickerTouchYRef.current;
+      pickerTouchAccumulatorRef.current += deltaY;
+      pickerTouchYRef.current = touchY;
+
+      const stepSize = 34;
+      const stepDelta = Math.trunc(pickerTouchAccumulatorRef.current / stepSize);
+      if (stepDelta === 0) {
+        return;
+      }
+
+      pickerTouchAccumulatorRef.current -= stepDelta * stepSize;
+
+      setSubSizePreview((prev) => {
+        if (!prev) {
+          return prev;
         }
-      />
-      {showCustomSize && (
-        <div className="mt-3 space-y-2 sm:mt-4">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-gray-700 sm:text-sm">
-                Size (number required)
-              </label>
-              <Input
-                type="text"
-                placeholder="Enter size (e.g., 1 ½, 2.5)"
-                value={customSizeInput}
-                onChange={(e) => onCustomSizeInputChange(e.target.value)}
-                className="mt-1 text-sm sm:text-base"
-                autoFocus
-                disabled={onCreateSize.isPending}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-700 sm:text-sm">Unit</label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between text-xs sm:text-sm"
-                    disabled={onCreateSize.isPending}
-                  >
-                    {customSizeUnitId
-                      ? (allUnits.find((u) => u.id === customSizeUnitId)
-                          ?.code ?? "Select unit")
-                      : "Select unit"}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {allUnits.map((unit) => (
-                    <DropdownMenuItem
-                      key={unit.id}
-                      onClick={() => onCustomSizeUnitIdChange(unit.id)}
-                    >
-                      {unit.code}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              const parsed = parseSizeInput(customSizeInput);
-              if (parsed !== null && customSizeUnitId) {
-                onCreateSize.mutate({
-                  nominal: parsed,
-                  unitId: customSizeUnitId,
-                });
-              }
-            }}
-            disabled={
-              !customSizeInput.trim() ||
-              !customSizeUnitId ||
-              onCreateSize.isPending ||
-              parseSizeInput(customSizeInput) === null
+
+        const lastIndex = (prev.size.subSizes?.length ?? 1) - 1;
+        return {
+          ...prev,
+          selectedIndex: Math.max(
+            0,
+            Math.min(lastIndex, prev.selectedIndex + stepDelta),
+          ),
+        };
+      });
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      event.preventDefault();
+
+      const preview = subSizePreviewRef.current;
+      const selectedSubSize = preview?.size.subSizes?.[preview.selectedIndex];
+
+      if (preview && selectedSubSize) {
+        onSizeSelect({
+          nominal: preview.size.nominal,
+          unit: preview.size.unit,
+          sizeLabel: selectedSubSize.label,
+        });
+      }
+
+      pickerTouchYRef.current = null;
+      pickerTouchAccumulatorRef.current = 0;
+      setSubSizePreview(null);
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [onSizeSelect, subSizePreview]);
+
+  return (
+    <div className={`relative space-y-3 sm:space-y-4 ${subSizePreview ? "touch-none" : ""}`}>
+      <h3 className="text-base font-semibold sm:text-lg">Select Size</h3>
+      <div
+        className={WIZARD_OPTION_GRID_CLASS}
+        style={wizardOptionGridStyle(1 + pagination.paginatedItems.length)}
+      >
+        <WizardAllOption selected={allSelected} onSelect={() => onSizeSelect(null)} />
+        {pagination.paginatedItems.map((size, index) => (
+          <SizeCard
+            key={`${size.nominal}_${size.unit}_${index}`}
+            size={size}
+            selectedSize={selectedSize}
+            onSizeSelect={onSizeSelect}
+            onPreviewChange={setSubSizePreview}
+          />
+        ))}
+      </div>
+      <WizardOptionPagination pagination={pagination} itemLabel="sizes" />
+      {subSizePreview && (
+        <VerticalPickerOverlay
+          title="Sub-size"
+          subtitle={`${formatSizeDimensions(subSizePreview.size.nominal, subSizePreview.size.unit)} fittings`}
+          centerIndex={subSizePreview.selectedIndex}
+          getItem={(index) => subSizePreview.size.subSizes?.[index] ?? null}
+          getItemFontSize={(subSize, distance) => {
+            const labelLength = formatSizeDimensions(subSize.label, subSizePreview.size.unit).length;
+
+            if (labelLength >= 22) {
+              return distance === 0 ? "1.35rem" : distance === 1 ? "0.85rem" : "0.65rem";
             }
-            className="w-full text-xs sm:text-sm"
-          >
-            {onCreateSize.isPending ? "Adding..." : "Add Size"}
-          </Button>
-        </div>
+
+            if (labelLength >= 16) {
+              return distance === 0 ? "1.7rem" : distance === 1 ? "1rem" : "0.75rem";
+            }
+
+            return undefined;
+          }}
+          // Every dimension with its unit (labels are stored inconsistently,
+          // e.g. "1 1/4 x 1 x 1/2" and '2" x 4-1/2"').
+          renderItem={(subSize) => formatSizeDimensions(subSize.label, subSizePreview.size.unit)}
+          activeFontSize="2.25rem"
+          nearFontSize="1.25rem"
+          farFontSize="0.85rem"
+        />
       )}
     </div>
   );

@@ -6,10 +6,44 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "~/lib/utils"
 
+const TOUCH_SCROLL_THRESHOLD_PX = 10
+
+type DropdownMenuTouchContextValue = {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const DropdownMenuTouchContext = React.createContext<DropdownMenuTouchContextValue | null>(null)
+
 function DropdownMenu({
+  open: controlledOpen,
+  defaultOpen,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen ?? false)
+  const open = controlledOpen ?? uncontrolledOpen
+
+  const setOpen = React.useCallback(
+    (nextOpen: boolean) => {
+      if (controlledOpen === undefined) {
+        setUncontrolledOpen(nextOpen)
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [controlledOpen, onOpenChange]
+  )
+
+  return (
+    <DropdownMenuTouchContext.Provider value={{ open, setOpen }}>
+      <DropdownMenuPrimitive.Root
+        data-slot="dropdown-menu"
+        open={open}
+        onOpenChange={setOpen}
+        {...props}
+      />
+    </DropdownMenuTouchContext.Provider>
+  )
 }
 
 function DropdownMenuPortal({
@@ -21,11 +55,77 @@ function DropdownMenuPortal({
 }
 
 function DropdownMenuTrigger({
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  style,
+  disabled,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  const menu = React.useContext(DropdownMenuTouchContext)
+  const touchStartRef = React.useRef<{
+    pointerId: number
+    x: number
+    y: number
+    moved: boolean
+  } | null>(null)
+
+  const resetTouchStart = () => {
+    touchStartRef.current = null
+  }
+
   return (
     <DropdownMenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
+      disabled={disabled}
+      style={{ touchAction: "pan-y", ...style }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event)
+
+        if (event.defaultPrevented || event.pointerType !== "touch") return
+
+        touchStartRef.current = {
+          pointerId: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          moved: false,
+        }
+
+        // Radix opens dropdown menus on pointer-down. On touch screens that steals
+        // vertical swipes before the browser has a chance to turn them into page
+        // scrolls, so touch opens are deferred until pointer-up proves it was a tap.
+        event.preventDefault()
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event)
+
+        const touchStart = touchStartRef.current
+        if (!touchStart || touchStart.pointerId !== event.pointerId) return
+
+        const deltaX = event.clientX - touchStart.x
+        const deltaY = event.clientY - touchStart.y
+        if (Math.hypot(deltaX, deltaY) > TOUCH_SCROLL_THRESHOLD_PX) {
+          touchStart.moved = true
+        }
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event)
+
+        const touchStart = touchStartRef.current
+        if (!touchStart || touchStart.pointerId !== event.pointerId) return
+
+        resetTouchStart()
+
+        if (!touchStart.moved && !disabled) {
+          event.preventDefault()
+          menu?.setOpen(!menu.open)
+        }
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event)
+        resetTouchStart()
+      }}
       {...props}
     />
   )

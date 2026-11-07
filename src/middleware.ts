@@ -1,41 +1,80 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  SIGNED_OUT_CODE,
+  SIGNED_OUT_HEADER,
+  SIGNED_OUT_MESSAGE,
+} from "~/lib/signed-out";
 
-// Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/pricing",
+  "/beta(.*)",
+  "/join(.*)",
+  "/api/health",
+  "/api/trpc/payment.getCheckoutAvailability",
+  "/api/catalogue/images(.*)",
   "/api/webhooks(.*)",
-  "/api/auth(.*)", // Allow Clerk auth routes (they redirect to /sign-in)
+  "/api/auth(.*)",
 ]);
 
+/** A request to the API made by the app rather than by opening a page. */
+function isApiCall(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  return (
+    /^\/(?:api|trpc)(?:\/|$)/.test(path) &&
+    req.headers.get("sec-fetch-mode") !== "navigate"
+  );
+}
 
-export default clerkMiddleware(async (auth, req) => {
-  // Protect all routes except public ones
+const clerkProtectedMiddleware = clerkMiddleware(async (auth, req) => {
+  if (process.env.NODE_ENV !== "production") {
+    return NextResponse.next();
+  }
+
   if (!isPublicRoute(req)) {
     const { userId } = await auth();
 
     if (!userId) {
-      // Use absolute URL for redirect in middleware
+      // The app's own calls get a plain "signed out" answer. A redirect would
+      // hand them the sign-in page, which reads as a broken response.
+      if (isApiCall(req)) {
+        return NextResponse.json(
+          { error: { code: SIGNED_OUT_CODE, message: SIGNED_OUT_MESSAGE } },
+          { status: 401, headers: { [SIGNED_OUT_HEADER]: "1" } },
+        );
+      }
       const signInUrl = new URL("/sign-in", req.url);
       return NextResponse.redirect(signInUrl);
     }
-
-    // Dashboard routes - let the layout handle organizationId checks
-    // Middleware just ensures user is authenticated
-
-    // Onboarding route is accessible to authenticated users without org
-    // (handled by layout, not middleware)
   }
+
+  return NextResponse.next();
 });
+
+export default function middleware(
+  req: NextRequest,
+  evt: Parameters<typeof clerkProtectedMiddleware>[1],
+) {
+  // Database health must not depend on Clerk initialization/proxy availability.
+  // Application requests, including QA, use normal Clerk authentication.
+  // WOPI callbacks authenticate with scoped tokens and Collabora proof signatures.
+  // Launch and blank-document endpoints still require normal application auth.
+  if (
+    req.nextUrl.pathname === "/api/health" ||
+    /^\/api\/job-documents\/wopi\/[^/]+(?:\/contents)?$/.test(
+      req.nextUrl.pathname,
+    )
+  )
+    return NextResponse.next();
+  return clerkProtectedMiddleware(req, evt);
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

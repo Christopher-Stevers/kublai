@@ -1,0 +1,156 @@
+import { freeComponentsNative } from "../components-native";
+import {
+  createMask,
+  inkMask,
+  sealAxisGaps,
+  union,
+  type Mask,
+} from "../raster-rooms";
+import { closeOpenSteps, rasterMorphology } from "../raster-native";
+
+/**
+ * Open space (courtyards, site, parking) inside the footprint. With every
+ * opening up to storefront width closed, a region far larger than the
+ * typical labelled room is outdoors, not a room. Relative to the drawing's
+ * own rooms, so large halls are kept while courtyards are not.
+ */
+export async function openSpaceMask(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+  seeds: Array<{ x: number; y: number }>,
+  factor = 12,
+) {
+  const long = Math.max(width, height);
+  const ink = inkMask(rgba, width, height, 200);
+  const walls = await rasterMorphology(
+    ink,
+    closeOpenSteps(Math.max(2, Math.round(long / 1700)), 1),
+  );
+  const door = 0.0095 * long;
+  const wideGap = Math.round(door * 2.2);
+  const minRun = Math.max(4, Math.round(door * 0.4));
+  const sealed = sealGaps(walls, wideGap, minRun);
+  const comps = await freeComponentsNative(sealed);
+  const seeded = new Set<number>();
+  for (const s of seeds) {
+    const x = Math.min(width - 1, Math.max(0, Math.floor(s.x * width)));
+    const y = Math.min(height - 1, Math.max(0, Math.floor(s.y * height)));
+    const l = comps.labels[y * width + x]!;
+    if (l) seeded.add(l);
+  }
+  const areas = [...seeded].map((l) => comps.sizes[l]!).sort((a, b) => a - b);
+  const median = areas.length
+    ? areas[Math.floor(areas.length / 2)]!
+    : width * height;
+  const limit = Math.max(median * factor, width * height * 0.01);
+  const out = createMask(width, height);
+  let regions = 0;
+  const big = new Set<number>();
+  for (let l = 1; l < comps.sizes.length; l++)
+    if (comps.sizes[l]! > limit) big.add(l);
+  // A big plant room is still a room when its label sits inside it, though
+  // a thin line (equipment pad, housekeeping curb) cut the label off.
+  const rooms = await labelledEnclosures(
+    rgba,
+    width,
+    height,
+    comps.labels,
+    big,
+    seeds,
+    (ink) => sealGaps(ink, wideGap, minRun),
+  );
+  for (const l of rooms) big.delete(l);
+  regions = big.size;
+  for (let i = 0; i < out.data.length; i++)
+    if (big.has(comps.labels[i]!)) out.data[i] = 1;
+  return { mask: out, regions, medianRoomPx: median, limitPx: limit };
+}
+
+/** Paints the given mask as wall ink. */
+export function paintMask(rgba: Uint8ClampedArray, mask: Mask) {
+  for (let i = 0; i < mask.data.length; i++) {
+    if (!mask.data[i]) continue;
+    const p = i * 4;
+    rgba[p] = rgba[p + 1] = rgba[p + 2] = 0;
+  }
+}
+
+/**
+ * Walls as drawn on construction plans: double lines (with or without poché)
+ * or solid bands. Single thin strokes (door swings, fixtures, furniture,
+ * leaders, hatching) are dropped. Repaints the page with walls only.
+ */
+export async function keepDoubleLineWalls(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+) {
+  const long = Math.max(width, height);
+  const ink = inkMask(rgba, width, height, 128);
+  const pairGap = Math.max(2, Math.round(long / 1700));
+  const thin = Math.max(1, Math.round(long / 2500));
+  const walls = await rasterMorphology(ink, closeOpenSteps(pairGap, thin));
+  for (let i = 0; i < walls.data.length; i++) {
+    const p = i * 4;
+    const v = walls.data[i] ? 0 : 255;
+    rgba[p] = rgba[p + 1] = rgba[p + 2] = v;
+  }
+}
+
+function sealGaps(walls: Mask, gap: number, minRun: number) {
+  return union(
+    sealAxisGaps(walls, gap, minRun, true),
+    sealAxisGaps(walls, gap, minRun, false),
+  );
+}
+
+/**
+ * Candidate components (each under a tenth of the page) mostly covered by
+ * the double-line-wall enclosure of a labelled room.
+ */
+async function labelledEnclosures(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+  labels: Int32Array,
+  candidates: Set<number>,
+  seeds: Array<{ x: number; y: number }>,
+  seal: (walls: Mask) => Mask,
+) {
+  const kept = new Set<number>();
+  const area = width * height;
+  const sizes = new Map<number, number>();
+  for (const l of candidates) sizes.set(l, 0);
+  for (let i = 0; i < area; i++) {
+    const n = sizes.get(labels[i]!);
+    if (n !== undefined) sizes.set(labels[i]!, n + 1);
+  }
+  const small = [...sizes].filter(([, n]) => n < area * 0.1);
+  if (!small.length || !seeds.length) return kept;
+  const long = Math.max(width, height);
+  const pairGap = Math.max(2, Math.round(long / 1700));
+  const thin = Math.max(1, Math.round(long / 2500));
+  const walls = await rasterMorphology(
+    inkMask(rgba, width, height, 128),
+    closeOpenSteps(pairGap, thin),
+  );
+  const rooms = await freeComponentsNative(seal(walls));
+  const labelled = new Set<number>();
+  for (const s of seeds) {
+    const x = Math.min(width - 1, Math.max(0, Math.floor(s.x * width)));
+    const y = Math.min(height - 1, Math.max(0, Math.floor(s.y * height)));
+    const r = rooms.labels[y * width + x]!;
+    if (r && rooms.sizes[r]! < area * 0.1) labelled.add(r);
+  }
+  if (!labelled.size) return kept;
+  const covered = new Map<number, number>();
+  for (let i = 0; i < area; i++) {
+    const l = labels[i]!;
+    if (sizes.has(l) && labelled.has(rooms.labels[i]!))
+      covered.set(l, (covered.get(l) ?? 0) + 1);
+  }
+  for (const [l, n] of small)
+    if ((covered.get(l) ?? 0) > n * 0.8) kept.add(l);
+  return kept;
+}

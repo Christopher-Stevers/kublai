@@ -1,0 +1,219 @@
+[
+  {
+    "model": "5101",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5101/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/socket-coupling-s-x-s-corzan-cpvc-schedule-80-5101",
+    "file": "nibco-5101.json",
+    "count": 33
+  },
+  {
+    "model": "5101-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5101-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/oupling-fpt-x-fpt-corzan-cpvc-schedule-80-5101-3-3",
+    "file": "nibco-5101-3-3.json",
+    "count": 26
+  },
+  {
+    "model": "5103",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5103/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/pter-coupling-s-x-fpt-corzan-cpvc-schedule-80-5103",
+    "file": "nibco-5103.json",
+    "count": 10
+  },
+  {
+    "model": "5104",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5104/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/male-adapter-s-x-mpt-corzan-cpvc-schedule-80-5104",
+    "file": "nibco-5104.json",
+    "count": 9
+  },
+  {
+    "model": "5106",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5106/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/socket-45-elbow-s-x-s-corzan-cpvc-schedule-80-5106",
+    "file": "nibco-5106.json",
+    "count": 14
+  },
+  {
+    "model": "5106-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5106-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/5-elbow-fpt-x-fpt-corzan-cpvc-schedule-80-5106-3-3",
+    "file": "nibco-5106-3-3.json",
+    "count": 10
+  },
+  {
+    "model": "5107",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5107/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/socket-90-elbow-s-x-s-corzan-cpvc-schedule-80-5107",
+    "file": "nibco-5107.json",
+    "count": 15
+  },
+  {
+    "model": "5107-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5107-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/ad-90-elbow-s-x-fpt-corzan-cpvc-schedule-80-5107-3",
+    "file": "nibco-5107-3.json",
+    "count": 6
+  },
+  {
+    "model": "5107-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5107-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/0-elbow-fpt-x-fpt-corzan-cpvc-schedule-80-5107-3-3",
+    "file": "nibco-5107-3-3.json",
+    "count": 10
+  },
+  {
+    "model": "5111, 5111R",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/t-tee-s-x-s-x-s-corzan-cpvc-schedule-80-5111-5111r",
+    "file": "nibco-5111.json",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5111%2C-5111r/",
+    "count": 28
+  },
+  {
+    "model": "5112",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5112/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/hread-tee-s-x-s-x-fpt-corzan-cpvc-schedule-80-5112",
+    "file": "nibco-5112.json",
+    "count": 6
+  },
+  {
+    "model": "5112-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5112-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/e-fpt-x-fpt-x-fpt-corzan-cpvc-schedule-80-5112-3-3",
+    "file": "nibco-5112-3-3.json",
+    "count": 10
+  },
+  {
+    "model": "5116-4",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5116-4/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/thread-plug-mpt-corzan-cpvc-schedule-80-5116-4",
+    "file": "nibco-5116-4.json",
+    "count": 10
+  },
+  {
+    "model": "5117",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5117/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/socket-cap-s-corzan-cpvc-schedule-80-5117",
+    "file": "nibco-5117.json",
+    "count": 11
+  },
+  {
+    "model": "5117-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5117-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/thread-cap-fpt-corzan-cpvc-schedule-80-5117-3",
+    "file": "nibco-5117-3.json",
+    "count": 10
+  },
+  {
+    "model": "5118",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5118/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/ducer-bushing-spg-x-s-corzan-cpvc-schedule-80-5118",
+    "file": "nibco-5118.json",
+    "count": 34
+  },
+  {
+    "model": "5118-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5118-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/r-bushing-spg-x-fpt-corzan-cpvc-schedule-80-5118-3",
+    "file": "nibco-5118-3.json",
+    "count": 24
+  },
+  {
+    "model": "5118-3-4",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5118-3-4/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/bushing-mpt-x-fpt-corzan-cpvc-schedule-80-5118-3-4",
+    "file": "nibco-5118-3-4.json",
+    "count": 24
+  },
+  {
+    "model": "5119-H",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5119-h/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/zan-cpvc-schedule-80-one-piece-solid-design-5119-h",
+    "file": "nibco-5119-h.json",
+    "count": 11
+  },
+  {
+    "model": "5119-W",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5119-w/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/an-cpvc-schedule-80-one-piece-webbed-design-5119-w",
+    "file": "nibco-5119-w.json",
+    "count": 4
+  },
+  {
+    "model": "5133",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/km-socket-union-s-x-s-corzan-cpvc-schedule-80-5133",
+    "file": "nibco-5133.json",
+    "count": 9
+  },
+  {
+    "model": "5133-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/apter-union-s-x-fpt-corzan-cpvc-schedule-80-5133-3",
+    "file": "nibco-5133-3.json",
+    "count": 7
+  },
+  {
+    "model": "5133-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/d-union-fpt-x-fpt-corzan-cpvc-schedule-80-5133-3-3",
+    "file": "nibco-5133-3-3.json",
+    "count": 8
+  },
+  {
+    "model": "5133E",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133e/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/m-socket-union-s-x-s-corzan-cpvc-schedule-80-5133e",
+    "file": "nibco-5133e.json",
+    "count": 8
+  },
+  {
+    "model": "5133E-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133e-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/pter-union-s-x-fpt-corzan-cpvc-schedule-80-5133e-3",
+    "file": "nibco-5133e-3.json",
+    "count": 7
+  },
+  {
+    "model": "5133E-3-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5133e-3-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/-union-fpt-x-fpt-corzan-cpvc-schedule-80-5133e-3-3",
+    "file": "nibco-5133e-3-3.json",
+    "count": 8
+  },
+  {
+    "model": "5151-A",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5151-a/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/cpvc-schedule-80-two-piece-van-stone-design-5151-a",
+    "file": "nibco-5151-a.json",
+    "count": 11
+  },
+  {
+    "model": "5151-H",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5151-h/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/zan-cpvc-schedule-80-one-piece-solid-design-5151-h",
+    "file": "nibco-5151-h.json",
+    "count": 11
+  },
+  {
+    "model": "5151-H-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5151-h-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/n-cpvc-schedule-80-one-piece-solid-design-5151-h-3",
+    "file": "nibco-5151-h-3.json",
+    "count": 9
+  },
+  {
+    "model": "5151-W",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5151-w/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/an-cpvc-schedule-80-one-piece-webbed-design-5151-w",
+    "file": "nibco-5151-w.json",
+    "count": 4
+  },
+  {
+    "model": "5151-W-3",
+    "url": "https://www.nibco.com/nibco-products/fittings/industrial-plastic-fittings/cpvc-schedule-80-fittings/5151-w-3/",
+    "catalogUrl": "https://catalog.nibco.com/viewitems/cpvc-schedule-80-fittings-1/-cpvc-schedule-80-one-piece-webbed-design-5151-w-3",
+    "file": "nibco-5151-w-3.json",
+    "count": 3
+  }
+]

@@ -1,0 +1,1634 @@
+{
+  "createdAt": "2026-05-31T00:31:15.034Z",
+  "rows": [
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "1-1/4",
+      "sizeUnit": "in",
+      "sizeLabel": "1 1/4\"",
+      "displayName": "1 1/4\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "1-1/2",
+      "sizeUnit": "in",
+      "sizeLabel": "1 1/2\"",
+      "displayName": "1 1/2\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" ABS Solid Wall Pipe 12 ft",
+      "description": "Solid Wall Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Solid Wall Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "1-1/2",
+      "sizeUnit": "in",
+      "sizeLabel": "1 1/2\"",
+      "displayName": "1 1/2\" ABS Cell Core Pipe 12 ft",
+      "description": "Cell Core Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Cell Core Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" ABS Cell Core Pipe 12 ft",
+      "description": "Cell Core Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Cell Core Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" ABS Cell Core Pipe 12 ft",
+      "description": "Cell Core Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Cell Core Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" ABS Cell Core Pipe 12 ft",
+      "description": "Cell Core Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Cell Core Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "ABS",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" ABS Cell Core Pipe 12 ft",
+      "description": "Cell Core Pipe 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "ABS",
+        "ABS Pipe",
+        "IPEX Drain-Way ABS DWV",
+        "ABS DWV Cell Core Pipe"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026AbsDwv"
+      ],
+      "supplierParts": [],
+      "sourcePage": 27,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "1-1/2",
+      "sizeUnit": "in",
+      "sizeLabel": "1 1/2\"",
+      "displayName": "1 1/2\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010001"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010001",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010002"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010002",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010003"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010003",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010004"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010004",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010006"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010006",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010087"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010087",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010088"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010088",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "12",
+      "sizeUnit": "in",
+      "sizeLabel": "12\"",
+      "displayName": "12\" PVC DWV System 15 Pipe Plain End 12 ft",
+      "description": "System 15 Pipe Plain End 12 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010089"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010089",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010005"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010005",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010046"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010046",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010008"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010008",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010010"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010010",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "12",
+      "sizeUnit": "in",
+      "sizeLabel": "12\"",
+      "displayName": "12\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010012"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010012",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "14",
+      "sizeUnit": "in",
+      "sizeLabel": "14\"",
+      "displayName": "14\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010031"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010031",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "16",
+      "sizeUnit": "in",
+      "sizeLabel": "16\"",
+      "displayName": "16\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010032"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010032",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "18",
+      "sizeUnit": "in",
+      "sizeLabel": "18\"",
+      "displayName": "18\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010034"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010034",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "20",
+      "sizeUnit": "in",
+      "sizeLabel": "20\"",
+      "displayName": "20\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010035"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010035",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "PVC DWV",
+      "sizeNominal": "24",
+      "sizeUnit": "in",
+      "sizeLabel": "24\"",
+      "displayName": "24\" PVC DWV System 15 Pipe Bell End 20 ft",
+      "description": "System 15 Pipe Bell End 20 ft",
+      "imageUrl": "",
+      "aliases": [
+        "PVC DWV",
+        "PVC DWV Pipe",
+        "IPEX System 15",
+        "System 15 DWV Pipe",
+        "010036"
+      ],
+      "manufacturerSources": [
+        "ipexPlumbingMechanicalCatalogue2026System15Dwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "010036",
+      "sourcePage": 44,
+      "sourceUrl": "https://ipexna.com/wp-content/uploads/2026/04/catalogue-caen-ipex-plumbing-mechanical-systems.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s12050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s12050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s13050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s13050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s14050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s14050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s16050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s16050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s18050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s18050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" Cast Hubless Pipe 5 ft",
+      "description": "Hubless Pipe 5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s10050"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s10050",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" Cast Hubless Pipe 8.5 ft",
+      "description": "Hubless Pipe 8.5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s12860"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s12860",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" Cast Hubless Pipe 8.5 ft",
+      "description": "Hubless Pipe 8.5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s13860"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s13860",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" Cast Hubless Pipe 8.5 ft",
+      "description": "Hubless Pipe 8.5 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s14860"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s14860",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "1-1/2",
+      "sizeUnit": "in",
+      "sizeLabel": "1 1/2\"",
+      "displayName": "1 1/2\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s11500"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s11500",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "sizeLabel": "2\"",
+      "displayName": "2\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s12100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s12100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "sizeLabel": "3\"",
+      "displayName": "3\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s13100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s13100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "sizeLabel": "4\"",
+      "displayName": "4\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s14100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s14100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "5",
+      "sizeUnit": "in",
+      "sizeLabel": "5\"",
+      "displayName": "5\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s15100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s15100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "sizeLabel": "6\"",
+      "displayName": "6\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s16100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s16100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "sizeLabel": "8\"",
+      "displayName": "8\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s18100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s18100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "sizeLabel": "10\"",
+      "displayName": "10\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s10100"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s10100",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "12",
+      "sizeUnit": "in",
+      "sizeLabel": "12\"",
+      "displayName": "12\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s17120"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s17120",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "Cast",
+      "sizeNominal": "15",
+      "sizeUnit": "in",
+      "sizeLabel": "15\"",
+      "displayName": "15\" Cast Hubless Pipe 10 ft",
+      "description": "Hubless Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "Cast",
+        "Cast Pipe",
+        "Bibby-Ste-Croix cast iron",
+        "MJ Hubless Pipe",
+        "s17150"
+      ],
+      "manufacturerSources": [
+        "bibbySteCroixCastIronSoilPipeAndFittingsDwv"
+      ],
+      "supplierParts": [],
+      "sourceCode": "s17150",
+      "sourcePage": 44,
+      "sourceUrl": "https://bibby-ste-croix.com/upl/downloads/catalog/products/cast-iron-soil-pipe-and-fittings-for-drain-waste-vent-315c16a1.pdf"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "1-1/2",
+      "sizeUnit": "in",
+      "displayName": "1-1/2\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "1 1/2\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 1 1/2\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110067",
+        "622454250062",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110067",
+      "sourceUpc": "622454250062",
+      "sourceDescription": "1 1/2\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "2",
+      "sizeUnit": "in",
+      "displayName": "2\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "2\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 2\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110068",
+        "622454252677",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110068",
+      "sourceUpc": "622454252677",
+      "sourceDescription": "2\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "3",
+      "sizeUnit": "in",
+      "displayName": "3\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "3\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 3\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110069",
+        "622454252684",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110069",
+      "sourceUpc": "622454252684",
+      "sourceDescription": "3\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "4",
+      "sizeUnit": "in",
+      "displayName": "4\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "4\"x10' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 4\"x10' PVC PIPE P/E SYSTEM XFR",
+        "110075",
+        "622454428386",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot",
+        "4\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 4\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110070",
+        "622454286252",
+        "4\" XFR Pipe 10 ft",
+        "Pipe 10 ft"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110075; 110070",
+      "sourceUpc": "622454428386; 622454286252",
+      "sourceDescription": "4\"x10' PVC PIPE P/E SYSTEM XFR | 4\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100; /100",
+      "sourceListPrice": ""
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "6",
+      "sizeUnit": "in",
+      "displayName": "6\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "6\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 6\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110071",
+        "622454286269",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110071",
+      "sourceUpc": "622454286269",
+      "sourceDescription": "6\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "8",
+      "sizeUnit": "in",
+      "displayName": "8\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "8\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 8\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110072",
+        "622454286276",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110072",
+      "sourceUpc": "622454286276",
+      "sourceDescription": "8\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "10",
+      "sizeUnit": "in",
+      "displayName": "10\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "10\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 10\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110073",
+        "622454286283",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110073",
+      "sourceUpc": "622454286283",
+      "sourceDescription": "10\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "12",
+      "sizeUnit": "in",
+      "displayName": "12\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "12\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 12\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110074",
+        "622454286290",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110074",
+      "sourceUpc": "622454286290",
+      "sourceDescription": "12\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "14",
+      "sizeUnit": "in",
+      "displayName": "14\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "14\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 14\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110076",
+        "622454823631",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110076",
+      "sourceUpc": "622454823631",
+      "sourceDescription": "14\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "16",
+      "sizeUnit": "in",
+      "displayName": "16\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "16\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 16\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110077",
+        "622454823648",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110077",
+      "sourceUpc": "622454823648",
+      "sourceDescription": "16\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    },
+    {
+      "catalog": "Plumbing",
+      "category": "Pipe",
+      "material": "XFR",
+      "sizeNominal": "18",
+      "sizeUnit": "in",
+      "displayName": "18\" XFR Pipe 10 ft",
+      "description": "Pipe 10 ft",
+      "imageUrl": "",
+      "aliases": [
+        "IPEX System XFR",
+        "System XFR",
+        "FR-PVC",
+        "grey",
+        "gray",
+        "XFR DWV",
+        "18\"x12' PVC PIPE P/E SYSTEM XFR",
+        "IPEX 18\"x12' PVC PIPE P/E SYSTEM XFR",
+        "110078",
+        "622454823655",
+        "10 ft",
+        "10 foot",
+        "10'",
+        "ten foot"
+      ],
+      "manufacturerSources": [
+        "ipexPipePriceList"
+      ],
+      "supplierParts": [],
+      "sourcePCode": "110078",
+      "sourceUpc": "622454823655",
+      "sourceDescription": "18\"x12' PVC PIPE P/E SYSTEM XFR",
+      "sourcePer": "/100"
+    }
+  ],
+  "before": [
+    {
+      "id": "223d0b20-36dc-4f3a-9610-67403aaffce6",
+      "organizationId": "0ff8da19-703c-4aea-ba1d-70a6384e1f9b",
+      "categoryId": "6908e9d9-013b-413e-ae3e-9726460904c2",
+      "displayName": "4\" Cast Pipe",
+      "description": "Pipe",
+      "imageUrl": "/api/catalogue/images/part-a8278ada-6d17-4957-a6ca-c55370b15f28.webp",
+      "materialId": "0e11d090-6bcc-44f4-94f1-a20fb4e1d326",
+      "sizeId": "8ce70ed1-96b0-4248-93c8-6805eafff501",
+      "isActive": true,
+      "createdAt": "2026-05-26T12:16:14.397Z",
+      "sortOrder": 0,
+      "catalogId": "52c3f843-cf29-4216-a3da-d1e55f52b22c",
+      "sizeLabel": "4\"",
+      "materialName": "Cast",
+      "categoryName": "Pipe"
+    },
+    {
+      "id": "6ba04000-02d2-4058-93ee-d6b02eb25fa0",
+      "organizationId": "0ff8da19-703c-4aea-ba1d-70a6384e1f9b",
+      "categoryId": "6908e9d9-013b-413e-ae3e-9726460904c2",
+      "displayName": "8\" Cast Pipe",
+      "description": "Pipe",
+      "imageUrl": "/api/catalogue/images/part-4d97293c-27f0-413f-b78b-7e78dacb381d.webp",
+      "materialId": "0e11d090-6bcc-44f4-94f1-a20fb4e1d326",
+      "sizeId": "cece75b2-cb8d-4bca-8fd0-6da7e24443d7",
+      "isActive": true,
+      "createdAt": "2026-05-26T12:16:40.920Z",
+      "sortOrder": 0,
+      "catalogId": "52c3f843-cf29-4216-a3da-d1e55f52b22c",
+      "sizeLabel": "8\"",
+      "materialName": "Cast",
+      "categoryName": "Pipe"
+    },
+    {
+      "id": "24b2ef97-f1dc-4f2c-aafa-6d0d423834fc",
+      "organizationId": "0ff8da19-703c-4aea-ba1d-70a6384e1f9b",
+      "categoryId": "6908e9d9-013b-413e-ae3e-9726460904c2",
+      "displayName": "6\" Cast Pipe",
+      "description": "Pipe",
+      "imageUrl": "/api/catalogue/images/part-c81120b8-4f48-4a20-afa3-4d2c36548e66.webp",
+      "materialId": "0e11d090-6bcc-44f4-94f1-a20fb4e1d326",
+      "sizeId": "e0cc19a1-0830-44c0-9f5b-c1e8e3465725",
+      "isActive": true,
+      "createdAt": "2026-05-26T12:17:32.121Z",
+      "sortOrder": 0,
+      "catalogId": "52c3f843-cf29-4216-a3da-d1e55f52b22c",
+      "sizeLabel": "6\"",
+      "materialName": "Cast",
+      "categoryName": "Pipe"
+    },
+    {
+      "id": "a68397fd-5038-4e86-9dbf-97b498319692",
+      "organizationId": "0ff8da19-703c-4aea-ba1d-70a6384e1f9b",
+      "categoryId": "6908e9d9-013b-413e-ae3e-9726460904c2",
+      "displayName": "4\" PVC DWV Pipe",
+      "description": "Pipe",
+      "imageUrl": null,
+      "materialId": "e1f43fed-a252-47de-a5cb-bc1f8c7d3e1a",
+      "sizeId": "8ce70ed1-96b0-4248-93c8-6805eafff501",
+      "isActive": true,
+      "createdAt": "2026-05-26T18:49:49.236Z",
+      "sortOrder": 0,
+      "catalogId": "52c3f843-cf29-4216-a3da-d1e55f52b22c",
+      "sizeLabel": "4\"",
+      "materialName": "PVC DWV",
+      "categoryName": "Pipe"
+    }
+  ]
+}

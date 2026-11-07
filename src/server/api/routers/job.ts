@@ -1,64 +1,91 @@
-import { TRPCError } from "@trpc/server";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { z } from "zod";
-
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { userCan } from "~/server/auth/permissions";
 import {
+  resolveDefaultSupplier,
+  supplierVersionPrice,
+} from "~/server/job-supplier-defaults";
+import { createMaterialListSummaries } from "~/lib/material-list-summary";
+import { loadOrderVerification } from "~/server/material-lists/order-verification";
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { retiredOfflineMutation } from "../retired-offline-sync";
+
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
+import {
+  jobRooms,
   jobs,
-  materialLists,
   locations,
+  materialLists,
+  orderItems,
+  orders,
+  quoteItems,
+  partDefinitions,
+  supplierParts,
+  suppliers,
   users,
-  organizations,
 } from "~/server/db/schema";
 
 export const jobRouter = createTRPCRouter({
-  /**
-   * List all jobs for the organization
-   */
-  listJobs: hasDashboardAccess.query(async ({ ctx }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
-
-    const jobsList = await ctx.db
-      .select({
-        id: jobs.id,
-        name: jobs.name,
-        locationId: jobs.locationId,
-        status: jobs.status,
-        createdAt: jobs.createdAt,
-        location: {
-          id: locations.id,
-          name: locations.name,
-        },
-        foreman: {
-          id: users.id,
-          name: users.name,
-        },
-        materialListCount: sql<number>`(
-          SELECT COUNT(*)::int 
-          FROM ${materialLists} 
-          WHERE ${materialLists.jobId} = ${jobs.id}
-            AND ${materialLists.organizationId} = ${ctx.user.organizationId}
-        )`,
-      })
-      .from(jobs)
-      .leftJoin(locations, eq(jobs.locationId, locations.id))
-      .leftJoin(users, eq(jobs.foremanUserId, users.id))
-      .where(eq(jobs.organizationId, ctx.user.organizationId))
-      .orderBy(desc(jobs.createdAt));
-
-    return jobsList;
-  }),
+  previewSupplierDefault: hasAppAccess
+    .input(z.object({ jobId: z.string().uuid(), partId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const org = ctx.user.organizationId;
+      if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+      const version = await resolveDefaultSupplier(
+        ctx.db,
+        org,
+        input.jobId,
+        input.partId,
+      );
+      if (!version) return null;
+      const price = await supplierVersionPrice(
+        ctx.db,
+        org,
+        version,
+        input.partId,
+      );
+      return {
+        version,
+        ...price,
+        unitCost: userCan(ctx.user, "financial.view") ? price.unitCost : null,
+        listing: price.listing
+          ? {
+              ...price.listing,
+              unitCost: userCan(ctx.user, "financial.view")
+                ? price.listing.unitCost
+                : null,
+            }
+          : undefined,
+      };
+    }),
+  supplierDefaultOptions: hasAppAccess
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const org = ctx.user.organizationId;
+      if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+      const [job] = await ctx.db.execute<{
+        supplierDefaults:
+          | import("~/lib/job-supplier-defaults").JobSupplierDefaults
+          | null;
+      }>(
+        sql`select "supplierDefaults" from kublai_job where id=${input.jobId} and "organizationId"=${org}`,
+      );
+      if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+      const options = await ctx.db.execute<{
+        supplierId: string;
+        bookId: string | null;
+        label: string;
+      }>(sql`select s.id as "supplierId",null::uuid as "bookId",s.name as label from kublai_supplier s where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room'
+      union all select s.id,b.id,s.name || ' - ' || b.name from kublai_supplier s join kublai_supplier_price_book b on b."supplierId"=s.id and b."organizationId"=${org} where s."organizationId"=${org} and coalesce(s.kind,'supplier')<>'tool_room' order by label`);
+      return { defaults: job.supplierDefaults, options: [...options] };
+    }),
+  syncEntityMutations: retiredOfflineMutation,
 
   /**
    * Get a single job with material lists
    */
-  getJob: hasDashboardAccess
-    .input(z.object({ jobId: z.string().uuid() }))
+  getJob: hasAppAccess
+    .input(z.object({ jobId: z.string().uuid(), includeMaterialLists: z.boolean().default(true) }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -71,17 +98,28 @@ export const jobRouter = createTRPCRouter({
         .select({
           id: jobs.id,
           name: jobs.name,
+          poNumber: jobs.poNumber,
+          supplierDefaults: sql<
+            import("~/lib/job-supplier-defaults").JobSupplierDefaults | null
+          >`${jobs}."supplierDefaults"`,
           locationId: jobs.locationId,
           foremanUserId: jobs.foremanUserId,
+          foremanName: jobs.foremanName,
           status: jobs.status,
           createdAt: jobs.createdAt,
           location: {
             id: locations.id,
             name: locations.name,
+            address1: locations.address1,
+            address2: locations.address2,
+            city: locations.city,
+            region: locations.region,
+            postalCode: locations.postalCode,
+            country: locations.country,
           },
           foreman: {
             id: users.id,
-            name: users.name,
+            name: sql<string>`coalesce(${jobs.foremanName}, ${users.name})`,
           },
         })
         .from(jobs)
@@ -96,20 +134,24 @@ export const jobRouter = createTRPCRouter({
         .limit(1);
 
       if (!job) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Job not found",
-        });
+        return null;
       }
+
+      if (!input.includeMaterialLists) return { ...job, materialLists: [] };
 
       // Get material lists for this job
       const lists = await ctx.db
         .select({
           id: materialLists.id,
           name: materialLists.name,
+          roomId: materialLists.roomId,
+          roomName: jobRooms.name,
+          kind: sql<"materials" | "tools">`case when ${materialLists.kind}='tools' then 'tools' else 'materials' end`,
+          quoteId: materialLists.quoteId,
           createdAt: materialLists.createdAt,
         })
         .from(materialLists)
+        .leftJoin(jobRooms, eq(materialLists.roomId, jobRooms.id))
         .where(
           and(
             eq(materialLists.jobId, input.jobId),
@@ -118,238 +160,76 @@ export const jobRouter = createTRPCRouter({
         )
         .orderBy(desc(materialLists.createdAt));
 
+      const listIds = lists.map((list) => list.id);
+      const quoteIds = lists
+        .map((list) => list.quoteId)
+        .filter((value): value is string => Boolean(value));
+
+      const [supplierRows, orderRows] = await Promise.all([
+        quoteIds.length
+          ? ctx.db
+              .select({
+                quoteId: quoteItems.quoteId,
+                descriptionSnapshot: quoteItems.descriptionSnapshot,
+                partDefinitionDisplayName: partDefinitions.displayName,
+                supplierPartSku: supplierParts.supplierSku,
+                quantity: quoteItems.quantity,
+                sentQuantity: sql<string>`(${orderItems.quantity}-${orderItems.creditedQuantity})::text`,
+                receivedQuantity: orderItems.receivedQuantity,
+                verificationStatus: orderItems.verificationStatus,
+                sentOrderStatus: orders.status,
+                sentAt: orders.sentAt,
+                sentOrderId: orders.id,
+                supplierName: suppliers.name,
+                selectedSupplierId: quoteItems.supplierId,
+                supplierPartSupplierId: supplierParts.supplierId,
+                partDefinitionId: quoteItems.partDefinitionId,
+              })
+              .from(quoteItems)
+              .leftJoin(partDefinitions, eq(quoteItems.partDefinitionId, partDefinitions.id))
+              .leftJoin(
+                supplierParts,
+                eq(quoteItems.supplierPartId, supplierParts.id),
+              )
+              .leftJoin(
+                suppliers,
+                eq(
+                  suppliers.id,
+                  sql`coalesce(${quoteItems.supplierId}, ${supplierParts.supplierId})`,
+                ),
+              )
+              .leftJoin(
+                orderItems,
+                eq(quoteItems.sentOrderItemId, orderItems.id),
+              )
+              .leftJoin(orders, eq(orderItems.orderId, orders.id))
+              .where(inArray(quoteItems.quoteId, quoteIds))
+          : Promise.resolve([]),
+        listIds.length
+          ? ctx.db
+              .select({
+                id: orders.id,
+                materialListId: orders.materialListId,
+                orderNumber: orders.orderNumber,
+                supplierId: orders.supplierId,
+                status: orders.status,
+                sentAt: orders.sentAt,
+              })
+              .from(orders)
+              .where(inArray(orders.materialListId, listIds))
+          : Promise.resolve([]),
+      ]);
+
+      const verificationByOrderId = await loadOrderVerification(ctx.db, orderRows.map(row=>row.id));
+      const summarizeList = createMaterialListSummaries(supplierRows.map(row=>({...row, supplierId:row.selectedSupplierId ?? row.supplierPartSupplierId})), orderRows, verificationByOrderId);
+
       return {
         ...job,
-        materialLists: lists,
+        materialLists: lists.map((list) => ({
+          ...list,
+          ...summarizeList(list),
+
+        })),
       };
     }),
-
-  /**
-   * Create a new job
-   */
-  createJob: hasDashboardAccess
-    .input(
-      z.object({
-        name: z.string().min(1).optional(),
-        locationId: z.string().uuid().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const [job] = await ctx.db
-        .insert(jobs)
-        .values({
-          organizationId: ctx.user.organizationId,
-          name: input.name ?? "New Job",
-          locationId: input.locationId ?? null,
-          foremanUserId: ctx.userId,
-          createdByUserId: ctx.userId,
-          status: "draft",
-        })
-        .returning();
-
-      if (!job) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create job",
-        });
-      }
-
-      return job;
-    }),
-
-  /**
-   * Update job details
-   */
-  updateJob: hasDashboardAccess
-    .input(
-      z.object({
-        jobId: z.string().uuid(),
-        name: z.string().min(1).optional(),
-        locationId: z.string().uuid().nullable().optional(),
-        foremanUserId: z.string().optional(),
-        status: z.string().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const { jobId, ...updates } = input;
-
-      // Verify job belongs to organization
-      const [existingJob] = await ctx.db
-        .select({ id: jobs.id })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.id, jobId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!existingJob) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Job not found",
-        });
-      }
-
-      const [updatedJob] = await ctx.db
-        .update(jobs)
-        .set(updates)
-        .where(eq(jobs.id, jobId))
-        .returning();
-
-      return updatedJob;
-    }),
-
-  /**
-   * Set user's current job
-   */
-  setCurrentJob: hasDashboardAccess
-    .input(z.object({ jobId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      // Verify job belongs to organization
-      const [job] = await ctx.db
-        .select({ id: jobs.id })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.id, input.jobId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!job) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Job not found",
-        });
-      }
-
-      // Update user's currentJobId
-      await ctx.db
-        .update(users)
-        .set({ currentJobId: input.jobId })
-        .where(eq(users.id, ctx.userId));
-
-      return { success: true };
-    }),
-
-  /**
-   * Get user's current job (auto-creates if none)
-   */
-  getCurrentJob: hasDashboardAccess.query(async ({ ctx }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
-
-    // Check if user has a current job
-    if (ctx.user.currentJobId) {
-      const [job] = await ctx.db
-        .select({
-          id: jobs.id,
-          name: jobs.name,
-          locationId: jobs.locationId,
-          status: jobs.status,
-        })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.id, ctx.user.currentJobId),
-            eq(jobs.organizationId, ctx.user.organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (job) {
-        return job;
-      }
-    }
-
-    // No current job or job not found - check if any jobs exist
-    const [existingJob] = await ctx.db
-      .select({ id: jobs.id })
-      .from(jobs)
-      .where(eq(jobs.organizationId, ctx.user.organizationId))
-      .orderBy(desc(jobs.createdAt))
-      .limit(1);
-
-    if (existingJob) {
-      // Set first job as current
-      await ctx.db
-        .update(users)
-        .set({ currentJobId: existingJob.id })
-        .where(eq(users.id, ctx.userId));
-
-      const [job] = await ctx.db
-        .select({
-          id: jobs.id,
-          name: jobs.name,
-          locationId: jobs.locationId,
-          status: jobs.status,
-        })
-        .from(jobs)
-        .where(eq(jobs.id, existingJob.id))
-        .limit(1);
-
-      return job;
-    }
-
-    // No jobs exist - create one
-    const [newJob] = await ctx.db
-      .insert(jobs)
-      .values({
-        organizationId: ctx.user.organizationId,
-        name: "New Job",
-        foremanUserId: ctx.userId,
-        createdByUserId: ctx.userId,
-        status: "draft",
-      })
-      .returning();
-
-    if (!newJob) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create job",
-      });
-    }
-
-    // Set as current job
-    await ctx.db
-      .update(users)
-      .set({ currentJobId: newJob.id })
-      .where(eq(users.id, ctx.userId));
-
-    return {
-      id: newJob.id,
-      name: newJob.name,
-      locationId: newJob.locationId,
-      status: newJob.status,
-    };
-  }),
 });
-

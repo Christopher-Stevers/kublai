@@ -11,10 +11,12 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@clerk/nextjs/server";
+import { redactFinancialValues } from "~/lib/financial-visibility";
+import { userCan } from "~/server/auth/permissions";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { withQueryStats } from "~/server/db/query-stats";
+
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
 
 /**
  * 1. CONTEXT
@@ -28,24 +30,26 @@ import { eq } from "drizzle-orm";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { userId } = await auth();
-
-  // Get user from database if authenticated
-  let dbUser = null;
-  if (userId) {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    dbUser = user ?? null;
-  }
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  request?: Request;
+}) => {
+  const {
+    userId,
+    user: dbUser,
+    actorUser,
+    simulation,
+  } = await getRequestIdentity(opts.headers, {
+    allowDev: true,
+    request: opts.request,
+  });
 
   return {
     db,
     userId,
     user: dbUser,
+    actorUser,
+    simulation,
     ...opts,
   };
 };
@@ -92,26 +96,70 @@ export const createCallerFactory = t.createCallerFactory;
  */
 export const createTRPCRouter = t.router;
 
-/**
- * Middleware for timing procedure execution and adding an artificial delay in development.
- *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
- */
-const timingMiddleware = t.middleware(async ({ next, path }) => {
+const SLOW_REQUEST_MS = 1500;
+
+/** Drawing data size, for the timing log. */
+const drawingDataSize = (data: unknown) =>
+  ` ${Math.round(superjson.stringify(data ?? null).length / 1024)} KB`;
+
+// Logs duration and database round trips; `scripts/trpc-timing-report.mjs`
+// summarizes these lines from the service journal.
+const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
-    // artificial delay in dev
-    const waitMs = Math.floor(Math.random() * 400) + 100;
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  const audit =
+    ctx.simulation && type === "mutation"
+      ? await (
+          await import("~/server/simulation/service")
+        ).recordSimulationAction(ctx.simulation, path)
+      : null;
+  if (
+    ctx.simulation &&
+    ((path.startsWith("payment.") &&
+      path !== "payment.getSubscriptionStatus") ||
+      [
+        "push.subscribe",
+        "push.unsubscribe",
+        "push.revokeDevice",
+        "push.reportDevice",
+      ].includes(path))
+  ) {
+    if (audit)
+      await (
+        await import("~/server/simulation/service")
+      ).finishSimulationAction(audit, "failed");
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "End simulation before changing billing or device notifications.",
+    });
+  }
+  const { result, stats } = await withQueryStats(() => next());
+  if (audit) {
+    try {
+      await (
+        await import("~/server/simulation/service")
+      ).finishSimulationAction(audit, result.ok ? "succeeded" : "failed");
+    } catch {
+      console.warn(
+        "Simulation action outcome could not update; the original audit entry is retained.",
+      );
+    }
   }
 
-  const result = await next();
+  const duration = Date.now() - start;
+  // Drawing data goes to phones on every open; its size is part of the wait.
+  const size =
+    result.ok && (path === "drawingsWorkspace.get" || path === "drawingsWorkspace.changes")
+      ? drawingDataSize(result.data)
+      : "";
+  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)${size}`;
+  if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
+  else console.log(message);
 
-  const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
-
+  if (result.ok && ctx.user && !userCan(ctx.user, "financial.view")) {
+    return { ...result, data: redactFinancialValues(result.data) };
+  }
   return result;
 });
 
@@ -154,43 +202,11 @@ export const protectedProcedure = t.procedure
   });
 
 /**
- * Admin procedure
- *
- * If you want a query or mutation to ONLY be accessible to admin users, use this. It verifies
- * the user is authenticated and has the "admin" role.
+ * Procedure that requires app access.
+ * Standard accounts can use the app; paid Executive Account permissions
+ * are enforced by feature-level permission checks.
  */
-export const adminProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.userId) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    if (!ctx.user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User not found in database",
-      });
-    }
-    if (ctx.user.role !== "admin") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Admin access required",
-      });
-    }
-    return next({
-      ctx: {
-        // infers the `userId` and `user` as non-nullable
-        userId: ctx.userId,
-        user: ctx.user,
-      },
-    });
-  });
-
-/**
- * Procedure that requires dashboard access (subscription or one-time purchase)
- * Checks if user has active subscription or one-time access
- */
-export const hasDashboardAccess = t.procedure
+export const hasAppAccess = t.procedure
   .use(timingMiddleware)
   .use(async ({ ctx, next }) => {
     if (!ctx.userId) {
@@ -204,38 +220,27 @@ export const hasDashboardAccess = t.procedure
       });
     }
 
-    // Admins always have access
-    if (ctx.user.role === "admin") {
-      return next({
-        ctx: {
-          userId: ctx.userId,
-          user: ctx.user,
-        },
+    if (!ctx.user.organizationId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Create or join an organization before using Jobs.",
       });
     }
 
-    // Check for active subscription
-    const hasActiveSubscription =
-      ctx.user.stripeSubscriptionId &&
-      ctx.user.subscriptionStatus === "active" &&
-      (!ctx.user.subscriptionEndsAt ||
-        new Date(ctx.user.subscriptionEndsAt) > new Date());
-
-    // Check for one-time access
-    const hasOneTimeAccess = ctx.user.hasOneTimeAccess === true;
-
-    if (!hasActiveSubscription && !hasOneTimeAccess) {
+    if (
+      ctx.user.organizationAccessStatus &&
+      ctx.user.organizationAccessStatus !== "approved"
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message:
-          "Dashboard access required. Please purchase a subscription or one-time access.",
+        message: "Your organization access is waiting for approval.",
       });
     }
 
     return next({
       ctx: {
         userId: ctx.userId,
-        user: ctx.user,
+        user: { ...ctx.user, organizationId: ctx.user.organizationId },
       },
     });
   });

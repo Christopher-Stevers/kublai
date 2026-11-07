@@ -1,8 +1,14 @@
+import { getJobPriceBook } from "~/server/job-pricing";
+import { findPreferredJobPrice } from "~/lib/job-pricing";
+import { pricingMaterialLists as materialLists } from "~/server/job-pricing-schema";
+import { publishOrganizationCatalogueEvent, publishOrganizationReplicachePoke } from "~/server/material-list-events";
+import { orderMultipleInput, refreshSupplierPurchaseTotals } from "~/server/purchasing";
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, isNull, or } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, hasDashboardAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
+import { assertCan, userCan } from "~/server/auth/permissions";
 import {
   suppliers,
   supplierParts,
@@ -11,11 +17,12 @@ import {
   locations,
 } from "~/server/db/schema";
 
+
 export const supplierRouter = createTRPCRouter({
   /**
    * Get all suppliers for the user's organization
    */
-  list: hasDashboardAccess.query(async ({ ctx }) => {
+  list: hasAppAccess.query(async ({ ctx }) => {
     if (!ctx.user.organizationId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -28,11 +35,14 @@ export const supplierRouter = createTRPCRouter({
         id: suppliers.id,
         organizationId: suppliers.organizationId,
         name: suppliers.name,
+        contactName: suppliers.contactName,
         contactEmail: suppliers.contactEmail,
         contactPhone: suppliers.contactPhone,
+        contacts: suppliers.contacts,
         orderingNotes: suppliers.orderingNotes,
         locationId: suppliers.locationId,
         createdAt: suppliers.createdAt,
+        updatedAt: suppliers.updatedAt,
         location: {
           id: locations.id,
           name: locations.name,
@@ -42,6 +52,7 @@ export const supplierRouter = createTRPCRouter({
       })
       .from(suppliers)
       .leftJoin(locations, eq(suppliers.locationId, locations.id))
+      .where(eq(suppliers.organizationId, ctx.user.organizationId))
       .orderBy(suppliers.name);
 
     return supplierList;
@@ -50,8 +61,8 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Get a single supplier by ID with related supplierParts
    */
-  getById: hasDashboardAccess
-    .input(z.object({ id: z.string().uuid() }))
+  getById: hasAppAccess
+    .input(z.object({ id: z.string().uuid(), partDefinitionIds: z.array(z.string().uuid()).min(1).max(201).optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -60,27 +71,76 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      const [supplier] = await ctx.db
-        .select({
-          id: suppliers.id,
-          organizationId: suppliers.organizationId,
-          name: suppliers.name,
-          contactEmail: suppliers.contactEmail,
-          contactPhone: suppliers.contactPhone,
-          orderingNotes: suppliers.orderingNotes,
-          locationId: suppliers.locationId,
-          createdAt: suppliers.createdAt,
-          location: {
-            id: locations.id,
-            name: locations.name,
-            city: locations.city,
-            region: locations.region,
-          },
-        })
-        .from(suppliers)
-        .leftJoin(locations, eq(suppliers.locationId, locations.id))
-        .where(and(eq(suppliers.id, input.id)))
-        .limit(1);
+      // Both queries are organization-scoped, so they can run together.
+      const [[supplier], supplierPartsList] = await Promise.all([
+        ctx.db
+          .select({
+            id: suppliers.id,
+            organizationId: suppliers.organizationId,
+            name: suppliers.name,
+            contactName: suppliers.contactName,
+            contactEmail: suppliers.contactEmail,
+            contactPhone: suppliers.contactPhone,
+            contacts: suppliers.contacts,
+            orderingNotes: suppliers.orderingNotes,
+            locationId: suppliers.locationId,
+            createdAt: suppliers.createdAt,
+            location: {
+              id: locations.id,
+              name: locations.name,
+              city: locations.city,
+              region: locations.region,
+            },
+          })
+          .from(suppliers)
+          .leftJoin(locations, eq(suppliers.locationId, locations.id))
+          .where(
+            and(
+              eq(suppliers.id, input.id),
+              eq(suppliers.organizationId, ctx.user.organizationId),
+            ),
+          )
+          .limit(1),
+        ctx.db
+          .select({
+            id: supplierParts.id,
+            supplierId: supplierParts.supplierId,
+            partDefinitionId: supplierParts.partDefinitionId,
+            supplierSku: supplierParts.supplierSku,
+            supplierName: supplierParts.supplierName,
+            packSize: supplierParts.packSize,
+            packUomId: supplierParts.packUomId,
+            lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+            currency: supplierParts.currency,
+            isPreferred: supplierParts.isPreferred,
+            notes: supplierParts.notes,
+            createdAt: supplierParts.createdAt,
+            partDefinition: {
+              id: partDefinitions.id,
+              displayName: partDefinitions.displayName,
+              description: partDefinitions.description,
+            },
+            packUom: {
+              id: units.id,
+              code: units.code,
+              displayName: units.displayName,
+            },
+          })
+          .from(supplierParts)
+          .leftJoin(
+            partDefinitions,
+            eq(supplierParts.partDefinitionId, partDefinitions.id),
+          )
+          .leftJoin(units, eq(supplierParts.packUomId, units.id))
+          .where(
+            and(
+              eq(supplierParts.supplierId, input.id),
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+              input.partDefinitionIds ? inArray(supplierParts.partDefinitionId, input.partDefinitionIds) : undefined,
+            ),
+          )
+          .orderBy(supplierParts.supplierSku),
+      ]);
 
       if (!supplier) {
         throw new TRPCError({
@@ -89,41 +149,6 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      // Get supplier parts with part definition details
-      const supplierPartsList = await ctx.db
-        .select({
-          id: supplierParts.id,
-          supplierId: supplierParts.supplierId,
-          partDefinitionId: supplierParts.partDefinitionId,
-          supplierSku: supplierParts.supplierSku,
-          supplierName: supplierParts.supplierName,
-          packSize: supplierParts.packSize,
-          packUomId: supplierParts.packUomId,
-          lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-          currency: supplierParts.currency,
-          isPreferred: supplierParts.isPreferred,
-          notes: supplierParts.notes,
-          createdAt: supplierParts.createdAt,
-          partDefinition: {
-            id: partDefinitions.id,
-            displayName: partDefinitions.displayName,
-            description: partDefinitions.description,
-          },
-          packUom: {
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          },
-        })
-        .from(supplierParts)
-        .leftJoin(
-          partDefinitions,
-          eq(supplierParts.partDefinitionId, partDefinitions.id),
-        )
-        .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(and(eq(supplierParts.supplierId, input.id)))
-        .orderBy(supplierParts.supplierSku);
-
       return {
         ...supplier,
         supplierParts: supplierPartsList,
@@ -131,247 +156,28 @@ export const supplierRouter = createTRPCRouter({
     }),
 
   /**
-   * Create a new supplier
-   */
-  create: hasDashboardAccess
-    .input(
-      z.object({
-        name: z
-          .string()
-          .min(1, "Supplier name is required")
-          .max(255, "Supplier name must be less than 255 characters")
-          .trim(),
-        contactEmail: z
-          .union([z.string().email("Invalid email address"), z.literal("")])
-          .optional(),
-        contactPhone: z.string().max(50).optional().or(z.literal("")),
-        orderingNotes: z.string().optional(),
-        locationId: z.string().uuid().optional().nullable(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      try {
-        const [newSupplier] = await ctx.db
-          .insert(suppliers)
-          .values({
-            organizationId: ctx.user.organizationId,
-            name: input.name,
-            contactEmail: input.contactEmail ?? null,
-            contactPhone: input.contactPhone ?? null,
-            orderingNotes: input.orderingNotes ?? null,
-            locationId: input.locationId ?? null,
-          })
-          .returning();
-
-        return newSupplier;
-      } catch (error) {
-        // Check for unique constraint violation
-        if (
-          error instanceof Error &&
-          error.message.includes("supplier_org_name_uniq")
-        ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "A supplier with this name already exists in your organization",
-          });
-        }
-
-        console.error("Error creating supplier:", error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create supplier",
-          cause: error,
-        });
-      }
-    }),
-
-  /**
-   * Update supplier details
-   */
-  update: hasDashboardAccess
-    .input(
-      z.object({
-        id: z.string().uuid(),
-        name: z
-          .string()
-          .min(1, "Supplier name is required")
-          .max(255, "Supplier name must be less than 255 characters")
-          .trim(),
-        contactEmail: z
-          .union([z.string().email("Invalid email address"), z.literal("")])
-          .optional(),
-        contactPhone: z.string().max(50).optional().or(z.literal("")),
-        orderingNotes: z.string().optional(),
-        locationId: z.string().uuid().optional().nullable(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      // Verify supplier exists and belongs to organization
-      const [existing] = await ctx.db
-        .select()
-        .from(suppliers)
-        .where(and(eq(suppliers.id, input.id)))
-        .limit(1);
-
-      if (!existing) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Supplier not found",
-        });
-      }
-
-      try {
-        const [updated] = await ctx.db
-          .update(suppliers)
-          .set({
-            name: input.name,
-            contactEmail: input.contactEmail ?? null,
-            contactPhone: input.contactPhone ?? null,
-            orderingNotes: input.orderingNotes ?? null,
-            locationId: input.locationId ?? null,
-          })
-          .where(eq(suppliers.id, input.id))
-          .returning();
-
-        return updated;
-      } catch (error) {
-        // Check for unique constraint violation
-        if (
-          error instanceof Error &&
-          error.message.includes("supplier_org_name_uniq")
-        ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "A supplier with this name already exists in your organization",
-          });
-        }
-
-        console.error("Error updating supplier:", error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to update supplier",
-          cause: error,
-        });
-      }
-    }),
-
-  /**
-   * Delete a supplier
-   */
-  delete: hasDashboardAccess
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      // Verify supplier exists and belongs to organization
-      const [existing] = await ctx.db
-        .select()
-        .from(suppliers)
-        .where(and(eq(suppliers.id, input.id)))
-        .limit(1);
-
-      if (!existing) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Supplier not found",
-        });
-      }
-
-      // Delete supplier (cascade will handle supplierParts)
-      await ctx.db.delete(suppliers).where(eq(suppliers.id, input.id));
-
-      return { success: true };
-    }),
-
-  /**
-   * Get all parts for a specific supplier
-   */
-  getSupplierParts: hasDashboardAccess
-    .input(z.object({ supplierId: z.string().uuid() }))
-    .query(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const parts = await ctx.db
-        .select({
-          id: supplierParts.id,
-          supplierId: supplierParts.supplierId,
-          partDefinitionId: supplierParts.partDefinitionId,
-          supplierSku: supplierParts.supplierSku,
-          supplierName: supplierParts.supplierName,
-          packSize: supplierParts.packSize,
-          packUomId: supplierParts.packUomId,
-          lastKnownUnitCost: supplierParts.lastKnownUnitCost,
-          currency: supplierParts.currency,
-          isPreferred: supplierParts.isPreferred,
-          notes: supplierParts.notes,
-          createdAt: supplierParts.createdAt,
-          partDefinition: {
-            id: partDefinitions.id,
-            displayName: partDefinitions.displayName,
-            description: partDefinitions.description,
-          },
-          packUom: {
-            id: units.id,
-            code: units.code,
-            displayName: units.displayName,
-          },
-        })
-        .from(supplierParts)
-        .leftJoin(
-          partDefinitions,
-          eq(supplierParts.partDefinitionId, partDefinitions.id),
-        )
-        .leftJoin(units, eq(supplierParts.packUomId, units.id))
-        .where(and(eq(supplierParts.supplierId, input.supplierId)))
-        .orderBy(supplierParts.supplierSku);
-
-      return parts;
-    }),
-
-  /**
    * Add a part to a supplier
    */
-  addSupplierPart: hasDashboardAccess
+  addSupplierPart: hasAppAccess
     .input(
       z.object({
         supplierId: z.string().uuid(),
         partDefinitionId: z.string().uuid(),
         supplierSku: z.string().max(255).optional().or(z.literal("")),
         supplierName: z.string().optional(),
-        packSize: z.string().optional(),
+        packSize: orderMultipleInput.optional(),
         packUomId: z.string().uuid().optional(),
         lastKnownUnitCost: z.string().optional(),
+        isPreferred: z.boolean().optional(),
         currency: z.string().max(10).default("CAD"),
         notes: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -408,19 +214,48 @@ export const supplierRouter = createTRPCRouter({
       }
 
       // Normalize supplierSku: convert empty strings to null
-      const normalizedSku = input.supplierSku && input.supplierSku.trim() !== "" 
-        ? input.supplierSku.trim() 
-        : null;
+      const normalizedSku =
+        input.supplierSku && input.supplierSku.trim() !== ""
+          ? input.supplierSku.trim()
+          : null;
 
-      // Optionally find another supplier part for the same part definition to copy pricing from
-      const [existingPartWithPricing] = await ctx.db
+      const existingSupplierPartsForPart = await ctx.db
         .select({
+          id: supplierParts.id,
           lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          packSize: supplierParts.packSize,
           currency: supplierParts.currency,
+          isPreferred: supplierParts.isPreferred,
         })
         .from(supplierParts)
-        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId)))
-        .limit(1);
+        .where(
+          and(
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+            eq(supplierParts.partDefinitionId, input.partDefinitionId),
+          ),
+        );
+
+      const existingPartWithPricing = existingSupplierPartsForPart.find(
+        (supplierPart) => supplierPart.lastKnownUnitCost !== null,
+      );
+      const shouldSetPreferred =
+        input.isPreferred === true ||
+        !existingSupplierPartsForPart.some(
+          (supplierPart) => supplierPart.isPreferred,
+        );
+
+      if (shouldSetPreferred) {
+        await ctx.db
+          .update(supplierParts)
+          .set({ isPreferred: false })
+          .where(
+            and(
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+              eq(supplierParts.partDefinitionId, input.partDefinitionId),
+              eq(supplierParts.isPreferred, true),
+            ),
+          );
+      }
 
       // Check if this supplier already has this part (by supplierId + partDefinitionId)
       const [existingSupplierPart] = await ctx.db
@@ -456,7 +291,9 @@ export const supplierRouter = createTRPCRouter({
               existingPartWithPricing?.currency ??
               "CAD",
             notes: input.notes ?? existingSupplierPart.notes,
-            // Don't change isPreferred on update
+            isPreferred: shouldSetPreferred
+              ? true
+              : existingSupplierPart.isPreferred,
           })
           .where(eq(supplierParts.id, existingSupplierPart.id))
           .returning();
@@ -483,7 +320,7 @@ export const supplierRouter = createTRPCRouter({
             currency:
               input.currency ?? existingPartWithPricing?.currency ?? "CAD",
             notes: input.notes ?? null,
-            isPreferred: false, // New supplier parts are not preferred by default
+            isPreferred: shouldSetPreferred,
           })
           .returning();
 
@@ -531,7 +368,9 @@ export const supplierRouter = createTRPCRouter({
                   existingPartWithPricing?.currency ??
                   "CAD",
                 notes: input.notes ?? existingBySku.notes,
-                // Don't change isPreferred on update
+                isPreferred: shouldSetPreferred
+                  ? true
+                  : existingBySku.isPreferred,
               })
               .where(eq(supplierParts.id, existingBySku.id))
               .returning();
@@ -552,21 +391,28 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Update supplier part details
    */
-  updateSupplierPart: hasDashboardAccess
+  updateSupplierPart: hasAppAccess
     .input(
       z.object({
         id: z.string().uuid(),
         supplierSku: z.string().max(255).optional().or(z.literal("")),
-        supplierName: z.string().optional(),
-        packSize: z.string().optional(),
-        packUomId: z.string().uuid().optional(),
-        lastKnownUnitCost: z.string().optional(),
-        currency: z.string().max(10).optional(),
+        supplierName: z.string().max(2000).optional(),
+        packSize: orderMultipleInput.optional(),
+        packUomId: z.string().uuid().nullable().optional(),
+        lastKnownUnitCost: z.string().trim().regex(/^\d{1,8}(\.\d{1,4})?$/, "Enter a valid non-negative price").nullable().optional(),
+        currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
         isPreferred: z.boolean().optional(),
-        notes: z.string().optional(),
+        notes: z.string().max(10000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view")) {
+        input.lastKnownUnitCost = undefined;
+        input.currency = undefined;
+      }
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -578,7 +424,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(supplierParts)
-        .where(and(eq(supplierParts.id, input.id)))
+        .where(and(eq(supplierParts.id, input.id), eq(supplierParts.organizationId, ctx.user.organizationId)))
         .limit(1);
 
       if (!existing) {
@@ -588,24 +434,16 @@ export const supplierRouter = createTRPCRouter({
         });
       }
 
-      // If setting as preferred, unset other preferred suppliers for this part
-      if (input.isPreferred === true) {
-        await ctx.db
-          .update(supplierParts)
-          .set({ isPreferred: false })
-          .where(
-            and(
-              eq(supplierParts.partDefinitionId, existing.partDefinitionId),
-
-              eq(supplierParts.isPreferred, true),
-            ),
-          );
+      if (input.packUomId) {
+        const [unit] = await ctx.db.select({ id: units.id }).from(units).where(eq(units.id, input.packUomId)).limit(1);
+        if (!unit) throw new TRPCError({ code: "BAD_REQUEST", message: "Order unit not found" });
       }
+
 
       try {
         const updateData: Partial<typeof supplierParts.$inferInsert> = {};
         if (input.supplierSku !== undefined)
-          updateData.supplierSku = input.supplierSku ?? null;
+          updateData.supplierSku = input.supplierSku.trim() || null;
         if (input.supplierName !== undefined)
           updateData.supplierName = input.supplierName ?? null;
         if (input.packSize !== undefined)
@@ -619,14 +457,35 @@ export const supplierRouter = createTRPCRouter({
           updateData.isPreferred = input.isPreferred;
         if (input.notes !== undefined) updateData.notes = input.notes ?? null;
 
-        const [updated] = await ctx.db
+        const updated = await ctx.db.transaction(async (tx) => {
+      // If setting as preferred, unset other preferred suppliers for this part
+      if (input.isPreferred === true) {
+        await tx
+          .update(supplierParts)
+          .set({ isPreferred: false })
+          .where(
+            and(
+              eq(supplierParts.partDefinitionId, existing.partDefinitionId),
+              eq(supplierParts.organizationId, ctx.user.organizationId),
+              eq(supplierParts.isPreferred, true),
+            ),
+          );
+      }
+
+        const [row] = await tx
           .update(supplierParts)
           .set(updateData)
-          .where(eq(supplierParts.id, input.id))
+          .where(and(eq(supplierParts.id, input.id), eq(supplierParts.organizationId, ctx.user.organizationId)))
           .returning();
 
+        if (input.packSize !== undefined) await refreshSupplierPurchaseTotals(tx, [input.id], ctx.user.organizationId);
+        return row;
+        });
+        publishOrganizationReplicachePoke(ctx.user.organizationId);
+        publishOrganizationCatalogueEvent(ctx.user.organizationId);
         return updated;
       } catch (error) {
+        if ((error as { code?: string; cause?: { code?: string } }).code === "23505" || (error as { cause?: { code?: string } }).cause?.code === "23505") throw new TRPCError({ code: "CONFLICT", message: "That SKU is already used by another part from this supplier." });
         console.error("Error updating supplier part:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -639,9 +498,12 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Remove a part from a supplier
    */
-  removeSupplierPart: hasDashboardAccess
+  removeSupplierPart: hasAppAccess
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
+      assertCan(ctx.user, "suppliers.delete");
+
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -653,7 +515,7 @@ export const supplierRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select()
         .from(supplierParts)
-        .where(and(eq(supplierParts.id, input.id)))
+        .where(and(eq(supplierParts.id, input.id), eq(supplierParts.organizationId, ctx.user.organizationId)))
         .limit(1);
 
       if (!existing) {
@@ -671,7 +533,7 @@ export const supplierRouter = createTRPCRouter({
   /**
    * Set preferred supplier for a part
    */
-  setPreferredSupplier: hasDashboardAccess
+  setPreferredSupplier: hasAppAccess
     .input(
       z.object({
         partDefinitionId: z.string().uuid(),
@@ -679,6 +541,10 @@ export const supplierRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!userCan(ctx.user, "financial.view") && "lastKnownUnitCost" in input) input.lastKnownUnitCost = undefined;
+      // Linking parts to suppliers is part of editing either one.
+      if (!userCan(ctx.user, "suppliers.edit") && !userCan(ctx.user, "parts.edit"))
+        assertCan(ctx.user, "suppliers.edit");
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -763,41 +629,16 @@ export const supplierRouter = createTRPCRouter({
     }),
 
   /**
-   * Get preferred supplier for a specific part
-   */
-  getPreferredSupplier: hasDashboardAccess
-    .input(z.object({ partDefinitionId: z.string().uuid() }))
-    .query(async ({ ctx, input }) => {
-      if (!ctx.user.organizationId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "User must belong to an organization",
-        });
-      }
-
-      const [preferred] = await ctx.db
-        .select({
-          supplierPart: supplierParts,
-          supplier: suppliers,
-        })
-        .from(supplierParts)
-        .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .where(
-          and(
-            eq(supplierParts.partDefinitionId, input.partDefinitionId),
-            eq(supplierParts.isPreferred, true),
-          ),
-        )
-        .limit(1);
-
-      return preferred ?? null;
-    }),
-
-  /**
    * Get all supplier parts for a specific part definition
    */
-  getSupplierPartsByPart: hasDashboardAccess
-    .input(z.object({ partDefinitionId: z.string().uuid() }))
+  getSupplierPartsByPart: hasAppAccess
+    .input(
+      z.object({
+        partDefinitionId: z.string().uuid(),
+        materialListId: z.string().uuid().optional(),
+        pricingMode: z.enum(["effective", "standard"]).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.user.organizationId) {
         throw new TRPCError({
@@ -812,83 +653,74 @@ export const supplierRouter = createTRPCRouter({
           supplierId: supplierParts.supplierId,
           supplierSku: supplierParts.supplierSku,
           lastKnownUnitCost: supplierParts.lastKnownUnitCost,
+          packSize: supplierParts.packSize,
           isPreferred: supplierParts.isPreferred,
           supplier: {
             id: suppliers.id,
             name: suppliers.name,
+            kind: suppliers.kind,
           },
         })
         .from(supplierParts)
         .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-        .where(and(eq(supplierParts.partDefinitionId, input.partDefinitionId)))
+        .where(
+          and(
+            eq(supplierParts.partDefinitionId, input.partDefinitionId),
+            eq(supplierParts.organizationId, ctx.user.organizationId),
+          ),
+        )
         .orderBy(desc(supplierParts.isPreferred), asc(suppliers.name));
 
-      return parts;
+      const [list] = input.materialListId
+        ? await ctx.db
+            .select({ jobId: materialLists.jobId })
+            .from(materialLists)
+            .where(
+              and(
+                eq(materialLists.id, input.materialListId),
+                eq(materialLists.organizationId, ctx.user.organizationId),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (input.materialListId && !list)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Material list not found.",
+        });
+      if (input.pricingMode === "standard")
+        return parts.map(part => ({ ...part, priceBookName: "Standard" }));
+      const book = list
+        ? await getJobPriceBook(ctx.db, ctx.user.organizationId, list.jobId)
+        : null;
+      // Match the same job-price preference used when preparing an order.
+      // Deduplicate generic listings that resolve to the same quoted listing.
+      return [
+        ...new Map(
+          parts.map((part) => {
+            const entry =
+              book &&
+              findPreferredJobPrice(
+                book.entries,
+                input.partDefinitionId,
+                part.supplierId,
+                part.id,
+              );
+            const listing =
+              (entry && parts.find((p) => p.id === entry.supplierPartId)) ||
+              part;
+            return [
+              listing.id,
+              {
+                ...listing,
+                lastKnownUnitCost: entry
+                  ? entry.unitCost
+                  : listing.lastKnownUnitCost,
+                priceBookName: entry ? entry.priceBookName : "Standard",
+              },
+            ];
+          }),
+        ).values(),
+      ];
     }),
-
-  /**
-   * Get all parts with their preferred suppliers
-   */
-  getAllPartsWithPreferred: hasDashboardAccess.query(async ({ ctx }) => {
-    if (!ctx.user.organizationId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "User must belong to an organization",
-      });
-    }
-
-    // Get all parts for the organization
-    const parts = await ctx.db
-      .select({
-        id: partDefinitions.id,
-        displayName: partDefinitions.displayName,
-        description: partDefinitions.description,
-        isActive: partDefinitions.isActive,
-      })
-      .from(partDefinitions)
-      .orderBy(partDefinitions.displayName);
-
-    // Get preferred suppliers for all parts
-    const preferredSuppliers = await ctx.db
-      .select({
-        supplierPart: supplierParts,
-        supplier: suppliers,
-        partDefinitionId: supplierParts.partDefinitionId,
-      })
-      .from(supplierParts)
-      .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id))
-      .where(and(eq(supplierParts.isPreferred, true)));
-
-    // Create a map of partDefinitionId -> preferred supplier
-    const preferredMap = new Map(
-      preferredSuppliers.map((ps) => [ps.partDefinitionId, ps.supplier]),
-    );
-
-    // Get all suppliers for each part
-    const allSupplierParts = await ctx.db
-      .select({
-        supplierPart: supplierParts,
-        supplier: suppliers,
-        partDefinitionId: supplierParts.partDefinitionId,
-      })
-      .from(supplierParts)
-      .innerJoin(suppliers, eq(supplierParts.supplierId, suppliers.id));
-
-    // Group suppliers by part
-    const suppliersByPart = new Map<
-      string,
-      (typeof suppliers.$inferSelect)[]
-    >();
-    for (const sp of allSupplierParts) {
-      const existing = suppliersByPart.get(sp.partDefinitionId) ?? [];
-      existing.push(sp.supplier);
-      suppliersByPart.set(sp.partDefinitionId, existing);
-    }
-
-    return parts.map((part) => ({
-      ...part,
-      preferredSupplier: preferredMap.get(part.id) ?? null,
-      availableSuppliers: suppliersByPart.get(part.id) ?? [],
-    }));
-  }),
 });

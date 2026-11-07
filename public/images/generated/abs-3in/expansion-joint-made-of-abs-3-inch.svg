@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    
+    <defs>
+      <radialGradient id="bgGlow" cx="50%" cy="35%" r="70%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#efefeb"/>
+      </radialGradient>
+    </defs>
+  
+    
+    <rect width="1024" height="1024" rx="72" fill="#f8f8f6"/>
+    <ellipse cx="512" cy="820" rx="270" ry="74" fill="#000" fill-opacity="0.08"/>
+    <rect x="90" y="90" width="844" height="844" rx="64" fill="url(#bgGlow)" fill-opacity="0.8"/>
+  
+    
+    <line x1="250" y1="554" x2="800" y2="554" stroke="#000" stroke-opacity="0.12" stroke-width="108" stroke-linecap="round"/>
+    <line x1="240" y1="540" x2="790" y2="540" stroke="#121212" stroke-width="108" stroke-linecap="round"/>
+    <line x1="240" y1="516.24" x2="790" y2="516.24" stroke="#444" stroke-opacity="0.55" stroke-width="12" stroke-linecap="round"/>
+    <line x1="240" y1="563.76" x2="790" y2="563.76" stroke="#000" stroke-opacity="0.2" stroke-width="12" stroke-linecap="round"/>
+    <ellipse cx="240" cy="540" rx="54" ry="38.57142857142858" fill="#2b2b2b" transform="rotate(0 240 540)" />
+    <ellipse cx="240" cy="540" rx="43.2" ry="30.857142857142858" fill="#111" transform="rotate(0 240 540)" />
+    <ellipse cx="790" cy="540" rx="54" ry="38.57142857142858" fill="#2b2b2b" transform="rotate(0 790 540)" />
+    <ellipse cx="790" cy="540" rx="43.2" ry="30.857142857142858" fill="#111" transform="rotate(0 790 540)" />
+  
+    <rect x="370" y="434" width="300" height="240" rx="72" fill="#000" fill-opacity="0.12"/>
+    <rect x="360" y="420" width="300" height="240" rx="72" fill="#181818"/>
+    <rect x="378" y="438" width="264" height="28.799999999999997" rx="36" fill="#444" fill-opacity="0.5"/>
+  
+    <rect x="462" y="404" width="120" height="300" rx="50" fill="#000" fill-opacity="0.12"/>
+    <rect x="452" y="390" width="120" height="300" rx="50" fill="#2a2a2a"/>
+    <rect x="470" y="408" width="84" height="36" rx="25" fill="#444" fill-opacity="0.5"/>
+  
+    <rect x="92" y="92" width="840" height="840" rx="64" stroke="#e6e6e0" stroke-width="4"/>
+  </svg>

@@ -8,13 +8,20 @@
 # testing
 /coverage
 
+# Python evaluation bytecode
+__pycache__/
+*.py[cod]
+
 # database
 /prisma/db.sqlite
 /prisma/db.sqlite-journal
 db.sqlite
 
 # next.js
+/.next
 /.next/
+/.next-*/
+/.open-next/
 /out/
 next-env.d.ts
 
@@ -34,6 +41,8 @@ yarn-error.log*
 # local env files
 # do not commit any .env files to git, except for the .env.example file. https://create.t3.gg/en/usage/env-variables#using-environment-variables
 .env
+.env.*
+!.env.example
 .env*.local
 
 # vercel
@@ -47,3 +56,22 @@ yarn-error.log*
 
 # uploads
 /uploads
+
+# Local agent/runtime state and generated verification files
+/.claude/settings.local.json
+/.openclaw/
+/.wrangler/
+/.tmp/
+/.background/
+/tmp/
+/.trash/
+/generated/
+/test-results/
+/playwright-report/
+
+# Local data snapshots (existing tracked snapshots remain versioned)
+/state-backups/
+/exports/*backup*
+
+# Private voice action audit
+.private/

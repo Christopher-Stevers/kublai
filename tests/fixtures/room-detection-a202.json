@@ -1,0 +1,470 @@
+{
+  "evidence": {
+    "source": "A202 architectural vector walls and room labels; never generated room polygons",
+    "reviewed": "2026-09-10",
+    "discardedAssertions": [
+      "S214 (0.37378, 0.66467): tied to ELEC. CLOSET by local wall topology",
+      "S201 (0.63511, 0.83878): lies on a strong wall and in no local face",
+      "S216 (0.48, 0.69) and (0.50, 0.69): same source face as S216 seed with no separating vector wall",
+      "S207 (0.44679, 0.7064): lies inside the independently wall-sourced S215 polygon",
+      "S216 (0.51, 0.68), (0.52, 0.69), and (0.53, 0.68): lie in the independently wall-sourced upper-right bedroom leg"
+    ],
+    "fullOutlineSources": {
+      "S211": {
+        "frame": "isotropic PDF page frame rotated 18.0 degrees from normalized page coordinates",
+        "shape": "six-edge source-wall cell with an inward facade step at grid 2.03; excludes Stair B and the exterior above the right-hand window wall",
+        "sourceReview": ".tmp/source-outline-review/S211-source-aligned.png",
+        "physicalArea": 0.0050749,
+        "squareFootAreaTarget": 0.005031
+      },
+      "S215": {
+        "frame": "isotropic PDF page frame rotated 18.0 degrees from normalized page coordinates",
+        "shape": "six-edge source-wall cell including the upper-left bedroom between the S214 demising wall and interior partition, with a lower-left return that excludes electrical/corridor space",
+        "sourceReview": ".tmp/source-outline-review/S215-source-aligned.png",
+        "minimumSegmentWallCoverage": 0.947,
+        "physicalArea": 0.0048312,
+        "squareFootAreaTarget": 0.004414
+      },
+      "S216": {
+        "frame": "isotropic PDF page frame rotated 18.0 degrees from normalized page coordinates",
+        "shape": "eight-edge source-wall cell including the upper-left bedroom above the bath while retaining the garbage/service notch",
+        "sourceReview": ".tmp/source-outline-review/S216-source-aligned.png",
+        "minimumSegmentWallCoverage": 0.94,
+        "physicalArea": 0.0037643,
+        "squareFootAreaTarget": 0.003986
+      }
+    }
+  },
+  "pages": [
+    {
+      "page": 1,
+      "rooms": [
+        {
+          "name": "S211",
+          "inside": [
+            {
+              "x": 0.2707,
+              "y": 0.5698
+            },
+            {
+              "x": 0.27149,
+              "y": 0.52423
+            },
+            {
+              "x": 0.31089,
+              "y": 0.57781
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.275,
+              "y": 0.645
+            },
+            {
+              "x": 0.285,
+              "y": 0.645
+            },
+            {
+              "x": 0.29,
+              "y": 0.64
+            },
+            {
+              "x": 0.28553,
+              "y": 0.65925
+            },
+            {
+              "x": 0.3,
+              "y": 0.68
+            }
+          ],
+          "boundary": [
+            {
+              "x": 0.24719775,
+              "y": 0.51233786
+            },
+            {
+              "x": 0.29817476,
+              "y": 0.5344207
+            },
+            {
+              "x": 0.29547106,
+              "y": 0.54551644
+            },
+            {
+              "x": 0.31943786,
+              "y": 0.55589867
+            },
+            {
+              "x": 0.30137711,
+              "y": 0.63001824
+            },
+            {
+              "x": 0.22643329,
+              "y": 0.59755317
+            }
+          ],
+          "maxBoundaryDistance": 0.003,
+          "minIntersectionOverUnion": 0.9,
+          "maxOutsideAreaRatio": 0.05,
+          "maxMissingAreaRatio": 0.05
+        },
+        {
+          "name": "S212",
+          "inside": [
+            {
+              "x": 0.32999,
+              "y": 0.57197
+            },
+            {
+              "x": 0.31764,
+              "y": 0.57921
+            },
+            {
+              "x": 0.31625,
+              "y": 0.605
+            }
+          ]
+        },
+        {
+          "name": "S210",
+          "inside": [
+            {
+              "x": 0.3149235142111404,
+              "y": 0.688084580122109
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.349055445002807,
+              "y": 0.7189179011221091
+            }
+          ]
+        },
+        {
+          "name": "S209",
+          "inside": [
+            {
+              "x": 0.349055445002807,
+              "y": 0.7189179011221091
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.3149235142111404,
+              "y": 0.688084580122109
+            },
+            {
+              "x": 0.3740901572111404,
+              "y": 0.7297512301221091
+            }
+          ]
+        },
+        {
+          "name": "S208",
+          "inside": [
+            {
+              "x": 0.3740901572111404,
+              "y": 0.7297512301221091
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.349055445002807,
+              "y": 0.7189179011221091
+            },
+            {
+              "x": 0.4288123575444736,
+              "y": 0.7340567839554424
+            }
+          ]
+        },
+        {
+          "name": "S207",
+          "inside": [
+            {
+              "x": 0.4288,
+              "y": 0.7341
+            },
+            {
+              "x": 0.43784,
+              "y": 0.75692
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.3740901572111404,
+              "y": 0.7297512301221091
+            },
+            {
+              "x": 0.4732915064194736,
+              "y": 0.7767882483443312
+            }
+          ]
+        },
+        {
+          "name": "S206",
+          "inside": [
+            {
+              "x": 0.4732915064194736,
+              "y": 0.7767882483443312
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.4288123575444736,
+              "y": 0.7340567839554424
+            },
+            {
+              "x": 0.49777066329447367,
+              "y": 0.7873900959554424
+            }
+          ]
+        },
+        {
+          "name": "S205",
+          "inside": [
+            {
+              "x": 0.49777066329447367,
+              "y": 0.7873900959554424
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.4732915064194736,
+              "y": 0.7767882483443312
+            },
+            {
+              "x": 0.5309998166694737,
+              "y": 0.7922512051221091
+            }
+          ]
+        },
+        {
+          "name": "S204",
+          "inside": [
+            {
+              "x": 0.5309998166694737,
+              "y": 0.7922512051221091
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.49777066329447367,
+              "y": 0.7873900959554424
+            },
+            {
+              "x": 0.5647498031694738,
+              "y": 0.8123437896776645
+            }
+          ]
+        },
+        {
+          "name": "S203",
+          "inside": [
+            {
+              "x": 0.5647498031694738,
+              "y": 0.8123437896776645
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.5309998166694737,
+              "y": 0.7922512051221091
+            },
+            {
+              "x": 0.6133608948361403,
+              "y": 0.8297048938443311
+            }
+          ]
+        },
+        {
+          "name": "S202",
+          "inside": [
+            {
+              "x": 0.6134,
+              "y": 0.8297
+            },
+            {
+              "x": 0.60536,
+              "y": 0.85341
+            },
+            {
+              "x": 0.62886,
+              "y": 0.87114
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.5647498031694738,
+              "y": 0.8123437896776645
+            },
+            {
+              "x": 0.652701156877807,
+              "y": 0.7839641713998867
+            }
+          ]
+        },
+        {
+          "name": "S215",
+          "inside": [
+            {
+              "x": 0.42916,
+              "y": 0.61494
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.49235,
+              "y": 0.66443
+            },
+            {
+              "x": 0.50714,
+              "y": 0.7065
+            }
+          ],
+          "boundary": [
+            {
+              "x": 0.39817215,
+              "y": 0.57683882
+            },
+            {
+              "x": 0.47330618,
+              "y": 0.60938629
+            },
+            {
+              "x": 0.45217093,
+              "y": 0.6961233
+            },
+            {
+              "x": 0.40224008,
+              "y": 0.67449365
+            },
+            {
+              "x": 0.40891438,
+              "y": 0.64710302
+            },
+            {
+              "x": 0.38371119,
+              "y": 0.6361852
+            }
+          ],
+          "maxBoundaryDistance": 0.003,
+          "minIntersectionOverUnion": 0.9,
+          "maxOutsideAreaRatio": 0.05,
+          "maxMissingAreaRatio": 0.05,
+          "maxWallCrossings": 0
+        },
+        {
+          "name": "S214",
+          "inside": [
+            {
+              "x": 0.3796,
+              "y": 0.5935
+            },
+            {
+              "x": 0.39,
+              "y": 0.60128
+            }
+          ]
+        },
+        {
+          "name": "S216",
+          "inside": [
+            {
+              "x": 0.49235,
+              "y": 0.66443
+            },
+            {
+              "x": 0.47939,
+              "y": 0.64378
+            },
+            {
+              "x": 0.51,
+              "y": 0.68
+            },
+            {
+              "x": 0.52,
+              "y": 0.69
+            },
+            {
+              "x": 0.53,
+              "y": 0.68
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.42916,
+              "y": 0.61494
+            },
+            {
+              "x": 0.50714,
+              "y": 0.7065
+            },
+            {
+              "x": 0.51886,
+              "y": 0.70729
+            }
+          ],
+          "boundary": [
+            {
+              "x": 0.47254257,
+              "y": 0.61196433
+            },
+            {
+              "x": 0.49822129,
+              "y": 0.62308815
+            },
+            {
+              "x": 0.49303017,
+              "y": 0.64439198
+            },
+            {
+              "x": 0.54224772,
+              "y": 0.66571263
+            },
+            {
+              "x": 0.53353406,
+              "y": 0.70147262
+            },
+            {
+              "x": 0.50619098,
+              "y": 0.68962782
+            },
+            {
+              "x": 0.49945489,
+              "y": 0.71727207
+            },
+            {
+              "x": 0.4519017,
+              "y": 0.6966724
+            }
+          ],
+          "maxBoundaryDistance": 0.003,
+          "minIntersectionOverUnion": 0.9,
+          "maxOutsideAreaRatio": 0.05,
+          "maxMissingAreaRatio": 0.05,
+          "maxWallCrossings": 0
+        },
+        {
+          "name": "S201",
+          "inside": [
+            {
+              "x": 0.66905,
+              "y": 0.72095
+            },
+            {
+              "x": 0.69979,
+              "y": 0.7645
+            }
+          ],
+          "outside": [
+            {
+              "x": 0.6133608948361403,
+              "y": 0.8297048938443311
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

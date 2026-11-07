@@ -1,0 +1,155 @@
+name: ForemanHQ AWS
+on:
+  push:
+    branches: [ci/foremanhq-aws, development]
+  pull_request:
+    branches: [development, foremanhq-integration-2026-10-21]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aws-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    name: Typecheck and reliability tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test:reliability
+      - name: Authentication, teams and worker regression tests
+        run: pnpm exec vitest run src/server/api/routers/payment.test.ts src/app/api/webhooks/clerk/route.test.ts src/server/utils/get-request-identity.test.ts src/server/api/routers/organization-invites.test.ts src/server/api/routers/organization-permissions.test.ts src/server/rooms/detect-worker-process.test.ts
+      - name: Receiving, purchasing UI and background regressions
+        run: pnpm exec vitest run src/components/materialLists src/components/catalogue src/server/background
+  lint:
+    name: Lint (existing integration debt)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+  terraform:
+    name: Validate infrastructure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.13.5'
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -lockfile=readonly
+      - run: terraform validate
+      - run: terraform test
+  image:
+    name: Build container
+    needs: [verify, terraform, migrations]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Authenticate to AWS for releases
+        if: github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::337658133209:role/foremanhq-github-release
+          aws-region: us-east-2
+      - uses: aws-actions/amazon-ecr-login@v2
+        if: github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true'
+      - name: Require real public configuration for published images
+        if: github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true'
+        env:
+          CLERK: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          STRIPE: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        run: test -n "$CLERK" && test -n "$STRIPE"
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: infra/aws/Dockerfile
+          # Synthetic public values are ONLY for non-published CI build checks.
+          build-args: |
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k' }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_ci_only' }}
+            NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL=${{ vars.NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL }}
+          push: ${{ github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true' }}
+          tags: 337658133209.dkr.ecr.us-east-2.amazonaws.com/foremanhq:${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  deploy:
+    name: Deploy to dedicated AWS host
+    needs: [image, lint]
+    if: github.event_name != 'pull_request' && vars.AWS_RELEASE_READY == 'true' && vars.AWS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::337658133209:role/foremanhq-github-release
+          aws-region: us-east-2
+      - name: Deploy exact image digest through SSM
+        env:
+          IMAGE: 337658133209.dkr.ecr.us-east-2.amazonaws.com/foremanhq@${{ needs.image.outputs.digest }}
+        run: python3 infra/aws/send-deploy.py
+
+  migrations:
+    name: Fresh PostgreSQL migrations and repeat run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: foremanhq_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_MIGRATION_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/foremanhq_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare runtime role
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U postgres -d foremanhq_ci -v ON_ERROR_STOP=1 -c 'CREATE ROLE foreman_app NOLOGIN'
+      - run: pnpm db:migrate:aws
+      - run: pnpm db:migrate:aws
+      - name: Verify runtime permissions and organization isolation triggers
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U postgres -d foremanhq_ci -v ON_ERROR_STOP=1 -f infra/aws/verify-database.sql

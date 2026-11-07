@@ -1,4 +1,13 @@
 "use client";
+import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
+import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
+
+import { formatOrderedBulkQuantity, packContents } from "~/lib/pack-quantity";
+import {
+  formatPurchaseQuantity,
+  purchaseQuantity,
+} from "~/lib/purchase-quantity";
+import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
@@ -13,6 +22,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface QuotePreviewSheetProps {
   open: boolean;
@@ -32,18 +42,27 @@ export function QuotePreviewSheet({
   const [markupPercent, setMarkupPercent] = useState(30);
   const [isEditingMarkup, setIsEditingMarkup] = useState(false);
   const [notes, setNotes] = useState("");
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline && open,
+  });
+  const canGenerateDocuments =
+    userData?.permissions.can["quotes.create"] ?? true;
   const { data: materialList } = api.materialList.getMaterialList.useQuery(
     { materialListId },
-    { enabled: open && !!materialListId && !providedQuoteId },
+    { enabled: isOnline && open && !!materialListId && !providedQuoteId },
   );
 
   // Load existing quote if quoteId is provided
   const { data: existingQuote } = api.materialList.getQuoteById.useQuery(
     { quoteId: providedQuoteId ?? "" },
-    { enabled: open && !!providedQuoteId },
+    { enabled: isOnline && open && !!providedQuoteId },
   );
+
+  const { data: jobPriceBook } = useJobPricing(existingQuote?.jobId ?? materialList?.job.id);
 
   // Load notes and markup from quote when available
   useEffect(() => {
@@ -59,46 +78,7 @@ export function QuotePreviewSheet({
     }
   }, [existingQuote, materialList?.quote?.notes, providedQuoteId]);
 
-  const generateQuote = api.materialList.generateQuote.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.materialList.getMaterialList.cancel({ materialListId });
-
-      // Snapshot previous value
-      const previousMaterialList = utils.materialList.getMaterialList.getData({
-        materialListId,
-      });
-
-      // Optimistically update quote status (we'll update with actual quote data on success)
-      // For now, just mark that a quote is being generated
-      utils.materialList.getMaterialList.setData({ materialListId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          quote: old.quote
-            ? {
-                ...old.quote,
-                // Keep existing quote data, will be updated on success
-              }
-            : old.quote,
-        };
-      });
-
-      return { previousMaterialList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousMaterialList) {
-        utils.materialList.getMaterialList.setData(
-          { materialListId },
-          context.previousMaterialList,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.materialList.getMaterialList.invalidate({ materialListId });
-    },
-  });
+  const generateQuote = api.materialList.generateQuote.useMutation();
 
   // Generate quote when sheet opens or markup changes (only if not viewing existing quote)
   useEffect(() => {
@@ -106,26 +86,48 @@ export function QuotePreviewSheet({
       open &&
       materialListId &&
       !providedQuoteId &&
+      canGenerateDocuments &&
       !generateQuote.isPending
     ) {
-      generateQuote.mutate({
-        materialListId,
-        markupPercent,
-        notes: notes.trim() || undefined,
-      });
+      void (async () => {
+        if (typeof window !== "undefined" && !window.navigator.onLine) {
+          setSyncError(
+            "Reconnect to sync offline changes before generating a quote.",
+          );
+          return;
+        }
+
+        setSyncError(null);
+        generateQuote.mutate({
+          materialListId,
+          markupPercent,
+          notes: notes.trim() || undefined,
+        });
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, materialListId, markupPercent, providedQuoteId]);
+  }, [
+    open,
+    materialListId,
+    markupPercent,
+    notes,
+    providedQuoteId,
+    canGenerateDocuments,
+  ]);
 
   // Get quote email content
   const quoteId = providedQuoteId ?? materialList?.quote.id;
   const { data: emailContent } = api.materialList.getQuoteEmailContent.useQuery(
     { quoteId: quoteId ?? "" },
-    { enabled: !!quoteId && open },
+    { enabled: isOnline && !!quoteId && open },
   );
 
   const handleEmailQuote = async () => {
     if (!quoteId) return;
+    if (!canGenerateDocuments) {
+      setSyncError("You don't have permission to request quotes.");
+      return;
+    }
 
     // Save notes before emailing (update existing quote or generate new one)
     await generateQuote.mutateAsync({
@@ -136,9 +138,10 @@ export function QuotePreviewSheet({
     });
 
     // Refetch email content to get updated notes
-    const updatedEmailContent = await utils.materialList.getQuoteEmailContent.fetch({
-      quoteId,
-    });
+    const updatedEmailContent =
+      await utils.materialList.getQuoteEmailContent.fetch({
+        quoteId,
+      });
 
     if (!updatedEmailContent) return;
 
@@ -149,10 +152,17 @@ export function QuotePreviewSheet({
   };
 
   // If viewing existing quote, we need to get material list for items
-  const { data: materialListForQuote } = api.materialList.getMaterialList.useQuery(
-    { materialListId: existingQuote?.materialListId ?? materialListId },
-    { enabled: open && !!providedQuoteId && !!existingQuote?.materialListId },
-  );
+  const { data: materialListForQuote } =
+    api.materialList.getMaterialList.useQuery(
+      { materialListId: existingQuote?.materialListId ?? materialListId },
+      {
+        enabled:
+          isOnline &&
+          open &&
+          !!providedQuoteId &&
+          !!existingQuote?.materialListId,
+      },
+    );
 
   const displayMaterialList = providedQuoteId
     ? materialListForQuote
@@ -188,94 +198,117 @@ export function QuotePreviewSheet({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {syncError && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {syncError}
+            </div>
+          )}
+          {!canGenerateDocuments && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              You don't have permission to request quotes.
+            </div>
+          )}
           {/* Line Items */}
           {displayMaterialList && (
             <div>
               <h3 className="mb-2 font-semibold">Materials:</h3>
               <div className="space-y-2">
                 {displayMaterialList.items.map((item) => {
-                const qty = parseFloat(String(item.quantity));
-                const price = item.extendedPrice
-                  ? parseFloat(String(item.extendedPrice))
-                  : 0;
-                const partDef = item.partDefinition as
-                  | { displayName?: string }
-                  | null
-                  | undefined;
-                const displayName = String(
-                  partDef?.displayName || item.descriptionSnapshot || "Item",
-                );
-                return (
-                  <div
-                    key={String(item.id)}
-                    className="flex justify-between border-b pb-2 text-sm"
-                  >
-                    <span>
-                      {displayName} × {qty}
-                    </span>
-                    <span>${price.toFixed(2)}</span>
-                  </div>
-                );
+                  const qty = packContents(item.partDefinition?.piecesPerPack) > 1 ? formatOrderedBulkQuantity(purchaseQuantity(item.quantity, item.supplierPart?.packSize, item.partDefinition?.piecesPerPack), item.partDefinition?.piecesPerPack, item.partDefinition?.bulkUnit, item.partDefinition?.individualUnit) : formatPurchaseQuantity(
+                    item.quantity,
+                    purchaseQuantity(
+                      item.quantity,
+                      item.supplierPart?.packSize,
+                    ),
+                  );
+                  const price = item.extendedPrice
+                    ? parseFloat(String(item.extendedPrice))
+                    : 0;
+                  const partDef = item.partDefinition as
+                    | { displayName?: string }
+                    | null
+                    | undefined;
+                  const displayName = String(
+                    partDef?.displayName || item.descriptionSnapshot || "Item",
+                  );
+                  return (
+                    <div
+                      key={String(item.id)}
+                      className="flex justify-between border-b pb-2 text-sm"
+                    >
+                      <span>
+                        {displayName} × {qty} <QuotedBadge status={jobPriceStatus(jobPriceBook, item.partDefinition?.id, item.supplierPart?.supplierId, item.supplierPart?.id)} />
+                      </span>
+                      <FinancialOnly>
+                        <span>${price.toFixed(2)}</span>
+                      </FinancialOnly>
+                    </div>
+                  );
                 })}
               </div>
             </div>
           )}
 
           {/* Totals */}
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex justify-between">
-              <span>Materials Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+          <FinancialOnly>
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex justify-between">
+                <span>Materials Subtotal:</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>
+                  Markup(this will be auto applied to each item in the quote):
+                </span>
+                {isEditingMarkup ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={markupPercent}
+                      onChange={(e) =>
+                        setMarkupPercent(parseFloat(e.target.value) || 0)
+                      }
+                      className="w-20"
+                      min="0"
+                      max="1000"
+                    />
+                    <span>%</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingMarkup(false);
+                        generateQuote.mutate({
+                          materialListId,
+                          markupPercent,
+                          notes: notes.trim() || undefined,
+                          quoteId: providedQuoteId,
+                        });
+                      }}
+                      disabled={!canGenerateDocuments}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span>{markupPercent}%</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingMarkup(true)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold">
+                <span>Total:</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Markup(this will be auto applied to each item in the quote):</span>
-              {isEditingMarkup ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={markupPercent}
-                    onChange={(e) =>
-                      setMarkupPercent(parseFloat(e.target.value) || 0)
-                    }
-                    className="w-20"
-                    min="0"
-                    max="1000"
-                  />
-                  <span>%</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditingMarkup(false);
-                      generateQuote.mutate({
-                        materialListId,
-                        markupPercent,
-                        notes: notes.trim() || undefined,
-                        quoteId: providedQuoteId,
-                      });
-                    }}
-                  >
-                    Save
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span>{markupPercent}%</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setIsEditingMarkup(true)}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-between border-t pt-2 font-bold">
-              <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-          </div>
+          </FinancialOnly>
 
           {/* Notes */}
           <div className="space-y-2 border-t pt-4">
@@ -298,7 +331,7 @@ export function QuotePreviewSheet({
           </Button>
           <Button
             onClick={handleEmailQuote}
-            disabled={!emailContent || !quoteId}
+            disabled={!emailContent || !quoteId || !canGenerateDocuments}
           >
             Email Quote
           </Button>

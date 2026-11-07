@@ -1,179 +1,37 @@
 import { TRPCError } from "@trpc/server";
-import Stripe from "stripe";
 import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
+import { hasManagingSeat } from "~/server/auth/permissions";
 import { users } from "~/server/db/schema";
 
-// Initialize Stripe with secret key
-const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-12-15.clover",
-});
+function getStripeClient() {
+  if (!env.STRIPE_SECRET_KEY) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "STRIPE_SECRET_KEY is not configured",
+    });
+  }
+
+  return new Stripe(env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-12-15.clover",
+  });
+}
 
 export const paymentRouter = createTRPCRouter({
-  /**
-   * Create a Stripe Setup Intent for saving payment methods
-   */
-  createSetupIntent: protectedProcedure.query(async ({ ctx }) => {
-    const user = ctx.user;
-
-    if (!user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User not found",
-      });
-    }
-
-    // Ensure Stripe customer exists
-    let stripeCustomerId = user.stripeCustomerId;
-
-    if (!stripeCustomerId) {
-      try {
-        const customer = await stripe.customers.create({
-          metadata: { userId: user.id },
-          email: user.email ?? undefined,
-          name: user.name ?? undefined,
-        });
-
-        stripeCustomerId = customer.id;
-
-        // Update user with Stripe customer ID
-        await ctx.db
-          .update(users)
-          .set({ stripeCustomerId })
-          .where(eq(users.id, user.id));
-      } catch (error) {
-        console.error(error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create Stripe customer",
-          cause: error,
-        });
-      }
-    }
-
-    try {
-      // Create Setup Intent for saving payment methods
-      const setupIntent = await stripe.setupIntents.create({
-        customer: stripeCustomerId,
-        payment_method_types: ["card"],
-      });
-
-      if (!setupIntent.client_secret) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create setup intent",
-        });
-      }
-
-      return { clientSecret: setupIntent.client_secret };
-    } catch (error) {
-      console.error(error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create setup intent",
-        cause: error,
-      });
-    }
-  }),
-
-  /**
-   * Create a Stripe Checkout Session for one-time purchase
-   */
-  createOneTimeCheckout: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = ctx.userId;
-    const user = ctx.user;
-
-    if (!user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User not found",
-      });
-    }
-
-    // Ensure Stripe customer exists
-    let stripeCustomerId = user.stripeCustomerId;
-
-    if (!stripeCustomerId) {
-      try {
-        const customer = await stripe.customers.create({
-          metadata: { userId: user.id },
-          email: user.email ?? undefined,
-          name: user.name ?? undefined,
-        });
-
-        stripeCustomerId = customer.id;
-
-        // Update user with Stripe customer ID
-        await ctx.db
-          .update(users)
-          .set({ stripeCustomerId })
-          .where(eq(users.id, user.id));
-      } catch (error) {
-        console.error(error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create Stripe customer",
-          cause: error,
-        });
-      }
-    }
-
-    try {
-      // Create Checkout Session for one-time purchase
-      // Note: You'll need to set STRIPE_ONE_TIME_PRICE_ID in your environment variables
-      const oneTimePriceId = process.env.STRIPE_ONE_TIME_PRICE_ID;
-      if (!oneTimePriceId) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "STRIPE_ONE_TIME_PRICE_ID is not configured",
-        });
-      }
-
-      const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const session = await stripe.checkout.sessions.create({
-        customer: stripeCustomerId,
-        mode: "payment",
-        line_items: [
-          {
-            price: oneTimePriceId,
-            quantity: 1,
-          },
-        ],
-        success_url: `${baseUrl}/dashboard?payment=success`,
-        cancel_url: `${baseUrl}/pricing?canceled=true`,
-        metadata: {
-          userId: user.id,
-          purchaseType: "one-time",
-        },
-      });
-
-      if (!session.url) {
-        console.log("No session URL returned");
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create checkout session",
-        });
-      }
-
-      return { url: session.url };
-    } catch (error) {
-      console.error(error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create checkout session",
-        cause: error,
-      });
-    }
-  }),
-
+  getCheckoutAvailability: publicProcedure.query(() => ({
+    enabled: process.env.STRIPE_CHECKOUT_ENABLED === "true",
+  })),
   /**
    * Create a Stripe Checkout Session for subscription
    */
   createSubscriptionCheckout: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = ctx.userId;
+    if (process.env.STRIPE_CHECKOUT_ENABLED !== "true") {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Paid subscriptions are temporarily unavailable." });
+    }
+    const stripe = getStripeClient();
     const user = ctx.user;
 
     if (!user) {
@@ -223,7 +81,7 @@ export const paymentRouter = createTRPCRouter({
       }
 
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        process.env.FOREMANHQ_PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const session = await stripe.checkout.sessions.create({
         customer: stripeCustomerId,
         mode: "subscription",
@@ -233,7 +91,7 @@ export const paymentRouter = createTRPCRouter({
             quantity: 1,
           },
         ],
-        success_url: `${baseUrl}/dashboard?payment=success`,
+        success_url: `${baseUrl}/jobs?payment=success`,
         cancel_url: `${baseUrl}/pricing?canceled=true`,
         metadata: {
           userId: user.id,
@@ -283,8 +141,15 @@ export const paymentRouter = createTRPCRouter({
     // Check if user has one-time access
     const hasOneTimeAccess = user.hasOneTimeAccess === true;
 
+    const hasManagingAccount = hasManagingSeat(user);
+
     return {
-      hasAccess: hasActiveSubscription || hasOneTimeAccess,
+      hasAccess: true,
+      hasManagingAccount,
+      accountType: hasManagingAccount ? "managing" : "standard",
+      accountTypeLabel: hasManagingAccount
+        ? "Executive Account"
+        : "Standard Account",
       hasActiveSubscription: hasActiveSubscription ?? false,
       hasOneTimeAccess: hasOneTimeAccess,
       subscriptionStatus: user.subscriptionStatus,
@@ -297,6 +162,7 @@ export const paymentRouter = createTRPCRouter({
    * Create Stripe Customer Portal session for managing subscription
    */
   createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+    const stripe = getStripeClient();
     const user = ctx.user;
 
     if (!user?.stripeCustomerId) {
@@ -308,10 +174,10 @@ export const paymentRouter = createTRPCRouter({
 
     try {
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        process.env.FOREMANHQ_PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const session = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
-        return_url: `${baseUrl}/dashboard/account`,
+        return_url: `${baseUrl}/jobs/account`,
       });
 
       return { url: session.url };

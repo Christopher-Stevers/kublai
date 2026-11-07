@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+bench_python="${ROOM_BENCH_PYTHON:-/home/tim/datasets/foremanhq-room-detection/.venv/bin/python}"
+if [[ ! -x "$bench_python" ]]; then
+  echo 'Set ROOM_BENCH_PYTHON to a Python environment containing requirements.txt dependencies.' >&2
+  exit 1
+fi
+exec "$bench_python" "$script_dir/bench.py" "$@"

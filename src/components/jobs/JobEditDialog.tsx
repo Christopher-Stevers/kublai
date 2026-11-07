@@ -1,7 +1,12 @@
 "use client";
 
+import { JobSupplierDefaultsEditor } from "./JobSupplierDefaultsEditor";
+import { useReplicacheJobDetail } from "~/hooks/use-replicache-jobs";
+import {
+  jobSupplierDefaultsSchema,
+  type JobSupplierDefaults,
+} from "~/lib/job-supplier-defaults";
 import { useState, useEffect } from "react";
-import { api } from "~/trpc/react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +18,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { LocationSelector } from "~/components/ui/LocationSelector";
+import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 
 interface JobEditDialogProps {
   open: boolean;
@@ -20,7 +26,8 @@ interface JobEditDialogProps {
   jobId: string;
   initialName?: string | null;
   initialLocationId?: string | null;
-  initialJobNumber?: string | null;
+  initialForemanName?: string | null;
+  initialPoNumber?: string | null;
 }
 
 export function JobEditDialog({
@@ -29,99 +36,73 @@ export function JobEditDialog({
   jobId,
   initialName,
   initialLocationId,
-  initialJobNumber,
+  initialForemanName,
+  initialPoNumber,
 }: JobEditDialogProps) {
+  const job = useReplicacheJobDetail(jobId)?.job;
+  const [supplierDefaultsDraft, setSupplierDefaults] = useState<
+    JobSupplierDefaults | undefined
+  >(undefined);
+  const [editingSession, setEditingSession] = useState({ jobId, open });
+  // Discard a cancelled draft on reopening; synced changes never overwrite edits.
+  if (editingSession.jobId !== jobId || editingSession.open !== open) {
+    setEditingSession({ jobId, open });
+    setSupplierDefaults(undefined);
+  }
+  const supplierDefaults =
+    supplierDefaultsDraft ?? job?.supplierDefaults ?? null;
+  const {
+    getReplicache: getMaterialListReplicache,
+    mutateAndSync: mutateMaterialListAndSync,
+  } = useWorkspaceMutations();
   const [jobName, setJobName] = useState(initialName || "");
   const [locationId, setLocationId] = useState<string | null>(
     initialLocationId ?? null,
   );
-  const [jobNumber, setJobNumber] = useState(initialJobNumber || "");
+  const [poNumber, setPoNumber] = useState(initialPoNumber || "");
+  const [foremanName, setForemanName] = useState(initialForemanName || "");
 
   // Update local state when initial values change
   useEffect(() => {
     setJobName(initialName || "");
     setLocationId(initialLocationId ?? null);
-    setJobNumber(initialJobNumber || "");
-  }, [initialName, initialLocationId, initialJobNumber, open]);
-
-  const utils = api.useUtils();
-  const updateJob = api.job.updateJob.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await utils.job.getJob.cancel({ jobId });
-      await utils.job.listJobs.cancel();
-
-      // Snapshot previous values
-      const previousJob = utils.job.getJob.getData({ jobId });
-      const previousJobsList = utils.job.listJobs.getData();
-
-      // Optimistically update job detail
-      utils.job.getJob.setData({ jobId }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          name: variables.name ?? old.name,
-          locationId: variables.locationId ?? old.locationId,
-        };
-      });
-
-      // Optimistically update job in list
-      utils.job.listJobs.setData(undefined, (old) => {
-        if (!old) return old;
-        return old.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                name: variables.name ?? job.name,
-                locationId: variables.locationId ?? job.locationId,
-              }
-            : job,
-        );
-      });
-
-      return { previousJob, previousJobsList };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousJob) {
-        utils.job.getJob.setData({ jobId }, context.previousJob);
-      }
-      if (context?.previousJobsList) {
-        utils.job.listJobs.setData(undefined, context.previousJobsList);
-      }
-    },
-    onSettled: () => {
-      void utils.job.getJob.invalidate({ jobId });
-      void utils.job.listJobs.invalidate();
-    },
-    onSuccess: () => {
-      onOpenChange(false);
-    },
-  });
+    setPoNumber(initialPoNumber || "");
+    setForemanName(initialForemanName || "");
+  }, [
+    initialName,
+    initialLocationId,
+    initialForemanName,
+    initialPoNumber,
+    open,
+  ]);
 
   const handleSave = () => {
     if (!jobName.trim()) {
       return;
     }
 
-    updateJob.mutate({
-      jobId,
-      name: jobName.trim(),
-      locationId: locationId,
-      // Note: jobNumber field would need to be added to the schema and updateJob API
-      // For now, this is just a UI placeholder
-    });
+    void mutateMaterialListAndSync(
+      getMaterialListReplicache().mutate.updateJob({
+        jobId,
+        name: jobName.trim(),
+        ...(supplierDefaults ? { supplierDefaults } : {}),
+        locationId: locationId,
+        poNumber: poNumber.trim() || null,
+        foremanName: foremanName.trim() || null,
+      }),
+    );
+    onOpenChange(false);
   };
 
-  const isLoading = updateJob.isPending;
+  const isLoading = false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Job</DialogTitle>
           <DialogDescription>
-            Update the job name, location, and optional job number.
+            Update the job name, location, and PO number.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -134,6 +115,19 @@ export function JobEditDialog({
               value={jobName}
               onChange={(e) => setJobName(e.target.value)}
               placeholder="e.g., Smith Bathroom Reno"
+              className="mt-1"
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <label htmlFor="foreman-name" className="text-sm font-medium">
+              Foreman Name (Optional)
+            </label>
+            <Input
+              id="foreman-name"
+              value={foremanName}
+              onChange={(e) => setForemanName(e.target.value)}
+              placeholder="e.g., Mike"
               className="mt-1"
               disabled={isLoading}
             />
@@ -152,21 +146,23 @@ export function JobEditDialog({
             </div>
           </div>
           <div>
-            <label htmlFor="job-number" className="text-sm font-medium">
-              Job Number / Reference ID (Optional)
+            <label htmlFor="po-number" className="text-sm font-medium">
+              PO Number (Optional)
             </label>
             <Input
-              id="job-number"
-              value={jobNumber}
-              onChange={(e) => setJobNumber(e.target.value)}
-              placeholder="e.g., JOB-2024-001"
+              id="po-number"
+              value={poNumber}
+              onChange={(e) => setPoNumber(e.target.value)}
+              placeholder="e.g., PO-2024-001"
               className="mt-1"
               disabled={isLoading}
             />
-            <p className="text-muted-foreground mt-1 text-xs">
-              Note: This field requires a schema update to be saved.
-            </p>
           </div>
+          <JobSupplierDefaultsEditor
+            jobId={jobId}
+            value={supplierDefaults}
+            onChange={setSupplierDefaults}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -174,7 +170,12 @@ export function JobEditDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!jobName.trim() || isLoading}
+            disabled={
+              !jobName.trim() ||
+              isLoading ||
+              (!!supplierDefaults &&
+                !jobSupplierDefaultsSchema.safeParse(supplierDefaults).success)
+            }
           >
             Save Changes
           </Button>
@@ -183,4 +184,3 @@ export function JobEditDialog({
     </Dialog>
   );
 }
-

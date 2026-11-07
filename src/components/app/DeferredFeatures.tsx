@@ -1,0 +1,215 @@
+"use client";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ComponentType,
+} from "react";
+
+import { FeatureErrorBoundary } from "./FeatureErrorBoundary";
+import { scheduleBackgroundWork } from "~/lib/background-work";
+
+const warmed = new Set<() => Promise<unknown>>();
+const features = new Set<() => Promise<unknown>>();
+function warm(load: () => Promise<unknown>) {
+  if (warmed.has(load)) return;
+  scheduleBackgroundWork(load, async () => { await load(); warmed.add(load); });
+}
+
+function feature<P extends object>(
+  load: () => Promise<{ default: ComponentType<P> }>,
+  dialog = false,
+) {
+  features.add(load);
+  return function DeferredFeature(props: P) {
+    const [attempt, setAttempt] = useState(0);
+    const Component = useMemo(() => lazy(load), [attempt]);
+    const open = !dialog || !("open" in props) || props.open === true;
+    const [opened, setOpened] = useState(open);
+    useEffect(() => {
+      if (open) setOpened(true);
+    }, [open]);
+    useEffect(() => {
+      warm(load);
+      const onOnline = () => warm(load);
+      window.addEventListener("online", onOnline);
+      return () => window.removeEventListener("online", onOnline);
+    }, []);
+    if (!open && !opened) return null;
+    return (
+      <FeatureErrorBoundary onRetry={() => setAttempt((value) => value + 1)}>
+        <Suspense
+          fallback={
+            open ? (
+              <p role="status" className="text-muted-foreground p-3 text-sm">
+                Loading…
+              </p>
+            ) : null
+          }
+        >
+          <Component {...props} />
+        </Suspense>
+      </FeatureErrorBoundary>
+    );
+  };
+}
+
+/** Cache optional features after startup, including ones not yet mounted. */
+export function warmDeferredFeatures() {
+  for (const load of features) warm(load);
+}
+
+export const AddPartDialog = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/AddPartDialog").AddPartDialog
+  >
+>(
+  () =>
+    import("~/components/materialLists/AddPartDialog").then((m) => ({
+      default: m.AddPartDialog,
+    })),
+  true,
+);
+export const QuotePreviewSheet = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/QuotePreviewSheet").QuotePreviewSheet
+  >
+>(
+  () =>
+    import("~/components/materialLists/QuotePreviewSheet").then((m) => ({
+      default: m.QuotePreviewSheet,
+    })),
+  true,
+);
+export const OrdersPreviewSheet = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/OrdersPreviewSheet").OrdersPreviewSheet
+  >
+>(
+  () =>
+    import("~/components/materialLists/OrdersPreviewSheet").then((m) => ({
+      default: m.OrdersPreviewSheet,
+    })),
+  true,
+);
+export const ExistingQuotesOrdersDialog = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/ExistingQuotesOrdersDialog").ExistingQuotesOrdersDialog
+  >
+>(
+  () =>
+    import("~/components/materialLists/ExistingQuotesOrdersDialog").then(
+      (m) => ({ default: m.ExistingQuotesOrdersDialog }),
+    ),
+  true,
+);
+export const EditPartDialog = feature<
+  ComponentProps<
+    typeof import("~/components/catalogue/EditPartDialog").EditPartDialog
+  >
+>(
+  () =>
+    import("~/components/catalogue/EditPartDialog").then((m) => ({
+      default: m.EditPartDialog,
+    })),
+  true,
+);
+export const CreateCustomPartDialog = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/CreateCustomPartDialog").CreateCustomPartDialog
+  >
+>(
+  () =>
+    import("~/components/materialLists/CreateCustomPartDialog").then((m) => ({
+      default: m.CreateCustomPartDialog,
+    })),
+  true,
+);
+export const MaterialGroupsDialog = feature<
+  ComponentProps<
+    typeof import("~/components/catalogue/MaterialGroupsDialog").MaterialGroupsDialog
+  >
+>(
+  () =>
+    import("~/components/catalogue/MaterialGroupsDialog").then((m) => ({
+      default: m.MaterialGroupsDialog,
+    })),
+  true,
+);
+export const PhotoQueueDialog = feature<
+  ComponentProps<
+    typeof import("~/components/catalogue/PhotoQueueDialog").PhotoQueueDialog
+  >
+>(
+  () =>
+    import("~/components/catalogue/PhotoQueueDialog").then((m) => ({
+      default: m.PhotoQueueDialog,
+    })),
+  true,
+);
+export const JobRoomsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobRoomsView").JobRoomsView>
+>(() =>
+  import("~/components/jobs/JobRoomsView").then((m) => ({
+    default: m.JobRoomsView,
+  })),
+);
+export const JobDrawingsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobDrawingsView").JobDrawingsView>
+>(() =>
+  import("~/components/jobs/JobDrawingsView").then((m) => ({
+    default: m.JobDrawingsView,
+  })),
+);
+export const PartStage = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/wizard/PartStage").PartStage
+  >
+>(() =>
+  import("~/components/materialLists/wizard/PartStage").then((m) => ({
+    default: m.PartStage,
+  })),
+);
+
+export const JobChatView = feature<ComponentProps<typeof import("~/components/jobs/JobChatView").JobChatView>>(
+  () => import("~/components/jobs/JobChatView").then((m) => ({ default: m.JobChatView })),
+);
+
+export const JobDocumentsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobDocumentsView").JobDocumentsView>
+>(() => import("~/components/jobs/JobDocumentsView").then((m) => ({ default: m.JobDocumentsView })));
+
+export const JobSystemsView = feature<
+  ComponentProps<typeof import("~/components/jobs/JobSystemsView").JobSystemsView>
+>(() => import("~/components/jobs/JobSystemsView").then((m) => ({ default: m.JobSystemsView })));
+
+export const MaterialListScreen = feature<
+  ComponentProps<
+    typeof import("~/components/materialLists/MaterialListScreen").MaterialListScreen
+  >
+>(() =>
+  import("~/components/materialLists/MaterialListScreen").then((m) => ({
+    default: m.MaterialListScreen,
+  })),
+);
+export const JobEditDialog = feature<
+  ComponentProps<typeof import("~/components/jobs/JobEditDialog").JobEditDialog>
+>(
+  () =>
+    import("~/components/jobs/JobEditDialog").then((m) => ({
+      default: m.JobEditDialog,
+    })),
+  true,
+);
+export const TutorialExperience = feature<
+  ComponentProps<
+    typeof import("~/components/tutorial/TutorialExperience").TutorialExperience
+  >
+>(() =>
+  import("~/components/tutorial/TutorialExperience").then((m) => ({
+    default: m.TutorialExperience,
+  })),
+);

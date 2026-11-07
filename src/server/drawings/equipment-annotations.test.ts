@@ -1,0 +1,244 @@
+// @vitest-environment node
+import { beforeEach, expect, it, vi } from "vitest";
+const index = vi.hoisted(() => vi.fn());
+const location = vi.hoisted(() => vi.fn());
+vi.mock("./equipment-index", () => ({
+  equipmentIndex: index,
+  drawingPdfLocation: location,
+}));
+import {
+  equipmentAnnotationPlan,
+  withoutTagHighlight,
+} from "./equipment-annotations";
+import { equipmentDrawingDestination } from "~/lib/equipment-tags";
+import { drawingDestinationLinks } from "~/lib/drawing-links";
+import { readSnapshotState } from "~/lib/snapshot-source";
+import type { DrawingEntity, DrawingJobSheet } from "~/lib/drawing-workspace";
+const id = (n: number) =>
+  `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const box = { text: "HEX-2", left: 0.2, right: 0.25, top: 0.3, bottom: 0.32 };
+const sheets = [1, 2, 3].map((n) => ({
+  id: id(n),
+  setId: id(n === 3 ? 31 : 30),
+  name: `M-${n}`,
+  imageUrl: "test",
+})) as DrawingJobSheet[];
+const link = equipmentDrawingDestination({
+  jobId: id(10),
+  setId: id(30),
+  sheetId: id(2),
+  sourceSheetId: id(2),
+  name: "M-2",
+  tag: "HEX-2",
+  box,
+});
+const entity = {
+  id: id(20),
+  sheetId: id(1),
+  kind: "markup",
+  visibility: "private",
+  data: {
+    type: "link",
+    equipmentTag: "HEX-2",
+    sourceSheetId: id(1),
+    points: [
+      { x: 0.1, y: 0.1 },
+      { x: 0.2, y: 0.2 },
+    ],
+    links: [
+      { label: "M-2", url: link.href },
+      { label: "Manual", url: "/jobs/jobs" },
+    ],
+  },
+} as DrawingEntity;
+beforeEach(() => {
+  location.mockReturnValue({ file: "test.pdf", page: 1 });
+  index.mockClear();
+  index.mockResolvedValue({
+    pages: [
+      {
+        page: 1,
+        words: [
+          box,
+          { ...box, left: 0.6, right: 0.65 },
+          { ...box, text: "HEX-20" },
+        ],
+      },
+    ],
+  });
+});
+it("creates a clickable annotation per exact occurrence, with shared links and a return link", async () => {
+  const plan = await equipmentAnnotationPlan(
+    entity,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(2);
+  expect(plan[0]?.links).toHaveLength(3);
+  expect(plan[0]?.points).toEqual([
+    { x: 0.2, y: 0.3 },
+    { x: 0.25, y: 0.32 },
+  ]);
+  expect(plan[0]?.id).not.toBe(plan[1]?.id);
+  expect(
+    await equipmentAnnotationPlan(entity, id(10), sheets, async (s) => s),
+  ).toEqual(plan);
+  expect(
+    readSnapshotState(new URL(plan[0]!.links[0]!.url!, "https://test").hash)
+      ?.drawing?.sheetId,
+  ).toBe(id(1));
+});
+it("does not propagate generated copies, archives, or unrelated pages", async () => {
+  for (const changed of [
+    { ...entity, visibility: "archived" },
+    { ...entity, data: { ...entity.data, equipmentOriginId: id(40) } },
+  ])
+    expect(
+      await equipmentAnnotationPlan(
+        changed as DrawingEntity,
+        id(10),
+        sheets,
+        async (s) => s,
+      ),
+    ).toEqual([]);
+  expect(
+    await equipmentAnnotationPlan(
+      entity,
+      id(10),
+      sheets.map((s) => ({ ...s, setId: s.id })),
+      async (s) => s,
+    ),
+  ).toEqual([]);
+});
+it("fails saving if indexing or target access fails, rather than silently leaving missing tags", async () => {
+  await expect(
+    equipmentAnnotationPlan(entity, id(10), sheets, async () => {
+      throw Error("forbidden");
+    }),
+  ).rejects.toThrow("forbidden");
+  index.mockRejectedValueOnce(Error("index unavailable"));
+  await expect(
+    equipmentAnnotationPlan(entity, id(10), sheets, async (s) => s),
+  ).rejects.toThrow("index unavailable");
+});
+it("removes old search highlights while retaining the destination viewport", () => {
+  const url = new URL(link.href, "https://test");
+  const state = readSnapshotState(url.hash)!;
+  state.drawing!.highlight = box;
+  state.drawing!.search = "HEX-2";
+  url.hash = `snapshot=${encodeURIComponent(JSON.stringify(state))}`;
+  const cleaned = withoutTagHighlight({
+    label: "tag",
+    url: url.pathname + url.search + url.hash,
+  });
+  const drawing = readSnapshotState(
+    new URL(cleaned.url!, "https://test").hash,
+  )?.drawing;
+  expect(drawing?.highlight).toBeUndefined();
+  expect(drawing?.search).toBe("");
+  expect(drawing?.viewport).toEqual(state.drawing!.viewport);
+});
+it("annotates repeated tags on the origin page without duplicating the origin or linking an occurrence to itself", async () => {
+  const second = { ...box, left: 0.6, right: 0.65 };
+  const repeated = equipmentDrawingDestination({
+    jobId: id(10),
+    setId: id(30),
+    sheetId: id(1),
+    sourceSheetId: id(1),
+    name: "M-1",
+    tag: "HEX-2",
+    box: second,
+  });
+  const updated = {
+    ...entity,
+    data: {
+      ...entity.data,
+      points: [
+        { x: box.left, y: box.top },
+        { x: box.right, y: box.bottom },
+      ],
+      links: [{ label: "Other occurrence", url: repeated.href }],
+    },
+  } as DrawingEntity;
+  const plan = await equipmentAnnotationPlan(
+    updated,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(1);
+  expect(plan[0]?.sheetId).toBe(id(1));
+  expect(plan[0]?.points[0]?.x).toBe(0.6);
+  if (updated.kind !== "markup") throw new Error("Expected markup");
+  const visible = drawingDestinationLinks(
+    { ...updated.data, ...plan[0]!, type: "link" },
+    id(1),
+  );
+  expect(visible).toHaveLength(1);
+  const target = readSnapshotState(
+    new URL(plan[0]!.links[0]!.url!, "https://test").hash,
+  )?.drawing;
+  expect(target?.viewport.center.x).toBe((box.left + box.right) / 2);
+});
+it("makes common fixture tags clickable beyond fifty occurrences while keeping bounded work", async () => {
+  index.mockResolvedValue({
+    pages: [
+      {
+        page: 1,
+        words: Array.from({ length: 80 }, (_, i) => ({
+          ...box,
+          left: 0.1 + (i % 10) * 0.03,
+          right: 0.12 + (i % 10) * 0.03,
+          top: 0.1 + Math.floor(i / 10) * 0.03,
+          bottom: 0.11 + Math.floor(i / 10) * 0.03,
+        })),
+      },
+    ],
+  });
+  const plan = await equipmentAnnotationPlan(
+    entity,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(80);
+  expect(new Set(plan.map((item) => item.id)).size).toBe(80);
+});
+it("preserves reviewed image locations on the source without requiring PDF text", async () => {
+  location.mockReturnValue(undefined);
+  const second = { ...box, left: 0.6, right: 0.65 };
+  const updated = {
+    ...entity,
+    data: {
+      ...entity.data,
+      hyperlinkReader: "terra",
+      equipmentTagBoxes: [box, second],
+      points: [
+        { x: box.left, y: box.top },
+        { x: box.right, y: box.bottom },
+      ],
+      links: [{ label: "Submittal", url: "/jobs/test/documents/test" }],
+    },
+  } as DrawingEntity;
+  const plan = await equipmentAnnotationPlan(
+    updated,
+    id(10),
+    sheets,
+    async (s) => s,
+  );
+  expect(plan).toHaveLength(1);
+  expect(plan[0]).toMatchObject({
+    sheetId: id(1),
+    sourceSheetId: id(1),
+    points: [
+      { x: second.left, y: second.top },
+      { x: second.right, y: second.bottom },
+    ],
+  });
+  expect(index).not.toHaveBeenCalled();
+  // Never apply old image coordinates to a replacement source.
+  await expect(
+    equipmentAnnotationPlan(updated, id(10), sheets, async () => id(2)),
+  ).rejects.toThrow("no searchable PDF");
+});

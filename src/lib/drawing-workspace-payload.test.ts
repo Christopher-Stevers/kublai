@@ -1,0 +1,20 @@
+import { expect, it } from "vitest";
+import { compactDrawingWorkspace } from "./drawing-workspace-payload";
+import { drawingMarkupSchema, type DrawingEntity, type DrawingWorkspace } from "./drawing-workspace";
+it("omits destination payloads without changing source records, geometry, or manual links", () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const data = drawingMarkupSchema.parse({sourceSheetId:id,type:"link",equipmentTag:"AHU-1",points:[{x:.1,y:.1},{x:.2,y:.2}], links:Array.from({length:50},(_,i)=>({label:`AHU-${i}`,url:`/jobs?view=${"x".repeat(1000)}${i}`}))});
+  const entity: DrawingEntity = {id,sheetId:id,kind:"markup",visibility:"published",revision:2,authorId:"tim",authorName:"Tim",comments:[],createdAt:"",updatedAt:"",data};
+  const original = {entities:[entity,{...entity,id:"manual",data:{...data,equipmentTag:undefined}}]} as DrawingWorkspace;
+  const compact = compactDrawingWorkspace(original);
+  const slim = compact.entities[0]!;
+  expect(slim.kind).toBe("markup");
+  if(slim.kind!=="markup") throw Error("fixture");
+  expect(slim.data.links).toBeUndefined();
+  expect(slim.data.deferredLinks).toEqual({id,revision:2,count:50});
+  expect(slim.data.points).toEqual(data.points);
+  expect(drawingMarkupSchema.safeParse(slim.data).success).toBe(true);
+  expect(entity.data.links).toHaveLength(50);
+  expect(compact.entities[1]).toBe(original.entities[1]);
+  expect(JSON.stringify(slim).length).toBeLessThan(JSON.stringify(entity).length / 20);
+});

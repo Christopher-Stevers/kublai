@@ -1,0 +1,220 @@
+.card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.card:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 20% 50%, #348ddb55, transparent 68%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 4px;
+}
+.card[data-lit="true"] {
+  border-color: #8bd3ff;
+  box-shadow: inset 0 0 30px #51a7ff15, 0 0 30px #2f9aff30;
+}
+.card[data-lit="true"]:after {
+  opacity: 1;
+  animation: glow 2s ease-in-out infinite;
+}
+.cardError {
+  font-size: 13px;
+  padding: 12px;
+  color: var(--destructive);
+}
+.dock {
+  position: fixed;
+  z-index: 75;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  right: 18px;
+  width: min(440px, calc(100vw - 32px));
+  max-height: 60dvh;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #678bac88;
+  border-radius: 20px;
+  background: #111c2cf5;
+  color: #ecf5ff;
+  box-shadow:
+    0 20px 75px #0008,
+    inset 0 1px #ffffff1a;
+  backdrop-filter: blur(20px);
+  animation: arrive 0.25s ease-out;
+}
+.dockHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dockHeader strong {
+  font-size: 14px;
+}
+.status {
+  font-size: 11px;
+  color: #adc5df;
+  margin-left: auto;
+}
+.dock button {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dock button:hover {
+  background: #ffffff14;
+}
+.dock button:focus-visible {
+  outline: 2px solid #9adaff;
+  outline-offset: 2px;
+}
+.dock button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  background: #7890aa;
+}
+.dot[data-active="true"] {
+  background: #86d8ff;
+  box-shadow: 0 0 13px #86d8ff;
+  animation: glow 2s ease-in-out infinite;
+}
+.heard {
+  font-size: 13px;
+  color: #a9bed3;
+  margin: 12px 0 8px;
+  max-height: 70px;
+  overflow: auto;
+}
+.answer {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 8px 0 12px;
+}
+.error {
+  color: #ffc3b6;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+.controls form {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #758da444;
+  border-radius: 12px;
+  background: #07101d;
+}
+.controls input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+}
+.controls input::placeholder {
+  font-size: 13px;
+  color: #96a8bf;
+}
+.limits {
+  margin: 8px 0 0;
+  text-align: center;
+  color: #8ba1b8;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.proposal {
+  margin: 12px 0;
+  border: 1px solid #83c4ed80;
+  border-radius: 12px;
+  padding: 14px;
+  background: #29578030;
+}
+.proposal > span {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: #a9d9fa;
+}
+.proposal p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.proposal > div {
+  display: flex;
+  gap: 8px;
+}
+.proposal button {
+  padding: 8px 16px;
+  background: #28415b;
+}
+.proposal button:first-child {
+  background: #9ec9ec;
+  color: #091a2c;
+  font-weight: 600;
+}
+@keyframes listen {
+  0% {
+    transform: scale(0.94);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+@keyframes glow {
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 540px) {
+  .dock {
+    right: 12px;
+    width: calc(100vw - 24px);
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 12px;
+  }
+  .card:active {
+    transform: scale(0.99);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:after { transition: none; }
+  .card[data-lit="true"]:after,
+  .dot[data-active="true"],
+  .dock { animation: none; }
+}

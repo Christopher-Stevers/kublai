@@ -35,7 +35,7 @@ export function LocationFormDialog({
 
   const utils = api.useUtils();
   const createLocation = api.location.createLocation.useMutation({
-    onMutate: async (variables) => {
+    onMutate: async () => {
       // Cancel outgoing refetches
       await utils.location.searchLocations.cancel();
 
@@ -44,26 +44,12 @@ export function LocationFormDialog({
         query: undefined,
       });
 
-      // Create temporary location object
-      const tempId = `temp-${Date.now()}`;
-      const newLocation = {
-        id: tempId,
-        name: variables.name,
-        address1: variables.address1 ?? null,
-        address2: variables.address2 ?? null,
-        city: variables.city ?? null,
-        region: variables.region ?? null,
-        postalCode: variables.postalCode ?? null,
-        country: variables.country ?? null,
-        notes: variables.notes ?? null,
-      };
-
       // Invalidate search results to refetch with new location
       void utils.location.searchLocations.invalidate();
 
-      return { previousLocations, tempId };
+      return { previousLocations };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // Rollback on error
       if (context?.previousLocations !== undefined) {
         utils.location.searchLocations.setData(

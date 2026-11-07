@@ -1,0 +1,6 @@
+# Torch is deliberately installed separately from the tested CUDA wheel index.
+numpy==2.5.3
+pillow==12.3.0
+scipy==1.18.1
+shapely==2.1.2
+opencv-python-headless==5.0.0.93

@@ -1,504 +1,691 @@
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { api } from "~/trpc/react";
+import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
+import { PartTileContent, PART_TILE_GRID_CLASS, PART_TILE_CARD_CLASS } from "./PartTileContent";
+import { JobPriceBadge } from "~/components/jobPricing/JobPriceBadge";
+import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
+import { packContents, packsFromPieces } from "~/lib/pack-quantity";
+import { PackQuantityControls } from "../PackQuantityControls";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
-import Image from "next/image";
+import { Input } from "~/components/ui/input";
+import { AlertCircle, Minus, Plus } from "lucide-react";
+import Image from "~/components/catalogue/PartImage";
 import type { PendingPart } from "./types";
-import { PartSuppliersDropdown } from "~/components/catalogue/PartSuppliersDropdown";
+import { useClientPagination } from "~/components/ui/list-pagination";
+import { ViewToggle } from "~/components/ui/view-toggle";
+import { WizardOptionPagination } from "./WizardOptionGrid";
 
-interface PartCardProps {
+
+type PartStageActionMode = "select" | "edit";
+
+export interface PartCardProps {
+  footer?: ReactNode;
+  photoAction?: ReactNode;
+  details?: ReactNode;
   part: {
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
+    jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
-    partType: string | null;
   };
   isPending: boolean;
-  pendingQuantity: number;
+  pendingQuantity?: number;
   onPartSelect: (
     part: {
       id: string;
       displayName: string;
+      piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
       description: string | null;
       imageUrl: string | null;
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
       material: string | null;
       size: string | null;
-      partType: string | null;
     },
-    supplierPartId: string,
-    quantity?: number,
+    supplierPartId?: string,
+  ) => void;
+  onPartQuantitySet?: (
+    part: {
+      id: string;
+      displayName: string;
+      piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
+      description: string | null;
+      imageUrl: string | null;
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
+      material: string | null;
+      size: string | null;
+    },
+    quantity: number,
+  ) => void;
+  onQuantityPickerPreviewChange?: (
+    preview: {
+      partId: string;
+      partName: string;
+      mode?: "individual";
+      pointerY?: number;
+      inputType?: string;
+      quantity: number;
+    } | null,
   ) => void;
   onEditPart: (partId: string) => void;
+  actionMode?: PartStageActionMode;
+  actionLabel?: string;
+  emptyMessage?: string;
 }
 
-function PartCard({ part, isPending, pendingQuantity, onPartSelect, onEditPart }: PartCardProps) {
-  const [selectedSupplierPartId, setSelectedSupplierPartId] = useState<string | null>(null);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const [previousSupplierCount, setPreviousSupplierCount] = useState<number>(0);
-  const [isQtyPickerOpen, setIsQtyPickerOpen] = useState(false);
-  const [draftQty, setDraftQty] = useState(1);
+export function PartCard({
+  part,
+  isPending,
+  pendingQuantity = 0,
+  onPartSelect,
+  onPartQuantitySet,
+  onQuantityPickerPreviewChange,
+  onEditPart,
+  actionMode = "select",
+  details,
+  footer,
+  photoAction,
+}: PartCardProps) {
+  const visibility = useCatalogueVisibility({partId:part.id}, () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part));
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const pointerStartYRef = useRef<number | null>(null);
+  const baseQuantityRef = useRef(1);
+  const dragQuantityRef = useRef(Math.max(pendingQuantity, 1));
+  const activePointerIdRef = useRef<number | null>(null);
+  const activePointerTypeRef = useRef<string | null>(null);
+  const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const individualModeRef = useRef(false);
+  const switchLatchedRef = useRef(false);
+  const latestYRef = useRef(0);
+  const clearDwell = () => { if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current); dwellTimerRef.current = null; };
+  const pointerElementRef = useRef<HTMLDivElement | null>(null);
 
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const draftQtyRef = useRef(1);
-  const selectedSupplierPartIdRef = useRef<string | null>(null);
-  const isPendingRef = useRef(isPending);
-  const pendingQuantityRef = useRef(pendingQuantity);
-  const hasSupplierRef = useRef(false);
-  const onPartSelectRef = useRef(onPartSelect);
-  const partRef = useRef(part);
-
-  useEffect(() => { draftQtyRef.current = draftQty; }, [draftQty]);
-  useEffect(() => { selectedSupplierPartIdRef.current = selectedSupplierPartId; hasSupplierRef.current = !!selectedSupplierPartId; }, [selectedSupplierPartId]);
-  useEffect(() => { isPendingRef.current = isPending; }, [isPending]);
-  useEffect(() => { pendingQuantityRef.current = pendingQuantity; }, [pendingQuantity]);
-  useEffect(() => { onPartSelectRef.current = onPartSelect; }, [onPartSelect]);
-  useEffect(() => { partRef.current = part; }, [part]);
-
-  const { data: supplierParts } = api.supplier.getSupplierPartsByPart.useQuery(
-    { partDefinitionId: part.id },
-    { enabled: !!part.id },
-  );
-  const { data: supplierInfo } = api.catalogue.getPartsSupplierInfo.useQuery(
-    { partIds: [part.id] },
-    { enabled: !!part.id },
-  );
-  const utils = api.useUtils();
-
-  useEffect(() => {
-    if (supplierParts && supplierParts.length > 0) {
-      const currentCount = supplierParts.length;
-      const wasNewSupplierAdded = currentCount > previousSupplierCount && previousSupplierCount > 0;
-      const preferred = supplierParts.find((sp) => sp.isPreferred);
-      const supplierPartId = preferred?.id ?? supplierParts[0]?.id;
-      if (!selectedSupplierPartId || !supplierParts.find(sp => sp.id === selectedSupplierPartId)) {
-        if (supplierPartId) {
-          setSelectedSupplierPartId(supplierPartId);
-          if (isSupplierDialogOpen && (previousSupplierCount === 0 || wasNewSupplierAdded)) {
-            setIsSupplierDialogOpen(false);
-          }
-        }
-      } else if (preferred && preferred.id !== selectedSupplierPartId && wasNewSupplierAdded) {
-        setSelectedSupplierPartId(preferred.id);
-        if (isSupplierDialogOpen) setIsSupplierDialogOpen(false);
-      }
-      setPreviousSupplierCount(currentCount);
-    } else {
-      setPreviousSupplierCount(0);
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
-  }, [supplierParts, selectedSupplierPartId, isSupplierDialogOpen, previousSupplierCount]);
+  };
 
-  // ─── Touch handling ────────────────────────────────────────────────────────
-  // Strategy:
-  //  1. Non-passive touchstart on card → always call preventDefault so the
-  //     browser NEVER gets to decide "this is a scroll".
-  //  2. When long-press fires, open the drum-roll overlay (portal to body).
-  //  3. touchmove/touchend listeners move to DOCUMENT so the finger can drift
-  //     anywhere and we still track it.
-  //  4. A non-passive document touchmove listener prevents any scroll while
-  //     the drum roll is open.
+  const clampQuantity = (quantity: number) => Math.max(packContents(part.piecesPerPack) > 1 ? -1 : 0, quantity);
+
+  const clearPickerPreview = () => {
+    onQuantityPickerPreviewChange?.(null);
+  };
+
+  const updateDragQuantity = (clientY: number) => {
+    if (!longPressTriggeredRef.current || pointerStartYRef.current === null)
+      return;
+
+    if (activePointerTypeRef.current === "touch") return;
+    latestYRef.current = clientY;
+    const deltaY = clientY - pointerStartYRef.current;
+    const steps = Math.round(deltaY / 18);
+    const nextQuantity = clampQuantity(baseQuantityRef.current + steps);
+    dragQuantityRef.current = nextQuantity;
+    onQuantityPickerPreviewChange?.({
+      partId: part.id,
+      partName: part.displayName,
+      quantity: nextQuantity,
+      mode: individualModeRef.current ? "individual" : undefined,
+    });
+    if (nextQuantity === -1) {
+      if (!dwellTimerRef.current && !switchLatchedRef.current) dwellTimerRef.current = setTimeout(() => {
+        dwellTimerRef.current = null;
+        switchLatchedRef.current = true;
+        individualModeRef.current = !individualModeRef.current;
+        pointerStartYRef.current = latestYRef.current;
+        baseQuantityRef.current = -1;
+        dragQuantityRef.current = -1;
+        onQuantityPickerPreviewChange?.({partId:part.id, partName:part.displayName, quantity:-1, mode:individualModeRef.current ? "individual" : undefined});
+      }, 1000);
+    } else { clearDwell(); switchLatchedRef.current = false; }
+  };
+
+  const teardownWindowListeners = () => {
+    window.removeEventListener("pointermove", handleWindowPointerMove);
+    window.removeEventListener("pointerup", handleWindowPointerUp);
+    window.removeEventListener("pointercancel", handleWindowPointerCancel);
+  };
+
+  const finishLongPressSelection = () => {
+    clearDwell();
+    if (dragQuantityRef.current >= 0) onPartQuantitySet?.(part, individualModeRef.current ? packsFromPieces(dragQuantityRef.current, part.piecesPerPack) : dragQuantityRef.current);
+    clearPickerPreview();
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
+    pointerElementRef.current = null;
+    teardownWindowListeners();
+  };
+
+  const cancelLongPressSelection = () => {
+    clearDwell();
+    clearPickerPreview();
+    longPressTriggeredRef.current = false;
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
+    pointerElementRef.current = null;
+    teardownWindowListeners();
+  };
+
+  function handleWindowPointerMove(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+    event.preventDefault();
+    updateDragQuantity(event.clientY);
+  }
+
+  function handleWindowPointerUp(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    clearLongPressTimer();
+
+    if (longPressTriggeredRef.current) {
+      finishLongPressSelection();
+    }
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent) {
+    if (activePointerIdRef.current !== event.pointerId) return;
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    clearLongPressTimer();
+    cancelLongPressSelection();
+  }
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    if (actionMode === "edit") {
+      activePointerIdRef.current = event.pointerId;
+      activePointerTypeRef.current = event.pointerType;
+      pointerElementRef.current = event.currentTarget;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
+
+    clearDwell();
+    individualModeRef.current = false;
+    switchLatchedRef.current = false;
+    longPressTriggeredRef.current = false;
+    activePointerIdRef.current = event.pointerId;
+    activePointerTypeRef.current = event.pointerType;
+    pointerElementRef.current = event.currentTarget;
+    pointerStartYRef.current = event.clientY;
+    baseQuantityRef.current = pendingQuantity > 0 ? Math.ceil(pendingQuantity) : 1;
+    dragQuantityRef.current = baseQuantityRef.current;
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+
+      if (
+        pointerElementRef.current &&
+        activePointerIdRef.current !== null &&
+        pointerElementRef.current.hasPointerCapture(activePointerIdRef.current)
+      ) {
+        pointerElementRef.current.releasePointerCapture(
+          activePointerIdRef.current,
+        );
+      }
+
+      onQuantityPickerPreviewChange?.({
+        partId: part.id,
+        partName: part.displayName,
+        quantity: baseQuantityRef.current,
+        pointerY: pointerStartYRef.current ?? undefined,
+        inputType: activePointerTypeRef.current ?? undefined,
+      });
+      window.addEventListener("pointermove", handleWindowPointerMove, {
+        passive: false,
+      });
+      window.addEventListener("pointerup", handleWindowPointerUp, {
+        passive: false,
+      });
+      window.addEventListener("pointercancel", handleWindowPointerCancel);
+    }, 200);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!longPressTriggeredRef.current) return;
+    event.preventDefault();
+    updateDragQuantity(event.clientY);
+  };
+
+  const finishPointerInteraction = () => {
+    clearLongPressTimer();
+
+    if (actionMode === "edit") {
+      onEditPart(part.id);
+      pointerStartYRef.current = null;
+      activePointerIdRef.current = null;
+      activePointerTypeRef.current = null;
+      pointerElementRef.current = null;
+      return;
+    }
+
+    if (longPressTriggeredRef.current) {
+      if (activePointerTypeRef.current === "touch") {
+        return;
+      }
+
+      finishLongPressSelection();
+      return;
+    }
+
+    onPartSelect(part);
+    pointerStartYRef.current = null;
+    activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
+    pointerElementRef.current = null;
+  };
+
+  const cancelPointerInteraction = () => {
+    clearLongPressTimer();
+
+    if (
+      longPressTriggeredRef.current &&
+      activePointerTypeRef.current === "touch"
+    ) {
+      return;
+    }
+
+    cancelLongPressSelection();
+  };
 
   useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let isLongPress = false;
-    let didScroll = false;
-    let activeTouchId = -1;
-    let startY = 0;
-    let startQty = 1;
-
-    // ── document-level handlers (attached only while long-press is active) ──
-    const onDocMove = (e: TouchEvent) => {
-      e.preventDefault(); // block any scroll while drum roll is open
-
-      let touch: Touch | undefined;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
-      }
-      if (!touch) return;
-
-      const delta = touch.clientY - startY;
-      const newQty = Math.max(1, Math.round(startQty + delta / 20));
-      draftQtyRef.current = newQty;
-      setDraftQty(newQty);
-    };
-
-    const onDocEnd = (e: TouchEvent) => {
-      let touch: Touch | undefined;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
-      }
-      if (!touch) return;
-      detachDocListeners();
-
-      const supplierId = selectedSupplierPartIdRef.current;
-      if (supplierId) {
-        onPartSelectRef.current(partRef.current, supplierId, draftQtyRef.current);
-      }
-      setIsQtyPickerOpen(false);
-      isLongPress = false;
-    };
-
-    const onDocCancel = () => {
-      detachDocListeners();
-      setIsQtyPickerOpen(false);
-      isLongPress = false;
-    };
-
-    // Ensure scroll is never stuck from a previous drum roll
-    document.body.style.overflow = "";
-
-    const freezeScroll = () => {
-      document.body.style.overflow = "hidden";
-    };
-
-    const thawScroll = () => {
-      document.body.style.overflow = "";
-    };
-
-    const attachDocListeners = () => {
-      freezeScroll();
-      document.addEventListener("touchmove", onDocMove, { passive: false });
-      document.addEventListener("touchend", onDocEnd, { passive: true });
-      document.addEventListener("touchcancel", onDocCancel, { passive: true });
-    };
-
-    const detachDocListeners = () => {
-      thawScroll();
-      document.removeEventListener("touchmove", onDocMove);
-      document.removeEventListener("touchend", onDocEnd);
-      document.removeEventListener("touchcancel", onDocCancel);
-    };
-
-    // ── card-level handlers ──────────────────────────────────────────────────
-    const onTouchStart = (e: TouchEvent) => {
-      if (!hasSupplierRef.current) return;
-
-      const touch = e.changedTouches[0];
-      if (!touch) return;
-      activeTouchId = touch.identifier;
-      startY = touch.clientY;
-      isLongPress = false;
-      didScroll = false;
-
-
-
-      const qty = isPendingRef.current ? pendingQuantityRef.current : 1;
-      startQty = qty;
-      draftQtyRef.current = qty;
-      setDraftQty(qty);
-
-      timer = setTimeout(() => {
-        isLongPress = true;
-        setIsQtyPickerOpen(true);
-        attachDocListeners();
-      }, 150);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      // Only runs before long-press fires (after that, doc listeners take over)
-      if (isLongPress) return;
-
-      let touch: Touch | undefined;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
-      }
-      if (!touch) return;
-
-      const dy = Math.abs(touch.clientY - startY);
-      if (dy > 8) {
-        didScroll = true;
-        if (timer) { clearTimeout(timer); timer = null; }
-      }
-    };
-
-    const onTouchEnd = (e: TouchEvent) => {
-      // Only runs for a TAP (long-press hands off to doc listeners before this)
-      if (isLongPress) return;
-      if (timer) { clearTimeout(timer); timer = null; }
-
-      let touch: Touch | undefined;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i]!.identifier === activeTouchId) { touch = e.changedTouches[i]; break; }
-      }
-      if (!touch) return;
-
-      const supplierId = selectedSupplierPartIdRef.current;
-      if (supplierId && !didScroll) onPartSelectRef.current(partRef.current, supplierId);
-    };
-
-    const onTouchCancel = () => {
-      if (timer) { clearTimeout(timer); timer = null; }
-      if (isLongPress) {
-        detachDocListeners();
-        setIsQtyPickerOpen(false);
-        isLongPress = false;
-      }
-    };
-
-    card.addEventListener("touchstart", onTouchStart, { passive: true });
-    card.addEventListener("touchmove", onTouchMove, { passive: true });
-    card.addEventListener("touchend", onTouchEnd, { passive: true });
-    card.addEventListener("touchcancel", onTouchCancel, { passive: true });
-
     return () => {
-      card.removeEventListener("touchstart", onTouchStart);
-      card.removeEventListener("touchmove", onTouchMove);
-      card.removeEventListener("touchend", onTouchEnd);
-      card.removeEventListener("touchcancel", onTouchCancel);
-      detachDocListeners();
-      if (timer) clearTimeout(timer);
+      clearLongPressTimer();
+      clearDwell();
+      teardownWindowListeners();
     };
-  }, [part.id]); // only re-run if the card itself is replaced
-  // ──────────────────────────────────────────────────────────────────────────
-
-  const hasSupplier = !!selectedSupplierPartId;
+  }, []);
 
   return (
-    <>
-      <Card
-        ref={cardRef}
-        className={`relative transition-all hover:shadow-md ${isPending ? "border-primary border-2" : ""} ${hasSupplier ? "cursor-pointer select-none" : "select-none"}`}
-        style={{
-          WebkitUserSelect: "none",
-          userSelect: "none",
-          WebkitTouchCallout: "none",
-          // Leave touchAction default so normal scrolling works.
-          // Scroll is only blocked after the 500ms long-press fires.
-        }}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        <CardContent className="p-3">
-          <div className="flex flex-col gap-2">
-            <div
-              className="relative aspect-square w-full overflow-hidden rounded-md bg-gray-100"
-              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" }}
-            >
-              {part.imageUrl ? (
-                <Image
-                  src={part.imageUrl}
-                  alt={part.displayName}
-                  fill
-                  className="object-cover pointer-events-none"
-                  draggable={false}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-gray-400">
-                  <svg className="h-6 w-6 sm:h-8 sm:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </div>
-              )}
-              {isPending && (
-                <div className="absolute bottom-1 right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {pendingQuantity}
-                </div>
-              )}
+    <Card
+      data-tutorial-choice={part.displayName}
+      data-tutorial-part-selected={isPending || undefined}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (actionMode === "edit") onEditPart(part.id);
+          else onPartSelect(part);
+        }
+      }}
+      className={`relative ${PART_TILE_CARD_CLASS} transition-all hover:shadow-md ${
+        isPending ? "border-primary border-2 shadow-md" : ""
+      } cursor-pointer`}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
+      onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishPointerInteraction}
+      onPointerCancel={cancelPointerInteraction}
+      onPointerLeave={() => {
+        if (longPressTriggeredRef.current) return;
+        clearLongPressTimer();
+      }}
+      {...visibility.handlers}
+    >
+      {visibility.overlay}
+      <CardContent className="p-0">
+        <PartTileContent part={part} quantity={pendingQuantity} details={details}
+          photoAction={photoAction && <div onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{photoAction}</div>} />
+        {footer && <div className="px-3 pb-3" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{footer}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PartSheetHeader() {
+  return <div className="parts-sheet-header grid grid-cols-[3rem_minmax(16rem,1fr)_10rem]"><span>Photo</span><span>Part description</span><span className="text-center">Quantity / action</span></div>;
+}
+
+function PartListRow({
+  part,
+  isPending,
+  pendingQuantity = 0,
+  onPartSelect,
+  onPartQuantitySet,
+  onEditPart,
+  actionMode = "select",
+  actionLabel,
+  details,
+}: PartCardProps) {
+  const visibility = useCatalogueVisibility({partId:part.id}, () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part));
+  const [quantityInput, setQuantityInput] = useState(() =>
+    pendingQuantity > 0 ? String(pendingQuantity) : "",
+  );
+
+  useEffect(() => {
+    setQuantityInput(pendingQuantity > 0 ? String(pendingQuantity) : "");
+  }, [pendingQuantity]);
+
+  return (
+    <div
+      {...visibility.handlers}
+      data-tutorial-part-selected={isPending || undefined}
+      className={`relative parts-picker-row ${
+        isPending ? "ring-1 ring-inset ring-primary" : ""
+      }`}
+    >
+      {visibility.overlay}
+      <div className="grid grid-cols-[3rem_minmax(16rem,1fr)_10rem] parts-sheet-cells">
+        <div className="relative min-h-11 w-12 overflow-hidden">
+          {part.imageUrl ? (
+            <Image
+              src={part.imageUrl}
+              alt={part.displayName}
+              fill
+              sizes="32px"
+              className="part-photo object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground/70">
+              <AlertCircle className="h-4 w-4" />
             </div>
-            <p className="text-xs font-medium sm:text-sm text-center mt-1">{part.displayName}</p>
+          )}
+          {part.imageApprovalStatus === "suggested" && (
+            <div className="absolute inset-x-0 bottom-0 bg-amber-500 px-1 py-0.5 text-center text-[9px] font-semibold text-white">
+              Review
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 content-center">
+          <div className="flex min-w-0 items-center gap-2">
+            <h4 className="text-sm leading-snug font-medium">
+              {part.displayName}
+            </h4>
           </div>
-        </CardContent>
+          <JobPriceBadge status={part.jobPriceStatus}/>
+            {details}
+        </div>
 
-        <Dialog
-          open={isSupplierDialogOpen}
-          onOpenChange={(open) => {
-            setIsSupplierDialogOpen(open);
-            if (!open) {
-              void utils.supplier.getSupplierPartsByPart.invalidate({ partDefinitionId: part.id });
-              void utils.catalogue.getPartsSupplierInfo.invalidate();
-            }
-          }}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base sm:text-lg">Manage Suppliers</DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
-                Connect existing suppliers or create a new one for this part.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-2 sm:py-4">
-              <label className="text-xs font-medium sm:text-sm">Suppliers</label>
-              <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                <PartSuppliersDropdown
-                  partDefinitionId={part.id}
-                  currentPreferredSupplierId={supplierInfo?.[part.id]?.preferredSupplier?.id ?? null}
-                  availableSuppliers={supplierInfo?.[part.id]?.availableSuppliers ?? []}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Select suppliers that provide this part and set a preferred supplier.
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </Card>
+        <div className="flex items-center justify-center gap-1.5">
+          {isPending && actionMode === "select" && packContents(part.piecesPerPack) > 1 ? (
+            <PackQuantityControls quantity={pendingQuantity} piecesPerPack={part.piecesPerPack!} bulkUnit={part.bulkUnit} individualUnit={part.individualUnit} onChange={value => onPartQuantitySet?.(part, value)} />
+          ) : isPending && actionMode === "select" ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPartQuantitySet?.(part, pendingQuantity - 1)}
+                className="h-8 w-7 p-0 sm:w-8"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input
+                type="number"
+                min="0"
+                value={quantityInput}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const nextValue = e.target.value;
+                  setQuantityInput(nextValue);
 
-      {/* Drum roll — rendered as a portal directly on document.body so it
-          escapes Radix's stacking context and any dialog z-index rules.
-          It is purely visual; all touch tracking happens on the card element
-          and the document-level listeners above. */}
-      {isQtyPickerOpen && typeof document !== "undefined" &&
-        createPortal(
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 99999,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(0,0,0,0.55)",
-              touchAction: "none",
-              pointerEvents: "auto",
-              userSelect: "none",
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              {Array.from({ length: 21 }, (_, i) => {
-                const offset = i - 10;
-                const num = draftQty + offset;
-                const isCenter = offset === 0;
-                const dist = Math.abs(offset);
-                const opacity = isCenter ? 1 : Math.max(0.08, 1 - dist * 0.09);
-                const scale = isCenter ? 1 : Math.max(0.55, 1 - dist * 0.04);
-                const fontSize = isCenter ? 72 : Math.max(18, 44 - dist * 2);
-                const fontWeight = isCenter ? 800 : dist <= 2 ? 600 : 400;
-                const color = isCenter ? "#ffffff" : `rgba(255,255,255,${opacity})`;
-                const lineHeight = isCenter ? "88px" : `${Math.max(22, 40 - dist)}px`;
-                if (num < 1 && !isCenter) return null;
-                return (
-                  <div
-                    key={offset}
-                    style={{
-                      fontSize,
-                      fontWeight,
-                      color,
-                      lineHeight,
-                      transform: `scale(${scale})`,
-                      transition: "all 0.05s",
-                      minHeight: lineHeight,
-                      textAlign: "center",
-                      userSelect: "none",
-                    }}
-                  >
-                    {num >= 1 ? num : ""}
-                  </div>
-                );
-              })}
+                  if (nextValue === "") {
+                    return;
+                  }
+
+                  onPartQuantitySet?.(part, parseInt(nextValue) || 0);
+                }}
+                onBlur={() => {
+                  const parsedQuantity = parseInt(quantityInput);
+
+                  if (
+                    !quantityInput ||
+                    Number.isNaN(parsedQuantity) ||
+                    parsedQuantity <= 0
+                  ) {
+                    setQuantityInput("");
+                    onPartQuantitySet?.(part, 0);
+                    return;
+                  }
+
+                  setQuantityInput(String(parsedQuantity));
+                  onPartQuantitySet?.(part, parsedQuantity);
+                }}
+                className="h-8 w-12 [appearance:textfield] px-1 text-center text-sm sm:w-14 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPartQuantitySet?.(part, pendingQuantity + 1)}
+                className="h-8 w-7 p-0 sm:w-8"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
-            <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.4)", userSelect: "none" }}>
-              Drag down · Release to confirm
-            </p>
-          </div>,
-          document.body,
-        )}
-    </>
+          ) : (
+            <Button
+              size="sm"
+              data-tutorial-choice={part.displayName}
+              className="h-8 px-2.5 text-xs sm:px-3"
+              onClick={() =>
+                actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part)
+              }
+            >
+              {actionLabel ?? (actionMode === "edit" ? "Edit" : "Add")}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
 export interface PartStageProps {
+  onVisiblePartsChange?: (ids: string[]) => void;
+  detailsByPartId?: Record<string, ReactNode>;
   partsForSelection: Array<{
     id: string;
     displayName: string;
+    piecesPerPack?: number | null;
+    bulkUnit?: string | null;
+    individualUnit?: string | null;
     description: string | null;
     imageUrl: string | null;
+    jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
     material: string | null;
     size: string | null;
-    partType: string | null;
   }>;
   pendingParts: PendingPart[];
-  onPartSelect: (part: {
-    id: string;
-    displayName: string;
-    description: string | null;
-    imageUrl: string | null;
-    material: string | null;
-    size: string | null;
-    partType: string | null;
-  }, supplierPartId: string, quantity?: number) => void;
+  onPartSelect: (
+    part: {
+      id: string;
+      displayName: string;
+      piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
+      description: string | null;
+      imageUrl: string | null;
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
+      material: string | null;
+      size: string | null;
+    },
+    supplierPartId?: string,
+  ) => void;
+  onPartQuantitySet?: (
+    part: {
+      id: string;
+      displayName: string;
+      piecesPerPack?: number | null;
+      bulkUnit?: string | null;
+      individualUnit?: string | null;
+      description: string | null;
+      imageUrl: string | null;
+      jobPriceStatus?: string;
+    imageApprovalStatus?: "approved" | "suggested" | "missing";
+      material: string | null;
+      size: string | null;
+    },
+    quantity: number,
+  ) => void;
+  onQuantityPickerPreviewChange?: (
+    preview: {
+      partId: string;
+      partName: string;
+      mode?: "individual";
+      pointerY?: number;
+      inputType?: string;
+      quantity: number;
+    } | null,
+  ) => void;
   onEditPart: (partId: string) => void;
-  onOpenCustomPartDialog: (context?: {
-    materialId?: string | null;
-    size?: { nominal: number; unit: string } | null;
-    partTypeId?: string | null;
-    category?: { name?: string | null; categoryId?: string | null };
-  }) => void;
-  selectedMaterialId: string | null;
-  selectedSize: { nominal: number; unit: string } | null;
-  selectedPartTypeCategory: { categoryId: string | null; name: string } | null;
-  onBackToCategories: () => void;
-  onContinueToReview: () => void;
+
+
+
+
+  actionMode?: PartStageActionMode;
+  title?: string;
+  actionLabel?: string;
+  emptyMessage?: string;
 }
 
 export function PartStage({
   partsForSelection,
   pendingParts,
   onPartSelect,
+  onPartQuantitySet,
+  onQuantityPickerPreviewChange,
   onEditPart,
-  onOpenCustomPartDialog,
-  selectedMaterialId,
-  selectedSize,
-  selectedPartTypeCategory,
+  actionMode = "select",
+  title = "Select Parts",
+  actionLabel,
+  emptyMessage,
+  detailsByPartId,
+  onVisiblePartsChange,
 }: PartStageProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const pagination = useClientPagination(partsForSelection);
+  const visibleParts = pagination.paginatedItems;
+  const visibleIds = JSON.stringify(visibleParts.map(part => part.id));
+  useEffect(() => {
+    onVisiblePartsChange?.(JSON.parse(visibleIds) as string[]);
+  }, [visibleIds, onVisiblePartsChange]);
+  useArcScrollerOptions(actionMode === "edit" ? "Edit Part" : "Add Part", partsForSelection.map(part => ({
+    label: part.displayName,
+    select: () => actionMode === "edit" ? onEditPart(part.id) : onPartSelect(part),
+  })));
+
+  const getPendingPartState = (partId: string) => {
+    const pendingPart = pendingParts.find((part) => part.partId === partId);
+    return {
+      isPending: Boolean(pendingPart),
+      pendingQuantity: pendingPart?.quantity ?? 0,
+    };
+  };
+
   if (partsForSelection.length === 0) {
     return (
       <div className="space-y-3 sm:space-y-4">
         <h3 className="text-base font-semibold sm:text-lg">No Parts Found</h3>
-        <p className="text-xs text-gray-500 sm:text-sm">
-          No parts found for the selected material, size, and category.
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          {emptyMessage ??
+            "No parts found for the selected material, size, and category."}
         </p>
-        <Button
-          variant="outline"
-          onClick={() =>
-            onOpenCustomPartDialog({
-              materialId: selectedMaterialId,
-              size: selectedSize,
-              partTypeId: null,
-              category: selectedPartTypeCategory
-                ? { categoryId: selectedPartTypeCategory.categoryId, name: selectedPartTypeCategory.name }
-                : undefined,
-            })
-          }
-          className="w-full text-xs sm:w-auto sm:text-sm"
-        >
-          Create Custom Part
-        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <h3 className="text-base font-semibold sm:text-lg">Select Parts</h3>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-        {partsForSelection.map((part) => {
-          const pendingEntry = pendingParts.find((p) => p.partId === part.id);
-          return (
-            <PartCard
-              key={part.id}
-              part={part}
-              isPending={!!pendingEntry}
-              pendingQuantity={pendingEntry?.quantity ?? 1}
-              onPartSelect={onPartSelect}
-              onEditPart={onEditPart}
-            />
-          );
-        })}
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
+        <ViewToggle
+          view={viewMode}
+          onViewChange={setViewMode}
+          showOnMobile
+        />
       </div>
+      {viewMode === "grid" ? (
+        <div className={PART_TILE_GRID_CLASS}>
+          {visibleParts.map((part) => {
+            const { isPending, pendingQuantity } = getPendingPartState(part.id);
+            return (
+              <PartCard
+                key={part.id}
+                part={part}
+                details={detailsByPartId?.[part.id]}
+                isPending={isPending}
+                pendingQuantity={pendingQuantity}
+                onPartSelect={onPartSelect}
+                onPartQuantitySet={onPartQuantitySet}
+                onQuantityPickerPreviewChange={onQuantityPickerPreviewChange}
+                onEditPart={onEditPart}
+                actionMode={actionMode}
+                actionLabel={actionLabel}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="parts-sheet-scroll"><div className="parts-sheet min-w-[29rem]">
+          <PartSheetHeader />
+          {visibleParts.map((part) => {
+            const { isPending, pendingQuantity } = getPendingPartState(part.id);
+            return (
+              <PartListRow
+                key={part.id}
+                part={part}
+                details={detailsByPartId?.[part.id]}
+                isPending={isPending}
+                pendingQuantity={pendingQuantity}
+                onPartSelect={onPartSelect}
+                onPartQuantitySet={onPartQuantitySet}
+                onEditPart={onEditPart}
+                actionMode={actionMode}
+                actionLabel={actionLabel}
+              />
+            );
+          })}
+        </div></div>
+      )}
+      <WizardOptionPagination pagination={pagination} itemLabel="parts" />
     </div>
   );
 }

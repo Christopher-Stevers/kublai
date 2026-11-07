@@ -1,0 +1,697 @@
+"use client";
+import {
+  BarSearchButton,
+  PriorityActionBar,
+} from "~/components/ui/priority-action-bar";
+import { supplierLabel } from "~/lib/supplier-label";
+import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
+
+import { OrderEmailFields } from "~/components/materialLists/OrderEmailFields";
+import type { SupplierSkuLine } from "~/lib/order-email-lines";
+import { UndoOrderButton } from "~/components/materialLists/UndoOrderButton";
+import { usePageViewState } from "~/hooks/use-page-view-state";
+
+import { useMemo, useRef, useState } from "react";
+import { scoreOrderSearch } from "~/lib/order-search";
+import { api } from "~/trpc/react";
+import { Card, CardContent } from "~/components/ui/card";
+import { PageHeader } from "~/components/ui/page-header";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { FilterBadge } from "~/components/catalogue/FilterBadge";
+import {
+  PackageIcon,
+  WifiOffIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CalendarDaysIcon,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useOfflineOrders } from "~/hooks/use-offline-documents";
+import {
+  getSupplierEmailRecipients,
+  normalizeSupplierContacts,
+} from "~/lib/supplier-contacts";
+import { openEmailCompose } from "~/lib/mailto";
+import type { RouterOutputs } from "~/trpc/react";
+import { ListPageSkeleton } from "~/components/ui/skeleton";
+import { DeliveryCalendarSettings } from "~/components/materialLists/DeliveryCalendarSettings";
+
+type EmailDraft = {
+  supplierSkuLines?: SupplierSkuLine[];
+  subject: string;
+  body: string;
+  to?: string[];
+  cc?: string[];
+};
+
+type ListedOrder = RouterOutputs["materialList"]["listOrders"][number];
+type DateFilter = "all" | "today" | "last7" | "last30" | "thisMonth";
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  all: "All dates",
+  today: "Today",
+  last7: "Last 7 days",
+  last30: "Last 30 days",
+  thisMonth: "This month",
+};
+
+function orderDate(order: ListedOrder) {
+  return new Date(order.sentAt ?? order.createdAt);
+}
+
+function matchesDateFilter(order: ListedOrder, dateFilter: DateFilter) {
+  if (dateFilter === "all") return true;
+  const value = orderDate(order);
+  if (Number.isNaN(value.getTime())) return false;
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  if (dateFilter === "today") return value >= startOfToday;
+  if (dateFilter === "last7") {
+    const start = new Date(startOfToday);
+    start.setDate(start.getDate() - 6);
+    return value >= start;
+  }
+  if (dateFilter === "last30") {
+    const start = new Date(startOfToday);
+    start.setDate(start.getDate() - 29);
+    return value >= start;
+  }
+  return (
+    value.getFullYear() === now.getFullYear() &&
+    value.getMonth() === now.getMonth()
+  );
+}
+
+export default function OrdersPage() {
+  const utils = api.useUtils();
+  const isOnline = useOnlineStatus();
+  const { data: userData } = api.user.getMyRole.useQuery(undefined, {
+    enabled: isOnline,
+  });
+  const canSendOrders = userData?.permissions.can["orders.send"] ?? false;
+  const sendInFlight = useRef(false);
+  const { data: serverOrders, isLoading } =
+    api.materialList.listOrders.useQuery(
+      { summary: true },
+      {
+        enabled: isOnline,
+      },
+    );
+  const {
+    data: orders,
+    cacheLoaded,
+    isOfflineFallback,
+  } = useOfflineOrders(serverOrders);
+  const [expandedOrders, setExpandedOrders] = usePageViewState<Set<string>>("orders:expanded", new Set(), undefined, {
+    encode: value => [...value], decode: value => Array.isArray(value) ? new Set(value) : undefined,
+  });
+  const [emailDrafts, setEmailDrafts] = useState<Map<string, EmailDraft>>(
+    new Map(),
+  );
+  const [emailRecipients, setEmailRecipients] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const [emailCcRecipients, setEmailCcRecipients] = useState<
+    Map<string, string>
+  >(new Map());
+  const [loadingEmails, setLoadingEmails] = useState<Set<string>>(new Set());
+  const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = usePageViewState("orders:visibleCount", 50);
+  const [searchQuery, setSearchQuery] = usePageViewState("orders:searchQuery", "");
+  const [jobFilter, setJobFilter] = usePageViewState<string | null>("orders:jobFilter", null);
+  const [supplierFilter, setSupplierFilter] = usePageViewState<string | null>("orders:supplierFilter", null);
+  const [dateFilter, setDateFilter] = usePageViewState<DateFilter>("orders:dateFilter", "all");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const markOrderSent = api.materialList.markOrderSent.useMutation({
+    onSuccess: () => {
+      void utils.materialList.listOrders.invalidate();
+    },
+  });
+
+  const loadEmail = async (orderId: string) => {
+    if (emailDrafts.has(orderId) || loadingEmails.has(orderId)) return;
+
+    setLoadingEmails((prev) => new Set(prev).add(orderId));
+    try {
+      const draft = await utils.materialList.getOrderEmailContent.fetch({
+        orderId,
+      });
+      const order = orders?.find((item) => item.id === orderId);
+      setEmailDrafts((prev) => {
+        const next = new Map(prev);
+        next.set(orderId, draft);
+        return next;
+      });
+      setEmailRecipients((prev) => {
+        const next = new Map(prev);
+        if (!next.has(orderId)) {
+          next.set(
+            orderId,
+            order?.sentTo?.trim() || draft.to?.join(", ") || "",
+          );
+        }
+        return next;
+      });
+      setEmailCcRecipients((prev) => {
+        const next = new Map(prev);
+        if (!next.has(orderId)) {
+          next.set(orderId, draft.cc?.join(", ") || "");
+        }
+        return next;
+      });
+      setSyncError(null);
+    } catch (error) {
+      setSyncError(
+        error instanceof Error
+          ? error.message
+          : "Could not load the order email.",
+      );
+    } finally {
+      setLoadingEmails((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+        void loadEmail(orderId);
+      }
+      return next;
+    });
+  };
+
+  const handleResendOrder = async (orderId: string) => {
+    if (sendInFlight.current || !canSendOrders || !isOnline) return;
+    const order = orders?.find((item) => item.id === orderId);
+    if (!order) return;
+
+    const draft = emailDrafts.get(orderId);
+    if (!draft) {
+      // Prepare on the first tap; opening the ready draft takes a fresh tap.
+      setExpandedOrders((prev) => new Set(prev).add(orderId));
+      await loadEmail(orderId);
+      return;
+    }
+
+    const recipient =
+      emailRecipients.get(orderId)?.trim() ??
+      order.sentTo?.trim() ??
+      draft.to?.join(", ") ??
+      (order.supplier
+        ? getSupplierEmailRecipients(
+            normalizeSupplierContacts(order.supplier.contacts, order.supplier),
+          ).to.join(", ")
+        : "");
+    const toRecipients = recipient
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+    if (
+      toRecipients.length === 0 ||
+      toRecipients.some((email) => !email.includes("@"))
+    ) {
+      setSyncError(
+        "Enter at least one valid To email before sending this order.",
+      );
+      toggleOrder(orderId);
+      return;
+    }
+    const ccRecipients = (
+      emailCcRecipients.get(orderId)?.trim() ??
+      draft.cc?.join(", ") ??
+      ""
+    )
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+
+    sendInFlight.current = true;
+    setSendingOrderId(orderId);
+    try {
+      openEmailCompose({
+        to: toRecipients,
+        cc: ccRecipients,
+        subject: draft.subject,
+        body: draft.body,
+      });
+      await markOrderSent.mutateAsync({
+        orderId,
+        sentTo: toRecipients.join(", "),
+        notes: order.notes ?? undefined,
+      });
+      setSyncError(null);
+    } catch (error) {
+      setSyncError(
+        error instanceof Error
+          ? error.message
+          : "Could not send this order. Try again in a moment.",
+      );
+    } finally {
+      sendInFlight.current = false;
+      setSendingOrderId(null);
+    }
+  };
+
+  const jobOptions = useMemo(() => {
+    const jobs = new Map<string, string>();
+    for (const order of orders ?? []) {
+      if (order.job?.id && order.job.name) {
+        jobs.set(order.job.id, order.job.name);
+      }
+    }
+    return Array.from(jobs.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [orders]);
+
+  const supplierOptions = useMemo(() => {
+    const suppliers = new Map<string, string>();
+    for (const order of orders ?? []) {
+      if (order.supplier?.id && order.supplier.name) {
+        suppliers.set(order.supplier.id, order.supplier.name);
+      }
+    }
+    return Array.from(suppliers.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const query = searchQuery.trim();
+    return (orders ?? [])
+      .filter((order) => {
+        if (jobFilter && order.job?.id !== jobFilter) return false;
+        if (supplierFilter && order.supplier?.id !== supplierFilter)
+          return false;
+        if (!matchesDateFilter(order, dateFilter)) return false;
+        return true;
+      })
+      .map((order) => ({
+        order,
+        score: scoreOrderSearch(order, query, emailDrafts.get(order.id)),
+      }))
+      .filter((result) => result.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((result) => result.order);
+  }, [orders, jobFilter, supplierFilter, dateFilter, searchQuery, emailDrafts]);
+
+  const selectedJobName =
+    jobOptions.find((job) => job.id === jobFilter)?.name ?? null;
+  const selectedSupplierName =
+    supplierOptions.find((supplier) => supplier.id === supplierFilter)?.name ??
+    null;
+  const hasActiveFilters =
+    Boolean(searchQuery.trim()) ||
+    Boolean(jobFilter) ||
+    Boolean(supplierFilter) ||
+    dateFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setJobFilter(null);
+    setSupplierFilter(null);
+    setDateFilter("all");
+  };
+
+  if ((isLoading || !cacheLoaded) && !orders) {
+    return (
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl">
+          <ListPageSkeleton label="Loading orders" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pt-6 pb-28 sm:px-6 sm:pt-8">
+      <div className="mx-auto max-w-2xl">
+        <PageHeader
+          title="Orders"
+          description="Open an order to review the email that was sent"
+        >
+          {isOfflineFallback && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-900">
+              <WifiOffIcon className="h-3 w-3" /> Offline cached orders
+            </p>
+          )}
+        </PageHeader>
+
+        {syncError && (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {syncError}
+          </div>
+        )}
+
+        {orders && orders.length > 0 && (
+          <div className="mb-4 space-y-3">
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2">
+                {searchQuery.trim() && (
+                  <FilterBadge
+                    label="Search"
+                    value={searchQuery.trim()}
+                    onRemove={() => setSearchQuery("")}
+                  />
+                )}
+                {selectedJobName && (
+                  <FilterBadge
+                    label="Job"
+                    value={selectedJobName}
+                    onRemove={() => setJobFilter(null)}
+                  />
+                )}
+                {selectedSupplierName && (
+                  <FilterBadge
+                    label="Supplier"
+                    value={supplierLabel(selectedSupplierName, "All price books")}
+                    onRemove={() => setSupplierFilter(null)}
+                  />
+                )}
+                {dateFilter !== "all" && (
+                  <FilterBadge
+                    label="Date"
+                    value={DATE_FILTER_LABELS[dateFilter]}
+                    onRemove={() => setDateFilter("all")}
+                  />
+                )}
+                <Button variant="ghost" size="sm" className="h-7" onClick={clearFilters}>
+                  Clear all
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedJobName ?? "All jobs"}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuItem onClick={() => setJobFilter(null)}>
+                    All jobs
+                  </DropdownMenuItem>
+                  {jobOptions.map((job) => (
+                    <DropdownMenuItem
+                      key={job.id}
+                      onClick={() => setJobFilter(job.id)}
+                    >
+                      {job.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedSupplierName ? supplierLabel(selectedSupplierName, "All price books") : "All suppliers"}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuItem onClick={() => setSupplierFilter(null)}>
+                    All suppliers
+                  </DropdownMenuItem>
+                  {supplierOptions.map((supplier) => (
+                    <DropdownMenuItem
+                      key={supplier.id}
+                      onClick={() => setSupplierFilter(supplier.id)}
+                    >
+                      <SupplierLabel name={supplier.name} bookName="All price books" />
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {DATE_FILTER_LABELS[dateFilter]}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map(
+                    (value) => (
+                      <DropdownMenuItem
+                        key={value}
+                        onClick={() => setDateFilter(value)}
+                      >
+                        {DATE_FILTER_LABELS[value]}
+                      </DropdownMenuItem>
+                    ),
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        )}
+
+        {!orders || orders.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <PackageIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
+              <h3 className="mb-2 text-lg font-semibold">No orders yet</h3>
+              <p className="text-muted-foreground mb-4 text-center">
+                Orders will appear here after you send them from a material list
+              </p>
+            </CardContent>
+          </Card>
+        ) : filteredOrders.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <PackageIcon className="text-muted-foreground/70 mb-4 h-12 w-12" />
+              <h3 className="mb-2 text-lg font-semibold">No matching orders</h3>
+              <p className="text-muted-foreground mb-4 text-center">
+                Nothing matches these filters.
+              </p>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredOrders.slice(0, visibleCount).map((order) => {
+              const isExpanded = expandedOrders.has(order.id);
+              const draft = emailDrafts.get(order.id);
+              const isDraftLoading = loadingEmails.has(order.id);
+              const recipient = emailRecipients.get(order.id) ?? "";
+              const ccRecipient = emailCcRecipients.get(order.id) ?? "";
+              const isSending = sendingOrderId === order.id;
+              const contextLine = [
+                order.orderNumber,
+                order.job?.name,
+                order.materialList?.name,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+
+              return (
+                <div key={order.id} className="bg-card rounded-lg border p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      onClick={() => toggleOrder(order.id)}
+                      className="flex min-w-0 items-center gap-2 font-semibold"
+                    >
+                      {isExpanded ? (
+                        <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                      )}
+                      <span className="min-w-0 text-left">
+                        <span className="block truncate">
+                          <SupplierLabel name={order.supplier?.name} bookName={order.supplier?.priceBookName} fallback="Supplier Order" />
+                        </span>
+                        {contextLine && (
+                          <span className="text-muted-foreground block truncate text-xs font-normal">
+                            {contextLine}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      {canSendOrders && <UndoOrderButton orderId={order.id} disabled={!isOnline || isSending} />}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => handleResendOrder(order.id)}
+                        disabled={
+                          !isOnline ||
+                          !canSendOrders ||
+                          isSending ||
+                          isDraftLoading
+                        }
+                      >
+                        {isSending
+                          ? "Opening..."
+                          : isDraftLoading
+                            ? "Preparing..."
+                            : draft
+                              ? "Resend"
+                              : "Prepare email"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-4 space-y-4 pl-6">
+                      {isDraftLoading || !draft ? (
+                        <p className="text-muted-foreground text-sm">
+                          Loading email...
+                        </p>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <label
+                              htmlFor={`order-recipient-${order.id}`}
+                              className="text-sm font-medium"
+                            >
+                              To
+                            </label>
+                            <Input
+                              id={`order-recipient-${order.id}`}
+                              type="text"
+                              value={recipient}
+                              onChange={(event) => {
+                                const next = new Map(emailRecipients);
+                                next.set(order.id, event.target.value);
+                                setEmailRecipients(next);
+                              }}
+                              placeholder="supplier@example.com"
+                              disabled
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label
+                              htmlFor={`order-cc-${order.id}`}
+                              className="text-sm font-medium"
+                            >
+                              CC
+                            </label>
+                            <Input
+                              id={`order-cc-${order.id}`}
+                              type="text"
+                              value={ccRecipient}
+                              onChange={(event) => {
+                                const next = new Map(emailCcRecipients);
+                                next.set(order.id, event.target.value);
+                                setEmailCcRecipients(next);
+                              }}
+                              placeholder="cc@example.com"
+                              disabled
+                            />
+                          </div>
+
+                          <OrderEmailFields id={order.id} supplierId={order.supplier?.id} draft={draft}
+ disabled={true} notes={order.notes ?? ""}
+ onDraftChange={next=>setEmailDrafts(previous=>new Map(previous).set(order.id,next))}
+  />
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filteredOrders.length > visibleCount && (
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((count) => count + 50)}
+              >
+                Show more orders ({filteredOrders.length - visibleCount}{" "}
+                remaining)
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Pinned to the bottom of the window on every screen size. */}
+      <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
+        <PriorityActionBar
+          className="mx-auto max-w-2xl"
+          search={{
+            value: searchQuery,
+            onChange: setSearchQuery,
+            label: "Search orders",
+            placeholder: "Search items, jobs, suppliers...",
+          }}
+        >
+          <BarSearchButton className="h-12 min-w-0 flex-1" />
+          {canSendOrders && (
+            <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
+              <CalendarDaysIcon className="text-primary h-5 w-5" />
+              <span className="truncate">Delivery calendar</span>
+            </Button>
+          )}
+        </PriorityActionBar>
+      </div>
+
+      {canSendOrders && (
+        <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delivery calendar</DialogTitle>
+              <DialogDescription>
+                Weekdays and holidays to skip when order emails give a delivery date.
+              </DialogDescription>
+            </DialogHeader>
+            <DeliveryCalendarSettings embedded online={isOnline} onSaved={() => {
+              setEmailDrafts(new Map());
+              setExpandedOrders(new Set());
+            }} />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

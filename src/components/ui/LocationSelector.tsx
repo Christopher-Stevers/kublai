@@ -13,6 +13,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Search, ChevronDownIcon } from "lucide-react";
 import { LocationFormDialog } from "~/components/materialLists/LocationFormDialog";
+import { useOnlineStatus } from "~/hooks/use-online-status";
 
 interface LocationSelectorProps {
   value: string | null | undefined;
@@ -40,11 +41,13 @@ export function LocationSelector({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const isOnline = useOnlineStatus();
+
   // Search locations
   const { data: locations, isLoading: locationsLoading } =
     api.location.searchLocations.useQuery(
       { query: debouncedSearchQuery || undefined },
-      { enabled: isDropdownOpen || !!debouncedSearchQuery || !!value },
+      { enabled: isOnline && (isDropdownOpen || !!debouncedSearchQuery || !!value) },
     );
 
   // Find selected location

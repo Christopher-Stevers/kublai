@@ -1,0 +1,80 @@
+[
+  {
+    "model": "DCD800B",
+    "url": "https://www.dewalt.com/en-us/product/dcd800b/20v-max-xr-12-brushless-cordless-drilldriver-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCD800B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCD800B_1_1280.webp",
+    "name": "DeWalt Cordless Drill",
+    "checksum": "0cd703f8a3df2c72a4fc1c806edb05cdd38d3dc74780cbc2e54c5a77be3f6b98",
+    "filename": "part-0cd703f8a3df2c72a4fc1c806edb05cdd38d3dc74780cbc2e54c5a77be3f6b98.webp",
+    "path": "public/images/catalog/uploads/part-0cd703f8a3df2c72a4fc1c806edb05cdd38d3dc74780cbc2e54c5a77be3f6b98.webp",
+    "bytes": 24678
+  },
+  {
+    "model": "DCF809B",
+    "url": "https://www.dewalt.com/en-us/product/dcf809b/atomic-20v-max-14-brushless-compact-impact-driver-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCF809B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCF809B_1_1280.webp",
+    "name": "DeWalt Impact Driver",
+    "checksum": "47bbc4d2f6fa7f7bfe1bac24d17aeabbb7b746c6ce14029aaaf1e92f6765a854",
+    "filename": "part-47bbc4d2f6fa7f7bfe1bac24d17aeabbb7b746c6ce14029aaaf1e92f6765a854.webp",
+    "path": "public/images/catalog/uploads/part-47bbc4d2f6fa7f7bfe1bac24d17aeabbb7b746c6ce14029aaaf1e92f6765a854.webp",
+    "bytes": 18926
+  },
+  {
+    "model": "DCS565B",
+    "url": "https://www.dewalt.com/en-us/product/dcs565b/20v-max-xr-6-12-brushless-cordless-circular-saw-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCS565B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCS565B_1_1280.webp",
+    "name": "DeWalt Circular Saw",
+    "checksum": "e1a29af5b64678dcf43ef87fcad5ff2a9c39ac3e7540a1ccf10194918bf579ae",
+    "filename": "part-e1a29af5b64678dcf43ef87fcad5ff2a9c39ac3e7540a1ccf10194918bf579ae.webp",
+    "path": "public/images/catalog/uploads/part-e1a29af5b64678dcf43ef87fcad5ff2a9c39ac3e7540a1ccf10194918bf579ae.webp",
+    "bytes": 40152
+  },
+  {
+    "model": "DCS367B",
+    "url": "https://www.dewalt.com/en-us/product/dcs367b/20v-max-xr-brushless-compact-reciprocating-saw-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCS367B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCS367B_1_1280.webp",
+    "name": "DeWalt Reciprocating Saw",
+    "checksum": "2f434b4b76d48f4c1a67372d1f5da4bb3388df65b9504354bfde5f70129e4cb2",
+    "filename": "part-2f434b4b76d48f4c1a67372d1f5da4bb3388df65b9504354bfde5f70129e4cb2.webp",
+    "path": "public/images/catalog/uploads/part-2f434b4b76d48f4c1a67372d1f5da4bb3388df65b9504354bfde5f70129e4cb2.webp",
+    "bytes": 25694
+  },
+  {
+    "model": "DCG413B",
+    "url": "https://www.dewalt.com/en-us/product/dcg413b/20v-max-xr-4-12-paddle-switch-small-angle-grinder-kickback-brake-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCG413B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCG413B_1_1280.webp",
+    "name": "DeWalt Angle Grinder",
+    "checksum": "d1a16c75d18909ccfe1d367bfa00a2a37fb8c216e5428c2749b4a592bd304557",
+    "filename": "part-d1a16c75d18909ccfe1d367bfa00a2a37fb8c216e5428c2749b4a592bd304557.webp",
+    "path": "public/images/catalog/uploads/part-d1a16c75d18909ccfe1d367bfa00a2a37fb8c216e5428c2749b4a592bd304557.webp",
+    "bytes": 19738
+  },
+  {
+    "model": "DCH273B",
+    "url": "https://www.dewalt.com/en-us/product/dch273b/20v-max-xr-sds-plus-brushless-1-l-shape-rotary-hammer-tool-only",
+    "images": [
+      "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCH273B_1.jpg"
+    ],
+    "imageSource": "https://assets.dewalt.com/NAG/PRODUCT/IMAGES/HIRES/WHITEBG/DCH273B_1_1280.webp",
+    "name": "DeWalt Rotary Hammer",
+    "checksum": "6acf02a7e5b03bbb6e3d7231f5935d65f0b7b0b7e1de002513075598c3dd4a12",
+    "filename": "part-6acf02a7e5b03bbb6e3d7231f5935d65f0b7b0b7e1de002513075598c3dd4a12.webp",
+    "path": "public/images/catalog/uploads/part-6acf02a7e5b03bbb6e3d7231f5935d65f0b7b0b7e1de002513075598c3dd4a12.webp",
+    "bytes": 35982
+  }
+]

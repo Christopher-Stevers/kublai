@@ -1,0 +1,19 @@
+{
+  "name": "ink-geodesic",
+  "threshold": 245,
+  "openRadius": 1,
+  "join": 3,
+  "bandLengthFraction": 0.0016666667,
+  "doorFraction": 0.0095,
+  "gapFactor": 1.15,
+  "windowFactor": 3.5,
+  "envelope": true,
+  "grow": true,
+  "maxRoomFactor": 4,
+  "maxUnlabelledFraction": 0.01,
+  "nudgeFraction": 0.004,
+  "partition": "geodesic",
+  "densitySource": "ink",
+  "densityRadiusFraction": 0.025,
+  "densityPenalty": 80
+}

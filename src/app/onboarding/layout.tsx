@@ -1,8 +1,8 @@
+import { getRequestIdentity } from "~/server/utils/get-request-identity";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { ORGANIZATION_INVITE_COOKIE } from "~/lib/organization-invite";
 import { waitForUser } from "~/server/utils/wait-for-user";
 
 export default async function OnboardingLayout({
@@ -10,47 +10,43 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const { userId, user: requestUser } = await getRequestIdentity(
+    await headers(),
+  );
 
   // Redirect if not authenticated
   if (!userId) {
     redirect("/sign-in");
   }
 
-
-
   // Get user from database (webhook should have created it)
-  let [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  let user = requestUser;
 
   // If user doesn't exist, wait for webhook to create it (with timeout)
   // This ensures webhook is the single source of truth for user creation
   if (!user) {
-    user = await waitForUser(userId, 15000, 500); // Wait up to 15 seconds, poll every 500ms
+    user = (await waitForUser(userId, 3000, 250)) as typeof user;
   }
 
   // If user still doesn't exist after waiting, show a waiting state instead of redirecting
   // This prevents redirect loops with the sign-in page and gives the webhook more time
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-6 text-center">
+      <div className="bg-muted/50 flex min-h-screen flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-foreground text-2xl font-bold">
             Setting up your account...
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             We're putting the finishing touches on your account setup. This
             usually takes just a few seconds.
           </p>
           <div className="flex justify-center py-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-muted-foreground text-sm">
             The page will refresh automatically. If it doesn't, please{" "}
-            <a href="/onboarding" className="text-blue-600 hover:underline">
+            <a href="/onboarding" className="text-primary hover:underline">
               click here to retry
             </a>
             .
@@ -61,12 +57,15 @@ export default async function OnboardingLayout({
     );
   }
 
-  // If user already has an organization, redirect to dashboard
+  const inviteToken = (await cookies()).get(ORGANIZATION_INVITE_COOKIE)?.value;
+  if (inviteToken) {
+    redirect(`/join/${inviteToken}`);
+  }
+
+  // If user already has an organization, redirect to Jobs
   if (user.organizationId) {
-    redirect("/dashboard");
+    redirect("/jobs");
   }
 
   return <>{children}</>;
 }
-
-

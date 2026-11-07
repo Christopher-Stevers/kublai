@@ -1,0 +1,85 @@
+import { EXPERIMENTAL_JOB_VIEWS, isExperimentalEnabled } from "./experimental";
+
+export type JobWorkspaceOptionId =
+  | "material-lists"
+  | "tool-requests"
+  | "rooms"
+  | "models"
+  | "drawings"
+  | "documents"
+  | "systems"
+  | "chat";
+export type JobWorkspaceView = "options" | JobWorkspaceOptionId;
+
+export type JobWorkspaceLocation = {
+  jobId: string;
+  view: JobWorkspaceView;
+  materialListId: string | null;
+};
+
+const STORAGE_KEY = "foremenhq.job-workspace.last-location";
+const LEGACY_OPTION_KEY = "foremenhq.job-workspace.last-option";
+
+function canUseStorage() {
+  return typeof window !== "undefined";
+}
+
+export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
+  if (!canUseStorage()) return null;
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<JobWorkspaceLocation>;
+    if (typeof parsed.jobId !== "string" || !parsed.jobId) return null;
+    if (
+      parsed.view !== "options" &&
+      parsed.view !== "material-lists" &&
+      parsed.view !== "tool-requests" &&
+      parsed.view !== "rooms" &&
+      parsed.view !== "drawings" &&
+      parsed.view !== "models" &&
+      parsed.view !== "documents" &&
+      parsed.view !== "systems" &&
+      parsed.view !== "chat"
+    ) {
+      return null;
+    }
+    return {
+      jobId: parsed.jobId,
+      view: parsed.view === "tool-requests"
+        ? "material-lists"
+        : !isExperimentalEnabled() && EXPERIMENTAL_JOB_VIEWS.includes(parsed.view)
+          ? "options"
+          : parsed.view,
+      materialListId:
+        typeof parsed.materialListId === "string"
+          ? parsed.materialListId
+          : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function setLastJobWorkspaceLocation(location: JobWorkspaceLocation) {
+  if (!canUseStorage()) return;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
+    window.localStorage.removeItem(LEGACY_OPTION_KEY);
+  } catch {
+    // Ignore quota / private-mode failures.
+  }
+}
+
+export function clearLastJobWorkspaceLocation() {
+  if (!canUseStorage()) return;
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_OPTION_KEY);
+  } catch {
+    // Ignore quota / private-mode failures.
+  }
+}

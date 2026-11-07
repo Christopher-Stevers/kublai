@@ -175,7 +175,6 @@ async function clearDatabase() {
       "kublai_unit",
       "kublai_material",
       "kublai_size",
-      "kublai_part_type",
     ];
 
     // Filter to only include tables that exist in our database
@@ -226,7 +225,7 @@ async function clearDatabase() {
       `;
       await sql`
         CREATE INDEX IF NOT EXISTS part_def_facets_idx 
-        ON kublai_part_definition(part_type_id, material_id, size_id)
+        ON kublai_part_definition(material_id, size_id)
       `;
       await sql`
         CREATE INDEX IF NOT EXISTS part_def_size_idx 
