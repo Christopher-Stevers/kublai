@@ -1558,7 +1558,7 @@ async function mutateReceivingImpl(
           review.lines.some((l) => l.kind && l.kind !== "delivery")
         )
           fail("Returns must be linked to the original order.");
-        const supplier = await scopedSupplier(tx, fresh, review.supplierId);
+        const supplier = await scopedSupplier(tx, fresh, input.supplierId ?? review.supplierId);
         let list = input.materialListId
           ? (
               await tx
@@ -1634,6 +1634,8 @@ async function mutateReceivingImpl(
           materialListId: list!.id,
           materialListName: list!.name,
         };
+        review.supplierId = supplier.id;
+        review.supplierName = supplier.name;
         review.orderConfirmed = true;
       } else if (input.action === "extra") {
         await requireCreate(fresh, tx);

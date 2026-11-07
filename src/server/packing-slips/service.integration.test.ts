@@ -2179,6 +2179,24 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     const snap = (await orderSnapshot(db, access, order))[0]!;
     expect(snap.ordered - snap.received).toBe(9);
   });
+  it("creates a new list before catalogue matching and keeps unmatched slip lines for review", async () => {
+    const {access, doc} = await confirmedHeader();
+    await db.update(schema.jobs).set({foremanUserId: "receiver"}).where(sql`"id"=${job}`);
+    await db.insert(schema.suppliers).values({id: id(70), organizationId: org, name: "Selected Supplier", kind: "external"});
+    const before = (await workspace()).documents[0]!.receivingReview!.lines;
+    await reviewAction(access, doc.documentId, {
+      action: "reconstruct", materialListId: null, listName: "New delivery list",
+      orderNumber: "NEW-EMPTY", supplierId: id(70), lineIds: [], confirmed: true,
+    });
+    const saved = (await workspace()).documents[0]!;
+    expect(saved.packingSlip!.orderId).not.toBe(order);
+    expect(saved.packingSlip!.materialListName).toBe("New delivery list");
+    expect(saved.receivingReview!.supplierId).toBe(id(70));
+    expect(saved.receivingReview!.lines).toHaveLength(before.length);
+    expect(saved.receivingReview!.lines.every(line => !line.orderItemId && !line.approved)).toBe(true);
+    expect((await db.select().from(schema.orderItems)).filter(row => row.orderId === saved.packingSlip!.orderId)).toEqual([]);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it.each([false, true])("reconstructs a job-local order without receiving or sending (already linked: %s)", async (alreadyLinked) => {
     const { access, doc } = await confirmedHeader();
     await db

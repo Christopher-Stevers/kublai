@@ -2162,6 +2162,20 @@ it("opens the new-list form from Match without creating anything until submitted
   expect(screen.getByLabelText("New list name")).toBeInTheDocument();
   expect(screen.queryByLabelText("Material list")).not.toBeInTheDocument();
   expect(posts).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", {name: "Back to matches"}));
+  fireEvent.click(screen.getByRole("button", {name: "Cancel"}));
   expect(screen.queryByText("New List From This Slip")).not.toBeInTheDocument();
+});
+
+it("creates a new list before any catalogue lines are matched", async () => {
+  state.review.orderConfirmed = false;
+  state.canCreate = true;
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", {name: /New List/}));
+  const create = screen.getByRole("button", {name: "Create New List"});
+  expect(create).toBeEnabled();
+  expect(screen.getByRole("button", {name: "Cancel"}).parentElement).toBe(create.parentElement);
+  expect(screen.queryByRole("button", {name: "Back to matches"})).not.toBeInTheDocument();
+  fireEvent.click(create);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({action: "reconstruct", materialListId: null, lineIds: [], supplierId: "supplier"});
 });

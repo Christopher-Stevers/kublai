@@ -1665,9 +1665,9 @@ function Identity({
   if (newList) return (
     <div className="space-y-3 p-4">
       {detail.canCreate && !detail.document.packingSlipAnalysis?.applied && !detail.review.lines.some((line) => line.approved) ?
-        <Reconstruct detail={detail} run={run} newListOnly /> :
+        <Reconstruct detail={detail} run={run} newListOnly onCancel={() => setNewList(false)} /> :
         <p className="text-sm">{detail.canCreate ? "This slip already has approved receipts. Correct those receipts before moving it to a new list." : "A foreman, lead hand or executive must create a list from this slip."}</p>}
-      <Button variant="outline" onClick={() => setNewList(false)}>Back to matches</Button>
+      {(!detail.canCreate || detail.document.packingSlipAnalysis?.applied || detail.review.lines.some((line) => line.approved)) && <Button variant="outline" onClick={() => setNewList(false)}>Cancel</Button>}
     </div>
   );
   if (!match && analysis?.status === "processing")
@@ -4989,12 +4989,15 @@ function Reconstruct({
   detail,
   run,
   newListOnly = false,
+  onCancel,
 }: {
   newListOnly?: boolean;
+  onCancel?: () => void;
   detail: Detail;
   run: (a: Action) => Promise<boolean>;
 }) {
-  const [list, setList] = useState(""),
+  const [supplier, setSupplier] = useState(detail.review.supplierId ?? detail.orders.find((order) => order.id === detail.document.packingSlip?.orderId)?.supplierId ?? ""),
+    [list, setList] = useState(""),
     [name, setName] = useState(
       `Delivery ${detail.review.deliveryDate || new Date().toLocaleDateString()}`,
     ),
@@ -5012,7 +5015,7 @@ function Reconstruct({
       </summary>
       <p className="text-muted-foreground my-3 text-sm">
         Log an order already placed outside FormanHQ. Nothing is sent to the
-        supplier. Choose catalogue parts and confirm ordered quantities first.
+        supplier. You can create the list now and review the parts and quantities afterward.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {!newListOnly && <Label name="Material list">
@@ -5038,6 +5041,12 @@ function Reconstruct({
             />
           </Label>
         )}
+        {newListOnly && <Label name="Supplier">
+          <select className={field} value={supplier} onChange={(event) => setSupplier(event.target.value)}>
+            <option value="">Choose supplier</option>
+            {detail.suppliers.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+          </select>
+        </Label>}
         <Label name="Order reference">
           <input
             className={field}
@@ -5047,11 +5056,14 @@ function Reconstruct({
         </Label>
       </div>
       <p className="my-3 text-sm">
-        {candidates.length} lines have a catalogue part and ordered quantity.
-        Other lines stay unresolved.
+        {candidates.length ? `${candidates.length} matched lines will be added. Other lines can be reviewed afterward.` : "Create the list first, then match the slip’s items to catalogue parts."}
       </p>
+      {newListOnly && !supplier && <p className="mb-3 text-sm text-amber-700">Choose a supplier to create this list.</p>}
+      <div className="flex items-center justify-between gap-3">
+      {onCancel && <Button variant="outline" onClick={onCancel}>Cancel</Button>}
       <Button
-        disabled={!candidates.length || !detail.review.supplierId}
+        className="ml-auto"
+        disabled={!(newListOnly ? supplier : detail.review.supplierId) || !name.trim() || !number.trim()}
         onClick={() =>
           void run({
             action: "reconstruct",
@@ -5059,12 +5071,14 @@ function Reconstruct({
             listName: name,
             orderNumber: number,
             lineIds: candidates.map((l) => l.id),
+            ...(newListOnly ? {supplierId: supplier} : {}),
             confirmed: true,
           })
         }
       >
         {newListOnly ? "Create New List" : "Approve reconstructed order"}
       </Button>
+      </div>
     </details>
   );
 }

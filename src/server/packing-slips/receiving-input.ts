@@ -246,7 +246,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     materialListId: z.uuid().nullable(),
     listName: text.min(1).max(255),
     orderNumber: text.min(1).max(100),
-    lineIds: z.array(text.max(100)).min(1).max(200),
+    lineIds: z.array(text.max(100)).max(200),
+    supplierId: z.uuid().optional(),
     confirmed: z.literal(true),
   }),
   z.object({
