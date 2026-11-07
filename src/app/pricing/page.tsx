@@ -9,6 +9,8 @@ import { MarketingHeader } from "../_components/MarketingHeader";
 import { Loader2 } from "lucide-react";
 
 export default function PricingPage() {
+  const availability = api.payment.getCheckoutAvailability.useQuery();
+  const checkoutEnabled = availability.data?.enabled === true;
   const [isCreatingCheckout, setIsCreatingCheckout] = useState<string | null>(null);
 
   const createSubscriptionCheckout = api.payment.createSubscriptionCheckout.useMutation({
@@ -194,7 +196,7 @@ export default function PricingPage() {
                 <Button
                   className="w-full"
                   onClick={handleSubscription}
-                  disabled={isCreatingCheckout !== null}
+                  disabled={!checkoutEnabled || isCreatingCheckout !== null}
                 >
                   {isCreatingCheckout === "subscription" ? (
                     <>
@@ -205,6 +207,9 @@ export default function PricingPage() {
                     "Upgrade to Executive Account"
                   )}
                 </Button>
+                {availability.data && !checkoutEnabled && (
+                  <p className="mt-3 text-sm text-muted-foreground">Paid subscriptions are temporarily unavailable. You can still use a free Standard Account.</p>
+                )}
               </CardContent>
             </Card>
           </div>
