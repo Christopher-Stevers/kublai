@@ -9,7 +9,7 @@ resource "aws_iam_role" "ci" {
     Condition = { StringEquals = {
       "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com",
       "token.actions.githubusercontent.com:sub" = [
-        "repo:Christopher-Stevers/kublai:ref:refs/heads/ci/foremanhq-aws",
+        "repo:Christopher-Stevers/kublai:ref:refs/heads/production",
         "repo:Christopher-Stevers/kublai:ref:refs/heads/development"
       ]
     } }

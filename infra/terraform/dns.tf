@@ -67,3 +67,11 @@ resource "aws_route53_record" "www" {
   ttl     = 300
   records = [aws_eip.web.public_ip]
 }
+
+resource "aws_route53_record" "development" {
+  zone_id = aws_route53_zone.app.zone_id
+  name    = "dev.foremanhq.ca"
+  type    = "A"
+  ttl     = 300
+  records = [aws_eip.web.public_ip]
+}
