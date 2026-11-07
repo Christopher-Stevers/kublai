@@ -28,6 +28,7 @@ import { OrderMatchPreview } from "./OrderMatchPreview";
 import { PackingSlipActivity, type ProcessingJob } from "./PackingSlipActivity";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -2026,10 +2027,12 @@ function QuantityPair({
   ordered,
   received,
   unit,
+  backorders = [],
 }: {
   ordered: number | null;
   received: number | null;
   unit: string;
+  backorders?: Array<{ backordered?: number | null; unit?: string | null }>;
 }) {
   // Many dockets have no ordered column, so a blank there is not a misread.
   const shown = (n: number | null, blank: string) =>
@@ -2039,13 +2042,19 @@ function QuantityPair({
       receivingQuantity(n, unit)
     );
   return (
-    <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-y-0.5 border-t pt-2 text-sm">
+    <dl className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-baseline gap-y-0.5 border-t pt-2 text-sm">
       <dt className="text-muted-foreground text-xs">Ordered</dt>
       <dd className="font-semibold tabular-nums">{shown(ordered, "—")}</dd>
       <dt className="text-muted-foreground text-xs">Received</dt>
       <dd className="font-semibold tabular-nums">
         {shown(received, "Not read")}
       </dd>
+      {backorders.filter(check => check.backordered != null && Number.isFinite(check.backordered)).map((check, index) => (
+        <Fragment key={index}>
+          <dt className="text-muted-foreground text-xs">Backordered</dt>
+          <dd className="font-semibold tabular-nums">{receivingQuantity(check.backordered!, check.unit ?? unit)}</dd>
+        </Fragment>
+      ))}
     </dl>
   );
 }
@@ -2123,7 +2132,7 @@ type ReaderCopy = {
   verdict: Verdict | null;
   missing?: boolean;
   reviewStatus?: "Confirmed" | "Edited";
-  backorderChecks?: Array<NonNullable<ReturnType<typeof slipBackorderCheck>>>;
+  backorderChecks?: Array<NonNullable<ReturnType<typeof slipBackorderCheck>> & {backordered?: number | null; unit?: string | null}>;
 };
 const meanScore = (...values: Array<number | null | undefined>) => {
   const known = values.filter((v): v is number => typeof v === "number");
@@ -2205,7 +2214,7 @@ function readerCopies({
           shipped: line.paper?.quantity ?? line.quantity,
           unit: line.paper?.unit ?? line.unit,
         });
-        return check ? [check] : [];
+        return check ? [{...check, backordered: source?.backordered, unit: source?.unit ?? line.unit}] : [];
       }),
       score: null,
       description: describe(shown.map((l) => l.description)),
@@ -2236,7 +2245,7 @@ function readerCopies({
         copy.shipped === null || shipped === null
           ? null
           : qtyRound(copy.shipped + shipped);
-      if (check) copy.backorderChecks?.push(check);
+      if (check) copy.backorderChecks?.push({...check, backordered, unit});
       copy.texts.push(text);
       copy.score = meanScore(copy.score, score);
       return;
@@ -2251,7 +2260,7 @@ function readerCopies({
       unit: unit ?? "",
       verdict: null,
       texts: [text],
-      backorderChecks: check ? [check] : [],
+      backorderChecks: check ? [{...check, backordered, unit}] : [],
     });
   };
   for (const x of readings)
@@ -3327,6 +3336,7 @@ function OrderComparison({
                     ordered={copy.ordered}
                     received={copy.shipped}
                     unit={copy.unit}
+                    backorders={copy.backorderChecks}
                   />
                 </>
               )}
@@ -3345,7 +3355,7 @@ function OrderComparison({
                 {copy.verdict.label}
               </p>
             )}
-            {copy.backorderChecks?.map((check, i) => (
+            {copy.backorderChecks?.filter(check => !check.ok).map((check, i) => (
               <p key={i} className={`${copyNote} ${check.ok ? "text-muted-foreground" : amber.text} flex items-start gap-1`}>
                 {!check.ok && <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />}
                 {check.label}

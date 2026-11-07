@@ -1812,6 +1812,13 @@ it.each([10, 9, null])("only offers Accept With Backorder when printed BO accoun
   }] });
   render(<ReceivingWorkspace jobId="job" />);
   await screen.findByRole("heading", { name: "Valve" });
+  const backorder = screen.queryByText("Backordered", {selector:"dt"});
+  if (bo == null) expect(backorder).toBeNull();
+  else {
+    expect(backorder?.nextElementSibling).toHaveTextContent(String(bo));
+    expect(backorder?.parentElement?.querySelectorAll("dt")[1]).toHaveTextContent("Received");
+    expect(screen.queryByText(/accounts for the shortage/)).not.toBeInTheDocument();
+  }
   const accept = screen.queryByRole("button", { name: "Accept With Backorder" });
   if (bo !== 10) { expect(accept).toBeNull(); return; }
   expect(accept).toBeEnabled();
