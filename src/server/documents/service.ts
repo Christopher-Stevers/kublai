@@ -100,12 +100,35 @@ export async function readWorkspace(
     .limit(1);
   return ensureDefaultDocumentFolders(row?.state ?? emptyDocumentState(), access.job.id, access.user.id);
 }
+/** The browser's document index does not render receipt analysis or review lines.
+ * Project them out in PostgreSQL, before transferring/parsing the workspace.
+ * Receipt routes continue using readWorkspace and retain the complete record. */
+export async function readDocumentOverviewWorkspace(
+  access: DocumentAccess,
+  reader: Pick<typeof db, "select"> = db,
+): Promise<DocumentState> {
+  const [row] = await reader
+    .select({ state: sql<DocumentState>`jsonb_set(
+      ${jobDocumentWorkspaces.state} - 'editorSaveReceipts',
+      '{documents}',
+      coalesce((select jsonb_agg(doc - 'packingSlipAnalysis' - 'receivingReview' order by position)
+        from jsonb_array_elements(${jobDocumentWorkspaces.state}->'documents') with ordinality as entries(doc, position)), '[]'::jsonb)
+    )` })
+    .from(jobDocumentWorkspaces)
+    .where(and(
+      eq(jobDocumentWorkspaces.jobId, access.job.id),
+      eq(jobDocumentWorkspaces.organizationId, access.job.organizationId),
+    ))
+    .limit(1);
+  return ensureDefaultDocumentFolders(row?.state ?? emptyDocumentState(), access.job.id, access.user.id);
+}
+
 export async function documentOverview(
   access: DocumentAccess,
   reader: Pick<typeof db, "select"> = db,
 ): Promise<DocumentOverview> {
   const [state, members] = await Promise.all([
-    readWorkspace(access, reader),
+    readDocumentOverviewWorkspace(access, reader),
     documentMembers(access, reader),
   ]);
   const actor = documentActor(
