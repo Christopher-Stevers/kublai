@@ -2,9 +2,9 @@
 # Sourced by deploy.sh on the host. Never delegate host-wide cgroups or Docker.
 start_container() {
   local name=$1 image=$2 env_file=$3
-  local network=foremanhq uploads=/srv/foremanhq/uploads shares=1024 reservation=1024m
+  local network=foremanhq uploads=/srv/foremanhq/uploads shares=1024 reservation=1024m oom_score=-250
   if [[ "${DEPLOY_ENVIRONMENT:-production}" == development ]]; then
-    network=foremanhq-dev uploads=/srv/foremanhq/dev/uploads shares=256 reservation=128m
+    network=foremanhq-dev uploads=/srv/foremanhq/dev/uploads shares=256 reservation=128m oom_score=500
   fi
   local mount_root="/run/foremanhq-cgroups/$name"
   install -d -m 755 "$mount_root"
@@ -15,7 +15,7 @@ start_container() {
   docker run -d --name "$name" --network "$network" \
     --restart no --env-file "$env_file" \
     --cgroup-parent foremanhq.slice --cpu-shares "$shares" --memory-reservation "$reservation" \
-    --memory 3200m --memory-swap 3200m --pids-limit 256 \
+    --memory 3200m --memory-swap 3200m --oom-score-adj "$oom_score" --pids-limit 256 \
     --security-opt no-new-privileges --cap-drop ALL \
     -e FOREMANHQ_CGROUP_ROOT=/run/foremanhq-cgroup/delegated \
     --mount "type=bind,src=$mount_root,dst=/run/foremanhq-cgroup,bind-propagation=rslave" \

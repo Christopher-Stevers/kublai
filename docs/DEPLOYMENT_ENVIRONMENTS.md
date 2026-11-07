@@ -38,7 +38,9 @@ with no swap, leaving host/proxy headroom on the 4 GiB machine. Each app can use
 spare memory up to that aggregate limit; RAM is not split into fixed halves.
 Production has CPU shares 1024 and memory reservation 1024 MiB. Development has
 CPU shares 256 and memory reservation 128 MiB. These are contention priorities,
-not preallocated memory or CPU quotas. Drawing workers remain capped at 2 GiB
+not preallocated memory or CPU quotas. Development has a higher OOM score
+(+500 versus production -250), making its processes preferred victims during
+aggregate memory exhaustion. Drawing workers remain capped at 2 GiB
 per app, 64 processes, and no swap. Web processes can borrow the remainder.
 This shares existing capacity; it does not automatically resize EC2 or RDS.
 RDS has no per-database CPU scheduler; development connection/query limits
