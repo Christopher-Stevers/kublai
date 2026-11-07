@@ -230,3 +230,15 @@ describe("allocation conservation", () => {
     ).toThrow("cannot be combined");
   });
 });
+it("accepts an explicitly confirmed full backorder without receiving any goods", () => {
+  const l = line();
+  l.quantity = 0;
+  l.resolution = { ...newResolution(l, "u", "now"),
+    counterpartFingerprint: resolutionCounterpartFingerprint(item),
+    match: "confirmed", specification: "confirmed", quantity: "confirmed",
+    delivery: "short", siteQuantity: 0, acceptedQuantity: 0, remainder: "backordered", note: "Full quantity confirmed backordered" };
+  expect(resolutionBlockers(l, item, [l], "delivery")).toEqual([]);
+  expect(readyLine(l)).toBe(true);
+  expect(receivedLineQuantity(l)).toBe(0);
+  expect(item.received).toBe(0);
+});

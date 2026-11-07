@@ -2887,6 +2887,27 @@ function OrderComparison({
             });
           };
           const main = copies[0]!;
+          const backorderLine = live.length === 1 ? live[0]!.line : undefined;
+          const canAcceptBackorder = !sourceChanged && !complete && !!item && !!backorderLine &&
+            (backorderLine.kind ?? r.kind) === "delivery" &&
+            !backorderLine.approved && !backorderLine.resolution?.materialIssue &&
+            backorderLine.orderItemId === item.id && backorderLine.quantity === 0 &&
+            receivedLineQuantity(backorderLine) === 0 &&
+            receiptUnit(backorderLine.unit) === receiptUnit(item.unit) &&
+            due > 0 && backorderLine.ordered !== null && Math.abs(backorderLine.ordered - due) < 1e-6 &&
+            !!main.backorderChecks?.length && main.backorderChecks.every(check => check.ok) &&
+            !approvable(backorderLine, r.kind, item, r.lines);
+          const canConfirmInformation = canAcceptBackorder || (
+            !sourceChanged && !complete && !!item && !!backorderLine &&
+            (backorderLine.kind ?? r.kind) === "delivery" &&
+            !backorderLine.approved && !backorderLine.checked && !backorderLine.resolution?.materialIssue &&
+            backorderLine.orderItemId === item.id && backorderLine.quantity !== null && backorderLine.quantity > 0 &&
+            receivedLineQuantity(backorderLine) === backorderLine.quantity &&
+            compareToOrder(item, [backorderLine], byHand)?.ok === true &&
+            !main.backorderChecks?.some(check => !check.ok)
+          );
+
+
           // The heading, score and verdict of one reader's copy of the line.
           const reading = (copy: ReaderCopy, first: boolean) => (
             <>
@@ -3273,6 +3294,29 @@ function OrderComparison({
                   )}
                 </div>
               </div>
+              {canConfirmInformation && backorderLine && item && (
+                <div className="mt-3">
+                  <Button variant="outline" onClick={async () => {
+                    if (await run({
+                      action: "resolve",
+                      lineId: backorderLine.id,
+                      evidenceFingerprint: resolutionEvidenceFingerprint(backorderLine),
+                      counterpartFingerprint: resolutionCounterpartFingerprint(item),
+                      match: "confirmed",
+                      specification: "confirmed",
+                      quantity: "confirmed",
+                      delivery: canAcceptBackorder ? "short" : "confirmed",
+                      siteQuantity: backorderLine.quantity,
+                      acceptedQuantity: backorderLine.quantity,
+                      remainder: canAcceptBackorder ? "backordered" : null,
+                      skipped: false,
+                      note: canAcceptBackorder ? "Nothing delivered; the slip BO accounts for the full outstanding quantity." : "Reviewer confirmed the displayed information is correct.",
+                    })) notify(canAcceptBackorder ? "Backorder accepted. Nothing received; the full quantity remains outstanding." : "Information confirmed. Ready for final approval.");
+                  }}>
+                    <CheckIcon />{canAcceptBackorder ? "Accept With Backorder" : "Accept"}
+                  </Button>
+                </div>
+              )}
               {live.flatMap((x) => {
                 const check = terraCheck(x.line, detail);
                 return check

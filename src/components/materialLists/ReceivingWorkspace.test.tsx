@@ -1715,3 +1715,37 @@ it("marks linked halves with caution borders for a return, but not for kept mate
   await screen.findByRole("heading", { name: "Valve" });
   expect(screen.queryByRole("img", {name:"Material marked for return"})).not.toBeInTheDocument();
 });
+it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
+  state.items[0]!.received = 0;
+  state.review.lines[0]!.quantity = 0;
+  Object.assign(state.review, { analysisRunId: "run" });
+  Object.assign(state.review.lines[0]!, { sourceIndex: 0 });
+  Object.assign(state.document.packingSlipAnalysis, { lines: [{
+    page: 1, evidence: "Valve ordered 10 shipped 0 BO", ordered: 10,
+    shipped: 0, backordered: bo, unit: "ea", orderItemId: "item",
+    source: "terra", issues: [], proposed: null,
+  }] });
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  const accept = screen.queryByRole("button", { name: "Accept With Backorder" });
+  if (bo !== 10) { expect(accept).toBeNull(); return; }
+  expect(accept).toBeEnabled();
+  fireEvent.click(accept!);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0",
+    delivery: "short", siteQuantity: 0, acceptedQuantity: 0,
+    remainder: "backordered", match: "confirmed", quantity: "confirmed" });
+  expect(state.items[0]!.received).toBe(0);
+});
+it("uses the same confirmation action with standard wording for a matching delivery", async () => {
+  state.items[0]!.received = 0;
+  state.items[0]!.ordered = 6;
+  state.review.lines[0]!.ordered = 6;
+  render(<ReceivingWorkspace jobId="job" />);
+  const confirm = await screen.findByRole("button", { name: "Accept" });
+  expect(screen.queryByRole("button", { name: "Accept With Backorder" })).toBeNull();
+  fireEvent.click(confirm);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0", delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6 });
+  expect(state.items[0]!.received).toBe(0);
+});
