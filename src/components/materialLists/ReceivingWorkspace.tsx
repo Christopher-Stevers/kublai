@@ -1818,8 +1818,8 @@ function DuplicateReview({
     });
   return (
     <div className="space-y-3 p-4 text-sm">
-      {comparing && <FileComparison jobId={detail.document.jobId} initialDocumentIds={[detail.document.id, earlier.id]} onClose={() => setComparing(false)} />}
-      <Button variant="outline" onClick={() => setComparing(true)}>Compare files</Button>
+      {comparing && !earlier.unavailable && <FileComparison jobId={detail.document.jobId} initialDocumentIds={[detail.document.id, earlier.id]} onClose={() => setComparing(false)} />}
+      {!earlier.unavailable && <Button variant="outline" onClick={() => setComparing(true)}>Compare files</Button>}
       {unresolved.length > 1 && (
         <Label name="Earlier scan">
           <select
@@ -1838,9 +1838,9 @@ function DuplicateReview({
       <div className="rounded-lg border border-amber-300/70 bg-amber-50/60 p-3 dark:border-amber-500/40 dark:bg-amber-500/10">
         <p className="flex items-center gap-2 font-medium">
           <AlertTriangleIcon className="size-4 shrink-0 text-amber-600" />
-          <Link className="underline" href={`?document=${earlier.id}`}>
+          {earlier.unavailable ? <span>{earlier.name}</span> : <Link className="underline" href={`?document=${earlier.id}`}>
             {earlier.name}
-          </Link>
+          </Link>}
         </p>
         <p className="text-muted-foreground mt-1">
           {earlier.reason}
@@ -1848,13 +1848,14 @@ function DuplicateReview({
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => decide("supporting")}>
+        {earlier.unavailable && <p role="alert">{earlier.unavailable}</p>}
+        <Button disabled={disabled || !!earlier.unavailable} onClick={() => decide("supporting")}>
           Same slip, don’t receive
         </Button>
-        <Button variant="outline" onClick={() => decide("additional")}>
+        <Button disabled={disabled || !!earlier.unavailable} variant="outline" onClick={() => decide("additional")}>
           Different delivery
         </Button>
-        <Button variant="ghost" onClick={() => decide("replace")}>
+        <Button disabled={disabled || !!earlier.unavailable} variant="ghost" onClick={() => decide("replace")}>
           Replace the earlier scan
         </Button>
         {detail.canDeleteDocument && <DeletePackingSlipButton jobId={detail.document.jobId} documentId={detail.document.id} name={detail.document.name} disabled={disabled} onDeleted={onDeleted} />}

@@ -1,3 +1,4 @@
+import { duplicateList } from "./duplicate-list";
 import { splitComparisonLines } from "~/lib/receiving-review";
 import { randomUUID, createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
@@ -27,14 +28,13 @@ import {
 import { accessibleDocument, folderRole } from "~/server/documents/domain";
 import { renameLinkedSlip } from "~/server/documents/packing-slips";
 import { mutateWorkspace, readWorkspace } from "~/server/documents/service";
-import type { JobDocument, DocumentState } from "~/server/documents/types";
+import type { JobDocument } from "~/server/documents/types";
 import {
   initialReview,
   autoConfirmsLine,
   normalizeOrderedQuantity,
   defaultReviewUnit,
   lineKind,
-  duplicateEvidence,
   normalizedIdentity,
   receiptDelta,
   qtyRound,
@@ -108,49 +108,6 @@ function ensure(doc: JobDocument, userId: string) {
     seedPreviousReceipt(doc);
   }
   return doc.receivingReview;
-}
-function duplicateList(state: DocumentState, doc: JobDocument) {
-  const hash =
-    state.versions.find((v) => v.id === doc.currentVersionId)?.sha256 ?? "";
-  return state.documents
-    .filter((d) => d.id !== doc.id)
-    .flatMap((other) => {
-      if (
-        other.receivingReview?.retiredBy === doc.id ||
-        doc.receivingReview?.replaces === other.id
-      )
-        return [];
-      const reason = duplicateEvidence(
-        {
-          hash,
-          review: doc.receivingReview,
-          analysis: doc.packingSlipAnalysis,
-          orderId: doc.packingSlip?.orderId,
-        },
-        {
-          hash:
-            state.versions.find((v) => v.id === other.currentVersionId)
-              ?.sha256 ?? "",
-          review: other.receivingReview,
-          analysis: other.packingSlipAnalysis,
-          orderId: other.packingSlip?.orderId,
-        },
-      );
-      return reason
-        ? [
-            {
-              id: other.id,
-              name: other.name,
-              versionId: other.currentVersionId,
-              reason,
-              received:
-                !!other.packingSlipAnalysis?.applied ||
-                !!other.receivingReview?.lines.some((l) => l.approved),
-              key: `${other.id}:${other.currentVersionId}`,
-            },
-          ]
-        : [];
-    });
 }
 /** The slip's date: as reviewed, or as read. */
 const slipDate = (doc: JobDocument) =>
@@ -510,10 +467,19 @@ export async function receivingQueue(
         )
         .limit(1)
     : [];
-  const duplicates = duplicateList(state, doc).map((d) => ({
-    ...d,
-    name: visible.some((v) => v.id === d.id) ? d.name : "Another saved slip",
-  }));
+  const duplicates = duplicateList(state, doc).map((d) => {
+    const other = state.documents.find((v) => v.id === d.id)!;
+    const accessible = !!folderRole(state, actor, other.folderId);
+    return {
+      ...d,
+      name: accessible ? d.name : "Another saved slip",
+      unavailable: !accessible
+        ? "You do not have access to this earlier slip. Ask a job administrator to review the duplicate."
+        : other.deletedAt
+          ? "This earlier slip is in the recycle bin and has recorded receipts. Restore it in Documents to compare or resolve the duplicate."
+          : null,
+    };
+  });
   // Where each item's received count came from: the slips that received it,
   // and what was counted by hand on the order.
   const fromSlips = slipReceipts(state.documents);

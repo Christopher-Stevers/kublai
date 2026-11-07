@@ -2141,3 +2141,14 @@ it("confirms not-an-item removal and hides only that detection without receiving
   expect(state.items[0]!.received).toBe(2);
   expect(state.review.lines).toHaveLength(2);
 });
+
+it("explains unavailable duplicate scans instead of opening a broken comparison", async () => {
+  state.duplicates = [{ id: "old", name: "Earlier slip.jpg", reason: "Same delivery", key: "old:v1", received: true, unavailable: "Restore this earlier slip from the recycle bin to compare it." }] as typeof state.duplicates;
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Restore this earlier slip");
+  expect(screen.queryByRole("button", { name: /Compare files/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Earlier slip.jpg" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Different delivery" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Review & approve" })).toBeDisabled();
+  expect(posts).toHaveLength(0);
+});
