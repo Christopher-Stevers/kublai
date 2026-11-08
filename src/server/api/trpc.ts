@@ -7,6 +7,7 @@
  * need to use are documented accordingly near the end.
  */
 
+import { devFeaturesEnabled } from "~/server/dev-features";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -244,3 +245,9 @@ export const hasAppAccess = t.procedure
       },
     });
   });
+
+/** Development-only modules retain the normal account and organization checks. */
+export const hasDevAppAccess = hasAppAccess.use(({ next }) => {
+  if (!devFeaturesEnabled()) throw new TRPCError({ code: "NOT_FOUND" });
+  return next();
+});

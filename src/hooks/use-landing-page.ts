@@ -1,4 +1,6 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
+import { isDevOnlyPage } from "~/lib/dev-only-pages";
 import { createContext, useContext, useEffect, useState } from "react";
 import { snapshotSourceSchema, type SnapshotSource } from "~/lib/snapshot-source";
 import { landingPageDestination } from "~/lib/landing-page-destination";
@@ -7,6 +9,7 @@ const EVENT = "foremenhq:landing-page";
 
 /** Account-specific destination on this device; captures use the hyperlink format. */
 export function useLandingPage(userId?: string, initial?: SnapshotSource | null) {
+  const devFeatures = useDevFeatures();
   const inherited = useContext(DefaultLandingPageContext);
   const fallback = initial ?? inherited;
   const key = userId ? `foremenhq.landing-page.${userId}` : null;
@@ -39,5 +42,7 @@ export function useLandingPage(userId?: string, initial?: SnapshotSource | null)
     } catch { return false; }
   };
   const source = (saved.key === key ? saved.source : null) ?? fallback;
-  return { landingPage: landingPageDestination(source), source, setLandingPage };
+  const destination = landingPageDestination(source);
+  const availableSource = !devFeatures && isDevOnlyPage(destination) ? null : source;
+  return { landingPage: availableSource ? destination : "/jobs", source: availableSource, setLandingPage };
 }

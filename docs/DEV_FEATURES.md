@@ -1,6 +1,6 @@
 # Development-only features
 
-Models and Voice are controlled by the server-side `FOREMANHQ_DEV_FEATURES` flag.
+Models, Voice, Draws, Estimating, Timesheets, and Asset Management are controlled by the server-side `FOREMANHQ_DEV_FEATURES` flag.
 The browser's experimental setting cannot enable them when the server disables them.
 
 - `pnpm dev`: enabled by default; set `FOREMANHQ_DEV_FEATURES=false` to hide/block them.
@@ -15,3 +15,8 @@ the app after changing them. No authentication or permission checks are bypassed
 When disabled, the job cards and Voice provider are absent, the Models page
 returns not found, the offline Models view is suppressed, and model/voice HTTP
 and model tRPC operations are blocked. Other experimental features are unchanged.
+
+The four standalone menu pages are hidden in mobile, desktop, and landscape
+navigation. Their nested pages and APIs are blocked too, including estimate
+exports. Saved landing pages targeting them fall back to Jobs while disabled.
+Orders and ordering within material lists remain available.

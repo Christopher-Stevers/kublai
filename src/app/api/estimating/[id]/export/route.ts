@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { db } from "~/server/db";
@@ -16,6 +17,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     const id = z
       .string()

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { newEstimateDocument, newEstimateLine } from "~/lib/estimating/types";
 const mocks = vi.hoisted(() => ({ identity: vi.fn(), getEstimate: vi.fn() }));
@@ -77,4 +77,13 @@ it("returns safe private download headers and validates export inputs", async ()
     params,
   );
   expect(bad.status).toBe(400);
+});
+
+afterEach(() => vi.unstubAllEnvs());
+it("blocks exports before reading identity or estimate when dev features are off", async () => {
+  vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
+  const response = await GET(new Request(`https://app.test/api/estimating/${id}/export`), params);
+  expect(response.status).toBe(404);
+  expect(mocks.identity).not.toHaveBeenCalled();
+  expect(mocks.getEstimate).not.toHaveBeenCalled();
 });

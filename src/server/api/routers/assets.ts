@@ -20,7 +20,7 @@ import {
   type Holder,
   type Tx,
 } from "~/server/assets/service";
-import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasDevAppAccess } from "~/server/api/trpc";
 import {
   assertCanAccessTab,
   assertCanManageAssets,
@@ -50,7 +50,7 @@ const holderInput = z.object({
   id: z.string().min(1).max(255),
 });
 
-const assetsProcedure = hasAppAccess.use(({ ctx, next }) => {
+const assetsProcedure = hasDevAppAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "assets");
   return next({
     ctx: {

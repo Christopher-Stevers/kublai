@@ -1,4 +1,6 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
+import { isDevOnlyPage } from "~/lib/dev-only-pages";
 import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
 
 import { NewWindowButton } from "~/components/app/NewWindowButton";
@@ -99,6 +101,7 @@ function HeaderFrame({
   };
   sessionKey?: string;
 }) {
+  const devFeatures = useDevFeatures();
   const landscape = useLandscapeLayout();
   const simulation = useEmployeeSimulation();
   const router = useRouter();
@@ -190,7 +193,7 @@ function HeaderFrame({
           },
         ]
       : []),
-  ];
+  ].filter((link) => devFeatures || !isDevOnlyPage(link.href));
   const isActive = (href: string) => {
     if (href === "/jobs") {
       return (

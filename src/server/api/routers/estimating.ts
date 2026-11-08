@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasDevAppAccess } from "~/server/api/trpc";
 import {
   assemblySchema,
   estimateDocumentSchema,
@@ -32,8 +32,8 @@ const revision = z.number().int().min(1).max(2_147_483_646);
 const mutation = z.object({ id, expectedRevision: revision });
 
 export const estimatingRouter = createTRPCRouter({
-  jobs: hasAppAccess.query(({ ctx }) => listEstimateJobs(ctx)),
-  list: hasAppAccess
+  jobs: hasDevAppAccess.query(({ ctx }) => listEstimateJobs(ctx)),
+  list: hasDevAppAccess
     .input(
       z
         .object({
@@ -46,10 +46,10 @@ export const estimatingRouter = createTRPCRouter({
         .optional(),
     )
     .query(({ ctx, input }) => listEstimates(ctx, input)),
-  get: hasAppAccess
+  get: hasDevAppAccess
     .input(z.object({ id }))
     .query(({ ctx, input }) => getEstimate(ctx, input.id)),
-  create: hasAppAccess
+  create: hasDevAppAccess
     .input(
       z.object({
         jobId: id,
@@ -58,7 +58,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => createEstimate(ctx, input)),
-  save: hasAppAccess
+  save: hasDevAppAccess
     .input(
       mutation.extend({
         name: name.optional(),
@@ -66,13 +66,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => saveEstimate(ctx, input)),
-  setStatus: hasAppAccess
+  setStatus: hasDevAppAccess
     .input(mutation.extend({ status: estimateStatusSchema }))
     .mutation(({ ctx, input }) => setEstimateStatus(ctx, input)),
-  duplicate: hasAppAccess
+  duplicate: hasDevAppAccess
     .input(z.object({ id, name: name.optional() }))
     .mutation(({ ctx, input }) => duplicateEstimate(ctx, input)),
-  history: hasAppAccess
+  history: hasDevAppAccess
     .input(
       z.object({
         id,
@@ -81,13 +81,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => estimateHistory(ctx, input)),
-  restore: hasAppAccess
+  restore: hasDevAppAccess
     .input(mutation.extend({ eventId: id }))
     .mutation(({ ctx, input }) => restoreEstimate(ctx, input)),
-  resources: hasAppAccess
+  resources: hasDevAppAccess
     .input(z.object({ jobId: id }))
     .query(({ ctx, input }) => estimateResources(ctx, input.jobId)),
-  catalogue: hasAppAccess
+  catalogue: hasDevAppAccess
     .input(
       z.object({
         search: z.string().max(300),
@@ -95,8 +95,8 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => estimateCatalogue(ctx, input)),
-  pricing: hasAppAccess.query(({ ctx }) => getEstimatingPricing(ctx)),
-  savePricing: hasAppAccess
+  pricing: hasDevAppAccess.query(({ ctx }) => getEstimatingPricing(ctx)),
+  savePricing: hasDevAppAccess
     .input(
       z.object({
         expectedRevision: z.number().int().min(0).max(2_147_483_646),
@@ -105,13 +105,13 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => saveEstimatingPricing(ctx, input)),
-  applyPricing: hasAppAccess
+  applyPricing: hasDevAppAccess
     .input(mutation)
     .mutation(({ ctx, input }) => applyEstimatePricing(ctx, input)),
-  importMaterialList: hasAppAccess
+  importMaterialList: hasDevAppAccess
     .input(mutation.extend({ materialListId: id }))
     .mutation(({ ctx, input }) => importEstimateMaterialList(ctx, input)),
-  importPrefab: hasAppAccess
+  importPrefab: hasDevAppAccess
     .input(
       mutation.extend({
         prefabId: id,
@@ -119,7 +119,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => importEstimatePrefab(ctx, input)),
-  analyzeDrawings: hasAppAccess
+  analyzeDrawings: hasDevAppAccess
     .input(
       mutation.extend({
         sheetIds: z.array(id).min(1).max(5),
@@ -127,7 +127,7 @@ export const estimatingRouter = createTRPCRouter({
       }),
     )
     .mutation(({ ctx, input }) => analyzeEstimateDrawings(ctx, input)),
-  handoffMaterialList: hasAppAccess
+  handoffMaterialList: hasDevAppAccess
     .input(mutation)
     .mutation(({ ctx, input }) => handoffEstimateMaterialList(ctx, input)),
 });

@@ -8,7 +8,7 @@ import {
   toCents,
   type DrawStatus,
 } from "~/lib/draws";
-import { createTRPCRouter, hasAppAccess } from "~/server/api/trpc";
+import { createTRPCRouter, hasDevAppAccess } from "~/server/api/trpc";
 import { assertCan, assertCanAccessTab } from "~/server/auth/permissions";
 import { db } from "~/server/db";
 import {
@@ -32,7 +32,7 @@ const moneyInput = z
 const percentInput = z.number().min(0).max(100);
 
 // Draws show billing figures, so every procedure requires the draws tab.
-const drawsProcedure = hasAppAccess.use(({ ctx, next }) => {
+const drawsProcedure = hasDevAppAccess.use(({ ctx, next }) => {
   assertCanAccessTab(ctx.user, "draws");
   assertCan(ctx.user, "financial.view", "Dollar values are hidden for your account.");
   return next({

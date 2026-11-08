@@ -68,6 +68,7 @@ export default async function JobsLayout({
 
   return (
     <HydrateClient>
+      <DevFeaturesProvider enabled={devFeatures}>
       <SimulationProvider
         simulation={identity.simulation}
         actorId={identity.actorUser?.id ?? effectiveUserId}
@@ -127,13 +128,11 @@ export default async function JobsLayout({
                               organizationId={organizationId}
                             >
                               <SupplierLabelProvider>
-                                <DevFeaturesProvider enabled={devFeatures}>
                                   {devFeatures ? (
                                     <VoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
                                       {children}
                                     </VoiceProvider>
                                   ) : children}
-                                </DevFeaturesProvider>
                               </SupplierLabelProvider>
                             </MaterialSortProvider>
                           </ChatViewProvider>
@@ -148,6 +147,7 @@ export default async function JobsLayout({
           </SystemsAccessProvider>
         </TutorialGate>
       </SimulationProvider>
+      </DevFeaturesProvider>
     </HydrateClient>
   );
 }

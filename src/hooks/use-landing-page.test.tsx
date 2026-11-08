@@ -1,3 +1,5 @@
+import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
+import type { ReactNode } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useLandingPage } from "./use-landing-page";
@@ -63,4 +65,17 @@ it("preserves custom drawing, document and other nested destinations", () => {
     act(() => { view.result.current.setLandingPage(destination); });
     expect(view.result.current.landingPage).toBe(destination.href);
   }
+});
+
+it("falls back from dev-only landing pages without deleting the saved choice or blocking Orders", () => {
+  const source = makeSnapshotSource("/jobs/assets/tools/one", { version: 1 }, "Tool");
+  const view = renderHook(() => useLandingPage("tim", source));
+  expect(view.result.current.landingPage).toBe("/jobs");
+  expect(view.result.current.source).toBeNull();
+  const devView = renderHook(() => useLandingPage("tim", source), {
+    wrapper: ({ children }: { children: ReactNode }) => <DevFeaturesProvider enabled>{children}</DevFeaturesProvider>,
+  });
+  expect(devView.result.current.source).toEqual(source);
+  act(() => { view.result.current.setLandingPage(orders); });
+  expect(view.result.current.landingPage).toBe(orders.href);
 });
