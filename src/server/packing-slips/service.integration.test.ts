@@ -1182,6 +1182,30 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect((await receivingQueue(f.access,f.doc.documentId)).documents[0]!.pending).toBe(1);
     expect(Number((await item()).quantity)).toBe(10);
   });
+  it("removes an unreceived quoted order line without deleting its material-list entry", async () => {
+    const { access, doc } = await confirmedHeader();
+    await db.update(schema.orderItems).set({ receivedQuantity: "0" }).where(eq(schema.orderItems.id, id(6)));
+    await db.insert(schema.quoteItems).values({
+      id: id(820), quoteId: id(821), partDefinitionId: id(5),
+      quantity: "10", sentOrderItemId: id(6),
+    } as never);
+    await conn.unsafe('ALTER TABLE kublai_quote_item ADD CONSTRAINT removal_test_fk FOREIGN KEY ("sentOrderItemId") REFERENCES kublai_order_item(id) ON DELETE RESTRICT');
+    try {
+      const state = await workspace();
+      state.documents[0]!.receivingReview!.lines.forEach(line => { line.orderItemId = null; });
+      await db.update(schema.jobDocumentWorkspaces).set({ state }).where(eq(schema.jobDocumentWorkspaces.jobId, job));
+      await reviewAction(access, doc.documentId, {
+        action: "removeOrderItem", itemId: id(6), confirmed: true,
+        fingerprint: orderFingerprint(await orderSnapshot(db, access, order)),
+      });
+      expect(await db.select().from(schema.orderItems)).toHaveLength(0);
+      expect(await db.select().from(schema.quoteItems)).toMatchObject([
+        { id: id(820), partDefinitionId: id(5), quantity: "10.000000", sentOrderItemId: null },
+      ]);
+    } finally {
+      await conn.unsafe('ALTER TABLE kublai_quote_item DROP CONSTRAINT removal_test_fk');
+    }
+  });
   it.each(["success", "received", "matched", "stale", "foreign"])("removing an absent order item: %s", async (mode) => {
     const {access, doc} = await confirmedHeader();
     await db.update(schema.orderItems).set({receivedQuantity: mode === "received" ? "2" : "0"}).where(eq(schema.orderItems.id, id(6)));

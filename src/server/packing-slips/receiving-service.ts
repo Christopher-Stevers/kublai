@@ -1242,6 +1242,11 @@ async function mutateReceivingImpl(
         if ((slipReceipts(state.documents).get(input.itemId) ?? []).length) fail("Another slip has receipt records for this item.");
         removedOrderItem = item;
         if (review.orderResolutions) delete review.orderResolutions[input.itemId];
+        // Keep the material-list entry, but return it to an editable, unordered
+        // state before deleting the order line referenced by its restrictive FK.
+        await tx.update(quoteItems)
+          .set({ sentOrderItemId: null, updatedAt: new Date() })
+          .where(eq(quoteItems.sentOrderItemId, input.itemId));
         await tx.delete(orderItems).where(and(eq(orderItems.id, input.itemId), eq(orderItems.orderId, order.id)));
       } else if (input.action === "ignore") {
         const l = lineFor(input.lineId);
