@@ -416,6 +416,13 @@ export function JobDocumentsView({
     }
     let active = true;
     setLoading(true);
+    // Show the folders saved last visit while the list refreshes.
+    void drawingAccount?.store
+      ?.readSnapshot<DocumentOverview>(`document-overview:${jobId}`)
+      .then((saved) => {
+        if (active && saved && loadedJobId.current !== jobId) setData(saved);
+      })
+      .catch(() => undefined);
     void refresh()
       .catch((reason: unknown) => {
         if (active)
@@ -434,7 +441,7 @@ export function JobDocumentsView({
       // eslint-disable-next-line react-hooks/exhaustive-deps
       ++requestNumber.current;
     };
-  }, [refresh, sandbox]);
+  }, [refresh, sandbox, drawingAccount?.store, jobId]);
 
   useHeaderBackOverride(
     editorDocument

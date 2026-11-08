@@ -20,10 +20,19 @@ export async function GET(request: Request) {
       new URL(request.url).searchParams.get("jobId"),
     );
     const { userId } = await getRequestIdentity(request.headers, { request });
-    return Response.json(
+    const started = performance.now();
+    const body = JSON.stringify(
       await documentOverview(await assertDocumentAccess(userId, jobId)),
-      { headers: { "Cache-Control": "private, no-store" } },
     );
+    console.log(
+      `[documents] list took ${Math.round(performance.now() - started)}ms ${Math.round(body.length / 1024)} KB`,
+    );
+    return new Response(body, {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     return documentHttpError(error);
   }
