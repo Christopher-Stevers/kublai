@@ -320,3 +320,39 @@ for (const count of [0, 1, 2, 3, 6]) {
     }
   });
 }
+
+it("puts a basket beside search in the arrow position and keeps it available while searching", () => {
+  const toggle = vi.fn();
+  render(
+    <PriorityActionBar
+      search={{ value: "", onChange: vi.fn(), label: "Search parts" }}
+      searchAction={<button aria-label="Basket (2)" onClick={toggle}>Basket 2</button>}
+    >
+      <button>Create Part</button>
+      <button>Add 2 Parts</button>
+    </PriorityActionBar>,
+  );
+  const basket = screen.getByRole("button", { name: "Basket (2)" });
+  const split = basket.closest("[data-split-search]");
+  expect(split).not.toBeNull();
+  expect(within(split as HTMLElement).getAllByRole("button").map(b => b.getAttribute("aria-label"))).toEqual(["Basket (2)", "Search parts"]);
+  expect(screen.queryByRole("button", {name: "Expand all actions"})).toBeNull();
+  fireEvent.click(screen.getByRole("button", {name: "Search parts"}));
+  expect(screen.getByRole("searchbox", {name: "Search parts"})).toBeVisible();
+  fireEvent.click(screen.getByRole("button", {name: "Basket (2)"}));
+  expect(toggle).toHaveBeenCalledOnce();
+});
+
+it("keeps the basket accessible on the shelf when extra actions need the arrow", () => {
+  render(
+    <PriorityActionBar
+      search={{ value: "", onChange: vi.fn(), label: "Search parts" }}
+      searchAction={<button>Basket</button>}
+    >
+      {buttons(3)}
+    </PriorityActionBar>,
+  );
+  expect(screen.queryByRole("button", {name: "Basket"})).toBeNull();
+  fireEvent.click(screen.getByRole("button", {name: "Expand all actions"}));
+  expect(within(screen.getByRole("group", {name: "More actions"})).getByRole("button", {name: "Basket"})).toBeVisible();
+});

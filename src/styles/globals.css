@@ -790,7 +790,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   height: 100%;
   font-size: 1rem;
 }
-/* Search split with the shelf arrow: one button, two halves. */
+/* Search split with the shelf arrow or a view action: one slot, two halves. */
 [data-split-search] > div {
   display: flex;
 }
@@ -799,11 +799,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   flex: 1;
   min-width: 0;
 }
-[data-split-search] > div > button[data-action-bar-expand] {
+[data-split-search] > div > button:first-child:not(:last-child) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
-[data-split-search] > div > button[data-action-bar-expand] + button {
+[data-split-search] > div > button + button {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   border-left-width: 0;

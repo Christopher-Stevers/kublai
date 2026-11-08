@@ -108,12 +108,15 @@ export function PriorityActionBar({
   className,
   label,
   search,
+  searchAction,
   dismissOnBack = false,
   tabAction,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   label?: ReactNode;
   search?: BarSearch;
+  /** View action in the arrow half of Search; shelved if overflow is needed. */
+  searchAction?: ReactNode;
   dismissOnBack?: boolean;
   /** Optional screen-specific view toggle above the action row. */ tabAction?: ReactNode;
 }) {
@@ -129,7 +132,11 @@ export function PriorityActionBar({
   const hasOverflow = primary.length !== actions.length || primary.length > limit - Number(hasSearch);
   const capacity = limit - Number(hasSearch || hasOverflow);
   const shown = primary.slice(-capacity);
-  const shelf = actions.filter(action => !shown.includes(action));
+  const overflow = actions.filter(action => !shown.includes(action));
+  const inlineSearchAction = hasSearch && overflow.length === 0 ? searchAction : null;
+  const shelf = hasSearch && overflow.length > 0 && searchAction
+    ? [searchAction, ...overflow]
+    : overflow;
   const shelved = shelf.length;
   // Named sections always stay in the expanded menu, preserving the primary slots.
   const shelfGroups = new Map<string, ReactNode[]>();
@@ -257,6 +264,7 @@ export function PriorityActionBar({
           <div data-landscape-navigation-slot />
           {search && searching && (
             <div data-action-bar-search>
+              {inlineSearchAction && <div data-action-slot className="w-(--action-height) shrink-0">{inlineSearchAction}</div>}
               <div className="relative min-w-0 flex-1">
                 <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
@@ -346,7 +354,8 @@ export function PriorityActionBar({
                       <ChevronUpIcon aria-hidden className={cn("transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
                     </Button>
                   )}
-                  <BarSearchButton iconOnly={shelved > 0} />
+                  {!searching && inlineSearchAction}
+                  <BarSearchButton iconOnly={shelved > 0 || !!inlineSearchAction} />
                 </div>
               </div>
             )}

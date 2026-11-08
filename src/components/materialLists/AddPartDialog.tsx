@@ -13,7 +13,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { AlertCircle, XIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
+import { AlertCircle, XIcon, PlusIcon, ArrowLeftRight, ShoppingBasketIcon, ChevronLeftIcon, PackagePlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -1338,19 +1338,26 @@ export function AddPartDialog({
                   label: "Search parts",
                   placeholder: "Search",
                 } : undefined}
-                tabAction={!prefabView ? (
-                  <button type="button" data-action-bar-tab data-tutorial="wizard-chosen-toggle" className="whitespace-nowrap"
-                    aria-pressed={showChosenParts}
+                searchAction={!prefabView && !showChosenParts ? (
+                  <Button type="button" variant="outline" data-tutorial="wizard-chosen-toggle"
+                    aria-label={`Basket (${pendingParts.length})`}
+                    title={`Basket (${pendingParts.length})`}
                     disabled={isAddingParts}
-                    onClick={() => setShowChosenParts(shown => !shown)}>
-                    <ListChecksIcon aria-hidden />
-                    {showChosenParts ? `Select ${isToolRequest ? "Tools" : "Parts"}` : `Basket (${pendingParts.length})`}
-                  </button>
+                    onClick={() => setShowChosenParts(true)}>
+                    <ShoppingBasketIcon aria-hidden />
+                    <span>{pendingParts.length}</span>
+                  </Button>
                 ) : undefined}
                 label={!prefabView && !isToolRequest ? (
                   <FinancialOnly><span className="text-muted-foreground">Basket Total</span><span className="font-bold tabular-nums">${chosenPartsTotal.toFixed(2)}</span></FinancialOnly>
                 ) : undefined}
               >
+                {!prefabView && showChosenParts && (
+                  <Button variant="outline" className={barButton} data-tutorial="wizard-chosen-toggle"
+                    disabled={isAddingParts} onClick={() => setShowChosenParts(false)}>
+                    <ChevronLeftIcon aria-hidden />Select {isToolRequest ? "Tools" : "Parts"}
+                  </Button>
+                )}
                 {prefabView || showChosenParts ? (
                   <Button variant="outline" className={barButton} onClick={closeDialogAndCleanHistory} disabled={isAddingParts}>
                     <XIcon className="mr-1 h-3.5 w-3.5 shrink-0" />Cancel
