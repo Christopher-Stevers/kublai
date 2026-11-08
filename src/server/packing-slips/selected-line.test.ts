@@ -3,7 +3,7 @@ import { detectSelectedLine } from "./selected-line";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 const read = vi.hoisted(() => vi.fn());
 vi.mock("./terra-fallback", () => ({ readTerraFallback: read }));
-const item = { id: "item", description: "Cap", ordered: 2, unit: "ea", aliases: [], sku: null } as ReceiptOrderItem;
+const item: ReceiptOrderItem = { received: 0, verificationStatus: "pending", piecesPerPack: null, individualUnit: null, id: "item", description: "Cap", ordered: 2, unit: "ea", aliases: [], sku: null };
 const box = { x: .4, y: .5, width: .2, height: .05 };
 it("requests one full-width row with headings and ignores header detections", async () => {
   const line = { page: 2, box, description: "Cap" };
