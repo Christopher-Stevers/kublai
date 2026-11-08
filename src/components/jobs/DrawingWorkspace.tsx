@@ -16,7 +16,7 @@ import { DrawingArcMenu, DrawingArcRegistration, type DrawingArcItem } from "./D
 import { drawingArcStyleItems } from "./drawing-arc-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { useContext, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
@@ -61,6 +61,7 @@ import {
   CircleAlertIcon,
   DownloadIcon,
   FileTextIcon,
+  FolderIcon,
   HandIcon,
   HistoryIcon,
   InfoIcon,
@@ -778,6 +779,19 @@ export function DrawingWorkspace({
     links: [],
   });
   const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
+  // The bar's search: this job's drawings and documents by name.
+  const [find, setFind] = useState("");
+  const [findRound, setFindRound] = useState(0);
+  const findText = useDeferredValue(find.trim());
+  const finding = findText.length >= 2;
+  const foundSheets = api.drawingsWorkspace.linkTargets.useQuery(
+    { sheetId: sheet.id, kind: "sheet", query: findText },
+    { enabled: finding && online, retry: 1 },
+  );
+  const foundDocuments = api.drawingsWorkspace.linkTargets.useQuery(
+    { sheetId: sheet.id, kind: "document", query: findText },
+    { enabled: finding && online, retry: 1 },
+  );
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
   const scaleMutation = api.drawingsWorkspace.setScale.useMutation();
@@ -1939,6 +1953,16 @@ export function DrawingWorkspace({
     ] },
   ];
 
+  const found = [
+    ...(foundSheets.data?.targets ?? []).map((target) => ({ target, kind: "Drawing" })),
+    ...(foundDocuments.data?.targets ?? []).map((target) => ({ target, kind: "Document" })),
+  ];
+  const openFound = (target: DrawingMarkupLink) => {
+    setFind("");
+    // A new bar closes its search field.
+    setFindRound((n) => n + 1);
+    void openDestination(target);
+  };
   const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean, group?: string) => (
     <Button key={label} variant={pressed ? "default" : "outline"} className={BAR_BUTTON}
       disabled={disabled} aria-pressed={pressed} data-action-group={group} onClick={() => { finishTool(); run(); }}>
@@ -3644,10 +3668,49 @@ export function DrawingWorkspace({
             </div>
           </>
         )}
+        {finding && (
+          <div
+            role="region"
+            aria-label="Drawings and documents found"
+            className="spring-up bg-card/95 absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[50dvh] overflow-y-auto rounded-2xl border p-2 shadow-xl backdrop-blur"
+          >
+            {!online ? (
+              <p className="text-muted-foreground p-2 text-sm">Search needs a connection.</p>
+            ) : foundSheets.isPending || foundDocuments.isPending ? (
+              <p className="text-muted-foreground p-2 text-sm">Searching…</p>
+            ) : found.length ? (
+              <ul>
+                {found.map(({ target, kind }) => (
+                  <li key={`${kind}:${target.key}`}>
+                    <button
+                      type="button"
+                      className="hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm outline-none"
+                      onClick={() => openFound(target)}
+                    >
+                      {kind === "Drawing" ? <FileTextIcon className="size-4 shrink-0" /> : <FolderIcon className="size-4 shrink-0" />}
+                      <span className="min-w-0 flex-1 truncate">{target.label}</span>
+                      <span className="text-muted-foreground text-xs">{kind}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground p-2 text-sm">No drawings or documents match.</p>
+            )}
+          </div>
+        )}
         <PriorityActionBar
+          key={findRound}
           dismissOnBack
           role="toolbar"
           aria-label="Drawing tools"
+          search={{
+            value: find,
+            onChange: setFind,
+            label: "Search drawings and documents",
+            placeholder: "Search drawings and documents",
+            split: true,
+          }}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
         >
           <Button variant={scroll ? "default" : "outline"} className={BAR_BUTTON} role="switch" aria-label="Scroll between pages" aria-checked={scroll} onClick={() => setScroll(!scroll)}>

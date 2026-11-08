@@ -116,7 +116,9 @@ export async function drawingLinkTargets(
       memberIds: [],
     });
     for (const document of visible.documents.filter(
-      (item) => !item.deletedAt,
+      (item) =>
+        !item.deletedAt &&
+        (!query || item.name.toLowerCase().includes(query)),
     )) {
       const version = visible.versions.find(
         (item) => item.id === document.currentVersionId,

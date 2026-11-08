@@ -790,6 +790,26 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   height: 100%;
   font-size: 1rem;
 }
+/* Search split with the shelf arrow: one button, two halves. */
+[data-split-search] > div {
+  display: flex;
+}
+[data-split-search] > div > button {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+[data-split-search] > div > button[data-action-bar-expand] {
+  flex: none;
+  width: var(--action-height);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+[data-split-search] > div > button[data-action-bar-expand] + button {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-width: 0;
+}
 [data-action-bar-label]:empty {
   display: none;
 }

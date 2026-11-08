@@ -83,15 +83,26 @@ export type BarSearch = {
   placeholder?: string;
   /** Keep search in its own action slot alongside buttons on desktop. */
   inlineDesktop?: boolean;
+  /** Search is always leftmost, one split button with the arrow that
+   * expands the shelf. Put no BarSearchButton among the actions. */
+  split?: boolean;
 };
 
 const BarSearchContext = createContext<{
   value: string;
+  label: string;
   open: () => void;
   inline?: BarSearch;
 } | null>(null);
 
-export function BarSearchButton({ className }: { className?: string }) {
+export function BarSearchButton({
+  className,
+  iconOnly = false,
+}: {
+  className?: string;
+  /** Just the symbol, named for screen readers, as in a split button. */
+  iconOnly?: boolean;
+}) {
   const search = useContext(BarSearchContext);
   if (!search) return null;
   if (search.inline) {
@@ -113,10 +124,14 @@ export function BarSearchButton({ className }: { className?: string }) {
       variant="outline"
       className={className}
       data-bar-search-button
+      aria-label={iconOnly ? (value ? `${search.label}: ${value}` : search.label) : undefined}
+      title={iconOnly ? search.label : undefined}
       onClick={search.open}
     >
       <SearchIcon />
-      <span className="truncate">{value ? `“${value}”` : "Search"}</span>
+      {!iconOnly && (
+        <span className="truncate">{value ? `“${value}”` : "Search"}</span>
+      )}
     </Button>
   );
 }
@@ -146,6 +161,7 @@ export function PriorityActionBar({
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = useActionLimit(root);
+  const split = !!search?.split;
   const shelved = actions.length > limit ? actions.length - limit : 0;
   const shown = actions.slice(shelved);
   // Named groups only affect the expanded shelf; primary action slots keep
@@ -174,7 +190,7 @@ export function PriorityActionBar({
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, [search?.inlineDesktop]);
-  const inlineSearch = !!search?.inlineDesktop && desktop;
+  const inlineSearch = !!search?.inlineDesktop && desktop && !split;
   const searchButton = useRef(false);
   const expanded = open && shelved > 0 && (!searching || inlineSearch);
   useHeaderBackOverride(
@@ -235,6 +251,7 @@ export function PriorityActionBar({
         search
           ? {
               value: search.value,
+              label: search.label,
               open: () => setSearching(true),
               inline: inlineSearch ? search : undefined,
             }
@@ -325,10 +342,33 @@ export function PriorityActionBar({
             data-action-bar-row
             hidden={!!search && searching && !inlineSearch}
             style={{
-              gridTemplateColumns: `${shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
+              gridTemplateColumns: `${split ? `calc(var(--action-height) * ${shelved > 0 ? 2 : 1}) ` : shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
             }}
           >
-            {shelved > 0 && (
+            {split && (
+              <div data-action-slot data-split-search key="split-search">
+                <div>
+                  {shelved > 0 && (
+                    <Button
+                      ref={tab}
+                      type="button"
+                      variant={expanded ? "default" : "outline"}
+                      data-action-bar-expand
+                      data-count={shelved}
+                      aria-label={expanded ? "Collapse actions" : "Expand all actions"}
+                      aria-expanded={expanded}
+                      aria-controls={shelfId}
+                      title={expanded ? "Collapse actions" : "Expand all actions"}
+                      onClick={() => setOpen(!expanded)}
+                    >
+                      <ChevronUpIcon aria-hidden className={cn("transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
+                    </Button>
+                  )}
+                  <BarSearchButton iconOnly />
+                </div>
+              </div>
+            )}
+            {shelved > 0 && !split && (
               <div data-action-slot key="expand-actions">
                 <Button
                   ref={tab}

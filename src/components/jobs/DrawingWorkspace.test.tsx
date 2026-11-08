@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   viewer: vi.fn(),
   loadLink: vi.fn(),
   push: vi.fn(),
+  linkTargets: (_input: { kind: string; query: string }) => [] as Array<Record<string, unknown>>,
   account: null as { userId: string; accountKey: string; store: null } | null,
   data: null as Workspace | null,
   queryError: null as { message: string; data: { code: string } } | null,
@@ -69,8 +70,8 @@ vi.mock("~/trpc/react", () => ({
       addMeasurementLayer: { useMutation: () => ({ mutateAsync: vi.fn(async () => undefined) }) },
       setScale: { useMutation: () => ({ mutateAsync: mocks.setScale }) },
       linkTargets: {
-        useQuery: () => ({
-          data: { jobs: [], targets: [] },
+        useQuery: (input: { kind: string; query: string }) => ({
+          data: { jobs: [], targets: mocks.linkTargets(input) },
           isFetching: false,
           error: null,
         }),
@@ -1896,11 +1897,30 @@ it("leaves a completed measurement unselected after its asynchronous save finish
   });
 });
 
+it("searches the job's drawings and documents from the split button by the arrow", async () => {
+  mocks.linkTargets = ({ kind, query }) =>
+    query === "spec" && kind === "document"
+      ? [{ key: "doc", label: "Mechanical spec", url: `/jobs/${jobId}/documents?document=doc` }]
+      : [];
+  try {
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Search drawings and documents" }));
+    fireEvent.change(within(bar).getByRole("searchbox", { name: "Search drawings and documents" }), { target: { value: "spec" } });
+    const found = await screen.findByRole("region", { name: "Drawings and documents found" });
+    fireEvent.click(within(found).getByRole("button", { name: /Mechanical spec/ }));
+    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/documents?document=doc`, { scroll: false });
+    expect(screen.queryByRole("region", { name: "Drawings and documents found" })).toBeNull();
+  } finally {
+    mocks.linkTargets = () => [];
+  }
+});
+
 it("keeps full screen on the drawing so Tools stays in the bar", () => {
   const onFullscreen = vi.fn();
   render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
-  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Expand all actions", "Tools", "Markup", "Measure"]);
+  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Expand all actions", "Search drawings and documents", "Tools", "Markup", "Measure"]);
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
   openMenu("More");
