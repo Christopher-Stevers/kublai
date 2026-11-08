@@ -92,7 +92,7 @@ describe.skipIf(!socket)(
       expect(
         await reserveHyperlinkRun(
           db,
-          { ...base, id: randomUUID(), reader: "deepseek" },
+          { ...base, id: randomUUID(), fingerprint: "different-model-fingerprint" },
           false,
         ),
       ).toEqual({ cached: null });

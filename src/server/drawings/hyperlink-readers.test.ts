@@ -37,7 +37,7 @@ vi.mock("./hyperlink-images", () => ({ hyperlinkImages: m.render }));
 vi.mock("./hyperlink-reader-store", () => ({ reserveHyperlinkRun: m.reserve }));
 vi.mock("./hyperlink-vision", () => ({
   HYPERLINK_READER_REVISION: "test",
-  HYPERLINK_MODELS: { terra: "terra", deepseek: "deepseek" },
+  HYPERLINK_MODELS: { terra: "terra" },
   hyperlinkReaderConfigured: m.configured,
   readHyperlinkVision: m.read,
 }));

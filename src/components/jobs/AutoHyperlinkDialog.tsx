@@ -65,7 +65,6 @@ export function AutoHyperlinkDialog(props: {
   const [hasReading, setHasReading] = useState(false);
   const [readers, setReaders] = useState<{
     terra: { available: boolean };
-    deepseek: { available: boolean };
   } | null>(null);
   const [readerError, setReaderError] = useState("");
   const [scope, setScope] = useState<HyperlinkScope>({
@@ -144,7 +143,7 @@ export function AutoHyperlinkDialog(props: {
           });
       } else {
         setStatus(
-          `${reader === "terra" ? "Terra" : "DeepSeek"} is reading the drawing image…`,
+          "Terra is reading the drawing image…",
         );
         const detection = await detect.mutateAsync({
           sheetId: props.sheetId,
@@ -401,7 +400,7 @@ export function AutoHyperlinkDialog(props: {
             {readers?.[reader].available
               ? "Reads tags from this drawing’s image. Check locations and select the links you want to save."
               : readers
-                ? `${reader === "terra" ? "Terra" : "DeepSeek"} is not connected yet. Ask your administrator to connect it.`
+                ? "Terra is not connected yet. Ask your administrator to connect it."
                 : "Checking reader connection…"}
           </p>
         )}
@@ -449,7 +448,7 @@ export function AutoHyperlinkDialog(props: {
               ? "Scan again"
               : hasReading
                 ? "Read again"
-                : `Scan with ${reader === "terra" ? "Terra" : "DeepSeek"}`}
+                : "Scan with Terra"}
           </Button>
         </div>
         <p role="status" className="text-sm">

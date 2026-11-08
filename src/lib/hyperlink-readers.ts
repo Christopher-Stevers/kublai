@@ -1,18 +1,17 @@
 import { z } from "zod";
 import type { TitleBlockWord } from "./drawing-title-block";
 
-export const hyperlinkReaders = ["normal", "terra", "deepseek"] as const;
+export const hyperlinkReaders = ["normal", "terra"] as const;
 export type HyperlinkReader = (typeof hyperlinkReaders)[number];
 export type VisionHyperlinkReader = Exclude<HyperlinkReader, "normal">;
 export const hyperlinkReaderLabels: Record<HyperlinkReader, string> = {
   normal: "Version 1 · Normal",
   terra: "Version 2 · Terra",
-  deepseek: "Version 3 · DeepSeek",
 };
 export const hyperlinkDetectInput = z.object({
   sheetId: z.uuid(),
   sourceSheetId: z.uuid(),
-  reader: z.enum(["terra", "deepseek"]),
+  reader: z.literal("terra"),
   requestId: z.uuid(),
   refresh: z.boolean().default(false),
 });

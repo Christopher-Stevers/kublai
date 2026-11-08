@@ -7,20 +7,18 @@ Every request resolves the job and readable document folders again.
 
 ## Auto Hyperlink versions
 
-The Version selector offers three readers. Version 1 (Normal) retains the existing
+The Version selector offers two readers. Version 1 (Normal) retains the existing
 embedded PDF text / previously recognized OCR flow, tag rules and job schedule
 vocabulary. It runs when the dialog opens and makes no external model request.
-Version 2 (Terra, `gpt-6.1-terra`) and Version 3 (DeepSeek, `deepseek-flash`)
-read the current drawing image only after the user starts a scan. Both return
-typed tag text and source boxes. App code validates coordinates, anchors to exact
+Version 2 (Terra, `gpt-6.1-terra`) reads the current drawing image only after the user starts a scan. Terra returns
+typed drawing tag text and source boxes. App code validates coordinates, anchors to exact
 PDF text where possible, deduplicates overlapping crops, and performs the same
-permission-filtered destination lookup. Neither model supplies URLs or saves links.
+permission-filtered destination lookup. The model does not supply URLs or save links.
 AI results start unchecked; users can inspect locations and destinations before
 saving. Repeated image-only tags retain every reviewed occurrence on the source.
 Other linked sheets still use their own exact text positions.
 
-Keys stay server-side: `OPENAI_API_KEY` for Terra and `DEEPSEEK_API_KEY` for
-DeepSeek's hosted vision API. An unconfigured reader is shown as disconnected;
+The `OPENAI_API_KEY` for Terra stays server-side. An unconfigured reader is shown as disconnected;
 there is no fallback to another model. Choosing a version alone never calls its
 provider. Whole-page and four overlapping crops are sent with up to 1,000 schedule
 tags. Requests have a 75-second timeout, a 12 MiB image limit, a 1 MiB response

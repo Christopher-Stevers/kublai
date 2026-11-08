@@ -57,7 +57,6 @@ beforeEach(() => {
   mock.readers.mockResolvedValue({
     normal: { available: true },
     terra: { available: true },
-    deepseek: { available: true },
   });
   mock.detect.mockResolvedValue({
     reader: "terra",
@@ -225,7 +224,7 @@ it("stops a scan without saving or displaying its late results", async () => {
   await waitFor(() => expect(screen.queryByText("HEX-2")).toBeNull());
   expect(save).not.toHaveBeenCalled();
 });
-it.each(["terra", "deepseek"])(
+it.each(["terra"])(
   "uses the selected %s reader only after an explicit scan and saves reviewed positions",
   async (reader) => {
     readWords.mockResolvedValue([]);
@@ -237,7 +236,7 @@ it.each(["terra", "deepseek"])(
     expect(mock.detect).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", {
-        name: `Scan with ${reader === "terra" ? "Terra" : "DeepSeek"}`,
+        name: `Scan with Terra`,
       }),
     );
     await screen.findByText("HEX-2");
@@ -274,17 +273,16 @@ it.each(["terra", "deepseek"])(
 );
 it("shows a disconnected provider without quietly substituting Normal", async () => {
   mock.readers.mockResolvedValue({
-    terra: { available: true },
-    deepseek: { available: false },
+    terra: { available: false },
   });
   render(<AutoHyperlinkDialog {...props()} />);
   await screen.findByText("HEX-2");
   fireEvent.change(screen.getByLabelText("Auto Hyperlink version"), {
-    target: { value: "deepseek" },
+    target: { value: "terra" },
   });
-  await screen.findByText(/DeepSeek is not connected yet/);
+  await screen.findByText(/Terra is not connected yet/);
   expect(
-    screen.getByRole("button", { name: "Scan with DeepSeek" }),
+    screen.getByRole("button", { name: "Scan with Terra" }),
   ).toBeDisabled();
   expect(screen.queryByText("HEX-2")).toBeNull();
   expect(mock.detect).not.toHaveBeenCalled();

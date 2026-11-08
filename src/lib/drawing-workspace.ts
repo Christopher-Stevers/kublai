@@ -116,7 +116,8 @@ export const drawingMarkupSchema = z
     deferredLinks: z.object({ id, revision: z.number().int().min(1), count: z.number().int().min(1).max(MAX_DRAWING_LINKS) }).optional(),
     linkAppearance: z.enum(["box", "highlight"]).optional(),
     equipmentTag: z.string().trim().min(1).max(40).optional(),
-    hyperlinkReader: z.enum(["normal", "terra", "deepseek"]).optional(),
+    // Retired reader metadata must not invalidate otherwise usable saved links.
+    hyperlinkReader: z.enum(["normal", "terra"]).optional().catch(undefined),
     equipmentTagBoxes: z.array(z.object({
       left: z.number().finite().min(0).max(1), top: z.number().finite().min(0).max(1),
       right: z.number().finite().min(0).max(1), bottom: z.number().finite().min(0).max(1),

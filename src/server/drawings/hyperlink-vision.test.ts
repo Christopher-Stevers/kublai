@@ -47,7 +47,7 @@ it("deduplicates overlapping crops but retains separate occurrences of a tag", (
       ],
       warnings: [],
     },
-    "deepseek",
+    "terra",
     [image],
     [],
   );
@@ -71,74 +71,47 @@ it.each([
     ).toThrow();
   },
 );
-it.each(["terra", "deepseek"] as const)(
-  "sends images to the selected %s provider and validates its completed JSON response",
-  async (reader) => {
-    vi.stubEnv("OPENAI_API_KEY", "fixture-key");
-    vi.stubEnv("DEEPSEEK_API_KEY", "fixture-key");
-    const request = vi.fn(async () =>
-      Response.json(
-        reader === "terra"
-          ? {
-              status: "completed",
-              output: [
-                {
-                  content: [
-                    { type: "output_text", text: JSON.stringify(output) },
-                  ],
-                },
-              ],
-            }
-          : {
-              choices: [
-                {
-                  finish_reason: "stop",
-                  message: { content: JSON.stringify(output) },
-                },
-              ],
-            },
-      ),
-    );
-    const result = await readHyperlinkVision(
-      reader,
-      [image],
-      [],
-      ["AHU-1"],
-      request,
-    );
-    expect(result.tags[0]?.tag).toBe("AHU-1");
-    const [url, init] = request.mock.calls[0]! as unknown as [
-      string,
-      RequestInit,
-    ];
-    const body = JSON.parse(init.body as string) as {
-      model: string;
-      store?: boolean;
-      response_format?: { type: string };
-    };
-    expect(url).toBe(
-      reader === "terra"
-        ? "https://api.openai.com/v1/responses"
-        : "https://api.deepseek.com/chat/completions",
-    );
-    expect(body.model).toBe(
-      reader === "terra" ? "gpt-6.1-terra" : "deepseek-flash",
-    );
-    expect(JSON.stringify(body)).toContain("data:image/png;base64,");
-    if (reader === "terra") expect(body.store).toBe(false);
-    else expect(body.response_format).toEqual({ type: "json_object" });
-  },
-);
+it("sends images to Terra and validates its completed JSON response", async () => {
+  vi.stubEnv("OPENAI_API_KEY", "fixture-key");
+  const request = vi.fn(async () =>
+    Response.json({
+      status: "completed",
+      output: [
+        { content: [{ type: "output_text", text: JSON.stringify(output) }] },
+      ],
+    }),
+  );
+  const result = await readHyperlinkVision(
+    "terra",
+    [image],
+    [],
+    ["AHU-1"],
+    request,
+  );
+  expect(result.tags[0]?.tag).toBe("AHU-1");
+  const [url, init] = request.mock.calls[0]! as unknown as [
+    string,
+    RequestInit,
+  ];
+  const body = JSON.parse(init.body as string) as {
+    model: string;
+    store: boolean;
+  };
+  expect(url).toBe("https://api.openai.com/v1/responses");
+  expect(body.model).toBe("gpt-6.1-terra");
+  expect(body.store).toBe(false);
+  expect(JSON.stringify(body)).toContain("data:image/png;base64,");
+});
 it("does not call a provider without credentials or fall back after failure", async () => {
-  vi.stubEnv("DEEPSEEK_API_KEY", "");
+  vi.stubEnv("OPENAI_API_KEY", "");
   const request = vi.fn(async () => new Response("error", { status: 429 }));
   await expect(
-    readHyperlinkVision("deepseek", [image], [], [], request),
+    readHyperlinkVision("terra", [image], [], [], request),
   ).rejects.toThrow("not connected");
   expect(request).not.toHaveBeenCalled();
-  vi.stubEnv("DEEPSEEK_API_KEY", "fixture");
+  vi.stubEnv("OPENAI_API_KEY", "fixture");
   await expect(
-    readHyperlinkVision("deepseek", [image], [], [], request),
+    readHyperlinkVision("terra", [image], [], [], request),
   ).rejects.toThrow("HTTP 429");
   expect(request).toHaveBeenCalledOnce();
 });
@@ -160,8 +133,30 @@ it("rejects truncated model output and oversized responses", async () => {
   ).rejects.toThrow("size limit");
 });
 it("accepts room, letter-only and sheet-qualified tags and snaps them to source text", () => {
-  const words = ["101", "A", "1/M501", "VENT-A", "100-PL-001"].map((text, index) => ({text, left:.61, right:.68, top:.61+index*.001, bottom:.64+index*.001}));
-  const result = parseHyperlinkDetection({tags: words.map(word => ({tag:word.text,image:0,box})),warnings:[]}, "terra", [image], words);
-  expect(result.tags.map(row=>row.tag)).toEqual(["101","A","1/M-501","VENT-A","100-PL-001"]);
-  expect(result.tags.every(row=>!row.needsPositionReview)).toBe(true);
+  const words = ["101", "A", "1/M501", "VENT-A", "100-PL-001"].map(
+    (text, index) => ({
+      text,
+      left: 0.61,
+      right: 0.68,
+      top: 0.61 + index * 0.001,
+      bottom: 0.64 + index * 0.001,
+    }),
+  );
+  const result = parseHyperlinkDetection(
+    {
+      tags: words.map((word) => ({ tag: word.text, image: 0, box })),
+      warnings: [],
+    },
+    "terra",
+    [image],
+    words,
+  );
+  expect(result.tags.map((row) => row.tag)).toEqual([
+    "101",
+    "A",
+    "1/M-501",
+    "VENT-A",
+    "100-PL-001",
+  ]);
+  expect(result.tags.every((row) => !row.needsPositionReview)).toBe(true);
 });

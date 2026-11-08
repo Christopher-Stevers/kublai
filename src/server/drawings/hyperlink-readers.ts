@@ -41,10 +41,6 @@ export async function hyperlinkReaderOptions(
       available: hyperlinkReaderConfigured("terra"),
       model: HYPERLINK_MODELS.terra,
     },
-    deepseek: {
-      available: hyperlinkReaderConfigured("deepseek"),
-      model: HYPERLINK_MODELS.deepseek,
-    },
   };
 }
 export async function detectHyperlinkTags(
@@ -55,7 +51,7 @@ export async function detectHyperlinkTags(
   if (!hyperlinkReaderConfigured(input.reader))
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: `${input.reader === "terra" ? "Terra" : "DeepSeek"} is not connected on this server yet. Normal is available.`,
+      message: "Terra is not connected on this server yet. Normal is available.",
     });
   const job = await jobFiles(ctx, input.sheetId);
   const source = job.context.sheets.find((s) => s.id === input.sourceSheetId);
