@@ -1337,11 +1337,22 @@ describe("drawing workspace workflows", () => {
   });
   it("uses the personal Private default for new shapes, text and hyperlink drafts", async () => {
     mocks.data!.canManage = false;
+    mocks.account = {
+      userId: mocks.data!.actor.id,
+      accountKey: "private-pref-0",
+      store: null,
+    };
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) =>
+        key === "foremanhq:drawing-markup-visibility:private-pref-0"
+          ? "private"
+          : null,
+    });
     open();
     openMenu("More");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Default markup visibility" }),
-    );
+    expect(
+      screen.queryByRole("button", { name: "Default markup visibility" }),
+    ).not.toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
     chooseTool("rect");
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
@@ -1367,11 +1378,22 @@ describe("drawing workspace workflows", () => {
   });
   it("uses Private for a new measurement while preserving an existing public markup on edit", async () => {
     mocks.data!.entities = [existingMarkup("published")];
+    mocks.account = {
+      userId: mocks.data!.actor.id,
+      accountKey: "private-pref-1",
+      store: null,
+    };
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) =>
+        key === "foremanhq:drawing-markup-visibility:private-pref-1"
+          ? "private"
+          : null,
+    });
     open();
     openMenu("More");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Default markup visibility" }),
-    );
+    expect(
+      screen.queryByRole("button", { name: "Default markup visibility" }),
+    ).not.toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: "Move selected annotation" }),
