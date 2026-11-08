@@ -5,6 +5,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY vendor ./vendor
 RUN pnpm install --frozen-lockfile
 COPY . .
+RUN node scripts/ops/verify-catalogue-image-bundle.mjs
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_DEXIE_CLOUD_DATABASE_URL
