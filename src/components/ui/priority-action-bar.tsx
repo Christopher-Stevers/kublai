@@ -9,12 +9,10 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
   type HTMLAttributes,
   type CSSProperties,
-  type RefObject,
   type ReactNode,
 } from "react";
 import {
@@ -44,34 +42,8 @@ export function actionList(children: ReactNode, prefix = ""): ReactNode[] {
   );
 }
 
-/** Phone bars show at most this many actions; the rest wait on the shelf. */
+/** Main rows have three slots total, including the search/overflow control. */
 export const ACTION_LIMIT = 3;
-/** Wider bars show one more action per this many pixels, up to the maximum. */
-const ACTION_MIN_WIDTH = 128;
-const ACTION_MAX = 6;
-
-const useIsoLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-/** How many actions fit in the bar: three on a phone, more on wider bars. */
-function useActionLimit(root: RefObject<HTMLDivElement | null>) {
-  const [limit, setLimit] = useState(ACTION_LIMIT);
-  useIsoLayoutEffect(() => {
-    const element =
-      root.current?.querySelector<HTMLElement>("[data-action-bar-row]") ??
-      root.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const fit = Math.floor(element.clientWidth / ACTION_MIN_WIDTH);
-      setLimit(Math.min(ACTION_MAX, Math.max(ACTION_LIMIT, fit)));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [root]);
-  return limit;
-}
 
 /** A search that lives in the bottom bar. Put `<BarSearchButton />` among the
  * actions; tapping it widens the search field across the whole bar, and its X
@@ -137,8 +109,8 @@ export function BarSearchButton({
 }
 
 /**
- * The app's bottom bar: three actions on a phone, more on wider bars (one per
- * 128px, up to six), highest priority on the right,
+ * The app's bottom bar: three slots, including search/overflow, with the
+ * highest priority actions on the right,
  * each the same height in the same type. An in-row arrow expands every extra
  * action above the primary row; there are no pages or nested overflow menus. `label` is the line above the buttons (a total, a status, the order
  * being received), drawn in one style on every screen. The bar's container
@@ -160,9 +132,11 @@ export function PriorityActionBar({
 }) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
-  const limit = useActionLimit(root);
+  const limit = ACTION_LIMIT;
   const split = !!search?.split;
-  const shelved = actions.length > limit ? actions.length - limit : 0;
+  const hasOverflow = actions.length > limit - Number(split);
+  const capacity = limit - Number(split || hasOverflow);
+  const shelved = Math.max(0, actions.length - capacity);
   const shown = actions.slice(shelved);
   // Named groups only affect the expanded shelf; primary action slots keep
   // their existing priority and permission filtering.

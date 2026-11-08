@@ -371,6 +371,7 @@ const openMenu = (name: string) => {
     if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
     return;
   }
+  if (name === "Tools") openMenu("More");
   fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
 };
 const panel = (name: string) => {
@@ -463,6 +464,7 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "select");
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
 
+    openMenu("More");
     fireEvent.click(screen.getByRole("button", { name: "Edit Mode" }));
     openMenu("Tools");
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
@@ -1290,6 +1292,7 @@ describe("drawing workspace workflows", () => {
         screen.getByRole("toolbar", { name: "Selected markup actions" }),
       ).queryByRole("button", { name: "Done" }),
     ).toBeNull();
+    openMenu("More");
     fireEvent.click(
       within(screen.getByRole("toolbar", { name: "Drawing tools" })).getByRole(
         "button",
@@ -1938,14 +1941,17 @@ it("searches the job's drawings and documents from the split button by the arrow
   }
 });
 
-it("keeps full screen on the drawing so Tools stays in the bar", () => {
+it("keeps full screen on the drawing and Tools in the three-slot bar overflow", () => {
   const onFullscreen = vi.fn();
   render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
-  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Expand all actions", "Search drawings and documents", "Tools", "Markup", "Measure"]);
+  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Expand all actions", "Search drawings and documents", "Markup", "Measure"]);
+  expect(bar.querySelector("[data-action-bar-row]")!.children).toHaveLength(3);
+  expect(within(bar).queryByRole("button", {name:"Tools"})).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
   openMenu("More");
+  expect(within(screen.getByRole("group", {name:"More actions"})).getByRole("button",{name:"Tools"})).toBeVisible();
   expect(screen.queryByRole("switch", { name: "Quickwheel mode" })).toBeNull();
 });
 

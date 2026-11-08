@@ -34,12 +34,11 @@ it("shelves the lowest of four actions, never showing more than three", () => {
   render(<PriorityActionBar>{buttons(4)}</PriorityActionBar>);
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "",
-    "Action 2",
     "Action 3",
     "Action 4",
   ]);
   const tab = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
-  expect(tab).toHaveAttribute("data-count", "1");
+  expect(tab).toHaveAttribute("data-count", "2");
   expect(tab.closest("[data-action-bar-row]")).not.toBeNull();
   expect(tab).not.toHaveAttribute("data-action-bar-tab");
   fireEvent.click(tab);
@@ -58,11 +57,10 @@ it("shows its label above the buttons", () => {
     "data-action-bar-label",
   );
 });
-it("keeps the highest three on the right, with lower priorities on the shelf", () => {
+it("keeps the highest two beside overflow, with lower priorities on the shelf", () => {
   render(<PriorityActionBar>{buttons(6)}</PriorityActionBar>);
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "",
-    "Action 4",
     "Action 5",
     "Action 6",
   ]);
@@ -71,7 +69,7 @@ it("keeps the highest three on the right, with lower priorities on the shelf", (
     within(screen.getByRole("group", { name: "More actions" }))
       .getAllByRole("button")
       .map((b) => b.textContent),
-  ).toEqual(["Action 1", "Action 2", "Action 3"]);
+  ).toEqual(["Action 1", "Action 2", "Action 3", "Action 4"]);
   fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveFocus();
   expect(
@@ -96,7 +94,6 @@ it("filters permissions and fragments before counting and responds to changes", 
   rerender(actions(true));
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "",
-    "Action 2",
     "Order",
     "Add Part",
   ]);
@@ -142,7 +139,7 @@ it("retains custom action state when selecting it closes the overflow tray", () 
   );
 });
 
-it("shows more actions on a wider bar", () => {
+it("still limits a wider bar to three slots", () => {
   const width = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockReturnValue(700);
@@ -156,7 +153,7 @@ it("shows more actions on a wider bar", () => {
   try {
     render(<PriorityActionBar>{buttons(7)}</PriorityActionBar>);
     const tab = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
-    expect(tab.getAttribute("data-count")).toBe("2");
+    expect(tab.getAttribute("data-count")).toBe("5");
     expect(
       screen
         .getAllByRole("button")
@@ -164,9 +161,6 @@ it("shows more actions on a wider bar", () => {
         .map((b) => b.textContent),
     ).toEqual([
       "",
-      "Action 3",
-      "Action 4",
-      "Action 5",
       "Action 6",
       "Action 7",
     ]);
@@ -259,11 +253,11 @@ it("expands every extra action at once and leaves primary controls mounted", () 
   render(<PriorityActionBar>{buttons(25)}</PriorityActionBar>);
   const primary = screen.getByRole("button", { name: "Action 25" });
   fireEvent.click(screen.getByRole("button", { name: "Expand all actions" }));
-  expect(within(screen.getByRole("group", { name: "More actions" })).getAllByRole("button")).toHaveLength(22);
+  expect(within(screen.getByRole("group", { name: "More actions" })).getAllByRole("button")).toHaveLength(23);
   expect(screen.getAllByRole("button")).toHaveLength(26);
   expect(screen.getByRole("button", { name: "Action 25" })).toBe(primary);
   fireEvent.click(screen.getByRole("button", { name: "Collapse actions" }));
-  expect(screen.getAllByRole("button")).toHaveLength(4);
+  expect(screen.getAllByRole("button")).toHaveLength(3);
   expect(screen.getByRole("button", { name: "Action 25" })).toBe(primary);
 });
 
@@ -281,4 +275,17 @@ it("groups named shelf actions under a heading without displacing primary action
   expect(within(ai).getAllByRole("button").map(button => button.textContent)).toEqual(["Read drawing", "Read legend"]);
   expect(within(ai).queryByRole("button", {name: "General option"})).not.toBeInTheDocument();
   expect(screen.getByRole("button", {name: "Action 3"})).toBeVisible();
+});
+
+it("counts the combined search/overflow control as one slot and shelves Tools", () => {
+  const {container} = render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Find drawings",split:true}}>
+    <button>Tools</button><button>Markup</button><button>Measure</button>
+  </PriorityActionBar>);
+  expect(container.querySelector("[data-action-bar-row]")!.children).toHaveLength(3);
+  expect(screen.getByRole("button", {name:"Find drawings"}).closest("[data-action-slot]")).toBe(screen.getByRole("button", {name:"Expand all actions"}).closest("[data-action-slot]"));
+  expect(screen.queryByRole("button",{name:"Tools"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Expand all actions"}));
+  expect(within(screen.getByRole("group",{name:"More actions"})).getByRole("button",{name:"Tools"})).toBeVisible();
+  fireEvent.click(screen.getByRole("button",{name:"Find drawings"}));
+  expect(screen.getByRole("searchbox",{name:"Find drawings"})).toBeVisible();
 });
