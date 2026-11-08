@@ -155,6 +155,7 @@ it("shows one bar at a time, the order's in place of the list's", () => {
   fireEvent.click(within(bar).getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark all received/ }));
   fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
+  fireEvent.click(within(bar).getByRole("button", { name: /Expand all actions/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark none received/ }));
   expect(onMarkAllReceived).toHaveBeenCalledTimes(1);
   expect(onNotes).toHaveBeenCalledTimes(1);

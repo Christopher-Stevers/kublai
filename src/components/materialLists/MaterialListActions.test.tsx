@@ -47,7 +47,7 @@ it("fails closed before permissions load", () => {
   render(<MaterialListActions {...base} />);
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
-it("shelves all but the highest three permitted actions", () => {
+it("shelves all but the highest two permitted actions", () => {
   render(
     <MaterialListActions
       {...base}
@@ -59,13 +59,12 @@ it("shelves all but the highest three permitted actions", () => {
   );
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "",
-    "Order",
     "Scan slip",
     "Add Part",
   ]);
   expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveAttribute(
     "data-count",
-    "2",
+    "3",
   );
   fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   fireEvent.click(screen.getByRole("button", { name: "Get Quote" }));
@@ -87,9 +86,23 @@ it("prioritizes Add and Receive while keeping Mark none fifth", () => {
   const add = vi.fn();
   render(<OrderReceiveActions onNotes={vi.fn()} onAdd={add}
     packingSlips={<button>Receive</button>} onMarkAllReceived={vi.fn()} onMarkNoneReceived={vi.fn()} />);
-  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["", "Notes", "Receive", "Add Part"]);
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["", "Receive", "Add Part"]);
   fireEvent.click(screen.getByRole("button", { name: "Add Part" }));
   expect(add).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
-  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["Mark none received", "Mark all received", "", "Notes", "Receive", "Add Part"]);
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["Mark none received", "Mark all received", "Notes", "", "Receive", "Add Part"]);
+});
+
+it("offers search alongside Receive and Add Part in both list and receiving bars", () => {
+  const onChange = vi.fn();
+  const search = {value:"", onChange, label:"Search material list",split:true};
+  const view = render(<MaterialListActions {...base} canAdd canOrder search={search} packingSlips={<button>Receive</button>} />);
+  fireEvent.click(screen.getByRole("button",{name:"Search material list"}));
+  fireEvent.change(screen.getByRole("searchbox"),{target:{value:"coupling"}});
+  expect(onChange).toHaveBeenCalledWith("coupling");
+  view.unmount();
+  render(<OrderReceiveActions onNotes={()=>{}} onAdd={()=>{}} search={search} packingSlips={<button>Receive</button>} />);
+  expect(screen.getByRole("button",{name:"Search material list"})).toBeVisible();
+  expect(screen.getByRole("button",{name:"Receive"})).toBeVisible();
+  expect(screen.getByRole("button",{name:"Add Part"})).toBeVisible();
 });

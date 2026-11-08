@@ -1,5 +1,5 @@
 "use client";
-import { PriorityActionBar } from "~/components/ui/priority-action-bar";
+import { PriorityActionBar, type BarSearch } from "~/components/ui/priority-action-bar";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, type ReactNode } from "react";
 import {
@@ -31,6 +31,7 @@ export function MaterialTotalLabel({ total, orderLabel }: { total: number; order
 /** Receiving for one order: the verify page's bar, also shown on the
  * material list while that order's parts are on screen. */
 export function OrderReceiveActions({
+  search,
   label,
   onNotes,
   onAdd,
@@ -40,6 +41,7 @@ export function OrderReceiveActions({
   receivingAll = false,
   receiveDisabled = false,
 }: {
+  search?: BarSearch;
   /** Names the order when the bar sits on the material list. */
   label?: ReactNode;
   onNotes: () => void;
@@ -54,6 +56,7 @@ export function OrderReceiveActions({
   const style = MATERIAL_LIST_ACTION_CLASS;
   return (
     <PriorityActionBar
+      search={search}
       role={label ? "group" : undefined}
       aria-label={label ? "Receive order" : undefined}
       label={label}
@@ -119,6 +122,7 @@ function FooterLayer({
 }
 
 export function MaterialListActions({
+  search,
   total,
   totalOrderLabel,
   canGenerate,
@@ -140,6 +144,7 @@ export function MaterialListActions({
   orderActions,
   orderActive = false,
 }: {
+  search?: BarSearch;
   total: number;
   totalOrderLabel?: ReactNode;
   canGenerate: boolean;
@@ -175,6 +180,7 @@ export function MaterialListActions({
     return (
       <div className="mx-auto max-w-6xl">
         <OrderReceiveActions
+          search={search}
           label={<MaterialTotalLabel total={total} orderLabel={totalOrderLabel} />}
           onNotes={onNotes}
           onAdd={canAdd ? onAdd : undefined}
@@ -189,6 +195,7 @@ export function MaterialListActions({
   const listActions = (
     <div>
       <PriorityActionBar
+        search={search}
         label={<MaterialTotalLabel total={total} orderLabel={totalOrderLabel} />}
       >
         {canQuote && (

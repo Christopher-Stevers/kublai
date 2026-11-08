@@ -1,4 +1,5 @@
 "use client";
+import { materialListPartSearchText, matchesMaterialListPart } from "~/lib/material-list-part-search";
 import { MaterialFocusSection } from "./MaterialFocusSection";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
 import { firstText } from "~/lib/first-text";
@@ -158,6 +159,8 @@ export function MaterialListScreen({
   const notesOrderId = verifyOrderId ?? listNotesOrderId;
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
+  const [partSearch, setPartSearch] = usePageViewState(`list:${id}:partSearch`, "");
+  const [searchOrderId, setSearchOrderId] = useState<string | null>(null);
   const isBrowserOnline = useOnlineStatus();
   const [verifyHandlers] = useState<VerifyHandlers>(() => new Map());
   const verifyHandler = (itemId: string, latest: VerifyStateHandler) => stableVerifyHandler(verifyHandlers, itemId, latest);
@@ -237,10 +240,13 @@ export function MaterialListScreen({
   const hasPendingSync =
     (mlHeader?.pendingSync ?? false) || items.some((i) => i.pendingSync);
   const verifySupplierId = verifyOrder?.supplier?.id ?? null;
-  const visibleItems = useMemo(() => verifyOrderId
+  const scopedItems = useMemo(() => verifyOrderId
     ? items.filter((item) => verifyOrder?.items.some((orderItem) =>
         matchesMaterialOrderLine(item, orderItem, verifySupplierId)))
     : items, [items, verifyOrderId, verifyOrder, verifySupplierId]);
+  const visibleItems = useMemo(() => scopedItems.filter(item => matchesMaterialListPart([
+    materialListPartSearchText({partDefinitionDisplayName:item.partDefinition?.displayName, descriptionSnapshot:item.descriptionSnapshot, supplierPartSku:item.supplierPart?.supplierSku}),
+  ], partSearch)), [scopedItems, partSearch]);
   // Ordered parts are received right on the list, as on an order's verify view.
   const receivableOrder = (item: Pick<(typeof items)[number], "sentOrderItemId" | "sentOrder">) =>
     !verifyOrderId && item.sentOrderItemId && item.sentOrder && item.sentOrder.status !== "cancelled" ? item.sentOrder : null;
@@ -257,9 +263,13 @@ export function MaterialListScreen({
 
   // Each order's parts sit under their own heading; once one scrolls up its
   // receiving bar takes the place of the list's own actions.
-  const sections = useMemo(() => verifyOrderId
-    ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, hasReceivedItems: verifyOrder?.items.some((item) => Number(item.receivedQuantity) > 0) ?? false, items: visibleItems }]
-    : materialSections(visibleItems, id), [verifyOrderId, verifyOrder, visibleItems, id]);
+  const fullSections = useMemo(() => verifyOrderId
+    ? [{ key: "all", label: null, ordered: false, orderId: undefined, detail: undefined, href: undefined, hasReceivedItems: verifyOrder?.items.some((item) => Number(item.receivedQuantity) > 0) ?? false, items: scopedItems }]
+    : materialSections(scopedItems, id), [verifyOrderId, verifyOrder, scopedItems, id]);
+  const sections = useMemo(() => {
+    const ids = new Set(visibleItems.map(item => item.id));
+    return fullSections.map(section => ({...section, items:section.items.filter(item => ids.has(item.id))})).filter(section => section.items.length > 0);
+  }, [fullSections, visibleItems]);
   const listRef = useRef<HTMLDivElement>(null);
   const focusedSectionKey = useOrderInView(
     listRef,
@@ -269,14 +279,19 @@ export function MaterialListScreen({
   );
   const focusedSection = sections.find(section => section.key === focusedSectionKey) ?? sections[0];
   const orderInView = canReceive ? focusedSection?.orderId ?? null : null;
-  const footerMaterialTotal = materialSectionTotal(focusedSection?.items ?? []);
+  const footerMaterialTotal = materialSectionTotal((fullSections.find(section => section.key === focusedSection?.key) ?? fullSections[0])?.items ?? []);
   // The last order shown stays in the bar while it slides away.
   const [lastOrderInView, setLastOrderInView] = useState<string | null>(null);
   if (orderInView && orderInView !== lastOrderInView) setLastOrderInView(orderInView);
-  const barOrderId = orderInView ?? lastOrderInView;
-  const orderBarSection = sections.find((section) => section.orderId && section.orderId === barOrderId)
-    ?? sections.find((section) => section.orderId);
+  const barOrderId = partSearch.trim() ? searchOrderId : orderInView ?? lastOrderInView;
+  const orderBarSection = fullSections.find((section) => section.orderId && section.orderId === barOrderId)
+    ?? fullSections.find((section) => section.orderId);
   const orderBarId = orderBarSection?.orderId;
+
+  const searchControl = {value:partSearch, onChange:(value: string) => {
+    if (!partSearch.trim() && value.trim()) setSearchOrderId(orderInView);
+    setPartSearch(value);
+  }, label:"Search material list", placeholder:"Search parts or SKU", split:true};
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });
@@ -437,7 +452,7 @@ export function MaterialListScreen({
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">
-                {verifyOrderId && isLoadingVerifyOrder
+                {partSearch.trim() ? "No parts match your search." : verifyOrderId && isLoadingVerifyOrder
                   ? "Loading order items..."
                   : verifyOrderId
                   ? "No parts from this order are in the material list."
@@ -445,7 +460,7 @@ export function MaterialListScreen({
                   ? "No tools requested yet"
                   : "No parts added"}
               </p>
-              {!verifyOrderId && (
+              {!verifyOrderId && !partSearch.trim() && (
                 <LargeButton onClick={openAddPartDialog}>
                   <PlusIcon className="mr-2 h-4 w-4" />
                   {isToolRequest ? "Add Tools" : "Add Part Now"}
@@ -566,7 +581,7 @@ export function MaterialListScreen({
 
       {/* Footer - Always Visible */}
       <div className="shrink-0 border-t bg-card px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
-        <MaterialListActions total={footerMaterialTotal}
+        <MaterialListActions search={searchControl} total={footerMaterialTotal}
           totalOrderLabel={verifyOrderId ? `Receiving ${verifyOrder?.orderNumber ?? "Order"}` : focusedSection?.ordered ? focusedSection.label : undefined} canGenerate={canGenerateQuoteOrOrder} blockedReason={generationBlockReason} canQuote={canQuote} canOrder={canOrder}
           canAdd={!!sandbox || !!userData?.permissions.can["lists.edit"]}
           orderLabel={isToolRequest || (!userData?.permissions.can["orders.send"] && hasToolItems) ? "Request tools" : "Order"}
@@ -579,9 +594,10 @@ export function MaterialListScreen({
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
           receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
-          orderActive={!!orderInView && orderInView === orderBarId}
+          orderActive={!!(partSearch.trim() ? searchOrderId : orderInView) && (partSearch.trim() ? searchOrderId : orderInView) === orderBarId}
           orderActions={!verifyOrderId && canReceive && orderBarSection && orderBarId && mlHeader.jobId ? (
             <OrderReceiveActions
+              search={searchControl}
               label={<MaterialTotalLabel orderLabel={`Receiving ${orderBarSection.label}`} total={materialSectionTotal(orderBarSection.items)} />}
               onNotes={() => {
                 setListNotesOrderId(orderBarId);
