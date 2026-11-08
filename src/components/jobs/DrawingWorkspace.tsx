@@ -16,7 +16,7 @@ import { DrawingArcMenu, DrawingArcRegistration, type DrawingArcItem } from "./D
 import { drawingArcStyleItems } from "./drawing-arc-style";
 import { MARKUP_SHAKE_MS } from "./useDrawingEditor";
 
-import { useContext, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AutoHyperlinkDialog } from "./AutoHyperlinkDialog";
@@ -57,6 +57,7 @@ import {
   DownloadIcon,
   FileTextIcon,
   FolderIcon,
+  TextSearchIcon,
   HandIcon,
   HistoryIcon,
   InfoIcon,
@@ -758,11 +759,24 @@ export function DrawingWorkspace({
     links: [],
   });
   const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
-  // The bar's search: this job's drawings and documents by name.
+  // The bar's search: the text in this set's PDF pages and the job's PDF
+  // documents, then drawings and documents by name.
   const [find, setFind] = useState("");
   const [findRound, setFindRound] = useState(0);
-  const findText = useDeferredValue(find.trim());
+  const [findText, setFindText] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setFindText(find.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [find]);
   const finding = findText.length >= 2;
+  const textInSheets = api.drawingsWorkspace.textSearch.useQuery(
+    { sheetId: sheet.id, kind: "drawing", query: findText },
+    { enabled: finding && online, retry: 1, staleTime: 60_000 },
+  );
+  const textInDocuments = api.drawingsWorkspace.textSearch.useQuery(
+    { sheetId: sheet.id, kind: "document", query: findText },
+    { enabled: finding && online, retry: 1, staleTime: 60_000 },
+  );
   const foundSheets = api.drawingsWorkspace.linkTargets.useQuery(
     { sheetId: sheet.id, kind: "sheet", query: findText },
     { enabled: finding && online, retry: 1 },
@@ -1935,12 +1949,31 @@ export function DrawingWorkspace({
     ...(foundSheets.data?.targets ?? []).map((target) => ({ target, kind: "Drawing" })),
     ...(foundDocuments.data?.targets ?? []).map((target) => ({ target, kind: "Document" })),
   ];
-  const openFound = (target: DrawingMarkupLink) => {
+  const closeFind = () => {
     setFind("");
+    setFindText("");
     // A new bar closes its search field.
     setFindRound((n) => n + 1);
+  };
+  const openFound = (target: DrawingMarkupLink) => {
+    closeFind();
     void openDestination(target);
   };
+  const textHits = [...(textInSheets.data?.hits ?? []), ...(textInDocuments.data?.hits ?? [])];
+  const openTextHit = (hit: (typeof textHits)[number]) => {
+    closeFind();
+    if (hit.kind === "drawing" && hit.box && hit.id === sheet.id && hit.sourceSheetId === sourceId) {
+      // Already on this page: go to the text without leaving the sheet.
+      setHighlight({ ...hit.box, text: hit.text });
+      setNavigate({
+        center: { x: (hit.box.left + hit.box.right) / 2, y: (hit.box.top + hit.box.bottom) / 2 },
+        zoom: Math.min(10, Math.max(2, 0.35 / Math.max(hit.box.right - hit.box.left, hit.box.bottom - hit.box.top))),
+        requestId: crypto.randomUUID(),
+      });
+    } else openLinkUrl(hit.url);
+  };
+  const textUnread =
+    (textInSheets.data?.pending ?? 0) + (textInDocuments.data?.pending ?? 0);
   const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean, group?: string) => (
     <Button key={label} variant={pressed ? "default" : "outline"} className={BAR_BUTTON}
       disabled={disabled} aria-pressed={pressed} data-action-group={group} onClick={() => { finishTool(); run(); }}>
@@ -3671,10 +3704,26 @@ export function DrawingWorkspace({
           >
             {!online ? (
               <p className="text-muted-foreground p-2 text-sm">Search needs a connection.</p>
-            ) : foundSheets.isPending || foundDocuments.isPending ? (
-              <p className="text-muted-foreground p-2 text-sm">Searching…</p>
-            ) : found.length ? (
+            ) : textHits.length || found.length ? (
               <ul>
+                {textHits.map((hit, index) => (
+                  <li key={`text:${index}`}>
+                    <button
+                      type="button"
+                      className="hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm outline-none"
+                      onClick={() => openTextHit(hit)}
+                    >
+                      <TextSearchIcon className="size-4 shrink-0" />
+                      <span className="grid min-w-0 flex-1">
+                        <span className="truncate font-medium">{hit.text}</span>
+                        <span className="text-muted-foreground truncate text-xs">
+                          {hit.name}{hit.kind === "document" ? ` · page ${hit.page}` : ""}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground text-xs">{hit.kind === "drawing" ? "Drawing" : "Document"}</span>
+                    </button>
+                  </li>
+                ))}
                 {found.map(({ target, kind }) => (
                   <li key={`${kind}:${target.key}`}>
                     <button
@@ -3688,9 +3737,19 @@ export function DrawingWorkspace({
                     </button>
                   </li>
                 ))}
+                {(textInSheets.isFetching || textInDocuments.isFetching) && (
+                  <li className="text-muted-foreground p-2 text-sm">Searching the PDFs…</li>
+                )}
               </ul>
+            ) : textInSheets.isFetching || textInDocuments.isFetching || foundSheets.isPending || foundDocuments.isPending ? (
+              <p className="text-muted-foreground p-2 text-sm">Searching the PDFs…</p>
             ) : (
               <p className="text-muted-foreground p-2 text-sm">No drawings or documents match.</p>
+            )}
+            {!!textUnread && !textInSheets.isFetching && !textInDocuments.isFetching && (
+              <p className="text-muted-foreground p-2 text-xs">
+                Some PDFs are still being read. Search again in a moment to include them.
+              </p>
             )}
           </div>
         )}

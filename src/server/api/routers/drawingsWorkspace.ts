@@ -8,6 +8,7 @@ import { listLegendItems, scanLegend, saveLegendItems, updateLegendItem } from "
 import { legendItemSchema } from "~/lib/drawing-legend";
 import { startSuperScale, superScaleLatest, cancelSuperScale } from "~/server/super-scale/service";
 import { equipmentSources, equipmentMatches, equipmentMatchesBatch } from "~/server/drawings/equipment-links";
+import { searchDrawingText } from "~/server/drawings/text-search";
 import { equipmentTagDestinations } from "~/server/drawings/equipment-register";
 import { autoHyperlinkPreview, autoHyperlinkTargets } from "~/server/drawings/auto-hyperlink";
 import { hyperlinkDetectInput } from "~/lib/hyperlink-readers";
@@ -80,6 +81,7 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   superScaleStart: sheetTools.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: sheetTools.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),
   equipmentMatchesBatch: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(1).max(40), sources: z.array(equipmentSource).min(1).max(32), groupBySheet: z.boolean().optional() })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
+  textSearch: hasAppAccess.input(z.object({ sheetId, kind: z.enum(["drawing", "document"]), query: z.string().trim().min(2).max(100) })).query(({ ctx, input }) => searchDrawingText(ctx, input)),
   equipmentSources: hasAppAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
   equipmentTag: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(1).max(40), exclude: z.object({ left: z.number().finite(), top: z.number().finite(), right: z.number().finite(), bottom: z.number().finite() }).optional() })).query(({ctx,input})=>equipmentTagDestinations(ctx,input)),
   equipmentMatches: hasAppAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),

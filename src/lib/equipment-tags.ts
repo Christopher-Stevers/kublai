@@ -1058,6 +1058,8 @@ export function equipmentDrawingDestination(input: {
   tag: string;
   box: TitleBlockWord;
   fit?: boolean;
+  /** Mark the text on arrival, as a text search does. */
+  highlight?: boolean;
 }) {
   const { box } = input;
   return makeSnapshotSource(
@@ -1086,7 +1088,7 @@ export function equipmentDrawingDestination(input: {
         layers: { markups: true, issues: true, private: true, published: true },
         selectedId: null,
         search: "",
-        highlight: undefined,
+        highlight: input.highlight ? { ...box, text: box.text.slice(0, 4000) } : undefined,
       },
     },
     `${input.tag} — ${input.name}`,
