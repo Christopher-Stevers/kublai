@@ -2547,6 +2547,7 @@ function OrderComparison({
   };
   const [materialIssue, setMaterialIssue] = useState<{ kind: "mismatch" | "supplier"; lineIds: string[]; selected: string } | null>(null);
   const [savingIssue, setSavingIssue] = useState(false);
+  const [acceptingMatch, setAcceptingMatch] = useState(false);
   const saveMaterialIssue = async (choice: keyof typeof materialIssueLabels) => {
     const line = detail.review.lines.find(l => l.id === materialIssue?.selected);
     if (!line || savingIssue) return;
@@ -3390,6 +3391,36 @@ function OrderComparison({
                   : linkPlan;
 
 
+          // Confirming the identity of a part is independent of how many arrived.
+          // Keep quantity, delivery and excess/backorder decisions untouched.
+          const matchOnlyLines = live.filter(({ line }) => !line.approved);
+          const canAcceptMatch = !plan && !complete && !sourceChanged && !!item &&
+            matchOnlyLines.length > 0 &&
+            matchOnlyLines.every(({ line }) => line.orderItemId === item.id) &&
+            matchOnlyLines.some(({ line }) =>
+              line.resolution?.match !== "confirmed" ||
+              line.resolution.evidenceFingerprint !== resolutionEvidenceFingerprint(line) ||
+              line.resolution.counterpartFingerprint !== resolutionCounterpartFingerprint(item));
+          const acceptMatch = async () => {
+            if (!canAcceptMatch || !item || acceptingMatch) return;
+            setAcceptingMatch(true);
+            try {
+              for (const { line } of matchOnlyLines) {
+                if (!await run({
+                  action: "resolve",
+                  lineId: line.id,
+                  evidenceFingerprint: resolutionEvidenceFingerprint(line),
+                  counterpartFingerprint: resolutionCounterpartFingerprint(item),
+                  match: "confirmed",
+                })) return;
+              }
+              notify("Part match accepted. Quantity and delivery decisions are unchanged.");
+            } finally {
+              setAcceptingMatch(false);
+            }
+          };
+
+
           // The heading, score and verdict of one reader's copy of the line.
           const reading = (copy: ReaderCopy, first: boolean) => (
             <>
@@ -3781,6 +3812,16 @@ function OrderComparison({
                     ><FileTextIcon />Choose From Packing Slip</DropdownMenuItem>,
                   )}
               </div>
+              {canAcceptMatch && (
+                <Button
+                  variant="outline"
+                  className="mt-3 w-full border-emerald-600/40 text-emerald-800 dark:text-emerald-200"
+                  disabled={acceptingMatch || !!cheer}
+                  onClick={() => void acceptMatch()}
+                >
+                  <CheckIcon className="size-4" /> Accept Match
+                </Button>
+              )}
               {(plan ?? mine) && item && (
                 // Folds away under the burst, leaving only the check.
                 <div

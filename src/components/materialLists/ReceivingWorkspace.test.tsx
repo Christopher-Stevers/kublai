@@ -2324,3 +2324,20 @@ it("opens selection from a long press on an empty slip half", async () => {
   expect(await screen.findByRole("button", {name:"Detect This Line"})).toBeInTheDocument();
   expect(posts).toHaveLength(0);
 });
+
+
+it.each([3, 12])("accepts a part match independently when the slip quantity is %s", async (quantity) => {
+  confirmSetup();
+  state.review.lines[0]!.quantity = quantity;
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  fireEvent.click(within(row).getByRole("button", { name: "Accept Match" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0", match: "confirmed" });
+  for (const field of ["quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess"])
+    expect(posts[0]).not.toHaveProperty(field);
+  expect(state.review.lines[0]!.quantity).toBe(quantity);
+  expect(state.review.lines[0]!.approved).toBeUndefined();
+  expect(row.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "pending");
+  await waitFor(() => expect(within(row).queryByRole("button", { name: "Accept Match" })).toBeNull());
+});
