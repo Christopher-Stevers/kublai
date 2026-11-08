@@ -1,4 +1,5 @@
 "use client";
+import { dragScrollVelocity } from "~/lib/drag-scroll";
 import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
@@ -2613,24 +2614,21 @@ function OrderComparison({
     // Near the top or bottom of the screen, scroll to reach other rows.
     const scroller = scrollParent(list.current);
     let frame = 0;
-    const tick = () => {
+    let previous = performance.now();
+    const tick = (now: number) => {
+      const elapsed = Math.min(50, Math.max(0, now - previous)) / 1000;
+      previous = now;
       const at = pointer.current;
       if (at && dropTarget(at) !== TRASH_DROP) {
         const box = scroller?.getBoundingClientRect() ?? {
           top: 0,
           bottom: window.innerHeight,
         };
-        const zone = 140,
-          up = box.top + zone - at.y,
-          down = at.y - (box.bottom - zone);
-        const speed =
-          up > 0
-            ? -Math.min(1, up / zone)
-            : down > 0
-              ? Math.min(1, down / zone)
-              : 0;
+        const speed = dragScrollVelocity(
+          at.y, Math.max(0, box.top), Math.min(window.innerHeight, box.bottom),
+        );
         if (speed) {
-          const by = Math.round(speed * 14);
+          const by = speed * elapsed;
           if (scroller) scroller.scrollBy(0, by);
           else window.scrollBy(0, by);
           if (grabbed.current) positionHalf(at, grabbed.current.start);
