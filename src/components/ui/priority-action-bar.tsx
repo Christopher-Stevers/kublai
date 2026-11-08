@@ -148,6 +148,18 @@ export function PriorityActionBar({
   const limit = useActionLimit(root);
   const shelved = actions.length > limit ? actions.length - limit : 0;
   const shown = actions.slice(shelved);
+  // Named groups only affect the expanded shelf; primary action slots keep
+  // their existing priority and permission filtering.
+  const shelfGroups = new Map<string, ReactNode[]>();
+  for (const action of actions.slice(0, shelved)) {
+    const group = isValidElement<{ "data-action-group"?: string }>(action)
+      ? (action.props["data-action-group"] ?? "")
+      : "";
+    const items = shelfGroups.get(group) ?? [];
+    items.push(action);
+    shelfGroups.set(group, items);
+  }
+
   const [open, setOpen] = useState(false);
   const tab = useRef<HTMLButtonElement>(null);
   const shelfId = useId();
@@ -260,7 +272,12 @@ export function PriorityActionBar({
             }
           }}
         >
-          {actions.slice(0, shelved).map((action, index) => slot(action, index))}
+          {[...shelfGroups].sort(([a], [b]) => Number(Boolean(a)) - Number(Boolean(b))).map(([group, items]) => group ? (
+            <section key={group} aria-label={group} className="col-span-full grid gap-1.5 border-t pt-2" style={{ gridTemplateColumns: `repeat(${limit}, minmax(0, 1fr))` }}>
+              <h3 className="text-muted-foreground col-span-full px-1 text-sm font-semibold">{group}</h3>
+              {items.map((action, index) => slot(action, index))}
+            </section>
+          ) : items.map((action, index) => slot(action, index)))}
         </div>
         {label != null && label !== false && (
           <div data-action-bar-label>{label}</div>

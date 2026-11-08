@@ -266,3 +266,19 @@ it("expands every extra action at once and leaves primary controls mounted", () 
   expect(screen.getAllByRole("button")).toHaveLength(4);
   expect(screen.getByRole("button", { name: "Action 25" })).toBe(primary);
 });
+
+it("groups named shelf actions under a heading without displacing primary actions", () => {
+  render(<PriorityActionBar>
+    <button>General option</button>
+    <button data-action-group="AI Tools">Read drawing</button>
+    <button data-action-group="AI Tools">Read legend</button>
+    {buttons(3)}
+  </PriorityActionBar>);
+  expect(screen.queryByRole("heading", {name: "AI Tools"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name: "Expand all actions"}));
+  const ai = screen.getByRole("region", {name: "AI Tools"});
+  expect(within(ai).getByRole("heading", {name: "AI Tools"})).toBeInTheDocument();
+  expect(within(ai).getAllByRole("button").map(button => button.textContent)).toEqual(["Read drawing", "Read legend"]);
+  expect(within(ai).queryByRole("button", {name: "General option"})).not.toBeInTheDocument();
+  expect(screen.getByRole("button", {name: "Action 3"})).toBeVisible();
+});

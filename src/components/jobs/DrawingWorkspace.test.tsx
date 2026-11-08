@@ -681,15 +681,21 @@ describe("drawing workspace workflows", () => {
     open(true);
     fireEvent.keyDown(screen.getByLabelText("Drawing workspace"), { key: "ContextMenu" });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("button", { name: "Drawing appearance" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "AI Tools" }));
     for (const name of ["Auto Hyperlink", "Legend Items", "Super Equipment", "Super Spec Material", "Super Label", "Super scale"])
       expect(screen.getByRole("button", { name })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Drawing appearance" })).toBeEnabled();
   });
 
   it("offers Super scale under More", () => {
     open();
     openMenu("More");
-    expect(screen.getByRole("button", { name: "Super scale" })).toBeInTheDocument();
+    const ai = screen.getByRole("region", {name: "AI Tools"});
+    expect(within(ai).getByRole("heading", {name: "AI Tools"})).toBeInTheDocument();
+    for (const name of ["Auto Hyperlink", "Legend Items", "Super Equipment", "Super Label", "Super scale"])
+      expect(within(ai).getByRole("button", {name})).toBeInTheDocument();
+    expect(within(ai).queryByRole("button", {name: "Fit to screen"})).not.toBeInTheDocument();
+    expect(within(ai).queryByRole("button", {name: "Super Spec Material"})).not.toBeInTheDocument();
     for (const name of ["Super scale results", "Snapshot", "Download / offline", "Available offline"]) {
       expect(screen.queryByRole("menuitem", {name})).toBeNull();
       expect(screen.queryByRole("button", {name})).toBeNull();

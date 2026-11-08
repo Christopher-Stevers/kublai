@@ -81,6 +81,7 @@ import {
   PenLineIcon,
   RulerIcon,
   ScanIcon,
+  SparklesIcon,
   SearchIcon,
   SendIcon,
   SplineIcon,
@@ -1926,6 +1927,7 @@ export function DrawingWorkspace({
     "close-document": { label: "Close document", Icon: XIcon, run: onClose ?? (() => undefined), barVisible: Boolean(onClose), wheelVisible: Boolean(onClose), wheelIcon: false },
   };
   type CommandId = keyof typeof commands;
+  const aiCommands: CommandId[] = ["auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale"];
   type Command = { label: string; Icon: LucideIcon; run: () => void; disabled?: boolean; barVisible?: boolean; wheelVisible?: boolean; wheelIcon?: boolean };
   const wheelCommands = (...ids: CommandId[]): DrawingArcItem[] => ids.flatMap(id => {
     const command: Command = commands[id];
@@ -1988,9 +1990,9 @@ export function DrawingWorkspace({
     ...(onFullscreen ? [{ id: "full", label: fullscreen ? "Exit full screen" : "Full screen", icon: fullscreen ? <MinimizeIcon /> : <MaximizeIcon />, run: onFullscreen }] : []),
     ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", icon: <XIcon />, run: () => setCompareIds(null) }] : []),
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
-      ...wheelCommands("legend-items", "auto-hyperlink"),
+      { id: "ai-tools", label: "AI Tools", icon: <SparklesIcon />, children: wheelCommands(...aiCommands) },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
-      ...wheelCommands("compare", "overlay", "appearance", "super-equipment", "super-spec-material", "super-label", "super-scale"),
+      ...wheelCommands("compare", "overlay", "appearance"),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, disabled: !data && id !== "search", run: () => { setPanel(id); setForm(null); } };
@@ -2004,16 +2006,16 @@ export function DrawingWorkspace({
     ] },
   ];
 
-  const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean) => (
+  const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean, group?: string) => (
     <Button key={label} variant={pressed ? "default" : "outline"} className={BAR_BUTTON}
-      disabled={disabled} aria-pressed={pressed} onClick={() => { finishTool(); run(); }}>
+      disabled={disabled} aria-pressed={pressed} data-action-group={group} onClick={() => { finishTool(); run(); }}>
       <Icon aria-hidden="true" />{label}
     </Button>
   );
 
   const commandButtons = (...ids: CommandId[]) => ids.map(id => {
     const command: Command = commands[id];
-    return command.barVisible === false ? null : barAction(command.label, command.Icon, command.run, command.disabled);
+    return command.barVisible === false ? null : barAction(command.label, command.Icon, command.run, command.disabled, undefined, aiCommands.includes(id) ? "AI Tools" : undefined);
   });
 
   return (
