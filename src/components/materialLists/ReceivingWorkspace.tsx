@@ -3849,12 +3849,12 @@ function OrderComparison({
         onChoose={(over) => asking?.go(over?.fit)}
       />
       {drag?.moving && canTrash(drag) && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex justify-center px-4">
+        <div className={`pointer-events-none fixed top-1/2 z-[100] -translate-y-1/2 ${drag.side === "order" ? "right-4" : "left-4"}`}>
           <div
             role="region"
             aria-label="Trash"
             data-drop={TRASH_DROP}
-            className={`pointer-events-auto flex min-h-24 w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-semibold shadow-xl transition-colors motion-reduce:transition-none ${drag.over === TRASH_DROP ? "border-destructive bg-destructive text-white" : "border-destructive/60 bg-background text-destructive"}`}
+            className={`pointer-events-auto flex min-h-28 w-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center text-xs font-semibold shadow-xl transition-colors motion-reduce:transition-none ${drag.over === TRASH_DROP ? "border-destructive bg-destructive text-white" : "border-destructive/60 bg-background text-destructive"}`}
           >
             <Trash2Icon aria-hidden className="size-8" />
             {drag.side === "order" ? "Drop to remove from order" : "Drop to remove detected item"}
