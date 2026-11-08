@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { VoiceProvider, VoiceCard } from "./VoiceProvider";
+import { DevSettings } from "~/components/account/DevSettings";
+import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
+import { DevVoiceProvider, VoiceProvider, VoiceCard } from "./VoiceProvider";
 const m = vi.hoisted(() => ({
   close: vi.fn(),
   mic: vi.fn(),
@@ -34,6 +36,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 async function start() {
@@ -86,4 +89,14 @@ it("unmounting releases the microphone", async () => {
   await start();
   cleanup();
   expect(m.close).toHaveBeenCalledOnce();
+});
+
+it("turning Dev off releases an active microphone and removes Voice", async () => {
+  render(<DevFeaturesProvider enabled><DevSettings /><DevVoiceProvider><VoiceCard /></DevVoiceProvider></DevFeaturesProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Start voice assistant" }));
+  await screen.findByText("Listening");
+  fireEvent.click(screen.getByRole("switch", { name: "Show Dev features" }));
+  expect(m.close).toHaveBeenCalledOnce();
+  expect(screen.queryByLabelText("Voice assistant")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Start voice assistant" })).toBeNull();
 });

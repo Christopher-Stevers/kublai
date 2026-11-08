@@ -1,13 +1,24 @@
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-vi.mock("next/navigation", () => ({ notFound: () => { throw Error("NOT_FOUND"); } }));
+import { DevFeaturesProvider } from "./DevFeaturesProvider";
+const replace = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ notFound: () => { throw Error("NOT_FOUND"); }, useRouter: () => ({ replace }) }));
 import Draws from "~/app/jobs/draws/layout";
 import Estimating from "~/app/jobs/estimating/layout";
 import Timesheets from "~/app/jobs/timesheets/layout";
 import Assets from "~/app/jobs/assets/layout";
-afterEach(() => vi.unstubAllEnvs());
-it.each([Draws, Estimating, Timesheets, Assets])("blocks direct and nested module pages when disabled", (Layout) => {
+import Models from "~/app/jobs/[jobId]/models/layout";
+import Systems from "~/app/jobs/[jobId]/systems/layout";
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
+it.each([Draws, Estimating, Timesheets, Assets, Models, Systems])("blocks direct and nested module pages when disabled", (Layout) => {
   vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
   expect(() => Layout({ children: "private workspace" })).toThrow("NOT_FOUND");
   vi.stubEnv("FOREMANHQ_DEV_FEATURES", "true");
-  expect(Layout({ children: "private workspace" })).toBe("private workspace");
+  const view = render(<DevFeaturesProvider enabled>{Layout({ children: "private workspace" })}</DevFeaturesProvider>);
+  expect(screen.getByText("private workspace")).toBeInTheDocument();
+  view.unmount();
+  localStorage.setItem("foremanhq.dev", "0");
+  render(<DevFeaturesProvider enabled>{Layout({ children: "private workspace" })}</DevFeaturesProvider>);
+  expect(screen.queryByText("private workspace")).not.toBeInTheDocument();
+  expect(replace).toHaveBeenCalledWith("/jobs");
 });

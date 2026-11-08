@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { SlipLineImage } from "./SlipLineImage";
-import { useExperimentalEnabled } from "~/lib/experimental";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
+import { DevBadge } from "~/components/app/DevBadge";
 import {
   slipTestReviewSchema,
   type SlipTestReview,
@@ -11,9 +12,9 @@ export function PackingSlipTestReview(props: {
   jobId: string;
   versionId: string;
 }) {
-  return useExperimentalEnabled() ? <ExperimentalTestReview {...props} /> : null;
+  return useDevFeatures() ? <DevTestReview {...props} /> : null;
 }
-function ExperimentalTestReview({
+function DevTestReview({
   jobId,
   versionId,
 }: {
@@ -64,12 +65,12 @@ function ExperimentalTestReview({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {open ? "Hide" : "Open"} Jev test review
+        {open ? "Hide" : "Open"} Jev test review <DevBadge />
       </Button>
       {open && (
         <>
           <p className="text-muted-foreground text-sm">
-            Experimental · {review.model}. Original test answers, including
+            Dev · {review.model}. Original test answers, including
             mistakes. This review does not record receipts. Below 80% requires
             human review; higher scores do not guarantee correctness.
           </p>

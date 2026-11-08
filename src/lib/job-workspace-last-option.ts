@@ -1,4 +1,4 @@
-import { EXPERIMENTAL_JOB_VIEWS, isExperimentalEnabled } from "./experimental";
+import { DEV_JOB_VIEWS, isDevPreferenceEnabled } from "./dev-preference";
 
 export type JobWorkspaceOptionId =
   | "material-lists"
@@ -49,7 +49,7 @@ export function getLastJobWorkspaceLocation(): JobWorkspaceLocation | null {
       jobId: parsed.jobId,
       view: parsed.view === "tool-requests"
         ? "material-lists"
-        : !isExperimentalEnabled() && EXPERIMENTAL_JOB_VIEWS.includes(parsed.view)
+        : !isDevPreferenceEnabled() && DEV_JOB_VIEWS.includes(parsed.view)
           ? "options"
           : parsed.view,
       materialListId:

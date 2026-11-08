@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { type JobWorkspaceOptionId } from "~/lib/job-workspace-last-option";
 import { useDrawingsAccess } from "~/components/permissions/DrawingsAccess";
-import { useExperimentalEnabled } from "~/lib/experimental";
+import { DevBadge } from "~/components/app/DevBadge";
 
 export type { JobWorkspaceOptionId };
 
@@ -36,7 +36,6 @@ export function JobWorkspaceOptions({
   const canAccessSystems = useSystemsAccess();
   const canAccessDrawings = useDrawingsAccess();
   const devFeatures = useDevFeatures();
-  const experimental = useExperimentalEnabled();
   return (
     <>
     <FrequentJobCards trailingCards={devFeatures ? <VoiceCard /> : null}>
@@ -194,12 +193,12 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      {devFeatures && experimental && canAccessDrawings && (
+      {devFeatures && canAccessDrawings && (
         <Card
           data-job-card="models"
           role="button"
           tabIndex={0}
-          aria-label="Models, experimental"
+          aria-label="Models, Dev"
           className="cursor-pointer transition-shadow hover:shadow-md"
           onClick={() => onSelect("models")}
           onKeyDown={(event) => {
@@ -212,9 +211,7 @@ export function JobWorkspaceOptions({
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2">
               <span>Models</span>
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                Experimental
-              </span>
+              <DevBadge />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -225,7 +222,7 @@ export function JobWorkspaceOptions({
           </CardContent>
         </Card>
       )}
-      {experimental && canAccessSystems && <Card
+      {devFeatures && canAccessSystems && <Card
         data-job-card="systems"
         role="button"
         aria-label="Systems"
@@ -242,9 +239,7 @@ export function JobWorkspaceOptions({
         <CardHeader>
           <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight break-words">
             <span>Systems</span>
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-              Experimental
-            </span>
+            <DevBadge />
           </CardTitle>
         </CardHeader>
         <CardContent>

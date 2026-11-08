@@ -1,4 +1,6 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
+import { DevBadge } from "~/components/app/DevBadge";
 import {
   createContext,
   useContext,
@@ -45,6 +47,9 @@ type VoiceState = {
 };
 const VoiceContext = createContext<VoiceState | null>(null);
 export const useVoice = () => useContext(VoiceContext);
+export function DevVoiceProvider({ children }: { children: ReactNode }) {
+  return useDevFeatures() ? <VoiceProvider>{children}</VoiceProvider> : children;
+}
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const router = useRouter(),
     pathname = usePathname();
@@ -493,7 +498,7 @@ export function VoiceCard() {
         aria-pressed={active}
       >
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0 leading-tight break-words">Voice</CardTitle>
+          <CardTitle className="flex min-w-0 items-center gap-2 leading-tight break-words">Voice <DevBadge /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-muted-foreground flex items-center gap-2 text-sm">

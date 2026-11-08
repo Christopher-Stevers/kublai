@@ -1,6 +1,6 @@
 import { devFeaturesEnabled } from "~/server/dev-features";
 import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
-import { VoiceProvider } from "~/components/voice/VoiceProvider";
+import { DevVoiceProvider } from "~/components/voice/VoiceProvider";
 import { SystemsAccessProvider } from "~/components/permissions/SystemsAccess";
 import { MaterialSortProvider } from "~/components/app/MaterialSortProvider";
 import { AutomaticDiagnostics } from "~/components/app/AutomaticDiagnostics";
@@ -129,9 +129,9 @@ export default async function JobsLayout({
                             >
                               <SupplierLabelProvider>
                                   {devFeatures ? (
-                                    <VoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
+                                    <DevVoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
                                       {children}
-                                    </VoiceProvider>
+                                    </DevVoiceProvider>
                                   ) : children}
                               </SupplierLabelProvider>
                             </MaterialSortProvider>

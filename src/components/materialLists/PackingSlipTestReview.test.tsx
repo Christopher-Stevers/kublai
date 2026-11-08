@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
 import { PackingSlipTestReview } from "./PackingSlipTestReview";
 vi.mock("./SlipLineImage", () => ({
   SlipLineImage: ({ label }: { label: string }) => <div>{label}</div>,
@@ -40,9 +41,9 @@ it("shows saved crops and separate confidence without receipt actions", async ()
       }),
     }),
   );
-  render(<PackingSlipTestReview jobId={id} versionId={id} />);
+  render(<DevFeaturesProvider enabled><PackingSlipTestReview jobId={id} versionId={id} /></DevFeaturesProvider>);
   fireEvent.click(
-    await screen.findByRole("button", { name: "Open Jev test review" }),
+    await screen.findByRole("button", { name: /Open Jev test review/ }),
   );
   expect(screen.getByText("Original page 2, detected row 2")).toBeTruthy();
   expect(

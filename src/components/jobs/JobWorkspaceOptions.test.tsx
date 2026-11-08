@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cleanup, fireEvent, render as renderUI, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { JobWorkspaceOptions } from "./JobWorkspaceOptions";
-import { ExperimentalSettings } from "~/components/account/ExperimentalSettings";
+import { DevSettings } from "~/components/account/DevSettings";
 import { getLastJobWorkspaceLocation, setLastJobWorkspaceLocation } from "~/lib/job-workspace-last-option";
 afterEach(() => { cleanup(); localStorage.clear(); });
 it("orders the job cards and opens Chat with keyboard or touch", () => {
@@ -12,17 +12,17 @@ it("orders the job cards and opens Chat with keyboard or touch", () => {
   const rooms = screen.getByText("Rooms");
   const chat = screen.getByRole("button", { name: "Chat, 7 unread messages" });
   expect(screen.getAllByRole("button").map(button =>
-    button.querySelector('[data-slot="card-title"]')?.textContent?.replace(/Experimental|7/g, "").trim(),
+    button.querySelector('[data-slot="card-title"]')?.textContent?.replace(/Dev|7/g, "").trim(),
   )).toEqual(["Material Lists", "Drawings", "Chat", "Documents", "Rooms", "Models", "Systems"]);
   fireEvent.keyDown(chat, { key: "Enter" });
   fireEvent.click(chat);
   expect(select).toHaveBeenNthCalledWith(1, "chat");
   expect(select).toHaveBeenNthCalledWith(2, "chat");
   expect(screen.getByRole("button", { name: /^Rooms$/ })).toBeInTheDocument();
-  expect(rooms.closest('[role="button"]')).not.toHaveTextContent("Experimental");
+  expect(rooms.closest('[role="button"]')).not.toHaveTextContent("Dev");
   expect(
-    screen.getByRole("button", { name: "Models, experimental" }),
-  ).toHaveTextContent("Experimental");
+    screen.getByRole("button", { name: "Models, Dev" }),
+  ).toHaveTextContent("Dev");
 });
 
 it.each([
@@ -48,14 +48,14 @@ vi.mock("~/components/permissions/SystemsAccess", () => ({ useSystemsAccess: () 
 
 it("hides experimental cards and saved experimental screens once turned off in settings", () => {
   setLastJobWorkspaceLocation({ jobId: "job", view: "models", materialListId: null });
-  render(<><ExperimentalSettings /><JobWorkspaceOptions onSelect={vi.fn()} /></>);
-  expect(screen.getByRole("button", { name: "Models, experimental" })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("switch", { name: "Show experimental features" }));
-  expect(screen.queryByRole("button", { name: "Models, experimental" })).not.toBeInTheDocument();
+  render(<><DevSettings /><JobWorkspaceOptions onSelect={vi.fn()} /></>);
+  expect(screen.getByRole("button", { name: "Models, Dev" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("switch", { name: "Show Dev features" }));
+  expect(screen.queryByRole("button", { name: "Models, Dev" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Systems" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Drawings/ })).toBeInTheDocument();
   expect(getLastJobWorkspaceLocation()?.view).toBe("options");
-  fireEvent.click(screen.getByRole("switch", { name: "Show experimental features" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Show Dev features" }));
   expect(screen.getByRole("button", { name: "Systems" })).toBeInTheDocument();
 });
 
@@ -64,10 +64,10 @@ function render(children: ReactNode) {
 }
 it("hides Models and Voice when deployment dev features are off, even with experimental settings on", () => {
   renderUI(<DevFeaturesProvider enabled={false}><JobWorkspaceOptions onSelect={vi.fn()} /></DevFeaturesProvider>);
-  expect(screen.queryByRole("button", { name: "Models, experimental" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Models, Dev" })).not.toBeInTheDocument();
   expect(screen.queryByText("Voice")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Drawings/ })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Systems" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Systems" })).not.toBeInTheDocument();
 });
 
 vi.mock("~/components/voice/VoiceProvider", () => ({ VoiceCard: () => <span>Voice</span> }));

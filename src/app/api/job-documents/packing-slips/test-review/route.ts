@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -9,6 +10,7 @@ import { slipTestReviewSchema } from "~/lib/packing-slip-test-review";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     const url = new URL(request.url);
     const jobId = z.uuid().parse(url.searchParams.get("jobId"));

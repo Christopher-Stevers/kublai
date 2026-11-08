@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   access: vi.fn(),
@@ -77,4 +77,12 @@ it("serves prepared images only after authorization and manifest membership", as
 it("does not read arbitrary page paths or unprepared pages", async () => {
   expect((await GET(new Request(request().url + "&page=2"))).status).toBe(404);
   expect(mocks.read).toHaveBeenCalledTimes(1);
+});
+
+afterEach(() => vi.unstubAllEnvs());
+it("blocks test reviews when Dev is disabled before reading private data", async () => {
+  vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
+  expect((await GET(request())).status).toBe(404);
+  expect(mocks.access).not.toHaveBeenCalled();
+  expect(mocks.read).not.toHaveBeenCalled();
 });

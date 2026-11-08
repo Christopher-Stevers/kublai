@@ -1,4 +1,5 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 
 import { SystemsAccessGate } from "~/components/permissions/SystemsAccess";
 import { useEffect, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import { pipeSystemCode } from "~/lib/pipe-spec";
 import { JobSystemsEditor, newManualSystemSpec } from "./JobSystemsEditor";
 
 export function JobSystemsView({ jobId }: { jobId: string }) {
+  if (!useDevFeatures()) return null;
   return <SystemsAccessGate><JobSystemsContent jobId={jobId} /></SystemsAccessGate>;
 }
 

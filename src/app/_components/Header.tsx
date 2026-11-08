@@ -1,4 +1,5 @@
 "use client";
+import { DevBadge } from "~/components/app/DevBadge";
 import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import { isDevOnlyPage } from "~/lib/dev-only-pages";
 import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
@@ -321,13 +322,14 @@ function HeaderFrame({
               onClick={() => navigate(link.href)}
               aria-current={isActive(link.href) ? "page" : undefined}
               className={cn(
-                "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+                "inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                 isActive(link.href)
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               {link.label}
+              {isDevOnlyPage(link.href) && <DevBadge />}
             </button>
           ))}
         </nav>
@@ -479,6 +481,7 @@ function HeaderFrame({
                     >
                       <link.icon className="h-5 w-5 shrink-0" />
                       {link.label}
+                      {isDevOnlyPage(link.href) && <DevBadge />}
                     </button>
                   ))}
                 </div>
