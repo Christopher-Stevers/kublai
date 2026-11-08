@@ -316,7 +316,9 @@ export function PriorityActionBar({
             data-action-bar-row
             hidden={!!search && searching && !inlineSearch}
             style={{
-              gridTemplateColumns: `${split ? `calc(var(--action-height) * ${shelved > 0 ? 2 : 1}) ` : shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
+              gridTemplateColumns: split
+                ? `repeat(${shown.length + 1}, minmax(0, 1fr))`
+                : `${shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
             }}
           >
             {split && (

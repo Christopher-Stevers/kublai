@@ -800,8 +800,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   min-width: 0;
 }
 [data-split-search] > div > button[data-action-bar-expand] {
-  flex: none;
-  width: var(--action-height);
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
