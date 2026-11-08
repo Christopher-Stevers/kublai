@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 # Sourced by deploy.sh on the host. Never delegate host-wide cgroups or Docker.
+seed_catalogue_uploads() (
+  # Keep customer uploads, while exposing new bundled images after a release.
+  local image=$1 destination=$2 temporary seed=""
+  temporary=$(mktemp -d)
+  trap '[[ -z "$seed" ]] || docker rm "$seed" >/dev/null; rm -rf -- "$temporary"' EXIT
+  seed=$(docker create "$image")
+  docker cp "$seed:/app/public/images/catalog/uploads/." "$temporary/"
+  cp -an "$temporary/." "$destination/"
+  chown -R 1000:1000 "$destination"
+)
+
 start_container() {
   local name=$1 image=$2 env_file=$3
   local network=foremanhq uploads=/srv/foremanhq/uploads shares=1024 reservation=1024m oom_score=-250
@@ -9,6 +20,7 @@ start_container() {
     # A migrated catalogue includes customer uploads outside the release image.
     # Only mount a fully populated directory prepared by the migration process.
     if [[ -d /srv/foremanhq/dev/catalogue-uploads ]]; then
+      seed_catalogue_uploads "$image" /srv/foremanhq/dev/catalogue-uploads
       catalogue_mount=(--mount "type=bind,src=/srv/foremanhq/dev/catalogue-uploads,dst=/app/public/images/catalog/uploads")
     fi
   fi
