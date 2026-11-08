@@ -109,13 +109,6 @@ vi.mock("./DrawingAccountProvider", () => ({
 vi.mock("./DrawingDocumentActions", () => ({
   DrawingDocumentActions: () => <div>Document actions</div>,
 }));
-vi.mock("./DrawingReferenceLinks", () => ({
-  DrawingReferenceLinks: ({ words }: { words: Array<{ text: string }> }) => (
-    <div data-testid="reference-words">
-      {words.map((word) => word.text).join(" ")}
-    </div>
-  ),
-}));
 vi.mock("./DrawingCompare", () => ({
   DrawingCompare: (props: ComponentProps<typeof DrawingCompare>) => (
     <div
@@ -1287,51 +1280,6 @@ describe("drawing workspace workflows", () => {
       "data-tool",
       "pan",
     );
-  });
-  it("aborts old OCR and discards its words after changing source revision", async () => {
-    let finish!: (response: Response) => void;
-    const fetcher = vi.fn<typeof fetch>().mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    vi.stubGlobal("fetch", fetcher);
-    const view = open();
-    panel("search");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Recognize scanned text" }),
-    );
-    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-    const signal = fetcher.mock.calls[0]?.[1]?.signal;
-    mocks.data = {
-      ...mocks.data!,
-      metadata: { ...mocks.data!.metadata, currentSourceSheetId: revisionId },
-    };
-    view.rerender(
-      <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
-    );
-    expect(signal?.aborted).toBe(true);
-    await act(async () =>
-      finish(
-        new Response(
-          JSON.stringify({
-            words: [
-              {
-                text: "STALE SOURCE",
-                left: 0,
-                top: 0,
-                right: 0.1,
-                bottom: 0.1,
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      ),
-    );
-    expect(screen.getByTestId("reference-words")).toBeEmptyDOMElement();
-    vi.unstubAllGlobals();
   });
   it("autosaves a drawn shape publicly on its immutable source with a new revision", async () => {
     open();

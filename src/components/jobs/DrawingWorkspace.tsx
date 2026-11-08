@@ -82,7 +82,6 @@ import {
   RulerIcon,
   ScanIcon,
   SparklesIcon,
-  SearchIcon,
   SendIcon,
   SplineIcon,
   UserIcon,
@@ -135,9 +134,7 @@ import {
   type DrawingWorkspace as Workspace,
 } from "~/lib/drawing-workspace";
 import {
-  findDrawingText,
   readDrawingText,
-  suggestSheetMetadata,
   type DrawingPdfLink,
   type DrawingTextIndex,
   type DrawingText,
@@ -158,7 +155,6 @@ import { DrawingOverlayPicker } from "./DrawingOverlayPicker";
 import { FileComparison } from "./FileComparison";
 import { DrawingCompare } from "./DrawingCompare";
 import { DrawingDocumentActions } from "./DrawingDocumentActions";
-import { DrawingReferenceLinks } from "./DrawingReferenceLinks";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
 import { drawingThumbnailUrl } from "./drawing-scroll-pages";
@@ -201,7 +197,6 @@ type Panel =
   | "markups"
   | "impacts"
   | "issues"
-  | "search"
   | "views"
   | "details"
   | "history"
@@ -216,7 +211,6 @@ export const panels: Array<[Panel, string]> = [
   ["impacts", "Needs review · revision impacts"],
   ["markups", "Layers"],
   ["issues", "Issues / RFIs"],
-  ["search", "Find text / PDF links"],
   ["views", "Saved views"],
   ["details", "Sheet details"],
   ["history", "Versions / compare"],
@@ -230,7 +224,6 @@ const PANEL_ICONS: Partial<Record<Panel, LucideIcon>> = {
   impacts: CircleAlertIcon,
   markups: LayersIcon,
   issues: CircleAlertIcon,
-  search: SearchIcon,
   views: BookmarkIcon,
   details: FileTextIcon,
   history: HistoryIcon,
@@ -629,7 +622,9 @@ export function DrawingWorkspace({
     (!boundUser || snapshot.actor.id === boundUser)
       ? snapshot
       : null);
-  const [panel, setPanel] = useState<Panel>(entryDrawing?.panel ?? "");
+  // Snapshots saved before Find text was removed may still name it.
+  const entryPanel = entryDrawing?.panel === "search" ? "" : (entryDrawing?.panel ?? "");
+  const [panel, setPanel] = useState<Panel>(entryPanel);
   useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
   const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
@@ -782,10 +777,6 @@ export function DrawingWorkspace({
     words: [],
     links: [],
   });
-  const [search, setSearch] = useState(entryDrawing?.search ?? "");
-  const [textBusy, setTextBusy] = useState(false);
-  const textRequest = useRef(0);
-  const ocrRequest = useRef<AbortController | null>(null);
   const [highlight, setHighlight] = useState<DrawingText | null>(entryDrawing?.highlight ?? null);
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
@@ -812,7 +803,6 @@ export function DrawingWorkspace({
           layers,
           selectedId,
           panel,
-          search,
           ...(highlight ? { highlight: { ...highlight, text: highlight.text.slice(0, 4000) } } : {}),
           markupOpen,
           appearanceOpen,
@@ -852,7 +842,7 @@ export function DrawingWorkspace({
     setOptimistic([]);
     setFailedDrafts([]);
     setMetadataDirty(false);
-    setPanel(entryDrawing?.panel ?? "");
+    setPanel(entryPanel);
     let cancelled = false;
     void account?.store
       ?.readSnapshot<Workspace>(`workspace:${sheet.id}`)
@@ -914,18 +904,11 @@ export function DrawingWorkspace({
             pdf: origin,
           });
       });
-    textRequest.current++;
-    ocrRequest.current?.abort();
-    setTextBusy(false);
     setWords({ words: [], links: [] });
     setHighlight(entryDrawing?.sourceSheetId === source.id ? entryDrawing.highlight ?? null : null);
     selectTool("pan");
-    const generation = textRequest;
-    const abort = ocrRequest;
     return () => {
       cancelled = true;
-      generation.current++;
-      abort.current?.abort();
     };
   }, [source.id, source.imageUrl, resolveAssetUrl, selectTool]);
 
@@ -1528,56 +1511,6 @@ export function DrawingWorkspace({
     },
     [pdf, data?.jobSheets, jobId, openLinkUrl],
   );
-  const readText = async (ocr = false) => {
-    const request = ++textRequest.current;
-    ocrRequest.current?.abort();
-    const controller = new AbortController();
-    ocrRequest.current = controller;
-    setTextBusy(true);
-    setError(null);
-    try {
-      if (ocr) {
-        const response = await fetch("/api/drawings/ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sheetId: sourceId }),
-          signal: controller.signal,
-        });
-        const result = (await response.json()) as {
-          words?: DrawingText[];
-          error?: string;
-        };
-        if (!response.ok || !result.words)
-          throw Error(result.error ?? "Text recognition failed.");
-        if (request === textRequest.current)
-          setWords((previous) => ({ ...previous, words: result.words! }));
-      } else if (pdf) {
-        const index = await readDrawingText({
-          ...pdf,
-          url: await resolveAssetUrl(pdf.url),
-        });
-        if (request === textRequest.current) setWords(index);
-      } else
-        throw Error("This sheet has no PDF text. Use Recognize scanned text.");
-    } catch (reason) {
-      if (request === textRequest.current && !controller.signal.aborted)
-        fail(reason);
-    } finally {
-      if (request === textRequest.current) setTextBusy(false);
-    }
-  };
-  const showText = (word: DrawingText) => {
-    setHighlight(word);
-    setNavigate({
-      center: {
-        x: (word.left + word.right) / 2,
-        y: (word.top + word.bottom) / 2,
-      },
-      zoom: 8,
-      requestId: crypto.randomUUID(),
-    });
-    setPanel("");
-  };
   const measurementLayers = [
     ...new Set([
       "General",
@@ -1995,7 +1928,7 @@ export function DrawingWorkspace({
       ...wheelCommands("compare", "overlay", "appearance"),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
-        return { id, label, icon: <Icon />, disabled: !data && id !== "search", run: () => { setPanel(id); setForm(null); } };
+        return { id, label, icon: <Icon />, disabled: !data, run: () => { setPanel(id); setForm(null); } };
       }),
       { id: "visibility", label: "Default visibility", children: [
         { id: "public", label: "Public · job team", selected: defaultMarkupVisibility === "published", run: () => setDefaultMarkupVisibility("published") },
@@ -2618,7 +2551,7 @@ export function DrawingWorkspace({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {panel && (data || panel === "markups" || panel === "search") && (
+        {panel && (data || panel === "markups") && (
           <DrawingToolbarDock target={scrollPages ? cornerContainer : null}>
           <aside
             data-drawing-chrome={panel === "markups" ? undefined : true}
@@ -3114,87 +3047,6 @@ export function DrawingWorkspace({
                     </p>
                   )}
                 </div>
-              )}
-              {panel === "search" && (
-                <>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={textBusy}
-                      onClick={() => void readText()}
-                    >
-                      Read PDF text
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={textBusy || !online}
-                      onClick={() => void readText(true)}
-                    >
-                      {textBusy ? "Reading…" : "Recognize scanned text"}
-                    </Button>
-                  </div>
-                  <Input
-                    aria-label="Search drawing text"
-                    placeholder="Room, detail, note…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    {words.words.length} text entries. Scanned recognition may
-                    need corrections.
-                  </p>
-                  {findDrawingText(words.words, search).map((word, index) => (
-                    <button
-                      key={index}
-                      className="block w-full rounded border p-2 text-left text-sm"
-                      onClick={() => showText(word)}
-                    >
-                      {word.text}
-                    </button>
-                  ))}
-                  {viewData.canManage && words.words.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const suggestion = suggestSheetMetadata(words.words);
-                        editMetadata(
-                          Object.fromEntries(
-                            Object.entries(suggestion).filter(
-                              ([, value]) => value,
-                            ),
-                          ),
-                        );
-                        setPanel("details");
-                      }}
-                    >
-                      Suggest title block fields
-                    </Button>
-                  )}
-                  {words.links.length > 0 && (
-                    <h3 className="text-sm font-medium">
-                      Links already in this PDF
-                    </h3>
-                  )}
-                  {words.links.map((link, index) => (
-                    <button
-                      key={index}
-                      className="block w-full rounded border p-2 text-left text-sm"
-                      onClick={() => activatePdfLink(link)}
-                    >
-                      {link.url ?? `PDF page ${link.page}`}
-                    </button>
-                  ))}
-                </>
-              )}
-              {panel === "search" && (
-                <DrawingReferenceLinks
-                  workspace={viewData}
-                  sourceSheetId={sourceId}
-                  words={words.words}
-                  online={online}
-                />
               )}
               {panel === "views" && (
                 <>
@@ -3808,7 +3660,7 @@ export function DrawingWorkspace({
           </Button>
           {commandButtons("fit", "compare", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
-            barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups" && id !== "search", panel === id)
+            barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups", panel === id)
           )}
           {bottomMode.pipe ||
           (!bottomMode.measuring && tool !== "pan" && OTHER_TOOLS.has(tool)) ? (
