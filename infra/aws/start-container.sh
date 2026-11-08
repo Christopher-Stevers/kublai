@@ -3,8 +3,14 @@
 start_container() {
   local name=$1 image=$2 env_file=$3
   local network=foremanhq uploads=/srv/foremanhq/uploads shares=1024 reservation=1024m oom_score=-250
+  local -a catalogue_mount=()
   if [[ "${DEPLOY_ENVIRONMENT:-production}" == development ]]; then
     network=foremanhq-dev uploads=/srv/foremanhq/dev/uploads shares=256 reservation=128m oom_score=500
+    # A migrated catalogue includes customer uploads outside the release image.
+    # Only mount a fully populated directory prepared by the migration process.
+    if [[ -d /srv/foremanhq/dev/catalogue-uploads ]]; then
+      catalogue_mount=(--mount "type=bind,src=/srv/foremanhq/dev/catalogue-uploads,dst=/app/public/images/catalog/uploads")
+    fi
   fi
   local mount_root="/run/foremanhq-cgroups/$name"
   install -d -m 755 "$mount_root"
@@ -20,6 +26,7 @@ start_container() {
     -e FOREMANHQ_CGROUP_ROOT=/run/foremanhq-cgroup/delegated \
     --mount "type=bind,src=$mount_root,dst=/run/foremanhq-cgroup,bind-propagation=rslave" \
     --mount "type=bind,src=$uploads,dst=/app/uploads" \
+    "${catalogue_mount[@]}" \
     "$image" >/dev/null
   local pid group root
   pid=$(docker inspect --format '{{.State.Pid}}' "$name")
