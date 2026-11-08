@@ -1,8 +1,5 @@
 "use client";
-import {
-  BarSearchButton,
-  PriorityActionBar,
-} from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { scheduleBackgroundWork, canWarmInBackground } from "~/lib/background-work";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
@@ -965,7 +962,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <BarSearchButton className={BAR_BUTTON} />
             {canUpload && <Button
               className={BAR_BUTTON}
               disabled={uploading !== null}

@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { BarSearchButton, PriorityActionBar } from "./priority-action-bar";
+import { PriorityActionBar } from "./priority-action-bar";
 
 afterEach(cleanup);
 const buttons = (n: number) =>
@@ -177,7 +177,6 @@ it("widens the search across the bar and shrinks it back with the X", () => {
       <PriorityActionBar
         search={{ value, onChange: setValue, label: "Search parts" }}
       >
-        <BarSearchButton />
         <button>Receive</button>
       </PriorityActionBar>
     );
@@ -218,7 +217,7 @@ it("renders a custom view toggle above the action row", () => {
   expect(toggle).toHaveBeenCalledOnce();
 });
 
-it("keeps Receive and New List available beside desktop search, including a restored filter", () => {
+it("uses the same third-priority search slot on desktop and restores the saved filter", () => {
   vi.stubGlobal("matchMedia", () => ({
     matches: true,
     addEventListener: vi.fn(),
@@ -228,9 +227,8 @@ it("keeps Receive and New List available beside desktop search, including a rest
     const [value, onChange] = useState("copper");
     return (
       <PriorityActionBar
-        search={{ value, onChange, label: "Find parts", inlineDesktop: true }}
+        search={{ value, onChange, label: "Find parts" }}
       >
-        <BarSearchButton />
         <button>Receive</button>
         <button>New List</button>
       </PriorityActionBar>
@@ -242,8 +240,11 @@ it("keeps Receive and New List available beside desktop search, including a rest
     expect(search).toHaveValue("copper");
     fireEvent.change(search, { target: { value: "cap" } });
     expect(search).toHaveValue("cap");
+    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
     expect(screen.getByRole("button", { name: "Receive" })).toBeVisible();
     expect(screen.getByRole("button", { name: "New List" })).toBeVisible();
+    const row = screen.getByRole("button", {name: "Search"}).closest("[data-action-bar-row]")!;
+    expect(row.firstElementChild).toBe(screen.getByRole("button", {name: "Search"}).closest("[data-action-slot]"));
   } finally {
     vi.unstubAllGlobals();
   }
@@ -278,7 +279,7 @@ it("groups named shelf actions under a heading without displacing primary action
 });
 
 it("counts the combined search/overflow control as one slot and shelves Tools", () => {
-  const {container} = render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Find drawings",split:true}}>
+  const {container} = render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Find drawings"}}>
     <button>Tools</button><button>Markup</button><button>Measure</button>
   </PriorityActionBar>);
   expect(container.querySelector("[data-action-bar-row]")!.children).toHaveLength(3);
@@ -291,7 +292,7 @@ it("counts the combined search/overflow control as one slot and shelves Tools", 
 });
 
 it("keeps named tool sections in overflow even when the primary row has room", () => {
-  render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Search drawings",split:true}}>
+  render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Search drawings"}}>
     <button data-action-group="Tools">Viewing</button><button>Measure</button>
   </PriorityActionBar>);
   expect(screen.getByRole("button",{name:"Measure"})).toBeVisible();
@@ -299,3 +300,23 @@ it("keeps named tool sections in overflow even when the primary row has room", (
   fireEvent.click(screen.getByRole("button",{name:"Expand all actions"}));
   expect(within(screen.getByRole("region",{name:"Tools"})).getByRole("button",{name:"Viewing"})).toBeVisible();
 });
+
+for (const count of [0, 1, 2, 3, 6]) {
+  it(`pins search to the leftmost third-priority slot with ${count} permitted actions and combines overflow only when needed`, () => {
+    const { container } = render(<PriorityActionBar search={{value: "", onChange: vi.fn(), label: "Find parts"}}>{buttons(count)}</PriorityActionBar>);
+    const row = container.querySelector("[data-action-bar-row]") as HTMLElement;
+    const searchSlot = row.querySelector("[data-split-search]") as HTMLElement;
+    expect(row.firstElementChild).toBe(searchSlot);
+    expect(searchSlot.style.gridColumn).toBe("1");
+    expect(row.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
+    expect(row.children.length).toBeLessThanOrEqual(3);
+    if (count > 2) {
+      const arrow = screen.getByRole("button", {name: "Expand all actions"});
+      expect(arrow.closest("[data-action-slot]")).toBe(searchSlot);
+      fireEvent.click(arrow);
+      expect(within(screen.getByRole("group", {name: "More actions"})).getAllByRole("button")).toHaveLength(count - 2);
+    } else {
+      expect(screen.queryByRole("button", {name: "Expand all actions"})).toBeNull();
+    }
+  });
+}

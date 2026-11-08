@@ -5,11 +5,9 @@ import {
   ArrowUpRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
-  SearchIcon,
   UploadIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import {
   localDateKey,
   submittalRegister,
@@ -46,6 +44,8 @@ function SubmittalStatusBadge({ status }: { status: SubmittalStatus }) {
 
 export function SubmittalsView({
   data,
+  query,
+  onQueryChange,
   canWrite,
   busy,
   onOpen,
@@ -53,6 +53,8 @@ export function SubmittalsView({
   onDrop,
 }: {
   data: DocumentOverview;
+  query: string;
+  onQueryChange: (value: string) => void;
   canWrite: boolean;
   busy: boolean;
   onOpen: (id: string) => void;
@@ -62,7 +64,6 @@ export function SubmittalsView({
   const [filter, setFilter] = useState<
     "all" | "mine" | "overdue" | SubmittalStatus
   >("all");
-  const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [dragging, setDragging] = useState(false);
   const today = localDateKey();
@@ -169,16 +170,6 @@ export function SubmittalsView({
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-48 flex-1">
-          <SearchIcon className="text-muted-foreground absolute top-3 left-3 size-4" />
-          <Input
-            aria-label="Search submittals"
-            placeholder="Search title, number, specification…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="pl-9"
-          />
-        </div>
         <select
           aria-label="Filter submittals by category"
           className={`${selectClass} w-full sm:w-48`}
@@ -287,7 +278,7 @@ export function SubmittalsView({
                 onClick={() => {
                   setFilter("all");
                   setCategory("");
-                  setQuery("");
+                  onQueryChange("");
                 }}
               >
                 Clear filters

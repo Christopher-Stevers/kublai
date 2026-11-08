@@ -891,7 +891,8 @@ describe("dedicated submittal workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open SUB-002: Motor" }),
     ).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search submittals"), {
+    fireEvent.click(screen.getByRole("button", {name: "Search"}));
+    fireEvent.change(screen.getByRole("searchbox", {name: "Search submittals"}), {
       target: { value: "22 11 16" },
     });
     fireEvent.click(

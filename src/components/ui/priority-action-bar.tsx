@@ -47,19 +47,14 @@ export function actionList(children: ReactNode, prefix = ""): ReactNode[] {
 /** Main rows have three slots total, including the search/overflow control. */
 export const ACTION_LIMIT = 3;
 
-/** A search that lives in the bottom bar. Put `<BarSearchButton />` among the
- * actions; tapping it widens the search field across the whole bar, and its X
- * clears the search and brings the buttons back. */
+/** Search reserves one primary slot on every page. Its overflow arrow shares
+ * that slot when there are extra actions. Tapping search widens the field
+ * across the bar; X clears it and brings the buttons back. */
 export type BarSearch = {
   value: string;
   onChange: (value: string) => void;
   label: string;
   placeholder?: string;
-  /** Keep search in its own action slot alongside buttons on desktop. */
-  inlineDesktop?: boolean;
-  /** Search is always leftmost, one split button with the arrow that
-   * expands the shelf. Put no BarSearchButton among the actions. */
-  split?: boolean;
   /** Arrows before the X that move through the results. */
   step?: { onPrevious: () => void; onNext: () => void; disabled?: boolean };
 };
@@ -68,10 +63,9 @@ const BarSearchContext = createContext<{
   value: string;
   label: string;
   open: () => void;
-  inline?: BarSearch;
 } | null>(null);
 
-export function BarSearchButton({
+function BarSearchButton({
   className,
   iconOnly = false,
 }: {
@@ -81,18 +75,6 @@ export function BarSearchButton({
 }) {
   const search = useContext(BarSearchContext);
   if (!search) return null;
-  if (search.inline) {
-    return (
-      <Input
-        type="search"
-        aria-label={search.inline.label}
-        placeholder={search.inline.placeholder ?? "Search"}
-        value={search.value}
-        onChange={(event) => search.inline?.onChange(event.target.value)}
-        className={className}
-      />
-    );
-  }
   const value = search.value.trim();
   return (
     <Button
@@ -114,7 +96,8 @@ export function BarSearchButton({
 
 /**
  * The app's bottom bar: three slots, including search/overflow, with the
- * highest priority actions on the right,
+ * search in the leftmost, third-priority slot and higher priority actions
+ * to its right,
  * each the same height in the same type. An in-row arrow expands every extra
  * action above the primary row; there are no pages or nested overflow menus. `label` is the line above the buttons (a total, a status, the order
  * being received), drawn in one style on every screen. The bar's container
@@ -137,14 +120,14 @@ export function PriorityActionBar({
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
   const limit = ACTION_LIMIT;
-  const split = !!search?.split;
+  const hasSearch = !!search;
   const actionGroup = (action: ReactNode) =>
     isValidElement<{ "data-action-group"?: string }>(action)
       ? (action.props["data-action-group"] ?? "")
       : "";
   const primary = actions.filter(action => !actionGroup(action));
-  const hasOverflow = primary.length !== actions.length || primary.length > limit - Number(split);
-  const capacity = limit - Number(split || hasOverflow);
+  const hasOverflow = primary.length !== actions.length || primary.length > limit - Number(hasSearch);
+  const capacity = limit - Number(hasSearch || hasOverflow);
   const shown = primary.slice(-capacity);
   const shelf = actions.filter(action => !shown.includes(action));
   const shelved = shelf.length;
@@ -161,21 +144,11 @@ export function PriorityActionBar({
   const tab = useRef<HTMLButtonElement>(null);
   const shelfId = useId();
   const [searching, setSearching] = useState(() => !!search?.value);
-  const [desktop, setDesktop] = useState(false);
-  useEffect(() => {
-    if (!search?.inlineDesktop || typeof window.matchMedia !== "function")
-      return;
-    const media = window.matchMedia("(min-width: 1024px)");
-    const update = () => setDesktop(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, [search?.inlineDesktop]);
-  const inlineSearch = !!search?.inlineDesktop && desktop && !split;
   const searchButton = useRef(false);
-  const expanded = open && shelved > 0 && (!searching || inlineSearch);
+  const searchActive = !!search && searching;
+  const expanded = open && shelved > 0 && !searchActive;
   useHeaderBackOverride(
-    dismissOnBack && (expanded || (searching && !inlineSearch))
+    dismissOnBack && (expanded || searchActive)
       ? () => {
           setOpen(false);
           setSearching(false);
@@ -212,15 +185,16 @@ export function PriorityActionBar({
     };
   }, [expanded]);
 
-  if (!actions.length) return null;
+  if (!actions.length && !search) return null;
   const closeSearch = () => {
     search?.onChange("");
     searchButton.current = true;
     setSearching(false);
   };
-  const slot = (action: ReactNode, index: number) => (
+  const slot = (action: ReactNode, index: number, column?: number) => (
     <div
       data-action-slot
+      style={column ? { gridColumn: column } : undefined}
       key={isValidElement(action) ? (action.key ?? index) : index}
     >
       {action}
@@ -234,7 +208,6 @@ export function PriorityActionBar({
               value: search.value,
               label: search.label,
               open: () => setSearching(true),
-              inline: inlineSearch ? search : undefined,
             }
           : null
       }
@@ -282,7 +255,7 @@ export function PriorityActionBar({
         )}
         <div data-landscape-action-row>
           <div data-landscape-navigation-slot />
-          {search && searching && !inlineSearch && (
+          {search && searching && (
             <div data-action-bar-search>
               <div className="relative min-w-0 flex-1">
                 <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -347,15 +320,15 @@ export function PriorityActionBar({
           {/* Hidden, not removed, while searching: the bar measures this row. */}
           <div
             data-action-bar-row
-            hidden={!!search && searching && !inlineSearch}
+            hidden={!!search && searching}
             style={{
-              gridTemplateColumns: split
-                ? `repeat(${shown.length + 1}, minmax(0, 1fr))`
+              gridTemplateColumns: hasSearch
+                ? `repeat(${limit}, minmax(0, 1fr))`
                 : `${shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
             }}
           >
-            {split && (
-              <div data-action-slot data-split-search key="split-search">
+            {search && (
+              <div data-action-slot data-split-search key="split-search" style={{ gridColumn: 1 }}>
                 <div>
                   {shelved > 0 && (
                     <Button
@@ -373,11 +346,11 @@ export function PriorityActionBar({
                       <ChevronUpIcon aria-hidden className={cn("transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
                     </Button>
                   )}
-                  <BarSearchButton iconOnly />
+                  <BarSearchButton iconOnly={shelved > 0} />
                 </div>
               </div>
             )}
-            {shelved > 0 && !split && (
+            {shelved > 0 && !hasSearch && (
               <div data-action-slot key="expand-actions">
                 <Button
                   ref={tab}
@@ -395,7 +368,9 @@ export function PriorityActionBar({
                 </Button>
               </div>
             )}
-            {shown.map((action, index) => slot(action, index))}
+            {shown.map((action, index) =>
+              slot(action, index, hasSearch ? limit - shown.length + index + 1 : undefined),
+            )}
           </div>
         </div>
       </div>

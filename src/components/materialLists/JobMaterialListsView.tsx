@@ -1,8 +1,5 @@
 "use client";
-import {
-  BarSearchButton,
-  PriorityActionBar,
-} from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useState, type ComponentProps } from "react";
 import { PlusIcon } from "lucide-react";
 import { matchesMaterialListPart } from "~/lib/material-list-part-search";
@@ -193,10 +190,8 @@ export function JobMaterialListsView({
               onChange: setSearch,
               label: "Search parts in material lists",
               placeholder: "Part name or SKU…",
-              inlineDesktop: true,
             }}
           >
-            <BarSearchButton className="h-12 w-full px-2" />
             {canReceive && (
               <ScanSlipButton jobId={jobId} className="h-12 w-full px-2" />
             )}

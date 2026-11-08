@@ -95,7 +95,7 @@ it("prioritizes Add and Receive while keeping Mark none fifth", () => {
 
 it("offers search alongside Receive and Add Part in both list and receiving bars", () => {
   const onChange = vi.fn();
-  const search = {value:"", onChange, label:"Search material list",split:true};
+  const search = {value:"", onChange, label:"Search material list"};
   const view = render(<MaterialListActions {...base} canAdd canOrder search={search} packingSlips={<button>Receive</button>} />);
   fireEvent.click(screen.getByRole("button",{name:"Search material list"}));
   fireEvent.change(screen.getByRole("searchbox"),{target:{value:"coupling"}});

@@ -1,8 +1,5 @@
 "use client";
-import {
-  BarSearchButton,
-  PriorityActionBar,
-} from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { supplierLabel } from "~/lib/supplier-label";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
@@ -666,7 +663,6 @@ export default function OrdersPage() {
             placeholder: "Search items, jobs, suppliers...",
           }}
         >
-          <BarSearchButton className="h-12 min-w-0 flex-1" />
           {canSendOrders && (
             <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
               <CalendarDaysIcon className="text-primary h-5 w-5" />

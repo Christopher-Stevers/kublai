@@ -3791,7 +3791,6 @@ export function DrawingWorkspace({
             onChange: setFind,
             label: "Search drawings and documents",
             placeholder: "Search drawings and documents",
-            split: true,
             step: { onPrevious: () => stepFind(-1), onNext: () => stepFind(1), disabled: !finding || !findCount },
           }}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}

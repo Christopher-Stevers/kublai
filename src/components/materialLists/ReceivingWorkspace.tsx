@@ -859,18 +859,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 </button>
               ))}
             </div>
-            <div className="relative min-w-48 flex-1">
-              <SearchIcon className="text-muted-foreground absolute top-3.5 left-3 size-4" />
-              <input
-                aria-label="Search packing slips"
-                className={`${field} pl-9`}
-                placeholder="Search slips"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
           </div>
-          <ul className="divide-y border-y">
+          <ul className="mb-20 divide-y border-y">
             {shown.map((d) => (
               <li key={d.id}>
                 <Link
@@ -902,6 +892,17 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   : "Nothing to review."}
             </p>
           )}
+          <div className="bg-background fixed inset-x-0 bottom-0 z-30 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+            <PriorityActionBar
+              className="mx-auto max-w-[1600px]"
+              search={{
+                value: search,
+                onChange: setSearch,
+                label: "Search packing slips",
+                placeholder: "Search slips",
+              }}
+            />
+          </div>
         </>
       ) : !detail ? (
         <p role="status">Loading review…</p>

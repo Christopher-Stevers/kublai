@@ -1,9 +1,6 @@
 "use client";
 import { LandscapeSubBar } from "~/components/app/LandscapeSubBar";
-import {
-  BarSearchButton,
-  PriorityActionBar,
-} from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import {
@@ -703,7 +700,6 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
             <PackagePlus className="h-4 w-4 shrink-0" />
             Create Part
           </Button>}
-          <BarSearchButton className={barButton} />
           {canEditParts && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -817,7 +813,6 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
               ))}
             </div>
           </div>
-
           {exportProgress && (
             <p role="status" className="text-muted-foreground text-sm">
               {exportProgress}

@@ -672,13 +672,14 @@ it("lists slips to review with one next step each, suggested orders first", asyn
   fireEvent.click(screen.getByRole("button", { name: "All" }));
   expect(rows()).toHaveLength(3);
   expect(rows()[2]).toHaveTextContent("Done");
+  fireEvent.click(screen.getByRole("button", {name: "Search"}));
   fireEvent.change(
-    screen.getByRole("textbox", { name: "Search packing slips" }),
+    screen.getByRole("searchbox", { name: "Search packing slips" }),
     { target: { value: "Older" } },
   );
   expect(rows()).toHaveLength(1);
   fireEvent.change(
-    screen.getByRole("textbox", { name: "Search packing slips" }),
+    screen.getByRole("searchbox", { name: "Search packing slips" }),
     { target: { value: "nothing like it" } },
   );
   expect(screen.getByText("No slips match.")).toBeInTheDocument();

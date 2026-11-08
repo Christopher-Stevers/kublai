@@ -142,7 +142,8 @@ describe("protected member controls", () => {
     render(
       <MembersSection settings={settingsFor("executive")} onSaved={vi.fn()} />,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: "Search members" }), {
+    fireEvent.click(screen.getByRole("button", {name: "Search"}));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search members" }), {
       target: { value: "Executive" },
     });
     expect(

@@ -1,4 +1,5 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { parseJobPrice } from "~/lib/job-pricing";
@@ -285,47 +286,6 @@ export default function JobPricingPage({
             {data.policy?.name ?? "Set up a job supplier list"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {data.canManage && (
-            <Button
-              variant="outline"
-              onClick={() => setAdding(true)}
-              disabled={!online}
-            >
-              Add supplier part
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={exportRows}
-            disabled={!data.entries.length}
-          >
-            <Download size={16} />
-            Export
-          </Button>
-          {data.canManage && showMoney && (
-            <>
-              <Button
-                variant="outline"
-                disabled={!online || importing || !data.policy}
-                onClick={() => file.current?.click()}
-              >
-                <Upload size={16} />
-                {importing ? "Reading…" : "Import prices"}
-              </Button>
-              <input
-                ref={file}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void readPrices(f);
-                }}
-              />
-            </>
-          )}
-        </div>
       </div>
       <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
         Estimated prices are budgeting allowances in CAD before tax and
@@ -377,19 +337,6 @@ export default function JobPricingPage({
       {tab === "parts" ? (
         <>
           <div className="flex flex-wrap gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search
-                className="text-muted-foreground absolute top-3 left-3"
-                size={16}
-              />
-              <Input
-                aria-label="Search job parts"
-                placeholder="Search part, supplier SKU or description"
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
             <select
               aria-label="Price status"
               className="bg-background max-w-full rounded-md border px-3 text-sm"
@@ -527,6 +474,58 @@ export default function JobPricingPage({
           )}
         </div>
       )}
+      <input
+        ref={file}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void readPrices(f);
+        }}
+      />
+      <div aria-hidden className="h-20" />
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <PriorityActionBar
+          className="mx-auto max-w-6xl"
+          search={tab === "parts" ? {
+            value: search,
+            onChange: setSearch,
+            label: "Search job pricing",
+            placeholder: "Search part, supplier SKU or description",
+          } : undefined}
+        >
+          {data.canManage && (
+            <Button
+              variant="outline"
+              onClick={() => setAdding(true)}
+              disabled={!online}
+            >
+              Add supplier part
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={exportRows}
+            disabled={!data.entries.length}
+          >
+            <Download size={16} />
+            Export
+          </Button>
+          {data.canManage && showMoney && (
+            <>
+              <Button
+                variant="outline"
+                disabled={!online || importing || !data.policy}
+                onClick={() => file.current?.click()}
+              >
+                <Upload size={16} />
+                {importing ? "Reading…" : "Import prices"}
+              </Button>
+            </>
+          )}
+        </PriorityActionBar>
+      </div>
       <Dialog
         open={!!editing}
         onOpenChange={(v) => {

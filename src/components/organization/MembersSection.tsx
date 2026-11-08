@@ -6,7 +6,6 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   Loader2Icon,
-  SearchIcon,
   ShieldCheckIcon,
   Undo2Icon,
   UsersIcon,
@@ -144,16 +143,6 @@ export function MembersSection({
         )}
       >
         <div className="space-y-3 border-b p-4">
-          <div className="relative">
-            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, email, role or department"
-              className="pl-9"
-              aria-label="Search members"
-            />
-          </div>
           <div className="bg-muted flex gap-1 rounded-lg p-1">
             {FILTERS.map((f) => (
               <button
@@ -254,6 +243,16 @@ export function MembersSection({
             </li>
           )}
         </ul>
+        <div className="bg-card sticky bottom-0 border-t p-3">
+          <PriorityActionBar
+            search={{
+              value: query,
+              onChange: setQuery,
+              label: "Search members",
+              placeholder: "Search name, email, role or department",
+            }}
+          />
+        </div>
       </aside>
 
       {/* Selected member */}

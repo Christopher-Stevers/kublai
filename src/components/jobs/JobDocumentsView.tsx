@@ -1,9 +1,6 @@
 "use client";
 import { isDefaultDocumentFolder } from "~/lib/default-document-folders";
-import {
-  BarSearchButton,
-  PriorityActionBar,
-} from "~/components/ui/priority-action-bar";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -909,6 +906,8 @@ export function JobDocumentsView({
       {view === "submittals" && (
         <SubmittalsView
           data={data}
+          query={query}
+          onQueryChange={setQuery}
           canWrite={mutable && data.capabilities.canWrite}
           busy={processing}
           onOpen={setSelectedId}
@@ -1401,11 +1400,11 @@ export function JobDocumentsView({
             value: query,
             onChange: (value) => {
               setQuery(value);
-              if (value && view !== "files" && view !== "recycle")
+              if (value && view !== "files" && view !== "recycle" && view !== "submittals")
                 setView("files");
             },
-            label: "Search documents",
-            placeholder: "Search documents",
+            label: view === "submittals" ? "Search submittals" : "Search documents",
+            placeholder: view === "submittals" ? "Search title, number, specification…" : "Search documents",
           }}
         >
           <Button
@@ -1416,7 +1415,6 @@ export function JobDocumentsView({
             <MoreHorizontalIcon className="size-4" />
             Options
           </Button>
-          <BarSearchButton className="h-11 gap-1 px-2 text-xs sm:text-sm" />
           {canWrite && <Button
             className="h-11 gap-1 px-1 text-xs sm:text-sm"
             disabled={processing}

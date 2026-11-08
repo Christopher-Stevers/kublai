@@ -291,7 +291,7 @@ export function MaterialListScreen({
   const searchControl = {value:partSearch, onChange:(value: string) => {
     if (!partSearch.trim() && value.trim()) setSearchOrderId(orderInView);
     setPartSearch(value);
-  }, label:"Search material list", placeholder:"Search parts or SKU", split:true};
+  }, label:"Search material list", placeholder:"Search parts or SKU"};
 
   const openAddPartDialog = () => {
     markUserAction("add-part-open", { materialListId: id });

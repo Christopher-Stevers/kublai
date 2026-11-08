@@ -13,8 +13,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useMaterialListSortPreference } from "~/hooks/use-material-list-sort";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { AlertCircle, Search, XIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
+import { AlertCircle, XIcon, PlusIcon, ArrowLeftRight, ListChecksIcon, PackagePlusIcon } from "lucide-react";
 import { CreateCustomPartDialog } from "./CreateCustomPartDialog";
 import { WizardHeader } from "./WizardHeader";
 import { EditPartDialog } from "~/components/catalogue/EditPartDialog";
@@ -1333,6 +1332,12 @@ export function AddPartDialog({
           <div data-bottom-menu className={`relative isolate shrink-0 before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:border-t before:bg-card px-4 pt-2 sm:px-6 ${keyboardViewport ? "pb-1.5" : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"}`}>
             <div>
               <PriorityActionBar
+                search={!prefabView && !showChosenParts ? {
+                  value: wizardSearchQuery,
+                  onChange: setWizardSearchQuery,
+                  label: "Search parts",
+                  placeholder: "Search",
+                } : undefined}
                 tabAction={!prefabView ? (
                   <button type="button" data-action-bar-tab data-tutorial="wizard-chosen-toggle" className="whitespace-nowrap"
                     aria-pressed={showChosenParts}
@@ -1371,29 +1376,7 @@ export function AddPartDialog({
                       <PackagePlusIcon className="mr-1 h-3.5 w-3.5 shrink-0" />
                       {isOnline ? "Create Part" : "Create (online)"}
                     </Button>}
-                    <div className="relative min-w-0">
-                      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-                      {/* A plain search field: no autofill, autocorrect or
-                          suggestions, so phones skip their extra keyboard bars. */}
-                      <Input
-                        type="search"
-                        inputMode="search"
-                        enterKeyHint="search"
-                        name="part-search"
-                        autoComplete="off"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        value={wizardSearchQuery}
-                        onChange={(event) => setWizardSearchQuery(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") event.currentTarget.blur();
-                        }}
-                        placeholder="Search"
-                        aria-label="Search parts"
-                        className="h-9 w-full rounded-lg pl-8 text-sm [&::-webkit-search-cancel-button]:appearance-none"
-                      />
-                    </div>
+
                 </>}
                 {!prefabView && <Button
                   className={barButton} onClick={handleAddToMaterialList}

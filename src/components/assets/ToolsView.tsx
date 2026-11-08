@@ -1,13 +1,13 @@
 "use client";
+import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useState } from "react";
-import { ArrowRightLeftIcon, PlusIcon, PrinterIcon, SearchIcon, WrenchIcon } from "lucide-react";
+import { ArrowRightLeftIcon, PlusIcon, PrinterIcon, WrenchIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { ListPageSkeleton } from "~/components/ui/skeleton";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -72,13 +72,6 @@ export function ToolsView() {
     <AssetsShell
       title="Tools"
       description="Every tool type, and each tagged tool with where it is right now"
-      actions={
-        canManage && (
-          <Button onClick={() => setAddOpen(true)}>
-            <PlusIcon className="mr-2 h-4 w-4" /> Add tools
-          </Button>
-        )
-      }
     >
       {types.isLoading ? (
         <ListPageSkeleton label="Loading tools" />
@@ -149,15 +142,6 @@ export function ToolsView() {
           ) : (
             <section className="space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative flex-1">
-                  <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    className="pl-8"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search tag, serial or tool name"
-                  />
-                </div>
                 <select className={cn(selectClass, "sm:w-40")} value={status ?? ""} onChange={(event) => setFilter("status", event.target.value || undefined)}>
                   <option value="">Any status</option>
                   <option value="available">Available</option>
@@ -172,23 +156,6 @@ export function ToolsView() {
                   </Button>
                 )}
               </div>
-
-              {selected.size > 0 && (
-                <div className="bg-muted flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-sm">
-                  <span className="font-medium">{selected.size} selected</span>
-                  <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
-                    <ArrowRightLeftIcon className="mr-1.5 h-4 w-4" /> Move
-                  </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={`/jobs/assets/labels?ids=${[...selected].join(",")}`} target="_blank" rel="noreferrer">
-                      <PrinterIcon className="mr-1.5 h-4 w-4" /> Labels
-                    </a>
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                    Clear
-                  </Button>
-                </div>
-              )}
 
               {tools.isLoading ? (
                 <ListPageSkeleton rows={4} label="Loading tools" />
@@ -236,6 +203,31 @@ export function ToolsView() {
           )}
         </div>
       )}
+
+      <div aria-hidden className="h-20" />
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <PriorityActionBar
+          className="mx-auto max-w-6xl"
+          search={type?.tracking !== "quantity" ? {
+            value: search,
+            onChange: setSearch,
+            label: "Search tools",
+            placeholder: "Search tag, serial or tool name",
+          } : undefined}
+          label={selected.size > 0 ? `${selected.size} selected` : undefined}
+        >
+          {selected.size > 0 && <>
+            <Button variant="outline" onClick={() => setSelected(new Set())}>Clear selection</Button>
+            <Button variant="outline" asChild>
+              <a href={`/jobs/assets/labels?ids=${[...selected].join(",")}`} target="_blank" rel="noreferrer">
+                <PrinterIcon />Labels
+              </a>
+            </Button>
+            <Button variant="outline" onClick={() => setMoveOpen(true)}><ArrowRightLeftIcon />Move</Button>
+          </>}
+          {canManage && <Button onClick={() => setAddOpen(true)}><PlusIcon />Add tools</Button>}
+        </PriorityActionBar>
+      </div>
 
       <MoveDialog
         open={moveOpen}

@@ -10,7 +10,6 @@ import {
   ChevronRightIcon,
   CircleDashedIcon,
   PlusIcon,
-  SearchIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -103,7 +102,7 @@ export function EstimatesList() {
     setError("");
   };
   return (
-    <div className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-6 pb-28 sm:px-6 sm:pb-10 lg:px-8">
+    <div className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-6 pb-28 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
@@ -113,33 +112,8 @@ export function EstimatesList() {
             Job costs, takeoffs and customer proposals
           </p>
         </div>
-        <div className="hidden shrink-0 gap-2 sm:flex">
-          <Button variant="outline" onClick={() => setPricingOpen(true)}>
-            <SlidersHorizontalIcon className="h-4 w-4" />
-            Pricebook & assemblies
-          </Button>
-          {permissions.edit && (
-            <Button className={actionClass} onClick={openCreate}>
-              <PlusIcon className="h-4 w-4" />
-              New estimate
-            </Button>
-          )}
-        </div>
       </div>
       <div className="mb-5 grid grid-cols-2 gap-2 sm:flex sm:items-center">
-        <div className="relative col-span-2 min-w-0 sm:flex-1">
-          <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            aria-label="Search estimates"
-            placeholder="Search estimate or job…"
-            value={search}
-            onChange={(event) => {
-              resetPages();
-              setSearch(event.target.value);
-            }}
-            className="bg-card h-11 rounded-lg pl-9 sm:h-9"
-          />
-        </div>
         <select
           aria-label="Filter by job"
           value={jobId}
@@ -276,8 +250,19 @@ export function EstimatesList() {
           </Button>
         </div>
       )}
-      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:hidden">
-        <PriorityActionBar>
+      <div className="bg-background fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <PriorityActionBar
+          className="mx-auto max-w-5xl"
+          search={{
+            value: search,
+            onChange: (value) => {
+              resetPages();
+              setSearch(value);
+            },
+            label: "Search estimates",
+            placeholder: "Search estimate or job…",
+          }}
+        >
         <Button
           variant="outline"
           size="lg"
