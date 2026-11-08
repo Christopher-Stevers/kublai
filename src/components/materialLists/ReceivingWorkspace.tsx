@@ -2230,10 +2230,10 @@ function readerCopies({
     ];
     return {
       key: label,
-      label: reviewStatus
+      label: reviewStatus || label === "Active saved reading"
         ? origins.length
           ? origins.join(" + ")
-          : "Manual review"
+          : reviewStatus ? "Manual review" : "Slip reading"
         : label,
       reviewStatus,
       backorderChecks: shown.flatMap((line) => {
