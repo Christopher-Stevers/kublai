@@ -1234,6 +1234,20 @@ it("completes a matching comparison after Looks right, before receiving approval
   expect(state.review.lines[0]!.approved).toBeUndefined();
 });
 
+it("numbers comparisons in displayed order and keeps the number on completed badges", async () => {
+  state.review.lines[0]!.quantity = 8;
+  state.review.lines[0]!.approved = { itemId: "item", quantity: 8, kind: "delivery", at: "2026-11-08", by: "Tim" };
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  const badges = Array.from(document.querySelectorAll("[data-comparison-state]"));
+  expect(badges).toHaveLength(2);
+  expect(badges[0]).toHaveTextContent(/^1$/);
+  expect(badges[0]).toHaveAttribute("data-comparison-state", "pending");
+  expect(badges[1]).toHaveTextContent(/^2Complete$/);
+  expect(badges[1]).toHaveAttribute("data-comparison-state", "complete");
+  expect(badges[1]!.querySelector("svg")).not.toBeNull();
+});
+
 it.each([
   { checked: false, quantity: 8, orderItemId: "item" },
   { checked: true, quantity: 6, orderItemId: "item" },

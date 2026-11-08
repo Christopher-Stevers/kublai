@@ -3135,7 +3135,7 @@ function OrderComparison({
         </DialogContent>
       </Dialog>
       <ul ref={list}>
-        {rows.map(({ key, n, item, lines }) => {
+        {rows.map(({ key, item, lines }, displayIndex) => {
           const open = openRow === key,
             live = lines.filter((x) => !x.line.ignored),
             status = lines
@@ -3569,7 +3569,13 @@ function OrderComparison({
                   data-comparison-state={done ? "complete" : "pending"}
                   className={`absolute top-0 left-[calc(50%-4px)] z-20 flex size-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${done ? statusStyle.approved.badge : (mine?.badge ?? tone?.badge ?? "bg-muted text-muted-foreground")}`}
                 >
-                  {done ? <CheckIcon aria-hidden className="size-5" /> : n + 1}
+                  <span>{displayIndex + 1}</span>
+                  {done && (
+                    <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-background">
+                      <CheckIcon aria-hidden className="size-3.5" />
+                      <span className="sr-only">Complete</span>
+                    </span>
+                  )}
                 </button>
                 <span
                   aria-hidden
