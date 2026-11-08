@@ -2356,6 +2356,7 @@ const dropTarget = (at: DragPoint) =>
     ?.dataset.drop ?? null;
 // Once lifted, this far moved is a drag; less, and letting go opens the menu.
 const DRAG_FROM = 8;
+const TRASH_DROP = "receiving-trash";
 
 // Each comparison card is one ticket torn down a zigzag. The halves are
 // masked to either side of the same teeth, and the seam draws them at rest.
@@ -2614,7 +2615,7 @@ function OrderComparison({
     let frame = 0;
     const tick = () => {
       const at = pointer.current;
-      if (at) {
+      if (at && dropTarget(at) !== TRASH_DROP) {
         const box = scroller?.getBoundingClientRect() ?? {
           top: 0,
           bottom: window.innerHeight,
@@ -2647,6 +2648,15 @@ function OrderComparison({
     return () => cancelAnimationFrame(frame);
   }, [dragging, positionHalf]);
   const sourceChanged = r.versionId !== detail.document.currentVersionId;
+  const canTrash = (grab: Grab) => {
+    if (sourceChanged || addBlocked || removing || removingDetection) return false;
+    if (grab.side === "slip")
+      return !!grab.line && !grab.line.ignored && !grab.line.approved;
+    return !!detail.canRemoveOrderItems && grab.item.received === 0 &&
+      !r.lines.some(line => !line.ignored &&
+        (line.orderItemId === grab.item.id || (!line.orderItemId && detail.pairs?.[line.id] === grab.item.id)));
+  };
+
   const moveLine = async (line: ReceivingLine, itemId: string) => {
     const target = detail.items.find((i) => i.id === itemId);
     if (!target) return;
@@ -2659,6 +2669,15 @@ function OrderComparison({
   };
   const lineIds = new Map(r.lines.map((line) => [line.id, line]));
   const dropOn = (grab: Grab, over: string) => {
+    if (over === TRASH_DROP) {
+      if (!canTrash(grab)) return;
+      if (grab.side === "order") setRemoveItem(grab.item);
+      else if (grab.line) {
+        setRemoveDetectionFailed(false);
+        setNotItem({ ids: [grab.line.id], selected: grab.line.id });
+      }
+      return;
+    }
     if (grab.side === "slip") {
       if (grab.line) void moveLine(grab.line, over);
     } else {
@@ -3829,9 +3848,22 @@ function OrderComparison({
         onClose={() => setAsking(null)}
         onChoose={(over) => asking?.go(over?.fit)}
       />
+      {drag?.moving && canTrash(drag) && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex justify-center px-4">
+          <div
+            role="region"
+            aria-label="Trash"
+            data-drop={TRASH_DROP}
+            className={`pointer-events-auto flex min-h-24 w-full max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-semibold shadow-xl transition-colors motion-reduce:transition-none ${drag.over === TRASH_DROP ? "border-destructive bg-destructive text-white" : "border-destructive/60 bg-background text-destructive"}`}
+          >
+            <Trash2Icon aria-hidden className="size-8" />
+            {drag.side === "order" ? "Drop to remove from order" : "Drop to remove detected item"}
+          </div>
+        </div>
+      )}
       {drag?.moving && (
         <span role="status" className="sr-only">
-          {drag.side === "order"
+          {drag.over === TRASH_DROP && canTrash(drag) ? "Release to remove item" : drag.side === "order"
             ? drag.over ? `Pair with ${lineIds.get(drag.over)?.description ?? "this line"}` : "Drop on a slip line"
             : drag.over ? `Move to ${detail.items.find((i) => i.id === drag.over)?.description ?? "this item"}` : "Drop on an order item"}
         </span>

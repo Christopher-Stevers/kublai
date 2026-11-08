@@ -2200,3 +2200,69 @@ it("opens duplicate comparison in the main viewer and returns to the same review
   expect(await screen.findByRole("heading",{name:"Review Packing Slip"})).toBeVisible();
   expect(posts).toEqual([]);expect(replace).not.toHaveBeenCalled();
 });
+
+it("shows a trash target while dragging an unmatched order part and confirms its removal", async () => {
+  dragSetup();
+  Object.assign(state, { canRemoveOrderItems: true });
+  render(<ReceivingWorkspace jobId="job" />);
+  const half = (await screen.findByRole("heading", {name: "Copper pipe 1/2"})).closest("[data-drag-half]")!;
+  expect(screen.queryByRole("region", {name: "Trash"})).toBeNull();
+  fireEvent.touchStart(half, {touches: [{clientX: 100, clientY: 300}]});
+  await hold();
+  fireEvent.touchMove(window, {touches: [{clientX: 100, clientY: 400}]});
+  const trash = screen.getByRole("region", {name: "Trash"});
+  expect(trash).toHaveTextContent("Drop to remove from order");
+  under = () => trash;
+  fireEvent.touchMove(window, {touches: [{clientX: 100, clientY: 600}]});
+  expect(screen.getByText("Release to remove item")).toBeInTheDocument();
+  fireEvent.touchEnd(window, {touches: []});
+  expect(screen.queryByRole("region", {name: "Trash"})).toBeNull();
+  const dialog = await screen.findByRole("dialog", {name: "Remove item from order?"});
+  expect(posts).toHaveLength(0);
+  fireEvent.click(within(dialog).getByRole("button", {name: "Remove from order"}));
+  await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action: "removeOrderItem", itemId: "item2", confirmed: true})));
+});
+
+it("hides the trash on drag cancellation and never removes an item", async () => {
+  dragSetup();
+  Object.assign(state, { canRemoveOrderItems: true });
+  render(<ReceivingWorkspace jobId="job" />);
+  const half = (await screen.findByRole("heading", {name: "Copper pipe 1/2"})).closest("[data-drag-half]")!;
+  fireEvent.touchStart(half, {touches: [{clientX: 100, clientY: 300}]});
+  await hold();
+  fireEvent.touchMove(window, {touches: [{clientX: 100, clientY: 400}]});
+  expect(screen.getByRole("region", {name: "Trash"})).toBeVisible();
+  fireEvent.touchCancel(window);
+  expect(screen.queryByRole("region", {name: "Trash"})).toBeNull();
+  expect(posts).toHaveLength(0);
+});
+
+it("does not offer trash for an order part with received quantities", async () => {
+  dragSetup();
+  Object.assign(state, { canRemoveOrderItems: true });
+  state.items[1]!.received = 1;
+  render(<ReceivingWorkspace jobId="job" />);
+  const half = (await screen.findByRole("heading", {name: "Copper pipe 1/2"})).closest("[data-drag-half]")!;
+  fireEvent.touchStart(half, {touches: [{clientX: 100, clientY: 300}]});
+  await hold();
+  fireEvent.touchMove(window, {touches: [{clientX: 100, clientY: 400}]});
+  expect(screen.queryByRole("region", {name: "Trash"})).toBeNull();
+  fireEvent.touchEnd(window, {touches: []});
+  expect(posts).toHaveLength(0);
+});
+
+it("drops a detected slip item into the existing removal confirmation", async () => {
+  dragSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  const half = (await screen.findByText("Unclear pipe")).closest("[data-drag-half]")!;
+  fireEvent.touchStart(half, {touches: [{clientX: 200, clientY: 300}]});
+  await hold();
+  fireEvent.touchMove(window, {touches: [{clientX: 200, clientY: 400}]});
+  under = () => screen.getByRole("region", {name: "Trash"});
+  fireEvent.touchMove(window, {touches: [{clientX: 200, clientY: 600}]});
+  fireEvent.touchEnd(window, {touches: []});
+  const dialog = await screen.findByRole("dialog", {name: "This is not an item?"});
+  expect(posts).toHaveLength(0);
+  fireEvent.click(within(dialog).getByRole("button", {name: "Remove item"}));
+  await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action: "ignore", lineId: "1", reason: "This is not an item"})));
+});
