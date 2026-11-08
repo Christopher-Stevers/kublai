@@ -33,3 +33,18 @@ it("can deselect the original drawing and rejects unavailable selections", () =>
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(onClose).toHaveBeenCalledOnce();
 });
+it("offers Compare files beside the overlay choice and opens it on a one-drawing job", () => {
+  const drawings = [{ id: "a", name: "A101", setId: "set", setName: "Plans" }, { id: "b", name: "M101", setId: "set", setName: "Plans" }];
+  const onCompare = vi.fn(), onCompareFiles = vi.fn();
+  const view = render(<DrawingOverlayPicker drawings={drawings} initialFirstId="a" onCompare={onCompare} onCompareFiles={onCompareFiles} onClose={vi.fn()} />);
+  expect(screen.getByRole("radio", { name: "Overlay" })).toHaveAttribute("aria-checked", "true");
+  fireEvent.click(screen.getByRole("radio", { name: "Compare files" }));
+  expect(document.querySelector("details")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Compare side by side" }));
+  expect(onCompareFiles).toHaveBeenCalledOnce();
+  expect(onCompare).not.toHaveBeenCalled();
+  view.unmount();
+  render(<DrawingOverlayPicker drawings={drawings.slice(0, 1)} initialFirstId="a" onCompare={onCompare} onCompareFiles={onCompareFiles} onClose={vi.fn()} />);
+  expect(screen.getByRole("radio", { name: "Compare files" })).toHaveAttribute("aria-checked", "true");
+  expect(screen.getByRole("radio", { name: "Overlay" })).toBeDisabled();
+});

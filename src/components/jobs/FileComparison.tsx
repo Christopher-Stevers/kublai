@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "~/components/ui/dialog";
+import { LayersIcon, XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { PassiveDocumentPdfPreview } from "./documents/PassiveDocumentPdfPreview";
 import { DrawingSheetViewer } from "./DrawingSheetViewer";
@@ -38,6 +39,8 @@ export function FileComparison({
   initialDocumentIds,
   initialSheetId,
   onClose,
+  onOverlay,
+  inline = false,
   resolveAssetUrl,
 }: {
   jobId: string;
@@ -45,6 +48,10 @@ export function FileComparison({
   initialDocumentIds?: [string, string];
   initialSheetId?: string;
   onClose: () => void;
+  /** Inline only: reopens the overlay picker. */
+  onOverlay?: () => void;
+  /** Fill the drawing area in place of a separate window. */
+  inline?: boolean;
   resolveAssetUrl?: (url: string) => Promise<string>;
 }) {
   const [documents, setDocuments] = useState<Source[]>([]);
@@ -117,6 +124,92 @@ export function FileComparison({
   );
   const leftId = selected[0] || initialSet?.id || sources[0]?.id || "";
   const rightId = selected[1];
+  const status = (
+    <>
+      {loading && (
+        <p role="status" className="px-2 text-sm">
+          Loading PDFs…
+        </p>
+      )}
+      {error && (
+        <div role="alert" className="px-2 text-sm">
+          {error}{" "}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+    </>
+  );
+  const panes = (
+    <div
+      className={
+        inline
+          ? "grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden"
+          : "grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden rounded border"
+      }
+    >
+      {([leftId, rightId] as const).map((id, index) => (
+        <ComparisonPane
+          key={index}
+          side={index === 0 ? "Left" : "Right"}
+          sources={sources}
+          id={id}
+          loading={loading}
+          initialSheetId={index === 0 ? initialSheetId : undefined}
+          resolveAssetUrl={resolveAssetUrl}
+          onSelect={(value) =>
+            setSelected((current) =>
+              index === 0 ? [value, current[1]] : [leftId, value],
+            )
+          }
+        />
+      ))}
+    </div>
+  );
+  if (inline)
+    return (
+      <section
+        className="bg-background relative flex h-full min-h-0 flex-col"
+        aria-label="Compare files"
+      >
+        <div
+          data-drawing-chrome
+          className="bg-background/95 flex h-12 shrink-0 items-center gap-2 border-b px-2 shadow-sm"
+        >
+          <span
+            aria-hidden
+            className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg"
+          >
+            <LayersIcon className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            Compare files
+          </span>
+          {onOverlay && (
+            <Button variant="outline" size="sm" onClick={onOverlay}>
+              <LayersIcon className="size-4" />
+              Overlay
+            </Button>
+          )}
+          <button
+            type="button"
+            aria-label="Close comparison"
+            title="Close comparison"
+            onClick={onClose}
+            className="hover:bg-accent text-muted-foreground -mr-0.5 grid size-9 shrink-0 place-items-center rounded-full"
+          >
+            <XIcon className="size-5" />
+          </button>
+        </div>
+        {(loading || error) && <div className="shrink-0 py-1">{status}</div>}
+        {panes}
+      </section>
+    );
   return (
     <Dialog
       open
@@ -135,41 +228,8 @@ export function FileComparison({
             pages independently.
           </DialogDescription>
         </DialogHeader>
-        {loading && (
-          <p role="status" className="px-2 text-sm">
-            Loading PDFs…
-          </p>
-        )}
-        {error && (
-          <div role="alert" className="px-2 text-sm">
-            {error}{" "}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setRetry((value) => value + 1)}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-        <div className="grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden rounded border">
-          {([leftId, rightId] as const).map((id, index) => (
-            <ComparisonPane
-              key={index}
-              side={index === 0 ? "Left" : "Right"}
-              sources={sources}
-              id={id}
-              loading={loading}
-              initialSheetId={index === 0 ? initialSheetId : undefined}
-              resolveAssetUrl={resolveAssetUrl}
-              onSelect={(value) =>
-                setSelected((current) =>
-                  index === 0 ? [value, current[1]] : [leftId, value],
-                )
-              }
-            />
-          ))}
-        </div>
+        {status}
+        {panes}
       </DialogContent>
     </Dialog>
   );

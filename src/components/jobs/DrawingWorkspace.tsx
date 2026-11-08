@@ -694,6 +694,7 @@ export function DrawingWorkspace({
     setHighlight(null);
     setSelectedId(null);
     setCompareIds(null);
+    setFileComparisonOpen(false);
   };
   const [bottomMode, setBottomMode] = useState({
     measuring: false,
@@ -1695,7 +1696,6 @@ export function DrawingWorkspace({
     legendOpen ? () => setLegendOpen(false) :
     autoHyperlinkOpen ? () => setAutoHyperlinkOpen(false) :
     appearanceOpen ? () => setAppearanceOpen(false) :
-    fileComparisonOpen ? () => setFileComparisonOpen(false) :
     overlayPickerOpen ? () => setOverlayPickerOpen(false) :
     markupMenu ? () => setMarkupMenu(null) :
     form ? () => setForm(null) :
@@ -1708,6 +1708,7 @@ export function DrawingWorkspace({
       ? finishUsing :
     selectedId ? () => { setSelectedId(null); setEditReadyId(null); } :
     compareIds ? () => setCompareIds(null) :
+    fileComparisonOpen ? () => setFileComparisonOpen(false) :
     null;
   useHeaderBackOverride(dismissDrawingState ? () => {
     const menu = Array.from(document.querySelectorAll<HTMLElement>('[role="menu"][data-state="open"], [role="listbox"][data-state="open"]')).at(-1);
@@ -1861,8 +1862,7 @@ export function DrawingWorkspace({
   });
   const commands = {
     fit: { label: "Fit to screen", Icon: ScanIcon, run: () => setNavigate({ center: { x: 0.5, y: 0.5 }, zoom: 1, requestId: crypto.randomUUID() }) },
-    compare: { label: "Compare files", Icon: LayersIcon, run: () => setFileComparisonOpen(true) },
-    overlay: { label: "Overlay drawings", Icon: LayersIcon, run: () => setOverlayPickerOpen(true), disabled: overlayChoices.length < 2 },
+    overlay: { label: "Overlay drawings", Icon: LayersIcon, run: () => setOverlayPickerOpen(true) },
     appearance: { label: "Drawing appearance", Icon: PaletteIcon, run: () => setAppearanceOpen(true) },
     "auto-hyperlink": { label: "Auto Hyperlink", Icon: Link2Icon, run: openAutoHyperlink, disabled: !viewData.canUseSheetTools || !writable || !online, barVisible: viewData.canUseSheetTools && viewData.canAnnotate !== false },
     "legend-items": sheetCommand("Legend Items", BookOpenIcon, () => setLegendOpen(true)),
@@ -1936,10 +1936,11 @@ export function DrawingWorkspace({
     ...wheelCommands("fit"),
     ...(onFullscreen ? [{ id: "full", label: fullscreen ? "Exit full screen" : "Full screen", icon: fullscreen ? <MinimizeIcon /> : <MaximizeIcon />, run: onFullscreen }] : []),
     ...(compareIds ? [{ id: "close-overlay", label: "Close overlay", icon: <XIcon />, run: () => setCompareIds(null) }] : []),
+    ...(fileComparisonOpen ? [{ id: "close-files", label: "Close comparison", icon: <XIcon />, run: () => setFileComparisonOpen(false) }] : []),
     { id: "more", label: "More", icon: <MoreHorizontalIcon />, children: [
       { id: "ai-tools", label: "AI Tools", icon: <SparklesIcon />, children: wheelCommands(...aiCommands) },
       { id: "layers", label: "Layers", icon: <LayersIcon />, run: () => { setPanel("markups"); setForm(null); } },
-      ...wheelCommands("compare", "overlay", "appearance"),
+      ...wheelCommands("overlay", "appearance"),
       ...panels.filter(([id]) => id !== "files" && id !== "markups" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) => {
         const Icon = PANEL_ICONS[id] ?? MoreHorizontalIcon;
         return { id, label, icon: <Icon />, disabled: !data, run: () => { setPanel(id); setForm(null); } };
@@ -2035,6 +2036,7 @@ export function DrawingWorkspace({
             <Button onClick={() => {
               setSuperScalePrompt(false);
               setCompareIds(null);
+              setFileComparisonOpen(false);
               setTool("pan");
               setMarkupOpen(false);
               setSelectedId(null);
@@ -2048,7 +2050,7 @@ export function DrawingWorkspace({
       {viewData.canUseSheetTools && canAccessSystems && superSpecMaterialOpen && <SuperSpecMaterialDialog jobId={jobId} onClose={()=>setSuperSpecMaterialOpen(false)}/>}
       {viewData.canUseSheetTools && superLabelOpen && <SuperLabelDialog key={source.id} source={source} onClose={()=>setSuperLabelOpen(false)} onSaved={async()=>{await Promise.all([refresh(), utils.drawings.getSet.invalidate({setId:source.setId}), utils.drawings.listSets.invalidate({jobId})]);}}/>}
       {viewData.canUseSheetTools && superScaleOpen && (
-        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={viewData.metadata} sheets={viewData.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
+        <SuperScaleDialog key={source.id} jobId={jobId} source={source} ownerId={sheet.id} metadata={viewData.metadata} sheets={viewData.jobSheets} onCalibrate={writable && current && !metadataDirty && pending === 0 ? () => { setSuperScaleOpen(false); setCompareIds(null); setFileComparisonOpen(false); setSuperScalePrompt(true); } : undefined} onClose={() => setSuperScaleOpen(false)} onSaved={() => { void refresh(); }} />
       )}
       {appearanceOpen && (
         <DrawingAppearanceDialog
@@ -2058,7 +2060,6 @@ export function DrawingWorkspace({
           onClose={() => setAppearanceOpen(false)}
         />
       )}
-      {fileComparisonOpen && <FileComparison jobId={jobId} sheets={viewData.jobSheets} initialSheetId={sourceId} resolveAssetUrl={resolveAssetUrl} onClose={() => setFileComparisonOpen(false)} />}
       {overlayPickerOpen && (
         <DrawingOverlayPicker
           drawings={overlayChoices}
@@ -2068,6 +2069,13 @@ export function DrawingWorkspace({
           onClose={() => setOverlayPickerOpen(false)}
           onCompare={(first, second, additional) => {
             setCompareIds({ first, second, additional });
+            setFileComparisonOpen(false);
+            setOverlayPickerOpen(false);
+            setPanel("");
+          }}
+          onCompareFiles={() => {
+            setCompareIds(null);
+            setFileComparisonOpen(true);
             setOverlayPickerOpen(false);
             setPanel("");
           }}
@@ -2311,6 +2319,16 @@ export function DrawingWorkspace({
               initialViewport={compareIds?.focus ?? viewport.current}
               onViewportChange={updateViewport}
               onClose={() => setCompareIds(null)}
+            />
+          ) : fileComparisonOpen ? (
+            <FileComparison
+              inline
+              jobId={jobId}
+              sheets={viewData.jobSheets}
+              initialSheetId={sourceId}
+              resolveAssetUrl={resolveAssetUrl}
+              onOverlay={() => setOverlayPickerOpen(true)}
+              onClose={() => setFileComparisonOpen(false)}
             />
           ) : (
             <DrawingSheetViewer
@@ -3721,7 +3739,7 @@ export function DrawingWorkspace({
             onClick={() => setDefaultMarkupVisibility(defaultMarkupVisibility === "private" ? "published" : "private")}>
             <PenLineIcon />{defaultMarkupVisibility === "private" ? "Private Markups" : "Public Markups"}
           </Button>
-          {commandButtons("fit", "compare", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
+          {commandButtons("fit", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
             barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups", panel === id)
           )}

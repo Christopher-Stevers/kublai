@@ -1037,6 +1037,28 @@ describe("drawing workspace workflows", () => {
     expect(mocks.metadata).not.toHaveBeenCalled();
   });
 
+  it("compares files side by side from Overlay drawings in the drawing area", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ documents: [], versions: [] }))));
+    open();
+    openMenu("More");
+    expect(screen.queryByRole("button", { name: "Compare files" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Overlay drawings" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Compare files" }));
+    fireEvent.click(screen.getByRole("button", { name: "Compare side by side" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const region = screen.getByRole("region", { name: "Compare files" });
+    expect(within(region).getByRole("region", { name: "Left comparison" })).toBeVisible();
+    expect(within(region).getByRole("region", { name: "Right comparison" })).toBeVisible();
+    await screen.findByText("Choose a file to compare.");
+    fireEvent.click(within(region).getByRole("button", { name: "Overlay" }));
+    document.querySelectorAll("details").forEach((group) => (group.open = true));
+    fireEvent.click(screen.getByLabelText("A101 revision 2"));
+    fireEvent.click(screen.getByRole("button", { name: "Open overlay" }));
+    expect(screen.getByTestId("comparison")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Compare files" })).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the active tool name and finishes it from the same button", () => {
     open();
     const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
+import { SegmentedControl } from "~/components/ui/segmented-control";
 import { overlayLabel } from "~/lib/drawing-overlay-stack";
 
 export type OverlayDrawingChoice = {
@@ -26,6 +27,7 @@ export function DrawingOverlayPicker({
   initialAdditionalIds = [],
   onClose,
   onCompare,
+  onCompareFiles,
 }: {
   drawings: OverlayDrawingChoice[];
   initialFirstId: string;
@@ -37,6 +39,8 @@ export function DrawingOverlayPicker({
     secondId: string,
     additionalIds?: string[],
   ) => void;
+  /** Opens two files side by side in the drawing area instead of a stack. */
+  onCompareFiles?: () => void;
 }) {
   const [ids, setIds] = useState(() => [...new Set([
     initialFirstId, initialSecondId ?? "", ...initialAdditionalIds,
@@ -49,6 +53,9 @@ export function DrawingOverlayPicker({
     groups.get(key)!.drawings.push(drawing);
   }
   const valid = ids.length >= 2 && ids.every(id => choices.has(id));
+  const [mode, setMode] = useState<"overlay" | "files">(() =>
+    onCompareFiles && drawings.length < 2 ? "files" : "overlay");
+  const files = mode === "files" && onCompareFiles;
   return (
     <Dialog
       open
@@ -60,6 +67,24 @@ export function DrawingOverlayPicker({
         <DialogHeader>
           <DialogTitle>Choose Drawings</DialogTitle>
         </DialogHeader>
+        {onCompareFiles && (
+          <SegmentedControl
+            label="Overlay or compare"
+            className="mx-auto w-fit sm:mx-0"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "overlay", label: "Overlay", disabled: drawings.length < 2, title: drawings.length < 2 ? "This job has one drawing" : undefined },
+              { value: "files", label: "Compare files" },
+            ]}
+          />
+        )}
+        {files ? (
+          <DialogDescription>
+            Show two PDFs or drawing sets side by side in this window. Pan,
+            zoom and change pages on each one separately.
+          </DialogDescription>
+        ) : <>
         <DialogDescription>
           Choose drawings or uploaded revisions from this job. Add as many
           layers as you need.
@@ -96,11 +121,14 @@ export function DrawingOverlayPicker({
             </details>
           ))}
         </div>
+        </>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
+          {files ? (
+            <Button onClick={onCompareFiles}>Compare side by side</Button>
+          ) : <Button
             disabled={!valid}
             onClick={() =>
               ids.length === 2
@@ -109,7 +137,7 @@ export function DrawingOverlayPicker({
             }
           >
             Open overlay
-          </Button>
+          </Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

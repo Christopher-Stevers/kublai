@@ -31,3 +31,16 @@ it("keeps an unavailable duplicate explicit and supports retry", async()=>{
  fireEvent.click(screen.getByRole("button",{name:"Retry"}));await screen.findByTestId("pdf");
  expect(screen.getByText("This file is unavailable. Choose another file.")).toBeVisible();
 });
+it("fills the drawing area inline instead of opening a separate window", async () => {
+ vi.stubGlobal("fetch",vi.fn(async(_url: string)=>new Response(JSON.stringify(docs))));
+ const onClose=vi.fn(),onOverlay=vi.fn();
+ const sheets=[{id:"a1",name:"A1",setId:"a",setName:"Mechanical",imageUrl:"/a1.png"}];
+ render(<FileComparison inline jobId="job" sheets={sheets} initialSheetId="a1" onClose={onClose} onOverlay={onOverlay} />);
+ expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+ const region=screen.getByRole("region",{name:"Compare files"});
+ expect(within(region).getByRole("region",{name:"Left comparison"})).toHaveTextContent("A1");
+ expect(within(region).getByRole("region",{name:"Right comparison"})).toBeVisible();
+ await screen.findAllByRole("option",{name:"Earlier slip"});
+ fireEvent.click(screen.getByRole("button",{name:"Overlay"}));expect(onOverlay).toHaveBeenCalledOnce();
+ fireEvent.click(screen.getByRole("button",{name:"Close comparison"}));expect(onClose).toHaveBeenCalledOnce();
+});
