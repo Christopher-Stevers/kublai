@@ -301,7 +301,7 @@ it("can explicitly reread an empty cached AI result", async () => {
     target: { value: "terra" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Scan with Terra" }));
-  await screen.findByText(/No equipment tags identified/);
+  await screen.findByText(/No drawing tags identified/);
   fireEvent.click(screen.getByRole("button", { name: "Read again" }));
   await waitFor(() => expect(mock.detect).toHaveBeenCalledTimes(2));
   expect(mock.detect.mock.calls[1]![0]).toMatchObject({
@@ -371,4 +371,16 @@ it("selects nested folder files and permits individual exclusions", async () => 
   fireEvent.click(screen.getAllByLabelText("Fan.pdf")[0]!);
   fireEvent.click(screen.getByRole("button", {name:"Scan again"}));
   await waitFor(() => expect(mock.preview).toHaveBeenLastCalledWith(expect.objectContaining({drawingIds:[],documentIds:[uuid(10)]}), {staleTime:0}));
+});
+it("previews and saves non-equipment references while leaving short labels for explicit review", async () => {
+  readWords.mockResolvedValue([word,{...word,text:"D101",top:.4,bottom:.42},{...word,text:"ROOM 101",top:.5,bottom:.52},{...word,text:"1/M501",top:.6,bottom:.62}]);
+  render(<AutoHyperlinkDialog {...props()} />);
+  await screen.findByText("D-101");
+  expect(mock.preview.mock.calls[0]![0].tags).toEqual(expect.arrayContaining(["HEX-2","D-101","101","1/M-501"]));
+  expect(screen.getByLabelText("Link 101")).not.toBeChecked();
+  expect(screen.getByLabelText("Link D-101")).toBeChecked();
+  fireEvent.click(screen.getByLabelText("Link 101"));
+  fireEvent.click(screen.getByRole("button", {name: "Save selected links (4)"}));
+  await waitFor(()=>expect(onSaved).toHaveBeenCalled());
+  expect(save.mock.calls.map(([value])=>value.kind === "markup" ? value.data.equipmentTag : "")).toEqual(expect.arrayContaining(["D-101","101","1/M-501"]));
 });

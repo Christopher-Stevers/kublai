@@ -1,19 +1,16 @@
+import { containsDrawingTag, drawingTagIndex, drawingTagSheet, isDrawingTag, normalizeDrawingTag } from "~/lib/drawing-tags";
 import { inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { drawingWorkspaceMetadata } from "~/server/db/drawing-workspace-schema";
 import { documentBlobPath } from "~/server/documents/storage";
 import type { TitleBlockWord } from "~/lib/drawing-title-block";
 import {
-  containsEquipmentTag,
   drawingSheetNumbers,
   equipmentDocumentDestination,
   equipmentDrawingDestination,
   equipmentSchedules,
   equipmentModelKey,
-  equipmentTagIndex,
-  normalizeEquipmentTag,
   sheetNumberOfName,
-  tagPattern,
   type EquipmentScheduleEntry,
 } from "~/lib/equipment-tags";
 import { drawingPdfLocation, equipmentIndex } from "./equipment-index";
@@ -73,7 +70,7 @@ async function fileRegister(file: string, format: "pdf" | "office") {
           pages: new Map(
             index.pages.map((page) => [
               page.page,
-              equipmentTagIndex(page.words),
+              drawingTagIndex(page.words),
             ]),
           ),
           // Office text has no page coordinates, so its tables cannot be read as schedules.
@@ -336,10 +333,10 @@ export async function equipmentTagDestinations(
     exclude?: { left: number; top: number; right: number; bottom: number };
   },
 ): Promise<EquipmentTagResult> {
-  if (!tagPattern(input.tag))
+  if (!isDrawingTag(input.tag))
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Enter an equipment tag such as HEX-2 or FCU-1.",
+      message: "Enter a drawing tag, such as HEX-2, ROOM-101 or 1/M-501.",
     });
   const job = await jobFiles(ctx, input.sheetId);
   const { loaded, failed, pending } = await readRegisters(job.files, 20_000);
@@ -356,7 +353,7 @@ export function destinationsFromRegisters(
     exclude?: { left: number; top: number; right: number; bottom: number };
   },
 ): EquipmentTagResult {
-  const tag = normalizeEquipmentTag(input.tag);
+  const tag = normalizeDrawingTag(input.tag);
   const { jobId } = job;
   const result: EquipmentTagResult = {
     tag,
@@ -389,10 +386,10 @@ export function destinationsFromRegisters(
       box,
     }).href;
 
+  const sheetReference = drawingTagSheet(tag);
   for (const drawing of job.drawings) {
     const register = loaded.get(`pdf:${drawing.file}`);
-    if (!register) continue;
-    for (const entry of register.schedules)
+    for (const entry of register?.schedules ?? [])
       if (entry.tag === tag && entry.page === drawing.page)
         result.schedules.push({
           title: entry.title,
@@ -400,9 +397,41 @@ export function destinationsFromRegisters(
           source: drawing.sheet.name,
           url: drawingUrl(drawing, entry.box),
         });
-    const boxes = (register.pages.get(drawing.page)?.get(tag) ?? []).filter(
+    const boxes = (register?.pages.get(drawing.page)?.get(tag) ?? []).filter(
       (box) => !excluded(drawing.sheet.id, box),
     );
+    if (
+      sheetReference?.sheet === sheetNumberOfName(drawing.sheet.name) &&
+      drawing.sheet.id !== input.sheetId
+    ) {
+      const details = sheetReference.detail
+        ? [
+            ...(register?.pages.get(drawing.page)?.get(`DETAIL-${sheetReference.detail}`) ?? []),
+            ...(register?.pages.get(drawing.page)?.get(`SECTION-${sheetReference.detail}`) ?? []),
+          ]
+        : [];
+      const detail = details.length === 1 ? details[0] : undefined;
+      result.drawings.push({
+        sheetId: drawing.sheet.id,
+        setName: drawing.sheet.setName ?? "",
+        name: drawing.sheet.name,
+        here: false,
+        links: [{
+          label: `${tag} — ${drawing.sheet.name}`.slice(0, 255),
+          url: equipmentDrawingDestination({
+            jobId,
+            setId: drawing.sheet.setId,
+            sheetId: drawing.sheet.id,
+            sourceSheetId: drawing.current.id,
+            name: drawing.sheet.name,
+            tag,
+            box: detail ?? { text: tag, left: 0, top: 0, right: 1, bottom: 1 },
+            fit: !detail,
+          }).href,
+        }],
+      });
+      continue;
+    }
     if (!boxes.length) continue;
     result.drawings.push({
       sheetId: drawing.sheet.id,
@@ -428,7 +457,7 @@ export function destinationsFromRegisters(
       const box = tags.get(tag)?.[0];
       if (box) pages.push({ page, box });
     }
-    const metadata = containsEquipmentTag(
+    const metadata = containsDrawingTag(
       [
         doc.name,
         doc.description,

@@ -1,3 +1,4 @@
+import { containsDrawingTag, drawingTagLocations, isDrawingTag } from "~/lib/drawing-tags";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   drawingWorkspaceEntities,
@@ -11,11 +12,8 @@ import { documentBlobPath } from "~/server/documents/storage";
 import { equipmentIndex, drawingPdfLocation } from "./equipment-index";
 import { jobEquipmentVocabulary } from "./equipment-register";
 import {
-  containsEquipmentTag,
   equipmentDrawingDestination,
   equipmentDocumentDestination,
-  equipmentTagLocations,
-  tagPattern,
 } from "~/lib/equipment-tags";
 import type { DrawingMarkupLink } from "~/lib/drawing-workspace";
 
@@ -100,10 +98,10 @@ export async function equipmentMatchesBatch(
     groupBySheet?: boolean;
   },
 ) {
-  if (!tagPattern(input.tag))
+  if (!isDrawingTag(input.tag))
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Enter an equipment tag such as HEX-2 or FCU-1.",
+      message: "Enter a drawing tag such as HEX-2, ROOM-101 or 1/M-501.",
     });
   if (!input.sources.length || input.sources.length > 32)
     throw new TRPCError({
@@ -191,7 +189,7 @@ export async function equipmentMatchesBatch(
             warnings.push(
               `${target.name}: no embedded text; scanned recognition is needed.`,
             );
-          for (const [n, box] of equipmentTagLocations(
+          for (const [n, box] of drawingTagLocations(
             page?.words ?? [],
             input.tag,
           )
@@ -224,7 +222,7 @@ export async function equipmentMatchesBatch(
         }
     } else {
       const doc = context.docs.documents.find((d) => d.id === source.id)!;
-      let found = containsEquipmentTag(
+      let found = containsDrawingTag(
         [
           doc.name,
           doc.description,
@@ -249,7 +247,7 @@ export async function equipmentMatchesBatch(
             office ? "office" : "pdf",
           );
           for (const page of index.pages) {
-            const box = equipmentTagLocations(page.words, input.tag)[0];
+            const box = drawingTagLocations(page.words, input.tag)[0];
             if (!box) continue;
             found = true;
             // Office indexes have no rendered PDF coordinates. Keep their document fallback.

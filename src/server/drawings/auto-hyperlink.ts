@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { HyperlinkScope, HyperlinkTargets } from "~/lib/hyperlink-scope";
 import { MAX_DRAWING_LINKS } from "~/lib/drawing-links";
-import { normalizeEquipmentTag } from "~/lib/equipment-tags";
+import { normalizeDrawingTag } from "~/lib/drawing-tags";
 import {
   destinationsFromRegisters,
   jobFiles,
@@ -83,13 +83,15 @@ export async function autoHyperlinkPreview(
     12_000,
   );
   const warnings = new Set<string>();
-  const results = [...new Set(input.tags.map(normalizeEquipmentTag))].map(
+  const results = [...new Set(input.tags.map(normalizeDrawingTag))].map(
     (tag) => {
       const found = destinationsFromRegisters(job, indexes, {
         sheetId: input.sheetId,
         tag,
       });
       found.warnings.forEach((w) => warnings.add(w));
+      if (/^(?:[A-Z]{1,3}|\d+[A-Z]?)$/.test(tag))
+        warnings.add("Short numeric or letter labels may have several meanings. Review their destinations before saving.");
       const links = [
         ...found.drawings
           .filter((d) => !d.here)

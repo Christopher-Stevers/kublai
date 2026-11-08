@@ -267,7 +267,7 @@ it("finds a clicked tag's schedule row, other drawings and documents across the 
   expect(result.documents).toEqual([expect.objectContaining({ documentId: docId, pages: [4] })]);
   expect(result.documents[0]!.url).toContain("#snapshot=");
   expect(result.warnings).toEqual([expect.stringContaining("pages without readable text")]);
-  await expect(equipmentTagDestinations(ctx, { sheetId: a.id, tag: "ZONE" })).rejects.toThrow("equipment tag");
+  await expect(equipmentTagDestinations(ctx, { sheetId: a.id, tag: "https://bad.test" })).rejects.toThrow("drawing tag");
 });
 
 
@@ -367,4 +367,24 @@ it("lists current authorized hyperlink targets without indexing their contents",
  const result=await autoHyperlinkTargets(ctx,a.id);
  expect(result.drawings).toEqual([{id:a.id,name:a.name,setId:a.setId,setName:"Mechanical"}]);
  expect(result.documents).toHaveLength(1);expect(result.folders[0]?.name).toBe("Submittals");expect(mock.index).not.toHaveBeenCalled();
+});
+it("links arbitrary drawing identifiers to exact PDF document locations", async()=>{
+  const {autoHyperlinkPreview}=await import("./auto-hyperlink"); const {word}=equipmentReportFixture();
+  mock.sheets.mockResolvedValue([a,b]);
+  mock.index.mockResolvedValue({pages:[{page:1,words:[word("D101",.1,.1),word("ROOM 101",.1,.2),word("VENT-A",.1,.3)]}],incomplete:false});
+  const result=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["D101","101","VENT-A"],scope:"job"});
+  expect(result.results.map(row=>[row.tag,row.drawings,row.documents])).toEqual([["D-101",1,1],["101",1,1],["VENT-A",1,1]]);
+  expect(result.results[1]!.links.some(link=>link.url?.includes("#snapshot="))).toBe(true);
+});
+it("routes sheet and detail references to their actual sheet even without repeated reference text", async()=>{
+  const {autoHyperlinkPreview}=await import("./auto-hyperlink"); const {word}=equipmentReportFixture();
+  mock.sheets.mockResolvedValue([a,{...b,name:"M-501 Details"}]);
+  mock.index.mockResolvedValue({pages:[{page:1,words:[word("DETAIL 1",.2,.3)]}],incomplete:false});
+  const result=await autoHyperlinkPreview(ctx,{sheetId:a.id,tags:["M501","1/M501"],scope:"drawings"});
+  expect(result.results.map(row=>row.drawings)).toEqual([1,1]);
+  for (const row of result.results) expect(row.links[0]?.url).toContain("#snapshot=");
+  const {readSnapshotState}=await import("~/lib/snapshot-source");
+  const state=readSnapshotState(new URL(result.results[1]!.links[0]!.url!,"https://test").hash);
+  expect(state?.drawing?.sheetId).toBe(b.id);
+  expect(state?.drawing?.viewport.center.x).toBeGreaterThan(.2);
 });

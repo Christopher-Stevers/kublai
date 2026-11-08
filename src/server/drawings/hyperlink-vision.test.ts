@@ -159,3 +159,9 @@ it("rejects truncated model output and oversized responses", async () => {
     ),
   ).rejects.toThrow("size limit");
 });
+it("accepts room, letter-only and sheet-qualified tags and snaps them to source text", () => {
+  const words = ["101", "A", "1/M501", "VENT-A", "100-PL-001"].map((text, index) => ({text, left:.61, right:.68, top:.61+index*.001, bottom:.64+index*.001}));
+  const result = parseHyperlinkDetection({tags: words.map(word => ({tag:word.text,image:0,box})),warnings:[]}, "terra", [image], words);
+  expect(result.tags.map(row=>row.tag)).toEqual(["101","A","1/M-501","VENT-A","100-PL-001"]);
+  expect(result.tags.every(row=>!row.needsPositionReview)).toBe(true);
+});

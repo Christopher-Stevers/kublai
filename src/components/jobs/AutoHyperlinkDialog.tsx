@@ -1,4 +1,6 @@
 "use client";
+import { drawingTagCandidates, drawingTagLocations } from "~/lib/drawing-tags";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -12,8 +14,6 @@ import {
 } from "~/components/ui/dialog";
 import {
   equipmentDrawingDestination,
-  equipmentTagCandidates,
-  equipmentTagLocations,
 } from "~/lib/equipment-tags";
 import { MAX_DRAWING_LINKS } from "~/lib/drawing-links";
 import type {
@@ -75,7 +75,7 @@ export function AutoHyperlinkDialog(props: {
   });
   const [rows, setRows] = useState<Match[]>([]),
     [notes, setNotes] = useState<string[]>([]);
-  const [status, setStatus] = useState("Reading equipment tags…"),
+  const [status, setStatus] = useState("Reading drawing tags…"),
     [busy, setBusy] = useState(false),
     [pending, setPending] = useState(0),
     [search, setSearch] = useState("");
@@ -113,7 +113,7 @@ export function AutoHyperlinkDialog(props: {
     setRows([]);
     setNotes([]);
     setPending(0);
-    setStatus("Reading equipment tags…");
+    setStatus("Reading drawing tags…");
     try {
       const located = new Map<
         string,
@@ -129,7 +129,7 @@ export function AutoHyperlinkDialog(props: {
           );
           return;
         }
-        setStatus("Checking job schedules and indexing destinations…");
+        setStatus("Checking job drawings and indexing destinations…");
         const vocabulary =
           await utils.drawingsWorkspace.autoHyperlinkSources.fetch(
             { sheetId: props.sheetId },
@@ -137,20 +137,9 @@ export function AutoHyperlinkDialog(props: {
           );
         if (id !== run.current) return;
         vocabulary.warnings.forEach((w) => warnings.add(w));
-        for (const tag of equipmentTagCandidates(
-          words,
-          [
-            { x: 0, y: 0 },
-            { x: 1, y: 1 },
-          ],
-          {
-            automatic: true,
-            knownTags: vocabulary.knownTags,
-            sheetNumbers: vocabulary.sheetNumbers,
-          },
-        ))
+        for (const tag of drawingTagCandidates(words, vocabulary))
           located.set(tag, {
-            boxes: equipmentTagLocations(words, tag),
+            boxes: drawingTagLocations(words, tag),
             needsPositionReview: false,
           });
       } else {
@@ -177,7 +166,7 @@ export function AutoHyperlinkDialog(props: {
       if (!tags.length) {
         setNotes([...warnings]);
         setStatus(
-          "No equipment tags identified. Use Tools → Hyperlink to link a custom tag.",
+          "No drawing tags identified. Use Tools → Hyperlink to link a custom tag.",
         );
         return;
       }
@@ -240,6 +229,7 @@ export function AutoHyperlinkDialog(props: {
             existing,
             selected:
               reader === "normal" &&
+              !/^(?:[A-Z]{1,3}|\d+[A-Z]?)$/.test(match.tag) &&
               !existing &&
               !overflow &&
               unique.length > 0,
@@ -372,7 +362,7 @@ export function AutoHyperlinkDialog(props: {
         <DialogHeader>
           <DialogTitle>Auto Hyperlink</DialogTitle>
           <DialogDescription>
-            Find equipment across current drawings and job documents. Review
+            Find equipment, rooms, doors, notes, drawing references and other tags across current drawings and job documents. Review
             destinations, then save links at every occurrence of the selected
             tags.
           </DialogDescription>

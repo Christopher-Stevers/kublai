@@ -87,7 +87,7 @@ it("requires a tag choice when the selected area contains more than one tag", as
     />,
   );
   await screen.findByText(
-    "Several tags were found. Choose the equipment tag below.",
+    "Several tags were found. Choose the drawing tag below.",
   );
   expect(mock.sources).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("Equipment tag"), {

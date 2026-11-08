@@ -1057,6 +1057,7 @@ export function equipmentDrawingDestination(input: {
   name: string;
   tag: string;
   box: TitleBlockWord;
+  fit?: boolean;
 }) {
   const { box } = input;
   return makeSnapshotSource(
@@ -1073,7 +1074,7 @@ export function equipmentDrawingDestination(input: {
             x: (box.left + box.right) / 2,
             y: (box.top + box.bottom) / 2,
           },
-          zoom: Math.min(
+          zoom: input.fit ? 1 : Math.min(
             10,
             Math.max(
               2,

@@ -3,11 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
-import {
-  equipmentTagCandidates,
-  normalizeEquipmentTag,
-  tagPattern,
-} from "~/lib/equipment-tags";
+import { drawingTagsInArea, normalizeDrawingTag, isDrawingTag } from "~/lib/drawing-tags";
 import type { DrawingMarkupLink, DrawingPoint } from "~/lib/drawing-workspace";
 import type { DrawingText } from "~/lib/drawing-text";
 export function EquipmentTagLinks({
@@ -32,7 +28,7 @@ export function EquipmentTagLinks({
   const utils = api.useUtils();
   const [tag, setTag] = useState(savedTag ?? "");
   const [candidates, setCandidates] = useState<string[]>([]);
-  const [status, setStatus] = useState("Reading the equipment tag…");
+  const [status, setStatus] = useState("Reading the drawing tag…");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [run, setRun] = useState(0);
   const [automatic, setAutomatic] = useState(false);
@@ -48,7 +44,7 @@ export function EquipmentTagLinks({
       .readWords()
       .then((words) => {
         if (!active) return;
-        const found = equipmentTagCandidates(words, points);
+        const found = drawingTagsInArea(words, points);
         setCandidates(found);
         if (found.length === 1) {
           setTag(found[0]!);
@@ -56,14 +52,14 @@ export function EquipmentTagLinks({
         } else
           setStatus(
             found.length
-              ? "Several tags were found. Choose the equipment tag below."
-              : "No readable equipment tag found. Enter the tag to search.",
+              ? "Several tags were found. Choose the drawing tag below."
+              : "No readable drawing tag found. Enter the tag to search.",
           );
       })
       .catch(() => {
         if (active)
           setStatus(
-            "Enter the equipment tag, or recognize scanned text first.",
+            "Enter the drawing tag, or recognize scanned text first.",
           );
       });
     return () => {
@@ -73,7 +69,7 @@ export function EquipmentTagLinks({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   useEffect(() => {
-    if ((!automatic && run === 0) || offline || !tagPattern(tag)) return;
+    if ((!automatic && run === 0) || offline || !isDrawingTag(tag)) return;
     let cancelled = false;
     latest.current.onBusy(true);
     setWarnings([]);
@@ -92,7 +88,7 @@ export function EquipmentTagLinks({
           try {
             const { results } =
               await utils.drawingsWorkspace.equipmentMatchesBatch.fetch(
-                { sheetId, tag: normalizeEquipmentTag(tag), sources: batch },
+                { sheetId, tag: normalizeDrawingTag(tag), sources: batch },
                 { staleTime: 0 },
               );
             for (const result of results) {
@@ -112,7 +108,7 @@ export function EquipmentTagLinks({
           }
         }
         if (cancelled) return;
-        const added = latest.current.onAdd(found, normalizeEquipmentTag(tag));
+        const added = latest.current.onAdd(found, normalizeDrawingTag(tag));
         if (added < found.length)
           issues.push(
             "Some destinations were already linked or exceeded the 50-destination limit.",
@@ -156,7 +152,7 @@ export function EquipmentTagLinks({
         <Button
           type="button"
           variant="outline"
-          disabled={offline || !tagPattern(tag)}
+          disabled={offline || !isDrawingTag(tag)}
           onClick={() => setRun((n) => n + 1)}
         >
           Search links

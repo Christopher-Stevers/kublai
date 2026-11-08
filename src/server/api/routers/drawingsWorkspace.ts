@@ -61,7 +61,7 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   autoHyperlinkDetect: sheetTools.input(hyperlinkDetectInput).mutation(({ctx,input})=>detectHyperlinkTags(ctx,input)),
   autoHyperlinkSources: sheetTools.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
   autoHyperlinkTargets: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>autoHyperlinkTargets(ctx,input.sheetId)),
-  autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(2).max(40)).min(1).max(200),...hyperlinkScopeInput.shape})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
+  autoHyperlinkPreview: sheetTools.input(z.object({sheetId,tags:z.array(z.string().trim().min(1).max(40)).min(1).max(200),...hyperlinkScopeInput.shape})).query(({ctx,input})=>autoHyperlinkPreview(ctx,input)),
   superEquipmentSources: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superEquipmentSources(ctx,input.sheetId)),
   superEquipmentReport: sheetTools.input(z.object({sheetId,documentIds:z.array(sheetId).max(2000).optional()})).query(({ctx,input})=>superEquipmentReport(ctx,input)),
   recognizeEquipmentSource: sheetTools.input(z.object({sheetId,kind:z.enum(["drawing","document"]),id:sheetId,page:z.number().int().min(1).max(2000)})).mutation(({ctx,input})=>recognizeEquipmentSource(ctx,input)),
@@ -79,9 +79,9 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   superScaleLatest: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),
   superScaleStart: sheetTools.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: sheetTools.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),
-  equipmentMatchesBatch: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), sources: z.array(equipmentSource).min(1).max(32), groupBySheet: z.boolean().optional() })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
+  equipmentMatchesBatch: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(1).max(40), sources: z.array(equipmentSource).min(1).max(32), groupBySheet: z.boolean().optional() })).query(({ ctx, input }) => equipmentMatchesBatch(ctx, input)),
   equipmentSources: hasAppAccess.input(z.object({ sheetId })).query(({ctx,input})=>equipmentSources(ctx,input.sheetId)),
-  equipmentTag: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(2).max(40), exclude: z.object({ left: z.number().finite(), top: z.number().finite(), right: z.number().finite(), bottom: z.number().finite() }).optional() })).query(({ctx,input})=>equipmentTagDestinations(ctx,input)),
+  equipmentTag: hasAppAccess.input(z.object({ sheetId, tag: z.string().trim().min(1).max(40), exclude: z.object({ left: z.number().finite(), top: z.number().finite(), right: z.number().finite(), bottom: z.number().finite() }).optional() })).query(({ctx,input})=>equipmentTagDestinations(ctx,input)),
   equipmentMatches: hasAppAccess.input(z.object({sheetId,tag:z.string().trim().min(2).max(40),source:z.object({kind:z.enum(["drawing","document"]),id:sheetId,name:z.string().max(255)})})).query(({ctx,input})=>equipmentMatches(ctx,input)),
   reviewRevisionUpload: hasAppAccess
     .input(z.object({ uploadedSetId: sheetId }))
