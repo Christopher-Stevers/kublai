@@ -1263,7 +1263,7 @@ async function mutateReceivingImpl(
         if (review.orderResolutions) delete review.orderResolutions[input.itemId];
         review.lines.push({
           id: randomUUID(), page: input.page, sourceBox: detected!.band,
-          selectedReading: { ...found, source: "terra", box: detected!.band, proposed: null, quantityClear: false, confidenceDetails: { ...found.confidence, basis: "model_estimate" } },
+          selectedReading: { ...found, confidence: undefined, source: "terra", box: detected!.band, proposed: null, quantityClear: false, confidenceDetails: { ...found.confidence, basis: "model_estimate" } },
           evidence: found.evidence, description: found.description, sku: found.sku ?? "",
           unit: found.unit ?? "", quantity: found.shipped, ordered: found.ordered,
           unitPrice: null, orderItemId: input.itemId, checked: false,
