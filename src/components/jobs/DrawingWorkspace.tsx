@@ -3798,11 +3798,6 @@ export function DrawingWorkspace({
           <Button variant={scroll ? "default" : "outline"} className={BAR_BUTTON} role="switch" aria-label="Scroll between pages" aria-checked={scroll} onClick={() => setScroll(!scroll)}>
             <FileTextIcon />Scroll Between Pages
           </Button>
-          <Button variant={defaultMarkupVisibility === "private" ? "default" : "outline"} className={BAR_BUTTON}
-            aria-label="Default markup visibility" aria-pressed={defaultMarkupVisibility === "private"}
-            onClick={() => setDefaultMarkupVisibility(defaultMarkupVisibility === "private" ? "published" : "private")}>
-            <PenLineIcon />{defaultMarkupVisibility === "private" ? "Private Markups" : "Public Markups"}
-          </Button>
           {commandButtons("fit", "overlay", "appearance", "auto-hyperlink", "legend-items", "super-equipment", "super-spec-material", "super-label", "super-scale", "document-details", "close-document")}
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
             barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups", panel === id)
