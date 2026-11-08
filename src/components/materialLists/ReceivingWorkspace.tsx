@@ -701,7 +701,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
           onAddLine={async (value) => {
             added.current = new Set(detail.review.lines.map((l) => l.id));
             const done = await run({
-              action: "addLine",
+              action: value.detect ? "detectLine" : "addLine",
+              itemId: value.itemId,
+              versionId: detail.document.currentVersionId,
               page: value.page,
               description: value.description,
               sourceBox: value.box,
@@ -1916,6 +1918,7 @@ function headerFor(detail: Detail, page: number) {
 }
 /** The analysis row a review line was drafted from, while still current. */
 function sourceLine(l: ReceivingLine, detail: Detail) {
+  if (l.selectedReading) return l.selectedReading;
   const a = detail.document.packingSlipAnalysis;
   return l.sourceIndex === undefined || detail.review.analysisRunId !== a?.runId
     ? undefined
@@ -3665,9 +3668,10 @@ function OrderComparison({
                   {...pressDrag(
                     live.length
                       ? grab("slip", !!mover, { side: "slip", line: mover })
-                      : null,
+                      : item ? grab("slip", false, { side: "slip", line: null }) : null,
                   )}
-                  className={`${half("slip")} ${live.length ? "select-none [-webkit-touch-callout:none]" : ""}`}
+                  onContextMenu={event => { if (item && !live.length) { event.preventDefault(); setMenu({ key, side: "slip" }); } }}
+                  className={`${half("slip")} ${live.length || item ? "select-none [-webkit-touch-callout:none]" : ""}`}
                 >
                   <TornPaper side="slip" markedForReturn={live.some(({line}) => materialMarkedForReturn(line, r.kind))} empty={slipEmpty && !done} needsConfirmation={slipNeedsConfirmation} />
                   <div
@@ -3761,11 +3765,14 @@ function OrderComparison({
                       )}
                     </> : slipOptions("order"),
                   )}
-                {live.length > 0 &&
+                {(live.length > 0 || item) &&
                   halfMenu(
                     "slip",
                     mover ? "Drag onto an order item to pair them." : null,
-                    slipOptions("slip"),
+                    live.length ? slipOptions("slip") : <DropdownMenuItem
+                      disabled={sourceChanged || addBlocked || !r.orderConfirmed}
+                      onSelect={() => onResolve({ itemId: item!.id, findOnSlip: true })}
+                    ><FileTextIcon />Choose From Packing Slip</DropdownMenuItem>,
                   )}
               </div>
               {(plan ?? mine) && item && (

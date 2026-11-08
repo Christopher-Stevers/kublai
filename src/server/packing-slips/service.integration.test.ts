@@ -15,6 +15,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { getTableName, getTableColumns, eq, SQL, sql } from "drizzle-orm";
 import { PgDialect, type PgTable } from "drizzle-orm/pg-core";
 const test = vi.hoisted(() => ({
+  selectedLine: vi.fn(),
   transaction: vi.fn(),
   select: vi.fn(),
   update: vi.fn(),
@@ -68,6 +69,7 @@ import {
   refreshSlipReview,
 } from "./service";
 vi.mock("./trial-store", () => ({ trialDocument: async () => test.trial }));
+vi.mock("./selected-line", () => ({ detectSelectedLine: test.selectedLine }));
 vi.mock("./extract", () => ({
   extractSlip: async () => {
     test.extractionStarted = true;
@@ -1133,6 +1135,22 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     await reviewAction(f.access,f.doc.documentId,{action:"note",lineId:"0",note:""});
     expect((await workspace()).documents[0]!.receivingReview!.lines[0]!.note).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
+  it("detects a selected row, links it without receiving, and rejects another run on the linked item", async () => {
+    const f = await confirmedHeader();
+    const doc = (await workspace()).documents[0]!;
+    const original = doc.receivingReview!.lines[0]!;
+    await reviewAction(f.access, f.doc.documentId, { action: "line", lineId: original.id, description: original.description, sku: original.sku, quantity: original.quantity, ordered: original.ordered, unit: original.unit, unitPrice: null, orderItemId: null, checked: false });
+    test.selectedLine.mockResolvedValue({ band: {x:0,y:.7,width:1,height:.04}, line: { page:1, evidence:"Cap 2 1 1", description:"Cap", sku:"CAP", shipped:1, ordered:2, backordered:1, unit:"ea", issues:[], confidence:{part:.95,quantity:.96,match:.91,overall:.91,reason:"Printed row"} } });
+    const action = {action:"detectLine", versionId:doc.currentVersionId, itemId:id(6), page:1, sourceBox:{x:.2,y:.7,width:.2,height:.04}};
+    await reviewAction(f.access, f.doc.documentId, action);
+    const line = (await workspace()).documents[0]!.receivingReview!.lines.at(-1)!;
+    expect(line.orderItemId).toBe(id(6)); expect(line.quantity).toBe(1);
+    expect(line.checked).toBe(false); expect(line.approved).toBeUndefined();
+    expect(line.selectedReading?.backordered).toBe(1);
+    expect(line.sourceBox?.width).toBe(1);
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+    await expect(reviewAction(f.access, f.doc.documentId, action)).rejects.toThrow("already has a linked line");
   });
   it("preserves source crop for manually recovered lines and leaves them unchecked",async()=>{
     const f=await confirmedHeader();

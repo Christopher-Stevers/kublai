@@ -40,6 +40,7 @@ export type ResolveSlipSourceProps = {
   savedWords?: SlipSourceWord[];
   onUse: (source: RecoveredSlipSource) => void;
   onCancel: () => void;
+  onDetect?: (page: number, box: SlipBox) => Promise<void>;
   disabled?: boolean;
 };
 
@@ -53,6 +54,7 @@ export function ResolveSlipSource({
   onUse,
   onCancel,
   disabled,
+  onDetect,
 }: ResolveSlipSourceProps) {
   const id = useId();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -67,7 +69,7 @@ export function ResolveSlipSource({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
-  const [selecting, setSelecting] = useState(false);
+  const [selecting, setSelecting] = useState(Boolean(onDetect));
   const [zoom, setZoom] = useState(false);
   const drag = useRef<{ x: number; y: number; pointerId: number } | undefined>(
     undefined,
@@ -262,9 +264,9 @@ export function ResolveSlipSource({
     const end = point(event);
     setBox(
       boundedSlipBox({
-        x: Math.min(start.x, end.x),
+        x: onDetect ? 0 : Math.min(start.x, end.x),
         y: Math.min(start.y, end.y),
-        width: Math.abs(start.x - end.x),
+        width: onDetect ? 1 : Math.abs(start.x - end.x),
         height: Math.abs(start.y - end.y),
       }),
     );
@@ -451,7 +453,7 @@ export function ResolveSlipSource({
           </div>
         </details>
       )}
-      <Button
+      {!onDetect && <><Button
         type="button"
         variant="outline"
         disabled={!ready || !box || disabled === true}
@@ -481,6 +483,8 @@ export function ResolveSlipSource({
           it to 700 characters.
         </p>
       )}
+      </>}
+      {onDetect && <p className="text-sm text-muted-foreground">Draw a box over one item. Detection reads the full width of that row, including quantities and backorders.</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -488,11 +492,11 @@ export function ResolveSlipSource({
         <Button
           type="button"
           disabled={
-            disabled === true || !description.trim() || description.length > 700
+            disabled === true || (onDetect ? !ready || !box : !description.trim() || description.length > 700)
           }
-          onClick={() => onUse({ page, box, description: description.trim() })}
+          onClick={() => { if (onDetect && box) { void onDetect(page, { ...box, x: 0, width: 1 }); } else onUse({ page, box, description: description.trim() }); }}
         >
-          Use this line
+          {onDetect ? (disabled ? "Detecting…" : "Detect This Line") : "Use this line"}
         </Button>
       </div>
     </section>

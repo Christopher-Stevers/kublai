@@ -2297,3 +2297,16 @@ it.each([true, false])("asks before changing a supplier-code link and respects t
     expect(posts[0]).toMatchObject({supplierPartLinkApprovals:[{supplierPartId:"listing", previousPartId:"old", replacementPartId:"pipe"}]});
   } else expect(attempts).toBe(1);
 });
+
+it("opens selection from a long press on an empty slip half", async () => {
+  state.review.lines = [];
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findAllByText("No slip line linked");
+  const empty = screen.getAllByText("No slip line linked")[0]!.closest("[data-drag-half]")!;
+  fireEvent.touchStart(empty, {touches:[{clientX:250,clientY:500}]});
+  await hold();
+  fireEvent.touchEnd(window, {touches:[]});
+  fireEvent.click(await screen.findByRole("menuitem", {name:"Choose From Packing Slip"}));
+  expect(await screen.findByRole("button", {name:"Detect This Line"})).toBeInTheDocument();
+  expect(posts).toHaveLength(0);
+});

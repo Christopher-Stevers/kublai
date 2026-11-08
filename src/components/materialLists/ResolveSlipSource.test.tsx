@@ -210,3 +210,12 @@ it("keeps manual fallback available when the original cannot load", async () => 
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(cancel).toHaveBeenCalledTimes(1);
 });
+it("detects across the complete row without requiring saved OCR text", async () => {
+  const detect = vi.fn().mockResolvedValue(undefined);
+  render(<ResolveSlipSource url={url} initialBox={{x:.4,y:.3,width:.2,height:.03}} onUse={use} onCancel={cancel} onDetect={detect} />);
+  await waitFor(() => expect(screen.getByRole("button", {name:"Detect This Line"})).toBeEnabled());
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name:"Detect This Line"}));
+  expect(detect).toHaveBeenCalledWith(1, {x:0,y:.3,width:1,height:expect.closeTo(.03)});
+  expect(use).not.toHaveBeenCalled();
+});

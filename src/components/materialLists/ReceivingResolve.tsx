@@ -45,7 +45,7 @@ import type { ReceiptOrderItem, SlipBox } from "~/lib/packing-slip-review";
 import type { ReceivingLine } from "~/lib/receiving-review";
 import type { ReceivingDetail, ReceivingAction } from "./ReceivingWorkspace";
 
-export type ResolveTarget = { lineId?: string; itemId?: string };
+export type ResolveTarget = { lineId?: string; itemId?: string; findOnSlip?: boolean };
 
 /** Pairs a slip line with an order item, or unlinks it, counting it in the
  * item's unit. Linking approves nothing. Null when the units can't be
@@ -233,6 +233,8 @@ export function ReceivingResolve({
   onSelect: (target: ResolveTarget) => void;
   onReload: () => Promise<void>;
   onAddLine: (value: {
+    itemId?: string;
+    detect?: boolean;
     page: number;
     description: string;
     box?: SlipBox;
@@ -243,7 +245,7 @@ export function ReceivingResolve({
   const item = detail.items.find(
     (i) => i.id === (line?.orderItemId ?? target.itemId),
   );
-  const [page, setPage] = useState<Page>("review");
+  const [page, setPage] = useState<Page>(target.findOnSlip ? "find" : "review");
   const [search, setSearch] = useState("");
   const sourceChanged =
     detail.review.versionId !== detail.document.currentVersionId;
@@ -1321,6 +1323,7 @@ export function ReceivingResolve({
           <ResolveSlipSource
             url={detail.sourceUrl}
             initialPage={line?.page ?? 1}
+            onDetect={item && !line ? async (page, box) => { await onAddLine({ page, box, description: "", itemId: item.id, detect: true }); } : undefined}
             onCancel={() => setPage("review")}
             disabled={busy}
             onUse={async (value) => {

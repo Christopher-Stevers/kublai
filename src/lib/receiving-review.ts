@@ -10,6 +10,8 @@ import {
 
 export type ReceiptKind = "delivery" | "return-replacement" | "return-credit" | "credit-only";
 export type ReceivingLine = {
+  /** Original model evidence from a reviewer-selected full-width row. */
+  selectedReading?: SlipLine;
   /** The source quantity is retained when a reviewer records a different site count. */
   paper?: { quantity: number | null; ordered: number | null; unit: string; description: string; sku: string };
   resolution?: ReceivingResolution;

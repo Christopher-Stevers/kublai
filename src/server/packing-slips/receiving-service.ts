@@ -1,3 +1,7 @@
+import { withSlipTrace } from "./trace";
+import { detectSelectedLine } from "./selected-line";
+import { extractSlip } from "./extract";
+import { readableVersion } from "~/server/documents/service";
 import type { SupplierPartLinkConflict } from "~/lib/supplier-part-link";
 import { duplicateList } from "./duplicate-list";
 import { splitComparisonLines } from "~/lib/receiving-review";
@@ -81,7 +85,7 @@ type CorrectionHistory = {
   before?: ReceivingReview;
   after?: ReceivingReview;
 };
-const undoActions = new Set(["splitComparison", "resolve", "allocate", "line", "addLine", "ignore", "restoreLine", "orderDisposition", "note"]);
+const undoActions = new Set(["splitComparison", "resolve", "allocate", "line", "addLine", "detectLine", "ignore", "restoreLine", "orderDisposition", "note"]);
 function correctionCanUndo(data: CorrectionHistory, review: ReceivingReview) {
   if (!data.undoable || !data.operation || !undoActions.has(data.operation) || !data.before || data.after?.revision !== review.revision) return false;
   if (JSON.stringify(data.after.lines) !== JSON.stringify(review.lines.map(({ autoConfirmed: _auto, ...line }) => line))) return false;
@@ -820,7 +824,25 @@ export async function mutateReceiving(
   access: DocumentAccess,
   input: ReceivingInput,
 ) {
-  return mutateReceivingImpl(access, input, false);
+  if (input.action !== "detectLine") return mutateReceivingImpl(access, input, false);
+  receiveAccess(access);
+  const current = await receivingQueue(access, input.documentId);
+  if (!("review" in current) || !current.review || !current.document || current.review.revision !== input.revision || current.document.currentVersionId !== input.versionId)
+    fail("The review changed. Reload before selecting a line.", "CONFLICT");
+  const doc = current.document!;
+  const item = current.items?.find(i => i.id === input.itemId);
+  if (!item || !doc.packingSlip || !current.review!.orderConfirmed) fail("Confirm the order first.");
+  if (current.review!.lines.some(l => l.orderItemId === input.itemId && !l.ignored)) fail("This item already has a linked line.", "CONFLICT");
+  if (current.review!.lines.some(l => {
+    const box = l.sourceBox;
+    if (l.ignored || l.page !== input.page || !box) return false;
+    const overlap = Math.min(box.y + box.height, input.sourceBox.y + input.sourceBox.height) - Math.max(box.y, input.sourceBox.y);
+    return overlap > Math.min(box.height, input.sourceBox.height) * 0.5;
+  })) fail("That area already belongs to a slip line. Move the existing slip card to this item instead.", "CONFLICT");
+  const { version } = await readableVersion(access, input.versionId);
+  const extracted = await extractSlip(access.job.organizationId, version.sha256, version.mimeType);
+  const detected = await withSlipTrace(access.job.organizationId, input.requestId, () => detectSelectedLine(extracted.pages, input.page, input.sourceBox, doc.packingSlip!.orderId, item!));
+  return mutateReceivingImpl(access, input, false, detected);
 }
 
 /** Development-only ingestion. Not exposed as an API action or human approval. */
@@ -835,6 +857,7 @@ async function mutateReceivingImpl(
   access: DocumentAccess,
   input: ReceivingInput,
   developmentImport: boolean,
+  detected?: Awaited<ReturnType<typeof detectSelectedLine>>,
 ) {
   receiveAccess(access);
   const result = await mutateWorkspace(
@@ -1230,6 +1253,23 @@ async function mutateReceivingImpl(
         });
         if (previousEvidence !== resolutionEvidenceFingerprint(l)) invalidateResolution(l);
         if (l.orderItemId && review.orderResolutions) delete review.orderResolutions[l.orderItemId];
+      } else if (input.action === "detectLine") {
+        if (!detected || !review.orderConfirmed || doc.currentVersionId !== input.versionId) fail("The source or order changed. Reload and try again.", "CONFLICT");
+        const items = await orderSnapshot(tx, fresh, doc.packingSlip!.orderId);
+        if (!items.some(i => i.id === input.itemId) || review.lines.some(l => l.orderItemId === input.itemId && !l.ignored)) fail("This item changed or already has a match.", "CONFLICT");
+        if (review.lines.length >= 200) fail("This review has reached the 200-line limit.");
+        const found = detected!.line;
+        review.documentChecked = false;
+        if (review.orderResolutions) delete review.orderResolutions[input.itemId];
+        review.lines.push({
+          id: randomUUID(), page: input.page, sourceBox: detected!.band,
+          selectedReading: { ...found, source: "terra", box: detected!.band, proposed: null, quantityClear: false, confidenceDetails: { ...found.confidence, basis: "model_estimate" } },
+          evidence: found.evidence, description: found.description, sku: found.sku ?? "",
+          unit: found.unit ?? "", quantity: found.shipped, ordered: found.ordered,
+          unitPrice: null, orderItemId: input.itemId, checked: false,
+          readingSource: { analysisRunId: input.requestId, reader: "terra", confidence: { ...found.confidence, basis: "model_estimate" } },
+          issues: [...found.issues, "Selected from the slip; confirm the part and quantities.", ...(found.backordered !== null ? [`Printed backorder: ${found.backordered}`] : [])],
+        });
       } else if (input.action === "addLine") {
         review.documentChecked = false;
         if (review.lines.length >= 200)
