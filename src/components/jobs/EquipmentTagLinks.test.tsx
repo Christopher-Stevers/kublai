@@ -90,7 +90,7 @@ it("requires a tag choice when the selected area contains more than one tag", as
     "Several tags were found. Choose the drawing tag below.",
   );
   expect(mock.sources).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Equipment tag"), {
+  fireEvent.change(screen.getByLabelText("Drawing tag"), {
     target: { value: "FCU-1" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Search links" }));

@@ -136,10 +136,10 @@ export function EquipmentTagLinks({
   return (
     <section
       className="grid gap-2 rounded-md border p-3"
-      aria-label="Equipment tag links"
+      aria-label="Drawing tag links"
     >
       <label className="text-sm font-medium" htmlFor={`equipment-tag-${id}`}>
-        Equipment tag
+        Drawing tag
       </label>
       <div className="flex gap-2">
         <Input
@@ -147,7 +147,7 @@ export function EquipmentTagLinks({
           value={tag}
           list={`equipment-tags-${id}`}
           onChange={(e) => setTag(e.target.value)}
-          placeholder="e.g. HEX-2"
+          placeholder="e.g. HEX-2, D101 or 1/M-501"
         />
         <Button
           type="button"
