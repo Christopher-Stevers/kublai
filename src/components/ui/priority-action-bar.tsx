@@ -134,17 +134,20 @@ export function PriorityActionBar({
   const root = useRef<HTMLDivElement>(null);
   const limit = ACTION_LIMIT;
   const split = !!search?.split;
-  const hasOverflow = actions.length > limit - Number(split);
-  const capacity = limit - Number(split || hasOverflow);
-  const shelved = Math.max(0, actions.length - capacity);
-  const shown = actions.slice(shelved);
-  // Named groups only affect the expanded shelf; primary action slots keep
-  // their existing priority and permission filtering.
-  const shelfGroups = new Map<string, ReactNode[]>();
-  for (const action of actions.slice(0, shelved)) {
-    const group = isValidElement<{ "data-action-group"?: string }>(action)
+  const actionGroup = (action: ReactNode) =>
+    isValidElement<{ "data-action-group"?: string }>(action)
       ? (action.props["data-action-group"] ?? "")
       : "";
+  const primary = actions.filter(action => !actionGroup(action));
+  const hasOverflow = primary.length !== actions.length || primary.length > limit - Number(split);
+  const capacity = limit - Number(split || hasOverflow);
+  const shown = primary.slice(-capacity);
+  const shelf = actions.filter(action => !shown.includes(action));
+  const shelved = shelf.length;
+  // Named sections always stay in the expanded menu, preserving the primary slots.
+  const shelfGroups = new Map<string, ReactNode[]>();
+  for (const action of shelf) {
+    const group = actionGroup(action);
     const items = shelfGroups.get(group) ?? [];
     items.push(action);
     shelfGroups.set(group, items);

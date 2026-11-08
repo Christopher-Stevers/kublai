@@ -366,12 +366,11 @@ const open = (fullscreen = false) =>
   );
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
-  if (name === "More") {
+  if (name === "More" || name === "Tools") {
     const more = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
     if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
     return;
   }
-  if (name === "Tools") openMenu("More");
   fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
 };
 const panel = (name: string) => {
@@ -386,7 +385,7 @@ const chooseTool = (id: string) => {
   for (const button of active) fireEvent.click(button);
   if (["pan", "select", "link", "issue", "rfi"].includes(id)) {
     openMenu("Tools");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: label }));
+    fireEvent.click(screen.getByRole("button", { name: label }));
   } else {
     fireEvent.click(screen.getByRole("button", { name: "Markup" }));
     fireEvent.click(screen.getByRole("button", { name: label }));
@@ -437,14 +436,15 @@ describe("drawing workspace workflows", () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     openMenu("Tools");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     expect(props.toolControls?.modeRequest?.mode).toBe("idle");
     expect(props.selectedId).toBeNull();
     expect(screen.getByRole("button", { name: "Measure" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Pan drawing" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Tools" })).toBeVisible();
+    openMenu("More");
+    expect(screen.getByRole("heading", { name: "Tools" })).toBeVisible();
   });
   it("floats a Done button while anything is in use that goes back to Viewing or Select, whichever was last", () => {
     open();
@@ -467,7 +467,7 @@ describe("drawing workspace workflows", () => {
     openMenu("More");
     fireEvent.click(screen.getByRole("button", { name: "Edit Mode" }));
     openMenu("Tools");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
     const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
     act(() => props.toolControls?.onMode?.({ measuring: true, pipe: false }));
@@ -494,8 +494,8 @@ describe("drawing workspace workflows", () => {
   it("makes Viewing available to users who cannot annotate", () => {
     mocks.data!.canAnnotate = false;
     open(); openMenu("Tools");
-    const viewing = screen.getByRole("menuitemradio", { name: "Viewing" });
-    expect(viewing).not.toHaveAttribute("data-disabled");
+    const viewing = screen.getByRole("button", { name: "Viewing" });
+    expect(viewing).toBeEnabled();
     fireEvent.click(viewing);
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool", "pan");
   });
@@ -504,7 +504,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Draw sample" }));
     fireEvent.change(screen.getByLabelText("Text"), { target: { value: "Keep this note" } });
     openMenu("Tools");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Viewing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Viewing" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
     expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ data: { type: "text", text: "Keep this note" } });
     expect(screen.queryByLabelText("Text")).toBeNull();
@@ -1066,6 +1066,7 @@ describe("drawing workspace workflows", () => {
     const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
     for(const id of ["select","line","rect","link"]) {
       chooseTool(id);
+      if (["select", "link"].includes(id)) openMenu("More");
       const label=tools.find(([tool])=>tool===id)![1];
       const button=within(toolbar).getByRole("button",{name:label,pressed:true});
       expect(button).toHaveTextContent(label);
@@ -1075,17 +1076,20 @@ describe("drawing workspace workflows", () => {
       expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool","pan");
     }
   });
-  it("keeps chooser names while open and closes them from the same button",()=>{
+  it("keeps Markup as a chooser while Tools is an inline section",()=>{
     open(); const toolbar=screen.getByRole("toolbar",{name:"Drawing tools"});
-    for(const name of ["Tools","Markup"]) {
-      if(name==="Markup")fireEvent.click(within(toolbar).getByRole("button",{name}));else openMenu(name);
-      const button=within(toolbar).getByRole("button",{name});
-      expect(button).toHaveClass("bg-primary");expect(button).toHaveAttribute("aria-expanded","true");
-      if(name==="Markup")fireEvent.click(button);else fireEvent.keyDown(button,{key:"Enter"});
-      expect(screen.queryByRole("menu")).toBeNull();expect(screen.queryByRole("dialog",{name:"Markup tools"})).toBeNull();
-      expect(button).not.toHaveClass("bg-primary");
-    }
+    openMenu("More");
+    expect(within(toolbar).getByRole("heading",{name:"Tools"})).toBeVisible();
+    expect(within(toolbar).queryByRole("button",{name:"Tools"})).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(within(toolbar).getByRole("button",{name:"Markup"}));
+    const button=within(toolbar).getByRole("button",{name:"Markup"});
+    expect(button).toHaveClass("bg-primary");expect(button).toHaveAttribute("aria-expanded","true");
+    fireEvent.click(button);
+    expect(screen.queryByRole("dialog",{name:"Markup tools"})).toBeNull();
+    expect(button).not.toHaveClass("bg-primary");
   });
+
   it("shows individual actions directly in More and toggles panels from their own buttons", () => {
     open(); panel("details");
     expect(screen.getByRole("heading", { name: "Sheet details" })).toBeVisible();
@@ -1100,7 +1104,8 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(within(toolbar).getByRole("button",{name:"Measure"}));
     expect(within(toolbar).getByRole("button",{name:"Measure",pressed:true})).toBeVisible();
     expect(screen.getByTestId("markup-editor")).toHaveAttribute("data-tool","pan");
-    openMenu("Tools");fireEvent.click(screen.getByRole("menuitemcheckbox",{name:"Pipe system"}));
+    openMenu("Tools");fireEvent.click(screen.getByRole("button",{name:"Pipe system"}));
+    openMenu("More");
     expect(within(toolbar).getByRole("button",{name:"Pipe system",pressed:true})).toBeVisible();
     fireEvent.click(within(toolbar).getByRole("button",{name:"Markup"}));
     expect(screen.getByRole("dialog",{name:"Markup tools"})).toBeVisible();
@@ -1951,7 +1956,10 @@ it("keeps full screen on the drawing and Tools in the three-slot bar overflow", 
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
   openMenu("More");
-  expect(within(screen.getByRole("group", {name:"More actions"})).getByRole("button",{name:"Tools"})).toBeVisible();
+  expect(within(screen.getByRole("group", {name:"More actions"})).getByRole("heading",{name:"Tools"})).toBeVisible();
+  const headings = within(bar).getAllByRole("heading").map(heading=>heading.textContent);
+  expect(headings.indexOf("Tools")).toBeGreaterThan(headings.indexOf("AI Tools"));
+  expect(within(screen.getByRole("region",{name:"Tools"})).getByRole("button",{name:"Viewing"})).toBeVisible();
   expect(screen.queryByRole("switch", { name: "Quickwheel mode" })).toBeNull();
 });
 

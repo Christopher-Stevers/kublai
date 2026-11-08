@@ -289,3 +289,13 @@ it("counts the combined search/overflow control as one slot and shelves Tools", 
   fireEvent.click(screen.getByRole("button",{name:"Find drawings"}));
   expect(screen.getByRole("searchbox",{name:"Find drawings"})).toBeVisible();
 });
+
+it("keeps named tool sections in overflow even when the primary row has room", () => {
+  render(<PriorityActionBar search={{value:"",onChange:vi.fn(),label:"Search drawings",split:true}}>
+    <button data-action-group="Tools">Viewing</button><button>Measure</button>
+  </PriorityActionBar>);
+  expect(screen.getByRole("button",{name:"Measure"})).toBeVisible();
+  expect(screen.queryByRole("button",{name:"Viewing"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Expand all actions"}));
+  expect(within(screen.getByRole("region",{name:"Tools"})).getByRole("button",{name:"Viewing"})).toBeVisible();
+});

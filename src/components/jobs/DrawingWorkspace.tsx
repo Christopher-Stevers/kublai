@@ -42,13 +42,8 @@ import {
 import { drawingDestinationLinks, drawingLinkHref } from "~/lib/drawing-links";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
@@ -258,10 +253,6 @@ const MARKUP_ICONS: Partial<Record<DrawingTool, LucideIcon>> = {
   angle: TriangleRightIcon,
   count: HashIcon,
 };
-const MENU_CLASS = "spring-up w-64 rounded-xl p-1.5 shadow-xl";
-const MENU_ITEM = "drawing-state-control min-h-11 gap-3 rounded-lg";
-const MENU_SECTION =
-  "text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase";
 /** Colour, line width and fill: the same style controls a markup is drawn with. */
 function MarkupStyleRow({
   data,
@@ -313,17 +304,6 @@ const SELECTED_BUTTON = "drawing-state-control h-8 shrink-0 rounded-full px-3 te
 const SELECTED_ICON = "drawing-state-control h-8 w-10 shrink-0 rounded-full";
 const capitalize = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1);
-/** A small icon tile at the start of a bottom-bar menu item. */
-function MenuTile({ icon: Icon }: { icon?: LucideIcon }) {
-  return (
-    <span
-      aria-hidden
-      className="bg-muted text-foreground/80 grid size-8 shrink-0 place-items-center rounded-lg"
-    >
-      {Icon && <Icon className="size-4" />}
-    </span>
-  );
-}
 const MEASUREMENT_TYPES: DrawingTool[] = [
   "dimension",
 ];
@@ -626,7 +606,7 @@ export function DrawingWorkspace({
   // Snapshots saved before Find text was removed may still name it.
   const entryPanel = entryDrawing?.panel === "search" ? "" : (entryDrawing?.panel ?? "");
   const [panel, setPanel] = useState<Panel>(entryPanel);
-  useEffect(() => { if (quickWheel) { setToolsOpen(false); setMarkupOpen(false); } }, [quickWheel]);
+  useEffect(() => { if (quickWheel) { setMarkupOpen(false); } }, [quickWheel]);
   const canAccessSystems = useSystemsAccess();
   const [superSpecMaterialOpen, setSuperSpecMaterialOpen] = useState(false);
   const [superEquipmentOpen, setSuperEquipmentOpen] = useState(false);
@@ -637,7 +617,6 @@ export function DrawingWorkspace({
     if (new URLSearchParams(window.location.search).get("superScale") === "review") setSuperScaleOpen(true);
   }, [sheet.id]);
   const superScaleCalibration = useRef<string | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<DrawingTool>("pan");
   const toolLabel = tools.find(([id]) => id === tool)?.[1] ?? "Tools";
   const activeTool = useRef(tool);
@@ -689,7 +668,6 @@ export function DrawingWorkspace({
   const openAutoHyperlink = () => {
     selectTool("pan");
     setAutoHyperlinkOpen(true);
-    setToolsOpen(false);
     setPanel("");
     setHighlight(null);
     setSelectedId(null);
@@ -1700,7 +1678,6 @@ export function DrawingWorkspace({
     markupMenu ? () => setMarkupMenu(null) :
     form ? () => setForm(null) :
     panel ? () => setPanel("") :
-    toolsOpen ? () => setToolsOpen(false) :
     markupOpen ? () => setMarkupOpen(false) :
     inlineText ? () => finishInlineText.current(false) :
     bottomMode.measuring || bottomMode.pipe || modeRequest.mode !== "idle" ||
@@ -3743,81 +3720,15 @@ export function DrawingWorkspace({
           {panels.filter(([id]) => id !== "files" && (!viewData.documentSource || id !== "notifications")).map(([id, label]) =>
             barAction(label, PANEL_ICONS[id] ?? MoreHorizontalIcon, () => { setPanel(panel === id ? "" : id); setForm(null); }, !data && id !== "markups", panel === id)
           )}
-          {bottomMode.pipe ||
-          (!bottomMode.measuring && tool !== "pan" && OTHER_TOOLS.has(tool)) ? (
-            <Button
-              variant="default"
-              className={BAR_BUTTON}
-              aria-label={bottomMode.pipe ? "Pipe system" : toolLabel}
-              aria-pressed={true}
-              onClick={finishTool}
-            >
-              {tool === "viewing" ? <HandIcon className="hidden h-5 w-5 sm:block" /> : <WrenchIcon className="hidden h-5 w-5 sm:block" />}
-              <span className="min-w-0 break-words leading-tight">{bottomMode.pipe ? "Pipe system" : toolLabel}</span>
-            </Button>
-          ) : (
-            <DropdownMenu
-              modal={false}
-              open={toolsOpen}
-              onOpenChange={(open) => {
-                setToolsOpen(open);
-                if (open) finishTool();
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={toolsOpen ? "default" : "outline"}
-                  className={BAR_BUTTON}
-                  aria-label="Tools"
-                >
-                  <WrenchIcon className="h-5 w-5" />
-                  Tools
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                align="center"
-                className={MENU_CLASS}
-              >
-                <DropdownMenuLabel className={MENU_SECTION}>
-                  Tools
-                </DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={
-                    bottomMode.pipe || bottomMode.measuring
-                      ? ""
-                      : writable || tool === "viewing"
-                        ? tool
-                        : "pan"
-                  }
-                  onValueChange={(value) => chooseDrawingTool(value as DrawingTool)}
-                >
-                  {tools
-                    .filter(([id]) => OTHER_TOOLS.has(id))
-                    .map(([id, label]) => (
-                      <DropdownMenuRadioItem
-                        key={id}
-                        value={id}
-                        className={MENU_ITEM}
-                        disabled={!writable && id !== "pan" && id !== "viewing"}
-                      >
-                        <MenuTile icon={TOOL_ICONS[id]} />
-                        {label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator className="my-1.5" />
-                <DropdownMenuCheckboxItem
-                  className={MENU_ITEM}
-                  checked={bottomMode.pipe}
-                  onCheckedChange={pipeCommand}
-                >
-                  <MenuTile icon={SplineIcon} />
-                  Pipe system
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {tools.filter(([id]) => OTHER_TOOLS.has(id)).map(([id, label]) => {
+            const active = !bottomMode.measuring && !bottomMode.pipe && (tool === id || (id === "pan" && tool === "viewing"));
+            return barAction(label, TOOL_ICONS[id] ?? WrenchIcon, () => {
+              if (!active || id === "pan") chooseDrawingTool(id);
+            }, !writable && id !== "pan" && id !== "viewing", active, "Tools");
+          })}
+          {barAction("Pipe system", SplineIcon, () => {
+            if (!bottomMode.pipe) pipeCommand();
+          }, !writable, bottomMode.pipe, "Tools")}
           {viewData.canAnnotate !== false && <Button
             disabled={!writable}
             variant={
