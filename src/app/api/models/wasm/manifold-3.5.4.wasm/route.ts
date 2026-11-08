@@ -1,8 +1,10 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 export const runtime = "nodejs";
 let wasm: Promise<Buffer> | undefined;
 export async function GET() {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   wasm ??= readFile(
     path.join(process.cwd(), "node_modules/manifold-3d/manifold.wasm"),
   ).catch((error) => {

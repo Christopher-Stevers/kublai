@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir } from "node:fs/promises";
@@ -80,6 +81,7 @@ async function audit(data: Record<string, unknown>) {
   );
 }
 export async function GET(req: Request) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     await identity(req);
     return reply({ ready: await voiceHealth(), model: "LFM3-Audio-2B" });
@@ -88,6 +90,7 @@ export async function GET(req: Request) {
   }
 }
 export async function POST(req: Request) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     if (!req.headers.get("origin"))
       return reply({ error: "Voice requests must come from this app." }, 403);

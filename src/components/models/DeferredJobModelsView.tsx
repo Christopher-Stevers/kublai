@@ -1,6 +1,7 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import dynamic from "next/dynamic";
-export const DeferredJobModelsView = dynamic(
+const LazyJobModelsView = dynamic(
   () => import("./JobModelsView").then((m) => m.JobModelsView),
   {
     ssr: false,
@@ -11,3 +12,7 @@ export const DeferredJobModelsView = dynamic(
     ),
   },
 );
+
+export function DeferredJobModelsView({ jobId }: { jobId: string }) {
+  return useDevFeatures() ? <LazyJobModelsView jobId={jobId} /> : null;
+}

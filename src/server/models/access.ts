@@ -1,3 +1,4 @@
+import { devFeaturesEnabled } from "~/server/dev-features";
 import { TRPCError } from "@trpc/server";
 import {
   assertChatAccess,
@@ -10,6 +11,7 @@ export function checkModelAccess(
   user: RequestUser | null,
   job: ChatJob | null,
 ) {
+  if (!devFeaturesEnabled()) throw new TRPCError({ code: "NOT_FOUND" });
   const access = checkChatAccess(user, job);
   if (!userCan(access.user, "drawings.view"))
     throw new TRPCError({
@@ -26,6 +28,7 @@ export async function modelAccess(
   userId: string | null | undefined,
   jobId: string,
 ) {
+  if (!devFeaturesEnabled()) throw new TRPCError({ code: "NOT_FOUND" });
   const access = await assertChatAccess(userId, jobId);
   return checkModelAccess(access.user, access.job);
 }

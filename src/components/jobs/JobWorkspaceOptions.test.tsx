@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
+import type { ReactNode } from "react";
+import { cleanup, fireEvent, render as renderUI, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { JobWorkspaceOptions } from "./JobWorkspaceOptions";
 import { ExperimentalSettings } from "~/components/account/ExperimentalSettings";
@@ -56,3 +58,16 @@ it("hides experimental cards and saved experimental screens once turned off in s
   fireEvent.click(screen.getByRole("switch", { name: "Show experimental features" }));
   expect(screen.getByRole("button", { name: "Systems" })).toBeInTheDocument();
 });
+
+function render(children: ReactNode) {
+  return renderUI(<DevFeaturesProvider enabled>{children}</DevFeaturesProvider>);
+}
+it("hides Models and Voice when deployment dev features are off, even with experimental settings on", () => {
+  renderUI(<DevFeaturesProvider enabled={false}><JobWorkspaceOptions onSelect={vi.fn()} /></DevFeaturesProvider>);
+  expect(screen.queryByRole("button", { name: "Models, experimental" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Voice")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Drawings/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Systems" })).toBeInTheDocument();
+});
+
+vi.mock("~/components/voice/VoiceProvider", () => ({ VoiceCard: () => <span>Voice</span> }));

@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { assertSameOrigin, readBoundedBody } from "~/server/documents/http";
 import { modelHttpError } from "~/server/models/http";
@@ -7,6 +8,7 @@ import { uploadMetadataSchema } from "~/lib/bim/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     assertSameOrigin(request);
     const { userId } = await getRequestIdentity(request.headers, { request });

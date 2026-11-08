@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 vi.mock("~/server/db", () => ({ db: {} }));
 import {
   checkModelAccess,
@@ -104,4 +104,10 @@ describe("model permissions", () => {
       ),
     ).toThrow();
   });
+});
+
+afterEach(() => vi.unstubAllEnvs());
+it("blocks otherwise authorized model access when dev features are disabled", () => {
+  vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
+  expect(() => checkModelAccess(user, job)).toThrow(expect.objectContaining({ code: "NOT_FOUND" }));
 });

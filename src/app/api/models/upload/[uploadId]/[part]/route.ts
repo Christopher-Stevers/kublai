@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { z } from "zod";
 import { getRequestIdentity } from "~/server/utils/get-request-identity";
 import { assertSameOrigin, readBoundedBody } from "~/server/documents/http";
@@ -23,6 +24,7 @@ async function access(request: Request, context: Context) {
   return { a, id, part: params.part };
 }
 export async function PUT(request: Request, context: Context) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     const { a, id, part } = await access(request, context);
     const number = z.coerce.number().int().min(0).max(31).parse(part);
@@ -37,6 +39,7 @@ export async function PUT(request: Request, context: Context) {
   }
 }
 export async function POST(request: Request, context: Context) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     const { a, id, part } = await access(request, context);
     if (part !== "finish")

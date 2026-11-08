@@ -1,3 +1,4 @@
+import { devFeaturesEnabled, devFeatureUnavailable } from "~/server/dev-features";
 import { z } from "zod";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
@@ -15,6 +16,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ modelId: string }> },
 ) {
+  if (!devFeaturesEnabled()) return devFeatureUnavailable();
   try {
     const url = new URL(request.url);
     const jobId = z.string().uuid().parse(url.searchParams.get("jobId"));

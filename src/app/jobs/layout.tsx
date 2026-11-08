@@ -1,3 +1,5 @@
+import { devFeaturesEnabled } from "~/server/dev-features";
+import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
 import { VoiceProvider } from "~/components/voice/VoiceProvider";
 import { SystemsAccessProvider } from "~/components/permissions/SystemsAccess";
 import { MaterialSortProvider } from "~/components/app/MaterialSortProvider";
@@ -31,6 +33,7 @@ export default async function JobsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const devFeatures = devFeaturesEnabled();
   const identity = await getRequestIdentity(await headers(), {
     allowDev: true,
   });
@@ -124,9 +127,13 @@ export default async function JobsLayout({
                               organizationId={organizationId}
                             >
                               <SupplierLabelProvider>
-                                <VoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
-                                  {children}
-                                </VoiceProvider>
+                                <DevFeaturesProvider enabled={devFeatures}>
+                                  {devFeatures ? (
+                                    <VoiceProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
+                                      {children}
+                                    </VoiceProvider>
+                                  ) : children}
+                                </DevFeaturesProvider>
                               </SupplierLabelProvider>
                             </MaterialSortProvider>
                           </ChatViewProvider>

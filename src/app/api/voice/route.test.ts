@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
   identity: vi.fn(),
   infer: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock("~/server/voice/tools", () => ({
   executeChange: m.execute,
 }));
 vi.mock("node:fs/promises", () => ({ appendFile: m.audit, mkdir: vi.fn() }));
-import { POST } from "./route";
+import { GET, POST } from "./route";
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 async function call(body: unknown, origin = "https://app.test") {
@@ -191,4 +191,15 @@ it("spoken yes preserves the preview and never executes it", async () => {
   expect(yes.proposal.id).toBe(first.proposal.id);
   expect(yes.text).toContain("tap");
   expect(m.execute).not.toHaveBeenCalled();
+});
+
+afterEach(() => vi.unstubAllEnvs());
+it("rejects Voice health and actions before identity or inference when disabled", async () => {
+  vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
+  m.identity.mockClear(); m.health.mockClear(); m.infer.mockClear();
+  expect((await GET(new Request("http://localhost/api/voice"))).status).toBe(404);
+  expect((await call({ action: "start" })).status).toBe(404);
+  expect(m.identity).not.toHaveBeenCalled();
+  expect(m.health).not.toHaveBeenCalled();
+  expect(m.infer).not.toHaveBeenCalled();
 });

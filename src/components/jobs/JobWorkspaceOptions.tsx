@@ -1,4 +1,5 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import { VoiceCard } from "~/components/voice/VoiceProvider";
 
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
@@ -34,10 +35,11 @@ export function JobWorkspaceOptions({
 }) {
   const canAccessSystems = useSystemsAccess();
   const canAccessDrawings = useDrawingsAccess();
+  const devFeatures = useDevFeatures();
   const experimental = useExperimentalEnabled();
   return (
     <>
-    <FrequentJobCards trailingCards={<VoiceCard />}>
+    <FrequentJobCards trailingCards={devFeatures ? <VoiceCard /> : null}>
       <Card
         data-job-card="material-lists"
         data-tutorial="material-lists"
@@ -192,7 +194,7 @@ export function JobWorkspaceOptions({
           </div>
         </CardContent>
       </Card>
-      {experimental && canAccessDrawings && (
+      {devFeatures && experimental && canAccessDrawings && (
         <Card
           data-job-card="models"
           role="button"
