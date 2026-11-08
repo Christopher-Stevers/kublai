@@ -17,6 +17,7 @@ start_container() {
     --cgroup-parent foremanhq.slice --cpu-shares "$shares" --memory-reservation "$reservation" \
     --memory 3200m --memory-swap 3200m --oom-score-adj "$oom_score" --pids-limit 256 \
     --security-opt no-new-privileges --cap-drop ALL \
+    -e DEPLOY_ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}" \
     -e FOREMANHQ_CGROUP_ROOT=/run/foremanhq-cgroup/delegated \
     --mount "type=bind,src=$mount_root,dst=/run/foremanhq-cgroup,bind-propagation=rslave" \
     --mount "type=bind,src=$uploads,dst=/app/uploads" \

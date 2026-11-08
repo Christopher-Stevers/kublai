@@ -13,6 +13,7 @@ import {
 export type { PermissionKey, PermissionMap } from "~/lib/permission-catalog";
 
 type PermissionUser = {
+  id?: string | null;
   role?: string | null;
   permissionConfig?: unknown;
   hasOneTimeAccess?: boolean | null;
@@ -64,6 +65,17 @@ function asObject(input: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/** Server-configured development seats are bound to authenticated Clerk IDs.
+ * Never accept this list from a request, member flags, or a public build variable. */
+export function hasDevelopmentExecutiveSeat(user: PermissionUser) {
+  if (process.env.DEPLOY_ENVIRONMENT !== "development" || !user.id) return false;
+  return (process.env.FOREMANHQ_DEV_EXECUTIVE_USER_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => /^user_[A-Za-z0-9]+$/.test(id))
+    .includes(user.id);
+}
+
 /** Executive entitlement. Keep the legacy function/API names for cached clients. */
 export function hasManagingSeat(user: PermissionUser) {
   const role = normalizedRole(user);
@@ -72,7 +84,7 @@ export function hasManagingSeat(user: PermissionUser) {
     user.subscriptionStatus === "active" &&
     (!user.subscriptionEndsAt ||
       new Date(user.subscriptionEndsAt) > new Date());
-  return role === "admin" || (hasActiveSubscription && role !== "worker");
+  return role === "admin" || ((hasActiveSubscription || hasDevelopmentExecutiveSeat(user)) && role !== "worker");
 }
 
 /** The full permission map for a member. */

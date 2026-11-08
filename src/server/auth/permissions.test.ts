@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PERMISSION_KEYS, PERMISSION_PRESETS } from "~/lib/permission-catalog";
 import {
@@ -203,4 +203,35 @@ describe("Chat page permission", () => {
 it("preserves existing Sheet tool access but respects an explicit denial", () => {
   expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.upload": true }) })["drawings.sheetTools"]).toBe(true);
   expect(resolvePermissions({ role: "user", permissionConfig: toStoredConfig({ "drawings.sheetTools": false, "drawings.upload": true }) })["drawings.sheetTools"]).toBe(false);
+});
+
+
+describe("development Executive entitlement", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const user = { id: "user_TimDevelopment", role: "user", permissionConfig: allDenied };
+  it("grants Executive permissions to an allowlisted identity without admin or billing changes", () => {
+    vi.stubEnv("DEPLOY_ENVIRONMENT", "development");
+    vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", " user_Other,user_TimDevelopment ");
+    const before = structuredClone(user);
+    const permissions = getUserPermissions(user);
+    expect(permissions.accountTypeLabel).toBe("Executive Account");
+    expect(permissions.isAdmin).toBe(false);
+    expect(PERMISSION_KEYS.every((key) => permissions.can[key])).toBe(true);
+    expect(user).toEqual(before);
+  });
+  it.each(["production", "", "test", "staging"])("cannot grant a development seat in %s", (environment) => {
+    vi.stubEnv("DEPLOY_ENVIRONMENT", environment);
+    vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", user.id);
+    expect(hasManagingSeat(user)).toBe(false);
+  });
+  it("requires an exact configured ID, not editable member permissions", () => {
+    vi.stubEnv("DEPLOY_ENVIRONMENT", "development");
+    vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", "user_TimDevelopmentOther");
+    expect(hasManagingSeat(user)).toBe(false);
+    expect(hasManagingSeat({ permissionConfig: { developmentExecutive: true } })).toBe(false);
+    vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", user.id);
+    expect(hasManagingSeat({ ...user, role: "worker" })).toBe(false);
+    vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", "");
+    expect(hasManagingSeat(user)).toBe(false);
+  });
 });
