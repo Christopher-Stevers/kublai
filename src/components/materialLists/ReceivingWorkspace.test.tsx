@@ -2179,3 +2179,23 @@ it("creates a new list before any catalogue lines are matched", async () => {
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({action: "reconstruct", materialListId: null, lineIds: [], supplierId: "supplier"});
 });
+
+it("opens duplicate comparison in the main viewer and returns to the same review", async () => {
+  replace.mockClear();
+  state.duplicates = [{id:"old",name:"Earlier slip",reason:"Same delivery",key:"old:v1",received:true}] as typeof state.duplicates;
+  const serve = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (url, opts) => String(url) === "/api/job-documents?jobId=job"
+    ? Response.json({documents:[],versions:[]}) : serve(url, opts));
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", {name:"Compare files"}));
+  const viewer = screen.getByRole("main", {name:"Packing slip comparison"});
+  expect(viewer).toHaveClass("app-below-header");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(within(viewer).getByRole("region",{name:"Left comparison"})).toBeVisible();
+  expect(within(viewer).getByRole("region",{name:"Right comparison"})).toBeVisible();
+  expect(screen.queryByRole("heading",{name:"Review Packing Slip"})).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByText("Loading PDFs…")).not.toBeInTheDocument());
+  act(() => { expect(runHeaderBackOverride()).toBe(true); });
+  expect(await screen.findByRole("heading",{name:"Review Packing Slip"})).toBeVisible();
+  expect(posts).toEqual([]);expect(replace).not.toHaveBeenCalled();
+});

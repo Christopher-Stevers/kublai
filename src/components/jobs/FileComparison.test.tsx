@@ -8,6 +8,7 @@ const docs = {documents:[{id:"one",name:"Current slip",currentVersionId:"v1"},{i
 it("opens the two duplicate documents without changing receiving data", async () => {
  const request=vi.fn(async(_url: string)=>new Response(JSON.stringify(docs)));vi.stubGlobal("fetch",request);
  render(<FileComparison jobId="job" initialDocumentIds={["one","two"]} onClose={()=>{}} />);
+ expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
  const panes=await screen.findAllByTestId("pdf");expect(panes.map(p=>p.getAttribute("data-url"))).toEqual(["/api/job-documents/files/v1?jobId=job","/api/job-documents/files/v2?jobId=job"]);
  expect(request).toHaveBeenCalledTimes(1);expect(request.mock.calls[0]?.[0]).toBe("/api/job-documents?jobId=job");
  expect(screen.queryByRole("option",{name:"Deleted"})).not.toBeInTheDocument();

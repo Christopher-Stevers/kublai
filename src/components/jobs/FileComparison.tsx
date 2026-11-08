@@ -1,13 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "~/components/ui/dialog";
 import { LayersIcon, XIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { PassiveDocumentPdfPreview } from "./documents/PassiveDocumentPdfPreview";
@@ -40,7 +33,6 @@ export function FileComparison({
   initialSheetId,
   onClose,
   onOverlay,
-  inline = false,
   resolveAssetUrl,
 }: {
   jobId: string;
@@ -146,13 +138,7 @@ export function FileComparison({
     </>
   );
   const panes = (
-    <div
-      className={
-        inline
-          ? "grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden"
-          : "grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden rounded border"
-      }
-    >
+    <div className="grid min-h-0 flex-1 grid-cols-2 divide-x overflow-hidden">
       {([leftId, rightId] as const).map((id, index) => (
         <ComparisonPane
           key={index}
@@ -171,67 +157,43 @@ export function FileComparison({
       ))}
     </div>
   );
-  if (inline)
-    return (
-      <section
-        className="bg-background relative flex h-full min-h-0 flex-col"
-        aria-label="Compare files"
-      >
-        <div
-          data-drawing-chrome
-          className="bg-background/95 flex h-12 shrink-0 items-center gap-2 border-b px-2 shadow-sm"
-        >
-          <span
-            aria-hidden
-            className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg"
-          >
-            <LayersIcon className="size-4" />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-            Compare files
-          </span>
-          {onOverlay && (
-            <Button variant="outline" size="sm" onClick={onOverlay}>
-              <LayersIcon className="size-4" />
-              Overlay
-            </Button>
-          )}
-          <button
-            type="button"
-            aria-label="Close comparison"
-            title="Close comparison"
-            onClick={onClose}
-            className="hover:bg-accent text-muted-foreground -mr-0.5 grid size-9 shrink-0 place-items-center rounded-full"
-          >
-            <XIcon className="size-5" />
-          </button>
-        </div>
-        {(loading || error) && <div className="shrink-0 py-1">{status}</div>}
-        {panes}
-      </section>
-    );
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+    <section
+      className="bg-background relative flex h-full min-h-0 flex-col"
+      aria-label="Compare files"
     >
-      <DialogContent
-        layerClassName="z-[90]"
-        className="flex h-[94dvh] w-[98vw] max-w-[98vw] flex-col gap-2 overflow-hidden p-2 sm:max-w-[98vw]"
+      <div
+        data-drawing-chrome
+        className="bg-background/95 flex h-12 shrink-0 items-center gap-2 border-b px-2 shadow-sm"
       >
-        <DialogHeader className="shrink-0 px-2 pr-10 text-left">
-          <DialogTitle>Compare files</DialogTitle>
-          <DialogDescription>
-            View two PDFs or drawing sets side by side. Pan, zoom and change
-            pages independently.
-          </DialogDescription>
-        </DialogHeader>
-        {status}
-        {panes}
-      </DialogContent>
-    </Dialog>
+        <span
+          aria-hidden
+          className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-lg"
+        >
+          <LayersIcon className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+          Compare files
+        </span>
+        {onOverlay && (
+          <Button variant="outline" size="sm" onClick={onOverlay}>
+            <LayersIcon className="size-4" />
+            Overlay
+          </Button>
+        )}
+        <button
+          type="button"
+          aria-label="Close comparison"
+          title="Close comparison"
+          onClick={onClose}
+          className="hover:bg-accent text-muted-foreground -mr-0.5 grid size-9 shrink-0 place-items-center rounded-full"
+        >
+          <XIcon className="size-5" />
+        </button>
+      </div>
+      {(loading || error) && <div className="shrink-0 py-1">{status}</div>}
+      {panes}
+    </section>
   );
 }
 

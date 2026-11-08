@@ -348,12 +348,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [changingOrder, setChangingOrder] = useState(false),
     [recheckingDuplicates, setRecheckingDuplicates] = useState(false),
     [showLines, setShowLines] = useState(false);
+  const [comparisonDocument, setComparisonDocument] = useState<{ current: string; earlier: string } | null>(null);
   const [resolveTarget, setResolveTarget] = useState<ResolveTarget | null>(
     null,
   );
+  useEffect(() => { setComparisonDocument(null); }, [id]);
   // Back from a slip steps up to the queue, not out to the job.
   useHeaderBackOverride(
-    resolveTarget
+    comparisonDocument
+      ? () => setComparisonDocument(null)
+      : resolveTarget
       ? () => setResolveTarget(null)
       : id
         ? () => {
@@ -648,6 +652,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     resolvingLine ? resolutionEvidenceFingerprint(resolvingLine) : "",
     resolvingItem ? resolutionCounterpartFingerprint(resolvingItem) : "",
   ].join(":");
+  if (detail && comparisonDocument?.current === detail.document.id)
+    return <main className="bg-background fixed inset-x-0 app-below-header bottom-0 z-30 flex min-h-0 flex-col" aria-label="Packing slip comparison">
+      <FileComparison inline jobId={jobId} initialDocumentIds={[comparisonDocument.current, comparisonDocument.earlier]} onClose={() => setComparisonDocument(null)} />
+    </main>;
   if (detail && resolveTarget)
     return (
       <main className="mx-auto w-full px-4 py-4">
@@ -1030,7 +1038,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                             : "Checked. A different delivery."
                   }
                 >
-                  {(repeat || recheckingDuplicates) && <DuplicateReview onDeleted={() => { setDetail(null); router.replace(`/jobs/${jobId}/receiving`); }} disabled={busy || !online} detail={detail} recheck={recheckingDuplicates} run={async action => {
+                  {(repeat || recheckingDuplicates) && <DuplicateReview onCompare={earlier => setComparisonDocument({current:detail.document.id, earlier})} onDeleted={() => { setDetail(null); router.replace(`/jobs/${jobId}/receiving`); }} disabled={busy || !online} detail={detail} recheck={recheckingDuplicates} run={async action => {
                     const saved = await run(action);
                     if (saved) setRecheckingDuplicates(false);
                     return saved;
@@ -1802,19 +1810,20 @@ const duplicateReasons = {
 /** Step 1: an earlier scan that looks the same, and what this one is. */
 function DuplicateReview({
   detail,
+  onCompare,
   onDeleted,
   disabled,
   run,
   recheck = false,
 }: {
   detail: Detail;
+  onCompare: (documentId: string) => void;
   onDeleted: () => void;
   disabled: boolean;
   recheck?: boolean;
   run: (a: Action) => Promise<boolean>;
 }) {
   const [other, setOther] = useState("");
-  const [comparing, setComparing] = useState(false);
   const unresolved = detail.duplicates.filter(
     (d) => recheck || !detail.review.duplicateChecked?.includes(d.key),
   );
@@ -1829,8 +1838,7 @@ function DuplicateReview({
     });
   return (
     <div className="space-y-3 p-4 text-sm">
-      {comparing && !earlier.unavailable && <FileComparison jobId={detail.document.jobId} initialDocumentIds={[detail.document.id, earlier.id]} onClose={() => setComparing(false)} />}
-      {!earlier.unavailable && <Button variant="outline" onClick={() => setComparing(true)}>Compare files</Button>}
+      {!earlier.unavailable && <Button variant="outline" onClick={() => onCompare(earlier.id)}>Compare files</Button>}
       {unresolved.length > 1 && (
         <Label name="Earlier scan">
           <select
