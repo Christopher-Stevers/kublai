@@ -1980,6 +1980,32 @@ it("searches the text in the drawing PDFs and goes to it on the page", async () 
   }
 });
 
+it("moves through the search results with the arrows by the X", async () => {
+  const hit = (text: string, x: number) => ({ kind: "drawing", id: sheet.id, name: sheet.name, page: 1, text, url: "/elsewhere", sourceSheetId: sheet.id, box: { left: x, top: 0.5, right: x + 0.1, bottom: 0.52, text } });
+  mocks.textSearch = ({ kind, query }) => (query === "pipe" && kind === "drawing" ? [hit("PIPE A", 0.1), hit("PIPE B", 0.6)] : []);
+  try {
+    render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Search drawings and documents" }));
+    fireEvent.change(within(bar).getByRole("searchbox", { name: "Search drawings and documents" }), { target: { value: "pipe" } });
+    const found = await screen.findByRole("region", { name: "Drawings and documents found" });
+    const current = () => within(found).getAllByRole("button").find((button) => button.getAttribute("aria-current") === "true")?.textContent;
+    expect(current()).toMatch(/PIPE A/);
+    fireEvent.click(within(bar).getByRole("button", { name: "Next result" }));
+    expect(current()).toMatch(/PIPE B/);
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(props.navigateTo?.center.x).toBeCloseTo(0.65);
+    // Stepping keeps the search open; it wraps around.
+    fireEvent.click(within(bar).getByRole("button", { name: "Next result" }));
+    expect(current()).toMatch(/PIPE A/);
+    fireEvent.click(within(bar).getByRole("button", { name: "Previous result" }));
+    expect(current()).toMatch(/PIPE B/);
+    expect(mocks.push).not.toHaveBeenCalledWith("/elsewhere", expect.anything());
+  } finally {
+    mocks.textSearch = () => [];
+  }
+});
+
 it("keeps full screen on the drawing and Tools in the three-slot bar overflow", () => {
   const onFullscreen = vi.fn();
   render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);

@@ -16,6 +16,8 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   MoreHorizontalIcon,
   SearchIcon,
@@ -58,6 +60,8 @@ export type BarSearch = {
   /** Search is always leftmost, one split button with the arrow that
    * expands the shelf. Put no BarSearchButton among the actions. */
   split?: boolean;
+  /** Arrows before the X that move through the results. */
+  step?: { onPrevious: () => void; onNext: () => void; disabled?: boolean };
 };
 
 const BarSearchContext = createContext<{
@@ -302,6 +306,32 @@ export function PriorityActionBar({
                   className="h-full rounded-lg pl-9 [&::-webkit-search-cancel-button]:appearance-none"
                 />
               </div>
+              {search.step && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-(--action-height) shrink-0"
+                    aria-label="Previous result"
+                    disabled={search.step.disabled}
+                    onClick={search.step.onPrevious}
+                  >
+                    <ChevronLeftIcon className="size-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="-ml-2 size-(--action-height) shrink-0"
+                    aria-label="Next result"
+                    disabled={search.step.disabled}
+                    onClick={search.step.onNext}
+                  >
+                    <ChevronRightIcon className="size-5" />
+                  </Button>
+                </>
+              )}
               <Button
                 type="button"
                 variant="ghost"

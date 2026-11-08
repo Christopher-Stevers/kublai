@@ -769,6 +769,13 @@ export function DrawingWorkspace({
     return () => clearTimeout(timer);
   }, [find]);
   const finding = findText.length >= 2;
+  // The current result, moved by the bar's arrows.
+  const [findAt, setFindAt] = useState(0);
+  useEffect(() => setFindAt(0), [findText]);
+  const findList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    findList.current?.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: "nearest" });
+  }, [findAt]);
   const textInSheets = api.drawingsWorkspace.textSearch.useQuery(
     { sheetId: sheet.id, kind: "drawing", query: findText },
     { enabled: finding && online, retry: 1, staleTime: 60_000 },
@@ -1960,18 +1967,36 @@ export function DrawingWorkspace({
     void openDestination(target);
   };
   const textHits = [...(textInSheets.data?.hits ?? []), ...(textInDocuments.data?.hits ?? [])];
-  const openTextHit = (hit: (typeof textHits)[number]) => {
-    closeFind();
-    if (hit.kind === "drawing" && hit.box && hit.id === sheet.id && hit.sourceSheetId === sourceId) {
-      // Already on this page: go to the text without leaving the sheet.
-      setHighlight({ ...hit.box, text: hit.text });
-      setNavigate({
-        center: { x: (hit.box.left + hit.box.right) / 2, y: (hit.box.top + hit.box.bottom) / 2 },
-        zoom: Math.min(10, Math.max(2, 0.35 / Math.max(hit.box.right - hit.box.left, hit.box.bottom - hit.box.top))),
-        requestId: crypto.randomUUID(),
-      });
-    } else openLinkUrl(hit.url);
+  type TextHit = (typeof textHits)[number];
+  const onThisPage = (hit: TextHit) =>
+    hit.kind === "drawing" && !!hit.box && hit.id === sheet.id && hit.sourceSheetId === sourceId;
+  const showTextHit = (hit: TextHit) => {
+    const box = hit.box!;
+    setHighlight({ ...box, text: hit.text });
+    setNavigate({
+      center: { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 },
+      zoom: Math.min(10, Math.max(2, 0.35 / Math.max(box.right - box.left, box.bottom - box.top))),
+      requestId: crypto.randomUUID(),
+    });
   };
+  const openTextHit = (hit: TextHit) => {
+    closeFind();
+    // Already on this page: go to the text without leaving the sheet.
+    if (onThisPage(hit)) showTextHit(hit);
+    else openLinkUrl(hit.url);
+  };
+  const findCount = textHits.length + found.length;
+  const findCurrent = findCount ? Math.min(findAt, findCount - 1) : -1;
+  // Text on the open page is shown as the arrows reach it; others open on tap.
+  const stepFind = (delta: number) => {
+    if (!findCount) return;
+    const next = (findCurrent + delta + findCount) % findCount;
+    setFindAt(next);
+    const hit = textHits[next];
+    if (hit && onThisPage(hit)) showTextHit(hit);
+  };
+  const findRow = (index: number) =>
+    `${index === findCurrent ? "bg-accent ring-primary/40 ring-1 " : ""}hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm outline-none`;
   const textUnread =
     (textInSheets.data?.pending ?? 0) + (textInDocuments.data?.pending ?? 0);
   const barAction = (label: string, Icon: LucideIcon, run: () => void, disabled = false, pressed?: boolean, group?: string) => (
@@ -3700,6 +3725,7 @@ export function DrawingWorkspace({
           <div
             role="region"
             aria-label="Drawings and documents found"
+            ref={findList}
             className="spring-up bg-card/95 absolute right-2 bottom-full left-2 z-50 mb-2 max-h-[50dvh] overflow-y-auto rounded-2xl border p-2 shadow-xl backdrop-blur"
           >
             {!online ? (
@@ -3710,7 +3736,8 @@ export function DrawingWorkspace({
                   <li key={`text:${index}`}>
                     <button
                       type="button"
-                      className="hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm outline-none"
+                      aria-current={index === findCurrent || undefined}
+                      className={findRow(index)}
                       onClick={() => openTextHit(hit)}
                     >
                       <TextSearchIcon className="size-4 shrink-0" />
@@ -3724,11 +3751,12 @@ export function DrawingWorkspace({
                     </button>
                   </li>
                 ))}
-                {found.map(({ target, kind }) => (
+                {found.map(({ target, kind }, index) => (
                   <li key={`${kind}:${target.key}`}>
                     <button
                       type="button"
-                      className="hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm outline-none"
+                      aria-current={textHits.length + index === findCurrent || undefined}
+                      className={findRow(textHits.length + index)}
                       onClick={() => openFound(target)}
                     >
                       {kind === "Drawing" ? <FileTextIcon className="size-4 shrink-0" /> : <FolderIcon className="size-4 shrink-0" />}
@@ -3764,6 +3792,7 @@ export function DrawingWorkspace({
             label: "Search drawings and documents",
             placeholder: "Search drawings and documents",
             split: true,
+            step: { onPrevious: () => stepFind(-1), onNext: () => stepFind(1), disabled: !finding || !findCount },
           }}
           className={`mx-auto max-w-6xl gap-2 ${markupOpen ? "z-50" : ""}`}
         >
