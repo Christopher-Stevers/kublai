@@ -152,7 +152,7 @@ it("shows one bar at a time, the order's in place of the list's", () => {
   // The list's bar is still there, sliding away, but cannot be used.
   expect(screen.getByText("Add Part").closest("[inert]")).not.toBeNull();
   // Four receiving actions: the lowest waits on the shelf.
-  fireEvent.click(within(bar).getByRole("button", { name: "More" }));
+  fireEvent.click(within(bar).getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark all received/ }));
   fireEvent.click(screen.getByRole("button", { name: /Notes/ }));
   fireEvent.click(screen.getByRole("button", { name: /Mark none received/ }));

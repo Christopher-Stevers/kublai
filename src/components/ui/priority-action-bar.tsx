@@ -124,11 +124,10 @@ export function BarSearchButton({ className }: { className?: string }) {
 /**
  * The app's bottom bar: three actions on a phone, more on wider bars (one per
  * 128px, up to six), highest priority on the right,
- * each the same height in the same type. Lower priorities wait on a shelf
- * behind a tab on the bar's top edge; tap the tab or swipe it up to raise the
- * shelf. `label` is the line above the buttons (a total, a status, the order
+ * each the same height in the same type. An in-row arrow expands every extra
+ * action above the primary row; there are no pages or nested overflow menus. `label` is the line above the buttons (a total, a status, the order
  * being received), drawn in one style on every screen. The bar's container
- * should have the standard 0.5rem top padding so the tab sits on its border.
+ * should have the standard 0.5rem top padding.
  */
 export function PriorityActionBar({
   children,
@@ -142,7 +141,7 @@ export function PriorityActionBar({
   label?: ReactNode;
   search?: BarSearch;
   dismissOnBack?: boolean;
-  /** Replaces More for bars whose actions all fit. */ tabAction?: ReactNode;
+  /** Optional screen-specific view toggle above the action row. */ tabAction?: ReactNode;
 }) {
   const actions = actionList(children);
   const root = useRef<HTMLDivElement>(null);
@@ -151,7 +150,6 @@ export function PriorityActionBar({
   const shown = actions.slice(shelved);
   const [open, setOpen] = useState(false);
   const tab = useRef<HTMLButtonElement>(null);
-  const swipe = useRef<{ y: number; dy: number } | null>(null);
   const shelfId = useId();
   const [searching, setSearching] = useState(() => !!search?.value);
   const [desktop, setDesktop] = useState(false);
@@ -211,11 +209,10 @@ export function PriorityActionBar({
     searchButton.current = true;
     setSearching(false);
   };
-  const slot = (action: ReactNode, index: number, column?: number) => (
+  const slot = (action: ReactNode, index: number) => (
     <div
       data-action-slot
       key={isValidElement(action) ? (action.key ?? index) : index}
-      style={column ? { gridColumnStart: column } : undefined}
     >
       {action}
     </div>
@@ -240,35 +237,6 @@ export function PriorityActionBar({
         className={cn("relative w-full", className)}
       >
         {tabAction}
-        {!tabAction && shelved > 0 && (!searching || inlineSearch) && (
-          <button
-            ref={tab}
-            type="button"
-            data-action-bar-tab
-            data-count={shelved}
-            aria-expanded={expanded}
-            aria-controls={shelfId}
-            title={`${shelved} more ${shelved === 1 ? "action" : "actions"}`}
-            className="touch-none"
-            onPointerDown={(event) => {
-              swipe.current = { y: event.clientY, dy: 0 };
-            }}
-            onPointerMove={(event) => {
-              if (swipe.current)
-                swipe.current.dy = event.clientY - swipe.current.y;
-            }}
-            onClick={() => {
-              // A swipe up raises the shelf and a swipe down lowers it; a tap
-              // or a key toggles it.
-              const dy = swipe.current?.dy ?? 0;
-              swipe.current = null;
-              setOpen(Math.abs(dy) > 12 ? dy < 0 : !expanded);
-            }}
-          >
-            <ChevronUpIcon aria-hidden />
-            More
-          </button>
-        )}
         {/* In landscape the screen's second top bar moves in here. */}
         <div data-landscape-subbar-slot />
         {/* Keep shelved controls mounted: opening their dialog must not destroy
@@ -292,17 +260,7 @@ export function PriorityActionBar({
             }
           }}
         >
-          {/* Right-aligned like the bar below: a part row goes on top, so the
-            highest shelved actions sit just above the bar. */}
-          {actions
-            .slice(0, shelved)
-            .map((action, index) =>
-              slot(
-                action,
-                index,
-                index ? undefined : limit - ((shelved - 1) % limit),
-              ),
-            )}
+          {actions.slice(0, shelved).map((action, index) => slot(action, index))}
         </div>
         {label != null && label !== false && (
           <div data-action-bar-label>{label}</div>
@@ -350,9 +308,27 @@ export function PriorityActionBar({
             data-action-bar-row
             hidden={!!search && searching && !inlineSearch}
             style={{
-              gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))`,
+              gridTemplateColumns: `${shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
             }}
           >
+            {shelved > 0 && (
+              <div data-action-slot key="expand-actions">
+                <Button
+                  ref={tab}
+                  type="button"
+                  variant={expanded ? "default" : "outline"}
+                  data-action-bar-expand
+                  data-count={shelved}
+                  aria-label={expanded ? "Collapse actions" : "Expand all actions"}
+                  aria-expanded={expanded}
+                  aria-controls={shelfId}
+                  title={expanded ? "Collapse actions" : "Expand all actions"}
+                  onClick={() => setOpen(!expanded)}
+                >
+                  <ChevronUpIcon aria-hidden className={cn("transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
+                </Button>
+              </div>
+            )}
             {shown.map((action, index) => slot(action, index))}
           </div>
         </div>

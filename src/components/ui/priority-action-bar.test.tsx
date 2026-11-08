@@ -33,21 +33,18 @@ it("shows no bar for an empty permission set", () => {
 it("shelves the lowest of four actions, never showing more than three", () => {
   render(<PriorityActionBar>{buttons(4)}</PriorityActionBar>);
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-    "More",
+    "",
     "Action 2",
     "Action 3",
     "Action 4",
   ]);
-  const tab = screen.getByRole("button", { name: "More" });
+  const tab = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
   expect(tab).toHaveAttribute("data-count", "1");
-  // A swipe up raises the shelf; a swipe down lowers it.
-  fireEvent.pointerDown(tab, { clientY: 100 });
-  fireEvent.pointerMove(tab, { clientY: 60 });
+  expect(tab.closest("[data-action-bar-row]")).not.toBeNull();
+  expect(tab).not.toHaveAttribute("data-action-bar-tab");
   fireEvent.click(tab);
   expect(tab).toHaveAttribute("aria-expanded", "true");
   expect(screen.getByRole("button", { name: "Action 1" })).toBeVisible();
-  fireEvent.pointerDown(tab, { clientY: 60 });
-  fireEvent.pointerMove(tab, { clientY: 100 });
   fireEvent.click(tab);
   expect(tab).toHaveAttribute("aria-expanded", "false");
 });
@@ -64,19 +61,19 @@ it("shows its label above the buttons", () => {
 it("keeps the highest three on the right, with lower priorities on the shelf", () => {
   render(<PriorityActionBar>{buttons(6)}</PriorityActionBar>);
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-    "More",
+    "",
     "Action 4",
     "Action 5",
     "Action 6",
   ]);
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   expect(
     within(screen.getByRole("group", { name: "More actions" }))
       .getAllByRole("button")
       .map((b) => b.textContent),
   ).toEqual(["Action 1", "Action 2", "Action 3"]);
   fireEvent.keyDown(document, { key: "Escape" });
-  expect(screen.getByRole("button", { name: "More" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveFocus();
   expect(
     screen.queryByRole("button", { name: "Action 1" }),
   ).not.toBeInTheDocument();
@@ -94,11 +91,11 @@ it("filters permissions and fragments before counting and responds to changes", 
   const { rerender } = render(actions(false));
   expect(screen.queryByText("Order")).not.toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "More" }),
+    screen.queryByRole("button", { name: /Expand all actions|Collapse actions/ }),
   ).not.toBeInTheDocument();
   rerender(actions(true));
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-    "More",
+    "",
     "Action 2",
     "Order",
     "Add Part",
@@ -130,16 +127,16 @@ it("retains custom action state when selecting it closes the overflow tray", () 
       {buttons(4)}
     </PriorityActionBar>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   fireEvent.click(screen.getByRole("button", { name: "Count 0" }));
-  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveAttribute(
     "aria-expanded",
     "false",
   );
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   expect(screen.getByRole("button", { name: "Count 1" })).toBeInTheDocument();
   fireEvent.pointerDown(document.body);
-  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveAttribute(
     "aria-expanded",
     "false",
   );
@@ -152,13 +149,13 @@ it("shows more actions on a wider bar", () => {
   vi.stubGlobal(
     "ResizeObserver",
     class {
-      observe() {}
-      disconnect() {}
+      observe() { /* fixed-width fixture */ }
+      disconnect() { /* no observer resources */ }
     },
   );
   try {
     render(<PriorityActionBar>{buttons(7)}</PriorityActionBar>);
-    const tab = screen.getByRole("button", { name: "More" });
+    const tab = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
     expect(tab.getAttribute("data-count")).toBe("2");
     expect(
       screen
@@ -166,7 +163,7 @@ it("shows more actions on a wider bar", () => {
         .filter((b) => !b.closest("[data-action-bar-shelf]"))
         .map((b) => b.textContent),
     ).toEqual([
-      "More",
+      "",
       "Action 3",
       "Action 4",
       "Action 5",
@@ -221,7 +218,7 @@ it("renders a custom view toggle above the action row", () => {
   const tab = screen.getByRole("button", { name: "Chosen Parts (2)" });
   expect(tab.closest("[data-action-bar-row]")).toBeNull();
   expect(
-    screen.queryByRole("button", { name: "More" }),
+    screen.queryByRole("button", { name: /Expand all actions|Collapse actions/ }),
   ).not.toBeInTheDocument();
   fireEvent.click(tab);
   expect(toggle).toHaveBeenCalledOnce();
@@ -256,4 +253,16 @@ it("keeps Receive and New List available beside desktop search, including a rest
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+it("expands every extra action at once and leaves primary controls mounted", () => {
+  render(<PriorityActionBar>{buttons(25)}</PriorityActionBar>);
+  const primary = screen.getByRole("button", { name: "Action 25" });
+  fireEvent.click(screen.getByRole("button", { name: "Expand all actions" }));
+  expect(within(screen.getByRole("group", { name: "More actions" })).getAllByRole("button")).toHaveLength(22);
+  expect(screen.getAllByRole("button")).toHaveLength(26);
+  expect(screen.getByRole("button", { name: "Action 25" })).toBe(primary);
+  fireEvent.click(screen.getByRole("button", { name: "Collapse actions" }));
+  expect(screen.getAllByRole("button")).toHaveLength(4);
+  expect(screen.getByRole("button", { name: "Action 25" })).toBe(primary);
 });

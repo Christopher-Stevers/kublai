@@ -202,7 +202,7 @@ it("lets a foreman send tools from the job workspace to Asset Management without
   const start = screen.getByRole("button", { name: /^Request tools$/ });
   expect(start).toBeEnabled();
   expect(screen.queryByRole("button", { name: "Order" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Expand all actions|Collapse actions/ })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add Part" })).toBeVisible();
   fireEvent.click(start);
   fireEvent.click(await screen.findByRole("button", { name: /^Send$/ }));

@@ -35,7 +35,7 @@ it("never renders denied Order or Quote actions, including in overflow", () => {
   ).not.toBeInTheDocument();
   expect(screen.queryByText("Get Quote")).not.toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "More" }),
+    screen.queryByRole("button", { name: /Expand all actions|Collapse actions/ }),
   ).not.toBeInTheDocument();
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
     "Save as Prefab",
@@ -58,16 +58,16 @@ it("shelves all but the highest three permitted actions", () => {
     />,
   );
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-    "More",
+    "",
     "Order",
     "Scan slip",
     "Add Part",
   ]);
-  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveAttribute(
     "data-count",
     "2",
   );
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
   fireEvent.click(screen.getByRole("button", { name: "Get Quote" }));
   expect(base.onQuote).toHaveBeenCalledOnce();
 });
@@ -87,9 +87,9 @@ it("prioritizes Add and Receive while keeping Mark none fifth", () => {
   const add = vi.fn();
   render(<OrderReceiveActions onNotes={vi.fn()} onAdd={add}
     packingSlips={<button>Receive</button>} onMarkAllReceived={vi.fn()} onMarkNoneReceived={vi.fn()} />);
-  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["More", "Notes", "Receive", "Add Part"]);
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["", "Notes", "Receive", "Add Part"]);
   fireEvent.click(screen.getByRole("button", { name: "Add Part" }));
   expect(add).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
-  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["More", "Mark none received", "Mark all received", "Notes", "Receive", "Add Part"]);
+  fireEvent.click(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ }));
+  expect(screen.getAllByRole("button").map(b => b.textContent)).toEqual(["Mark none received", "Mark all received", "", "Notes", "Receive", "Add Part"]);
 });

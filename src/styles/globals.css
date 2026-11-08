@@ -732,7 +732,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   gap: 0.375rem;
 }
 [data-action-bar-shelf] {
-  max-height: 60dvh;
+  /* Show every row together; scrolling is only a fallback for short screens. */
+  max-height: calc(100dvh - var(--app-header-height, 3.5rem) - 8rem);
   overflow-y: auto;
   overscroll-behavior: contain;
   margin-bottom: 0.375rem;

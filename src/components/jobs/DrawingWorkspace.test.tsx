@@ -373,7 +373,7 @@ const open = (fullscreen = false) =>
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
   if (name === "More") {
-    const more = screen.getByRole("button", { name: "More" });
+    const more = screen.getByRole("button", { name: /Expand all actions|Collapse actions/ });
     if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
     return;
   }
@@ -1946,7 +1946,7 @@ it("keeps full screen on the drawing so Tools stays in the bar", () => {
   const onFullscreen = vi.fn();
   render(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} onFullscreen={onFullscreen} />);
   const bar = screen.getByRole("toolbar", { name: "Drawing tools" });
-  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["More", "Tools", "Markup", "Measure"]);
+  expect(within(bar).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Expand all actions", "Tools", "Markup", "Measure"]);
   fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
   expect(onFullscreen).toHaveBeenCalled();
   openMenu("More");
@@ -2169,7 +2169,7 @@ it("closes More before navigating away from a base-state drawing", () => {
   }
   render(<Host />); openMenu("More");
   act(() => { runHeaderBackOverride(); });
-  expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-expanded", "false");
+  expect(screen.getByRole("button", { name: /Expand all actions|Collapse actions/ })).toHaveAttribute("aria-expanded", "false");
   expect(parent).not.toHaveBeenCalled();
   act(() => { runHeaderBackOverride(); });
   expect(parent).toHaveBeenCalledOnce();
