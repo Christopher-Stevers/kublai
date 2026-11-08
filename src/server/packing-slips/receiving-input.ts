@@ -1,3 +1,4 @@
+import { supplierPartLinkApproval } from "~/lib/supplier-part-link";
 import { z } from "zod";
 import { trialReaders } from "~/lib/packing-slip-trial";
 const text = z.string().trim();
@@ -15,6 +16,7 @@ const base = {
   documentId: z.uuid(),
   revision: z.number().int().nonnegative(),
   requestId: z.uuid(),
+  supplierPartLinkApprovals: z.array(supplierPartLinkApproval).max(200).optional(),
 };
 const sourceBox = z
   .object({

@@ -9,6 +9,7 @@ import {
 import { receivingInput } from "~/server/packing-slips/receiving-input";
 import {
   mutateReceiving,
+  SupplierPartLinkConflictError,
   receivingQueue,
   receivingOrderComparison,
   receivingOrderCandidates,
@@ -77,6 +78,8 @@ export async function POST(request: Request) {
     }
     return Response.json(await mutateReceiving(access, body), { headers });
   } catch (e) {
+    if (e instanceof SupplierPartLinkConflictError)
+      return Response.json({ supplierPartLinkConflict: e.linkConflict }, { status: 409, headers });
     return documentHttpError(e);
   }
 }

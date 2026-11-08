@@ -2457,7 +2457,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     ).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
-  it.each([false, true])("adds a likely part, confirming complete package units when needed (%s)", async (packaged) => {
+  it.each([{packaged:false, conflict:false}, {packaged:true, conflict:false}, {packaged:false, conflict:true}])("adds a likely part with package and supplier-link confirmation (%j)", async ({packaged, conflict}) => {
     const { access, doc } = await confirmedHeader();
     if (packaged) await db.insert(schema.units).values({ id: id(90), code: "length", displayName: "Length", kind: "quantity" });
     await db
@@ -2534,7 +2534,17 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       await expect(reviewAction(access, doc.documentId, { ...action, packageUnitConfirmed: false })).rejects.toThrow(/Confirm whether/);
       await expect(reviewAction(access, doc.documentId, { ...action, piecesPerPack: 20 })).rejects.toThrow(/changed/);
     }
-    await reviewAction(access, doc.documentId, action);
+    if (conflict) {
+      await db.insert(schema.supplierParts).values({id:id(72), organizationId:org, supplierId:id(70), supplierSku:"W07002", supplierName:"1/2 CXC 90 ELL WROT", partDefinitionId:id(61)});
+      await expect(reviewAction(access, doc.documentId, action)).rejects.toMatchObject({
+        linkConflict: {supplierPartId:id(72), previousPartId:id(61), replacementPartId:id(60), supplierCode:"W07002"},
+      });
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,id(72))))[0]!.partDefinitionId).toBe(id(61));
+      const approval = {lineId:"0", supplierPartId:id(72), previousPartId:id(61), replacementPartId:id(60), replacementPartName:action.name};
+      await expect(reviewAction(access, doc.documentId, {...action, supplierPartLinkApprovals:[{...approval, previousPartId:id(62)}]})).rejects.toMatchObject({code:"CONFLICT"});
+      await reviewAction(access, doc.documentId, {...action, supplierPartLinkApprovals:[approval]});
+      expect((await db.select().from(schema.supplierParts).where(eq(schema.supplierParts.id,id(72))))[0]!.partDefinitionId).toBe(id(60));
+    } else await reviewAction(access, doc.documentId, action);
     const added = (await db.select().from(schema.orderItems)).find(
       (i) => i.partDefinitionId === id(60),
     )!;
@@ -2566,7 +2576,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(after.likely?.["0"]).toBeUndefined();
     expect(after.items?.map((i) => i.id)).toContain(added.id);
   });
-  it("adds a new catalogue part from a slip line to the order in one step", async () => {
+  it.each([false, true])("adds a new catalogue part with an optional supplier-link conflict (%s)", async (conflict) => {
     const { access, doc } = await confirmedHeader();
     await db
       .update(schema.jobs)
@@ -2597,7 +2607,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       action: "line",
       lineId: "0",
       description: "Brass ball valve 3/4",
-      sku: "",
+      sku: conflict ? "NEW-CODE" : "",
       quantity: 2,
       ordered: 3,
       unit: "ea",
@@ -2605,7 +2615,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       orderItemId: null,
       checked: true,
     });
-    await reviewAction(access, doc.documentId, {
+    const action = {
       action: "part",
       lineId: "0",
       partId: null,
@@ -2617,7 +2627,14 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       individualUnit: "ea",
       photoUrl: null,
       addToOrder: true,
-    });
+    } as const;
+    if (conflict) {
+      const previous = (await db.select().from(schema.partDefinitions))[0]!;
+      await db.insert(schema.supplierParts).values({id:id(72), organizationId:org, supplierId:id(70), supplierSku:"NEW-CODE", partDefinitionId:previous.id});
+      await expect(reviewAction(access, doc.documentId, action)).rejects.toMatchObject({linkConflict:{replacementPartId:null}});
+      expect((await db.select().from(schema.partDefinitions)).some(p => p.displayName === action.name)).toBe(false);
+      await reviewAction(access, doc.documentId, {...action, supplierPartLinkApprovals:[{lineId:"0",supplierPartId:id(72),previousPartId:previous.id,replacementPartId:null,replacementPartName:action.name}]});
+    } else await reviewAction(access, doc.documentId, action);
     const part = (await db.select().from(schema.partDefinitions)).find(
       (p) => p.displayName === 'Brass Ball Valve 3/4"',
     )!;

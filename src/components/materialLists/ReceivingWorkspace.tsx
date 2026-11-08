@@ -1,4 +1,6 @@
 "use client";
+import { confirmAction } from "~/components/ui/app-dialogs";
+import type { SupplierPartLinkApproval, SupplierPartLinkConflict } from "~/lib/supplier-part-link";
 import { dragScrollVelocity } from "~/lib/drag-scroll";
 import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
@@ -197,7 +199,7 @@ export type ReceivingDetail = {
   sourceMimeType?: string;
 };
 type Detail = ReceivingDetail;
-export type ReceivingAction = Record<string, unknown> & { action: string };
+export type ReceivingAction = Record<string, unknown> & { action: string; supplierPartLinkApprovals?: SupplierPartLinkApproval[] };
 type Action = ReceivingAction;
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "The request failed. Please try again.";
@@ -428,7 +430,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     if (busy || !online) return false;
     setBusy(true);
     setError("");
-    const body = exact
+    let body = exact
       ? action
       : {
           ...action,
@@ -439,15 +441,35 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
         };
     retry.current = body;
     try {
-      const res = await fetch("/api/job-documents/packing-slips/queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        retry.current = null;
-        throw Error(data.error ?? "Could not save this decision.");
+      for (;;) {
+        const res = await fetch("/api/job-documents/packing-slips/queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as { error?: string; supplierPartLinkConflict?: SupplierPartLinkConflict };
+        if (res.status === 409 && data.supplierPartLinkConflict) {
+          retry.current = null;
+          const conflict = data.supplierPartLinkConflict;
+          const confirmed = await confirmAction({
+            title: "Change linked part?",
+            description: `${conflict.supplierName} code ${conflict.supplierCode} is currently linked to “${conflict.previousPartName}”.\n\nChange it to “${conflict.replacementPartName}” and continue adding this item? This supplier-code link is shared across your jobs.`,
+            confirmLabel: "Change Link & Continue",
+          });
+          if (!confirmed || scope.current !== id) return false;
+          body = { ...body, supplierPartLinkApprovals: [
+            ...(body.supplierPartLinkApprovals ?? []).filter(a => a.lineId !== conflict.lineId || a.supplierPartId !== conflict.supplierPartId),
+            { lineId: conflict.lineId, supplierPartId: conflict.supplierPartId, previousPartId: conflict.previousPartId,
+              replacementPartId: conflict.replacementPartId, replacementPartName: conflict.replacementPartName },
+          ] };
+          retry.current = body;
+          continue;
+        }
+        if (!res.ok) {
+          retry.current = null;
+          throw Error(data.error ?? "Could not save this decision.");
+        }
+        break;
       }
       retry.current = null;
       await load();
@@ -3036,7 +3058,7 @@ function OrderComparison({
           {addLine && canAddLine && <fieldset disabled={addingPart || addBlocked} aria-busy={addingPart} className="min-w-0">
             <AddToList key={addLine.id} line={addLine} detail={detail} jobId={jobId} run={addFromSlip} cards
               onReviewQuantity={() => { setAddLineId(null); setOpenRow(rows.find(row => row.lines.some(x => x.line.id === addLine.id))?.key ?? addLine.id); }} />
-            {addFailed && <p role="alert" className="mt-3 text-sm text-destructive">{actionError || "Could not add the part. Check your connection and try again."}</p>}
+            {addFailed && actionError && <p role="alert" className="mt-3 text-sm text-destructive">{actionError}</p>}
             {addingPart && <p role="status" className="mt-3 text-sm">Adding part…</p>}
           </fieldset>}
         </DialogContent>

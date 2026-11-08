@@ -1,3 +1,4 @@
+import type { SupplierPartLinkConflict } from "~/lib/supplier-part-link";
 import { duplicateList } from "./duplicate-list";
 import { splitComparisonLines } from "~/lib/receiving-review";
 import { randomUUID, createHash } from "node:crypto";
@@ -663,6 +664,11 @@ async function scopedSupplier(
   if (!s) fail("Supplier is unavailable.");
   return s!;
 }
+export class SupplierPartLinkConflictError extends TRPCError {
+  constructor(readonly linkConflict: SupplierPartLinkConflict) {
+    super({ code: "CONFLICT", message: "This supplier code is linked to a different catalogue part." });
+  }
+}
 async function addOrderLine(
   tx: Tx,
   access: DocumentAccess,
@@ -670,6 +676,7 @@ async function addOrderLine(
   line: ReceivingLine,
   order: typeof orders.$inferSelect,
   quoteId: string,
+  input: ReceivingInput,
 ) {
   if (!line.partId || line.ordered === null || line.ordered <= 0)
     fail("Choose a catalogue part and confirm the ordered quantity first.");
@@ -718,13 +725,29 @@ async function addOrderLine(
           ),
         )
         .limit(1)
+        .for("update")
     : [];
   let listing = existing[0];
-  if (listing && listing.partDefinitionId !== part!.id)
-    fail(
-      "That supplier code already points to another catalogue part. Resolve the catalogue mapping before adding this line.",
-      "CONFLICT",
-    );
+  if (listing && listing.partDefinitionId !== part!.id) {
+    const replacementPartId = input.action === "part" && !input.partId ? null : part!.id;
+    const approved = input.supplierPartLinkApprovals?.some(a =>
+      a.lineId === line.id && a.supplierPartId === listing!.id &&
+      a.previousPartId === listing!.partDefinitionId &&
+      a.replacementPartId === replacementPartId && a.replacementPartName === part!.displayName);
+    if (!approved) {
+      const [previous] = await tx.select({ name: partDefinitions.displayName }).from(partDefinitions)
+        .where(eq(partDefinitions.id, listing.partDefinitionId)).limit(1);
+      const supplier = await scopedSupplier(tx, access, order.supplierId);
+      throw new SupplierPartLinkConflictError({
+        lineId: line.id, supplierPartId: listing.id, previousPartId: listing.partDefinitionId,
+        replacementPartId, replacementPartName: part!.displayName,
+        supplierName: supplier.name, supplierCode: line.sku, previousPartName: previous?.name ?? "Previous catalogue part",
+      });
+    }
+    [listing] = await tx.update(supplierParts).set({ partDefinitionId: part!.id })
+      .where(and(eq(supplierParts.id, listing.id), eq(supplierParts.organizationId, access.job.organizationId)))
+      .returning();
+  }
   if (!listing) {
     [listing] = await tx
       .insert(supplierParts)
@@ -950,7 +973,7 @@ async function mutateReceivingImpl(
         // When the ordered count was not read, the order asked for what came.
         if (l.ordered === null && l.quantity !== null && l.quantity > 0)
           l.ordered = l.quantity;
-        await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!);
+        await addOrderLine(tx, fresh, doc, l, order, list!.quoteId!, input);
       };
       if (input.action === "orderDisposition") {
         if (!doc.packingSlip) fail("Choose an order first.");
@@ -1632,7 +1655,7 @@ async function mutateReceivingImpl(
           invalidateResolution(line);
         }
         for (const id of new Set(input.lineIds))
-          await addOrderLine(tx, fresh, doc, lineFor(id), order!, quoteId);
+          await addOrderLine(tx, fresh, doc, lineFor(id), order!, quoteId, input);
         doc.packingSlip = {
           orderId: order!.id,
           orderNumber: input.orderNumber,
@@ -1876,8 +1899,10 @@ async function mutateReceivingImpl(
       access.job.organizationId,
     );
   // New parts and supplier listings change the likely parts.
-  if (["part", "extra", "reconstruct"].includes(input.action))
+  if (["part", "extra", "reconstruct"].includes(input.action)) {
     forgetCatalogue(access.job.organizationId);
+    if (input.supplierPartLinkApprovals?.length) publishOrganizationCatalogueEvent(access.job.organizationId);
+  }
   if (input.action === "line" && input.fit) {
     forgetCatalogue(access.job.organizationId);
     publishOrganizationCatalogueEvent(access.job.organizationId);

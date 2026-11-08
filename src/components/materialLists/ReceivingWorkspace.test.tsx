@@ -1,3 +1,4 @@
+import { AppDialogHost } from "~/components/ui/app-dialogs";
 import { newResolution } from "~/lib/receiving-resolution";
 import type { ReceivingLine } from "~/lib/receiving-review";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
@@ -2265,4 +2266,34 @@ it("drops a detected slip item into the existing removal confirmation", async ()
   expect(posts).toHaveLength(0);
   fireEvent.click(within(dialog).getByRole("button", {name: "Remove item"}));
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action: "ignore", lineId: "1", reason: "This is not an item"})));
+});
+
+
+it.each([true, false])("asks before changing a supplier-code link and respects the answer (%s)", async (accept) => {
+  notOnOrder(3);
+  const serve = fetch;
+  let attempts = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, opts?: RequestInit) => {
+    if (opts?.method === "POST" && ++attempts === 1)
+      return {ok:false, status:409, json:async () => ({supplierPartLinkConflict:{
+        lineId:"1", supplierPartId:"listing", previousPartId:"old", replacementPartId:"pipe",
+        previousPartName:"Old elbow", replacementPartName:"Copper pipe", supplierName:"Next", supplierCode:"ABC123",
+      }})} as Response;
+    return serve(url, opts);
+  }));
+  render(<><ReceivingWorkspace jobId="job" /><AppDialogHost /></>);
+  await screen.findByText(/Likely Copper pipe/);
+  fireEvent.click(screen.getByRole("button", {name:"Review line: Unclear pipe"}));
+  fireEvent.click(within(screen.getByRole("list", {name:"Likely catalogue parts"})).getByRole("button", {name:"Add Copper pipe to the list"}));
+  const prompt = await screen.findByRole("dialog", {name:"Change linked part?"});
+  expect(prompt).toHaveTextContent("Next code ABC123");
+  expect(prompt).toHaveTextContent("Old elbow");
+  expect(prompt).toHaveTextContent("Copper pipe");
+  expect(posts).toHaveLength(0);
+  fireEvent.click(within(prompt).getByRole("button", {name:accept ? "Change Link & Continue" : "Cancel"}));
+  await waitFor(() => expect(screen.queryByRole("dialog", {name:"Change linked part?"})).toBeNull());
+  if (accept) {
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({supplierPartLinkApprovals:[{supplierPartId:"listing", previousPartId:"old", replacementPartId:"pipe"}]});
+  } else expect(attempts).toBe(1);
 });
