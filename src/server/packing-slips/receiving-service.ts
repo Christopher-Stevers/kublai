@@ -1,3 +1,4 @@
+import { receivingReviewComplete } from "~/lib/receiving-completion";
 import { withSlipTrace } from "./trace";
 import { detectSelectedLine } from "./selected-line";
 import { extractSlip } from "./extract";
@@ -276,12 +277,8 @@ export async function receivingQueue(
             ? "supporting"
             : a?.status === "processing"
               ? "processing"
-              : r &&
-                  pending === 0 &&
-                  r.lines.length > 0 &&
-                  r.documentChecked &&
-                  r.orderConfirmed &&
-                  r.versionId === d.currentVersionId
+              : receivingReviewComplete(r, d.currentVersionId) &&
+                  !duplicateList(state, d).some(duplicate => !r?.duplicateChecked?.includes(duplicate.key))
                 ? "complete"
                 : a?.applied && !r
                   ? "complete"

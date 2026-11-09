@@ -1065,6 +1065,18 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(resolution.match).toBe("unresolved");
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
+  it("shows fully posted receipts as complete even when the document checkbox is cleared", async () => {
+    const f = await confirmedHeader();
+    await resolveAction(f, allResolved);
+    await reviewAction(f.access, f.doc.documentId, { action:"approve", lineIds:["0"], fingerprint:await finger(f.access) });
+    const review = (await workspace()).documents[0]!.receivingReview!;
+    expect(review.documentChecked).not.toBe(true);
+    expect((await receivingQueue(f.access)).documents.find(d => d.id === f.doc.documentId)?.status).toBe("complete");
+    const received = Number((await item()).receivedQuantity);
+    await reviewAction(f.access, f.doc.documentId, {action:"addLine", page:1, description:"Another unreviewed line"});
+    expect((await receivingQueue(f.access)).documents.find(d => d.id === f.doc.documentId)?.status).toBe("review");
+    expect(Number((await item()).receivedQuantity)).toBe(received);
+  });
   it("splits a printed line without double receiving and requires each derived line to be reviewed", async () => {
     const f = await confirmedHeader();
     await reviewAction(f.access,f.doc.documentId,{action:"allocate",lineIds:["0"],reason:"Two separately labelled batches",outputs:[{description:"Valve batch A",sku:"",quantity:2,unit:"ea",orderItemId:id(6)},{description:"Valve batch B",sku:"",quantity:4,unit:"ea",orderItemId:id(6)}]});

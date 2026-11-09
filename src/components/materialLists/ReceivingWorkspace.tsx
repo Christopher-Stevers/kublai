@@ -1,4 +1,5 @@
 "use client";
+import { receivingReviewComplete } from "~/lib/receiving-completion";
 import { receivingRequest, receivingResponse } from "~/lib/receiving-request";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import type { SupplierPartLinkApproval, SupplierPartLinkConflict } from "~/lib/supplier-part-link";
@@ -560,6 +561,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const linesWaiting = !orderConfirmed || repeat || supporting;
   // Once every line is approved or excluded, the list folds like the steps above.
   const linesDone = !linesWaiting && active > 0 && !remaining;
+  const reviewComplete = !blocked && !repeat && !recheckingDuplicates && receivingReviewComplete(r, detail?.document.currentVersionId);
   const canApprove =
     !!r?.kindConfirmed &&
     !!r.orderConfirmed &&
@@ -567,7 +569,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     !blocked &&
     !recheckingDuplicates &&
     !repeat;
-  const hint = !online
+  const hint = reviewComplete ? "All lines are approved or excluded" : !online
     ? "Reconnect to approve"
     : a?.status === "processing"
       ? "Still reading the slip"
@@ -1322,7 +1324,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
             <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 sm:px-2">
               <div className="min-w-0 text-sm">
                 <p className="font-semibold tabular-nums">
-                  {canApprove
+                  {reviewComplete ? "Review Complete" : canApprove
                     ? `${ready.length} ${ready.length === 1 ? "line" : "lines"} ready to approve`
                     : a?.status === "processing"
                       ? "Reading the slip"
@@ -1349,7 +1351,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   ) : (
                     <CheckIcon className="size-4" />
                   )}
-                  Review & approve
+                  {reviewComplete ? "Approved" : "Review & approve"}
                 </Button>
               </PriorityActionBar>
             </div>
