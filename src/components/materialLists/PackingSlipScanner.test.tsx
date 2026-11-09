@@ -21,6 +21,7 @@ const scanning = vi.hoisted(() => ({
     height: 1,
   })),
   pageBlur: vi.fn(() => 0.7),
+  toJpeg: vi.fn(() => "data:image/jpeg;base64,test"),
   rectifyPage: vi.fn(async () => ({
     data: new Uint8ClampedArray(4),
     width: 1,
@@ -36,7 +37,7 @@ vi.mock("~/lib/scanning/page", () => ({
   BLURRY: 1.25,
   pageBlur: scanning.pageBlur,
   rectifyPage: scanning.rectifyPage,
-  toJpeg: () => "data:image/jpeg;base64,test",
+  toJpeg: scanning.toJpeg,
   scanPdf: async (_pages: string[], filename = "Packing slip.pdf") =>
     new File(["pdf"], filename, { type: "application/pdf" }),
 }));
@@ -247,4 +248,48 @@ it("puts its buttons in the page's bottom bar when given one", async () => {
   await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
   expect(labels()).toEqual(["Retake last page", "Next page", "Done"]);
   bar.remove();
+});
+it("counts the slip's printed pages as they are captured", async () => {
+  camera();
+  let shot = 0;
+  scanning.toJpeg.mockImplementation(() => `data:image/jpeg;base64,${++shot}`);
+  const reads = ["Page 1 of 2", "Page 1 of 2", "Page 2 of 2"];
+  const fetch = vi.fn(async (url: string, init?: RequestInit) =>
+    url.startsWith("data:")
+      ? new Response(new Blob(["jpeg"]))
+      : Response.json({ text: reads.shift() ?? null }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  const save = vi.fn(async () => true);
+  render(<PackingSlipScanner jobId="job" onSave={save} onCancel={vi.fn()} />);
+  await screen.findByText("Page 1 of 2. Still to scan: page 2 of 2.", {}, { timeout: 3000 });
+  const [url, init] = fetch.mock.calls.find(([u]) => !u.startsWith("data:"))!;
+  expect(url).toBe("/api/job-documents/packing-slips/page-check?jobId=job");
+  expect(init).toMatchObject({ method: "POST", headers: { "content-type": "image/jpeg" } });
+  // Saving with a numbered page missing asks first.
+  fireEvent.click(screen.getByText("Done"));
+  expect(confirm).toHaveBeenCalledWith(
+    "The slip is numbered as 2 pages, but page 2 is not captured. Save without it?",
+  );
+  expect(save).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Next page"));
+  await screen.findByText("This is page 1 of 2 again. Retake it if you meant the next page.", {}, { timeout: 3000 });
+  fireEvent.click(screen.getByText("Retake last page"));
+  await screen.findByText("Page 2 of 2. All 2 pages captured.", {}, { timeout: 3000 });
+  confirm.mockClear();
+  fireEvent.click(screen.getByText("Done"));
+  await screen.findByText(/PDF saved in Documents/);
+  expect(confirm).not.toHaveBeenCalled();
+});
+it("reads no pages for ordinary documents or without a job", async () => {
+  camera();
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  render(<PackingSlipScanner jobId="job" documentKind="document" onSave={vi.fn()} onCancel={vi.fn()} />);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  cleanup();
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
+  expect(fetch).not.toHaveBeenCalled();
 });

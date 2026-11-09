@@ -9,6 +9,8 @@ import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
 import { missingPagesWarning, readSlipText } from "~/lib/slip-pages";
+import { supplierClaim } from "~/lib/supplier-claim";
+import { SupplierClaimDialog } from "./SupplierClaimDialog";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -55,6 +57,7 @@ import {
   FileTextIcon,
   FlaskConicalIcon,
   Loader2Icon,
+  MailIcon,
   MessageSquareTextIcon,
   PlusIcon,
   Trash2Icon,
@@ -203,6 +206,8 @@ export type ReceivingDetail = {
   noteAuthors?: Record<string, string>;
   sourceUrl: string;
   sourceMimeType?: string;
+  /** Who a message about this delivery goes to. */
+  claimTo?: string[];
 };
 type Detail = ReceivingDetail;
 export type ReceivingAction = Record<string, unknown> & { action: string; supplierPartLinkApprovals?: SupplierPartLinkApproval[] };
@@ -360,6 +365,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [recheckingDuplicates, setRecheckingDuplicates] = useState(false),
     [showLines, setShowLines] = useState(false);
   const [comparisonDocument, setComparisonDocument] = useState<{ current: string; earlier: string } | null>(null);
+  const [claimOpen, setClaimOpen] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<ResolveTarget | null>(
     null,
   );
@@ -558,6 +564,15 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   // Once every line is approved or excluded, the list folds like the steps above.
   const linesDone = !linesWaiting && active > 0 && !remaining;
   const reviewComplete = !blocked && !repeat && !recheckingDuplicates && receivingReviewComplete(r, detail?.document.currentVersionId);
+  // What went wrong, as recorded, for the reviewer to send to the supplier.
+  const claim =
+    detail && r && !blocked && !repeat
+      ? supplierClaim({
+          review: r,
+          items: detail.items,
+          orderNumber: detail.document.packingSlip?.orderNumber,
+        })
+      : null;
   const canApprove =
     !!r?.kindConfirmed &&
     !!r.orderConfirmed &&
@@ -1341,6 +1356,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 <p className="text-muted-foreground truncate">{hint}</p>
               </div>
               <PriorityActionBar className="w-auto min-w-0">
+                {claim && (
+                  <Button
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => setClaimOpen(true)}
+                  >
+                    <MailIcon className="size-4" />
+                    Email supplier
+                  </Button>
+                )}
                 <Button
                   className="shrink-0"
                   disabled={busy || !online || !canApprove}
@@ -1362,6 +1387,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               </PriorityActionBar>
             </div>
           </footer>
+          {claim && (
+            <SupplierClaimDialog
+              open={claimOpen}
+              onOpenChange={setClaimOpen}
+              claim={claim}
+              to={detail.claimTo ?? []}
+              slipUrl={detail.sourceUrl}
+              slipName={detail.document.name}
+            />
+          )}
           <Dialog open={preview} onOpenChange={setPreview}>
             <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>

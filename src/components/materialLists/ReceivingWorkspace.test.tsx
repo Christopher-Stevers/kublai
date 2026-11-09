@@ -279,6 +279,37 @@ it("warns when the slip's page numbers show a page that was not scanned", async 
   await screen.findByRole("heading", { name: "Valve" });
   expect(screen.queryByText(/not in this scan/)).toBeNull();
 });
+it("drafts a message to the supplier once a short delivery is recorded", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByRole("button", { name: "Email supplier" })).toBeNull();
+  cleanup();
+  const line = state.review.lines[0] as ReceivingLine;
+  line.resolution = {
+    ...newResolution(line, "u", "now"),
+    delivery: "short",
+    siteQuantity: 4,
+    remainder: "backordered",
+    note: "Two missing",
+  };
+  Object.assign(state, { claimTo: ["orders@supplier.test"] });
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  onTestFinished(() => click.mockRestore());
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Email supplier" }));
+  const dialog = await screen.findByRole("dialog", { name: "Email supplier" });
+  expect(within(dialog).getByLabelText("To")).toHaveValue("orders@supplier.test");
+  expect(within(dialog).getByLabelText("Subject")).toHaveValue(
+    "Delivery issue: PO-155, packing slip 123",
+  );
+  expect((within(dialog).getByLabelText("Message") as HTMLTextAreaElement).value).toContain(
+    "- Valve: the slip shows 6, 4 arrived. Short 2.\n  Note: Two missing",
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Open email" }));
+  const opened = click.mock.contexts[0] as HTMLAnchorElement;
+  expect(opened.href).toMatch(/^mailto:orders@supplier\.test\?subject=Delivery%20issue/);
+  expect(posts).toEqual([]);
+});
 it("links a newly chosen order before confirming the slip details", async () => {
   state.review.orderConfirmed = false;
   state.review.kindConfirmed = false;

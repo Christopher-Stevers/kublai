@@ -343,6 +343,7 @@ export function ScanSlipButton({
           {step.kind === "opening" && <p role="status">Opening scanner…</p>}
           {step.kind === "scan" && (
             <PackingSlipScanner
+              jobId={jobId}
               actionBar={barHost}
               extraActions={
                 <Button key="saved" variant="outline" onClick={() => void loadSaved()}>

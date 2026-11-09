@@ -526,6 +526,11 @@ export async function receivingQueue(
         supplierOptions.find((s) => s.id === order.supplierId)?.name ?? "";
     }
   }
+  const claimTo = await claimRecipients(
+    access,
+    doc.packingSlip?.orderId ?? null,
+    review,
+  );
   return {
     documents: docs,
     processingJob: processingJob ?? null,
@@ -568,7 +573,55 @@ export async function receivingQueue(
       state.versions.find((v) => v.id === doc.currentVersionId)?.mimeType ??
       "application/pdf",
     sourceUrl: `/api/job-documents/files/${doc.currentVersionId}?jobId=${access.job.id}`,
+    /** Who a message about this delivery goes to: whoever the order was
+     * sent to, else the supplier's contact, else the email on the slip. */
+    claimTo,
   };
+}
+const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+const emails = (text: string | null | undefined) =>
+  [
+    ...new Set(
+      (text ?? "")
+        .split(/[,;\s]+/)
+        .map((e) => e.replace(/^<|>$/g, "").trim())
+        .filter((e) => EMAIL.test(e)),
+    ),
+  ];
+async function claimRecipients(
+  access: DocumentAccess,
+  orderId: string | null,
+  review: ReceivingReview,
+) {
+  const [order] = orderId
+    ? await db
+        .select({ sentTo: orders.sentTo, supplierId: orders.supplierId })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.id, orderId),
+            eq(orders.organizationId, access.job.organizationId),
+          ),
+        )
+        .limit(1)
+    : [];
+  const sent = emails(order?.sentTo);
+  if (sent.length) return sent;
+  const supplierId = order?.supplierId ?? review.supplierId;
+  const [supplier] = supplierId
+    ? await db
+        .select({ email: suppliers.contactEmail })
+        .from(suppliers)
+        .where(
+          and(
+            eq(suppliers.id, supplierId),
+            eq(suppliers.organizationId, access.job.organizationId),
+          ),
+        )
+        .limit(1)
+    : [];
+  const contact = emails(supplier?.email);
+  return contact.length ? contact : emails(review.supplierEmail);
 }
 async function history(
   tx: Tx,

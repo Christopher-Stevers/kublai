@@ -35,6 +35,7 @@ import {
   type Pixels,
   type Quad,
 } from "~/lib/scanning/page";
+import { list, scanCount, scanCountMessage } from "~/lib/slip-pages";
 
 /** Long side of the preview frames searched for the page. */
 const PREVIEW = 480;
@@ -81,6 +82,7 @@ export default function PackingSlipScanner({
   actionBar,
   extraActions,
   pageAction,
+  jobId,
 }: {
   onSave: (file: File) => Promise<boolean>;
   onCancel: () => void;
@@ -97,6 +99,9 @@ export default function PackingSlipScanner({
    * camera is up and low in the other modes. It
    * calls `leave()` first, which asks before unsaved pages are lost. */
   pageAction?: (leave: () => boolean) => ReactNode;
+  /** A packing slip for this job: each captured page is read for its
+   * printed page number, so the scan can say which pages are still to go. */
+  jobId?: string;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [pages, setPages] = useState<string[]>([]),
@@ -116,6 +121,52 @@ export default function PackingSlipScanner({
     [blurry, setBlurry] = useState(false);
   const pdf = useRef<File | null>(null);
   const capture = useRef<(() => void) | null>(null);
+  /** Each page's text, by page image, once read; null when it could not be. */
+  const [texts, setTexts] = useState<ReadonlyMap<string, string | null>>(
+    () => new Map(),
+  );
+  const requested = useRef(new Set<string>());
+  const counting = !!jobId && documentKind === "packing slip";
+  // Each new page is read in the background while the next is captured.
+  useEffect(() => {
+    if (!jobId || documentKind !== "packing slip") return;
+    for (const image of pages) {
+      if (requested.current.has(image)) continue;
+      requested.current.add(image);
+      void (async () => {
+        let text: string | null = null;
+        try {
+          const body = await (await fetch(image)).blob();
+          const read = () =>
+            fetch(
+              `/api/job-documents/packing-slips/page-check?jobId=${encodeURIComponent(jobId)}`,
+              {
+                method: "POST",
+                headers: { "content-type": "image/jpeg" },
+                body,
+              },
+            );
+          let response = await read();
+          // The server reads two pages at a time; one more try when busy.
+          if (response.status === 429) {
+            await new Promise((done) => setTimeout(done, 1500));
+            response = await read();
+          }
+          if (response.ok)
+            text = ((await response.json()) as { text: string | null }).text;
+        } catch {
+          // Offline or busy: the scan goes on without the count.
+        }
+        setTexts((old) => new Map(old).set(image, text));
+      })();
+    }
+  }, [pages, jobId, documentKind]);
+  const count = counting
+    ? scanCount(pages.map((p) => (texts.has(p) ? texts.get(p) : undefined)))
+    : null;
+  const countMessage = count && scanCountMessage(count);
+  /** Numbered pages not captured yet, so Next page leads instead of Done. */
+  const pagesToGo = !!count?.missing.length;
 
   /** Add a straightened page, or replace the last page. */
   const addPage = (page: Pixels, replace: boolean, blur = pageBlur(page)) => {
@@ -338,6 +389,14 @@ export default function PackingSlipScanner({
 
   const [saveStage, setSaveStage] = useState("Preparing PDF…");
   const save = async () => {
+    if (
+      count?.total &&
+      count.missing.length &&
+      !window.confirm(
+        `The slip is numbered as ${count.total} pages, but ${list(count.missing)} ${count.missing.length === 1 ? "is" : "are"} not captured. Save without ${count.missing.length === 1 ? "it" : "them"}?`,
+      )
+    )
+      return;
     setMode("saving");
     setSaveStage("Preparing PDF…");
     setError("");
@@ -354,6 +413,8 @@ export default function PackingSlipScanner({
       if (await onSave(pdf.current)) {
         setMode("saved");
         setPages([]);
+        setTexts(new Map());
+        requested.current.clear();
         setShot(null);
       } else {
         setError(
@@ -463,14 +524,23 @@ export default function PackingSlipScanner({
           <RotateCcwIcon />
           Retake last page
         </Button>
-        <Button key="next" variant="outline" disabled={mode === "saving" || pages.length >= 20} onClick={() => setMode("camera")}>
+        {/* With numbered pages still to capture, Next page takes the lead. */}
+        {pagesToGo && (
+          <Button key="done" variant="outline" disabled={mode === "saving"} onClick={() => void save()}>
+            <CheckIcon />
+            Done
+          </Button>
+        )}
+        <Button key="next" variant={pagesToGo ? "default" : "outline"} disabled={mode === "saving" || pages.length >= 20} onClick={() => setMode("camera")}>
           <FilePlus2Icon />
           Next page
         </Button>
-        <Button key="done" disabled={mode === "saving"} onClick={() => void save()}>
-          <CheckIcon />
-          Done
-        </Button>
+        {!pagesToGo && (
+          <Button key="done" disabled={mode === "saving"} onClick={() => void save()}>
+            <CheckIcon />
+            Done
+          </Button>
+        )}
       </>
     ) : mode === "adjust" ? (
       <>
@@ -508,6 +578,9 @@ export default function PackingSlipScanner({
             {quad && <Outline quad={quad} locked={locked} />}
           </div>
           <p role="status">{message}</p>
+          {pages.length > 0 && countMessage && !countMessage.warn && (
+            <p className="text-sm font-medium">{countMessage.text}</p>
+          )}
           <p className="text-muted-foreground text-sm">
             {light} Pages capture automatically, or tap {inline ? "Capture now" : "Capture"}.
           </p>
@@ -543,18 +616,29 @@ export default function PackingSlipScanner({
               holding the phone still.
             </p>
           )}
+          {countMessage && (
+            <p
+              className={
+                countMessage.warn
+                  ? "text-sm font-medium text-amber-700 dark:text-amber-300"
+                  : "text-sm font-medium"
+              }
+            >
+              {countMessage.text}
+            </p>
+          )}
           <p className="text-muted-foreground text-sm">
             {pages.length} page{pages.length === 1 ? "" : "s"} · not saved yet
           </p>
           {inline && <><div className="grid grid-cols-2 gap-2">
             <Button
-              variant="outline"
+              variant={pagesToGo ? "default" : "outline"}
               disabled={mode === "saving" || pages.length >= 20}
               onClick={() => setMode("camera")}
             >
               Next page
             </Button>
-            <Button disabled={mode === "saving"} onClick={() => void save()}>
+            <Button variant={pagesToGo ? "outline" : "default"} disabled={mode === "saving"} onClick={() => void save()}>
               Done
             </Button>
           </div>
