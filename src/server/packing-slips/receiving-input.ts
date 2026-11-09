@@ -204,6 +204,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     fromHandCount: z.boolean().default(false),
     documentChecked: z.boolean().default(false),
   }),
+  /** Takes back a receipt made without a check, while nothing has changed. */
+  z.object({ ...base, action: z.literal("undoAutopilot") }),
   z.object({
     ...base,
     action: z.literal("duplicate"),

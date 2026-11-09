@@ -913,6 +913,14 @@ async function performSlipTask(
         assertStateBounds(state);
       },
     );
+    // A supplier whose slips have needed no corrections has this one
+    // received without a check, when every line is sure.
+    const { autopilotEnabled, receiveIfTrusted } = await import("./autopilot");
+    if (autopilotEnabled(access.job.organizationId)) {
+      const auto = await receiveIfTrusted(access, documentId);
+      if (!auto.received)
+        console.info(`Slip not received automatically: ${auto.why}`);
+    }
     return false;
   } catch (error) {
     await recordPipelineStage("failure", {

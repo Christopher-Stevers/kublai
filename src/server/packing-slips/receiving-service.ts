@@ -77,6 +77,7 @@ import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-c
 import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
 import { slipOrderPairs } from "~/lib/slip-order-pairs";
 import { missingPagesAfterReading } from "~/lib/slip-pages";
+import { autopilotBlockers } from "~/lib/slip-autopilot";
 import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
@@ -320,6 +321,7 @@ export async function receivingQueue(
           (a?.applied ? Object.keys(a.applied.quantities).length : 0),
         reviewTrialRunId: r?.sourceTrial?.runId,
         missingPages: missingPagesAfterReading(r, a),
+        receivedAutomatically: !!r?.autopilot && !r.autopilot.undone,
       };
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -637,6 +639,7 @@ async function history(
   },
   developmentImport = false,
   removedOrderItem?: typeof orderItems.$inferSelect,
+  autopilot = false,
 ) {
   const review = doc.receivingReview!;
   const applied = review.lines.filter(
@@ -677,7 +680,11 @@ async function history(
       schemaVersion: 2,
       operation: developmentImport ? "trial-import" : input.action,
       undoable: !developmentImport && undoActions.has(input.action) && !(input.action === "line" && input.fit),
-      initiator: developmentImport ? "development-trial" : "human",
+      initiator: developmentImport
+        ? "development-trial"
+        : autopilot
+          ? "autopilot"
+          : "human",
       targetLineId: "lineId" in input ? input.lineId : undefined,
       targetLineIds: "lineIds" in input ? input.lineIds : undefined,
       targetItemId: "itemId" in input ? input.itemId : undefined,
@@ -907,6 +914,41 @@ export async function mutateReceiving(
   return mutateReceivingImpl(access, input, false, detected);
 }
 
+/** Worker only, never an API action: receives every line of a slip without
+ * a check. The caller decides the supplier has earned it; a person's
+ * approval rules still apply, and Undo takes it back. */
+export async function receiveWithoutCheck(
+  access: DocumentAccess,
+  documentId: string,
+  run: AutopilotRun,
+) {
+  receiveAccess(access);
+  const state = await readWorkspace(access);
+  const doc = accessibleDocument(state, documentActor(access, []), documentId);
+  const review = doc.receivingReview;
+  if (!review || !doc.packingSlip) return fail("Nothing to receive.");
+  const items = await orderSnapshot(db, access, doc.packingSlip.orderId);
+  return mutateReceivingImpl(
+    access,
+    {
+      action: "approve",
+      jobId: access.job.id,
+      documentId,
+      revision: review.revision,
+      requestId: randomUUID(),
+      lineIds: review.lines.map((l) => l.id),
+      fingerprint: orderFingerprint(items),
+      reason: "",
+      allowOverDelivery: false,
+      fromHandCount: false,
+      documentChecked: true,
+    },
+    false,
+    undefined,
+    run,
+  );
+}
+
 /** Development-only ingestion. Not exposed as an API action or human approval. */
 export async function importTrialReview(
   access: DocumentAccess,
@@ -915,11 +957,19 @@ export async function importTrialReview(
   return mutateReceivingImpl(access, input, true);
 }
 
+/** What lets the worker receive a slip without a check. */
+export type AutopilotRun = {
+  supplierId: string;
+  best: { orderId: string; confidence: number } | undefined;
+  trustedAfter: number;
+};
+
 async function mutateReceivingImpl(
   access: DocumentAccess,
   input: ReceivingInput,
   developmentImport: boolean,
   detected?: Awaited<ReturnType<typeof detectSelectedLine>>,
+  autopilot?: AutopilotRun,
 ) {
   receiveAccess(access);
   const result = await mutateWorkspace(
@@ -1771,7 +1821,95 @@ async function mutateReceivingImpl(
       } else if (input.action === "extra") {
         await requireCreate(fresh, tx);
         await addToOrder(lineFor(input.lineId));
+      } else if (input.action === "undoAutopilot") {
+        const auto = review.autopilot;
+        if (!auto || auto.undone || !doc.packingSlip)
+          fail("This slip was not received automatically.");
+        if (auto!.revision !== review.revision)
+          fail(
+            "This slip changed after it was received automatically. Correct its lines instead.",
+            "CONFLICT",
+          );
+        const rows = await tx
+          .select()
+          .from(orderItems)
+          .where(eq(orderItems.orderId, doc.packingSlip!.orderId))
+          .for("update");
+        for (const l of review.lines) {
+          if (l.approved?.at !== auto!.at) continue;
+          const row = rows.find((r) => r.id === l.approved!.itemId);
+          const delta = receiptDelta(l.approved.kind, l.approved.quantity);
+          const received = qtyRound(
+              Number(row?.receivedQuantity) -
+                delta.received +
+                (l.approved.fromHand ?? 0),
+            ),
+            credit = qtyRound(Number(row?.creditedQuantity) - delta.credit);
+          if (!row || !(received >= 0) || !(credit >= 0))
+            fail(
+              "The order's received quantities changed since. Correct the lines instead.",
+              "CONFLICT",
+            );
+          await tx
+            .update(orderItems)
+            .set({
+              receivedQuantity: String(received),
+              creditedQuantity: String(credit),
+              verificationStatus:
+                received >= Number(row!.quantity) - credit
+                  ? "complete"
+                  : received > 0
+                    ? "partial"
+                    : "pending",
+            })
+            .where(eq(orderItems.id, row!.id));
+          row!.receivedQuantity = String(received);
+          row!.creditedQuantity = String(credit);
+          delete l.approved;
+          l.checked = false;
+        }
+        // Saved as JSON, so a flag that was not set is missing, not false.
+        review.orderConfirmed = auto!.before.orderConfirmed === true;
+        review.documentChecked = auto!.before.documentChecked === true;
+        review.supplierId = auto!.before.supplierId ?? null;
+        auto!.undone = { by: fresh.user.id, at: now };
+        if (doc.packingSlipAnalysis && !review.lines.some((l) => l.approved)) {
+          delete doc.packingSlipAnalysis.applied;
+          delete doc.packingSlipAnalysis.confirmedItems;
+        }
       } else if (input.action === "approve") {
+        if (autopilot) {
+          // The same rules again, now nothing can change under it.
+          const order = doc.packingSlip
+            ? await orderFor(tx, fresh, doc.packingSlip.orderId)
+            : undefined;
+          const blockers = autopilotBlockers({
+            review,
+            analysis: doc.packingSlipAnalysis,
+            currentVersionId: doc.currentVersionId,
+            items: order ? await orderSnapshot(tx, fresh, order.id) : [],
+            orderId: order?.id,
+            best: autopilot.best,
+          });
+          if (order?.supplierId !== autopilot.supplierId)
+            blockers.push("supplier changed");
+          if (blockers.length)
+            fail(`Not received automatically: ${blockers.join(", ")}.`);
+          review.autopilot = {
+            at: now,
+            requestId: input.requestId,
+            revision: 0,
+            lines: review.lines.length,
+            trustedAfter: autopilot.trustedAfter,
+            before: {
+              orderConfirmed: review.orderConfirmed,
+              documentChecked: review.documentChecked,
+              supplierId: review.supplierId,
+            },
+          };
+          review.orderConfirmed = true;
+          review.supplierId = autopilot.supplierId;
+        }
         if (!doc.packingSlip || !review.orderConfirmed)
           fail("Confirm the linked order first.");
         if (!review.kindConfirmed)
@@ -1975,8 +2113,10 @@ async function mutateReceivingImpl(
         ["header", "link", "reconstruct", "approve"].includes(input.action)
       )
         renameLinkedSlip(state, doc, doc.packingSlip);
-      if (!developmentImport) review.humanReviewed = true;
+      if (!developmentImport && !autopilot) review.humanReviewed = true;
       review.revision++;
+      if (autopilot && review.autopilot)
+        review.autopilot.revision = review.revision;
       doc.updatedAt = now;
       await history(
         tx,
@@ -1988,6 +2128,7 @@ async function mutateReceivingImpl(
         replacedDocument,
         developmentImport,
         removedOrderItem,
+        !!autopilot,
       );
       return {
         replayed: false,

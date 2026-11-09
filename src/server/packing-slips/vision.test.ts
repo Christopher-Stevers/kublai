@@ -680,6 +680,17 @@ it("blocks every line when the printed totals disagree", async () => {
   );
 });
 
+it("says whether the printed totals agree with the lines read", async () => {
+  const agree = async (set: Parameters<typeof fakeJev>[0]) =>
+    (await analyze([header, line], fakeJev(set).ask)).totalsAgree;
+  const uncounted = { lines: pick("not_printed", 0.95) };
+  expect(await agree({})).toBe(true);
+  expect(await agree({ page: uncounted })).toBe(true);
+  expect(await agree({ page: uncounted, total: pick("v6", 0.4) })).toBe(false);
+  expect(await agree({ total: pick("v7") })).toBe(false);
+  expect(await agree({ page: { lines: pick("n3", 0.95) } })).toBe(false);
+});
+
 it("does not trust a printed line count the enlarged footer reads otherwise", async () => {
   const read = (footer: VisionAnswer) =>
     analyze(

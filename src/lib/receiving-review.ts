@@ -105,6 +105,23 @@ export type ReceivingReview = {
   duplicateChecked?: string[];
   supplierEmail?: string;
   supplierPhone?: string;
+  /** Received without a check, because the supplier's recent slips needed
+   * no corrections. */
+  autopilot?: {
+    at: string;
+    requestId: string;
+    /** The review as it was received; Undo only works while it still is. */
+    revision: number;
+    lines: number;
+    /** Slips in a row from the supplier a person checked first. */
+    trustedAfter: number;
+    /** What it confirmed, so Undo can put it back. */
+    before: Pick<
+      ReceivingReview,
+      "orderConfirmed" | "documentChecked" | "supplierId"
+    >;
+    undone?: { by: string; at: string };
+  };
 };
 export const lineKind = (line: ReceivingLine, fallback: ReceiptKind) =>
   line.kind ?? fallback;

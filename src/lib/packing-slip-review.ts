@@ -189,6 +189,9 @@ export type SlipAnalysis = {
       >
     >;
   };
+  /** The slip's printed line count or total shipped was read and agrees
+   * with the lines read. */
+  totalsAgree?: boolean;
   /** Original receipt items survive clearing or rerunning detection. */
   confirmedItems?: ReceiptOrderItem[];
   applied?: {

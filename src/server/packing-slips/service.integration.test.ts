@@ -28,6 +28,12 @@ const test = vi.hoisted(() => ({
   lineGate: null as Promise<void> | null,
   lineStarted: false,
   suggestedOrder: null as string | null,
+  push: null as null | {
+    publicKey: string;
+    privateKey: string;
+    subject: string;
+  },
+  sendPush: vi.fn(),
 }));
 vi.mock("~/server/db", () => ({
   db: {
@@ -42,6 +48,9 @@ vi.mock("~/server/auth/permissions", () => ({
   hasManagingSeat: () => false,
 }));
 import * as schema from "~/server/db/schema";
+import { chatPushSubscriptions } from "~/server/db/chat-push-schema";
+import { CLEAN_RUN, ASK_EVERY } from "~/lib/slip-autopilot";
+import { receiveIfTrusted, supplierOutcomes } from "./autopilot";
 import { assertManualReceiptEditable } from "./manual-receiving";
 import {
   mutateReceiving,
@@ -109,6 +118,12 @@ vi.mock("./analyze", () => ({
     };
   },
 }));
+vi.mock("~/server/chat/push", () => ({
+  getPushConfiguration: () => test.push,
+}));
+vi.mock("~/server/chat/push-transport", () => ({
+  sendPushPayload: test.sendPush,
+}));
 vi.mock("~/server/material-list-events", () => ({
   publishMaterialListEvent: vi.fn(),
   publishOrganizationCatalogueEvent: vi.fn(),
@@ -167,6 +182,7 @@ const tables = [
   schema.supplierParts,
   schema.partSynonyms,
   schema.units,
+  chatPushSubscriptions,
 ] as PgTable[];
 const file = {
   packingSlipOrderId: order,
@@ -209,6 +225,8 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     test.lineGate = null;
     test.lineStarted = false;
     test.suggestedOrder = null;
+    test.push = null;
+    test.sendPush.mockReset();
     for (const table of [...tables].reverse())
       await conn.unsafe(`TRUNCATE "${getTableName(table)}"`);
     await db.insert(schema.users).values({
@@ -2856,5 +2874,288 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(await db.select().from(schema.supplierParts)).toMatchObject([
       { supplierSku: "HN38G2ZB", supplierName: "HEX NUT GR2 ZC,3/8-16" },
     ]);
+  });
+
+  describe("receiving a trusted supplier's slip without a check", () => {
+    const supplier = id(60);
+    const saveState = (state: Awaited<ReturnType<typeof workspace>>) =>
+      db
+        .update(schema.jobDocumentWorkspaces)
+        .set({ state })
+        .where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    /** A slip read surely, nothing received on its order yet. */
+    async function sureSlip() {
+      await db
+        .insert(schema.suppliers)
+        .values({ id: supplier, organizationId: org, name: "Wolseley" });
+      await db
+        .update(schema.orders)
+        .set({ supplierId: supplier })
+        .where(eq(schema.orders.id, order));
+      await db
+        .update(schema.orderItems)
+        .set({ receivedQuantity: "0", verificationStatus: "pending" })
+        .where(eq(schema.orderItems.id, id(6)));
+      const fixture = await ready();
+      const state = await workspace();
+      const doc = state.documents[0]!;
+      Object.assign(doc.packingSlipAnalysis!, {
+        totalsAgree: true,
+        cascade: {
+          policy: "test",
+          status: "not-needed",
+          reasons: [],
+          lineIndexes: [],
+        },
+      });
+      doc.packingSlipAnalysis!.lines[0]!.readings = [
+        {
+          reader: "jev",
+          shipped: 6,
+          unit: "ea",
+          orderItemId: id(6),
+          match: 0.97,
+          quantity: 0.97,
+        },
+      ];
+      doc.receivingReview!.sourceText = "Wolseley packing slip, order PO-123";
+      await saveState(state);
+      vi.stubEnv("PACKING_SLIP_AUTOPILOT_ORGANIZATIONS", `other, ${org}`);
+      return fixture;
+    }
+    /** Earlier slips from the supplier, oldest first, received by a person
+     * or without a check. */
+    let earlier = 0;
+    async function received(
+      n: number,
+      { clean = true, by = "human" }: { clean?: boolean; by?: string } = {},
+    ) {
+      for (let i = 0; i < n; i++) {
+        earlier++;
+        const line = {
+          id: "0",
+          sourceIndex: 0,
+          orderItemId: id(6),
+          quantity: 6,
+          issues: [],
+        };
+        const quantity = clean ? 6 : 5;
+        await db.insert(schema.packingSlipReviewHistory).values({
+          organizationId: org,
+          jobId: job,
+          documentId: id(700 + earlier),
+          versionId: id(800 + earlier),
+          runId: randomUUID(),
+          kind: "confirmation",
+          userId: "receiver",
+          release: "test",
+          createdAt: new Date(Date.UTC(2026, 0, 1, 0, earlier)),
+          data: {
+            operation: "approve",
+            initiator: by,
+            packingSlip: { orderId: order },
+            before: { kind: "delivery", lines: [line] },
+            after: {
+              kind: "delivery",
+              lines: [
+                {
+                  ...line,
+                  quantity,
+                  checked: true,
+                  approved: {
+                    itemId: id(6),
+                    quantity,
+                    kind: "delivery",
+                    by: "receiver",
+                    at: "t",
+                  },
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+    beforeEach(() => {
+      earlier = 0;
+    });
+    const review = async () =>
+      (await workspace()).documents[0]!.receivingReview!;
+
+    it("waits for enough clean slips a person checked", async () => {
+      const { access, doc } = await sureSlip();
+      await received(CLEAN_RUN, { clean: true });
+      await received(1, { clean: false });
+      await received(CLEAN_RUN - 1);
+      expect(await receiveIfTrusted(access, doc.documentId)).toEqual({
+        received: false,
+        why: "not trusted yet",
+      });
+      expect(Number((await item()).receivedQuantity)).toBe(0);
+      expect((await review()).humanReviewed).toBeFalsy();
+    });
+
+    it("receives every line once, tells the scanner, then undoes it exactly", async () => {
+      const { access, doc } = await sureSlip();
+      await received(CLEAN_RUN);
+      await db.insert(chatPushSubscriptions).values({
+        userId: "receiver",
+        endpoint: "https://fcm.googleapis.com/fcm/send/test",
+        p256dh: "key",
+        auth: "auth",
+        revokeTokenHash: "a".repeat(64),
+      });
+      test.push = {
+        publicKey: "p",
+        privateKey: "k",
+        subject: "mailto:x@example.test",
+      };
+      const ranked = await receivingOrderCandidates(access, doc.documentId);
+      expect(ranked[0]).toMatchObject({ orderId: order });
+      expect(ranked[0]!.confidence).toBeGreaterThanOrEqual(90);
+      expect(await receiveIfTrusted(access, doc.documentId)).toEqual({
+        received: true,
+      });
+      expect(Number((await item()).receivedQuantity)).toBe(6);
+      expect((await item()).verificationStatus).toBe("partial");
+      const after = await review();
+      expect(after.lines[0]!.approved).toMatchObject({
+        quantity: 6,
+        itemId: id(6),
+      });
+      expect(after).toMatchObject({
+        orderConfirmed: true,
+        documentChecked: true,
+        supplierId: supplier,
+        autopilot: {
+          lines: 1,
+          trustedAfter: CLEAN_RUN,
+          revision: after.revision,
+        },
+      });
+      expect(after.humanReviewed).toBeFalsy();
+      // Not twice, even if the worker runs again.
+      expect((await receiveIfTrusted(access, doc.documentId)).received).toBe(
+        false,
+      );
+      expect(Number((await item()).receivedQuantity)).toBe(6);
+      const confirmations = await db
+        .select()
+        .from(schema.packingSlipReviewHistory)
+        .where(eq(schema.packingSlipReviewHistory.documentId, doc.documentId));
+      expect(
+        confirmations
+          .filter((h) => h.kind === "confirmation")
+          .map((h) => (h.data as { initiator: string }).initiator),
+      ).toEqual(["autopilot"]);
+      expect(test.sendPush).toHaveBeenCalledTimes(1);
+      const payload: unknown = JSON.parse(
+        test.sendPush.mock.calls[0]![2] as string,
+      );
+      expect(payload).toMatchObject({
+        type: "slip-received",
+        url: `/jobs/${job}/receiving?document=${doc.documentId}`,
+        title: "PO-123 received from Wolseley",
+        body: "1 line, received without a check. Open it to look or undo.",
+      });
+      const queue = await receivingQueue(access);
+      expect(queue.documents[0]).toMatchObject({
+        status: "complete",
+        receivedAutomatically: true,
+      });
+      expect((await supplierOutcomes(org, supplier))[0]).toEqual({
+        by: "autopilot",
+        clean: true,
+        undone: false,
+      });
+
+      await reviewAction(access, doc.documentId, { action: "undoAutopilot" });
+      expect(Number((await item()).receivedQuantity)).toBe(0);
+      expect((await item()).verificationStatus).toBe("pending");
+      const undone = await review();
+      expect(undone.lines[0]!.approved).toBeUndefined();
+      expect(undone.lines[0]!.checked).toBe(false);
+      expect(undone.orderConfirmed).toBeFalsy();
+      expect(undone.documentChecked).toBeFalsy();
+      expect(undone.autopilot!.undone).toMatchObject({ by: "receiver" });
+      expect(undone.humanReviewed).toBe(true);
+      expect(
+        (await workspace()).documents[0]!.packingSlipAnalysis!.applied,
+      ).toBeUndefined();
+      expect((await receivingQueue(access)).documents[0]).toMatchObject({
+        status: "review",
+        receivedAutomatically: false,
+      });
+      await expect(
+        reviewAction(access, doc.documentId, { action: "undoAutopilot" }),
+      ).rejects.toThrow("not received automatically");
+      // An undo breaks the supplier's run.
+      expect((await supplierOutcomes(org, supplier))[0]).toMatchObject({
+        undone: true,
+        clean: false,
+      });
+    });
+
+    it("cannot be undone once the slip has changed since", async () => {
+      const { access, doc } = await sureSlip();
+      await received(CLEAN_RUN);
+      expect((await receiveIfTrusted(access, doc.documentId)).received).toBe(
+        true,
+      );
+      await reviewAction(access, doc.documentId, {
+        action: "note",
+        lineId: "0",
+        note: "Two boxes were wet",
+      });
+      await expect(
+        reviewAction(access, doc.documentId, { action: "undoAutopilot" }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(Number((await item()).receivedQuantity)).toBe(6);
+    });
+
+    it("leaves every tenth slip, an unsure line or a slip without receiving permission to a person", async () => {
+      const { access, doc } = await sureSlip();
+      await received(CLEAN_RUN);
+      await received(ASK_EVERY - 1, { by: "autopilot" });
+      expect(await receiveIfTrusted(access, doc.documentId)).toEqual({
+        received: false,
+        why: "one in ten is checked",
+      });
+      await received(1);
+      const state = await workspace();
+      state.documents[0]!.packingSlipAnalysis!.lines[0]!.readings![0]!.quantity = 0.8;
+      await saveState(state);
+      expect(await receiveIfTrusted(access, doc.documentId)).toEqual({
+        received: false,
+        why: "line 0 unsure",
+      });
+      state.documents[0]!.packingSlipAnalysis!.lines[0]!.readings![0]!.quantity = 0.97;
+      await saveState(state);
+      test.receive = false;
+      expect(await receiveIfTrusted(access, doc.documentId)).toEqual({
+        received: false,
+        why: "no permission",
+      });
+      test.receive = true;
+      vi.stubEnv("PACKING_SLIP_AUTOPILOT_ORGANIZATIONS", "");
+      expect((await receiveIfTrusted(access, doc.documentId)).why).toBe("off");
+      expect(Number((await item()).receivedQuantity)).toBe(0);
+    });
+
+    it("is tried by the reader after drafting, and says why not", async () => {
+      vi.stubEnv("PACKING_SLIP_AUTOPILOT_ORGANIZATIONS", org);
+      const info = vi
+        .spyOn(console, "info")
+        .mockImplementation(() => undefined);
+      try {
+        await ready();
+        expect(info).toHaveBeenCalledWith(
+          expect.stringMatching(/^Slip not received automatically: /),
+        );
+      } finally {
+        info.mockRestore();
+      }
+      expect(Number((await item()).receivedQuantity)).toBe(2);
+    });
   });
 });

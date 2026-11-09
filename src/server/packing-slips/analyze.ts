@@ -976,6 +976,8 @@ export async function analyzeSlip(
     model,
     // A table continued from an earlier page keeps that page's headings.
     headers,
-    ...(vision?.lines.length ? { layout: vision.layout } : {}),
+    ...(vision?.lines.length
+      ? { layout: vision.layout, totalsAgree: vision.totalsAgree }
+      : {}),
   };
 }

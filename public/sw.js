@@ -567,8 +567,30 @@ function safeMaterialListUrl(value) {
     return null;
   }
 }
+// A slip received without a check opens on its review.
+function safeSlipUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    const uuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    const keys = [...url.searchParams.keys()];
+    return url.origin === self.location.origin &&
+      !url.hash &&
+      /^\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/receiving$/.test(
+        url.pathname,
+      ) &&
+      keys.length === 1 &&
+      uuid.test(url.searchParams.get("document") ?? "")
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
 function safePushUrl(data) {
   if (data?.type === "material-list") return safeMaterialListUrl(data.url);
+  if (data?.type === "slip-received") return safeSlipUrl(data.url);
   if (data?.type === "conversation-chat") return safeConversationUrl(data.url);
   return data?.type === "job-drawing"
     ? safeDrawingUrl(data.url)
@@ -622,6 +644,7 @@ self.addEventListener("message", (event) => {
                 "job-drawing",
                 "conversation-chat",
                 "material-list",
+                "slip-received",
               ].includes(notification.data?.type)
             )
               notification.close();
@@ -660,20 +683,23 @@ self.addEventListener("push", (event) => {
       );
       const chat =
         data.type === "job-chat" || data.type === "conversation-chat";
+      const slip = data.type === "slip-received";
       // Chat pushes carry the sender and message, like a messaging app.
       const text = (value, max) =>
         typeof value === "string" && value.trim()
           ? value.trim().slice(0, max)
           : null;
-      const title = chat ? text(data.title, 120) : null;
-      const message = chat ? text(data.body, 300) : null;
+      const title = chat || slip ? text(data.title, 120) : null;
+      const message = chat || slip ? text(data.body, 300) : null;
       await self.registration.showNotification(
         title ??
           (data.type === "material-list"
             ? "ForemanHQ Materials"
-            : data.type === "job-drawing"
-              ? "ForemanHQ Drawings"
-              : "ForemanHQ Chat"),
+            : slip
+              ? "ForemanHQ Receiving"
+              : data.type === "job-drawing"
+                ? "ForemanHQ Drawings"
+                : "ForemanHQ Chat"),
         {
           body:
             message ??
@@ -693,8 +719,9 @@ self.addEventListener("push", (event) => {
           badge: "/foremanhq/notification-badge-v3.png",
           // Browsers cannot play a custom sound; a short double buzz stands out instead.
           vibrate: [90, 60, 90],
-          tag:
-            data.type === "material-list"
+          tag: slip
+            ? `slip-received-${new URL(url).searchParams.get("document")}`
+            : data.type === "material-list"
               ? /^[a-f0-9]{64}$/.test(data.group ?? "")
                 ? `material-sender-${data.group}`
                 : `material-list-${new URL(url).pathname.split("/").at(-1)}`
@@ -714,9 +741,13 @@ self.addEventListener("push", (event) => {
 });
 self.addEventListener("notificationclick", (event) => {
   if (
-    !["job-chat", "job-drawing", "conversation-chat", "material-list"].includes(
-      event.notification.data?.type,
-    )
+    ![
+      "job-chat",
+      "job-drawing",
+      "conversation-chat",
+      "material-list",
+      "slip-received",
+    ].includes(event.notification.data?.type)
   )
     return;
   event.notification.close();

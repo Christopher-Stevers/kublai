@@ -1496,6 +1496,12 @@ export async function readSlipImages(input: {
     }
   }
   if (checks) checkItems(lines, items, checks, warnings);
+  // The printed line count, or the total shipped with every line read,
+  // agrees with the lines.
+  const totalsAgree =
+    !targets &&
+    !problems.length &&
+    (counted || (total !== null && readings.every((r) => r.shipped !== null)));
   if (input.expectFooter && !footer)
     warnings.push(
       "This supplier's slips usually print totals at the bottom, but none were found. Check that no page is missing or cut off.",
@@ -1540,6 +1546,7 @@ export async function readSlipImages(input: {
     warnings,
     headers,
     layout: { footer, ...(printedColumns ? { columns: printedColumns } : {}) },
+    totalsAgree,
     model: `${VISION_MODEL} (images)`,
     /** Only the targets were read; otherwise every line was. */
     targeted: !!targets,

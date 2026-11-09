@@ -11,6 +11,7 @@ import { slipBackorderCheck } from "~/lib/slip-backorder-check";
 import { missingPagesWarning, readSlipText } from "~/lib/slip-pages";
 import { supplierClaim } from "~/lib/supplier-claim";
 import { SupplierClaimDialog } from "./SupplierClaimDialog";
+import { AutopilotNotice } from "./AutopilotNotice";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -142,6 +143,7 @@ type Entry = {
   reviewTrialRunId?: string;
   hasSuggestedOrder?: boolean;
   missingPages?: string | null;
+  receivedAutomatically?: boolean;
 };
 type Option = { id: string; name: string };
 type Part = {
@@ -324,10 +326,9 @@ function slipState(d: Entry) {
           ? { label: `${d.ready} ready to approve`, tone: sky.text }
           : { label: "Needs review", tone: amber.text };
   if (d.status === "complete")
-    return {
-      label: "Done",
-      tone: "text-muted-foreground",
-    };
+    return d.receivedAutomatically
+      ? { label: "Received automatically", tone: statusStyle.approved.text }
+      : { label: "Done", tone: "text-muted-foreground" };
   return {
     label: d.status === "supporting" ? "Supporting file" : "Replaced",
     tone: "text-muted-foreground",
@@ -980,6 +981,19 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
               </p>
             </Callout>
           )}
+          <AutopilotNotice
+            review={detail.review}
+            orderNumber={detail.document.packingSlip?.orderNumber}
+            disabled={busy || !online}
+            onUndo={() =>
+              void confirmAction({
+                title: "Undo automatic receipt?",
+                description:
+                  "The quantities come off the order and the lines go back to check.",
+                confirmLabel: "Undo",
+              }).then((yes) => yes && run({ action: "undoAutopilot" }))
+            }
+          />
           {missingPages && (
             <Callout>
               <p>{missingPages}</p>
