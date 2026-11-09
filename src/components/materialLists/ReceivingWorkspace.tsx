@@ -356,7 +356,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     null,
   );
   useEffect(() => { setComparisonDocument(null); }, [id]);
-  // Back from a slip steps up to the queue, not out to the job.
+  // Return to the material list that opened this review, otherwise the queue.
   useHeaderBackOverride(
     comparisonDocument
       ? () => setComparisonDocument(null)
@@ -364,7 +364,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       ? () => setResolveTarget(null)
       : id
         ? () => {
-            const queue = `/jobs/${jobId}/receiving`;
+            const parentList = query.get("fromMaterialList");
+            const queue = parentList
+              ? `/jobs/material-lists/${encodeURIComponent(parentList)}`
+              : `/jobs/${jobId}/receiving`;
             if (!online) window.location.href = queue;
             else router.replace(queue);
           }

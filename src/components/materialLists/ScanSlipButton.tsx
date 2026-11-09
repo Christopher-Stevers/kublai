@@ -1,4 +1,5 @@
 "use client";
+import { receivingReviewHref } from "~/lib/receiving-navigation";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -85,10 +86,12 @@ async function json<T>(response: Response, fallback: string) {
  * reading starts. */
 export function ScanSlipButton({
   jobId,
+  materialListId,
   className,
   compact = false,
 }: {
   jobId: string;
+  materialListId?: string;
   className?: string;
   /** Small icon, for the material list footer. */
   compact?: boolean;
@@ -171,7 +174,7 @@ export function ScanSlipButton({
     </Button>
   );
   const found = (result: Found) => {
-    if(result.queued){if(result.analysisError) notify(result.analysisError, "error");setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);return;}
+    if(result.queued){if(result.analysisError) notify(result.analysisError, "error");setOpen(false);router.push(receivingReviewHref(jobId, result.documentId, materialListId));return;}
     const order = result.orders.find((o) => o.id === result.match);
     setCountdown(AUTO_START);
     setStep(
@@ -195,7 +198,7 @@ export function ScanSlipButton({
           form,
         );
       } else {
-        setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${input.documentId}`);return;
+        setOpen(false);router.push(receivingReviewHref(jobId, input.documentId, materialListId));return;
       }
       if (run.current === id) { retryScan.current = null; found(result); }
     } catch (e) {
@@ -230,7 +233,7 @@ export function ScanSlipButton({
       if (run.current !== id) return;
       setOpen(false);
       if (result.analysisError) notify(result.analysisError, "error");
-      router.push(`/jobs/${jobId}/receiving?document=${documentId}`);
+      router.push(receivingReviewHref(jobId, documentId, materialListId));
     } catch (e) {
       if (run.current === id)
         setError(e instanceof Error ? e.message : "Could not attach the slip.");
@@ -378,7 +381,7 @@ export function ScanSlipButton({
                   type="button"
                   className="hover:bg-accent rounded-lg border p-3 text-left text-sm"
                   onClick={() => {
-                    close();router.push(`/jobs/${jobId}/receiving?document=${slip.id}`);
+                    close();router.push(receivingReviewHref(jobId, slip.id, materialListId));
                   }}
                 >
                   <span className="block font-medium">{slip.name}</span>

@@ -99,7 +99,7 @@ it("closes after saving a scan and opens the slip in receiving", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(changed).toHaveBeenCalledTimes(1);
-  expect(routerPush).toHaveBeenCalledWith("/jobs/job/receiving?document=doc");
+  expect(routerPush).toHaveBeenCalledWith("/jobs/job/receiving?document=doc&fromMaterialList=list");
 });
 it("retains a failed scan for retry and offers read-only slips from a normal material list", async () => {
   let fail = true;
@@ -190,7 +190,7 @@ it("opens a saved slip's summary instead of restarting the camera, and sends it 
   await screen.findByRole("region", { name: "Packing slip camera" });
   fireEvent.click(screen.getByRole("button", { name: "Cancel scan" }));
   fireEvent.click(await screen.findByRole("button", { name: /Check parts on the list/ }));
-  expect(assign).toHaveBeenCalledWith("/jobs/job/receiving?document=doc");
+  expect(assign).toHaveBeenCalledWith("/jobs/job/receiving?document=doc&fromMaterialList=list");
 });
 
 it("sends per-slip clear and rerun actions for the current detection without confirming a receipt", async () => {

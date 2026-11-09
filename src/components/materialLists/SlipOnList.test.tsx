@@ -1,3 +1,4 @@
+import { receivingReviewHref } from "~/lib/receiving-navigation";
 import { afterEach, expect, it, vi } from "vitest";
 import { useState } from "react";
 import {
@@ -254,4 +255,12 @@ it("flags uncertain matches even when a quantity was proposed", async () => {
   expect(
     screen.queryByText(/Checked · ready to confirm/),
   ).not.toBeInTheDocument();
+});
+
+
+it("keeps the material list as the review parent", () => {
+  // URL encoding keeps the parent ID separate from the review document.
+  expect(receivingReviewHref("j", "doc", "list-123")).toBe(
+    "/jobs/j/receiving?document=doc&fromMaterialList=list-123",
+  );
 });

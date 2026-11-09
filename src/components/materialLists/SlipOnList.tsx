@@ -1,4 +1,5 @@
 "use client";
+import { receivingReviewHref } from "~/lib/receiving-navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { SlipProcessingProgress } from "./SlipProcessingProgress";
@@ -429,19 +430,21 @@ function Figure({ label, children }: { label: string; children: string }) {
 /** Above the parts while a slip is being read or checked: what it found, and
  * the one button that confirms the delivery. */
 export function SlipVerifyBar({
+  materialListId,
   draft,
   jobId,
   showOrder = false,
 }: {
   draft: SlipDraft;
   jobId: string;
+  materialListId?: string;
   /** Name the order, for lists with more than one. */
   showOrder?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const order =
     showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
-  if(draft.reviewDoc)return <section className="mb-3 border-y py-3 text-sm"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">Packing slip{order}</p><p className="text-muted-foreground">{draft.reading?'Reading in the background…':`${draft.reviewDoc.receivingReview?.pending??0} lines to review`}</p></div><Button asChild variant="outline"><Link href={`/jobs/${jobId}/receiving?document=${draft.reviewDoc.id}`}>Review & approve</Link></Button></div></section>;
+  if(draft.reviewDoc)return <section className="mb-3 border-y py-3 text-sm"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">Packing slip{order}</p><p className="text-muted-foreground">{draft.reading?'Reading in the background…':`${draft.reviewDoc.receivingReview?.pending??0} lines to review`}</p></div><Button asChild variant="outline"><Link href={receivingReviewHref(jobId, draft.reviewDoc.id, materialListId)}>Review & approve</Link></Button></div></section>;
   if (!draft.slip) {
     return <SlipProcessingProgress analysis={draft.tracking} order={order} />;
   }
@@ -488,7 +491,7 @@ export function SlipVerifyBar({
           className="h-10 w-full sm:w-auto"
           disabled={draft.busy || !filled}
           asChild
-        ><Link href={`/jobs/${jobId}/receiving?document=${draft.slip.id}`}>
+        ><Link href={receivingReviewHref(jobId, draft.slip.id, materialListId)}>
 
           {draft.busy ? (
             <Loader2Icon className="size-4 animate-spin" />

@@ -2341,3 +2341,12 @@ it.each([3, 12])("accepts a part match independently when the slip quantity is %
   expect(row.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "pending");
   await waitFor(() => expect(within(row).queryByRole("button", { name: "Accept Match" })).toBeNull());
 });
+
+
+it("returns to the originating material list from a review", async () => {
+  navigation.query = "document=doc&fromMaterialList=list-123";
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  act(() => { expect(runHeaderBackOverride()).toBe(true); });
+  expect(replace).toHaveBeenCalledWith("/jobs/material-lists/list-123");
+});

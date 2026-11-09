@@ -17,6 +17,6 @@ it('opens the saved receipt without waiting for a second document-list request',
  render(<PackingSlips jobId="job" materialListId="list" orderId="order"/>);
  fireEvent.click(screen.getByRole('button',{name:'Packing slips'}));
  fireEvent.click(await screen.findByRole('button',{name:'Done'}));
- await waitFor(()=>expect(push).toHaveBeenCalledWith('/jobs/job/receiving?document=saved'));
+ await waitFor(()=>expect(push).toHaveBeenCalledWith('/jobs/job/receiving?document=saved&fromMaterialList=list'));
  expect(gets).toBe(1);
 });

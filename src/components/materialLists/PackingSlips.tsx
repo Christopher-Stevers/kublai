@@ -1,4 +1,5 @@
 "use client";
+import { receivingReviewHref } from "~/lib/receiving-navigation";
 import { PackingSlipTestReview } from "./PackingSlipTestReview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -167,7 +168,7 @@ export function PackingSlips({
       // Back to the list so the analysis can be watched as it runs.
       setScanning(false);
       // Or straight to the parts, which fill in once the slip is read.
-      if (result.documentId) {setOpen(false);router.push(`/jobs/${jobId}/receiving?document=${result.documentId}`);}
+      if (result.documentId) {setOpen(false);router.push(receivingReviewHref(jobId, result.documentId, materialListId));}
       return true;
     } catch (e) {
       setRetryFile(file);
@@ -412,7 +413,7 @@ export function PackingSlips({
                       </span>
                       <SlipState analysis={slip.packingSlipAnalysis} />
                     </div>
-                    <Link className="block py-2 font-medium underline" href={`/jobs/${jobId}/receiving?document=${slip.id}`}>Review matches and receiving</Link>
+                    <Link className="block py-2 font-medium underline" href={receivingReviewHref(jobId, slip.id, materialListId)}>Review matches and receiving</Link>
                     {slip.currentVersionId && (
                       <PackingSlipTestReview
                         key={`${jobId}:${slip.currentVersionId}`}
@@ -432,7 +433,7 @@ export function PackingSlips({
                         onShowList={
                           onReviewOnList
                             ? () => {
-                                window.location.assign(`/jobs/${jobId}/receiving?document=${slip.id}`);
+                                window.location.assign(receivingReviewHref(jobId, slip.id, materialListId));
                               }
                             : undefined
                         }

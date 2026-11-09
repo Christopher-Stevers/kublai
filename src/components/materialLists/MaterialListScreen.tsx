@@ -445,7 +445,7 @@ export function MaterialListScreen({
             // underneath always stay reachable.
             <div className="sticky top-0 z-30 mb-3 max-h-[45dvh] space-y-2 overflow-y-auto overscroll-contain rounded-xl">
               {slipDrafts.drafts.map((draft) => (
-                <SlipVerifyBar key={draft.orderId} draft={draft} jobId={mlHeader.jobId} showOrder={!verifyOrderId} />
+                <SlipVerifyBar materialListId={id} key={draft.orderId} draft={draft} jobId={mlHeader.jobId} showOrder={!verifyOrderId} />
               ))}
             </div>
           )}
@@ -588,7 +588,7 @@ export function MaterialListScreen({
           onQuote={handleGenerateQuote} onOrder={handleGenerateOrder} onAdd={openAddPartDialog}
           onNotes={verifyOrderId ? () => setShowVerifyNotesDialog(true) : undefined}
           packingSlips={canReceive && mlHeader.jobId && (verifyOrderId ? verifyOrder?.materialListId === id : hasReceivableOrder) ? (
-            <ScanSlipButton jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
+            <ScanSlipButton materialListId={id} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
           ) : undefined}
           onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
           onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
@@ -605,7 +605,7 @@ export function MaterialListScreen({
               }}
               onAdd={userData?.permissions.can["lists.edit"] ? openAddPartDialog : undefined}
               packingSlips={
-                <ScanSlipButton key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
+                <ScanSlipButton materialListId={id} key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
               }
               onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderBarId })}
               onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderBarId, allReceived: false })}
