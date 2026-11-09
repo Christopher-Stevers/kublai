@@ -1340,7 +1340,8 @@ it("confirms removal of an unmatched order item without recording delivery", asy
   state.items[0]!.received = 0;
   state.review.lines[0]!.orderItemId = null;
   render(<ReceivingWorkspace jobId="job" />);
-  const item = await screen.findByRole("heading", { name: "Valve" });
+  await screen.findAllByRole("heading", { name: "Valve" });
+  const item = document.querySelector('[data-drag-half="order"][data-drag-key="item:item"]')!;
   expect(screen.queryByRole("button", { name: "Remove from order" })).not.toBeInTheDocument();
   const openRemoval = async () => {
     fireEvent.touchStart(item, { touches: [{ clientX: 100, clientY: 500 }] });
