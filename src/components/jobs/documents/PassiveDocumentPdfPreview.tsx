@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { loadPdfDocument } from "~/lib/pdf-client";
+import { drawingPdfLinkPage } from "~/lib/drawing-pdf-links";
 import { pdfTitleBlockWord } from "~/lib/drawing-title-block";
 import {
   findPdfPageMatches,
@@ -387,7 +388,10 @@ export function PassiveDocumentPdfPreview({
               setError("Could not render the PDF. Retrying…");
             }}
             onPdfLink={(link) => {
-              if (link.page) setPage(link.page);
+              if (link.page || link.resolvePage)
+                void drawingPdfLinkPage(link).then((page) => {
+                  if (page) setPage(page);
+                });
               else if (link.url && /^(https?:|mailto:|tel:)/i.test(link.url))
                 window.open(link.url, "_blank", "noopener,noreferrer");
             }}

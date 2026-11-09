@@ -112,6 +112,7 @@ import { MEASURE_TILE } from "./SheetMeasureBar";
 import { StyleStrip } from "./StyleStrip";
 import { notify } from "~/components/ui/app-dialogs";
 import {
+  drawingPdfLinkPage,
   drawingPdfLinkTarget,
   drawingPdfLinkUrl,
 } from "~/lib/drawing-pdf-links";
@@ -1516,12 +1517,16 @@ export function DrawingWorkspace({
         const url = drawingPdfLinkUrl(link.url);
         if (url) openLinkUrl(url);
       } else if (pdf) {
-        const target = drawingPdfLinkTarget(link, pdf, data?.jobSheets ?? []);
-        if (target) {
-          const href = drawingLinkHref({label:target.name,targetSheetId:target.id},jobId,data?.jobSheets??[]);
-          if(href) openLinkUrl(href);
-        }
-        else setError("That linked page has not been added to this job.");
+        void drawingPdfLinkPage(link).then((page) => {
+          const target = page
+            ? drawingPdfLinkTarget({ ...link, page }, pdf, data?.jobSheets ?? [])
+            : undefined;
+          if (target) {
+            const href = drawingLinkHref({label:target.name,targetSheetId:target.id},jobId,data?.jobSheets??[]);
+            if(href) openLinkUrl(href);
+          }
+          else setError("That linked page has not been added to this job.");
+        });
       }
     },
     [pdf, data?.jobSheets, jobId, openLinkUrl],

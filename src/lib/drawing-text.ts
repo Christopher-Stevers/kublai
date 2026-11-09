@@ -17,6 +17,8 @@ export type DrawingText = {
 export type DrawingPdfLink = Omit<DrawingText, "text"> & {
   url?: string;
   page?: number;
+  /** Page of a destination read only when the link is used. */
+  resolvePage?: () => Promise<number | undefined>;
 };
 export type DrawingTextIndex = {
   words: DrawingText[];

@@ -5,7 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import { PDFDocument, PDFName, PDFString, degrees } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { readDrawingPdfLinks, clearDrawingPdfLinks } from "./drawing-pdf-links";
+import {
+  readDrawingPdfLinks,
+  clearDrawingPdfLinks,
+  drawingPdfLinkPage,
+} from "./drawing-pdf-links";
 import { renderUploadPdf } from "../server/rooms/upload-render";
 
 for (const [rotation, expected] of [
@@ -79,8 +83,8 @@ for (const [rotation, expected] of [
         );
         assert.equal(links.length, 3);
         assert.equal(links[0]?.url, "https://example.com/drawing");
-        assert.equal(links[1]?.page, 2);
-        assert.equal(links[2]?.page, 2);
+        assert.equal(await drawingPdfLinkPage(links[1]!), 2);
+        assert.equal(await drawingPdfLinkPage(links[2]!), 2);
         for (const link of links) {
           const actual = [link.left, link.top, link.right, link.bottom];
           actual.forEach((coordinate, index) =>

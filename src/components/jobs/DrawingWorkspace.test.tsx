@@ -966,7 +966,7 @@ describe("drawing workspace workflows", () => {
     ).toBeInTheDocument();
     expect(open).not.toHaveBeenCalled();
   });
-  it("follows original uploaded page links without creating editable markups", () => {
+  it("follows original uploaded page links without creating editable markups", async () => {
     const base = `/api/job-rooms/files/${jobId}/${sheetId}`;
     mocks.data!.jobSheets[0]!.imageUrl = `${base}/floor-1.webp`;
     mocks.data!.jobSheets[1]!.imageUrl = `${base}/floor-2.webp`;
@@ -982,7 +982,7 @@ describe("drawing workspace workflows", () => {
       screen.getByRole("button", { name: "Follow original page link" }),
     );
     const target = mocks.data!.jobSheets[1]!;
-    expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${target.id}`,{scroll:false});
+    await waitFor(() => expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSet=${target.setId}&drawingSheet=${target.id}`,{scroll:false}));
     expect(onOpenSheet).not.toHaveBeenCalled();
     expect(mocks.save).not.toHaveBeenCalled();
   });
@@ -999,14 +999,14 @@ describe("drawing workspace workflows", () => {
     );
     expect(mocks.save).not.toHaveBeenCalled();
   });
-  it("explains when an original linked page is absent from this job", () => {
+  it("explains when an original linked page is absent from this job", async () => {
     mocks.data!.jobSheets[0]!.imageUrl = `/api/job-rooms/files/${jobId}/${sheetId}/floor-1.webp`;
     open();
     fireEvent.click(
       screen.getByRole("button", { name: "Follow original page link" }),
     );
     expect(
-      screen.getByText("That linked page has not been added to this job."),
+      await screen.findByText("That linked page has not been added to this job."),
     ).toBeInTheDocument();
   });
   it("opens an ordered stack from the job picker and edits its selected layers", () => {

@@ -22,7 +22,7 @@ export function DrawingPdfLinkLayer({
           key={index}
           role="link"
           tabIndex={0}
-          aria-label={link.url ?? `Open PDF page ${link.page}`}
+          aria-label={link.url ?? (link.page ? `Open PDF page ${link.page}` : "Open linked PDF page")}
           x={link.left * 1000}
           y={link.top * 1000 * aspect}
           width={(link.right - link.left) * 1000}
@@ -39,7 +39,7 @@ export function DrawingPdfLinkLayer({
             }
           }}
         >
-          <title>{link.url ?? `Open PDF page ${link.page}`}</title>
+          <title>{link.url ?? (link.page ? `Open PDF page ${link.page}` : "Open linked PDF page")}</title>
         </rect>
       ))}
     </svg>

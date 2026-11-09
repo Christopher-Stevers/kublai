@@ -3,6 +3,7 @@ import type * as PdfClient from "./pdf-client";
 import { loadPdfDocument } from "./pdf-client";
 import {
   clearDrawingPdfLinks,
+  drawingPdfLinkPage,
   drawingPdfLinkTarget,
   drawingPdfLinkUrl,
   readDrawingPdfLinks,
@@ -46,24 +47,31 @@ beforeEach(() => {
 });
 describe("original PDF hyperlinks", () => {
   it("retains external links and numeric, named, and indirect page destinations", async () => {
-    fixture([
+    const document = fixture([
       annotation({ url: "https://example.com/detail" }),
       annotation({ dest: [1, { name: "Fit" }] }),
       annotation({ dest: "section" }),
       annotation({ dest: [{ num: 9, gen: 0 }] }),
     ]);
-    expect(await readDrawingPdfLinks(source)).toEqual([
-      {
-        left: 0.1,
-        top: 0.6,
-        right: 0.3,
-        bottom: 0.8,
-        url: "https://example.com/detail",
-      },
-      { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8, page: 2 },
-      { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8, page: 3 },
-      { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8, page: 3 },
+    const links = await readDrawingPdfLinks(source);
+    const box = { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8 };
+    expect(links).toMatchObject([
+      { ...box, url: "https://example.com/detail" },
+      { ...box, page: 2 },
+      box,
+      box,
     ]);
+    // Page numbers of referenced pages are read only when a link is used.
+    expect(document.getDestination).not.toHaveBeenCalled();
+    expect(document.getPageIndex).not.toHaveBeenCalled();
+    expect(await Promise.all(links.map(drawingPdfLinkPage))).toEqual([
+      undefined,
+      2,
+      3,
+      3,
+    ]);
+    await drawingPdfLinkPage(links[3]!);
+    expect(document.getPageIndex).toHaveBeenCalledTimes(2);
   });
   it("aligns link regions on rotated pages with an offset crop box", async () => {
     fixture([annotation({ url: "https://example.com" })], true);
@@ -91,7 +99,10 @@ describe("original PDF hyperlinks", () => {
       annotation({ rect: [0, 0, 0, 0], url: "https://example.com" }),
       annotation({ url: "mailto:plans@example.com" }),
     ]);
-    expect(await readDrawingPdfLinks(source)).toEqual([
+    const links = await readDrawingPdfLinks(source);
+    expect(links).toMatchObject([
+      { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8 },
+      { left: 0.1, top: 0.6, right: 0.3, bottom: 0.8 },
       {
         left: 0.1,
         top: 0.6,
@@ -100,6 +111,10 @@ describe("original PDF hyperlinks", () => {
         url: "mailto:plans@example.com",
       },
     ]);
+    // Broken and missing named destinations go nowhere when tapped.
+    expect(
+      await Promise.all(links.slice(0, 2).map(drawingPdfLinkPage)),
+    ).toEqual([undefined, undefined]);
   });
   it.each([
     "https://example.com/",

@@ -36,6 +36,38 @@ export function drawingPdfLinkTarget<T extends { imageUrl: string }>(
   });
 }
 
+function isPageRef(value: unknown): value is { num: number; gen: number } {
+  return Boolean(
+    value && typeof value === "object" && "num" in value && "gen" in value,
+  );
+}
+
+/** One-based page of a named or indirect destination, read once on demand. */
+function lazyPage(document: PDFDocumentProxy, dest: string | unknown[]) {
+  let page: Promise<number | undefined> | undefined;
+  return () =>
+    (page ??= (async () => {
+      const destination: unknown =
+        typeof dest === "string" ? await document.getDestination(dest) : dest;
+      if (!Array.isArray(destination)) return undefined;
+      const ref: unknown = destination[0];
+      const index =
+        typeof ref === "number"
+          ? ref
+          : isPageRef(ref)
+            ? await document.getPageIndex(ref)
+            : undefined;
+      return Number.isInteger(index) && index! >= 0 && index! < document.numPages
+        ? index! + 1
+        : undefined;
+    })().catch(() => undefined));
+}
+
+/** The linked page, resolving a lazy destination when needed. */
+export async function drawingPdfLinkPage(link: DrawingPdfLink) {
+  return link.page ?? (await link.resolvePage?.());
+}
+
 /** Keep original annotation bounds in the same rotated space as the sheet. */
 export function readDrawingPdfLinks(
   source: { url: string; page: number },
@@ -103,32 +135,21 @@ export function readDrawingPdfLinks(
           const url = drawingPdfLinkUrl(annotation.url);
           if (url) found.push({ ...bounds, url });
         } else {
-          const destination: unknown =
-            typeof annotation.dest === "string"
-              ? await document.getDestination(annotation.dest)
-              : annotation.dest;
-          if (!Array.isArray(destination)) continue;
-          const ref: unknown = destination[0];
-          if (
-            typeof ref !== "number" &&
-            (!ref ||
-              typeof ref !== "object" ||
-              !("num" in ref) ||
-              !("gen" in ref))
-          )
+          const dest = annotation.dest;
+          if (typeof dest === "string") {
+            found.push({ ...bounds, resolvePage: lazyPage(document, dest) });
             continue;
-          const index =
-            typeof ref === "number"
-              ? ref
-              : await document.getPageIndex(
-                  ref as { num: number; gen: number },
-                );
-          if (
-            Number.isInteger(index) &&
-            index >= 0 &&
-            index < document.numPages
-          )
-            found.push({ ...bounds, page: index + 1 });
+          }
+          if (!Array.isArray(dest)) continue;
+          const ref: unknown = dest[0];
+          if (typeof ref === "number") {
+            if (Number.isInteger(ref) && ref >= 0 && ref < document.numPages)
+              found.push({ ...bounds, page: ref + 1 });
+          } else if (isPageRef(ref))
+            // Finding a referenced page's number reads part of the PDF for
+            // each link, which on large sets is most of the file. Resolve
+            // only the link that is tapped.
+            found.push({ ...bounds, resolvePage: lazyPage(document, dest) });
         }
       } catch {
         // One damaged destination must not disable the remaining links.
