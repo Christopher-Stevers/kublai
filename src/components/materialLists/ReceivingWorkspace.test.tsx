@@ -1340,16 +1340,22 @@ it("confirms removal of an unmatched order item without recording delivery", asy
   state.items[0]!.received = 0;
   state.review.lines[0]!.orderItemId = null;
   render(<ReceivingWorkspace jobId="job" />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Remove from order" }),
-  );
+  const item = await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByRole("button", { name: "Remove from order" })).not.toBeInTheDocument();
+  const openRemoval = async () => {
+    fireEvent.touchStart(item, { touches: [{ clientX: 100, clientY: 500 }] });
+    await hold();
+    fireEvent.touchEnd(window, { touches: [] });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove from order" }));
+  };
+  await openRemoval();
   let dialog = await screen.findByRole("dialog", {
     name: "Remove item from order?",
   });
   expect(posts).toHaveLength(0);
   fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
   expect(posts).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", { name: "Remove from order" }));
+  await openRemoval();
   dialog = await screen.findByRole("dialog", {
     name: "Remove item from order?",
   });

@@ -3675,16 +3675,6 @@ function OrderComparison({
                             Resolve.
                           </span>
                         )}
-                        {canRemove && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="relative z-10 mt-2"
-                            onClick={() => setRemoveItem(item)}
-                          >
-                            Remove from order
-                          </Button>
-                        )}
                         {item.received > 0 && (
                           <ReceivedFrom
                             item={item}
