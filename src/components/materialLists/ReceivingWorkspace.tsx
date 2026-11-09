@@ -1,4 +1,5 @@
 "use client";
+import { receivingRequest, receivingResponse } from "~/lib/receiving-request";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import type { SupplierPartLinkApproval, SupplierPartLinkConflict } from "~/lib/supplier-part-link";
 import { dragScrollVelocity, scrollDragFrame } from "~/lib/drag-scroll";
@@ -445,12 +446,12 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     retry.current = body;
     try {
       for (;;) {
-        const res = await fetch("/api/job-documents/packing-slips/queue", {
+        const res = await receivingRequest("/api/job-documents/packing-slips/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        const data = (await res.json()) as { error?: string; supplierPartLinkConflict?: SupplierPartLinkConflict };
+        const data = await receivingResponse<{ error?: string; supplierPartLinkConflict?: SupplierPartLinkConflict }>(res);
         if (res.status === 409 && data.supplierPartLinkConflict) {
           retry.current = null;
           const conflict = data.supplierPartLinkConflict;
