@@ -15,9 +15,11 @@ import {
   isFullDrawingPatch,
 } from "./drawing-pdf-operations";
 import type {
+  RasterByteRequest,
   RasterRequest,
   RasterResponse,
 } from "./drawing-pdf-raster-protocol";
+import { PDF_RANGE_BLOCK } from "./pdf-range-source";
 
 type RenderRequest = Extract<RasterRequest, { type: "render" }>;
 const scope = self as unknown as DedicatedWorkerGlobalScope & {
@@ -26,8 +28,22 @@ const scope = self as unknown as DedicatedWorkerGlobalScope & {
 };
 const ASSETS = `${scope.location.origin}/api/pdfjs-assets/`;
 const KEEP_DOCUMENTS = 2;
-const reply = (message: RasterResponse, transfer: Transferable[] = []) =>
-  scope.postMessage(message, transfer);
+const reply = (
+  message: RasterResponse | RasterByteRequest,
+  transfer: Transferable[] = [],
+) => scope.postMessage(message, transfer);
+
+// PDF bytes come from the page, which downloads each range once for this
+// worker and its own readers alike.
+type Bytes = Extract<RasterRequest, { type: "bytes" }>;
+const byteRequests = new Map<number, (answer: Bytes) => void>();
+let byteSequence = 0;
+const askBytes = (url: string, begin?: number, end?: number) =>
+  new Promise<Bytes>((resolve) => {
+    const id = ++byteSequence;
+    byteRequests.set(id, resolve);
+    reply({ bytes: id, url, begin, end });
+  });
 
 let library: Promise<typeof PdfJs> | null = null;
 const loadLibrary = () =>
@@ -124,15 +140,35 @@ function openDocument(url: string) {
     documents.set(url, cached);
     return cached.promise;
   }
-  const pending = loadLibrary().then((pdfjs) => {
+  const pending = loadLibrary().then(async (pdfjs) => {
     const fonts =
       scope.fonts && typeof FontFace === "function" ? scope.fonts : null;
+    const opened = await askBytes(url);
+    let range: InstanceType<(typeof PdfJs)["PDFDataRangeTransport"]> | null =
+      null;
+    if (opened.data && opened.length !== undefined) {
+      range = new pdfjs.PDFDataRangeTransport(opened.length, opened.data);
+      range.requestDataRange = (begin, end) => {
+        void askBytes(url, begin, end).then(({ data }) => {
+          if (data) range!.onDataRange(begin, data);
+          // The download failed: fail this document's waiting renders. The
+          // page keeps the bytes that did arrive for the next attempt.
+          else if (documents.get(url) === entry) forget(url);
+        });
+      };
+    }
     const task = pdfjs.getDocument({
-      url: new URL(url, scope.location.href),
-      withCredentials: true,
+      // Without ranges (or for a file already on this device) PDF.js loads
+      // the address itself.
+      ...(range
+        ? { range, rangeChunkSize: PDF_RANGE_BLOCK }
+        : {
+            url: new URL(url, scope.location.href),
+            withCredentials: true,
+            rangeChunkSize: 256 * 1024,
+          }),
       disableStream: true,
       disableAutoFetch: true,
-      rangeChunkSize: 256 * 1024,
       enableHWA: true,
       wasmUrl: `${ASSETS}wasm/`,
       standardFontDataUrl: `${ASSETS}standard_fonts/`,
@@ -306,5 +342,8 @@ scope.onmessage = ({ data }: MessageEvent<RasterRequest>) => {
     void openDocument(data.url)
       .then((document) => document.getPage(data.page))
       .catch(() => undefined);
+  } else if (data.type === "bytes") {
+    byteRequests.get(data.request)?.(data);
+    byteRequests.delete(data.request);
   } else if (data.type === "forget") forget(data.url);
 };

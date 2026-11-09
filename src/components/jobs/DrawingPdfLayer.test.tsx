@@ -127,6 +127,19 @@ describe("persistent PDF detail during gestures", () => {
     view.unmount();
   });
 
+  it("reads no PDF bytes while held for the sheet image, then draws", async () => {
+    const view = render(<DrawingPdfLayer {...props} hold />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(loadPdfDocument).not.toHaveBeenCalled();
+    expect(pending).toHaveLength(0);
+    view.rerender(<DrawingPdfLayer {...props} hold={false} />);
+    await tick();
+    expect(loadPdfDocument).toHaveBeenCalledWith(props.pdf.url);
+    expect(pending).toHaveLength(1);
+  });
+
   it("uses the latest view after a cold document load", async () => {
     const document = await loadPdfDocument("/fixture.pdf");
     let loaded!: (value: typeof document) => void;

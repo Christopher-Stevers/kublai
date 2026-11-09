@@ -1,6 +1,11 @@
 "use client";
 
 import { clearDrawingGeometryWorkers } from "./drawing-geometry-client";
+import {
+  clearPdfRangeSources,
+  PDF_RANGE_BLOCK,
+  pdfRangeSource,
+} from "./pdf-range-source";
 
 import type * as PdfJsModule from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -22,6 +27,7 @@ export function clearPdfDocuments() {
   const entries = [...documents.values()];
   documents.clear();
   for (const entry of entries) entry.destroy();
+  clearPdfRangeSources();
 }
 
 export function loadPdfJs() {
@@ -56,15 +62,18 @@ export function loadPdfDocument(url: string) {
     destroyed = true;
     destroyTask();
   };
-  const promise = loadPdfJs().then((pdfjs) => {
+  const start = (
+    pdfjs: PdfJs,
+    range: InstanceType<PdfJs["PDFDataRangeTransport"]> | null,
+  ) => {
     const task = pdfjs.getDocument({
-      url,
-      withCredentials: true,
+      ...(range
+        ? { range, rangeChunkSize: PDF_RANGE_BLOCK }
+        : { url, withCredentials: true, rangeChunkSize: 256 * 1024 }),
       // Read only the objects needed for the visible page. Streaming disables
       // PDF.js's demand-driven range mode, so turn it off along with prefetch.
       disableStream: true,
       disableAutoFetch: true,
-      rangeChunkSize: 256 * 1024,
       enableHWA: true,
       wasmUrl: "/api/pdfjs-assets/wasm/",
       standardFontDataUrl: "/api/pdfjs-assets/standard_fonts/",
@@ -74,6 +83,32 @@ export function loadPdfDocument(url: string) {
     };
     if (destroyed) destroyTask();
     return task.promise;
+  };
+  const promise: Promise<PDFDocumentProxy> = loadPdfJs().then((pdfjs) => {
+    // Bytes come through the shared downloader, so the detail worker and
+    // this document never fetch the same range twice. Without range support
+    // (or for a file already on this device) PDF.js loads the address itself.
+    const source = pdfRangeSource(url);
+    if (!source) return start(pdfjs, null);
+    return source
+      .open()
+      .catch(() => null)
+      .then((opened) => {
+        if (!opened) return start(pdfjs, null);
+        const range = new pdfjs.PDFDataRangeTransport(
+          opened.length,
+          opened.head,
+        );
+        range.requestDataRange = (begin, end) => {
+          void source.read(begin, end).then(
+            (chunk) => range.onDataRange(begin, chunk),
+            // PDF.js has no failure signal for a range: drop the document so
+            // waiting readers fail and the next one starts from the kept bytes.
+            () => discardPdfDocument(url, promise),
+          );
+        };
+        return start(pdfjs, range);
+      });
   });
   void promise.catch(() => {
     destroy();

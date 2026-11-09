@@ -67,6 +67,24 @@ describe("browser PDF document cache", () => {
   const getDocument = vi.fn((options: { url: string }) =>
     loadingTask(options.url),
   );
+  // Null stands for a file with no shared downloader (already on the device).
+  const pdfRangeSource = vi.fn<
+    (url: string) => {
+      open: () => Promise<{ length: number; head: Uint8Array } | null>;
+      read: (begin: number, end: number) => Promise<Uint8Array>;
+    } | null
+  >(() => null);
+  const clearPdfRangeSources = vi.fn();
+  class PDFDataRangeTransport {
+    onDataRange = vi.fn();
+    constructor(
+      readonly length: number,
+      readonly initialData: Uint8Array,
+    ) {}
+    requestDataRange(_begin: number, _end: number) {
+      throw new Error("not replaced");
+    }
+  }
 
   beforeEach(async () => {
     vi.resetModules();
@@ -77,13 +95,87 @@ describe("browser PDF document cache", () => {
       .mockImplementation((options) => loadingTask(options.url));
     vi.doMock("pdfjs-dist/legacy/build/pdf.mjs", async () => {
       await libraryReady.promise;
-      return { getDocument, GlobalWorkerOptions: workerOptions };
+      return {
+        getDocument,
+        GlobalWorkerOptions: workerOptions,
+        PDFDataRangeTransport,
+      };
     });
+    pdfRangeSource.mockReset().mockReturnValue(null);
+    clearPdfRangeSources.mockReset();
+    vi.doMock("./pdf-range-source", () => ({
+      PDF_RANGE_BLOCK: 65536,
+      pdfRangeSource,
+      clearPdfRangeSources,
+    }));
     client = await import("./pdf-client");
   });
 
   afterEach(() => {
     vi.doUnmock("pdfjs-dist/legacy/build/pdf.mjs");
+    vi.doUnmock("./pdf-range-source");
+  });
+
+  it("reads a remote PDF through the shared downloader instead of its address", async () => {
+    libraryReady.resolve();
+    const head = new Uint8Array([1, 2, 3]);
+    const read = vi.fn(async () => new Uint8Array([9]));
+    pdfRangeSource.mockReturnValue({
+      open: async () => ({ length: 500_000, head }),
+      read,
+    });
+    await client.loadPdfDocument("/shared.pdf");
+    const options = getDocument.mock.calls[0]![0] as unknown as {
+      url?: string;
+      rangeChunkSize: number;
+      range: PDFDataRangeTransport;
+    };
+    expect(options.url).toBeUndefined();
+    expect(options.rangeChunkSize).toBe(65536);
+    expect(options.range).toMatchObject({ length: 500_000, initialData: head });
+    options.range.requestDataRange(65536, 131072);
+    await vi.waitFor(() =>
+      expect(options.range.onDataRange).toHaveBeenCalledWith(
+        65536,
+        new Uint8Array([9]),
+      ),
+    );
+    expect(read).toHaveBeenCalledWith(65536, 131072);
+  });
+
+  it("falls back to the address when the server offers no byte ranges", async () => {
+    libraryReady.resolve();
+    pdfRangeSource.mockReturnValue({ open: async () => null, read: vi.fn() });
+    await client.loadPdfDocument("/whole.pdf");
+    expect(getDocument).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ url: "/whole.pdf", withCredentials: true }),
+    );
+  });
+
+  it("drops the document when a range cannot be downloaded", async () => {
+    libraryReady.resolve();
+    const task = loadingTask("/dropped.pdf");
+    getDocument.mockReturnValueOnce(task);
+    pdfRangeSource.mockReturnValue({
+      open: async () => ({ length: 500_000, head: new Uint8Array(1) }),
+      read: async () => {
+        throw new Error("offline");
+      },
+    });
+    await client.loadPdfDocument("/dropped.pdf");
+    const { range } = getDocument.mock.calls[0]![0] as unknown as {
+      range: PDFDataRangeTransport;
+    };
+    range.requestDataRange(0, 65536);
+    await vi.waitFor(() => expect(task.destroy).toHaveBeenCalledOnce());
+    // The next reader starts a fresh document.
+    await client.loadPdfDocument("/dropped.pdf");
+    expect(getDocument).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears downloaded PDF bytes with the parsed documents", async () => {
+    client.clearPdfDocuments();
+    expect(clearPdfRangeSources).toHaveBeenCalledOnce();
   });
 
   it("discards only the stalled cached document and preserves a newer replacement", async () => {

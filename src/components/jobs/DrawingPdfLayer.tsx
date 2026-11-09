@@ -56,6 +56,8 @@ type Props = {
   view: DrawingView;
   dpr: number;
   enabled: boolean;
+  /** Weak signal: the sheet image loads first, so read no PDF bytes yet. */
+  hold?: boolean;
   moving: boolean;
   /** Render outside the CSS-scaled sheet to preserve canvas pixels on Safari. */
   screenSpace?: boolean;
@@ -205,7 +207,8 @@ export function DrawingPdfLayer(props: Props) {
     // loading keeps this to needed PDF objects, avoiding a cold worker/page
     // lookup the first time the user zooms beyond the pre-rendered tiles.
     const warm = () => {
-      if (disposed) return;
+      // Held back for the sheet image: drawing opens it afterwards.
+      if (disposed || latest.current.hold) return;
       if (raster) return raster.warm(source.url, source.page);
       void loadPdfDocument(source.url)
         .then((document) =>
@@ -404,6 +407,7 @@ export function DrawingPdfLayer(props: Props) {
       const start = latest.current;
       if (
         !start.enabled ||
+        start.hold ||
         document.visibilityState === "hidden" ||
         Date.now() < retryAfter
       )
@@ -726,6 +730,7 @@ export function DrawingPdfLayer(props: Props) {
     props.frameSize,
     props.dpr,
     props.enabled,
+    props.hold,
     props.moving,
   ]);
   const bind =

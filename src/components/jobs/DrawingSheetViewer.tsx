@@ -7,6 +7,7 @@ import { useMeasurementLayers } from "./useMeasurementLayers";
 import { measurementLayerNames } from "~/lib/measurement-layers";
 import { DrawingMeasureNode } from "./DrawingMeasureNode";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
+import { useDrawingLoadOrder } from "./useDrawingLoadOrder";
 
 import {
   useCallback,
@@ -253,6 +254,11 @@ export function DrawingSheetViewer({
   const pipeViewport = useRef<SVGSVGElement>(null);
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
+  const placeholderImage = useRef<HTMLImageElement>(null);
+  const loadOrder = useDrawingLoadOrder(src, image, placeholderImage);
+  const holdPdf = loadOrder.holdDetail;
+  // The page whose PDF detail has reached the screen.
+  const [pdfShown, setPdfShown] = useState("");
   const [fit, setFit] = useState<{
     width: number;
     height: number;
@@ -285,7 +291,8 @@ export function DrawingSheetViewer({
   const pdfLinkKey = pdf ? `${pdf.url}:${pdf.page}` : "";
   const readsPdfLinks = Boolean(onPdfLink);
   useEffect(() => {
-    if (!pdfLinkUrl || pdfLinkPage === undefined || !readsPdfLinks) return;
+    if (!pdfLinkUrl || pdfLinkPage === undefined || !readsPdfLinks || holdPdf)
+      return;
     let cancelled = false;
     void readDrawingPdfLinks({ url: pdfLinkUrl, page: pdfLinkPage })
       .then((links) => {
@@ -297,7 +304,7 @@ export function DrawingSheetViewer({
     return () => {
       cancelled = true;
     };
-  }, [pdfLinkUrl, pdfLinkPage, pdfLinkKey, readsPdfLinks]);
+  }, [pdfLinkUrl, pdfLinkPage, pdfLinkKey, readsPdfLinks, holdPdf]);
   const importedLinks = pdfLinks?.key === pdfLinkKey ? pdfLinks.links : [];
   const pdfLinkTap = useRef<{
     pointerId: number;
@@ -1590,8 +1597,13 @@ export function DrawingSheetViewer({
   const left = frameSize.width / 2 + view.x - shownWidth / 2;
   const top = frameSize.height / 2 + view.y - shownHeight / 2;
   const density = fit ? (shownWidth / fit.natural) * dpr : 1; // screen px per saved-image px
+  const tilesSpared =
+    loadOrder.slow && pdfShown !== "" && pdfShown === pdfLinkKey;
   const tileRequests = useMemo(() => {
     if (!manifest || !tiles || !shownWidth || !shownHeight) return [];
+    // On a weak signal, once the PDF page is here its detail costs no more
+    // download; tiles for the same view would only spend the connection.
+    if (tilesSpared) return [];
     return planDrawingTiles(tiles, manifest, density, {
       left: -left / shownWidth,
       top: -top / shownHeight,
@@ -1601,6 +1613,7 @@ export function DrawingSheetViewer({
   }, [
     manifest,
     tiles,
+    tilesSpared,
     density,
     shownWidth,
     shownHeight,
@@ -1612,6 +1625,7 @@ export function DrawingSheetViewer({
   // Raster previews/tiles are fast fallbacks, not a quality gate: thin CAD
   // lines and small text need original PDF pixels even at intermediate zoom.
   // The bounded patch moves with the sheet and is replaced only when ready.
+  // On a weak signal it waits for the sheet image, the smaller step (holdPdf).
   const needsPdf = Boolean(pdf) && fit !== null;
 
   const savedPoints = calibrating ? calPoints : path;
@@ -2917,8 +2931,10 @@ export function DrawingSheetViewer({
               key={page.id}
               page={page}
               offset={offset}
-              loadPreview={previewOffsets.has(offset)}
-              sharp={needsFullPage(width, view.scale, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1)}
+              // The open sheet goes first on a weak signal, and neighbours
+              // then keep to their small copies.
+              loadPreview={previewOffsets.has(offset) && !holdPdf}
+              sharp={!loadOrder.slow && needsFullPage(width, view.scale, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1)}
               style={{ left: (fit.width - width) / 2, top: fit.height / 2 + top, width, height, filter: appearanceFilter }}
             />
           ))}
@@ -2938,6 +2954,7 @@ export function DrawingSheetViewer({
             {placeholderSrc && !usesInkComparison && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                ref={placeholderImage}
                 src={placeholderSrc}
                 alt=""
                 aria-hidden="true"
@@ -2969,6 +2986,7 @@ export function DrawingSheetViewer({
                 view={view}
                 dpr={dpr}
                 enabled={needsPdf && !usesInkComparison}
+                hold={holdPdf}
                 moving={moving}
               />
             )}
@@ -3016,9 +3034,13 @@ export function DrawingSheetViewer({
             view={view}
             dpr={dpr}
             enabled={needsPdf}
+            hold={holdPdf}
             moving={moving}
             screenSpace
-            onReady={onPdfReady}
+            onReady={() => {
+              setPdfShown(pdfLinkKey);
+              onPdfReady?.();
+            }}
             onError={onPdfError}
             paintRef={pdfPaint}
             zoom={ZOOM_LIMITS}

@@ -2,9 +2,11 @@
 
 import { registerDrawingWorker } from "./drawing-geometry-client";
 import type {
+  RasterByteRequest,
   RasterRequest,
   RasterResponse,
 } from "./drawing-pdf-raster-protocol";
+import { pdfRangeSource } from "./pdf-range-source";
 import type { DrawingPatch } from "./drawing-viewport";
 
 /** The page needs main-thread drawing (SVG filters); not a loading failure. */
@@ -35,7 +37,10 @@ class RasterClient {
       { type: "module", name: "drawing-pdf-raster" },
     );
     this.unregister = registerDrawingWorker(this);
-    this.worker.onmessage = ({ data }: MessageEvent<RasterResponse>) => {
+    this.worker.onmessage = ({
+      data,
+    }: MessageEvent<RasterResponse | RasterByteRequest>) => {
+      if ("bytes" in data) return this.serve(data);
       const pending = this.pending.get(data.id);
       if (!pending) {
         if (data.ok) data.bitmap.close();
@@ -56,8 +61,28 @@ class RasterClient {
     this.worker.onmessageerror = () =>
       this.dispose(new Error("The drawing detail could not be read."));
   }
-  private send(message: RasterRequest) {
-    this.worker.postMessage(message);
+  private send(message: RasterRequest, transfer: Transferable[] = []) {
+    this.worker.postMessage(message, transfer);
+  }
+  /** The worker's PDF bytes come from the page's shared download. */
+  private serve({ bytes: request, url, begin, end }: RasterByteRequest) {
+    const none = () => {
+      if (!this.closed) this.send({ type: "bytes", request });
+    };
+    const source = pdfRangeSource(url);
+    if (!source) return none();
+    const reply = (data: Uint8Array, length?: number) => {
+      if (this.closed) return;
+      this.send({ type: "bytes", request, length, data }, [data.buffer]);
+    };
+    if (begin === undefined || end === undefined)
+      void source
+        .open()
+        .then(
+          (opened) => (opened ? reply(opened.head, opened.length) : none()),
+          none,
+        );
+    else void source.read(begin, end).then((data) => reply(data), none);
   }
   acquire() {
     this.users++;
