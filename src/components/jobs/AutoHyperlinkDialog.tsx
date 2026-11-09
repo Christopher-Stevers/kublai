@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_HYPERLINK_COLOR, DEFAULT_HYPERLINK_OPACITY } from "~/lib/drawing-hyperlink-style";
 import { drawingTagCandidates, drawingTagLocations } from "~/lib/drawing-tags";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -61,6 +62,7 @@ export function AutoHyperlinkDialog(props: {
   const detect = api.drawingsWorkspace.autoHyperlinkDetect.useMutation({
     retry: false,
   });
+  const [highlightColor, setHighlightColor] = useState(DEFAULT_HYPERLINK_COLOR);
   const [reader, setReader] = useState<HyperlinkReader>("normal");
   const [hasReading, setHasReading] = useState(false);
   const [readers, setReaders] = useState<{
@@ -302,10 +304,10 @@ export function AutoHyperlinkDialog(props: {
               ],
               links: row.links,
               linkAppearance: "highlight",
-              stroke: "#facc15",
+              stroke: highlightColor,
               width: 2,
-              fill: "#facc15",
-              opacity: 0.35,
+              fill: highlightColor,
+              opacity: DEFAULT_HYPERLINK_OPACITY,
             },
           });
           saved++;
@@ -366,6 +368,10 @@ export function AutoHyperlinkDialog(props: {
             tags.
           </DialogDescription>
         </DialogHeader>
+        <label className="grid gap-1 text-sm">
+          Highlight colour
+          <input type="color" aria-label="Hyperlink highlight colour" className="h-10 w-full" value={highlightColor} disabled={pending > 0} onChange={event => setHighlightColor(event.target.value)} />
+        </label>
         <label className="grid gap-1 text-sm">
           Version
           <select

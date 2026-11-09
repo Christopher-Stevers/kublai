@@ -932,7 +932,9 @@ describe("drawing workspace workflows", () => {
       data: {
         type: "link",
         linkAppearance: "highlight",
-        opacity: 0.35,
+        opacity: 0.55,
+        stroke: "#00c9ad",
+        fill: "#00c9ad",
         text: "AHU-1",
         links: [
           { label: "Equipment manual", url: "https://example.com/manual" },

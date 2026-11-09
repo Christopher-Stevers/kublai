@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_HYPERLINK_COLOR, DEFAULT_HYPERLINK_OPACITY } from "~/lib/drawing-hyperlink-style";
 import { useDrawingLayerVisibility, type DrawingLayers } from "./useDrawingLayerVisibility";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useSystemsAccess } from "~/components/permissions/SystemsAccess";
@@ -1269,9 +1270,9 @@ export function DrawingWorkspace({
           ? {
               ...markup,
               linkAppearance: "highlight",
-              stroke: "#facc15",
-              fill: "#facc15",
-              opacity: 0.35,
+              stroke: DEFAULT_HYPERLINK_COLOR,
+              fill: DEFAULT_HYPERLINK_COLOR,
+              opacity: DEFAULT_HYPERLINK_OPACITY,
               links: [],
             }
           : markup,

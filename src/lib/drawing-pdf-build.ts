@@ -1,3 +1,4 @@
+import { DEFAULT_HYPERLINK_COLOR } from "~/lib/drawing-hyperlink-style";
 import { componentMarker, componentMarkerPath } from "./pipe-component-marker";
 import { pdfBytes, MAX_DRAWING_PACKAGE_BYTES } from "./drawing-pdf-bytes";
 import {
@@ -149,7 +150,7 @@ async function drawMarkup(
     ? data.fill && data.fill !== "none"
       ? data.fill
       : data.stroke === "none"
-        ? "#facc15"
+        ? DEFAULT_HYPERLINK_COLOR
         : data.stroke
     : data.fill;
   const style = {

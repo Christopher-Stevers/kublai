@@ -1,3 +1,4 @@
+import { DEFAULT_HYPERLINK_COLOR } from "~/lib/drawing-hyperlink-style";
 import { PipeComponentSymbol } from "./PipeComponentSymbol";
 import { componentMarker } from "~/lib/pipe-component-marker";
 import type { DrawingMarkup } from "~/lib/drawing-workspace";
@@ -125,7 +126,7 @@ export function DrawingAnnotationSvg({
                   data.fill && data.fill !== "none"
                     ? data.fill
                     : data.stroke === "none"
-                      ? "#facc15"
+                      ? DEFAULT_HYPERLINK_COLOR
                       : data.stroke,
               }
             : {})}

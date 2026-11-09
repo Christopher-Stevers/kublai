@@ -112,6 +112,9 @@ it("previews all tags in one job-wide request, then saves only the selected tags
     visibility: "private",
     data: {
       equipmentTag: "HEX-2",
+      fill: "#00c9ad",
+      stroke: "#00c9ad",
+      opacity: 0.55,
       points: [
         { x: 0.2, y: 0.3 },
         { x: 0.25, y: 0.32 },
@@ -136,12 +139,14 @@ it("keeps existing tags and links repeated occurrences through one saved origin"
   render(<AutoHyperlinkDialog {...input} />);
   await screen.findByText("HEX-2");
   expect(screen.getByLabelText("Link FCU-1")).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Hyperlink highlight colour"), { target: { value: "#8844ff" } });
   fireEvent.click(
     screen.getByRole("button", { name: "Save selected links (1)" }),
   );
   await waitFor(() => expect(save).toHaveBeenCalledOnce());
   const saved = save.mock.calls[0]![0];
   if (saved.kind !== "markup") throw Error("Expected hyperlink markup");
+  expect(saved.data).toMatchObject({ fill: "#8844ff", stroke: "#8844ff" });
   expect(
     saved.data.links?.some((link) => link.url?.includes("#snapshot=")),
   ).toBe(true);
