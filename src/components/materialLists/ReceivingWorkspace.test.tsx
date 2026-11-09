@@ -2350,3 +2350,21 @@ it("returns to the originating material list from a review", async () => {
   act(() => { expect(runHeaderBackOverride()).toBe(true); });
   expect(replace).toHaveBeenCalledWith("/jobs/material-lists/list-123");
 });
+
+
+it("excludes only the chosen line from a multi-line part comparison", async () => {
+  state.review.lines[1]!.orderItemId = "item";
+  state.review.lines[1]!.quantity = 2;
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  fireEvent.click(within(row).getByRole("button", { name: "Review line: Valve" }));
+  const buttons = await within(row).findAllByRole("button", { name: "Exclude line" });
+  expect(buttons).toHaveLength(2);
+  fireEvent.click(buttons[1]!);
+  const dialog = await screen.findByRole("dialog", { name: "Exclude slip line 2?" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Duplicate line" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Exclude this line" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "ignore", lineId: "1", reason: "Duplicate line" });
+  expect((state.review.lines[0] as ReceivingLine).ignored).toBeUndefined();
+});

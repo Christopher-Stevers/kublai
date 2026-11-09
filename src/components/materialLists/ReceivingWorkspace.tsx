@@ -4212,6 +4212,8 @@ function LineReview({
     [checked, setChecked] = useState(l.checked ?? false),
     [part, setPart] = useState(false),
     [reason, setReason] = useState(""),
+    [excluding, setExcluding] = useState(false),
+    [savingExclusion, setSavingExclusion] = useState(false),
     // Lines missing a quantity or an order part open straight into editing.
     [editing, setEditing] = useState(
       resolveMode || !l.orderItemId || l.quantity === null,
@@ -4541,6 +4543,11 @@ function LineReview({
             Change
           </Button>
         )}
+        {(!l.approved || l.approved.quantity === 0) && (
+          <Button variant="outline" onClick={() => { setReason(""); setExcluding(true); }}>
+            Exclude line
+          </Button>
+        )}
         {!resolveMode && (!l.approved || l.approved.quantity === 0) && (
           <Button
             variant="ghost"
@@ -4557,6 +4564,33 @@ function LineReview({
           </Button>
         )}
       </div>
+      <Dialog open={excluding} onOpenChange={open => { if (!savingExclusion) setExcluding(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exclude slip line {index + 1}?</DialogTitle>
+            <DialogDescription>
+              {l.description}. Only this line will be left out of receiving totals. Other lines matched to the same part stay unchanged. You can restore it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2">
+            {["Duplicate line", "Incorrectly read line", "Not a product line"].map(choice => (
+              <Button key={choice} variant="outline" disabled={savingExclusion} onClick={() => setReason(choice)}>{choice}</Button>
+            ))}
+          </div>
+          <Label name="Reason for excluding this line">
+            <input className={field} value={reason} disabled={savingExclusion} onChange={event => setReason(event.target.value)} />
+          </Label>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" disabled={savingExclusion} onClick={() => setExcluding(false)}>Cancel</Button>
+            <Button disabled={savingExclusion || reason.trim().length < 3} onClick={async () => {
+              setSavingExclusion(true);
+              try {
+                if (await run({ action: "ignore", lineId: l.id, reason: reason.trim() })) setExcluding(false);
+              } finally { setSavingExclusion(false); }
+            }}>{savingExclusion ? "Excluding…" : "Exclude this line"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <PartFitDialog
         fit={fit}
         item={chosen}
