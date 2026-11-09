@@ -2378,7 +2378,7 @@ it("excludes only the chosen line from a multi-line part comparison", async () =
 
 it("shows Review Complete instead of Approval not ready for fully posted lines with an unset document checkbox", async () => {
   state.review.lines = [state.review.lines[0]!];
-  state.review.lines[0]!.approved = { itemId:"item", quantity:6, kind:"delivery", at:"now", by:"user" };
+  Object.assign(state.review.lines[0]!, { checked:true, approved: { itemId:"item", quantity:6, kind:"delivery", at:"now", by:"user" } });
   render(<ReceivingWorkspace jobId="job" />);
   expect(await screen.findByText("Review Complete")).toBeInTheDocument();
   expect(screen.queryByText("Approval not ready")).not.toBeInTheDocument();
