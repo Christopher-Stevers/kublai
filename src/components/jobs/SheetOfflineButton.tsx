@@ -1,5 +1,6 @@
 "use client";
 
+import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import {
@@ -39,10 +40,11 @@ export function SheetOfflineButton({
   const error = task?.status === "failed" ? task.progress : null;
   const save = () => {
     if (!store) return;
+    const protection = requestPersistentDeviceStorage();
     drawingDownloadQueue.enqueue(
       { id: downloadId, account: store.accountKey, label: sheet.name },
       async (signal, setProgress) => {
-        await navigator.storage?.persist?.().catch(() => false);
+        await protection;
         await warmDrawingPdfRuntime({ signal });
         const additionalImages = await prepare?.(signal);
         signal.throwIfAborted();

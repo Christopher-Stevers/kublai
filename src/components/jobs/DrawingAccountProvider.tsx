@@ -1,4 +1,5 @@
 "use client";
+import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient, type Query } from "@tanstack/react-query";
 import {
@@ -49,6 +50,7 @@ export function DrawingAccountProvider({
     let disposed = false;
     let store: DrawingOfflineStore | undefined;
     clearPrivateMemory();
+    void requestPersistentDeviceStorage();
     const clearQueries = () => {
       void queryClient.cancelQueries({ predicate: isDrawingQuery });
       queryClient.removeQueries({ predicate: isDrawingQuery });

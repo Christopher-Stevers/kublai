@@ -1,4 +1,5 @@
 "use client";
+import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { scheduleBackgroundWork, canWarmInBackground } from "~/lib/background-work";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
@@ -363,13 +364,14 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
     if (currentFolder && savedSets[targetId] === (currentFolder.downloadVersion ?? `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`)) return;
     const store = account.store;
+    const protection = requestPersistentDeviceStorage();
     drawingDownloadQueue.enqueue({ id: `${account.accountKey}:set:${targetId}`, account: account.accountKey, label: currentFolder?.name ?? "Drawing set" }, async (signal, setDownload) => {
       const target = await utils.drawings.getSet.fetch({ setId: targetId });
       const folder = setsData?.sets.find(item => item.id === targetId);
       const version = target.downloadVersion ?? `${folder ? new Date(folder.updatedAt).toISOString() : "unknown"}:${target.sheets.length}`;
       const sheets = target.sheets;
       // Request protection against automatic browser eviction where supported.
-      const storageProtected = await navigator.storage?.persist?.().catch(() => false);
+      const storageProtected = await protection;
       const estimate = await navigator.storage?.estimate?.().catch(() => undefined);
       const existing = await store.summary();
       const budgetBytes = estimate?.quota
