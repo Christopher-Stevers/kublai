@@ -998,6 +998,18 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     return reviewAction(fixture.access, fixture.doc.documentId, { action: "resolve", lineId, evidenceFingerprint: resolutionEvidenceFingerprint(l), ...patch });
   }
   const allResolved = { match: "confirmed", specification: "confirmed", quantity: "confirmed", delivery: "confirmed", remainder: "backordered", note: "Remainder confirmed backordered" };
+  it("converts both ordered and shipped quantities when linking a previously unmatched slip", async () => {
+    const f = await confirmedHeader();
+    await db.update(schema.partDefinitions).set({ piecesPerPack: 100, bulkUnit: "box", individualUnit: "ea" }).where(eq(schema.partDefinitions.id, id(5)));
+    const state = await workspace();
+    const review = state.documents.find(d => d.id === f.doc.documentId)!.receivingReview!;
+    Object.assign(review.lines[0]!, { orderItemId: null, description: "Valve", sku: "", quantity: 600, ordered: 1000, unit: "pcs", checked: false });
+    await db.update(schema.jobDocumentWorkspaces).set({ state }).where(eq(schema.jobDocumentWorkspaces.jobId, job));
+    await reviewAction(f.access, f.doc.documentId, { action: "link", orderId: order, confirmed: true });
+    const saved = (await workspace()).documents.find(d => d.id === f.doc.documentId)!.receivingReview!.lines[0]!;
+    expect(saved).toMatchObject({ orderItemId: id(6), quantity: 6, ordered: 10, unit: "box", checked: false });
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("linking or legacy checked flags cannot bypass unresolved specification, quantity or delivery", async () => {
     const f = await confirmedHeader();
     await resolveAction(f, {match:"confirmed"});

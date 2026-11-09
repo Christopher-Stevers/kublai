@@ -42,6 +42,7 @@ import {
   initialReview,
   autoConfirmsLine,
   normalizeOrderedQuantity,
+  convertedOrderedQuantity,
   defaultReviewUnit,
   lineKind,
   normalizedIdentity,
@@ -1378,6 +1379,7 @@ async function mutateReceivingImpl(
                     `${l.description} ${l.evidence}`,
                   );
             if (converted !== null) {
+              l.ordered = convertedOrderedQuantity(l.ordered, l.quantity, converted);
               l.quantity = converted;
               l.unit = item.unit;
             }

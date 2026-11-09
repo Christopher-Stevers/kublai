@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { mergeReading } from "./review-draft";
+import { autoConfirmsLine } from "~/lib/receiving-review";
 import type { TrialResult } from "~/lib/packing-slip-trial";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 const id = "00000000-0000-4000-8000-000000000001";
@@ -60,6 +61,19 @@ const draft = (r = result, items = [item]) =>
     items,
   });
 describe("comparison proposals", () => {
+  it("keeps every completed reader's part and quantity evidence for the 90% rule", () => {
+    const astra = { ...result, lines: [{ ...result.lines[0]!, orderItemId: null }] };
+    const terra: TrialResult = { ...result, reader: "terra", model: "terra", lines: [{ ...result.lines[0]!, confidence: { ...result.lines[0]!.confidence, match: { ...score, value: .90 }, quantity: { ...score, value: .90 } } }] };
+    const { review, analysis } = trialDraft({ results: { astra, terra }, reader: "astra", runId: "trial-test-001", versionId: id, userId: "reviewer", items: [item] });
+    const line = review.lines[0]!;
+    expect(analysis.lines[0]!.readings?.map(r => r.reader)).toEqual(["astra", "terra"]);
+    line.orderItemId = item.id;
+    expect(autoConfirmsLine(line, review, analysis, id, [item])).toBe(true);
+    expect(line.checked).toBe(false);
+    expect(line.approved).toBeUndefined();
+    line.humanEdited = true;
+    expect(autoConfirmsLine(line, review, analysis, id, [item])).toBe(false);
+  });
   it("never turns a high confidence result into an approved receipt", () => {
     const { review } = draft();
     expect(review.lines[0]!.approved).toBeUndefined();
@@ -70,6 +84,20 @@ describe("comparison proposals", () => {
     expect(review.lines[0]!.predictionSource?.confidence).toEqual(
       result.lines[0]!.confidence,
     );
+  });
+  it("does not borrow confidence from a similar product without source-row evidence", () => {
+    const astra: TrialResult = { ...result, lines: [{ ...result.lines[0]!, box: null, sku: "P1", description: "Black steel pipe 1 inch", confidence: { ...result.lines[0]!.confidence, match: { ...score, value: .4 } } }] };
+    const terra: TrialResult = { ...result, reader: "terra", lines: [{ ...result.lines[0]!, box: null, sku: "P2", description: "Black steel pipe 2 inch" }] };
+    const { review, analysis } = trialDraft({ results: { astra, terra }, reader: "astra", runId: "trial-test-001", versionId: id, userId: "reviewer", items: [item] });
+    expect(analysis.lines[0]!.readings?.map(r => r.reader)).toEqual(["astra"]);
+    expect(autoConfirmsLine(review.lines[0]!, review, analysis, id, [item])).toBe(false);
+  });
+  it("does not borrow confidence from another source PDF", () => {
+    const astra: TrialResult = { ...result, lines: [{ ...result.lines[0]!, confidence: { ...result.lines[0]!.confidence, match: { ...score, value: .4 } } }] };
+    const terra: TrialResult = { ...result, reader: "terra", sourceSha256: "b".repeat(64) };
+    const { review, analysis } = trialDraft({ results: { astra, terra }, reader: "astra", runId: "trial-test-001", versionId: id, userId: "reviewer", items: [item] });
+    expect(analysis.lines[0]!.readings?.map(r => r.reader)).toEqual(["astra"]);
+    expect(autoConfirmsLine(review.lines[0]!, review, analysis, id, [item])).toBe(false);
   });
   it("refuses to trust an item from outside the linked order", () => {
     const { review } = draft(result, []);

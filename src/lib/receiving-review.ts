@@ -205,9 +205,17 @@ export function defaultReviewUnit(
   orderUnit: string | undefined,
 ) {
   if (line.unit.trim() || !line.orderItemId || !orderUnit?.trim()) return;
+  // A raw count with no printed unit might be pieces, feet, or whole packs.
+  // Only a reviewer-confirmed quantity may inherit a bulk order unit.
+  if (receiptUnit(orderUnit) !== "ea" && !line.humanEdited && !line.checked && !line.approved) {
+    const issue = `Confirm the slip quantity in ${orderUnit}; the printed unit is missing.`;
+    if (!line.issues.includes(issue)) line.issues.push(issue);
+    return;
+  }
   line.unit = orderUnit;
   line.issues = line.issues.filter(
     (issue) =>
+      issue !== `Confirm the slip quantity in ${orderUnit}; the printed unit is missing.` &&
       !/^(?:Earlier reading: )?(?:No unit could be read on the slip\.|Quantity unit is not printed\.|Printed unit is missing or unclear\.|Quantity unit missing or ambiguous\.?$)/i.test(
         issue,
       ),
@@ -311,7 +319,7 @@ export function autoConfirmsLine(
   const item = items.find((i) => i.id === line.orderItemId);
   if (
     !item ||
-    source?.orderItemId !== item.id ||
+    !source ||
     receiptUnit(line.unit) !== receiptUnit(item.unit)
   )
     return false;
@@ -344,6 +352,8 @@ export function autoConfirmsLine(
       !Number.isFinite(reading.quantity)
     )
       return false;
+    // A missing unit cannot establish whether 100 means pieces or boxes.
+    if (!reading.unit?.trim() && receiptUnit(item.unit) !== "ea") return false;
     const quantity = convertSlipQuantity(
       Math.abs(reading.shipped),
       reading.unit?.trim() ? reading.unit : item.unit,

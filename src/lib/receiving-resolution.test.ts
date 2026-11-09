@@ -6,6 +6,7 @@ import {
   invalidateResolution,
   newResolution,
   receivedLineQuantity,
+  receivingLineReady,
   resolutionBlockers,
   resolutionCounterpartFingerprint,
   resolutionEvidenceFingerprint,
@@ -49,6 +50,17 @@ function resolved() {
   return l;
 }
 describe("independent receiving resolutions", () => {
+  it("keeps an unconverted or missing order unit out of the ready-to-approve count", () => {
+    const l = line();
+    expect(receivingLineReady(l, "delivery", item)).toBe(true);
+    expect(receivingLineReady(l, "delivery", { ...item, unit: "box", piecesPerPack: 100 })).toBe(false);
+    expect(receivingLineReady(l, "delivery")).toBe(false);
+    l.unit = "each";
+    expect(receivingLineReady(l, "delivery", item)).toBe(true);
+    l.unit = "";
+    expect(receivingLineReady(l, "delivery", item)).toBe(true);
+    expect(receivingLineReady(l, "delivery", { ...item, unit: "box", piecesPerPack: 100 })).toBe(false);
+  });
   it("invalidates counterpart specification or packaging edits but not routine received progress", () => {
     const l = resolved();
     expect(

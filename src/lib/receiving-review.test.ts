@@ -105,6 +105,21 @@ it("preserves explicit units and unrelated quantity warnings", () => {
   expect(readyLine(line)).toBe(false);
 });
 
+it("keeps unconfirmed unitless pieces from being labelled as boxes", () => {
+  const line: ReceivingLine = { id: "1", page: 1, evidence: "740 clips 100", description: "Clips", sku: "740", unit: "", quantity: 100, ordered: 100, unitPrice: null, orderItemId: "i", issues: [] };
+  defaultReviewUnit(line, "box");
+  defaultReviewUnit(line, "box");
+  expect(line.unit).toBe("");
+  expect(line.quantity).toBe(100);
+  expect(line.issues).toEqual(["Confirm the slip quantity in box; the printed unit is missing."]);
+  expect(readyLine(line)).toBe(false);
+  line.quantity = line.ordered = 1;
+  line.checked = true;
+  defaultReviewUnit(line, "box");
+  expect(line.unit).toBe("box");
+  expect(line.issues).toEqual([]);
+});
+
 
 describe("saved reader auto-confirmation", () => {
   function fixture() {
@@ -224,6 +239,21 @@ describe("saved reader auto-confirmation", () => {
     expect(f.qualifies()).toBe(false);
     f.readings[1]!.shipped = 6;
     f.readings[1]!.orderItemId = "other";
+    expect(f.qualifies()).toBe(false);
+  });
+  it("uses another saved reader when the primary reading did not identify the order item", () => {
+    const f = fixture();
+    f.analysis.lines[0]!.orderItemId = null;
+    expect(f.qualifies()).toBe(true);
+    f.readings[1]!.orderItemId = null;
+    expect(f.qualifies()).toBe(false);
+  });
+  it("does not treat a reader's unknown unit as boxes", () => {
+    const f = fixture();
+    f.item.unit = f.line.unit = "box";
+    f.item.piecesPerPack = 100;
+    f.item.individualUnit = "ea";
+    f.readings[1]!.unit = null;
     expect(f.qualifies()).toBe(false);
   });
   it("compares converted packaging quantities in the order's unit", () => {

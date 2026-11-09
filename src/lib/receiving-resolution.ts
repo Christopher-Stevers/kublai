@@ -140,6 +140,10 @@ export function receivingLineReady(
   return (
     !line.ignored &&
     !!line.orderItemId &&
+    !!item &&
+    item.id === line.orderItemId &&
+    (receiptUnit(line.unit) === receiptUnit(item.unit) ||
+      (!line.unit.trim() && receiptUnit(item.unit) === "ea")) &&
     quantity !== null &&
     Number.isFinite(quantity) &&
     quantity >= 0 &&

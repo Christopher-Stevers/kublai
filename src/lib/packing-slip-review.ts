@@ -1,3 +1,5 @@
+import type { TrialReader } from "./packing-slip-trial";
+
 export type ReceiptOrderItem = {
   jobPriceStatus?: string;
   id: string;
@@ -72,7 +74,7 @@ export type SlipLine = {
 export type SlipBox = { x: number; y: number; width: number; height: number };
 /** One reader's view of a row, kept when a later reader replaces it. */
 export type SlipReading = {
-  reader: "ocr" | "jev" | "terra";
+  reader: TrialReader;
   shipped: number | null;
   unit: string | null;
   orderItemId: string | null;

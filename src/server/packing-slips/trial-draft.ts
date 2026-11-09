@@ -9,10 +9,26 @@ import {
 import {
   alignTrialLines,
   trialDisagreements,
+  trialKey,
   readerLabels,
+  type TrialLine,
   type TrialReader,
   type TrialResults,
 } from "~/lib/packing-slip-trial";
+
+/** Similar descriptions may align for comparison without proving the same paper row. */
+function sameSourceRow(a: TrialLine, b: TrialLine, aLines: TrialLine[], bLines: TrialLine[]) {
+  if (a.page !== b.page) return false;
+  if (a.box && b.box) {
+    const overlap = Math.max(0, Math.min(a.box.y + a.box.height, b.box.y + b.box.height) - Math.max(a.box.y, b.box.y));
+    if (!overlap) return false;
+    if (overlap / Math.max(.001, Math.min(a.box.height, b.box.height)) >= .65) return true;
+  }
+  const sku = trialKey(a.sku);
+  return !!sku && sku === trialKey(b.sku) && [aLines, bLines].every(lines =>
+    lines.filter(line => line.page === a.page && trialKey(line.sku) === sku).length === 1,
+  );
+}
 
 /** Immutable predictions become an editable draft; this function never approves a receipt. */
 export function trialDraft(input: {
@@ -27,9 +43,24 @@ export function trialDraft(input: {
   if (result?.status !== "complete")
     throw Error("This reader has not completed the slip.");
   const issues = new Map<string, string[]>();
+  const readings = new Map<string, NonNullable<SlipAnalysis["lines"][number]["readings"]>>();
   for (const row of alignTrialLines(input.results)) {
     const own = row.lines[input.reader];
-    if (own) issues.set(own.lineId, trialDisagreements(row, input.results));
+    if (own) {
+      issues.set(own.lineId, trialDisagreements(row, input.results));
+      readings.set(own.lineId, Object.entries(row.lines).flatMap(([reader, line]) => {
+        const other = input.results[reader as TrialReader];
+        return other?.status === "complete" && other.sourceSha256 === result.sourceSha256 &&
+          (reader === input.reader || sameSourceRow(own, line, result.lines, other.lines)) ? [{
+          reader: reader as TrialReader,
+          shipped: line.shipped,
+          unit: line.unit,
+          orderItemId: line.orderItemId,
+          match: line.confidence.match.value,
+          quantity: line.confidence.quantity.value,
+        }] : [];
+      }));
+    }
   }
   const analysis: SlipAnalysis = {
     runId: randomUUID(),
@@ -68,6 +99,7 @@ export function trialDraft(input: {
         orderItemId: item?.id ?? null,
         proposed: converted,
         box: l.box ?? undefined,
+        readings: readings.get(l.lineId),
         issues: [
           ...l.issues,
           ...(issues.get(l.lineId) ?? []),
