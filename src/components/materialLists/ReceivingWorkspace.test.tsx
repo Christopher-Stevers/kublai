@@ -267,6 +267,18 @@ it("requires review of a new source version before approving", async () => {
     screen.getByRole("button", { name: "Review & approve" }),
   ).toBeDisabled();
 });
+it("warns when the slip's page numbers show a page that was not scanned", async () => {
+  Object.assign(state.review, { sourceText: "Valve 6\nPage 1 of 2" });
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByText(
+    "The slip is numbered as 2 pages, but page 2 is not in this scan. Scan every page so no lines are missed.",
+  );
+  cleanup();
+  Object.assign(state.review, { sourceText: "Page 1 of 2\nValve 6\nPage 2 of 2" });
+  render(<ReceivingWorkspace jobId="job" />);
+  await screen.findByRole("heading", { name: "Valve" });
+  expect(screen.queryByText(/not in this scan/)).toBeNull();
+});
 it("links a newly chosen order before confirming the slip details", async () => {
   state.review.orderConfirmed = false;
   state.review.kindConfirmed = false;
