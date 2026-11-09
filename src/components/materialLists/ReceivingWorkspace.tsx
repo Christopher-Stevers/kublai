@@ -6,6 +6,7 @@ import { dragScrollVelocity, scrollDragFrame } from "~/lib/drag-scroll";
 import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
+import { missingPagesWarning } from "~/lib/slip-pages";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -544,6 +545,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
   const supporting = r?.duplicateDecision?.action === "supporting";
+  // Text cut at the stored limit may have lost the last page numbers.
+  const missingPages =
+    r?.sourceText && r.sourceText.length < 48000 && a?.status !== "processing"
+      ? missingPagesWarning(r.sourceText)
+      : null;
   const repeat = !!detail?.duplicates.some(
     (d) => !r?.duplicateChecked?.includes(d.key),
   );
@@ -960,6 +966,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 {a.error ? ` ${a.error}` : ""} You can still add its lines
                 yourself.
               </p>
+            </Callout>
+          )}
+          {missingPages && (
+            <Callout>
+              <p>{missingPages}</p>
             </Callout>
           )}
           {sourceChanged && (
