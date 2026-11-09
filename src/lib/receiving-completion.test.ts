@@ -35,3 +35,9 @@ it("does not infer completion for an empty or entirely excluded slip", () => {
   review.lines[0]!.ignored = {reason:"Not an item",by:"user",at:"now"};
   expect(receivingReviewComplete(review, "version")).toBe(false);
 });
+
+it("preserves older posted receipts without an explicit checked field", () => {
+  const review = posted();
+  delete review.lines[0]!.checked;
+  expect(receivingReviewComplete(review, "version")).toBe(true);
+});

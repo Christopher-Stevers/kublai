@@ -2385,3 +2385,11 @@ it("shows Review Complete instead of Approval not ready for fully posted lines w
   expect(screen.getByRole("button", {name:"Approved"})).toBeDisabled();
   expect(posts).toHaveLength(0);
 });
+
+it.each([1, 0])("queue separates unchecked lines from ready receipts (%s unchecked)", async toReview => {
+  navigation.query = "";
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({documents:[{id:"142",name:"Packing slip - 142-Next.pdf",createdAt:"2026-11-08",status:"review",pending:10,toReview,ready:10-toReview,approved:0}]})));
+  render(<ReceivingWorkspace jobId="job" />);
+  expect(await screen.findByText(toReview ? "1 to check" : "10 ready to approve")).toBeInTheDocument();
+  expect(screen.queryByText("10 to check")).not.toBeInTheDocument();
+});

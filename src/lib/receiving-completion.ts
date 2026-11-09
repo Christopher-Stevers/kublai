@@ -13,6 +13,6 @@ export function receivingReviewComplete(review: ReceivingReview | null | undefin
     line.approved.itemId === line.orderItemId &&
     line.approved.quantity === receivedLineQuantity(line) &&
     line.approved.kind === lineKind(line, review.kind) &&
-    line.checked === true &&
+    line.checked !== false && (!review.sourceTrial || line.checked === true) &&
     (!line.resolution?.materialIssue || resolutionBlockers(line, undefined, review.lines, review.kind).length === 0));
 }

@@ -1,3 +1,6 @@
+import { receivingProgress } from "~/lib/receiving-progress";
+import { receivingQueueItems } from "./receiving-queue-items";
+import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
 import { receivingReviewComplete } from "~/lib/receiving-completion";
 import { withSlipTrace } from "./trace";
 import { detectSelectedLine } from "./selected-line";
@@ -72,7 +75,7 @@ import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
 import { slipOrderPairs } from "~/lib/slip-order-pairs";
-import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, pendingOrderResolutions, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
+import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
   message: string,
@@ -229,74 +232,7 @@ export async function receivingOrderComparison(
   };
 }
 
-export async function receivingQueue(
-  access: DocumentAccess,
-  documentId?: string,
-  query = "",
-) {
-  receiveAccess(access);
-  const state = await readWorkspace(access),
-    actor = documentActor(access, []);
-  const folder = state.folders.find(
-    (f) =>
-      f.parentId === null && f.name.toLowerCase().trim() === "packing slips",
-  );
-  const visible = state.documents.filter(
-    (d) =>
-      !d.deletedAt &&
-      (!!d.packingSlip || d.folderId === folder?.id) &&
-      folderRole(state, actor, d.folderId),
-  );
-  const docs = visible
-    .map((d) => {
-      const r = d.receivingReview,
-        a = d.packingSlipAnalysis;
-      const pending = r
-        ? r.lines.filter(
-            (l) =>
-              !l.ignored &&
-              (l.approved?.quantity !== receivedLineQuantity(l) ||
-                l.approved.kind !== lineKind(l, r.kind) ||
-                (!!r.sourceTrial && l.checked !== true)),
-          ).length + pendingOrderResolutions(r)
-        : null;
-      return {
-        id: d.id,
-        name: d.name,
-        createdAt: d.createdAt,
-        createdBy: d.createdBy,
-        order: d.packingSlip,
-        hasSuggestedOrder:
-          !r?.orderConfirmed &&
-          !r?.retiredBy &&
-          r?.duplicateDecision?.action !== "supporting" &&
-          (!!d.packingSlip || !!a?.orderCandidates?.length),
-        status: r?.retiredBy
-          ? "replaced"
-          : r?.duplicateDecision?.action === "supporting"
-            ? "supporting"
-            : a?.status === "processing"
-              ? "processing"
-              : receivingReviewComplete(r, d.currentVersionId) &&
-                  !duplicateList(state, d).some(duplicate => !r?.duplicateChecked?.includes(duplicate.key))
-                ? "complete"
-                : a?.applied && !r
-                  ? "complete"
-                  : "review",
-        pending,
-        approved:
-          r?.lines.filter((l) => l.approved).length ??
-          (a?.applied ? Object.keys(a.applied.quantities).length : 0),
-        reviewTrialRunId: r?.sourceTrial?.runId,
-      };
-    })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  if (!documentId) return { documents: docs };
-  const doc = accessibleDocument(state, actor, documentId),
-    review = ensure(doc, access.user.id);
-  const linked = doc.packingSlip
-    ? await orderSnapshot(db, access, doc.packingSlip.orderId)
-    : [];
+function prepareReceivingLines(review: ReceivingReview, doc: JobDocument, linked: ReceiptOrderItem[]) {
   for (const line of review.lines) {
     defaultReviewUnit(
       line,
@@ -322,6 +258,75 @@ export async function receivingQueue(
       linked,
     );
   }
+}
+
+export async function receivingQueue(
+  access: DocumentAccess,
+  documentId?: string,
+  query = "",
+) {
+  receiveAccess(access);
+  const state = await readWorkspace(access),
+    actor = documentActor(access, []);
+  const folder = state.folders.find(
+    (f) =>
+      f.parentId === null && f.name.toLowerCase().trim() === "packing slips",
+  );
+  const visible = state.documents.filter(
+    (d) =>
+      !d.deletedAt &&
+      (!!d.packingSlip || d.folderId === folder?.id) &&
+      folderRole(state, actor, d.folderId),
+  );
+  const queueItems = await receivingQueueItems(access, visible.flatMap(d => d.receivingReview && d.packingSlip ? [d.packingSlip.orderId] : []));
+  const docs = visible
+    .map((d) => {
+      const r = d.receivingReview ? structuredClone(d.receivingReview) : undefined,
+        a = d.packingSlipAnalysis;
+      const items = queueItems.get(d.packingSlip?.orderId ?? "") ?? [];
+      if (r) prepareReceivingLines(r, d, items);
+      const progress = r ? receivingProgress(r, items) : null;
+      const pending = progress?.pending ?? null;
+      return {
+        id: d.id,
+        name: d.name,
+        createdAt: d.createdAt,
+        createdBy: d.createdBy,
+        order: d.packingSlip,
+        hasSuggestedOrder:
+          !r?.orderConfirmed &&
+          !r?.retiredBy &&
+          r?.duplicateDecision?.action !== "supporting" &&
+          (!!d.packingSlip || !!a?.orderCandidates?.length),
+        status: r?.retiredBy
+          ? "replaced"
+          : r?.duplicateDecision?.action === "supporting"
+            ? "supporting"
+            : a?.status === "processing"
+              ? "processing"
+              : receivingReviewComplete(r, d.currentVersionId) &&
+                  !duplicateList(state, d).some(duplicate => !r?.duplicateChecked?.includes(duplicate.key))
+                ? "complete"
+                : a?.applied && !r
+                  ? "complete"
+                  : "review",
+        pending,
+        toReview: progress?.toReview ?? null,
+        ready: progress?.ready.length ?? 0,
+        approved:
+          r?.lines.filter((l) => l.approved).length ??
+          (a?.applied ? Object.keys(a.applied.quantities).length : 0),
+        reviewTrialRunId: r?.sourceTrial?.runId,
+      };
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!documentId) return { documents: docs };
+  const doc = accessibleDocument(state, actor, documentId),
+    review = ensure(doc, access.user.id);
+  const linked = doc.packingSlip
+    ? await orderSnapshot(db, access, doc.packingSlip.orderId)
+    : [];
+  prepareReceivingLines(review, doc, linked);
   const [
     supplierOptions,
     catalogOptions,

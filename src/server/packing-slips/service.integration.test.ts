@@ -1065,6 +1065,21 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     expect(resolution.match).toBe("unresolved");
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
+  it("counts checked lines as ready instead of checks still required", async () => {
+    const f = await confirmedHeader();
+    const original = (await workspace()).documents[0]!.receivingReview!.lines[0]!;
+    await reviewAction(f.access,f.doc.documentId,{action:"line",lineId:original.id,description:original.description,sku:original.sku,quantity:6,ordered:10,unit:"ea",unitPrice:null,orderItemId:id(6),checked:true});
+    for (let n = 0; n < 9; n++) {
+      await reviewAction(f.access,f.doc.documentId,{action:"addLine",page:1,description:`Extra row ${n}`});
+      const l = (await workspace()).documents[0]!.receivingReview!.lines.at(-1)!;
+      await reviewAction(f.access,f.doc.documentId,{action:"line",lineId:l.id,description:l.description,sku:"",quantity:n===8?null:1,ordered:1,unit:"ea",unitPrice:null,orderItemId:id(6),checked:n!==8});
+    }
+    const queue = (await receivingQueue(f.access)).documents.find(d=>d.id===f.doc.documentId)!;
+    expect(queue).toMatchObject({pending:10,toReview:1,ready:9,status:"review"});
+    const detail = await receivingQueue(f.access, f.doc.documentId);
+    expect(detail.documents.find(d=>d.id===f.doc.documentId)).toMatchObject({toReview:1,ready:9});
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("shows fully posted receipts as complete even when the document checkbox is cleared", async () => {
     const f = await confirmedHeader();
     await resolveAction(f, allResolved);

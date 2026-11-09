@@ -1,4 +1,5 @@
 "use client";
+import { receivingProgress } from "~/lib/receiving-progress";
 import { receivingReviewComplete } from "~/lib/receiving-completion";
 import { receivingRequest, receivingResponse } from "~/lib/receiving-request";
 import { confirmAction } from "~/components/ui/app-dialogs";
@@ -20,7 +21,6 @@ import {
 import { useLongPressDrag, type DragPoint } from "~/hooks/use-long-press-drag";
 import {
   receivedLineQuantity,
-  pendingOrderResolutions,
   resolutionEvidenceFingerprint,
   resolutionCounterpartFingerprint,
   resolutionBlockers,
@@ -132,6 +132,8 @@ type Entry = {
   order?: JobDocument["packingSlip"];
   status: string;
   pending: number | null;
+  toReview?: number | null;
+  ready?: number;
   approved: number;
   reviewTrialRunId?: string;
   hasSuggestedOrder?: boolean;
@@ -309,9 +311,11 @@ function slipState(d: Entry) {
   if (d.status === "review")
     return d.hasSuggestedOrder
       ? { label: "Confirm order", tone: sky.text }
-      : d.pending
-        ? { label: `${d.pending} to check`, tone: amber.text }
-        : { label: "Needs review", tone: amber.text };
+      : (d.toReview ?? d.pending)
+        ? { label: `${d.toReview ?? d.pending} to check`, tone: amber.text }
+        : d.ready
+          ? { label: `${d.ready} ready to approve`, tone: sky.text }
+          : { label: "Needs review", tone: amber.text };
   if (d.status === "complete")
     return {
       label: "Done",
@@ -526,22 +530,10 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   };
   const r = detail?.review,
     a = detail?.document.packingSlipAnalysis;
-  const ready =
-    r?.lines.filter((l) =>
-      approvable(
-        l,
-        r.kind,
-        detail?.items.find((i) => i.id === l.orderItemId),
-        r.lines,
-      ),
-    ) ?? [];
-  const remaining =
-    (r?.lines.filter(
-      (l) =>
-        !l.ignored &&
-        (changed(l, r.kind) || (!!r.sourceTrial && l.checked !== true) || (!!l.resolution?.materialIssue && resolutionBlockers(l, detail?.items.find(i => i.id === l.orderItemId), r.lines, r.kind).length > 0)),
-    ).length ?? 0) + (r ? pendingOrderResolutions(r) : 0);
-  const active = r?.lines.filter((l) => !l.ignored).length ?? 0;
+  const reviewProgress = r ? receivingProgress(r, detail?.items ?? []) : null;
+  const ready = reviewProgress?.ready ?? [];
+  const remaining = reviewProgress?.pending ?? 0;
+  const active = reviewProgress?.active ?? 0;
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
   const supporting = r?.duplicateDecision?.action === "supporting";
@@ -1147,8 +1139,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                         ? "Not needed for a repeat scan."
                         : "After the order is confirmed."
                       : [
-                          active - remaining &&
-                            `${active - remaining} approved`,
+                          reviewProgress?.approved &&
+                            `${reviewProgress.approved} approved`,
                           ready.length && `${ready.length} ready`,
                           remaining - ready.length &&
                             `${remaining - ready.length} to review`,
@@ -1164,7 +1156,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           <div
                             className="bg-emerald-500 transition-[width] motion-reduce:transition-none"
                             style={{
-                              width: `${((active - remaining) / active) * 100}%`,
+                              width: `${((reviewProgress?.approved ?? 0) / active) * 100}%`,
                             }}
                           />
                           <div
