@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { dragScrollVelocity } from "./drag-scroll";
+import { describe, expect, it, vi } from "vitest";
+import { dragScrollVelocity, scrollDragFrame } from "./drag-scroll";
 
 describe("drag edge scrolling", () => {
   it("starts near the edge and accelerates toward it in either direction", () => {
@@ -18,4 +18,14 @@ describe("drag edge scrolling", () => {
     expect(dragScrollVelocity(200, 100, 300)).toBe(0);
     expect(dragScrollVelocity(200, 300, 100)).toBe(0);
   });
+});
+
+it("bypasses CSS smooth scrolling on every drag frame in either direction", () => {
+  const target = { scrollBy: vi.fn() };
+  scrollDragFrame(target, 48);
+  scrollDragFrame(target, -32);
+  expect(target.scrollBy.mock.calls).toEqual([
+    [{ top: 48, left: 0, behavior: "instant" }],
+    [{ top: -32, left: 0, behavior: "instant" }],
+  ]);
 });

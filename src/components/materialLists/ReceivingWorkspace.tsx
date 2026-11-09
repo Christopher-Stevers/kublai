@@ -1,7 +1,7 @@
 "use client";
 import { confirmAction } from "~/components/ui/app-dialogs";
 import type { SupplierPartLinkApproval, SupplierPartLinkConflict } from "~/lib/supplier-part-link";
-import { dragScrollVelocity } from "~/lib/drag-scroll";
+import { dragScrollVelocity, scrollDragFrame } from "~/lib/drag-scroll";
 import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
@@ -2658,8 +2658,7 @@ function OrderComparison({
         );
         if (speed) {
           const by = speed * elapsed;
-          if (scroller) scroller.scrollBy(0, by);
-          else window.scrollBy(0, by);
+          scrollDragFrame(scroller ?? window, by);
           if (grabbed.current) positionHalf(at, grabbed.current.start);
           const over = dropTarget(at),
             d = grabbed.current;

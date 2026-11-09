@@ -9,3 +9,9 @@ export function dragScrollVelocity(y: number, top: number, bottom: number) {
   if (depth <= 0) return 0;
   return (upper > lower ? -1 : 1) * 3000 * Math.pow(Math.min(1, depth), 1.5);
 }
+
+/** Animation frames already provide smooth motion. Browser easing would restart
+ * on every frame, making continuous dragging crawl under scroll-behavior:smooth. */
+export function scrollDragFrame(target: Pick<Window, "scrollBy"> | Pick<HTMLElement, "scrollBy">, pixels: number) {
+  target.scrollBy({ top: pixels, left: 0, behavior: "instant" });
+}
