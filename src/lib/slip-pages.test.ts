@@ -1,5 +1,10 @@
 import { expect, it } from "vitest";
-import { missingPagesWarning, slipPageNumbers } from "./slip-pages";
+import {
+  missingPagesNote,
+  missingPagesWarning,
+  slipPageNumbers,
+  wholeSavedText,
+} from "./slip-pages";
 
 it("reads the printed page number formats suppliers use", () => {
   for (const text of [
@@ -46,4 +51,24 @@ it("checks two slips in one scan apart", () => {
 it("trusts the scanned page count over a page number it could not read", () => {
   expect(missingPagesWarning("Page 1 of 2", 2)).toBeNull();
   expect(missingPagesWarning("Page 1 of 2", 1)).not.toBeNull();
+});
+
+it("names missing pages briefly for list rows", () => {
+  expect(missingPagesNote("Page 1 of 3\nPage 3 of 3")).toBe(
+    "Page 2 of 3 not scanned",
+  );
+  expect(missingPagesNote("Page 1 of 4")).toBe(
+    "Pages 2, 3 and 4 of 4 not scanned",
+  );
+  expect(missingPagesNote("Page 1 of 1\nPage 2 of 2")).toBe(
+    "Page 1 of 2 not scanned",
+  );
+  expect(missingPagesNote("Page 1 of 2\nPage 2 of 2")).toBeNull();
+  expect(missingPagesNote("Page 1 of 2", 2)).toBeNull();
+});
+
+it("only trusts saved text that was not cut short", () => {
+  expect(wholeSavedText("Page 1 of 2")).toBe("Page 1 of 2");
+  expect(wholeSavedText("x".repeat(48000))).toBeNull();
+  expect(wholeSavedText(undefined)).toBeNull();
 });

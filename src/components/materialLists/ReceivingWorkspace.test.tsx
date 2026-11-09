@@ -637,6 +637,7 @@ it("lists slips to review with one next step each, suggested orders first", asyn
                 pending: 2,
                 approved: 0,
                 hasSuggestedOrder: false,
+                missingPages: "Page 2 of 3 not scanned",
               },
               {
                 id: "suggested",
@@ -669,6 +670,8 @@ it("lists slips to review with one next step each, suggested orders first", asyn
   ]);
   expect(rows()[0]).toHaveTextContent("PO-7");
   expect(rows()[0]).toHaveTextContent("Confirm order");
+  expect(rows()[1]).toHaveTextContent("Page 2 of 3 not scanned");
+  expect(rows()[0]).not.toHaveTextContent("not scanned");
   expect(rows()[0]).toHaveAttribute(
     "href",
     "/jobs/job/receiving?document=suggested",

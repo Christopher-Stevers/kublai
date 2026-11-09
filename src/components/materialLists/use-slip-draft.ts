@@ -10,7 +10,7 @@ import {
 import type { PackingSlipLink } from "~/server/documents/types";
 
 export type DraftSlip = {
-  receivingReview?:{pending:number;complete:boolean;retired:boolean};
+  receivingReview?:{pending:number;complete:boolean;retired:boolean;missingPages?:string|null};
   id: string;
   name: string;
   createdAt: string;

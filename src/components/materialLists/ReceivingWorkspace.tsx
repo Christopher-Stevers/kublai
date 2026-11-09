@@ -8,7 +8,7 @@ import { dragScrollVelocity, scrollDragFrame } from "~/lib/drag-scroll";
 import { DeletePackingSlipButton } from "./DeletePackingSlipButton";
 import { FileComparison } from "~/components/jobs/FileComparison";
 import { slipBackorderCheck } from "~/lib/slip-backorder-check";
-import { missingPagesWarning } from "~/lib/slip-pages";
+import { missingPagesWarning, readSlipText } from "~/lib/slip-pages";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -138,6 +138,7 @@ type Entry = {
   approved: number;
   reviewTrialRunId?: string;
   hasSuggestedOrder?: boolean;
+  missingPages?: string | null;
 };
 type Option = { id: string; name: string };
 type Part = {
@@ -538,11 +539,8 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const sourceChanged =
     !!r && r.versionId !== detail?.document.currentVersionId;
   const supporting = r?.duplicateDecision?.action === "supporting";
-  // Text cut at the stored limit may have lost the last page numbers.
-  const missingPages =
-    r?.sourceText && r.sourceText.length < 48000 && a?.status !== "processing"
-      ? missingPagesWarning(r.sourceText)
-      : null;
+  const savedText = readSlipText(r, a);
+  const missingPages = savedText ? missingPagesWarning(savedText) : null;
   const repeat = !!detail?.duplicates.some(
     (d) => !r?.duplicateChecked?.includes(d.key),
   );
@@ -902,6 +900,11 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                       {d.order?.orderNumber ?? "No order yet"} ·{" "}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </span>
+                    {d.missingPages && (
+                      <span className={`block truncate text-sm ${amber.text}`}>
+                        {d.missingPages}
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`shrink-0 text-right text-sm ${slipState(d).tone}`}

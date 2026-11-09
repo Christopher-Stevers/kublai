@@ -433,7 +433,7 @@ export default function PackingSlipScanner({
         {pages.length > 0 && (
           <Button key="finish" variant="outline" disabled={processing} onClick={() => setMode("review")}>
             <CheckIcon />
-            Finish with {pages.length} pages
+            Finish with {pages.length} {pages.length === 1 ? "page" : "pages"}
           </Button>
         )}
         {/* Second only to capturing: the page's way to the waiting slips. */}
@@ -654,7 +654,8 @@ export default function PackingSlipScanner({
       )}
       {inline && mode === "camera" && pages.length > 0 && (
         <Button disabled={processing} onClick={() => setMode("review")}>
-          Finish with {pages.length} captured pages
+          Finish with {pages.length} captured{" "}
+          {pages.length === 1 ? "page" : "pages"}
         </Button>
       )}
       {inline && mode !== "saving" && mode !== "saved" && (

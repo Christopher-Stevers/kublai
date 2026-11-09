@@ -76,6 +76,7 @@ import { matchConfidence } from "./match-confidence";
 import type { RankedOrderMatch, OrderMatchComparison } from "~/lib/order-match-comparison";
 import { slipReceipts, type ItemReceipts } from "~/lib/receipt-sources";
 import { slipOrderPairs } from "~/lib/slip-order-pairs";
+import { missingPagesAfterReading } from "~/lib/slip-pages";
 import { allocationOwnershipValid, assertAllocation, hasActiveAllocationDescendant, invalidateResolution, newResolution, receivedLineQuantity, resolutionBlockers, resolutionCounterpartFingerprint, resolutionEvidenceFingerprint } from "~/lib/receiving-resolution";
 type Tx = Parameters<Parameters<typeof mutateWorkspace>[2]>[3];
 const fail = (
@@ -318,6 +319,7 @@ export async function receivingQueue(
           r?.lines.filter((l) => l.approved).length ??
           (a?.applied ? Object.keys(a.applied.quantities).length : 0),
         reviewTrialRunId: r?.sourceTrial?.runId,
+        missingPages: missingPagesAfterReading(r, a),
       };
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

@@ -444,7 +444,7 @@ export function SlipVerifyBar({
   const [open, setOpen] = useState(false);
   const order =
     showOrder && draft.orderNumber ? ` for ${draft.orderNumber}` : "";
-  if(draft.reviewDoc)return <section className="mb-3 border-y py-3 text-sm"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">Packing slip{order}</p><p className="text-muted-foreground">{draft.reading?'Reading in the background…':`${draft.reviewDoc.receivingReview?.pending??0} lines to review`}</p></div><Button asChild variant="outline"><Link href={receivingReviewHref(jobId, draft.reviewDoc.id, materialListId)}>Review & approve</Link></Button></div></section>;
+  if(draft.reviewDoc)return <section className="mb-3 border-y py-3 text-sm"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">Packing slip{order}</p><p className="text-muted-foreground">{draft.reading?'Reading in the background…':`${draft.reviewDoc.receivingReview?.pending??0} lines to review`}</p>{!draft.reading&&draft.reviewDoc.receivingReview?.missingPages&&<p className="text-amber-800 dark:text-amber-300">{draft.reviewDoc.receivingReview.missingPages}</p>}</div><Button asChild variant="outline"><Link href={receivingReviewHref(jobId, draft.reviewDoc.id, materialListId)}>Review & approve</Link></Button></div></section>;
   if (!draft.slip) {
     return <SlipProcessingProgress analysis={draft.tracking} order={order} />;
   }

@@ -188,7 +188,12 @@ it("keeps modern reviews in the queue and does not overlay unapproved quantities
               orderNumber: "PO-155",
             },
             packingSlipAnalysis: analysis,
-            receivingReview: { pending: 2, complete: false, retired: false },
+            receivingReview: {
+              pending: 2,
+              complete: false,
+              retired: false,
+              missingPages: "Page 2 of 2 not scanned",
+            },
           },
         ],
       }),
@@ -196,6 +201,7 @@ it("keeps modern reviews in the queue and does not overlay unapproved quantities
   );
   render(<List />);
   await screen.findByText("2 lines to review");
+  expect(screen.getByText("Page 2 of 2 not scanned")).toBeInTheDocument();
   expect(screen.queryByText("Slip +6")).not.toBeInTheDocument();
   expect(
     screen.getByRole("link", { name: "Review & approve" }),

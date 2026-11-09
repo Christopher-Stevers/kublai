@@ -30,23 +30,42 @@ const list = (pages: number[]) =>
     ? `page ${pages[0]}`
     : `pages ${pages.slice(0, -1).join(", ")} and ${pages.at(-1)}`;
 
+/** A review keeps its slip text cut at this length, so later page numbers may be lost. */
+export const SAVED_TEXT_LIMIT = 48000;
+
+/** Text a review saved, when it is whole enough to say a page is missing. */
+export const wholeSavedText = (text?: string | null) =>
+  text && text.length < SAVED_TEXT_LIMIT ? text : null;
+
+/** The review's saved text once the slip has been read, if whole. */
+export const readSlipText = (
+  review?: { sourceText?: string } | null,
+  analysis?: { status: string } | null,
+) =>
+  analysis?.status === "processing" ? null : wholeSavedText(review?.sourceText);
+
 /**
- * A warning when the printed page numbers show a page that is not in the scan.
- * With the scanned page count, a misread number on a page that is there
- * raises nothing.
+ * Groups with a numbered page not in the scan. With the scanned page count,
+ * a misread number on a page that is there raises nothing.
  */
-export function missingPagesWarning(
-  text: string,
-  scanned?: number,
-): string | null {
+function missingGroups(text: string, scanned?: number) {
   const groups = slipPageNumbers(text);
   const short = groups.filter((group) => group.missing.length);
-  if (!short.length) return null;
   if (
     scanned !== undefined &&
     scanned >= groups.reduce((n, group) => n + group.total, 0)
   )
-    return null;
+    return [];
+  return short;
+}
+
+/** A warning when the printed page numbers show a page that is not in the scan. */
+export function missingPagesWarning(
+  text: string,
+  scanned?: number,
+): string | null {
+  const short = missingGroups(text, scanned);
+  if (!short.length) return null;
   return short
     .map(
       ({ total, missing }) =>
@@ -54,4 +73,25 @@ export function missingPagesWarning(
     )
     .concat("Scan every page so no lines are missed.")
     .join(" ");
+}
+
+/** The same, short enough for a list row: "Page 2 of 3 not scanned". */
+export function missingPagesNote(text: string, scanned?: number) {
+  const short = missingGroups(text, scanned);
+  if (!short.length) return null;
+  return short
+    .map(({ total, missing }) => {
+      const pages = list(missing);
+      return `${pages[0]!.toUpperCase()}${pages.slice(1)} of ${total} not scanned`;
+    })
+    .join("; ");
+}
+
+/** The short note for a review, for queue rows and the material list. */
+export function missingPagesAfterReading(
+  review?: { sourceText?: string } | null,
+  analysis?: { status: string } | null,
+) {
+  const text = readSlipText(review, analysis);
+  return text ? missingPagesNote(text) : null;
 }
