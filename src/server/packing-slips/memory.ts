@@ -1,7 +1,7 @@
 /** What earlier confirmed deliveries from the same supplier teach the reader:
- * which supplier codes are which products, and whether their slips print
- * totals. Derived from the confirmation records already kept for review, so
- * nothing new is stored. A code is learned only from a line the user linked
+ * which supplier codes are which products, whether their slips print
+ * totals, and where they print the quantity columns. Derived from the
+ * confirmation records already kept for review, so nothing new is stored. A code is learned only from a line the user linked
  * by hand, or whose prefilled quantity they confirmed unchanged, and only
  * when it always meant the same product. */
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -13,6 +13,7 @@ import {
 } from "~/server/db/schema";
 import type { db as Db } from "~/server/db";
 import { normalizeSku } from "./match";
+import type { LearnedColumns } from "./vision";
 
 const confirmed = z.object({
   lines: z.array(
@@ -24,9 +25,54 @@ const confirmed = z.object({
     }),
   ),
   applied: z.object({ quantities: z.record(z.string(), z.number()) }),
-  layout: z.object({ footer: z.boolean() }).optional(),
+  layout: z
+    .object({
+      footer: z.boolean(),
+      // A record it cannot read loses only the columns, not the slip.
+      columns: z
+        .partialRecord(
+          z.enum(["shipped", "ordered", "backordered"]),
+          z.object({ left: z.number(), right: z.number() }),
+        )
+        .optional()
+        .catch(undefined),
+    })
+    .optional(),
 });
 export type ConfirmedSlip = z.infer<typeof confirmed>;
+
+/** Slips agree on a column whose middles are within this of each other. */
+const AGREE = 0.02;
+function median(ns: number[]) {
+  const sorted = [...ns].sort((a, b) => a - b),
+    half = sorted.length / 2;
+  return sorted.length % 2
+    ? sorted[Math.floor(half)]!
+    : (sorted[half - 1]! + sorted[half]!) / 2;
+}
+
+/** Where the latest slips, newest first, printed each quantity column, once
+ * two of the last three that showed it agree. One misread slip among them
+ * is outvoted; a supplier that changed its form teaches nothing until two
+ * of its new slips agree. */
+export function learnedColumns(
+  layouts: Array<NonNullable<ConfirmedSlip["layout"]>>,
+): LearnedColumns | undefined {
+  const out: LearnedColumns = {};
+  const middle = (c: { left: number; right: number }) => (c.left + c.right) / 2;
+  for (const field of ["shipped", "ordered", "backordered"] as const) {
+    const seen = layouts.flatMap((l) => l.columns?.[field] ?? []).slice(0, 3);
+    const agreeing = seen
+      .map((c) => seen.filter((o) => Math.abs(middle(o) - middle(c)) <= AGREE))
+      .sort((a, b) => b.length - a.length)[0];
+    if (!agreeing || agreeing.length < 2) continue;
+    out[field] = {
+      left: median(agreeing.map((c) => c.left)),
+      right: median(agreeing.map((c) => c.right)),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 
 /** Code → order item ids it was confirmed as, from accepted lines only. */
 export function acceptedCodes(slips: ConfirmedSlip[]) {
@@ -79,7 +125,11 @@ export async function supplierMemory(
   db: typeof Db,
   organizationId: string,
   orderId: string,
-): Promise<{ known: Record<string, string[]>; expectFooter: boolean }> {
+): Promise<{
+  known: Record<string, string[]>;
+  expectFooter: boolean;
+  columns?: LearnedColumns;
+}> {
   const none = { known: {}, expectFooter: false };
   const [order] = await db
     .select({ supplierId: orders.supplierId })
@@ -154,8 +204,10 @@ export async function supplierMemory(
     if (codes) known[item.id] = codes;
   }
   const layouts = slips.flatMap((s) => (s.layout ? [s.layout] : []));
+  const columns = learnedColumns(layouts);
   return {
     known,
     expectFooter: layouts.length >= 2 && layouts.every((l) => l.footer),
+    ...(columns ? { columns } : {}),
   };
 }

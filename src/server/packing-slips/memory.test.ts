@@ -1,7 +1,12 @@
 // @vitest-environment node
 import sharp from "sharp";
 import { expect, it } from "vitest";
-import { acceptedCodes, codesByPart, type ConfirmedSlip } from "./memory";
+import {
+  acceptedCodes,
+  codesByPart,
+  learnedColumns,
+  type ConfirmedSlip,
+} from "./memory";
 import { measurePage, qualityWarnings } from "./page-quality";
 
 const line = (
@@ -44,6 +49,36 @@ it("drops codes that meant different products", () => {
     parts,
   );
   expect(Object.fromEntries(byPart)).toEqual({ p1: ["SUP100"] });
+});
+
+it("learns where a supplier prints its quantity columns once two of its last three slips agree", () => {
+  const at = (left: number, right: number) => ({ left, right });
+  const layout = (
+    columns: NonNullable<ConfirmedSlip["layout"]>["columns"],
+  ) => ({ footer: true, columns });
+  // Newest first. The third slip's shipped column was misread; the fourth
+  // is older than the last three that showed it.
+  const learned = learnedColumns([
+    layout({ shipped: at(0.73, 0.79), backordered: at(0.8, 0.88) }),
+    layout({ shipped: at(0.72, 0.78) }),
+    layout({ shipped: at(0.5, 0.56), backordered: at(0.81, 0.89) }),
+    layout({ shipped: at(0.1, 0.2) }),
+  ]);
+  expect(Object.keys(learned ?? {}).sort()).toEqual(["backordered", "shipped"]);
+  expect(learned?.shipped?.left).toBeCloseTo(0.725);
+  expect(learned?.shipped?.right).toBeCloseTo(0.785);
+  expect(learned?.backordered?.left).toBeCloseTo(0.805);
+  expect(learned?.backordered?.right).toBeCloseTo(0.885);
+  // One slip, slips that disagree, or slips from before columns were kept,
+  // teach nothing.
+  expect(learnedColumns([layout({ shipped: at(0.72, 0.78) })])).toBeUndefined();
+  expect(
+    learnedColumns([
+      layout({ shipped: at(0.72, 0.78) }),
+      layout({ shipped: at(0.5, 0.56) }),
+    ]),
+  ).toBeUndefined();
+  expect(learnedColumns([{ footer: true }, { footer: false }])).toBeUndefined();
 });
 
 it("warns about blurry or dark pages but not a clean one", async () => {

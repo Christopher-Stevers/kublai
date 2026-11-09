@@ -589,6 +589,88 @@ export function lackedColumns(answers: Record<string, VisionAnswer>) {
     .map((c) => c.field);
 }
 
+/** Where a supplier's earlier slips printed their quantity columns, across
+ * the page. */
+export type LearnedColumns = Partial<
+  Record<keyof QuantityColumns, { left: number; right: number }>
+>;
+/** Found again on the same form, a column's middle sat within this of
+ * where it was before in testing. */
+const LEARNED_NEAR = 0.02;
+const middle = (c: { left: number; right: number }) => (c.left + c.right) / 2;
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/** Where Jev missed a column the supplier's earlier slips printed, their
+ * place for it stands in. Only on a page set out like them: every other
+ * column found where they had it, and one at least, or the OCR's heading
+ * words where they had this one. A page lacking a column they printed, as
+ * a docket lacks all but its QTY, is not. Columns Jev found are kept as
+ * found: moving them to the earlier place helped no page in testing. */
+export function withLearned(
+  columns: Partial<Record<keyof QuantityColumns, Column>>,
+  learned: LearnedColumns | undefined,
+  words: SlipRow["words"],
+  header: Edges | undefined,
+  lacked: string[],
+): Partial<Record<keyof QuantityColumns, Column>> {
+  const fields = QUANTITY_FIELDS.filter((f) => learned?.[f]);
+  const found = Object.values(columns);
+  const top = found.length ? Math.min(...found.map((c) => c.top)) : header?.top,
+    bottom = found.length
+      ? Math.max(...found.map((c) => c.bottom))
+      : header?.bottom;
+  if (!learned || !fields.length || top === undefined || bottom === undefined)
+    return columns;
+  const near = (f: keyof QuantityColumns) => {
+    const c = columns[f];
+    return !!c && Math.abs(middle(c) - middle(learned[f]!)) <= LEARNED_NEAR;
+  };
+  /** The column the OCR's heading words name where the earlier slips had
+   * this one: null where it read none, "column" where they name no one
+   * column, as QTY does not. */
+  const titles = (f: keyof QuantityColumns) => {
+    const l = learned[f]!;
+    const heads = words.flatMap((w) => {
+      const x = w.x + w.width / 2,
+        y = w.y + w.height / 2;
+      const word = headingWord(w.text);
+      return word &&
+        y >= top - 0.01 &&
+        y <= bottom + 0.01 &&
+        x >= l.left &&
+        x <= l.right
+        ? [word]
+        : [];
+    });
+    return heads.length ? (headingField(heads) ?? "column") : null;
+  };
+  // The page is set out otherwise where it lacks a column the earlier
+  // slips printed, shows one elsewhere, or shows another column's heading
+  // where they had one.
+  if (
+    fields.some(
+      (f) =>
+        lacked.includes(f) ||
+        (!!columns[f] && !near(f)) ||
+        ![null, "column", f].includes(titles(f)),
+    )
+  )
+    return columns;
+  const out = { ...columns };
+  for (const f of fields) {
+    const l = learned[f]!;
+    if (
+      columns[f] ||
+      !(titles(f) !== null || fields.some((o) => o !== f && near(o))) ||
+      // Never over another column the page shows.
+      found.some((o) => middle(l) > o.left && middle(l) < o.right)
+    )
+      continue;
+    out[f] = { top, bottom, left: l.left, right: l.right };
+  }
+  return out;
+}
+
 /** Table lines split mid-item (no next line number) are joined back up. */
 export function bandsFromTable(lines: SlipLine[]): Band[] {
   const bands: Array<Band & { num: number | null }> = [];
@@ -726,6 +808,8 @@ export async function readSlipImages(input: {
   known?: Record<string, string[]>;
   /** This supplier's earlier slips all printed totals. */
   expectFooter?: boolean;
+  /** Where this supplier's earlier slips printed their quantity columns. */
+  columns?: LearnedColumns;
 }) {
   const { pages, rows, items, ask = askJev } = input;
   // Full-page preparation is shared by layout, footer and coverage checks.
@@ -1020,12 +1104,18 @@ export async function readSlipImages(input: {
       const png = pages[band.page - 1]!;
       const titled = headingsFor(info),
         titles = pages[titled.page - 1]!;
-      const columns = snapColumns(
-          quantityColumns(titled.answers),
-          rows.filter((r) => r.page === titled.page).flatMap((r) => r.words),
-        ),
+      const words = rows
+          .filter((r) => r.page === titled.page)
+          .flatMap((r) => r.words),
         lacked: string[] = lackedColumns(titled.answers);
       const boxed = edges(titled.answers.header);
+      const columns = withLearned(
+        snapColumns(quantityColumns(titled.answers), words),
+        input.columns,
+        words,
+        boxed,
+        lacked,
+      );
       // Jev's box for the headings may stop short of quantity columns it
       // found on the page; then it is widened to take them in.
       const outside = boxed
@@ -1410,6 +1500,25 @@ export async function readSlipImages(input: {
     warnings.push(
       "This supplier's slips usually print totals at the bottom, but none were found. Check that no page is missing or cut off.",
     );
+  // Remembered for the supplier's next slips: the columns as this slip
+  // showed them, not as earlier slips had them.
+  const first = headed[0];
+  const shown = first
+    ? Object.entries(
+        snapColumns(
+          quantityColumns(first.answers),
+          rows.filter((r) => r.page === first.page).flatMap((r) => r.words),
+        ),
+      )
+    : [];
+  const printedColumns = shown.length
+    ? Object.fromEntries(
+        shown.map(([f, c]) => [
+          f,
+          { left: round3(c.left), right: round3(c.right) },
+        ]),
+      )
+    : undefined;
   const headers = pageInfo.flatMap(({ page, answers }) => {
     const h = edges(answers.header);
     return h && bands.some((b) => b.page === page)
@@ -1430,7 +1539,7 @@ export async function readSlipImages(input: {
     lines,
     warnings,
     headers,
-    layout: { footer },
+    layout: { footer, ...(printedColumns ? { columns: printedColumns } : {}) },
     model: `${VISION_MODEL} (images)`,
     /** Only the targets were read; otherwise every line was. */
     targeted: !!targets,

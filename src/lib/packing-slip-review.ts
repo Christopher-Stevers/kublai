@@ -179,7 +179,16 @@ export type SlipAnalysis = {
   /** Column header outline per page, shown above slip line images. */
   headers?: Array<{ page: number; box: SlipBox; printedOn?: number }>;
   /** What the slip looked like; remembered per supplier. */
-  layout?: { footer: boolean };
+  layout?: {
+    footer: boolean;
+    /** Where the quantity columns printed, across the page. */
+    columns?: Partial<
+      Record<
+        "shipped" | "ordered" | "backordered",
+        { left: number; right: number }
+      >
+    >;
+  };
   /** Original receipt items survive clearing or rerunning detection. */
   confirmedItems?: ReceiptOrderItem[];
   applied?: {

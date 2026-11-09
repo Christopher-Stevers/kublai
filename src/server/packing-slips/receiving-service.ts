@@ -659,6 +659,10 @@ async function history(
         ]),
       ),
     },
+    // What the slip looked like, so the supplier's next slips are read the same way.
+    ...(doc.packingSlipAnalysis?.layout
+      ? { layout: doc.packingSlipAnalysis.layout }
+      : {}),
   };
   await tx.insert(packingSlipReviewHistory).values({
     organizationId: access.job.organizationId,

@@ -12,7 +12,7 @@
  *     [--from N] [--seed N] [--style laser|form|dotmatrix]
  *     [--marks clean|ticks|corrections|handwritten] [--text-only]
  *     [--capture-only] [--hard] [--fresh] [--verbose] [--trace] [--tag NAME]
- *     [--latency MS] [--workers N]
+ *     [--latency MS] [--workers N] [--learned FILE]
  *
  * Jev answers are cached per request in .tmp/slip-photos/cache, so a re-run
  * only pays for requests whose images or questions changed; --fresh asks
@@ -24,6 +24,8 @@
  * with the right amount, or rightly left alone; "review" = left for the user;
  * "wrong" = prefilled with a wrong amount. Prefilling the printed amount where
  * a pen correction says otherwise is also counted as a "missed correction".
+ * --learned reads a JSON file of seed to the quantity columns the supplier's
+ * earlier slips printed, as supplier memory would give them.
  * --capture-only stops after page detection, for quick runs over many photos;
  * --hard adds other papers, thumbs, glare, steep angles and dim light to the
  * photos.
@@ -61,6 +63,7 @@ import {
 import {
   askJev,
   VISION_MODEL,
+  type LearnedColumns,
   type VisionAsk,
 } from "../src/server/packing-slips/vision";
 
@@ -85,6 +88,10 @@ const tag = option("tag") ?? "run";
 const workers = Number(option("workers") ?? 2);
 const latency =
   option("latency") === undefined ? null : Number(option("latency"));
+const learnedFile = option("learned");
+const learned = (
+  learnedFile ? JSON.parse(await readFile(learnedFile, "utf8")) : {}
+) as Record<string, LearnedColumns | null>;
 const root = path.resolve(import.meta.dirname, "..");
 const scratch = path.join(root, ".tmp/slip-photos");
 const cacheDir = path.join(scratch, "cache");
@@ -436,7 +443,21 @@ async function one(seed: number) {
       async () => {
         throw Error("No text evaluator in the benchmark");
       },
-      textOnly ? undefined : { pages: extracted.pages, ask: cachedAsk },
+      textOnly
+        ? undefined
+        : {
+            pages: extracted.pages,
+            ask: cachedAsk,
+            ...(learned[seed]
+              ? {
+                  memory: {
+                    known: {},
+                    expectFooter: false,
+                    columns: learned[seed],
+                  },
+                }
+              : {}),
+          },
     );
   const traceDir = path.join(scratch, "trace", tag, String(seed));
   if (tracing) await mkdir(traceDir, { recursive: true, mode: 0o700 });

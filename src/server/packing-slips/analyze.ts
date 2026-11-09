@@ -23,6 +23,7 @@ import {
   assumedUnit,
   readSlipImages,
   VISION_MODEL,
+  type LearnedColumns,
   type VisionAsk,
 } from "./vision";
 import { sameLine, escalationPlan } from "./cascade-policy";
@@ -801,7 +802,11 @@ export async function analyzeSlip(
     pages: Buffer[];
     ask?: VisionAsk;
     /** What earlier deliveries from this supplier taught. */
-    memory?: { known: Record<string, string[]>; expectFooter: boolean };
+    memory?: {
+      known: Record<string, string[]>;
+      expectFooter: boolean;
+      columns?: LearnedColumns;
+    };
     models?: boolean;
     /** Explicit reader comparison only; production always uses the cascade. */
     forceImageReading?: boolean;
@@ -877,6 +882,7 @@ export async function analyzeSlip(
           ask: images.ask,
           known: images.memory?.known,
           expectFooter: images.memory?.expectFooter,
+          columns: images.memory?.columns,
         }).catch((error: unknown) => {
           // Message only: document contents never go into logs.
           console.warn(

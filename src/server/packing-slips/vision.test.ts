@@ -8,6 +8,7 @@ import {
   snapColumns,
   type VisionAnswer,
   type VisionAsk,
+  withLearned,
 } from "./vision";
 import type { ReceiptOrderItem, SlipLine } from "~/lib/packing-slip-review";
 import type { SlipRow } from "./ocr-rows";
@@ -595,7 +596,15 @@ it("warns when a supplier's usual totals are missing", async () => {
     [page],
     memory,
   );
-  expect(result.layout).toEqual({ footer: false });
+  // Kept for the supplier's next slips, with where its columns were.
+  expect(result.layout).toEqual({
+    footer: false,
+    columns: {
+      ordered: { left: 0.6, right: 0.64 },
+      shipped: { left: 0.7, right: 0.74 },
+      backordered: { left: 0.8, right: 0.84 },
+    },
+  });
   expect(result.warnings).toContain(
     "This supplier's slips usually print totals at the bottom, but none were found. Check that no page is missing or cut off.",
   );
@@ -606,7 +615,7 @@ it("warns when a supplier's usual totals are missing", async () => {
     [page],
     memory,
   );
-  expect(printed.layout).toEqual({ footer: true });
+  expect(printed.layout).toMatchObject({ footer: true });
   expect(printed.warnings).toEqual([]);
 });
 
@@ -681,7 +690,7 @@ it("does not trust a printed line count the enlarged footer reads otherwise", as
   // Across the page a dot-matrix 1 read surely as a 3; enlarged, it is a 1.
   const disputed = await read(pick("n1", 0.5));
   expect(disputed.warnings).toEqual([]);
-  expect(disputed.layout).toEqual({ footer: true });
+  expect(disputed.layout).toMatchObject({ footer: true });
   expect(disputed.lines[0]).toMatchObject({ proposed: 6, issues: [] });
   // A footer crop that agrees, or that misses the count, leaves it standing.
   for (const footer of [pick("n3", 0.5), pick("not_printed", 0.55)])
@@ -1311,6 +1320,54 @@ it("sets a quantity column under the OCR's words for its heading", () => {
   // Nor is a box with no heading words over it.
   const bare = { ...heading, left: 0.4, right: 0.45 };
   expect(snapColumns({ ordered: bare }, words).ordered).toBe(bare);
+});
+
+it("fills a quantity column Jev missed where the supplier's earlier slips printed it", () => {
+  const word = (text: string, x: number, right: number) => ({
+    text,
+    x,
+    y: 0.272,
+    width: right - x,
+    height: 0.01,
+    confidence: 90,
+  });
+  const heading = { top: 0.26, bottom: 0.3 };
+  const learned = {
+    ordered: { left: 0.62, right: 0.7 },
+    shipped: { left: 0.72, right: 0.78 },
+    backordered: { left: 0.8, right: 0.88 },
+  };
+  const found = {
+    ordered: { ...heading, left: 0.63, right: 0.7 },
+    shipped: { ...heading, left: 0.73, right: 0.79 },
+  };
+  const filled = withLearned(found, learned, [], undefined, []);
+  expect(filled.backordered).toEqual({ ...heading, left: 0.8, right: 0.88 });
+  expect(filled.shipped).toBe(found.shipped);
+  // A page set out otherwise: a column elsewhere, one the page lacks, or
+  // another column's heading where the earlier slips had this one.
+  const moved = { ...found, shipped: { ...heading, left: 0.77, right: 0.83 } };
+  expect(withLearned(moved, learned, [], undefined, [])).toBe(moved);
+  expect(withLearned(found, learned, [], undefined, ["backordered"])).toBe(
+    found,
+  );
+  expect(
+    withLearned(found, learned, [word("SHIPPED", 0.81, 0.86)], undefined, []),
+  ).toBe(found);
+  // Nothing found and no heading read: no telling how the page is set out.
+  const box = { ...heading, left: 0.05, right: 0.95 };
+  expect(withLearned({}, learned, [], box, [])).toEqual({});
+  // The OCR's QTY where the earlier slips had shipped places it, level
+  // with Jev's box for the headings.
+  expect(
+    withLearned(
+      {},
+      { shipped: learned.shipped },
+      [word("QTY", 0.735, 0.765)],
+      box,
+      [],
+    ),
+  ).toEqual({ shipped: { ...heading, left: 0.72, right: 0.78 } });
 });
 
 it("finishes clear 98% OCR without calling either model", async () => {
