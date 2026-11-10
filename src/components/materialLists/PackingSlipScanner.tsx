@@ -41,6 +41,7 @@ import { list, scanCount, scanCountMessage } from "~/lib/slip-pages";
 
 /** Long side of the preview frames searched for the page. */
 const PREVIEW = 480;
+const AUTO_LIGHT_STORAGE_KEY = "foremanhq.scanner.autoLight";
 /** Matching outlines in a row before an automatic capture (about half a second). */
 const STEADY = 4;
 /** Outlines closer than this, in frame fractions, count as the same position. */
@@ -124,6 +125,27 @@ export default function PackingSlipScanner({
   const [lightBusy, setLightBusy] = useState(false);
   const lightPreference = useRef({ auto: true, on: false });
   const changeLight = useRef<((on: boolean) => Promise<void>) | null>(null);
+  // Restore before the camera effect starts so a dark frame cannot override
+  // the user's saved choice on the first preview.
+  useEffect(() => {
+    try {
+      const enabled = localStorage.getItem(AUTO_LIGHT_STORAGE_KEY) !== "false";
+      lightPreference.current.auto = enabled;
+      setAutoLight(enabled);
+    } catch {
+      // Scanning still works when browser storage is unavailable.
+    }
+  }, []);
+  const rememberAutoLight = (enabled: boolean) => {
+    lightPreference.current.auto = enabled;
+    setAutoLight(enabled);
+    try {
+      localStorage.setItem(AUTO_LIGHT_STORAGE_KEY, String(enabled));
+    } catch {
+      // Keep the choice for this visit even if it cannot be persisted.
+    }
+  };
+
   const [shot, setShot] = useState<Shot | null>(null),
     [corners, setCorners] = useState<Quad | null>(null),
     [blurry, setBlurry] = useState(false);
@@ -328,7 +350,9 @@ export default function PackingSlipScanner({
         };
         setLight(
           capabilities?.torch
-            ? "Light will turn on if needed."
+            ? lightPreference.current.auto
+              ? "Light will turn on if needed."
+              : "Camera light off."
             : "Automatic light unavailable. Use a well-lit surface.",
         );
         if (!lightPreference.current.auto && lightPreference.current.on) await applyLight(true);
@@ -613,8 +637,7 @@ export default function PackingSlipScanner({
               aria-pressed={lightOn}
               disabled={!lightSupported || lightBusy || !!error || processing}
               onClick={() => {
-                lightPreference.current.auto = false;
-                setAutoLight(false);
+                rememberAutoLight(false);
                 void changeLight.current?.(!lightOn);
               }}
             >
@@ -628,8 +651,7 @@ export default function PackingSlipScanner({
               disabled={!lightSupported || lightBusy || !!error || processing}
               onClick={() => {
                 const enabled = !autoLight;
-                lightPreference.current.auto = enabled;
-                setAutoLight(enabled);
+                rememberAutoLight(enabled);
                 if (enabled) void changeLight.current?.(false);
               }}
             >

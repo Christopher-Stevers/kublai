@@ -42,6 +42,11 @@ vi.mock("~/lib/scanning/page", () => ({
     new File(["pdf"], filename, { type: "application/pdf" }),
 }));
 beforeEach(() => {
+  const preferences = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => preferences.get(key) ?? null,
+    setItem: (key: string, value: string) => preferences.set(key, value),
+  });
   scanning.grabFrame.mockClear();
   scanning.pageBlur.mockReset().mockReturnValue(0.7);
   scanning.detectPage.mockReturnValue({
@@ -320,4 +325,27 @@ it("disables light controls when the camera does not support a torch", async () 
   await screen.findByText(/Automatic light unavailable/);
   expect(screen.getByRole("button", { name: "Turn light on" })).toBeDisabled();
   expect(screen.getByRole("switch", { name: "Auto light" })).toBeDisabled();
+});
+
+
+it("remembers automatic lighting across scanner visits before reading a dark frame", async () => {
+  const { applyConstraints } = camera();
+  scanning.detectPage.mockReturnValue({ quad: null, brightness: 60, sharpness: 0 });
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await waitFor(() => expect(screen.getByRole("switch", { name: "Auto light" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("switch", { name: "Auto light" }));
+  expect(screen.getByRole("switch", { name: "Auto light" })).not.toBeChecked();
+  cleanup();
+  applyConstraints.mockClear();
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await waitFor(() => expect(screen.getByRole("switch", { name: "Auto light" })).toBeEnabled());
+  expect(screen.getByRole("switch", { name: "Auto light" })).not.toBeChecked();
+  await new Promise(resolve => setTimeout(resolve, 180));
+  expect(applyConstraints).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("switch", { name: "Auto light" }));
+  cleanup();
+  applyConstraints.mockClear();
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  expect(screen.getByRole("switch", { name: "Auto light" })).toBeChecked();
+  await waitFor(() => expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] }));
 });
