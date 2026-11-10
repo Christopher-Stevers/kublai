@@ -20,6 +20,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { SwitchTrack } from "~/components/ui/switch";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import {
@@ -619,21 +620,22 @@ export default function PackingSlipScanner({
             >
               <FlashlightIcon /> Light {lightOn ? "on" : "off"}
             </Button>
-            <label className="flex min-h-11 items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-5 w-5"
-                checked={autoLight}
-                disabled={!lightSupported || lightBusy || !!error || processing}
-                onChange={(event) => {
-                  const enabled = event.target.checked;
-                  lightPreference.current.auto = enabled;
-                  setAutoLight(enabled);
-                  if (enabled) void changeLight.current?.(false);
-                }}
-              />
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoLight}
+              className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm disabled:opacity-50"
+              disabled={!lightSupported || lightBusy || !!error || processing}
+              onClick={() => {
+                const enabled = !autoLight;
+                lightPreference.current.auto = enabled;
+                setAutoLight(enabled);
+                if (enabled) void changeLight.current?.(false);
+              }}
+            >
+              <SwitchTrack checked={autoLight} />
               Auto light
-            </label>
+            </button>
           </div>
           <p role="status">{message}</p>
           {pages.length > 0 && countMessage && !countMessage.warn && (

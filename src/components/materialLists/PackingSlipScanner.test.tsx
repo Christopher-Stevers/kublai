@@ -302,15 +302,15 @@ it("allows manual light control and can re-enable automatic lighting", async () 
   await waitFor(() => expect(off).toBeEnabled());
   fireEvent.click(off);
   await waitFor(() => expect(applyConstraints).toHaveBeenLastCalledWith({ advanced: [{ torch: false }] }));
-  expect(screen.getByRole("checkbox", { name: "Auto light" })).not.toBeChecked();
+  expect(screen.getByRole("switch", { name: "Auto light" })).not.toBeChecked();
   const calls = applyConstraints.mock.calls.length;
   await new Promise(resolve => setTimeout(resolve, 180));
   expect(applyConstraints).toHaveBeenCalledTimes(calls);
   fireEvent.click(screen.getByRole("button", { name: "Turn light on" }));
   await waitFor(() => expect(applyConstraints).toHaveBeenLastCalledWith({ advanced: [{ torch: true }] }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "Auto light" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Auto light" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Turn light off" })).toBeEnabled());
-  expect(screen.getByRole("checkbox", { name: "Auto light" })).toBeChecked();
+  expect(screen.getByRole("switch", { name: "Auto light" })).toBeChecked();
 });
 
 it("disables light controls when the camera does not support a torch", async () => {
@@ -319,5 +319,5 @@ it("disables light controls when the camera does not support a torch", async () 
   render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
   await screen.findByText(/Automatic light unavailable/);
   expect(screen.getByRole("button", { name: "Turn light on" })).toBeDisabled();
-  expect(screen.getByRole("checkbox", { name: "Auto light" })).toBeDisabled();
+  expect(screen.getByRole("switch", { name: "Auto light" })).toBeDisabled();
 });
