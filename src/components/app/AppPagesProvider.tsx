@@ -22,6 +22,9 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 
+import { setAppPageActive } from "~/lib/app-page-activity";
+import { getPageWindowMode, pageDevice } from "~/lib/page-window-mode";
+
 const subscribeFrame = () => () => undefined;
 const isEmbedded = () => window.parent !== window;
 const serverEmbedded = () => false;
@@ -66,6 +69,7 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
     serverEmbedded,
   );
   const [outerCount, setOuterCount] = useState(1);
+  const [outerActive, setOuterActive] = useState(true);
   const main = useRef<HTMLDivElement>(null);
   const mainScroll = useRef({ x: 0, y: 0 });
   const frames = useRef(new Map<string, HTMLIFrameElement>());
@@ -87,6 +91,11 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
     (value: string) => {
       const href = appPageHref(value, window.location.origin);
       if (!href) return;
+      if (getPageWindowMode(pageDevice()) === "external") {
+        window.open(href, "_blank", "noopener,noreferrer,popup,width=1200,height=900");
+        setShow(false);
+        return;
+      }
       if (window.parent !== window) {
         send("open", { href });
         return;
@@ -121,14 +130,17 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
         href?: unknown;
         title?: unknown;
         count?: unknown;
+        active?: unknown;
       };
       if (inside) {
         if (
           event.source === window.parent &&
           message.type === "state" &&
           typeof message.count === "number"
-        )
+        ) {
           setOuterCount(message.count);
+          if (typeof message.active === "boolean") setOuterActive(message.active);
+        }
         return;
       }
       const entry = [...frames.current].find(
@@ -142,6 +154,7 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
             channel: CHANNEL,
             type: "state",
             count: current.current.pages.length,
+            active: id === current.current.active,
           },
           window.location.origin,
         );
@@ -180,12 +193,17 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (embedded) return;
-    for (const frame of frames.current.values())
+    for (const [id, frame] of frames.current)
       frame.contentWindow?.postMessage(
-        { channel: CHANNEL, type: "state", count: pages.length },
+        { channel: CHANNEL, type: "state", count: pages.length, active: id === active },
         window.location.origin,
       );
-  }, [pages.length, embedded]);
+  }, [pages.length, embedded, active]);
+
+  useLayoutEffect(() => {
+    setAppPageActive(embedded ? outerActive : active === "main");
+  }, [embedded, outerActive, active]);
+  useEffect(() => () => setAppPageActive(true), []);
 
   useEffect(() => {
     let previous = "";
@@ -285,6 +303,7 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
                     channel: CHANNEL,
                     type: "state",
                     count: current.current.pages.length,
+                    active: page.id === current.current.active,
                   },
                   window.location.origin,
                 );

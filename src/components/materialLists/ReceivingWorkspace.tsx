@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { receivingProgress } from "~/lib/receiving-progress";
 import { receivingReviewComplete } from "~/lib/receiving-completion";
 import { receivingRequest, receivingResponse } from "~/lib/receiving-request";

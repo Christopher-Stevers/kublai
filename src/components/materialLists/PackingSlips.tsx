@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { receivingReviewHref } from "~/lib/receiving-navigation";
 import { PackingSlipTestReview } from "./PackingSlipTestReview";
 import { useCallback, useEffect, useRef, useState } from "react";

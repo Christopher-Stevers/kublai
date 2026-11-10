@@ -1,4 +1,6 @@
 "use client";
+import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
+
 import { VirtualChatMessages } from "~/components/chat/VirtualChatMessages";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 import { useReplyFocus } from "~/hooks/use-reply-focus";
@@ -421,9 +423,9 @@ function ChatLobby({
     };
   }, [embedded]);
   useEffect(() => {
-    const update = () => setVisible(document.visibilityState !== "hidden");
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
+    const update = () => setVisible(isAppPageActive());
+    update();
+    return subscribeAppPageActivity(update);
   }, []);
   useEffect(() => {
     if (inTutorial) {

@@ -1044,3 +1044,10 @@ html:root[data-drawing-quick-wheel-page] [data-app-shell] > main { padding-botto
     animation: none;
   }
 }
+
+/* Retained internal pages keep their DOM but do not animate offscreen. */
+html[data-internal-page-paused] *,
+html[data-internal-page-paused] *::before,
+html[data-internal-page-paused] *::after {
+  animation-play-state: paused !important;
+}

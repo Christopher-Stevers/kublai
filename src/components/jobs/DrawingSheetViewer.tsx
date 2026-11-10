@@ -1,4 +1,6 @@
 "use client";
+import { requestPageAnimationFrame as requestAnimationFrame, cancelPageAnimationFrame as cancelAnimationFrame } from "~/lib/app-page-activity";
+
 
 import { DrawingPdfMagnifier } from "~/lib/drawing-pdf-magnifier";
 import { PipeComponentSymbol } from "./PipeComponentSymbol";

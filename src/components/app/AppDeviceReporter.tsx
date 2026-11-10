@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { useEffect } from "react";
 import { api } from "~/trpc/react";
 import { useInstallPrompt, isStandaloneApp } from "~/lib/install-prompt";

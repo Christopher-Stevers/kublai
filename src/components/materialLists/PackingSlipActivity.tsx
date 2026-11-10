@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";

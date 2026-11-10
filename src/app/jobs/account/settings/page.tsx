@@ -1,5 +1,6 @@
 "use client";
 
+import { PageWindowSettings } from "~/components/account/PageWindowSettings";
 import { OfflineTestSettings } from "~/components/account/OfflineTestSettings";
 import { AssessmentAiSettings } from "~/components/account/AssessmentAiSettings";
 import { FrequentJobCardsSetting } from "~/components/jobs/FrequentJobCards";
@@ -124,6 +125,7 @@ export default function SettingsPage() {
             account on this device. The back arrow always goes up one level.
           </p>
           <FrequentJobCardsSetting />
+          <PageWindowSettings />
         </CardContent>
       </Card>
 

@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import {
   createContext,
   useContext,

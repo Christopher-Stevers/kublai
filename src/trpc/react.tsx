@@ -1,6 +1,6 @@
 "use client";
 
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import { focusManager, QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import {
   httpBatchLink,
   httpBatchStreamLink,
@@ -14,6 +14,7 @@ import SuperJSON from "superjson";
 
 import type { AppRouter } from "~/server/api/root";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
+import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
 import { createQueryClient } from "./query-client";
 import { SIGNED_OUT_HEADER, SignedOutError } from "~/lib/signed-out";
 
@@ -101,6 +102,13 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
+
+  useEffect(() => {
+    const update = () => focusManager.setFocused(isAppPageActive());
+    update();
+    const unsubscribe = subscribeAppPageActivity(update);
+    return () => { unsubscribe(); focusManager.setFocused(undefined); };
+  }, []);
 
   useEffect(() => {
     if (!TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER) return;

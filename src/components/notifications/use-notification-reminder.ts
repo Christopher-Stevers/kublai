@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 
 import { useEffect, useState } from "react";
 import { NOTIFICATION_REMINDER_MS } from "~/lib/app-notifications";
@@ -11,10 +13,10 @@ export function useNotificationReminder(unreadCount: number, open: boolean) {
       if (document.visibilityState === "visible") setRing((value) => value + 1);
     };
     remind();
-    const timer = window.setInterval(remind, NOTIFICATION_REMINDER_MS);
+    const timer = setInterval(remind, NOTIFICATION_REMINDER_MS);
     document.addEventListener("visibilitychange", remind);
     return () => {
-      window.clearInterval(timer);
+      clearInterval(timer);
       document.removeEventListener("visibilitychange", remind);
     };
   }, [unreadCount, open]);

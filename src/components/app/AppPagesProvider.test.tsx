@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/jobs",
   useSearchParams: () => "",
 }));
+import { isAppPageActive } from "~/lib/app-page-activity";
 import { AppPagesProvider, appPageHref, useAppPages } from "./AppPagesProvider";
 function Content() {
   const pages = useAppPages()!;
@@ -23,11 +24,13 @@ function Content() {
   );
 }
 beforeEach(() => {
+  vi.stubGlobal("localStorage", { getItem: () => "internal" });
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 it("rejects external and non-app destinations", () => {
   expect(
@@ -51,6 +54,7 @@ it("keeps drafts and frame identity while switching, then removes explicitly clo
   fireEvent.click(screen.getByText("New page"));
   const frame = container.querySelector("iframe")!;
   expect(frame.getAttribute("src")).toBe("/jobs/order");
+  expect(isAppPageActive()).toBe(false);
   expect(screen.getByLabelText("Unfinished note")).not.toBeVisible();
   // Only a known frame may open the host switcher.
   window.dispatchEvent(
@@ -67,6 +71,7 @@ it("keeps drafts and frame identity while switching, then removes explicitly clo
   );
   expect(screen.getByLabelText("Unfinished note")).toBeVisible();
   expect(container.querySelector("iframe")).toBe(frame);
+  expect(isAppPageActive()).toBe(true);
   fireEvent.click(screen.getByText("Pages 2"));
   fireEvent.click(screen.getByRole("button", { name: "Close Loading page…" }));
   await waitFor(() => expect(container.querySelector("iframe")).toBeNull());
@@ -89,4 +94,14 @@ it("ignores messages from unknown windows", () => {
     }),
   );
   expect(screen.getByText("Pages 1")).toBeVisible();
+});
+
+it("opens desktop pages in a separate window by default", () => {
+  vi.stubGlobal("localStorage", { getItem: () => null });
+  const popup = vi.spyOn(window, "open").mockReturnValue(null);
+  const { container } = render(<AppPagesProvider><Content /></AppPagesProvider>);
+  fireEvent.click(screen.getByText("New page"));
+  expect(popup).toHaveBeenCalledWith("/jobs/order", "_blank", expect.stringContaining("noopener"));
+  expect(container.querySelector("iframe")).toBeNull();
+  expect(isAppPageActive()).toBe(true);
 });

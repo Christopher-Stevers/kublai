@@ -1,3 +1,4 @@
+import { requestPageAnimationFrame as requestAnimationFrame, cancelPageAnimationFrame as cancelAnimationFrame } from "~/lib/app-page-activity";
 import type { CadMesh, DesignOverride } from "./design";
 import { navigationDelta } from "./navigation";
 import {

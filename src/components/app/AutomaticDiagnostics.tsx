@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDrawingAccount } from "~/components/jobs/DrawingAccountProvider";
@@ -66,7 +68,7 @@ export function AutomaticDiagnostics() {
         duration: "unknown",
       });
     });
-    const timer = window.setInterval(() => {
+    const timer = setInterval(() => {
       if (
         !diagnosticsEnabled(account.accountKey) ||
         !navigator.onLine ||

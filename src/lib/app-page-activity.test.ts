@@ -1,0 +1,32 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { clearPageInterval, setPageInterval, setAppPageActive, requestPageAnimationFrame, cancelPageAnimationFrame } from "./app-page-activity";
+afterEach(() => { setAppPageActive(true); vi.useRealTimers(); vi.restoreAllMocks(); });
+it("stops refresh timers while hidden, refreshes on return, and cleans up", () => {
+  vi.useFakeTimers();
+  const refresh = vi.fn();
+  const id = setPageInterval(refresh, 1000);
+  vi.advanceTimersByTime(1000);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  setAppPageActive(false);
+  vi.advanceTimersByTime(5000);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  setAppPageActive(true);
+  expect(refresh).toHaveBeenCalledTimes(2);
+  clearPageInterval(id);
+  vi.advanceTimersByTime(5000);
+  expect(refresh).toHaveBeenCalledTimes(2);
+});
+it("holds rendering work until visible and allows cancellation while paused", () => {
+  const request = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+  setAppPageActive(false);
+  const id = requestPageAnimationFrame(vi.fn());
+  expect(request).not.toHaveBeenCalled();
+  setAppPageActive(true);
+  expect(request).toHaveBeenCalledOnce();
+  cancelPageAnimationFrame(id);
+  setAppPageActive(false);
+  const cancelled = requestPageAnimationFrame(vi.fn());
+  cancelPageAnimationFrame(cancelled);
+  setAppPageActive(true);
+  expect(request).toHaveBeenCalledOnce();
+});

@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, FlaskConicalIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";

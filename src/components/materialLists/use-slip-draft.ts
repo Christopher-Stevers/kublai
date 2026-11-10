@@ -1,4 +1,6 @@
 "use client";
+import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+
 import { useCallback, useEffect, useState } from "react";
 import type { SlipAnalysis } from "~/lib/packing-slip-review";
 import {

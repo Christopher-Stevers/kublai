@@ -3,6 +3,7 @@ import { useContext } from "react";
 import { PanelsTopLeftIcon } from "lucide-react";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { Button } from "~/components/ui/button";
+import { usePageWindowMode } from "~/lib/page-window-mode";
 import { useAppPages } from "./AppPagesProvider";
 
 export function NewWindowButton({
@@ -13,6 +14,7 @@ export function NewWindowButton({
   onOpened?: () => void;
 }) {
   const registry = useContext(SnapshotSourceContext);
+  const mode = usePageWindowMode();
   const pages = useAppPages();
   return (
     <Button
@@ -29,7 +31,7 @@ export function NewWindowButton({
         onOpened?.();
         pages?.open(href);
       }}
-      title="Open this page inside ForemanHQ"
+      title={mode === "internal" ? "Open this page inside ForemanHQ" : "Open this page in a separate window"}
     >
       <PanelsTopLeftIcon className="size-4" />
       New Page

@@ -1,3 +1,4 @@
+import { isAppPageActive, subscribeAppPageActivity } from "./app-page-activity";
 /** Small, interruptible warmups. Foreground imports and visible images bypass this queue. */
 type Connection = EventTarget & { saveData?: boolean; effectiveType?: string };
 type BackgroundNavigator = Navigator & {
@@ -9,7 +10,7 @@ export function canWarmInBackground() {
   if (
     typeof window === "undefined" ||
     !navigator.onLine ||
-    document.visibilityState === "hidden"
+    !isAppPageActive()
   )
     return false;
   const connection = (navigator as BackgroundNavigator).connection;
@@ -39,7 +40,7 @@ function activity(event: Event) {
   schedule();
 }
 function resume() {
-  if (document.visibilityState === "hidden") pointers.clear();
+  if (!isAppPageActive()) pointers.clear();
   schedule();
 }
 function listen() {
@@ -60,7 +61,7 @@ function listen() {
   window.addEventListener("blur", () => {
     pointers.clear();
   });
-  document.addEventListener("visibilitychange", resume);
+  subscribeAppPageActivity(resume);
   (navigator as BackgroundNavigator).connection?.addEventListener(
     "change",
     resume,

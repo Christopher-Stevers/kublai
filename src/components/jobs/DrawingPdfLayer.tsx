@@ -1,4 +1,6 @@
 "use client";
+import { requestPageAnimationFrame as requestAnimationFrame, cancelPageAnimationFrame as cancelAnimationFrame } from "~/lib/app-page-activity";
+
 
 import {
   completedPdfBounds,

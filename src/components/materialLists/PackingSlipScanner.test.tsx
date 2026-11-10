@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
+import { setAppPageActive } from "~/lib/app-page-activity";
 import PackingSlipScanner from "./PackingSlipScanner";
 const quad = [
   { x: 0.1, y: 0.1 },
@@ -348,4 +350,15 @@ it("remembers automatic lighting across scanner visits before reading a dark fra
   render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
   expect(screen.getByRole("switch", { name: "Auto light" })).toBeChecked();
   await waitFor(() => expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] }));
+});
+
+it("releases the camera in hidden internal pages and restarts on return", async () => {
+  const { stop } = camera();
+  scanning.detectPage.mockReturnValue({ quad: null, brightness: 150, sharpness: 0 });
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce());
+  act(() => setAppPageActive(false));
+  expect(stop).toHaveBeenCalled();
+  act(() => setAppPageActive(true));
+  await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(2));
 });

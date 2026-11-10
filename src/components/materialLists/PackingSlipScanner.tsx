@@ -1,4 +1,5 @@
 "use client";
+import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
 import {
   useEffect,
   useRef,
@@ -238,12 +239,16 @@ export default function PackingSlipScanner({
       );
     };
     const hidden = () => {
-      if (document.hidden) {
+      if (!isAppPageActive()) {
         stop();
-        setError("Camera paused. Tap Restart camera to continue.");
+        capture.current = null;
+        setReady(false);
+        setMessage("Camera paused while this page is hidden.");
+      } else if (!capturing) {
+        setRestart(value => value + 1);
       }
     };
-    document.addEventListener("visibilitychange", hidden);
+    const unsubscribeActivity = subscribeAppPageActivity(hidden);
     const take = async (el: HTMLVideoElement) => {
       if (capturing || disposed) return;
       capturing = true;
@@ -308,14 +313,14 @@ export default function PackingSlipScanner({
             height: { ideal: 3600 },
           },
         });
-        if (disposed || document.hidden) {
+        if (disposed || !isAppPageActive()) {
           stop();
           return;
         }
         const el = video.current!;
         el.srcObject = stream;
         await el.play();
-        if (disposed || document.hidden) {
+        if (disposed || !isAppPageActive()) {
           stop();
           return;
         }
@@ -369,7 +374,7 @@ export default function PackingSlipScanner({
           );
         };
         const tick = async () => {
-          if (disposed || capturing || document.hidden) return;
+          if (disposed || capturing || !isAppPageActive()) return;
           if (!el.videoWidth) return next(150);
           setReady(true);
           const scale = PREVIEW / Math.max(el.videoWidth, el.videoHeight);
@@ -431,12 +436,12 @@ export default function PackingSlipScanner({
     setLocked(false);
     setReady(false);
     setMessage("Starting camera…");
-    void run();
+    if (isAppPageActive()) void run();
     return () => {
       disposed = true;
       capture.current = null;
       stop();
-      document.removeEventListener("visibilitychange", hidden);
+      unsubscribeActivity();
     };
   }, [mode, restart, documentKind]);
 
