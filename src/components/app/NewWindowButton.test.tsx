@@ -10,6 +10,7 @@ import { NewWindowButton, PageSwitcherButton } from "./NewWindowButton";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  pages.count = 3;
 });
 it("opens captured view inside ForemanHQ without a browser popup", () => {
   const popup = vi.spyOn(window, "open");
@@ -26,7 +27,14 @@ it("opens captured view inside ForemanHQ without a browser popup", () => {
   expect(popup).not.toHaveBeenCalled();
 });
 it("opens the page switcher from its count button", () => {
-  render(<PageSwitcherButton />);
+  pages.count = 1;
+  const { rerender } = render(<PageSwitcherButton />);
+  expect(screen.queryByRole("button", { name: /Open pages/ })).toBeNull();
+  pages.count = 3;
+  rerender(<PageSwitcherButton />);
   fireEvent.click(screen.getByRole("button", { name: "Open pages (3)" }));
   expect(pages.show).toHaveBeenCalledOnce();
+  pages.count = 1;
+  rerender(<PageSwitcherButton />);
+  expect(screen.queryByRole("button", { name: /Open pages/ })).toBeNull();
 });

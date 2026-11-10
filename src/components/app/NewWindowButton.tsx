@@ -39,7 +39,7 @@ export function NewWindowButton({
 
 export function PageSwitcherButton() {
   const pages = useAppPages();
-  if (!pages) return null;
+  if (!pages || pages.count <= 1) return null;
   return (
     <Button
       variant="ghost"
