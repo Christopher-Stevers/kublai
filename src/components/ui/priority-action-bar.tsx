@@ -330,9 +330,7 @@ export function PriorityActionBar({
             data-action-bar-row
             hidden={!!search && searching}
             style={{
-              gridTemplateColumns: hasSearch
-                ? `repeat(${limit}, minmax(0, 1fr))`
-                : `repeat(${shown.length + Number(shelved > 0)}, minmax(0, 1fr))`,
+              gridTemplateColumns: `repeat(${Math.max(1, shown.length + Number(hasSearch || shelved > 0))}, minmax(0, 1fr))`,
             }}
           >
             {search && (
@@ -378,7 +376,7 @@ export function PriorityActionBar({
               </div>
             )}
             {shown.map((action, index) =>
-              slot(action, index, hasSearch ? limit - shown.length + index + 1 : undefined),
+              slot(action, index, hasSearch ? index + 2 : undefined),
             )}
           </div>
         </div>

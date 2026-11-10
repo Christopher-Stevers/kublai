@@ -302,13 +302,16 @@ it("keeps named tool sections in overflow even when the primary row has room", (
 });
 
 for (const count of [0, 1, 2, 3, 6]) {
-  it(`pins search to the leftmost third-priority slot with ${count} permitted actions and combines overflow only when needed`, () => {
+  it(`shares the full row between search and ${count} permitted actions and combines overflow only when needed`, () => {
     const { container } = render(<PriorityActionBar search={{value: "", onChange: vi.fn(), label: "Find parts"}}>{buttons(count)}</PriorityActionBar>);
     const row = container.querySelector("[data-action-bar-row]") as HTMLElement;
     const searchSlot = row.querySelector("[data-split-search]") as HTMLElement;
     expect(row.firstElementChild).toBe(searchSlot);
     expect(searchSlot.style.gridColumn).toBe("1");
-    expect(row.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
+    expect(row.style.gridTemplateColumns).toBe(`repeat(${Math.min(count + 1, 3)}, minmax(0, 1fr))`);
+    Array.from(row.children).forEach((slot, index) => {
+      expect((slot as HTMLElement).style.gridColumn).toBe(String(index + 1));
+    });
     expect(row.children.length).toBeLessThanOrEqual(3);
     if (count > 2) {
       const arrow = screen.getByRole("button", {name: "Expand all actions"});
