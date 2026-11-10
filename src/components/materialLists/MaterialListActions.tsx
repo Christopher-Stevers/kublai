@@ -1,4 +1,5 @@
 "use client";
+import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import { PriorityActionBar, type BarSearch } from "~/components/ui/priority-action-bar";
 import { FinancialOnly } from "~/components/permissions/FinancialVisibility";
 import { useState, type ReactNode } from "react";
@@ -172,6 +173,7 @@ export function MaterialListActions({
   orderActions?: ReactNode;
   orderActive?: boolean;
 }) {
+  const devFeatures = useDevFeatures();
   const sandbox = useTutorialSandbox();
   const isOnline = useOnlineStatus();
   const [savingPrefab, setSavingPrefab] = useState(false);
@@ -198,7 +200,7 @@ export function MaterialListActions({
         search={search}
         label={<MaterialTotalLabel total={total} orderLabel={totalOrderLabel} />}
       >
-        {canQuote && (
+        {devFeatures && canQuote && (
           <Button
             variant="outline"
             className={style}

@@ -11,7 +11,9 @@ vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
   useTutorialSandbox: () => null,
 }));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
-afterEach(cleanup);
+const dev = vi.hoisted(() => ({ enabled: true }));
+vi.mock("~/components/app/DevFeaturesProvider", () => ({ useDevFeatures: () => dev.enabled }));
+afterEach(() => { cleanup(); dev.enabled = true; });
 const base = {
   total: 10,
   canGenerate: true,
@@ -105,4 +107,10 @@ it("offers search alongside Receive and Add Part in both list and receiving bars
   expect(screen.getByRole("button",{name:"Search material list"})).toBeVisible();
   expect(screen.getByRole("button",{name:"Receive"})).toBeVisible();
   expect(screen.getByRole("button",{name:"Add Part"})).toBeVisible();
+});
+
+it("hides Get Quote with Dev off even when quote permission is granted", () => {
+  dev.enabled = false;
+  render(<MaterialListActions {...base} canQuote canOrder canAdd />);
+  expect(screen.queryByText("Get Quote")).not.toBeInTheDocument();
 });

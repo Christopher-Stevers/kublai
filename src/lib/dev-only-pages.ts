@@ -1,5 +1,5 @@
 /** Standalone pages withheld from production; Orders intentionally remains available. */
-export const DEV_ONLY_PAGES = ["draws", "estimating", "timesheets", "assets"] as const;
+export const DEV_ONLY_PAGES = ["quotes", "draws", "estimating", "timesheets", "assets"] as const;
 
 export function isDevOnlyPage(href: string) {
   const pathname = href.split(/[?#]/, 1)[0] ?? "";
