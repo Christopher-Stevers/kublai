@@ -56,6 +56,7 @@ describe("drawing permission enforcement", () => {
       () => drawings.listSets({ jobId: id }),
       () => drawings.getSet({ setId: id }),
       () => drawings.createSet({ jobId: id, name: "Test" }),
+      () => drawings.moveSet({ setId: id, parentId: null }),
       () => drawings.renameSheet({ sheetId: id, name: "Test" }),
       () => drawings.deleteSet({ setId: id }),
       () => drawings.deleteSheet({ sheetId: id }),
@@ -93,6 +94,7 @@ describe("drawing permission enforcement", () => {
     await expect(
       drawings.renameSheet({ sheetId: id, name: "Test" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(drawings.moveSet({ setId: id, parentId: null })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(db.select).not.toHaveBeenCalled();
     await expect(drawings.deleteSheet({ sheetId: id })).rejects.toMatchObject({
       code: "NOT_FOUND",
@@ -143,4 +145,26 @@ it("rejects a missing or inaccessible parent folder", async () => {
   db.select.mockReturnValueOnce(db.select()).mockReturnValueOnce(empty as never);
   await expect(drawings.createSet({ jobId: id, name: "Subfolder", parentId: id }))
     .rejects.toMatchObject({ code: "NOT_FOUND" });
+});
+
+it("moves within the job under a lock and rejects cycles or unavailable destinations", async () => {
+  const parent = "00000000-0000-4000-8000-000000000002";
+  const child = "00000000-0000-4000-8000-000000000003";
+  const outside = "00000000-0000-4000-8000-000000000004";
+  const { drawings, db } = setup({ "drawings.view": true, "drawings.upload": true }, [{ id, jobId: id }]);
+  const rows = [{ id, name: "Source", parentId: null }, { id: parent, name: "Destination", parentId: null }, { id: child, name: "Child", parentId: id }];
+  const query = Object.assign(Promise.resolve(rows), { from: vi.fn(() => query), where: vi.fn(() => query) });
+  const where = vi.fn(async () => undefined);
+  const set = vi.fn(() => ({ where }));
+  const tx = { execute: vi.fn(), select: vi.fn(() => query), update: vi.fn(() => ({ set })) };
+  db.transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx));
+  for (const destination of [id, child, outside]) {
+    await expect(drawings.moveSet({ setId: id, parentId: destination })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  }
+  expect(tx.update).not.toHaveBeenCalled();
+  await expect(drawings.moveSet({ setId: id, parentId: parent })).resolves.toEqual({ ok: true });
+  expect(set).toHaveBeenLastCalledWith({ parentId: parent, updatedAt: expect.any(Date) });
+  await expect(drawings.moveSet({ setId: id, parentId: null })).resolves.toEqual({ ok: true });
+  expect(set).toHaveBeenLastCalledWith({ parentId: null, updatedAt: expect.any(Date) });
+  expect(tx.execute).toHaveBeenCalledTimes(5);
 });

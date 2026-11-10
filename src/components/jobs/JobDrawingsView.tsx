@@ -1,4 +1,5 @@
 "use client";
+import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { scheduleBackgroundWork, canWarmInBackground } from "~/lib/background-work";
@@ -41,6 +42,7 @@ import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -152,6 +154,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
   const [cornerContainer, setCornerContainer] = useState<HTMLDivElement | null>(null);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
+  const [moving, setMoving] = useState<{ id: string; name: string; parentId: string | null } | null>(null);
+  const [moveDestination, setMoveDestination] = useState("");
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -298,6 +302,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       await refresh();
       setSetId(result.id);
     },
+    onError,
+  });
+  const moveSet = api.drawings.moveSet.useMutation({
+    onSuccess: async () => { setMoving(null); await refresh(); notify("Drawing folder moved", "success"); },
     onError,
   });
   const renameSet = api.drawings.renameSet.useMutation({
@@ -502,6 +510,20 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   };
 
   const revisionDialog = <BulkDrawingRevisions jobId={jobId} open={revisionsOpen} onOpenChange={setRevisionsOpen} onComplete={async () => { await utils.drawingsWorkspace.get.invalidate(); await refresh(); }} />;
+  const moveDialogView = (
+    <Dialog open={!!moving} onOpenChange={open => { if (!open && !moveSet.isPending) setMoving(null); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Move {moving?.name}</DialogTitle><DialogDescription>Move this drawing set or folder, including its drawings and subfolders.</DialogDescription></DialogHeader>
+        <label className="space-y-2"><span className="text-sm font-medium">Destination folder</span>
+          <select aria-label="Destination folder" className="bg-background w-full rounded-md border p-3" value={moveDestination} onChange={event => setMoveDestination(event.target.value)} disabled={moveSet.isPending}>
+            <option value="">Drawings — top level</option>
+            {drawingMoveTargets(setsData?.sets ?? [], moving?.id ?? "").map(folder => <option key={folder.id} value={folder.id}>{folder.path}</option>)}
+          </select>
+        </label>
+        <DialogFooter><Button variant="outline" disabled={moveSet.isPending} onClick={() => setMoving(null)}>Cancel</Button><Button disabled={!moving || moveSet.isPending || moveDestination === (moving.parentId ?? "")} onClick={() => { if (moving) moveSet.mutate({ setId: moving.id, parentId: moveDestination || null }); }}>{moveSet.isPending ? "Moving…" : "Move here"}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
   const nameDialogView = (
     <Dialog
       open={nameDialog !== null}
@@ -618,7 +640,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           onPrevious={() => openSheet(sheets[sheetIndex - 1]!.id, true)}
           onNext={() => openSheet(sheets[sheetIndex + 1]!.id, true)}
         />}
-        {nameDialogView}
+        {moveDialogView}
+      {nameDialogView}
         {revisionDialog}
       </div>
     );
@@ -709,6 +732,11 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                         >
                           <PencilIcon className="h-4 w-4" />
                           Rename folder
+                        </DropdownMenuItem>
+                      )}
+                      {canUpload && (
+                        <DropdownMenuItem onSelect={() => { setMoving({ id: folder.id, name: folder.name, parentId: folder.parentId ?? null }); setMoveDestination(folder.parentId ?? ""); }}>
+                          <FolderIcon className="h-4 w-4" />Move
                         </DropdownMenuItem>
                       )}
                       {canDelete && (
@@ -1126,7 +1154,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             onOpenChange={setRegisterOpen}
           />
         )}
-        {nameDialogView}
+        {moveDialogView}
+      {nameDialogView}
         {revisionDialog}
       </div>
     );
@@ -1205,6 +1234,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       {canUpload && (
         <div className={BOTTOM_BAR}><div className="mx-auto flex max-w-6xl gap-2">{newFolderButton("h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs")}<Button className="h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs" variant="outline" onClick={() => setRevisionsOpen(true)}>Upload revised drawings</Button></div></div>
       )}
+      {moveDialogView}
       {nameDialogView}
       {revisionDialog}
     </div>

@@ -108,6 +108,7 @@ vi.mock("~/trpc/react", () => {
         },
         createSet: mutation("createSet"),
         renameSet: mutation("renameSet"),
+        moveSet: mutation("moveSet"),
         deleteSet: mutation("deleteSet"),
         renameSheet: mutation("renameSheet"),
         deleteSheet: mutation("deleteSheet"),
@@ -425,6 +426,21 @@ describe("Drawings", () => {
       screen.getByRole("button", { name: "Open Mechanical" }),
     ).toBeInTheDocument();
     expect(runHeaderBackOverride()).toBe(false);
+  });
+
+  it("moves a set from its menu and excludes itself and descendants", async () => {
+    const source = state.sets[0]!;
+    state.sets.push({ ...source, id: "destination", name: "Architectural" });
+    state.sets.push({ ...source, id: "child", name: "Child", parentId: source.id });
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions for Mechanical" }), { key: "Enter" });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move", exact: true }));
+    expect(screen.queryByRole("option", { name: "Mechanical" })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Child/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Move here" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Destination folder"), { target: { value: "destination" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Move here" })));
+    expect(state.calls).toContainEqual(["moveSet", { setId: source.id, parentId: "destination" }]);
   });
 
   it("shows nested folders only in their parent and creates another child there", async () => {

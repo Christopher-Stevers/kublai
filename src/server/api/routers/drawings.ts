@@ -1,3 +1,4 @@
+import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -181,6 +182,26 @@ export const drawingsRouter = createTRPCRouter({
         })
         .returning({ id: jobDrawingSets.id });
       return { id: set!.id };
+    }),
+
+  moveSet: hasAppAccess
+    .input(z.object({ setId: z.string().uuid(), parentId: z.string().uuid().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCanManage(ctx);
+      const source = await requireSet(ctx, input.setId);
+      await ctx.db.transaction(async (tx) => {
+        // Serialize moves and deletions in this job so concurrent moves cannot form a cycle.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${source.jobId}, 4151))`);
+        const folders = await tx.select({ id: jobDrawingSets.id, name: jobDrawingSets.name, parentId: jobDrawingSets.parentId })
+          .from(jobDrawingSets).where(and(eq(jobDrawingSets.jobId, source.jobId), eq(jobDrawingSets.organizationId, organizationOf(ctx)), isNull(jobDrawingSets.documentVersionId)));
+        if (!folders.some(folder => folder.id === source.id))
+          throw new TRPCError({ code: "NOT_FOUND", message: "Drawing folder not found" });
+        if (input.parentId && !drawingMoveTargets(folders, source.id).some(folder => folder.id === input.parentId))
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a folder in this job outside the folder being moved and its subfolders." });
+        await tx.update(jobDrawingSets).set({ parentId: input.parentId, updatedAt: new Date() })
+          .where(and(eq(jobDrawingSets.id, source.id), eq(jobDrawingSets.organizationId, organizationOf(ctx))));
+      });
+      return { ok: true as const };
     }),
 
   renameSet: hasAppAccess
