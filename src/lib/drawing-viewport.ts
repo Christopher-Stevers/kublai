@@ -351,8 +351,8 @@ export function planDrawingStrip(
 ): DrawingPatch | null {
   const same = shown.filter(
     (patch) =>
-      Math.abs(patch.fullWidth / whole.fullWidth - 1) < 0.001 &&
-      Math.abs(patch.fullHeight / whole.fullHeight - 1) < 0.001,
+      patch.fullWidth >= whole.fullWidth * 0.999 &&
+      patch.fullHeight >= whole.fullHeight * 0.999,
   );
   if (!same.length) return null;
   const xs = cuts(
@@ -420,7 +420,10 @@ export function planDrawingStrip(
     const gap = (patch: DrawingPatch) =>
       Math.max(0, patch.left - rect.right, rect.left - patch.left - patch.width) +
       Math.max(0, patch.top - rect.bottom, rect.top - patch.top - patch.height);
-    const grid = same.reduce((best, patch) => (gap(patch) < gap(best) ? patch : best));
+    const matchingGrid = same.filter(patch => Math.abs(patch.fullWidth / whole.fullWidth - 1) < 0.001 && Math.abs(patch.fullHeight / whole.fullHeight - 1) < 0.001);
+    // Finer retained centres already cover their area; fill the edges at the
+    // requested density instead of redrawing the centre or oversampling edges.
+    const grid = matchingGrid.length ? matchingGrid.reduce((best, patch) => (gap(patch) < gap(best) ? patch : best)) : whole;
     const { fullWidth, fullHeight } = grid;
     const x0 = Math.max(
       Math.ceil(-grid.left * fullWidth - 1e-6),

@@ -1,4 +1,5 @@
 "use client";
+import { createDrawingZoomIntent, planDrawingFocus } from "~/lib/drawing-zoom-intent";
 import { requestPageAnimationFrame as requestAnimationFrame, cancelPageAnimationFrame as cancelAnimationFrame } from "~/lib/app-page-activity";
 
 
@@ -105,6 +106,7 @@ export function DrawingPdfLayer(props: Props) {
     Array<DrawingPatch | null>(DETAIL_SLOTS).fill(null),
   );
   const camera = useRef(props.view);
+  const zoomIntent = useRef(createDrawingZoomIntent());
   // Recent live camera positions, used to draw detail where a pan is heading.
   const motion = useRef<DrawingCameraSample[]>([]);
   const follow = useRef<() => void>(() => undefined);
@@ -150,6 +152,7 @@ export function DrawingPdfLayer(props: Props) {
         const samples = motion.current;
         samples.push({ ...view, at });
         while (samples.length > 2 && at - samples[0]!.at > 150) samples.shift();
+        zoomIntent.current.observe(view, latest.current.moving, at, latest.current.fit);
         paint(view);
         follow.current();
       };
@@ -159,13 +162,15 @@ export function DrawingPdfLayer(props: Props) {
   });
 
   useEffect(() => {
+    zoomIntent.current = createDrawingZoomIntent();
     const buffers = [...canvases.current];
     let disposed = false;
     let rendering = false;
     let stopPreparation: (() => void) | undefined;
     let current: Snapshot | null = null;
     let task: { cancel: () => void } | null = null;
-    let inflight: { patch: DrawingPatch; cancel: () => void } | null = null;
+    let inflight: { patch: DrawingPatch; cancel: () => void; startedAt: number } | null = null;
+    let interruptedZoom = false;
     // Set when this layer drops a render the camera has moved away from.
     let superseded = false;
     let shownAt = Number.NEGATIVE_INFINITY;
@@ -230,6 +235,7 @@ export function DrawingPdfLayer(props: Props) {
     const careful = () => !raster || strain.strained;
     const leadNow = () => {
       if (!latest.current.moving || careful()) return null;
+      const intent = zoomIntent.current.predict(camera.current, latest.current.fit, performance.now(), latest.current.zoom);
       const lead = drawingViewLead(
         motion.current,
         latest.current.fit,
@@ -239,6 +245,7 @@ export function DrawingPdfLayer(props: Props) {
       );
       // A pan's next strip is small; asking a little early lets it land
       // before the edge of the detail reaches the screen.
+      if (intent && (lead?.zoom ?? 1) >= 1 && intent.lead.zoom! >= (lead?.zoom ?? 1)) return intent.lead;
       return lead && lead.zoom === 1
         ? { ...lead, x: lead.x * PAN_SLACK, y: lead.y * PAN_SLACK }
         : lead;
@@ -300,9 +307,8 @@ export function DrawingPdfLayer(props: Props) {
     };
     // Where the camera is expected to be when a render started now lands.
     const landing = (view: DrawingView) => {
-      if (!leadNow()) return view;
-      const { fit, zoom } = latest.current;
-      const lead = drawingViewLead(motion.current, fit, performance.now(), expectedMs, zoom);
+      const { fit } = latest.current;
+      const lead = leadNow();
       return lead ? shiftDrawingView(view, fit, lead) : view;
     };
     // Shown slots, oldest first.
@@ -380,6 +386,15 @@ export function DrawingPdfLayer(props: Props) {
       const whole = planDrawingPatch(fit, frameSize, view, dpr, lead);
       if (!whole || careful()) return whole ? [whole] : [];
       const reach = lead && stretchDrawingLead(lead, fit, frameSize, view.scale);
+      if (lead && !reach && (lead.zoom ?? 1) > 1.05) {
+        const target = shiftDrawingView(view, fit, lead);
+        const intent = zoomIntent.current.predict(view, fit, performance.now(), latest.current.zoom);
+        const focus = planDrawingFocus(whole, fit, frameSize, target, intent?.focus);
+        const shown = shownPatches();
+        const strip = planDrawingStrip(whole, drawingPatchRect(whole), shown, fit, frameSize, [view, target], dpr);
+        const alreadyFocused = focus && shown.some(patch => patch.fullWidth >= focus.fullWidth * 0.999 && patch.fullHeight >= focus.fullHeight * 0.999 && patch.left <= focus.left + 1e-6 && patch.top <= focus.top + 1e-6 && patch.left + patch.width >= focus.left + focus.width - 1e-6 && patch.top + patch.height >= focus.top + focus.height - 1e-6);
+        return focus && !alreadyFocused ? [focus, ...(strip ? [strip] : []), whole] : strip ? [strip, whole] : [whole];
+      }
       if (lead && !reach && lead.zoom !== 1) return [whole];
       const here = planDrawingPatch(fit, frameSize, view, dpr);
       const there = reach && planDrawingPatch(fit, frameSize, shiftDrawingView(view, fit, reach), dpr);
@@ -449,7 +464,7 @@ export function DrawingPdfLayer(props: Props) {
           pixels = patch.pixelWidth * patch.pixelHeight;
           const job = raster.render(source.url, source.page, patch);
           task = job;
-          inflight = { patch, cancel: job.cancel };
+          inflight = { patch, cancel: job.cancel, startedAt: performance.now() };
           stalledTimer = setTimeout(job.cancel, 30_000);
           ({ bitmap } = await job.promise);
           if (disposed) return;
@@ -657,18 +672,28 @@ export function DrawingPdfLayer(props: Props) {
     };
     request.current = () => {
       const p = latest.current;
+      zoomIntent.current.observe(camera.current, p.moving, performance.now(), p.fit);
       if (raster && p.moving && watching === null)
         watching = requestAnimationFrame(watch);
+      if (!p.moving) interruptedZoom = false;
+      // At most one interruption per gesture, only after substantial zoom and
+      // a grace period. The next small focus render gets time to finish.
+      const target = inflight && p.moving && !interruptedZoom && !superseded
+        ? planDrawingPatch(p.fit, p.frameSize, camera.current, p.dpr) : null;
+      if (inflight && target && performance.now() - inflight.startedAt >= 150 &&
+          inflight.patch.fullWidth < target.fullWidth * 0.7 &&
+          zoomIntent.current.predict(camera.current, p.fit, performance.now(), p.zoom)) {
+        interruptedZoom = true;
+        superseded = true;
+        inflight.cancel();
+      }
       // A render planned for a view the gesture has left would only delay the
       // one for where it came to rest; one that finishes that view stays.
       const shown = shownPatches();
       if (
         inflight &&
-        !p.moving &&
-        !(
-          sharpness(shown, camera.current) < 0.9999 &&
-          sharpness([...shown, inflight.patch], camera.current) >= 0.9999
-        )
+        !p.moving && !superseded &&
+        sharpness([...shown, inflight.patch], camera.current) <= sharpness(shown, camera.current) + 1e-6
       ) {
         superseded = true;
         inflight.cancel();

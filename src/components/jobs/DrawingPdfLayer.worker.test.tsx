@@ -308,6 +308,31 @@ describe("PDF detail drawn by the background worker", () => {
     expect(visible()).toHaveLength(shown);
   });
 
+  it("interrupts an obsolete coarse render only once during a continuous zoom", async () => {
+    const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
+    const pdf = { url: "/rapid-zoom.pdf", page: 1 };
+    const view = render(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} />);
+    await tick();
+    const coarse = jobs[0]!;
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(180); });
+    const zoomed = { scale: props.view.scale * 2, x: 0, y: 0 };
+    act(() => paintRef.current!(zoomed));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving view={zoomed} />);
+    expect(coarse.cancel).toHaveBeenCalledOnce();
+    await act(async () => {
+      coarse.reject(new DOMException("Superseded", "AbortError"));
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(jobs).toHaveLength(2);
+    expect(jobs[1]!.patch.pixelWidth * jobs[1]!.patch.pixelHeight).toBeLessThanOrEqual(1024 * 1024);
+    await act(async () => { await vi.advanceTimersByTimeAsync(180); });
+    const further = { ...zoomed, scale: zoomed.scale * 2 };
+    act(() => paintRef.current!(further));
+    view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} moving view={further} />);
+    expect(jobs[1]!.cancel).not.toHaveBeenCalled();
+  });
+
   it("draws a zoom at the density it is heading for, over the coarser detail until that covers the screen", async () => {
     const paintRef: { current: ((view: DrawingView) => void) | null } = { current: null };
     const pdf = { url: "/zoom.pdf", page: 1 };
@@ -347,21 +372,31 @@ describe("PDF detail drawn by the background worker", () => {
     expect(sharp.style.zIndex).toBe("2");
     expect(coarse.style.zIndex).toBe("1");
 
-    // Coming to rest where the new detail covers the screen lets the old go.
-    const released = releasedAt.length;
+    // The fine centre stays while uncovered edges are filled at rest.
+    expect(ahead.pixelWidth * ahead.pixelHeight).toBeLessThanOrEqual(1024 * 1024);
     const rest = {
-      scale: (ahead.fullWidth / (props.fit.width * props.dpr * 1.1)) * 1.02,
+      scale: ahead.fullWidth / (props.fit.width * props.dpr * 1.1),
       x: 0,
       y: 0,
     };
-    expect(patchCoversView(ahead, props.fit, props.frameSize, rest, props.dpr)).toBe(true);
+    expect(patchCoversView(ahead, props.fit, props.frameSize, rest, props.dpr)).toBe(false);
     act(() => paintRef.current!(rest));
     view.rerender(<DrawingPdfLayer {...props} pdf={pdf} paintRef={paintRef} view={rest} />);
     await tick();
-    expect(visible()).toEqual([sharp]);
-    expect(jobs).toHaveLength(2);
-    expect(releasedAt.length).toBeGreaterThan(released);
-    expect(releasedAt.slice(released)).toEqual(releasedAt.slice(released).map(() => [0, 0]));
+    for (let index = 2; index < jobs.length && index < 10; index++) {
+      const job = jobs[index]!;
+      await act(async () => {
+        job.resolve({ bitmap: bitmapFor(job.patch).bitmap, renderMs: 20 });
+        await vi.advanceTimersByTimeAsync(1);
+      });
+    }
+    expect(visible()).toContain(sharp);
+    expect(visible()).not.toContain(coarse);
+    expect(jobs.length).toBeLessThan(10);
+    const count = jobs.length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    expect(jobs).toHaveLength(count);
+
   });
 
   it("moves to the main thread when the worker drops a render the layer still wanted", async () => {
