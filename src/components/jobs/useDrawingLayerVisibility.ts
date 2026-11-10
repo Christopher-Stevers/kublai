@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { createAccountPreference } from "~/hooks/create-account-preference";
 
 export type DrawingLayers = {
+  /** Versioned once-off reset; later choices must survive reopening. */
+  hyperlinkVisibilityVersion?: 1;
   markups: boolean;
   issues: boolean;
   private: boolean;
@@ -47,6 +49,15 @@ const usePreference = createAccountPreference<string>({
     }
   },
 });
+/** Old settings (including shared page snapshots) start with links off once. */
+function migrateLayers(value: DrawingLayers): DrawingLayers {
+  if (value.hyperlinkVisibilityVersion === 1) return value;
+  return {
+    ...value,
+    hyperlinkVisibilityVersion: 1,
+    hidden: [...new Set([...(value.hidden ?? []), "link"])],
+  };
+}
 /** Device-local visibility, isolated by account and drawing. */
 export function useDrawingLayerVisibility(
   account: string | undefined,
@@ -56,21 +67,18 @@ export function useDrawingLayerVisibility(
   const [saved, setSaved] = usePreference(
     account ? JSON.stringify([account, sheet]) : undefined,
   );
-  const layers = useMemo<DrawingLayers>(() => saved
+  const layers = useMemo<DrawingLayers>(() => migrateLayers(saved
     ? (JSON.parse(saved) as DrawingLayers)
-    : (initial ?? defaults), [saved, initial]);
+    : (initial ?? defaults)), [saved, initial]);
   const setLayers = useCallback(
     (next: DrawingLayers | ((old: DrawingLayers) => DrawingLayers)) => {
       setSaved((old) =>
-        JSON.stringify(
-          typeof next === "function"
-            ? next(
-                old
-                  ? (JSON.parse(old) as DrawingLayers)
-                  : (initial ?? defaults),
-              )
-            : next,
-        ),
+        JSON.stringify({
+          ...(typeof next === "function"
+            ? next(migrateLayers(old ? JSON.parse(old) as DrawingLayers : (initial ?? defaults)))
+            : next),
+          hyperlinkVisibilityVersion: 1,
+        }),
       );
     },
     [setSaved, initial],

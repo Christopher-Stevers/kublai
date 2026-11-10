@@ -372,6 +372,11 @@ const open = (fullscreen = false) =>
   render(
     <DrawingWorkspace fullscreen={fullscreen} jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
   );
+function enableHyperlinks() {
+  fireEvent.click(screen.getByRole("button", {name:"Layers"}));
+  fireEvent.click(screen.getByRole("button", {name:"Hyperlink layer"}));
+  fireEvent.click(screen.getByRole("button", {name:"Layers"}));
+}
 // The bottom bar: panels are in More, markup types in Markup, others in Tools.
 const openMenu = (name: string) => {
   if (name === "More" || name === "Tools") {
@@ -861,6 +866,7 @@ describe("drawing workspace workflows", () => {
         onOpenSheet={onOpenSheet}
       />,
     );
+    if (!mocks.viewer.mock.lastCall?.[0].onPdfLink) enableHyperlinks();
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(screen.getByRole("dialog", { name: "AHU-1" })).toBeInTheDocument();
     expect(open).not.toHaveBeenCalled();
@@ -876,6 +882,7 @@ describe("drawing workspace workflows", () => {
       "_blank",
       "noopener,noreferrer",
     );
+    if (!mocks.viewer.mock.lastCall?.[0].onPdfLink) enableHyperlinks();
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     fireEvent.click(screen.getByRole("button", { name: "Revision drawing" }));
     const target = mocks.data!.jobSheets.find(s=>s.id===revisionId)!;
@@ -894,6 +901,7 @@ describe("drawing workspace workflows", () => {
     const view = render(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
+    if (!mocks.viewer.mock.lastCall?.[0].onPdfLink) enableHyperlinks();
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(open).toHaveBeenLastCalledWith(
       "https://example.com/legacy",
@@ -907,6 +915,7 @@ describe("drawing workspace workflows", () => {
     view.rerender(
       <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />,
     );
+    if (!mocks.viewer.mock.lastCall?.[0].onPdfLink) enableHyperlinks();
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/chat`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
@@ -914,6 +923,7 @@ describe("drawing workspace workflows", () => {
     window.addEventListener(DRAWING_DESTINATION_EVENT,destinationEvent);
     entity.data.links = [{ label: "Drawing", url: `${location.origin}/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail` }];
     view.rerender(<DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} />);
+    if (!mocks.viewer.mock.lastCall?.[0].onPdfLink) enableHyperlinks();
     fireEvent.click(screen.getByRole("button", { name: "Tap hyperlink" }));
     expect(mocks.push).toHaveBeenLastCalledWith(`/jobs/${jobId}/drawings?drawingSheet=${sheetId}#detail`, { scroll: false });
     expect(open).toHaveBeenCalledTimes(1);
@@ -1000,6 +1010,7 @@ describe("drawing workspace workflows", () => {
         onOpenSheet={onOpenSheet}
       />,
     );
+    enableHyperlinks();
     fireEvent.click(
       screen.getByRole("button", { name: "Follow original page link" }),
     );
@@ -1011,6 +1022,7 @@ describe("drawing workspace workflows", () => {
   it("opens original web links using their retained protocol", () => {
     const browser = vi.spyOn(window, "open").mockReturnValue(null);
     open();
+    enableHyperlinks();
     fireEvent.click(
       screen.getByRole("button", { name: "Follow original web link" }),
     );
@@ -1024,6 +1036,7 @@ describe("drawing workspace workflows", () => {
   it("explains when an original linked page is absent from this job", async () => {
     mocks.data!.jobSheets[0]!.imageUrl = `/api/job-rooms/files/${jobId}/${sheetId}/floor-1.webp`;
     open();
+    enableHyperlinks();
     fireEvent.click(
       screen.getByRole("button", { name: "Follow original page link" }),
     );
@@ -1961,6 +1974,7 @@ it("remembers the captured source drawing view before following an internal hype
  render(<SnapshotSourceContext.Provider value={{captureSource,register:()=>()=>{},registerPage:()=>()=>{}}}>
    <DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}/>
  </SnapshotSourceContext.Provider>);
+ enableHyperlinks();
  fireEvent.click(screen.getByRole("button",{name:"Tap hyperlink"}));
  expect(captureSource).toHaveBeenCalledOnce();
  expect(visit).toHaveBeenCalledWith(expect.objectContaining({detail:{source:href,target:new URL(`/jobs/${jobId}/documents`,location.origin).href}}));
@@ -2097,7 +2111,8 @@ it("opens layers directly from the drawing corner, including full screen", () =>
   expect(screen.queryByText("On this sheet")).toBeNull();
   // Only what is on the sheet: no rectangles, and no pins at all.
   expect(screen.queryByRole("button", { name: "Rectangle layer" })).toBeNull();
-  expect(screen.queryByText("Tools", { selector: "summary span" })).toBeNull();
+  // Original PDF links are unknown until enabled, so their switch stays available.
+  expect(screen.getByRole("button", {name:"Hyperlink layer"})).toHaveAttribute("aria-pressed", "false");
   fireEvent.click(layers);
   expect(screen.queryByRole("complementary", { name: "Drawing tools panel" })).not.toBeInTheDocument();
 });
@@ -2445,4 +2460,19 @@ it("removes docked controls when a retained page is hidden and restores only the
   view.unmount();
   expect(dock).toBeEmptyDOMElement();
   dock.remove();
+});
+
+it("keeps both saved and original hyperlinks disabled until their layer is enabled", () => {
+  const base = existingMarkup();
+  const link = {...base, data:{...base.data,type:"link"}} as DrawingEntity;
+  mocks.data!.entities = [link];
+  open();
+  expect(mocks.viewer.mock.lastCall?.[0].onPdfLink).toBeUndefined();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toEqual([]);
+  enableHyperlinks();
+  expect(mocks.viewer.mock.lastCall?.[0].onPdfLink).toEqual(expect.any(Function));
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toEqual([link]);
+  enableHyperlinks();
+  expect(mocks.viewer.mock.lastCall?.[0].onPdfLink).toBeUndefined();
+  expect(mocks.viewer.mock.lastCall?.[0].annotations).toEqual([]);
 });

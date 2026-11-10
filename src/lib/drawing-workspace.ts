@@ -446,6 +446,8 @@ export type DrawingWorkspace = {
   actor: { id: string; name: string };
   members: { id: string; name: string }[];
   jobSheets: DrawingJobSheet[];
+  /** Hidden hyperlink entities are omitted; counts are keyed by source sheet. */
+  omittedHyperlinks?: Record<string, number>;
   entities: DrawingEntity[];
   metadata: DrawingMetadata;
   favorite: boolean;

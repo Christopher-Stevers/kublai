@@ -313,6 +313,7 @@ export function DrawingSheetViewer({
   const pdfLinkUrl = pdf?.url;
   const pdfLinkPage = pdf?.page;
   const readsPdfLinks = Boolean(onPdfLink);
+  const pdfLinkReady = pdfShown === pdfLinkKey || pdfFailed === pdfLinkKey;
   useEffect(() => {
     if (
       !pdfLinkUrl ||
@@ -320,6 +321,7 @@ export function DrawingSheetViewer({
       !bytesUrl ||
       bytesPage === undefined ||
       !readsPdfLinks ||
+      !pdfLinkReady ||
       holdPdf
     )
       return;
@@ -350,6 +352,7 @@ export function DrawingSheetViewer({
     bytesUrl,
     bytesPage,
     readsPdfLinks,
+    pdfLinkReady,
     holdPdf,
   ]);
   const importedLinks = pdfLinks?.key === pdfLinkKey ? pdfLinks.links : [];

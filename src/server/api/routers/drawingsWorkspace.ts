@@ -1,5 +1,5 @@
 import { hyperlinkScopeInput } from "~/lib/hyperlink-scope";
-import { compactDrawingWorkspace } from "~/lib/drawing-workspace-payload";
+import { compactDrawingWorkspace, omitDrawingHyperlinks } from "~/lib/drawing-workspace-payload";
 import { assertCan } from "~/server/auth/permissions";
 import { superLabelSettings, saveSuperLabelBoxes, applySuperLabel } from "~/server/drawings/service";
 import { superLabelSchema } from "~/lib/super-label";
@@ -135,15 +135,16 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
     .input(z.object({ sheetId, id: sheetId, revision: z.number().int().min(1) }))
     .query(({ ctx, input }) => getDrawingLink(ctx, input)),
   get: hasAppAccess
-    .input(z.object({ sheetId, deferLinks: z.boolean().optional() }))
+    .input(z.object({ sheetId, deferLinks: z.boolean().optional(), omitHyperlinks: z.boolean().optional() }))
     .query(async ({ ctx, input }) => {
       const workspace = await getDrawingWorkspace(ctx, input.sheetId);
-      return input.deferLinks ? compactDrawingWorkspace(workspace) : workspace;
+      return input.omitHyperlinks ? omitDrawingHyperlinks(workspace) : input.deferLinks ? compactDrawingWorkspace(workspace) : workspace;
     }),
   changes: hasAppAccess
-    .input(z.object({ sheetId, revision: z.string().max(64).optional(), deferLinks: z.boolean().optional() }))
+    .input(z.object({ sheetId, revision: z.string().max(64).optional(), deferLinks: z.boolean().optional(), omitHyperlinks: z.boolean().optional() }))
     .query(async ({ ctx, input }) => {
       const result = await getDrawingWorkspaceChanges(ctx, input);
+      if (input.omitHyperlinks && result.workspace) return { ...result, workspace: omitDrawingHyperlinks(result.workspace) };
       return input.deferLinks && result.workspace ? { ...result, workspace: compactDrawingWorkspace(result.workspace) } : result;
     }),
   list: hasAppAccess

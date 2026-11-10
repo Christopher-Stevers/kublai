@@ -1,4 +1,5 @@
 "use client";
+import { mergeDrawingWorkspaceSnapshot } from "~/lib/drawing-workspace-payload";
 import { DEFAULT_HYPERLINK_COLOR, DEFAULT_HYPERLINK_OPACITY } from "~/lib/drawing-hyperlink-style";
 import { useDrawingLayerVisibility, type DrawingLayers } from "./useDrawingLayerVisibility";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
@@ -586,7 +587,9 @@ export function DrawingWorkspace({
     () => typeof navigator === "undefined" || navigator.onLine,
   );
   const [snapshot, setSnapshot] = useState<Workspace | null>(null);
-  const query = useDrawingWorkspaceQuery(sheet.id, online);
+  const [layers, setLayers] = useDrawingLayerVisibility(account?.accountKey, sheet.id, entryDrawing?.layers);
+  const hyperlinksVisible = layers.issues && !layers.hidden?.includes("link");
+  const query = useDrawingWorkspaceQuery(sheet.id, online, hyperlinksVisible);
   // Cache keys also include the simulation session; identity comes from the
   // server-validated account, never from parsing a storage namespace.
   const boundUser = account?.userId;
@@ -599,8 +602,10 @@ export function DrawingWorkspace({
     (!boundUser || query.data.actor.id === boundUser)
       ? query.data
       : null;
+  const visibleServerData = useMemo(() => serverData && hyperlinksVisible && serverData.omittedHyperlinks
+    ? mergeDrawingWorkspaceSnapshot(serverData, snapshot) : serverData, [serverData, snapshot, hyperlinksVisible]);
   const data =
-    serverData ??
+    visibleServerData ??
     (!accessRevoked &&
     snapshot?.sheetId === sheet.id &&
     (!boundUser || snapshot.actor.id === boundUser)
@@ -686,7 +691,6 @@ export function DrawingWorkspace({
     width: 2,
     fill: "none",
   });
-  const [layers, setLayers] = useDrawingLayerVisibility(account?.accountKey, sheet.id, entryDrawing?.layers);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editReadyId, setEditReadyId] = useState<string | null>(null);
   // A mouse right-click is deliberate, so its menu doesn't wait for the shake.
@@ -879,12 +883,7 @@ export function DrawingWorkspace({
   useEffect(() => {
     if (serverData && account?.store)
       void account.store.readSnapshot<Workspace>(`workspace:${sheet.id}`).then(saved => {
-        const entities = serverData.entities.map(entity => {
-          if (entity.kind !== "markup" || !entity.data.deferredLinks) return entity;
-          const full = saved?.entities.find(item => item.id === entity.id && item.revision === entity.revision);
-          return full?.kind === "markup" && !full.data.deferredLinks ? full : entity;
-        });
-        return account.store!.saveSnapshot(`workspace:${sheet.id}`, { ...serverData, entities });
+        return account.store!.saveSnapshot(`workspace:${sheet.id}`, mergeDrawingWorkspaceSnapshot(serverData, saved));
       }).catch(() => undefined);
   }, [serverData, account?.store, sheet.id]);
   useEffect(() => {
@@ -951,7 +950,7 @@ export function DrawingWorkspace({
       utils.drawingsWorkspace.list.invalidate({ jobId }),
     ]);
   const patchEntity = (entity: DrawingEntity) =>
-    utils.drawingsWorkspace.get.setData({ sheetId: entity.sheetId }, (old) =>
+    utils.drawingsWorkspace.get.setData({ sheetId: entity.sheetId, ...(!hyperlinksVisible ? { omitHyperlinks: true } : {}) }, (old) =>
       old
         ? {
             ...old,
@@ -1390,7 +1389,7 @@ export function DrawingWorkspace({
         data: drawingMetadataSchema.parse(value),
       });
       await utils.drawingsWorkspace.get.cancel({ sheetId: sheet.id });
-      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id }, (old) =>
+      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id, ...(!hyperlinksVisible ? { omitHyperlinks: true } : {}) }, (old) =>
         old ? { ...old, metadata: next } : old,
       );
       setMetadata(next);
@@ -1412,7 +1411,7 @@ export function DrawingWorkspace({
     try {
       const next = await scaleMutation.mutateAsync({ sheetId: sheet.id, scale });
       await utils.drawingsWorkspace.get.cancel({ sheetId: sheet.id });
-      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id }, (old) =>
+      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id, ...(!hyperlinksVisible ? { omitHyperlinks: true } : {}) }, (old) =>
         old ? { ...old, metadata: next } : old,
       );
       // Unsaved sheet details are kept and now save against the new revision.
@@ -2400,7 +2399,7 @@ export function DrawingWorkspace({
               alt={source.name}
               onPdfReady={onReady}
               pdf={resolved.pdf}
-              onPdfLink={activatePdfLink}
+              onPdfLink={hyperlinksVisible ? activatePdfLink : undefined}
               tiles={resolved.pdf?.url.startsWith("blob:") ? null : tileBase(source.imageUrl)}
               sheetKey={source.id}
               sourceSheetId={source.id}
@@ -2921,6 +2920,9 @@ export function DrawingWorkspace({
                                 entity.data.type,
                                 (counts.get(entity.data.type) ?? 0) + 1,
                               );
+                          if (viewData.omittedHyperlinks) {
+                            counts.set("link", Math.max(counts.get("link") ?? 0, viewData.omittedHyperlinks[sourceId] ?? 0));
+                          }
                           const total = (types: DrawingTool[]) =>
                             types.reduce(
                               (sum, type) => sum + (counts.get(type) ?? 0),
@@ -2936,7 +2938,7 @@ export function DrawingWorkspace({
                             }));
                           // Only what is on this sheet: an empty type has nothing to hide.
                           const present = (types: DrawingTool[]) =>
-                            types.filter((type) => (counts.get(type) ?? 0) > 0);
+                            types.filter((type) => type === "link" || (counts.get(type) ?? 0) > 0);
                           const group = (
                             key: "markups" | "issues",
                             label: string,

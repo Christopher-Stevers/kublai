@@ -71,3 +71,19 @@ it("retains cached annotations on unchanged polls, applies changes and propagate
   );
   client.clear();
 });
+
+it("uses a separate hidden-link cache and requests links when the layer is enabled", async () => {
+  const hidden = {sheetId:"sheet", revision:"a",entities:[],omittedHyperlinks:{sheet:5}};
+  const full = {sheetId:"sheet", revision:"a",entities:[{id:"link"}]};
+  mocks.changes.mockImplementation(async (input) => ({revision:"a",workspace:input.omitHyperlinks ? hidden : full}));
+  const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  const wrapper = ({children}:{children:ReactNode}) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const hook = renderHook(({visible}) => useDrawingWorkspaceQuery("sheet",true,visible), {wrapper, initialProps:{visible:false}});
+  await waitFor(() => expect(hook.result.current.data).toEqual(hidden));
+  expect(mocks.changes).toHaveBeenLastCalledWith(expect.objectContaining({omitHyperlinks:true}),expect.anything());
+  hook.rerender({visible:true});
+  expect(hook.result.current.data).toEqual(hidden);
+  await waitFor(() => expect(hook.result.current.data).toEqual(full));
+  expect(mocks.changes.mock.lastCall?.[0]).not.toHaveProperty("omitHyperlinks");
+  client.clear();
+});

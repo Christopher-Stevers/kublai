@@ -10,7 +10,9 @@ import { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { readDrawingPdfLinks } from "~/lib/drawing-pdf-links";
 import type { ComponentProps } from "react";
 vi.mock("~/lib/drawing-pdf-links", () => ({ readDrawingPdfLinks: vi.fn() }));
-vi.mock("./DrawingPdfLayer", () => ({ DrawingPdfLayer: () => null }));
+vi.mock("./DrawingPdfLayer", () => ({
+  DrawingPdfLayer: ({ onReady }: { onReady: () => void }) => <button onClick={onReady}>Finish PDF</button>,
+}));
 vi.mock("./DrawingComparisonLayer", () => ({
   DrawingComparisonLayer: () => null,
 }));
@@ -73,7 +75,8 @@ async function open(
     toJSON: () => ({}),
   });
   fireEvent.load(image);
-  await waitFor(() =>
+  fireEvent.click(screen.getByText("Finish PDF"));
+  if (props.onPdfLink !== undefined || !("onPdfLink" in props)) await waitFor(() =>
     expect(readDrawingPdfLinks).toHaveBeenCalledWith(defaults.pdf),
   );
   return { ...view, frame, image, onPdfLink, defaults };
@@ -84,6 +87,21 @@ function tap(frame: Element) {
   fireEvent.pointerUp(frame, point);
 }
 describe("PDF hyperlinks directly on drawings", () => {
+  it("does not parse hidden links and waits for drawing detail before parsing enabled links", async () => {
+    const {rerender, defaults: props} = await open({onPdfLink: undefined});
+    expect(readDrawingPdfLinks).not.toHaveBeenCalled();
+    const view = {rerender};
+    view.rerender(<DrawingSheetViewer {...props} pdf={{url:"/new.pdf",page:1}} />);
+    expect(readDrawingPdfLinks).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Finish PDF"));
+    await screen.findByRole("link");
+    expect(readDrawingPdfLinks).toHaveBeenCalledOnce();
+    view.rerender(<DrawingSheetViewer {...props} onPdfLink={undefined} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    view.rerender(<DrawingSheetViewer {...props} onPdfLink={undefined} pdf={{url:"/hidden.pdf",page:1}} />);
+    fireEvent.click(screen.getByText("Finish PDF"));
+    expect(readDrawingPdfLinks).toHaveBeenCalledOnce();
+  });
   it.each(["pan", "viewing", undefined] as const)("opens retained links in %s with matching keyboard link regions", async (tool) => {
     const { frame, onPdfLink, image } = await open({ tool });
     const region = await screen.findByRole("link", { name: "Open PDF page 2" });
@@ -143,6 +161,7 @@ describe("PDF hyperlinks directly on drawings", () => {
       />,
     );
     expect(screen.queryByRole("link")).toBeNull();
+    fireEvent.click(screen.getByText("Finish PDF"));
     rerender(<DrawingSheetViewer {...defaults} pdf={null} />);
     release([link]);
     await waitFor(() => expect(screen.queryByRole("link")).toBeNull());
