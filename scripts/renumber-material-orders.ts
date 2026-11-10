@@ -11,7 +11,7 @@ import type { DocumentState } from "../src/server/documents/types";
 
 dotenv.config({quiet: true});
 const args = process.argv.slice(2);
-const org = args[args.indexOf("--org") + 1];
+const org = args[args.indexOf("--org") + 1] ?? "";
 const apply = args.includes("--apply");
 const backup = args[args.indexOf("--backup") + 1];
 if (!args.includes("--org") || !/^[0-9a-f-]{36}$/i.test(org ?? "")) throw Error("An explicit organization UUID is required");
@@ -19,7 +19,9 @@ if (apply && (!args.includes("--backup") || !backup?.startsWith("/"))) throw Err
 if (!process.env.DATABASE_URL) throw Error("DATABASE_URL required");
 const db = postgres(process.env.DATABASE_URL, {max: 1});
 try {
-  await db.begin(async tx => {
+  await db.begin(async transaction => {
+    // postgres TransactionSql omits the callable overload in its mapped type.
+    const tx = transaction as unknown as typeof db;
     await tx`set local lock_timeout = '10s'`;
     await tx`set local statement_timeout = '90s'`;
     const [organization] = await tx`select id,name from kublai_organization where id=${org}`;
