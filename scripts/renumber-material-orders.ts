@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { planOrderRenumbering, renumberDocumentLinks } from "../src/server/order-renumbering";
+import type { NumberedOrder } from "../src/server/order-renumbering";
 import type { DocumentState } from "../src/server/documents/types";
 
 dotenv.config({quiet: true});
@@ -26,24 +27,24 @@ try {
     await tx`set local statement_timeout = '90s'`;
     const [organization] = await tx`select id,name from kublai_organization where id=${org}`;
     if (!organization) throw Error("Organization not found");
-    const jobs = await tx`select id from kublai_job where "organizationId"=${org} order by id`;
+    const jobs = await tx<{id:string}[]>`select id from kublai_job where "organizationId"=${org} order by id`;
     // Same lock order as receiving: document workspace, then order allocation.
     for (const job of jobs) {
       await tx`select pg_advisory_xact_lock(hashtextextended(${job.id},4149))`;
       await tx`select pg_advisory_xact_lock(hashtext(${`${org}:${job.id}:orders`}))`;
     }
-    const orders = await tx`select o.*,s.name as "supplierName" from kublai_order o
+    const orders = await tx<(NumberedOrder & {previousOrderNumbers?: string[]})[]>`select o.*,s.name as "supplierName" from kublai_order o
       left join kublai_supplier s on s.id=o."supplierId" and s."organizationId"=o."organizationId"
       where o."organizationId"=${org} and o.kind='materials' order by o.id for update of o`;
-    const workspaces = await tx`select * from kublai_job_document_workspace where "organizationId"=${org} for update`;
-    const plan = planOrderRenumbering(orders as unknown as Parameters<typeof planOrderRenumbering>[0]);
+    const workspaces = await tx<{jobId:string;state:DocumentState;revision:number}[]>`select * from kublai_job_document_workspace where "organizationId"=${org} for update`;
+    const plan = planOrderRenumbering(orders);
     const changes = plan.filter(row => row.before !== row.after);
     const now = new Date().toISOString();
-    const snapshots = JSON.parse(JSON.stringify(workspaces));
+    const snapshots = workspaces.map(row => structuredClone({...row}));
     const aliases = new Map<string, Set<string>>();
     for (const order of orders) aliases.set(order.id, new Set(order.previousOrderNumbers ?? []));
     for (const change of changes) if (change.before) aliases.get(change.id)!.add(change.before);
-    for (const workspace of workspaces) for (const doc of (workspace.state as DocumentState).documents) {
+    for (const workspace of workspaces) for (const doc of workspace.state.documents) {
       if (doc.packingSlip) {
         const target = plan.find(row => row.id === doc.packingSlip!.orderId);
         if (target && doc.packingSlip.orderNumber !== target.after)
@@ -59,11 +60,13 @@ try {
     await writeFile(backup!, JSON.stringify({organization,at:now,orders,workspaces:snapshots,plan},null,2), {flag:"wx",mode:0o600});
     const tag = "0101_order_reference_history";
     const source = await readFile(new URL(`../drizzle/${tag}.sql`,import.meta.url),"utf8");
-    const journal = JSON.parse(await readFile(new URL("../drizzle/meta/_journal.json",import.meta.url),"utf8"));
-    const when = journal.entries.find((e: {tag:string}) => e.tag === tag).when;
+    const journal = JSON.parse(await readFile(new URL("../drizzle/meta/_journal.json",import.meta.url),"utf8")) as {entries:{tag:string;when:number}[]};
+    const entry = journal.entries.find(e => e.tag === tag);
+    if (!entry) throw Error("Missing migration journal entry");
+    const when = entry.when;
     const hash = createHash("sha256").update(source).digest("hex");
     await tx`select pg_advisory_xact_lock(72491834)`;
-    const existing = await tx`select hash from drizzle.__drizzle_migrations where created_at=${when}`;
+    const existing = await tx<{hash:string}[]>`select hash from drizzle.__drizzle_migrations where created_at=${when}`;
     if (existing.some(row => row.hash !== hash)) throw Error("Migration checksum mismatch");
     await tx.unsafe(source);
     if (!existing.length) await tx`insert into drizzle.__drizzle_migrations (hash,created_at) values (${hash},${when})`;
@@ -74,13 +77,13 @@ try {
       await tx`update kublai_order set "orderNumber"=${row.after}, "previousOrderNumbers"=${tx.json(history)} where id=${row.id} and "organizationId"=${org}`;
     }
     for (const workspace of workspaces) {
-      const before = snapshots.find((row: {jobId:string}) => row.jobId === workspace.jobId);
+      const before = snapshots.find(row => row.jobId === workspace.jobId)!;
       if (JSON.stringify(before.state) !== JSON.stringify(workspace.state))
-        await tx`update kublai_job_document_workspace set state=${tx.json(workspace.state)}, revision=revision+1,"updatedAt"=${now} where "jobId"=${workspace.jobId} and "organizationId"=${org}`;
+        await tx`update kublai_job_document_workspace set state=${tx.json(workspace.state as unknown as postgres.JSONValue)}, revision=revision+1,"updatedAt"=${now} where "jobId"=${workspace.jobId} and "organizationId"=${org}`;
     }
     // Bump list timestamps so clients that sync incrementally refresh order labels.
     await tx`update kublai_material_list set "updatedAt"=${now} where "organizationId"=${org} and id in (select "materialListId" from kublai_order where "organizationId"=${org} and kind='materials')`;
-    const stored = await tx`select id,"orderNumber" from kublai_order where "organizationId"=${org} and kind='materials'`;
+    const stored = await tx<{id:string;orderNumber:string}[]>`select id,"orderNumber" from kublai_order where "organizationId"=${org} and kind='materials'`;
     if (stored.length !== plan.length || stored.some(row => plan.find(p => p.id === row.id)?.after !== row.orderNumber)) throw Error("Renumber verification failed");
     console.log(`Verified ${stored.length} orders; backup: ${backup}`);
   });

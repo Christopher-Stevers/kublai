@@ -53,7 +53,8 @@ export function renumberDocumentLinks(state: DocumentState, plan: OrderRenumberi
     if (!value || typeof value !== "object") return;
     if (Array.isArray(value)) { value.forEach(visit); return; }
     const row = value as Record<string, unknown>;
-    const target = byId.get(String(row.orderId ?? row.id ?? ""));
+    const id = row.orderId ?? row.id;
+    const target = typeof id === "string" ? byId.get(id) : undefined;
     if (target && typeof row.orderNumber === "string") row.orderNumber = target.after;
     Object.values(row).forEach(visit);
   }
