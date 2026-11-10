@@ -262,7 +262,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     if (store) void (async () => {
       const found: Record<string, string> = {};
       const sizes: Record<string, number> = {};
-      for (const [id, version] of JSON.parse(folderVersions) as [string, string, number][]) {
+      sets: for (const [id, version] of JSON.parse(folderVersions) as [string, string, number][]) {
         if (stopped) return;
         try {
           let marker = await store.readSnapshot<DownloadMarker>(`drawing-download:${id}`);
@@ -282,11 +282,21 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             marker = { version, urls, sheets: saved.sheets.map(s => s.id) };
           }
           if (marker.version !== version) continue;
+          // A viewed set's cached metadata alone is not evidence of saved files.
+          // Do not fetch workspaces for it unless the drawing bytes are present.
+          let filesChecked = false;
           // Rebuild missing workspace metadata online; keep existing file bytes.
           for (const sheet of marker.sheets) {
             if (stopped) return;
             let workspace = await store.readSnapshot<WorkspaceSnapshot>(`workspace:${sheet}`);
             if (!workspace && setsSnapshot.online) {
+              if (!filesChecked) {
+                for (const url of marker.urls) {
+                  if (stopped) return;
+                  if (!(await store.readAsset(url))?.size) continue sets;
+                }
+                filesChecked = true;
+              }
               workspace = await utils.client.drawingsWorkspace.get.query({ sheetId: sheet });
               if (stopped) return;
               await store.saveSnapshot(`workspace:${sheet}`, workspace);

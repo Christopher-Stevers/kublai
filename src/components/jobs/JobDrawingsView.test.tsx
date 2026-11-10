@@ -725,6 +725,16 @@ describe("drawing set downloads", () => {
     expect(store.saveSnapshot).toHaveBeenCalledWith("workspace:s1", expect.objectContaining({ sheetId: "s1" }));
     expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ bytes: 9 }));
   });
+  it("does not fetch viewer metadata for a visited set whose files were never saved", async () => {
+    const store = offlineStore();
+    state.sets[0]!.downloadVersion = "content-v1";
+    state.fetchSet.mockResolvedValue({ sheets: state.sheets, downloadVersion: "content-v1" });
+    await store.saveSnapshot("drawing-set:set-1", { sheets: state.sheets, downloadVersion: "content-v1" });
+    render(<JobDrawingsView jobId="job" />);
+    await waitFor(() => expect(store.readAsset).toHaveBeenCalled());
+    expect(state.fetchWorkspace).not.toHaveBeenCalled();
+    expect(store.saveAssets).not.toHaveBeenCalled();
+  });
   it("keeps checking other sets when one set's storage read fails", async () => {
     const store = offlineStore();
     state.sets.push({ ...state.sets[0]!, id: "set-2", name: "Electrical" });
