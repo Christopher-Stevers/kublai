@@ -2307,6 +2307,7 @@ export const jobDrawingSets = createTable(
     id: d.uuid().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     organizationId: d.uuid().notNull().references(() => organizations.id, { onDelete: "cascade" }),
     jobId: d.uuid().notNull().references(() => jobs.id, { onDelete: "cascade" }),
+    parentId: d.uuid().references((): AnyPgColumn => jobDrawingSets.id),
     documentVersionId: d.uuid(),
     name: d.varchar({ length: 255 }).notNull(),
     labelBoxes: d.jsonb().$type<import("~/lib/super-label").SuperLabelBoxes>(),
@@ -2314,7 +2315,7 @@ export const jobDrawingSets = createTable(
     createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
   }),
-  (t) => [index("job_drawing_set_job_idx").on(t.organizationId, t.jobId), uniqueIndex("drawing_document_version_set_idx").on(t.documentVersionId).where(sql`${t.documentVersionId} is not null`)],
+  (t) => [index("job_drawing_set_parent_idx").on(t.parentId), index("job_drawing_set_job_idx").on(t.organizationId, t.jobId), uniqueIndex("drawing_document_version_set_idx").on(t.documentVersionId).where(sql`${t.documentVersionId} is not null`)],
 );
 
 export const jobDrawingSheets = createTable(

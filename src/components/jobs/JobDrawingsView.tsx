@@ -306,7 +306,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   });
   const deleteSet = api.drawings.deleteSet.useMutation({
     onSuccess: async () => {
-      setSetId(null);
       await refresh();
     },
     onError,
@@ -471,7 +470,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       : sheetId
         ? () => openSheet(null)
         : setId
-          ? () => setSetId(null)
+          ? () => setSetId(setsData?.sets.find(folder => folder.id === setId)?.parentId ?? null)
           : null,
   );
 
@@ -482,7 +481,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const saveName = () => {
     const name = nameDraft.trim();
     if (!nameDialog || !name) return;
-    if (nameDialog.kind === "new-set") createSet.mutate({ jobId, name });
+    if (nameDialog.kind === "new-set") createSet.mutate({ jobId, name, ...(setId ? { parentId: setId } : {}) });
     else if (nameDialog.kind === "rename-set")
       renameSet.mutate({ setId: nameDialog.id, name });
     else renameSheet.mutate({ sheetId: nameDialog.id, name });
@@ -625,6 +624,139 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     );
   }
 
+  // Folders.
+  const folders = (setsData?.sets ?? []).filter(folder => (folder.parentId ?? null) === setId);
+  const orderedFolders = folderOrder.sortFolders(folders);
+  const openFolder = (id: string) => {
+    if (!sandbox) recordDrawingFolderOpen(id);
+    setSetId(id);
+  };
+  const newFolderButton = (
+    className: string,
+    size: "default" | "lg" = "lg",
+  ) => (
+    <Button
+      size={size}
+      className={className}
+      disabled={!canUpload}
+      onClick={() => openNameDialog({ kind: "new-set" })}
+    >
+      <FolderPlusIcon className="mr-2 h-5 w-5" />
+      New folder
+    </Button>
+  );
+  const folderGrid = (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {orderedFolders.map((folder) => (
+            <Card
+              key={folder.id}
+              data-tutorial="drawing-folder"
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${folder.name}`}
+              className="card-lift cursor-pointer gap-0 overflow-hidden py-0"
+              onClick={() => openFolder(folder.id)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openFolder(folder.id);
+                }
+              }}
+            >
+              {folder.coverImageUrl ? (
+                <DrawingThumbnail
+                  src={folder.coverImageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="bg-muted aspect-[16/9] w-full border-b object-contain"
+                />
+              ) : (
+                <div className="bg-muted text-muted-foreground/60 flex aspect-[16/9] w-full items-center justify-center border-b">
+                  <FolderIcon className="h-12 w-12" />
+                </div>
+              )}
+              <CardHeader className="flex flex-row items-start justify-between gap-2 px-4 pt-3 pb-0">
+                <CardTitle className="min-w-0 leading-tight break-words">
+                  {folder.name}
+                </CardTitle>
+                {(canUpload || canDelete) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
+                        aria-label={`More actions for ${folder.name}`}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <MoreVerticalIcon className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {canUpload && (
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            openNameDialog({
+                              kind: "rename-set",
+                              id: folder.id,
+                              name: folder.name,
+                            })
+                          }
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                          Rename folder
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={async () => {
+                            if (
+                              await confirmAction({
+                                title: `Delete ${folder.name}?`,
+                                description: `This deletes the folder and its ${folder.sheetCount} ${folder.sheetCount === 1 ? "drawing" : "drawings"}.`,
+                                confirmLabel: "Delete folder",
+                                destructive: true,
+                              })
+                            )
+                              deleteSet.mutate({ setId: folder.id });
+                          }}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                          Delete folder
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </CardHeader>
+              <CardContent className="text-muted-foreground px-4 pt-1 pb-4 text-sm">
+                {folder.sheetCount}{" "}
+                {folder.sheetCount === 1 ? "drawing" : "drawings"}
+                <div className="mt-3" onClick={event => event.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`)}
+                    aria-label={Boolean(activeDownload(folder.id)) ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
+                    onClick={() => Boolean(activeDownload(folder.id)) ? drawingDownloadQueue.cancel(`${account?.accountKey}:set:${folder.id}`) : void downloadFolder(folder.id)}
+                  >
+                    {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+                    {Boolean(activeDownload(folder.id)) ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? "Downloaded" : "Download"}
+                  </Button>
+                  {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+  );
+
   // Inside a folder: its sheets.
   if (setId) {
     const disciplines = [
@@ -693,6 +825,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             {set.error.message}
           </p>
         )}
+        {folders.length > 0 && <section aria-label="Subfolders" className="mb-6">{folderGrid}</section>}
         {uploading && (
           <p role="status" className="text-muted-foreground mb-4 text-sm">
             Uploading {uploading}. Each page becomes its own drawing; large sets
@@ -964,6 +1097,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            {canUpload && newFolderButton(BAR_BUTTON, "default")}
             {canUpload && <Button
               className={BAR_BUTTON}
               disabled={uploading !== null}
@@ -998,27 +1132,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     );
   }
 
-  // Folders.
-  const folders = setsData?.sets ?? [];
-  const orderedFolders = folderOrder.sortFolders(folders);
-  const openFolder = (id: string) => {
-    if (!sandbox) recordDrawingFolderOpen(id);
-    setSetId(id);
-  };
-  const newFolderButton = (
-    className: string,
-    size: "default" | "lg" = "lg",
-  ) => (
-    <Button
-      size={size}
-      className={className}
-      disabled={!canUpload}
-      onClick={() => openNameDialog({ kind: "new-set" })}
-    >
-      <FolderPlusIcon className="mr-2 h-5 w-5" />
-      New folder
-    </Button>
-  );
   return (
     <div className="pb-24">
       <PageHeader
@@ -1087,115 +1200,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {orderedFolders.map((folder) => (
-            <Card
-              key={folder.id}
-              data-tutorial="drawing-folder"
-              role="button"
-              tabIndex={0}
-              aria-label={`Open ${folder.name}`}
-              className="card-lift cursor-pointer gap-0 overflow-hidden py-0"
-              onClick={() => openFolder(folder.id)}
-              onKeyDown={(event) => {
-                if (event.target !== event.currentTarget) return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  openFolder(folder.id);
-                }
-              }}
-            >
-              {folder.coverImageUrl ? (
-                <DrawingThumbnail
-                  src={folder.coverImageUrl}
-                  alt=""
-                  loading="lazy"
-                  className="bg-muted aspect-[16/9] w-full border-b object-contain"
-                />
-              ) : (
-                <div className="bg-muted text-muted-foreground/60 flex aspect-[16/9] w-full items-center justify-center border-b">
-                  <FolderIcon className="h-12 w-12" />
-                </div>
-              )}
-              <CardHeader className="flex flex-row items-start justify-between gap-2 px-4 pt-3 pb-0">
-                <CardTitle className="min-w-0 leading-tight break-words">
-                  {folder.name}
-                </CardTitle>
-                {(canUpload || canDelete) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground -mt-1 -mr-2 h-9 w-9 shrink-0"
-                        aria-label={`More actions for ${folder.name}`}
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <MoreVerticalIcon className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {canUpload && (
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            openNameDialog({
-                              kind: "rename-set",
-                              id: folder.id,
-                              name: folder.name,
-                            })
-                          }
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                          Rename folder
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={async () => {
-                            if (
-                              await confirmAction({
-                                title: `Delete ${folder.name}?`,
-                                description: `This deletes the folder and its ${folder.sheetCount} ${folder.sheetCount === 1 ? "drawing" : "drawings"}.`,
-                                confirmLabel: "Delete folder",
-                                destructive: true,
-                              })
-                            )
-                              deleteSet.mutate({ setId: folder.id });
-                          }}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                          Delete folder
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </CardHeader>
-              <CardContent className="text-muted-foreground px-4 pt-1 pb-4 text-sm">
-                {folder.sheetCount}{" "}
-                {folder.sheetCount === 1 ? "drawing" : "drawings"}
-                <div className="mt-3" onClick={event => event.stopPropagation()}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`)}
-                    aria-label={Boolean(activeDownload(folder.id)) ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
-                    onClick={() => Boolean(activeDownload(folder.id)) ? drawingDownloadQueue.cancel(`${account?.accountKey}:set:${folder.id}`) : void downloadFolder(folder.id)}
-                  >
-                    {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-                    {Boolean(activeDownload(folder.id)) ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? "Downloaded" : "Download"}
-                  </Button>
-                  {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        folderGrid
       )}
       {canUpload && (
         <div className={BOTTOM_BAR}><div className="mx-auto flex max-w-6xl gap-2">{newFolderButton("h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs")}<Button className="h-12 min-w-0 flex-1 whitespace-normal px-2 text-xs" variant="outline" onClick={() => setRevisionsOpen(true)}>Upload revised drawings</Button></div></div>

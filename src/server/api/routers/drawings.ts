@@ -117,6 +117,7 @@ export const drawingsRouter = createTRPCRouter({
         sets: sets.map((set) => ({
           id: set.id,
           name: set.name,
+          parentId: set.parentId,
           updatedAt: set.updatedAt,
           downloadVersion: counts.find(row => row.setId === set.id)?.downloadVersion ?? "empty",
           sheetCount: Number(counts.find((row) => row.setId === set.id)?.sheets ?? 0),
@@ -153,23 +154,29 @@ export const drawingsRouter = createTRPCRouter({
         canManage: userCan(ctx.user, "drawings.upload"),
         canUpload: userCan(ctx.user, "drawings.upload"),
         canDelete: userCan(ctx.user, "drawings.delete"),
-        set: { id: set.id, jobId: set.jobId, name: set.name },
+        set: { id: set.id, jobId: set.jobId, name: set.name, parentId: set.parentId },
         sheets,
         downloadVersion: createHash("md5").update(sheets.map(sheet => `${sheet.id}:${sheet.imageUrl}`).sort().join("|")).digest("hex"),
       };
     }),
 
   createSet: hasAppAccess
-    .input(z.object({ jobId: z.string().uuid(), name }))
+    .input(z.object({ jobId: z.string().uuid(), name, parentId: z.string().uuid().nullish() }))
     .mutation(async ({ ctx, input }) => {
       assertCanManage(ctx);
       await requireJob(ctx, input.jobId);
+      if (input.parentId) {
+        const parent = await requireSet(ctx, input.parentId);
+        if (parent.jobId !== input.jobId)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a parent folder in this job." });
+      }
       const [set] = await ctx.db
         .insert(jobDrawingSets)
         .values({
           organizationId: organizationOf(ctx),
           jobId: input.jobId,
           name: input.name,
+          parentId: input.parentId ?? null,
           createdByUserId: (ctx.user as { id?: string }).id ?? null,
         })
         .returning({ id: jobDrawingSets.id });
@@ -197,6 +204,9 @@ export const drawingsRouter = createTRPCRouter({
       const set = await requireSet(ctx, input.setId);
       await ctx.db.transaction(async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${set.jobId}, 4151))`);
+        const children = await tx.select({ id: jobDrawingSets.id }).from(jobDrawingSets).where(eq(jobDrawingSets.parentId, set.id)).limit(1);
+        if (children.length)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Delete the subfolders first before deleting this folder." });
         const sheets = await tx.select({ id: jobDrawingSheets.id }).from(jobDrawingSheets).where(eq(jobDrawingSheets.setId, set.id));
         await assertSheetsNotReferenced(tx, sheets.map((sheet) => sheet.id));
         await tx.delete(jobDrawingSets).where(eq(jobDrawingSets.id, set.id));

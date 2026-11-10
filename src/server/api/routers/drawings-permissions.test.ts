@@ -17,8 +17,8 @@ import { toStoredConfig } from "~/server/auth/permissions";
 import type { PermissionMap } from "~/lib/permission-catalog";
 
 const id = "00000000-0000-4000-8000-000000000001";
-function setup(permissions: Partial<PermissionMap>) {
-  const query = Object.assign(Promise.resolve([]), {
+function setup(permissions: Partial<PermissionMap>, rows: unknown[] = []) {
+  const query = Object.assign(Promise.resolve(rows), {
     from: vi.fn(() => query),
     where: vi.fn(() => query),
     limit: vi.fn(() => query),
@@ -127,4 +127,20 @@ it("blocks all Sheet tool routes before reading data when disabled", async () =>
     () => specs.assessSpecMaterials({ jobId: id }),
   ]) await expect(request()).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect(db.select).not.toHaveBeenCalled();
+});
+
+
+it("rejects a subfolder whose parent belongs to another job", async () => {
+  const { drawings } = setup({ "drawings.view": true, "drawings.upload": true }, [{ id, jobId: id }]);
+  await expect(drawings.createSet({
+    jobId: "00000000-0000-4000-8000-000000000002", name: "Subfolder", parentId: id,
+  })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Choose a parent folder in this job." });
+});
+
+it("rejects a missing or inaccessible parent folder", async () => {
+  const { drawings, db } = setup({ "drawings.view": true, "drawings.upload": true }, [{ id }]);
+  const empty = Object.assign(Promise.resolve([]), { from: () => empty, where: () => empty, limit: () => empty });
+  db.select.mockReturnValueOnce(db.select()).mockReturnValueOnce(empty as never);
+  await expect(drawings.createSet({ jobId: id, name: "Subfolder", parentId: id }))
+    .rejects.toMatchObject({ code: "NOT_FOUND" });
 });

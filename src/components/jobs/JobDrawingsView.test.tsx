@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
     id: string;
     name: string;
     sheetCount: number;
+    parentId?: string | null;
     coverImageUrl: string | null;
     updatedAt: Date;
     downloadVersion?: string;
@@ -426,6 +427,21 @@ describe("Drawings", () => {
     expect(runHeaderBackOverride()).toBe(false);
   });
 
+  it("shows nested folders only in their parent and creates another child there", async () => {
+    const parent = state.sets[0]!;
+    state.sets.push({ ...parent, id: "child", name: "Level 1", parentId: parent.id });
+    render(<JobDrawingsView jobId="job" />);
+    expect(screen.queryByRole("button", { name: "Open Level 1" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: `Open ${parent.name}` }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Level 1" }));
+    act(() => void runHeaderBackOverride());
+    expect(screen.getByRole("button", { name: "Open Level 1" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Level 2" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Create folder" })));
+    expect(state.calls).toContainEqual(["createSet", { jobId: "job", name: "Level 2", parentId: parent.id }]);
+  });
+
   it("creates a folder by name and uploads a PDF into the open folder", async () => {
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getAllByRole("button", { name: /New folder/ })[0]!);
@@ -515,8 +531,8 @@ describe("Drawings", () => {
     ];
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
-    fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    fireEvent.change(screen.getByLabelText("Search drawings"), {
+    fireEvent.click(screen.getByRole("button", { name: "Search drawings" }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search drawings" }), {
       target: { value: "permit" },
     });
     expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
@@ -525,8 +541,10 @@ describe("Drawings", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close search" }));
     // Filters live in the bottom bar's Filters menu.
-    const openFilters = () =>
+    const openFilters = () => {
+      fireEvent.click(screen.getByRole("button", { name: "Expand all actions" }));
       fireEvent.keyDown(screen.getByRole("button", { name: /^Filters/ }), { key: "Enter" });
+    };
     openFilters();
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Starred only" }));
     expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
@@ -565,6 +583,7 @@ describe("Drawings", () => {
       .getAllByRole("button", { name: /^Open M-/, hidden: true })
       .map((card) => card.getAttribute("aria-label"));
   expect(order()).toEqual(["Open M-101", "Open M-102"]);
+  fireEvent.click(screen.getByRole("button", { name: "Expand all actions" }));
   fireEvent.keyDown(screen.getByRole("button", { name: /^Filters/ }), { key: "Enter" });
   const sort = screen.getByRole("radiogroup", { name: "Drawing order" });
   expect(within(sort).getByRole("radio", { name: "Alphabetical" })).toHaveAttribute("aria-checked", "true");
