@@ -22,8 +22,9 @@ type Index = { pages: { pdf: number | null; image: number | null }[] };
 
 const PLAN =
   /^(\/api\/job-rooms\/files\/[0-9a-f-]{36}\/[0-9a-f-]{36})\/plan\.pdf$/i;
-/** A set whose pages are not split yet is asked about again after this. */
-const RETRY_MS = 60_000;
+/** A set whose pages are not split yet is asked about again after this; a
+ * large set takes the server some seconds on its first open. */
+const RETRY_MS = 10_000;
 const TIMEOUT_MS = 8_000;
 /** A page file this large is read in ranges like the set itself. */
 const WHOLE_BYTES = 8 * 1024 * 1024;

@@ -112,6 +112,69 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(await store.summary()).toEqual({ files: 0, bytes: 0 });
   });
 
+  it("resumes a dropped download after the bytes that already arrived", async () => {
+    const broken = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2]));
+      },
+      pull(controller) {
+        controller.error(new TypeError("network error"));
+      },
+    });
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(broken, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Length": "5",
+            ETag: '"v1"',
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([3, 4, 5]), {
+          status: 206,
+          headers: { "Content-Length": "3", "Content-Range": "bytes 2-4/5" },
+        }),
+      );
+    const store = new DrawingOfflineStore("org:alice");
+    await store.saveAssets([first]);
+    const [, resume] = fetchMock.mock.calls[1]!;
+    expect(resume?.headers).toEqual({ Range: "bytes=2-", "If-Range": '"v1"' });
+    const blob = await store.readAsset(first);
+    expect(blob?.type).toBe("application/pdf");
+    expect([...new Uint8Array(await blob!.arrayBuffer())]).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+  });
+
+  it("starts a dropped download again when the file changed meanwhile", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        // Closed early: fewer bytes than promised.
+        new Response(new Uint8Array([1, 2]), {
+          headers: { "Content-Length": "5", ETag: '"v1"' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([7, 8, 9]), {
+          headers: { "Content-Length": "3", ETag: '"v2"' },
+        }),
+      );
+    const store = new DrawingOfflineStore("org:alice");
+    await store.saveAssets([first]);
+    const blob = await store.readAsset(first);
+    expect([...new Uint8Array(await blob!.arrayBuffer())]).toEqual([7, 8, 9]);
+    expect(await store.summary()).toEqual({ files: 1, bytes: 3 });
+  });
+
+  it("does not retry a refused download", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    const store = new DrawingOfflineStore("org:alice");
+    await expect(store.saveAssets([first])).rejects.toThrow(/403/);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("does not write an asset after cancellation during the transfer", async () => {
     const controller = new AbortController();
     fetchMock.mockImplementationOnce(async () => {

@@ -4,6 +4,8 @@ import { sourcePdfPage } from "./pdf-client";
 /** Private drawing downloads are isolated from the service worker's shared caches. */
 export const DRAWING_OFFLINE_BUDGET = 128 * 1024 * 1024;
 const DATABASE = "foremanhq-drawing-downloads-v1";
+/** Waits between tries when a drawing download drops part way. */
+const SAVE_RETRY_MS = [1000, 3000, 8000];
 type Asset = {
   account: string;
   url: string;
@@ -314,59 +316,146 @@ export class DrawingOfflineStore {
           continue;
         }
         const available = budget - (await this.summary()).bytes;
-        const response = await fetch(url, {
-          credentials: "same-origin",
-          cache: "no-store",
-          signal,
-        });
-        if (!response.ok)
-          throw new Error(
-            `Could not save a drawing (${response.status}). Reconnect and try again.`,
-          );
-        if (Number(response.headers.get("content-length")) > available) {
-          await response.body?.cancel();
-          throw new Error(
-            "This download exceeds the offline storage limit. Save fewer sheets or remove earlier downloads.",
-          );
-        }
-        const reader = response.body?.getReader();
+        // A dropped connection resumes after the bytes that already arrived
+        // instead of starting a large set again.
         const chunks: Uint8Array<ArrayBuffer>[] = [];
         let bytes = 0;
-        if (!reader)
-          throw new Error(
-            "This browser cannot download drawings for offline use.",
-          );
-        try {
-          while (true) {
-            signal.throwIfAborted();
-            this.assertActive(generation);
-            const item = await reader.read();
-            if (item.done) break;
-            bytes += item.value.byteLength;
-            if (bytes > available)
-              throw new Error(
-                "This download exceeds the offline storage limit.",
-              );
-            chunks.push(new Uint8Array(item.value));
-            options.onProgress?.({
-              completed,
-              total: paths.length,
-              bytes: downloaded + bytes,
-              url,
+        let type = "application/octet-stream";
+        let validator: string | null = null;
+        let expected: number | null = null;
+        let attempt = 0;
+        for (;;) {
+          signal.throwIfAborted();
+          this.assertActive(generation);
+          const before = bytes;
+          let dropped: unknown = null;
+          let response: Response | null = null;
+          try {
+            response = await fetch(url, {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal,
+              ...(bytes > 0 && validator
+                ? {
+                    headers: {
+                      Range: `bytes=${bytes}-`,
+                      "If-Range": validator,
+                    },
+                  }
+                : {}),
             });
+          } catch (error) {
+            if (signal.aborted) throw error;
+            dropped = error;
           }
-        } catch (error) {
-          await reader.cancel().catch(() => undefined);
-          throw error;
-        } finally {
-          reader.releaseLock();
+          if (response) {
+            const resumed =
+              response.status === 206 &&
+              new RegExp(`^bytes ${bytes}-\\d+/\\d+$`).test(
+                response.headers.get("content-range") ?? "",
+              );
+            if (bytes > 0 && !resumed) {
+              // The file changed or ranges are not on offer: start it again.
+              chunks.length = 0;
+              bytes = 0;
+              expected = null;
+            }
+            if (response.status >= 500 || response.status === 429) {
+              await response.body?.cancel().catch(() => undefined);
+              dropped = new Error(
+                `Could not save a drawing (${response.status}). Reconnect and try again.`,
+              );
+            } else if (!response.ok) {
+              await response.body?.cancel().catch(() => undefined);
+              throw new Error(
+                `Could not save a drawing (${response.status}). Reconnect and try again.`,
+              );
+            } else {
+              const length = Number(response.headers.get("content-length"));
+              if (length > available - bytes) {
+                await response.body?.cancel();
+                throw new Error(
+                  "This download exceeds the offline storage limit. Save fewer sheets or remove earlier downloads.",
+                );
+              }
+              if (bytes === 0) {
+                type = response.headers.get("content-type") ?? type;
+                validator = response.headers.get("etag");
+                // A weak tag cannot vouch for a byte range.
+                if (validator?.startsWith("W/")) validator = null;
+              }
+              if (response.headers.has("content-length") && length >= 0)
+                expected = bytes + length;
+              const reader = response.body?.getReader();
+              if (!reader)
+                throw new Error(
+                  "This browser cannot download drawings for offline use.",
+                );
+              try {
+                while (true) {
+                  signal.throwIfAborted();
+                  this.assertActive(generation);
+                  let item: ReadableStreamReadResult<Uint8Array>;
+                  try {
+                    item = await reader.read();
+                  } catch (error) {
+                    if (signal.aborted) throw error;
+                    dropped = error;
+                    break;
+                  }
+                  if (item.done) break;
+                  bytes += item.value.byteLength;
+                  if (bytes > available)
+                    throw new Error(
+                      "This download exceeds the offline storage limit.",
+                    );
+                  chunks.push(new Uint8Array(item.value));
+                  options.onProgress?.({
+                    completed,
+                    total: paths.length,
+                    bytes: downloaded + bytes,
+                    url,
+                  });
+                }
+              } catch (error) {
+                await reader.cancel().catch(() => undefined);
+                throw error;
+              } finally {
+                reader.releaseLock();
+              }
+              // A connection that closed early can look like a clean end.
+              if (!dropped && expected !== null && bytes < expected)
+                dropped = new Error("The drawing download stopped early.");
+            }
+          }
+          if (!dropped) break;
+          // Progress earns a fresh set of retries.
+          if (bytes > before) attempt = 0;
+          const retry = SAVE_RETRY_MS[attempt++];
+          if (retry === undefined)
+            throw dropped instanceof Error
+              ? dropped
+              : new Error("Could not save a drawing. Reconnect and try again.");
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(done, retry);
+            function done() {
+              signal.removeEventListener("abort", stop);
+              resolve();
+            }
+            function stop() {
+              clearTimeout(timer);
+              reject(
+                signal.reason instanceof Error
+                  ? signal.reason
+                  : new DOMException("Aborted", "AbortError"),
+              );
+            }
+            signal.addEventListener("abort", stop, { once: true });
+          });
         }
         signal.throwIfAborted();
         this.assertActive(generation);
-        const blob = new Blob(chunks, {
-          type:
-            response.headers.get("content-type") ?? "application/octet-stream",
-        });
+        const blob = new Blob(chunks, { type });
         const db = await openDatabase();
         const tx = db.transaction("assets", "readwrite"),
           complete = done(tx),
