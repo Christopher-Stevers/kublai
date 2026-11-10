@@ -23,6 +23,8 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { FilterBadge } from "~/components/catalogue/FilterBadge";
 import {
+  MoreVerticalIcon,
+  MailIcon,
   PackageIcon,
   WifiOffIcon,
   ChevronDownIcon,
@@ -535,7 +537,7 @@ export default function OrdersPage() {
                   <div className="flex items-center justify-between gap-3">
                     <button
                       onClick={() => toggleOrder(order.id)}
-                      className="flex min-w-0 items-center gap-2 font-semibold"
+                      className="flex min-w-0 flex-1 items-center gap-2 font-semibold"
                     >
                       {isExpanded ? (
                         <ChevronDownIcon className="h-4 w-4 shrink-0" />
@@ -553,29 +555,23 @@ export default function OrdersPage() {
                         )}
                       </span>
                     </button>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                      {canSendOrders && <UndoOrderButton orderId={order.id} disabled={!isOnline || isSending} />}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8"
-                        onClick={() => handleResendOrder(order.id)}
-                        disabled={
-                          !isOnline ||
-                          !canSendOrders ||
-                          isSending ||
-                          isDraftLoading
-                        }
-                      >
-                        {isSending
-                          ? "Opening..."
-                          : isDraftLoading
-                            ? "Preparing..."
-                            : draft
-                              ? "Resend"
-                              : "Prepare email"}
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-11 shrink-0" aria-label={`Actions for order ${order.orderNumber ?? order.id}`}>
+                          <MoreVerticalIcon className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={() => { void handleResendOrder(order.id); }}
+                          disabled={!isOnline || !canSendOrders || isSending || isDraftLoading}
+                        >
+                          <MailIcon className="size-4" />
+                          {isSending ? "Opening..." : isDraftLoading ? "Preparing..." : draft ? "Resend" : "Prepare email"}
+                        </DropdownMenuItem>
+                        {canSendOrders && <UndoOrderButton menuItem orderId={order.id} disabled={!isOnline || isSending} />}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {isExpanded && (

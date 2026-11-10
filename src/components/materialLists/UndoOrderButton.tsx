@@ -2,15 +2,16 @@
 import { useRef } from "react";
 import { Undo2Icon } from "lucide-react";
 import { api } from "~/trpc/react";
+import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 import { requestMaterialListReplicacheSync } from "~/lib/replicache-material-list";
 
-export function UndoOrderButton({orderId, disabled, onUndone}: {orderId:string;disabled?:boolean;onUndone?:()=>Promise<unknown>}) {
+export function UndoOrderButton({orderId, disabled, onUndone, menuItem = false}: {orderId:string;disabled?:boolean;onUndone?:()=>Promise<unknown>;menuItem?:boolean}) {
   const utils = api.useUtils();
   const busy = useRef(false);
   const undo = api.materialList.undoOrder.useMutation();
-  return <Button size="sm" variant="outline" disabled={disabled || undo.isPending} onClick={async () => {
+  const handleUndo = async () => {
     if (busy.current) return;
     busy.current = true;
     try {
@@ -22,5 +23,8 @@ export function UndoOrderButton({orderId, disabled, onUndone}: {orderId:string;d
       notify("Order undone. Its linked material-list items are editable again.","success");
     } catch(error) { notify(error instanceof Error ? error.message : "Could not undo order.","error"); }
     finally {busy.current=false;}
-  }}><Undo2Icon className="h-4 w-4" />{undo.isPending ? "Undoing…" : "Undo order"}</Button>;
+  };
+  const content = <><Undo2Icon className="h-4 w-4" />{undo.isPending ? "Undoing…" : "Undo order"}</>;
+  if (menuItem) return <DropdownMenuItem disabled={disabled || undo.isPending} onSelect={(event) => { event.preventDefault(); void handleUndo(); }}>{content}</DropdownMenuItem>;
+  return <Button size="sm" variant="outline" disabled={disabled || undo.isPending} onClick={handleUndo}>{content}</Button>;
 }
