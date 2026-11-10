@@ -708,7 +708,7 @@ it("lists slips to review with one next step each, suggested orders first", asyn
     "/jobs/job/receiving?document=suggested",
   );
   expect(rows()[1]).toHaveTextContent("2 to check");
-  expect(screen.getByRole("button", { name: "To review 2" })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: "Unprocessed 2" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -716,9 +716,12 @@ it("lists slips to review with one next step each, suggested orders first", asyn
   expect(
     screen.queryByRole("button", { name: "Refresh receiving queue" }),
   ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "All" }));
-  expect(rows()).toHaveLength(3);
-  expect(rows()[2]).toHaveTextContent("Done");
+  fireEvent.click(screen.getByRole("button", { name: "Processed 1" }));
+  expect(rows()).toHaveLength(1);
+  expect(rows()[0]).toHaveTextContent("Done");
+  expect(screen.getByRole("button", { name: "Processed 1" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Processed 1" })).toHaveClass("drawing-state-control");
+  fireEvent.click(screen.getByRole("button", { name: "Unprocessed 2" }));
   fireEvent.click(screen.getByRole("button", {name: "Search"}));
   fireEvent.change(
     screen.getByRole("searchbox", { name: "Search packing slips" }),

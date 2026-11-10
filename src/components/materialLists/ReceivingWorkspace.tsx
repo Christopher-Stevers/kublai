@@ -348,7 +348,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [showAll, setShowAll] = useState(false),
+    [showProcessed, setShowProcessed] = useState(false),
     [search, setSearch] = useState(""),
     [notice, setNotice] = useState(""),
     // The notice that offers Undo, such as a line moved by dragging.
@@ -672,7 +672,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
   const shown = docs
     .filter(
       (d) =>
-        (showAll || d.status === "review" || d.status === "processing") &&
+        (showProcessed !== (d.status === "review" || d.status === "processing")) &&
         `${d.name} ${d.order?.orderNumber ?? ""}`
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -873,36 +873,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
       )}
       {!id ? (
         <>
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <div
-              role="group"
-              aria-label="Which slips"
-              className="bg-muted inline-flex shrink-0 rounded-lg p-1"
-            >
-              {(
-                [
-                  [false, "To review", waiting],
-                  [true, "All", null],
-                ] as const
-              ).map(([all, label, count]) => (
-                <button
-                  key={label}
-                  type="button"
-                  aria-pressed={showAll === all}
-                  onClick={() => setShowAll(all)}
-                  className="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-md px-3 py-1.5 text-sm font-medium aria-pressed:shadow-sm"
-                >
-                  {label}
-                  {count !== null && (
-                    <>
-                      {" "}
-                      <span className="tabular-nums">{count}</span>
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
           <ul className="mb-20 divide-y border-y">
             {shown.map((d) => (
               <li key={d.id}>
@@ -937,7 +907,7 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 ? "No packing slips yet. Scan a slip from Material Lists or upload it in Documents → Packing Slips."
                 : search
                   ? "No slips match."
-                  : "Nothing to review."}
+                  : showProcessed ? "No processed slips yet." : "Nothing to review."}
             </p>
           )}
           <div className="bg-background fixed inset-x-0 bottom-0 z-30 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
@@ -949,7 +919,14 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                 label: "Search packing slips",
                 placeholder: "Search slips",
               }}
-            />
+            >
+              <Button variant="outline" className="drawing-state-control" aria-pressed={!showProcessed} onClick={() => setShowProcessed(false)}>
+                Unprocessed <span className="tabular-nums">{waiting}</span>
+              </Button>
+              <Button variant="outline" className="drawing-state-control" aria-pressed={showProcessed} onClick={() => setShowProcessed(true)}>
+                Processed <span className="tabular-nums">{docs.length - waiting}</span>
+              </Button>
+            </PriorityActionBar>
           </div>
         </>
       ) : !detail ? (
