@@ -332,7 +332,7 @@ export function PriorityActionBar({
             style={{
               gridTemplateColumns: hasSearch
                 ? `repeat(${limit}, minmax(0, 1fr))`
-                : `${shelved > 0 ? "var(--action-height) " : ""}repeat(${shown.length}, minmax(0, 1fr))`,
+                : `repeat(${shown.length + Number(shelved > 0)}, minmax(0, 1fr))`,
             }}
           >
             {search && (
