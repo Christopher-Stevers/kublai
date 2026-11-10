@@ -695,7 +695,7 @@ export default function OrdersPage() {
 
       {canSendOrders && (
         <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Delivery calendar</DialogTitle>
               <DialogDescription>
