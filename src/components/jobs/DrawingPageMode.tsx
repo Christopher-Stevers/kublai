@@ -8,15 +8,15 @@ function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
   return () => { window.removeEventListener(EVENT, callback); window.removeEventListener("storage", callback); };
 }
-/** A new scoped preference deliberately replaces the old browser-wide default. */
+/** v3 resets scrolling off once for every account/scope; subsequent choices persist. */
 export function useDrawingPageMode(scope: string) {
   const account = useDrawingAccount();
-  const key = account ? `foremanhq:page-mode:v2:${JSON.stringify([account.accountKey, scope])}` : null;
+  const key = account ? `foremanhq:page-mode:v3:${JSON.stringify([account.accountKey, scope])}` : null;
   const scroll = useSyncExternalStore(subscribe, () => {
-    if (!key) return true;
-    try { const stored = localStorage.getItem(key); return stored === null ? (memory.get(key) ?? true) : stored !== "buttons"; }
-    catch { return memory.get(key) ?? true; }
-  }, () => true);
+    if (!key) return false;
+    try { const stored = localStorage.getItem(key); return stored === null ? (memory.get(key) ?? false) : stored === "scroll"; }
+    catch { return memory.get(key) ?? false; }
+  }, () => false);
   return { scroll, setScroll: (value: boolean) => {
     if (!key) return;
     try { localStorage.setItem(key, value ? "scroll" : "buttons"); memory.delete(key); }

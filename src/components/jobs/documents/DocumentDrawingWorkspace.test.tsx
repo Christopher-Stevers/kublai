@@ -162,22 +162,23 @@ it("ties document quick wheel to fullscreen and restores navigation and zoom on 
 });
 
 it("shares the folder preference across documents and keeps the root separate", () => {
-  const key=`foremanhq:page-mode:v2:${JSON.stringify(["fixture:person","document-folder:job:folder-a"])}`;
-  localStorage.setItem(key,"buttons");
+  const key=`foremanhq:page-mode:v3:${JSON.stringify(["fixture:person","document-folder:job:folder-a"])}`;
+  localStorage.setItem(key,"scroll");
   const view=render(<DocumentDrawingWorkspace jobId="job" versionId="first" folderId="folder-a" />);
-  expect(fixture.props?.scrollPages).toBe(false);
+  expect(fixture.props?.scrollPages).toBe(true);
   expect(fixture.props?.pageModeScope).toBe("document-folder:job:folder-a");
   view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="second" folderId="folder-a" />);
-  expect(fixture.props?.scrollPages).toBe(false);
-  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="third" folderId="folder-b" />);
   expect(fixture.props?.scrollPages).toBe(true);
+  view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="third" folderId="folder-b" />);
+  expect(fixture.props?.scrollPages).toBe(false);
   view.rerender(<DocumentDrawingWorkspace jobId="job" versionId="root" folderId={null} />);
   expect(fixture.props?.pageModeScope).toBe("document-folder:job:root");
-  expect(fixture.props?.scrollPages).toBe(true);
+  expect(fixture.props?.scrollPages).toBe(false);
   localStorage.removeItem(key);
 });
 
 it.each(["buttons", "scroll"])("replaces the previous viewer during repeated %s page changes", (mode) => {
+  localStorage.setItem(`foremanhq:page-mode:v3:${JSON.stringify(["fixture:person","document-folder:job:root"])}`, mode);
   render(<DocumentDrawingWorkspace jobId="job" versionId="version" />);
   for (const offset of [1, -1, 1, -1, 1]) {
     const previous = screen.getByLabelText("Full drawing workspace");

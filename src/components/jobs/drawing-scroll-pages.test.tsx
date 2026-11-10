@@ -12,34 +12,39 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-it("defaults to scrolling and remembers the choice for the same scope", () => {
-  localStorage.setItem("foremanhq:document-page-mode", "buttons");
+it("resets old choices off once and remembers a later choice for the same scope", () => {
+  localStorage.setItem("foremanhq:document-page-mode", "scroll");
+  localStorage.setItem(`foremanhq:page-mode:v2:${JSON.stringify([identity.accountKey,"set:a"])}`, "scroll");
   function Reader() { return <output>{useDrawingPageMode("set:a").scroll ? "Scrolling" : "Buttons"}</output>; }
   const view = render(<><DrawingPageModeSetting scope="set:a" /><Reader /></>);
-  expect(screen.getByRole("switch")).toBeChecked();
+  expect(screen.getByRole("switch")).not.toBeChecked();
   fireEvent.click(screen.getByRole("switch"));
-  expect(screen.getByText("Buttons")).toBeVisible();
+  expect(screen.getByText("Scrolling")).toBeVisible();
   view.unmount();
   render(<DrawingPageModeSetting scope="set:a" />);
-  expect(screen.getByRole("switch")).not.toBeChecked();
+  expect(screen.getByRole("switch")).toBeChecked();
 });
-it("keeps sets, document folders and accounts independent when switching", () => {
+it("resets every user's scopes while preserving their later independent choices", () => {
+  for (const user of ["org:user-a", "org:user-b"])
+    for (const scope of ["drawing-set:job:a", "drawing-set:job:b", "document-folder:job:a"])
+      localStorage.setItem(`foremanhq:page-mode:v2:${JSON.stringify([user,scope])}`, "scroll");
   const view=render(<DrawingPageModeSetting scope="drawing-set:job:a" />);
+  expect(screen.getByRole("switch")).not.toBeChecked();
   fireEvent.click(screen.getByRole("switch"));
   for(const scope of ["drawing-set:job:b","document-folder:job:a","document-folder:other-job:a"]){
     view.rerender(<DrawingPageModeSetting scope={scope}/>);
-    expect(screen.getByRole("switch")).toBeChecked();
+    expect(screen.getByRole("switch")).not.toBeChecked();
   }
   view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
-  expect(screen.getByRole("switch")).not.toBeChecked();
+  expect(screen.getByRole("switch")).toBeChecked();
   identity.accountKey="org:user-b";
   view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
-  expect(screen.getByRole("switch")).toBeChecked();
+  expect(screen.getByRole("switch")).not.toBeChecked();
   identity.accountKey="org:user-a";
   view.rerender(<DrawingPageModeSetting scope="drawing-set:job:a"/>);
-  expect(screen.getByRole("switch")).not.toBeChecked();
-  fireEvent.click(screen.getByRole("switch"));
   expect(screen.getByRole("switch")).toBeChecked();
+  fireEvent.click(screen.getByRole("switch"));
+  expect(screen.getByRole("switch")).not.toBeChecked();
 });
 
 describe("continuous scroll pages", () => {
