@@ -1,3 +1,4 @@
+import type { DrawingOfflineStore } from "~/lib/drawing-offline";
 import { runHeaderBackOverride, useHeaderBackOverride } from "~/lib/header-back-events";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
 import { HYPERLINK_VISIT_EVENT } from "~/hooks/use-hyperlink-back";
@@ -28,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   linkTargets: (_input: { kind: string; query: string }) => [] as Array<Record<string, unknown>>,
   textSearch: (_input: { kind: string; query: string }) => [] as Array<Record<string, unknown>>,
-  account: null as { userId: string; accountKey: string; store: null } | null,
+  account: null as { userId: string; accountKey: string; store: DrawingOfflineStore | null } | null,
   data: null as Workspace | null,
   queryError: null as { message: string; data: { code: string } } | null,
   save: vi.fn<(value: DrawingSave) => Promise<DrawingEntity>>(),
@@ -539,6 +540,27 @@ describe("drawing workspace workflows", () => {
     expect(screen.getByTestId("markup-editor")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Loading drawing tools…");
     expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({ src: sheet.imageUrl });
+  });
+
+  it("waits for the local file lookup before giving the viewer any network PDF, even while online", async () => {
+    const imageUrl = `/api/job-rooms/files/${jobId}/${sheetId}/floor-1.webp`;
+    const localSheet = { ...sheet, imageUrl };
+    const saved = fixture();
+    saved.jobSheets = saved.jobSheets.map(item => ({ ...item, imageUrl }));
+    mocks.data = null; // Background update has not answered.
+    let finish!: (url: string) => void;
+    const resolve = vi.fn((url: string) => url.endsWith(".pdf")
+      ? new Promise<string>(done => { finish = done; }) : Promise.resolve("blob:preview"));
+    mocks.account = { userId: "tim", accountKey: "org:tim", store: {
+      readSnapshot: vi.fn(async (key: string) => key.startsWith("workspace:") ? saved : null), saveSnapshot: vi.fn(async () => undefined), resolveAssetUrl: resolve,
+    } as unknown as DrawingOfflineStore };
+    render(<DrawingWorkspace jobId={jobId} sheet={localSheet} onOpenSheet={vi.fn()} />);
+    expect(mocks.viewer).not.toHaveBeenCalled();
+    await waitFor(() => expect(resolve).toHaveBeenCalledTimes(2));
+    await act(async () => { finish("blob:saved-pdf"); });
+    await screen.findByTestId("markup-editor");
+    expect(mocks.viewer.mock.lastCall?.[0]).toMatchObject({ src: "blob:preview", pdf: { url: "blob:saved-pdf" }, placeholderSrc: null, tiles: null });
+    expect(screen.queryByText("Loading drawing tools…")).toBeNull();
   });
 
   it("does not show the drawing when access is revoked, even offline", () => {

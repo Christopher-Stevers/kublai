@@ -34,6 +34,14 @@ const wait = (ms: number, signal: AbortSignal) =>
 
 let kept = 0;
 const sources = new Map<string, PdfRangeSource>();
+// Owned by the account-scoped offline store; released with its object URLs.
+const localFiles = new Map<string, Blob>();
+export function registerLocalPdf(url: string, blob: Blob) { localFiles.set(url, blob); }
+export function releaseLocalPdf(url: string) {
+  localFiles.delete(url);
+  sources.get(url)?.dispose();
+  sources.delete(url);
+}
 /** Small files worth one request for everything, with their sizes. */
 const whole = new Map<string, number>();
 
@@ -51,10 +59,15 @@ export class PdfRangeSource {
   private controller = new AbortController();
   private length: number | null = null;
   private opening: Promise<PdfRangeHead | null> | null = null;
-  constructor(readonly url: string) {}
+  constructor(readonly url: string, private local?: Blob) {}
 
   /** The file's size and first block, or null when ranges are not on offer. */
   open(): Promise<PdfRangeHead | null> {
+    if (this.controller.signal.aborted) return Promise.reject(this.controller.signal.reason);
+    if (this.local) {
+      this.length = this.local.size;
+      return this.read(0, Math.min(PDF_RANGE_BLOCK, this.length)).then(head => ({ length: this.length!, head }));
+    }
     const bytes = whole.get(this.url);
     if (bytes && !this.opening)
       this.request(0, Math.ceil(bytes / PDF_RANGE_BLOCK) - 1);
@@ -73,6 +86,12 @@ export class PdfRangeSource {
 
   /** Bytes [begin, end) as a fresh array the caller may hand away. */
   async read(begin: number, end: number): Promise<Uint8Array> {
+    this.controller.signal.throwIfAborted();
+    if (this.local) {
+      const bytes = await this.local.slice(begin, end).arrayBuffer();
+      this.controller.signal.throwIfAborted();
+      return new Uint8Array(bytes);
+    }
     if (this.length !== null) end = Math.min(end, this.length);
     const first = Math.floor(begin / PDF_RANGE_BLOCK);
     const last = Math.floor(Math.max(begin, end - 1) / PDF_RANGE_BLOCK);
@@ -268,23 +287,24 @@ export class PdfRangeSource {
 
   dispose() {
     this.controller.abort();
+    this.local = undefined;
     for (const block of this.blocks.values()) kept -= block.length;
     this.blocks.clear();
   }
 }
 
-/** Private drawings on this device are already whole files; leave them be. */
+/** Registered local PDFs use Blob.slice instead of loading a whole set into memory. */
 const ranged = (url: string) => !/^(blob|data):/i.test(url);
 
 export function pdfRangeSource(url: string) {
-  if (!ranged(url) || typeof fetch !== "function") return null;
+  if (!localFiles.has(url) && (!ranged(url) || typeof fetch !== "function")) return null;
   const cached = sources.get(url);
   if (cached) {
     sources.delete(url);
     sources.set(url, cached);
     return cached;
   }
-  const source = new PdfRangeSource(url);
+  const source = new PdfRangeSource(url, localFiles.get(url));
   sources.set(url, source);
   while (sources.size > KEEP_SOURCES) {
     const [oldest, old] = sources.entries().next().value!;

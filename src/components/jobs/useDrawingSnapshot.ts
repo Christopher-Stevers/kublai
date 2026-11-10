@@ -2,13 +2,16 @@
 import { useEffect, useState } from "react";
 import { useDrawingAccount } from "./DrawingAccountProvider";
 import type { DrawingOfflineStore } from "~/lib/drawing-offline";
-/** Cached metadata is a fallback only while the browser is actually offline. */
+/** Drawing viewers can open saved metadata immediately while live queries refresh it. */
 export function useDrawingSnapshot<T>(
   key: string,
   live: T | undefined,
   readCached?: (store: DrawingOfflineStore, key: string) => Promise<T | null>,
+  options?: { localFirst?: boolean; accessRevoked?: boolean },
 ) {
   const account = useDrawingAccount();
+  const localFirst = options?.localFirst ?? false;
+  const accessRevoked = options?.accessRevoked ?? false;
   const [online, setOnline] = useState(true);
   const [cached, setCached] = useState<{
     key: string;
@@ -32,7 +35,7 @@ export function useDrawingSnapshot<T>(
     let stopped = false;
     // Custom readers may recover a legacy snapshot. Defer those potentially
     // large reads until offline; the live query supplies current online data.
-    if (account?.store && (!readCached || !online))
+    if (account?.store && (!readCached || !online || localFirst))
       void (
         readCached
           ? readCached(account.store, key)
@@ -53,20 +56,20 @@ export function useDrawingSnapshot<T>(
     return () => {
       stopped = true;
     };
-  }, [account, key, readCached, online]);
+  }, [account, key, readCached, online, localFirst]);
   useEffect(() => {
-    if (account?.store && live !== undefined && online)
+    if (account?.store && live !== undefined && online && !accessRevoked)
       void account.store.saveSnapshot(key, live).catch(() => undefined);
-  }, [account, key, live, online]);
+  }, [account, key, live, online, accessRevoked]);
   return {
-    data:
+    data: accessRevoked ? undefined :
       live ??
-      (!online && cached?.key === key && cached.account === account?.accountKey
+      ((localFirst || !online) && cached?.key === key && cached.account === account?.accountKey
         ? cached.value
         : undefined),
     online,
     loading:
-      !online &&
+      !accessRevoked && (localFirst || !online) &&
       live === undefined &&
       Boolean(account?.store) &&
       (loaded?.key !== key || loaded.account !== account?.accountKey),

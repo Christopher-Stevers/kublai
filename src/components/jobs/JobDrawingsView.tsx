@@ -200,6 +200,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const summarySnapshot = useDrawingSnapshot(
     `drawing-index:${jobId}`,
     summaries.data,
+    undefined,
+    { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(summaries.error?.data?.code ?? "") },
   );
   const bySheet = useMemo(
     () =>
@@ -248,14 +250,16 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     { setId: setId ?? "" },
     { enabled: Boolean(setId) },
   );
-  const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data);
-  const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data);
+  const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(set.error?.data?.code ?? "") });
+  const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(sets.error?.data?.code ?? "") });
   const setData = setSnapshot.data;
   const setsData = setsSnapshot.data;
   // Completion markers live with the account's assets, so clearing device data
   // also clears the downloaded status.
   const folderVersions = JSON.stringify((setsData?.sets ?? []).map(folder => [folder.id, folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`, folder.sheetCount]));
   useEffect(() => {
+    // Folder-wide verification must not compete with the PDF being opened.
+    if (sheetId) return;
     let stopped = false;
     setCheckingDownloads(true);
     const store = account?.store;
@@ -323,7 +327,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     })();
     else { setSavedSets({}); setCheckingDownloads(false); }
     return () => { stopped = true; };
-  }, [account, folderVersions, downloadRevision, setsSnapshot.online]);
+  }, [account, folderVersions, downloadRevision, setsSnapshot.online, sheetId]);
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
     await utils.drawingsWorkspace.list.invalidate({ jobId });

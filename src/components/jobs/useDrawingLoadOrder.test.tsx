@@ -45,6 +45,13 @@ describe("drawing load order", () => {
     vi.restoreAllMocks();
   });
 
+  it("starts a saved PDF immediately even on a weak signal before the preview loads", () => {
+    noteDrawingTransfer(76_000, 1900);
+    const view = render(<Sheet src="blob:preview" plan={{ pending: false, localPdf: true, imageMayWait: false, detailDone: false }} />);
+    expect(read(view).holdDetail).toBe(false);
+    expect(view.container.querySelector("output")!.dataset.image).toBe("false");
+  });
+
   it("holds PDF detail until the first download shows a good signal", () => {
     // 76 KB in 150 ms.
     timing({

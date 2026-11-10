@@ -175,3 +175,24 @@ describe("shared PDF range downloader", () => {
     expect(requests[0]).toBe(`bytes=0-${BLOCK - 1}`);
   });
 });
+
+it('reads saved PDF ranges locally without fetching or reading the whole file', async () => {
+  const { Blob } = await import('node:buffer');
+  const { registerLocalPdf, releaseLocalPdf } = await import('./pdf-range-source');
+  const blob = new Blob([file]);
+  const wholeRead = vi.spyOn(blob, 'arrayBuffer');
+  const fetcher = vi.fn();
+  vi.stubGlobal('fetch', fetcher);
+  const url = 'blob:https://foremanhq/local-plan';
+  registerLocalPdf(url, blob as unknown as globalThis.Blob);
+  try {
+    const source = pdfRangeSource(url)!;
+    expect((await source.open())?.head).toEqual(file.slice(0, BLOCK));
+    expect(await source.read(BLOCK + 4, BLOCK * 2 + 9)).toEqual(file.slice(BLOCK + 4, BLOCK * 2 + 9));
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(wholeRead).not.toHaveBeenCalled();
+    releaseLocalPdf(url);
+    await expect(source.read(0, 10)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(pdfRangeSource(url)).toBeNull();
+  } finally { releaseLocalPdf(url); vi.unstubAllGlobals(); }
+});

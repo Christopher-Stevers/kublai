@@ -601,7 +601,7 @@ export function DrawingWorkspace({
       : null;
   const data =
     serverData ??
-    (!accessRevoked && !online &&
+    (!accessRevoked &&
     snapshot?.sheetId === sheet.id &&
     (!boundUser || snapshot.actor.id === boundUser)
       ? snapshot
@@ -1624,6 +1624,7 @@ export function DrawingWorkspace({
     },
     [entitiesById, editable, pending, form, selectedId, editReadyId],
   );
+  const assetsReady = !account?.store || assets?.key === source.imageUrl;
   const resolved =
     assets?.key === source.imageUrl ? assets : { src: source.imageUrl, pdf };
   const comparisonSheets = new Map(
@@ -2371,6 +2372,8 @@ export function DrawingWorkspace({
               onOverlay={() => setOverlayPickerOpen(true)}
               onClose={() => setFileComparisonOpen(false)}
             />
+          ) : !assetsReady ? (
+            <div role="status" className="grid h-full place-content-center text-sm text-muted-foreground">Opening saved drawing…</div>
           ) : (
             <DrawingSheetViewer
             scrollPages={scrollPages}
@@ -2392,13 +2395,13 @@ export function DrawingWorkspace({
               }}
               initialViewport={viewport.current}
               src={resolved.src}
-              placeholderSrc={online ? drawingThumbnailUrl(source.imageUrl) : null}
+              placeholderSrc={online && !resolved.src.startsWith("blob:") && !resolved.pdf?.url.startsWith("blob:") ? drawingThumbnailUrl(source.imageUrl) : null}
               sourceSize={{ width: source.width, height: source.height }}
               alt={source.name}
               onPdfReady={onReady}
               pdf={resolved.pdf}
               onPdfLink={activatePdfLink}
-              tiles={tileBase(source.imageUrl)}
+              tiles={resolved.pdf?.url.startsWith("blob:") ? null : tileBase(source.imageUrl)}
               sheetKey={source.id}
               sourceSheetId={source.id}
               resolveAssetUrl={resolveAssetUrl}

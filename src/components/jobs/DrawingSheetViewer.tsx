@@ -270,6 +270,7 @@ export function DrawingSheetViewer({
   const [pdfFailed, setPdfFailed] = useState("");
   const loadOrder = useDrawingLoadOrder(src, image, placeholderImage, {
     pending: Boolean(pdf) && !sheetPdf,
+    localPdf: pdf?.url.startsWith("blob:"),
     pdfBytes: sheetPdf?.pdfBytes,
     imageBytes: sheetPdf?.imageBytes,
     imageMayWait:

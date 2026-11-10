@@ -61,3 +61,17 @@ it("never shows the previous floor while the next floor's saved data loads", asy
   });
   expect(hook.result.current.data).toEqual({ id: "b" });
 });
+
+
+it("opens locally while the browser still reports online, then applies live updates and access revocation", async () => {
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+  const read = vi.fn(async () => ({ id: "saved" }));
+  const hook = renderHook(({ live, revoked }: { live: { id: string } | undefined; revoked: boolean }) =>
+    useDrawingSnapshot("drawing", live, read, { localFirst: true, accessRevoked: revoked }),
+    { initialProps: { live: undefined, revoked: false } });
+  await waitFor(() => expect(hook.result.current.data).toEqual({ id: "saved" }));
+  hook.rerender({ live: { id: "updated" }, revoked: false });
+  expect(hook.result.current.data).toEqual({ id: "updated" });
+  hook.rerender({ live: { id: "updated" }, revoked: true });
+  expect(hook.result.current.data).toBeUndefined();
+});

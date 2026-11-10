@@ -1,3 +1,4 @@
+import { registerLocalPdf, releaseLocalPdf } from "./pdf-range-source";
 import { isTileManifest, tileBase } from "./drawing-tiles";
 import { sourcePdfPage } from "./pdf-client";
 
@@ -268,6 +269,7 @@ export class DrawingOfflineStore {
     if (raced) return raced;
     const objectUrl = URL.createObjectURL(blob);
     this.urls.set(key, objectUrl);
+    if (/\.pdf(?:\?|$)/i.test(key) || key.startsWith("/api/job-documents/files/")) registerLocalPdf(objectUrl, blob);
     return objectUrl;
   }
   async summary() {
@@ -541,7 +543,7 @@ export class DrawingOfflineStore {
     this.assertActive();
     this.generation++;
     for (const controller of this.controllers) controller.abort();
-    for (const url of this.urls.values()) URL.revokeObjectURL(url);
+    for (const url of this.urls.values()) { releaseLocalPdf(url); URL.revokeObjectURL(url); }
     this.urls.clear();
     const db = await openDatabase();
     this.assertActive();
@@ -566,7 +568,7 @@ export class DrawingOfflineStore {
     this.disposed = true;
     this.generation++;
     for (const controller of this.controllers) controller.abort();
-    for (const url of this.urls.values()) URL.revokeObjectURL(url);
+    for (const url of this.urls.values()) { releaseLocalPdf(url); URL.revokeObjectURL(url); }
     this.urls.clear();
     stores.delete(this);
   }

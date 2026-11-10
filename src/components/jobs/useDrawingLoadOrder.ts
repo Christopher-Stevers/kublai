@@ -18,6 +18,8 @@ const unknown = () => null;
 export type DrawingDetailPlan = {
   /** Still finding out where the sheet's PDF is read from. */
   pending: boolean;
+  /** Saved PDF bytes need no network scheduling or preview-image gate. */
+  localPdf?: boolean;
   /** Download sizes of the sheet's own PDF and of its image, when known. */
   pdfBytes?: number;
   imageBytes?: number | null;
@@ -93,7 +95,7 @@ export function useDrawingLoadOrder(
   return {
     slow: slow === true,
     holdDetail:
-      pending || (!detailFirst && settled !== src && !good && released !== src),
-    holdImage: (mayWait && pending && released !== src) || waiting,
+      !plan?.localPdf && (pending || (!detailFirst && settled !== src && !good && released !== src)),
+    holdImage: !plan?.localPdf && ((mayWait && pending && released !== src) || waiting),
   };
 }
