@@ -170,7 +170,7 @@ it("still limits a wider bar to three slots", () => {
   }
 });
 
-it("widens the search across the bar and shrinks it back with the X", () => {
+it("opens search above the buttons and closes it with the X", () => {
   function Bar() {
     const [value, setValue] = useState("");
     return (
@@ -185,7 +185,11 @@ it("widens the search across the bar and shrinks it back with the X", () => {
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   const input = screen.getByRole("searchbox", { name: "Search parts" });
   expect(input).toHaveFocus();
-  expect(screen.queryByRole("button", { name: "Receive" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Receive" })).toBeVisible();
+  const searchRow = input.closest("[data-action-bar-search]")!;
+  const buttonRow = screen.getByRole("button", { name: "Receive" }).closest("[data-landscape-action-row]")!;
+  expect(searchRow.parentElement).toBe(buttonRow.parentElement);
+  expect(searchRow.compareDocumentPosition(buttonRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   fireEvent.change(input, { target: { value: "cap" } });
   fireEvent.keyDown(input, { key: "Enter" });
   expect(screen.getByRole("searchbox")).toHaveValue("cap");

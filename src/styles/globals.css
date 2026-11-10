@@ -744,8 +744,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 [data-action-bar-row][hidden] {
   display: none;
 }
-/* The bar's search, widened across the whole bar. */
+/* Search opens in its own row above the persistent action buttons. */
 [data-action-bar-search] {
+  margin-bottom: 0.375rem;
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -754,7 +755,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 [data-action-bar-search] input {
   font-size: 1rem;
 }
-[data-landscape-action-row] > [data-action-bar-search] { min-width: 0; flex: 1; }
 @media (prefers-reduced-motion: no-preference) {
   [data-action-bar-shelf] {
     animation: action-shelf-rise 180ms ease-out;

@@ -48,8 +48,8 @@ export function actionList(children: ReactNode, prefix = ""): ReactNode[] {
 export const ACTION_LIMIT = 3;
 
 /** Search reserves one primary slot on every page. Its overflow arrow shares
- * that slot when there are extra actions. Tapping search widens the field
- * across the bar; X clears it and brings the buttons back. */
+ * that slot when there are extra actions. Tapping search opens a field
+ * above the buttons; X clears and closes the field. */
 export type BarSearch = {
   value: string;
   onChange: (value: string) => void;
@@ -153,7 +153,7 @@ export function PriorityActionBar({
   const [searching, setSearching] = useState(() => !!search?.value);
   const searchButton = useRef(false);
   const searchActive = !!search && searching;
-  const expanded = open && shelved > 0 && !searchActive;
+  const expanded = open && shelved > 0;
   useHeaderBackOverride(
     dismissOnBack && (expanded || searchActive)
       ? () => {
@@ -260,11 +260,8 @@ export function PriorityActionBar({
         {label != null && label !== false && (
           <div data-action-bar-label>{label}</div>
         )}
-        <div data-landscape-action-row>
-          <div data-landscape-navigation-slot />
-          {search && searching && (
+        {search && searching && (
             <div data-action-bar-search>
-              {inlineSearchAction && <div data-action-slot className="w-(--action-height) shrink-0">{inlineSearchAction}</div>}
               <div className="relative min-w-0 flex-1">
                 <SearchIcon className="text-muted-foreground/70 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
@@ -325,10 +322,10 @@ export function PriorityActionBar({
               </Button>
             </div>
           )}
-          {/* Hidden, not removed, while searching: the bar measures this row. */}
+        <div data-landscape-action-row>
+          <div data-landscape-navigation-slot />
           <div
             data-action-bar-row
-            hidden={!!search && searching}
             style={{
               gridTemplateColumns: `repeat(${Math.max(1, shown.length + Number(hasSearch || shelved > 0))}, minmax(0, 1fr))`,
             }}
@@ -352,7 +349,7 @@ export function PriorityActionBar({
                       <ChevronUpIcon aria-hidden className={cn("transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
                     </Button>
                   )}
-                  {!searching && inlineSearchAction}
+                  {inlineSearchAction}
                   <BarSearchButton iconOnly={shelved > 0 || !!inlineSearchAction} />
                 </div>
               </div>
