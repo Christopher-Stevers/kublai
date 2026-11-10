@@ -1051,3 +1051,12 @@ html[data-internal-page-paused] *::before,
 html[data-internal-page-paused] *::after {
   animation-play-state: paused !important;
 }
+
+/* The host page may be paused while an internal page is active. Its page
+   switcher is live UI: both entry and exit must finish above the backdrop. */
+html[data-internal-page-paused] .app-page-switcher-layer,
+html[data-internal-page-paused] .app-page-switcher-layer *,
+html[data-internal-page-paused] .app-page-switcher-layer *::before,
+html[data-internal-page-paused] .app-page-switcher-layer *::after {
+  animation-play-state: running !important;
+}

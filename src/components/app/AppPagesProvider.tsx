@@ -318,7 +318,7 @@ export function AppPagesProvider({ children }: { children: ReactNode }) {
       {!embedded && (
         <Dialog open={show} onOpenChange={setShow}>
           <DialogContent
-            layerClassName="z-[120] items-end p-0 sm:items-center sm:p-4"
+            layerClassName="app-page-switcher-layer z-[120] items-end p-0 sm:items-center sm:p-4"
             className="flex max-h-[85dvh] max-w-full flex-col rounded-t-2xl rounded-b-none pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-lg"
           >
             <DialogHeader>
