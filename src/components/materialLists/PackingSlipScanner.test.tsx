@@ -241,12 +241,12 @@ it("puts its buttons in the page's bottom bar when given one", async () => {
   const labels = () =>
     Array.from(
       bar.querySelectorAll("[data-action-bar-row] button"),
-      (button) => button.textContent,
+      (button) => button.textContent || button.getAttribute("aria-label"),
     );
-  expect(labels()).toEqual(["Upload", "Queue", "Capture"]);
+  expect(labels()).toEqual(["Expand all actions", "Queue", "Capture"]);
   expect(screen.queryByRole("button", { name: "Cancel scan" })).toBeNull();
   await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
-  expect(labels()).toEqual(["Retake last page", "Next page", "Done"]);
+  expect(labels()).toEqual(["Expand all actions", "Next page", "Done"]);
   bar.remove();
 });
 it("counts the slip's printed pages as they are captured", async () => {
@@ -292,4 +292,32 @@ it("reads no pages for ordinary documents or without a job", async () => {
   render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
   await screen.findByText(/Page 1 captured/, {}, { timeout: 3000 });
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it("allows manual light control and can re-enable automatic lighting", async () => {
+  const { applyConstraints } = camera();
+  scanning.detectPage.mockReturnValue({ quad: null, brightness: 60, sharpness: 0 });
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  const off = await screen.findByRole("button", { name: "Turn light off" });
+  await waitFor(() => expect(off).toBeEnabled());
+  fireEvent.click(off);
+  await waitFor(() => expect(applyConstraints).toHaveBeenLastCalledWith({ advanced: [{ torch: false }] }));
+  expect(screen.getByRole("checkbox", { name: "Auto light" })).not.toBeChecked();
+  const calls = applyConstraints.mock.calls.length;
+  await new Promise(resolve => setTimeout(resolve, 180));
+  expect(applyConstraints).toHaveBeenCalledTimes(calls);
+  fireEvent.click(screen.getByRole("button", { name: "Turn light on" }));
+  await waitFor(() => expect(applyConstraints).toHaveBeenLastCalledWith({ advanced: [{ torch: true }] }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Auto light" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Turn light off" })).toBeEnabled());
+  expect(screen.getByRole("checkbox", { name: "Auto light" })).toBeChecked();
+});
+
+it("disables light controls when the camera does not support a torch", async () => {
+  camera({});
+  scanning.detectPage.mockReturnValue({ quad: null, brightness: 60, sharpness: 0 });
+  render(<PackingSlipScanner onSave={vi.fn()} onCancel={vi.fn()} />);
+  await screen.findByText(/Automatic light unavailable/);
+  expect(screen.getByRole("button", { name: "Turn light on" })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "Auto light" })).toBeDisabled();
 });

@@ -9,6 +9,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   CameraIcon,
+  FlashlightIcon,
   CheckIcon,
   CropIcon,
   FilePlus2Icon,
@@ -116,6 +117,12 @@ export default function PackingSlipScanner({
     [restart, setRestart] = useState(0);
   const [light, setLight] = useState(""),
     [processing, setProcessing] = useState(false);
+  const [autoLight, setAutoLight] = useState(true);
+  const [lightOn, setLightOn] = useState(false);
+  const [lightSupported, setLightSupported] = useState(false);
+  const [lightBusy, setLightBusy] = useState(false);
+  const lightPreference = useRef({ auto: true, on: false });
+  const changeLight = useRef<((on: boolean) => Promise<void>) | null>(null);
   const [shot, setShot] = useState<Shot | null>(null),
     [corners, setCorners] = useState<Quad | null>(null),
     [blurry, setBlurry] = useState(false);
@@ -187,6 +194,7 @@ export default function PackingSlipScanner({
       capturing = false,
       torchAttempted = false;
     const stop = () => {
+      changeLight.current = null;
       stream?.getTracks().forEach((t) => t.stop());
       if (timer) clearTimeout(timer);
     };
@@ -292,11 +300,37 @@ export default function PackingSlipScanner({
         const capabilities = track.getCapabilities?.() as
           | (MediaTrackCapabilities & { torch?: boolean })
           | undefined;
+        setLightSupported(!!capabilities?.torch);
+        let changingLight = false;
+        const applyLight = async (on: boolean) => {
+          if (disposed || changingLight || !capabilities?.torch) return;
+          changingLight = true;
+          setLightBusy(true);
+          try {
+            await track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] });
+            if (disposed) return;
+            setLightOn(on);
+            lightPreference.current.on = on;
+            setLight(on ? "Camera light on." : "Camera light off.");
+            recent = [];
+            steady = 0;
+          } catch {
+            if (!disposed) setLight("Could not change the camera light. Try again or use a well-lit surface.");
+          } finally {
+            changingLight = false;
+            if (!disposed) setLightBusy(false);
+          }
+        };
+        changeLight.current = async (on) => {
+          torchAttempted = false;
+          await applyLight(on);
+        };
         setLight(
           capabilities?.torch
             ? "Light will turn on if needed."
             : "Automatic light unavailable. Use a well-lit surface.",
         );
+        if (!lightPreference.current.auto && lightPreference.current.on) await applyLight(true);
         capture.current = () => void take(el);
         const canvas = document.createElement("canvas"),
           ctx = canvas.getContext("2d", { willReadFrequently: true })!;
@@ -323,21 +357,11 @@ export default function PackingSlipScanner({
             canvas.height,
           );
           if (
-            result.brightness < 95 &&
-            capabilities?.torch &&
-            !torchAttempted
+            result.brightness < 95 && capabilities?.torch &&
+            lightPreference.current.auto && !lightPreference.current.on && !torchAttempted
           ) {
             torchAttempted = true;
-            try {
-              await track.applyConstraints({
-                advanced: [{ torch: true } as MediaTrackConstraintSet],
-              });
-              setLight("Camera light on.");
-            } catch {
-              setLight("Could not turn on light. Move to a brighter area.");
-            }
-            recent = [];
-            steady = 0;
+            await applyLight(true);
           }
           if (disposed || capturing) return;
           if (!result.quad) {
@@ -374,6 +398,10 @@ export default function PackingSlipScanner({
       }
     };
     setError("");
+    setLightSupported(false);
+    setLightBusy(false);
+    setLightOn(false);
+    if (lightPreference.current.auto) lightPreference.current.on = false;
     setQuad(null);
     setLocked(false);
     setReady(false);
@@ -576,6 +604,36 @@ export default function PackingSlipScanner({
               className="max-h-[55dvh] w-auto max-w-full"
             />
             {quad && <Outline quad={quad} locked={locked} />}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              aria-label={lightOn ? "Turn light off" : "Turn light on"}
+              aria-pressed={lightOn}
+              disabled={!lightSupported || lightBusy || !!error || processing}
+              onClick={() => {
+                lightPreference.current.auto = false;
+                setAutoLight(false);
+                void changeLight.current?.(!lightOn);
+              }}
+            >
+              <FlashlightIcon /> Light {lightOn ? "on" : "off"}
+            </Button>
+            <label className="flex min-h-11 items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-5 w-5"
+                checked={autoLight}
+                disabled={!lightSupported || lightBusy || !!error || processing}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  lightPreference.current.auto = enabled;
+                  setAutoLight(enabled);
+                  if (enabled) void changeLight.current?.(false);
+                }}
+              />
+              Auto light
+            </label>
           </div>
           <p role="status">{message}</p>
           {pages.length > 0 && countMessage && !countMessage.warn && (
