@@ -136,4 +136,56 @@ describe("drawing tile surfaces", () => {
       vi.useRealTimers();
     }
   });
+
+  it("waits for the view to hold still before downloading for it", () => {
+    vi.useFakeTimers();
+    const { cache, images } = harness();
+    try {
+      // Two passing pinch frames, then the view rests.
+      cache.update([tile(0)], 100);
+      vi.advanceTimersByTime(60);
+      cache.update([tile(1)], 100);
+      vi.advanceTimersByTime(60);
+      expect(images).toHaveLength(0);
+      vi.advanceTimersByTime(40);
+      expect(images).toHaveLength(1);
+      expect(images[0]!.src).toContain("/tiles/4/1_0.webp");
+      // Without a rest nothing waits.
+      cache.update([tile(2)]);
+      expect(images).toHaveLength(2);
+    } finally {
+      cache.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("says when every tile on screen has arrived or failed", async () => {
+    const container = document.createElement("div");
+    const images: HTMLImageElement[] = [];
+    const makeImage = () => {
+      const image = document.createElement("img");
+      image.decode = vi.fn(async () => undefined);
+      images.push(image);
+      return image;
+    };
+    const ready = vi.fn();
+    const cache = new DrawingTileCache(container, undefined, makeImage, undefined, ready);
+    const margin = { ...tile(2), visible: false };
+    cache.update([tile(0), tile(1), margin]);
+    expect(ready).not.toHaveBeenCalled();
+    images[0]!.dispatchEvent(new Event("load"));
+    await Promise.resolve();
+    expect(ready).not.toHaveBeenCalled();
+    // A tile that cannot load is not waited for, and the margin never is.
+    images[1]!.dispatchEvent(new Event("error"));
+    await Promise.resolve();
+    expect(ready.mock.calls).toEqual([[true]]);
+    // The view moved on to tiles that are not here yet.
+    cache.update([tile(0), tile(3)]);
+    expect(ready.mock.calls).toEqual([[true], [false]]);
+    // Nothing on screen is nothing to be ready.
+    cache.update([]);
+    expect(ready).toHaveBeenCalledTimes(2);
+    cache.dispose();
+  });
 });

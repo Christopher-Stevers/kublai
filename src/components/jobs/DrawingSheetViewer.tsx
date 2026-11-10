@@ -268,21 +268,6 @@ export function DrawingSheetViewer({
   // The page whose PDF detail has reached the screen, or could not be drawn.
   const [pdfShown, setPdfShown] = useState("");
   const [pdfFailed, setPdfFailed] = useState("");
-  const loadOrder = useDrawingLoadOrder(src, image, placeholderImage, {
-    pending: Boolean(pdf) && !sheetPdf,
-    localPdf: pdf?.url.startsWith("blob:"),
-    pdfBytes: sheetPdf?.pdfBytes,
-    imageBytes: sheetPdf?.imageBytes,
-    imageMayWait:
-      mayHavePagePdf(pdf) &&
-      !comparison &&
-      Boolean(sourceSize?.width && sourceSize?.height),
-    detailDone:
-      pdfLinkKey !== "" &&
-      (pdfShown === pdfLinkKey || pdfFailed === pdfLinkKey),
-  });
-  const holdPdf = loadOrder.holdDetail;
-  const holdImage = loadOrder.holdImage;
   const [fit, setFit] = useState<{
     width: number;
     height: number;
@@ -303,6 +288,39 @@ export function DrawingSheetViewer({
   const live = useRef<View>(REST);
   const entryViewport = useRef(initialViewport);
   const [view, setView] = useState<View>(REST);
+  // The tile set whose tiles on screen have all arrived.
+  const tileKey = tiles ?? src;
+  const [tilesReadyFor, setTilesReadyFor] = useState<string | null>(null);
+  const tilesViewReady = useCallback(
+    (ready: boolean) => setTilesReadyFor(ready ? tileKey : null),
+    [tileKey],
+  );
+  const loadOrder = useDrawingLoadOrder(src, image, placeholderImage, {
+    pending: Boolean(pdf) && !sheetPdf,
+    localPdf: Boolean(pdf?.url.startsWith("blob:")) || Boolean(sheetPdf?.kept),
+    pdfBytes: sheetPdf?.pdfBytes,
+    imageBytes: sheetPdf?.imageBytes,
+    imageMayWait:
+      mayHavePagePdf(pdf) &&
+      !comparison &&
+      Boolean(sourceSize?.width && sourceSize?.height),
+    detailDone:
+      pdfLinkKey !== "" &&
+      (pdfShown === pdfLinkKey || pdfFailed === pdfLinkKey),
+    // Past what the sheet image can show sharply (see `density` below).
+    zoomed:
+      fit !== null &&
+      ((fit.width * view.scale) / fit.natural) *
+        Math.min(
+          (typeof window === "undefined" ? 1 : window.devicePixelRatio) || 1,
+          3,
+        ) >
+        1.15,
+    hasTiles: Boolean(tiles && manifest),
+    tilesReady: tilesReadyFor === tileKey,
+  });
+  const holdPdf = loadOrder.holdDetail;
+  const holdImage = loadOrder.holdImage;
   const previewOffsets = useMemo(() => stacked ? scrollPreviewOffsets(stacked, frameSize, view) : new Set<number>(), [stacked, frameSize, view]);
   const [moving, setMoving] = useState(false);
   const movingLive = useRef(false);
@@ -1649,22 +1667,31 @@ export function DrawingSheetViewer({
   const density = fit ? (shownWidth / fit.natural) * dpr : 1; // screen px per saved-image px
   const tilesSpared =
     loadOrder.slow && pdfShown !== "" && pdfShown === pdfLinkKey;
+  const tileMode = loadOrder.tiles;
   const tileRequests = useMemo(() => {
     if (!manifest || !tiles || !shownWidth || !shownHeight) return [];
     // On a weak signal, once the PDF page is here its detail costs no more
     // download; tiles for the same view would only spend the connection.
-    if (tilesSpared || holdImage) return [];
-    return planDrawingTiles(tiles, manifest, density, {
-      left: -left / shownWidth,
-      top: -top / shownHeight,
-      right: (frameSize.width - left) / shownWidth,
-      bottom: (frameSize.height - top) / shownHeight,
-    });
+    if (tilesSpared || tileMode === "none") return [];
+    return planDrawingTiles(
+      tiles,
+      manifest,
+      density,
+      {
+        left: -left / shownWidth,
+        top: -top / shownHeight,
+        right: (frameSize.width - left) / shownWidth,
+        bottom: (frameSize.height - top) / shownHeight,
+      },
+      // Zoomed in before the sheet had loaded on a weak signal: only what is
+      // on screen, so it is sharp before anything else is asked for.
+      tileMode === "view",
+    );
   }, [
     manifest,
     tiles,
     tilesSpared,
-    holdImage,
+    tileMode,
     density,
     shownWidth,
     shownHeight,
@@ -3032,6 +3059,8 @@ export function DrawingSheetViewer({
               key={tiles ?? src}
               requests={usesInkComparison ? [] : tileRequests}
               resolveAssetUrl={resolveAssetUrl}
+              restMs={loadOrder.restTiles ? 100 : 0}
+              onViewReady={tilesViewReady}
             />
             {pdf && fit && comparison && (
               <DrawingPdfLayer

@@ -25,16 +25,31 @@ export class DrawingTileCache {
   private disposed = false;
   private failures = new Map<string, { attempts: number; retryAt: number }>();
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private restTimer: ReturnType<typeof setTimeout> | null = null;
+  private viewReady = false;
 
   constructor(
     private readonly container: HTMLElement,
     private readonly budget = DRAWING_TILE_BYTES,
     private readonly makeImage: () => HTMLImageElement = () => new Image(),
     private readonly resolveAssetUrl?: (url: string) => Promise<string>,
+    /** Told when the tiles on screen have all arrived (or failed), and when
+     * a new view needs more. */
+    private readonly onViewReady?: (ready: boolean) => void,
   ) {}
 
-  update(requests: DrawingTileRequest[]) {
+  /** `restMs` waits for the view to hold still before downloading for it: on
+   * a weak signal the tiles of a passing pinch frame only spend the link. */
+  update(requests: DrawingTileRequest[], restMs = 0) {
     if (this.disposed) return;
+    if (this.restTimer) clearTimeout(this.restTimer);
+    this.restTimer =
+      restMs > 0
+        ? setTimeout(() => {
+            this.restTimer = null;
+            this.pump();
+          }, restMs)
+        : null;
     let reserved = 0;
     this.wanted = requests.filter((request) => {
       const bytes = request.width * request.height * 4;
@@ -47,10 +62,25 @@ export class DrawingTileCache {
       if (entry) entry.used = ++this.clock;
     }
     this.pump();
+    this.report();
+  }
+
+  private report() {
+    if (!this.onViewReady) return;
+    const visible = this.wanted.filter((request) => request.visible);
+    const ready =
+      visible.length > 0 &&
+      visible.every(
+        (request) =>
+          this.entries.get(request.key)?.ready ?? this.failures.has(request.key),
+      );
+    if (ready === this.viewReady) return;
+    this.viewReady = ready;
+    this.onViewReady(ready);
   }
 
   private pump() {
-    if (this.disposed) return;
+    if (this.disposed || this.restTimer) return;
     const wantedKeys = new Set(this.wanted.map((request) => request.key));
     for (const request of this.wanted) {
       if (this.active >= DOWNLOADS) break;
@@ -124,6 +154,7 @@ export class DrawingTileCache {
         if (this.failures.size > 128) this.failures.delete(this.failures.keys().next().value!);
       }
       this.pump();
+      this.report();
     };
     image.onload = () => {
       if (image.decode) {
@@ -141,6 +172,7 @@ export class DrawingTileCache {
   dispose() {
     this.disposed = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);
+    if (this.restTimer) clearTimeout(this.restTimer);
     for (const { image } of this.entries.values()) {
       image.onload = null;
       image.onerror = null;

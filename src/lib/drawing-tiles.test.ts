@@ -62,4 +62,15 @@ describe("drawing tiles", () => {
     expect(requests.slice(sharp.length + fallback.length).every((tile) => !tile.visible)).toBe(true);
     expect(planDrawingTiles("/tiles", manifest, 1, { left: 0, top: 0, right: 1, bottom: 1 })).toEqual([]);
   });
+
+  it("asks only for the sharp tiles on screen when the link has better things to carry", () => {
+    const view = { left: 0.4, top: 0.4, right: 0.6, bottom: 0.6 };
+    const all = planDrawingTiles("/tiles", manifest, 3, view);
+    const few = planDrawingTiles("/tiles", manifest, 3, view, true);
+    // No margin around the view and no coarser level under it.
+    expect(few).toEqual(all.filter((tile) => tile.factor === 4 && tile.visible));
+    expect(few.length).toBeGreaterThan(0);
+    expect(few.length).toBeLessThan(all.length / 2);
+    expect(few[0]?.url).toBe("/tiles/4/8_6.webp");
+  });
 });

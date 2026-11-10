@@ -4,9 +4,13 @@ import {
   mayHavePagePdf,
   sheetPdfSource,
 } from "./drawing-page-pdf";
+import { keptDrawingBytes } from "./drawing-kept";
 import { hintPdfWhole } from "./pdf-range-source";
 
 vi.mock("./pdf-range-source", () => ({ hintPdfWhole: vi.fn() }));
+vi.mock("./drawing-kept", () => ({
+  keptDrawingBytes: vi.fn(async (urls: string[]) => urls.map(() => null)),
+}));
 
 const base =
   "/api/job-rooms/files/0391aed4-7773-47ec-9141-09df373ec008/b06815cb-ebac-42e0-8521-db654e9cad60";
@@ -103,5 +107,30 @@ describe("a sheet's own PDF", () => {
     expect(mayHavePagePdf(null)).toBe(false);
     expect(mayHavePagePdf({ url: plan, page: 4 })).toBe(true);
     expect(fetched).not.toHaveBeenCalled();
+  });
+
+  it("reads a sheet kept on the device without asking the server", async () => {
+    vi.mocked(keptDrawingBytes).mockResolvedValueOnce([600_000, null]);
+    expect(await sheetPdfSource({ url: plan, page: 2 })).toEqual({
+      url: `${base}/pages/2.pdf`,
+      page: 1,
+      original: { url: plan, page: 2 },
+      pdfBytes: 600_000,
+      imageBytes: null,
+      kept: true,
+    });
+    expect(keptDrawingBytes).toHaveBeenLastCalledWith([
+      `${base}/pages/2.pdf`,
+      plan,
+    ]);
+    // A one-sheet upload is kept as the set itself.
+    vi.mocked(keptDrawingBytes).mockResolvedValueOnce([null, 900_000]);
+    expect(await sheetPdfSource({ url: plan, page: 1 })).toEqual({
+      url: plan,
+      page: 1,
+      kept: true,
+    });
+    expect(fetched).not.toHaveBeenCalled();
+    expect(hintPdfWhole).not.toHaveBeenCalled();
   });
 });

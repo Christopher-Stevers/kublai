@@ -8,6 +8,10 @@
  */
 const SLOW_BYTES_PER_SECOND = 100 * 1024;
 const MIN_SAMPLE_BYTES = 16 * 1024;
+/** Fast enough that a sheet's downloads no longer get in each other's way.
+ * Measured with waiting included, so a small file reads well under the link's
+ * real speed. */
+const FAST_BYTES_PER_SECOND = 512 * 1024;
 
 type Connection = {
   saveData?: boolean;
@@ -51,6 +55,15 @@ export function drawingLinkSlow(): boolean | null {
     return true;
   if (measured !== null) return measured < SLOW_BYTES_PER_SECOND;
   return reportedSlow() ? true : null;
+}
+
+/** True once drawing downloads have shown a fast connection. */
+export function drawingLinkFast(): boolean {
+  return (
+    measured !== null &&
+    measured >= FAST_BYTES_PER_SECOND &&
+    drawingLinkSlow() === false
+  );
 }
 
 export function onDrawingLinkChange(listener: () => void) {

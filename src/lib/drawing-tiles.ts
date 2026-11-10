@@ -61,19 +61,23 @@ export function planDrawingTiles(
   manifest: TileManifest,
   density: number,
   visible: { left: number; top: number; right: number; bottom: number },
+  /** Only the tiles on screen, at the level that is sharp: nothing around
+   * them and no coarser fallback. For a sheet that is still loading, where
+   * every other tile delays the ones being looked at. */
+  viewOnly = false,
 ): DrawingTileRequest[] {
   const level = pickTileLevel(manifest, density);
   if (!level) return [];
   const levels = manifest.levels
     .filter((candidate) => candidate.factor <= level.factor)
     .sort((a, b) => b.factor - a.factor)
-    .slice(0, 2);
+    .slice(0, viewOnly ? 1 : 2);
   const centerX = (visible.left + visible.right) / 2;
   const centerY = (visible.top + visible.bottom) / 2;
   const requests = levels.flatMap((item, levelIndex) => {
     const onScreen = new Set(visibleTiles(item, manifest.tileSize, visible, 0)
       .map(({ col, row }) => `${col}_${row}`));
-    return visibleTiles(item, manifest.tileSize, visible).map(({ col, row }) => {
+    return visibleTiles(item, manifest.tileSize, visible, viewOnly ? 0 : 1).map(({ col, row }) => {
       const isVisible = onScreen.has(`${col}_${row}`);
       return {
         key: `${item.factor}/${col}_${row}`,

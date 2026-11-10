@@ -6,6 +6,21 @@ import {
   pdfRangeSource,
 } from "./pdf-range-source";
 
+const device = vi.hoisted(() => ({
+  on: false,
+  file: null as Blob | null,
+  saved: [] as { url: string; blob: Blob }[],
+}));
+vi.mock("./drawing-kept", () => ({
+  DRAWING_KEPT_FILE: 16 * 1024 * 1024,
+  mayKeepDrawing: () => device.on,
+  readKeptDrawing: async () => device.file,
+  keepDrawing: async (url: string, blob: Blob) => {
+    device.saved.push({ url, blob });
+    return true;
+  },
+}));
+
 const SIZE = BLOCK * 5 + 100;
 const file = Uint8Array.from(
   { length: SIZE },
@@ -51,6 +66,7 @@ describe("shared PDF range downloader", () => {
   beforeEach(() => {
     plans = [];
     requests = [];
+    Object.assign(device, { on: false, file: null, saved: [] });
     vi.stubGlobal(
       "fetch",
       vi.fn((_url: string, init?: RequestInit) => respond(init)),
@@ -157,6 +173,56 @@ describe("shared PDF range downloader", () => {
     clearPdfRangeSources();
     await pdfRangeSource("/page.pdf")!.open();
     expect(requests[1]).toBe(`bytes=0-${BLOCK - 1}`);
+  });
+
+  it("finishes a sheet-sized file and keeps it on the device", async () => {
+    const { Blob } = await import("node:buffer");
+    vi.stubGlobal("Blob", Blob);
+    device.on = true;
+    const source = pdfRangeSource("/page.pdf")!;
+    expect((await source.open())!.length).toBe(SIZE);
+    // The rest follows in one request, whatever PDF.js goes on to read.
+    expect(await source.read(SIZE - 300, SIZE)).toEqual(
+      file.slice(SIZE - 300, SIZE),
+    );
+    expect(requests).toEqual([
+      `bytes=0-${BLOCK - 1}`,
+      `bytes=${BLOCK}-${BLOCK * 6 - 1}`,
+    ]);
+    await source.read(0, SIZE);
+    expect(requests).toHaveLength(2);
+    expect(device.saved).toHaveLength(1);
+    expect(device.saved[0]!.url).toBe("/page.pdf");
+    expect(new Uint8Array(await device.saved[0]!.blob.arrayBuffer())).toEqual(
+      file,
+    );
+  });
+
+  it("keeps nothing of a file that only partly arrived", async () => {
+    device.on = true;
+    // The first block arrives, then the signal is gone.
+    plans = [{}, { cut: 1000 }, { fail: true }, { fail: true }, { fail: true }];
+    vi.useFakeTimers();
+    const source = pdfRangeSource("/page.pdf")!;
+    await source.open();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(device.saved).toEqual([]);
+  });
+
+  it("reads a sheet kept on the device without a request", async () => {
+    const { Blob } = await import("node:buffer");
+    device.on = true;
+    device.file = new Blob([file]) as unknown as Blob;
+    const source = pdfRangeSource("/page.pdf")!;
+    const opened = await source.open();
+    expect(opened!.length).toBe(SIZE);
+    expect(opened!.head).toEqual(file.slice(0, BLOCK));
+    expect(await source.read(SIZE - 300, SIZE)).toEqual(
+      file.slice(SIZE - 300, SIZE),
+    );
+    expect(requests).toEqual([]);
+    // What came from the device is not written back to it.
+    expect(device.saved).toEqual([]);
   });
 
   it("leaves files already on the device to PDF.js", () => {

@@ -1,3 +1,9 @@
+import {
+  DRAWING_KEPT_FILE,
+  keepDrawing,
+  mayKeepDrawing,
+  readKeptDrawing,
+} from "./drawing-kept";
 import { noteDrawingTransfer } from "./drawing-network";
 
 /**
@@ -7,14 +13,19 @@ import { noteDrawingTransfer } from "./drawing-network";
  * ask here: a range is fetched once, kept in memory in small blocks, and a
  * dropped request resumes after the blocks that already arrived.
  *
- * Nothing is written to disk. Blocks live for the open drawing folder only and
- * are dropped with the parsed documents on logout or an account change.
+ * Blocks live in memory for the open drawing folder only and are dropped with
+ * the parsed documents on logout or an account change. A small file that has
+ * arrived whole (one sheet) is also kept on the device for its account, and
+ * read from there on the next visit: see `drawing-kept.ts`.
  */
 export const PDF_RANGE_BLOCK = 64 * 1024;
 /** Blocks kept across all open PDFs; older ones are fetched again if needed. */
 const KEEP_BYTES = 48 * 1024 * 1024;
 const KEEP_SOURCES = 3;
 const RETRY_MS = [500, 1500, 4000];
+/** A file this small is finished in one more request once its size is known:
+ * it is a sheet, and all of it is wanted on the device. */
+const FINISH_BYTES = 2 * 1024 * 1024;
 
 export type PdfRangeHead = { length: number; head: Uint8Array };
 
@@ -59,10 +70,28 @@ export class PdfRangeSource {
   private controller = new AbortController();
   private length: number | null = null;
   private opening: Promise<PdfRangeHead | null> | null = null;
+  private device: Promise<void> | null = null;
+  private saved = false;
   constructor(readonly url: string, private local?: Blob) {}
+
+  /** Looks once for a copy kept on this device; it is read like a saved file. */
+  private kept() {
+    if (this.local || !mayKeepDrawing(this.url)) return null;
+    return (this.device ??= readKeptDrawing(this.url).then((blob) => {
+      if (blob && !this.controller.signal.aborted && !this.blocks.size) {
+        this.local = blob;
+        this.saved = true;
+      }
+    }));
+  }
 
   /** The file's size and first block, or null when ranges are not on offer. */
   open(): Promise<PdfRangeHead | null> {
+    const kept = this.kept();
+    return kept ? kept.then(() => this.start()) : this.start();
+  }
+
+  private start(): Promise<PdfRangeHead | null> {
     if (this.controller.signal.aborted) return Promise.reject(this.controller.signal.reason);
     if (this.local) {
       this.length = this.local.size;
@@ -72,7 +101,12 @@ export class PdfRangeSource {
     if (bytes && !this.opening)
       this.request(0, Math.ceil(bytes / PDF_RANGE_BLOCK) - 1);
     const opening = (this.opening ??= this.block(0)
-      .then((head) => ({ length: this.length!, head }))
+      .then((head) => {
+        const length = this.length!;
+        if (!bytes && length <= FINISH_BYTES && mayKeepDrawing(this.url))
+          this.request(1, Math.ceil(length / PDF_RANGE_BLOCK) - 1);
+        return { length, head };
+      })
       .catch((error: unknown) => {
         if (error instanceof Unsupported) return null;
         // A dropped connection may be back for the next reader.
@@ -86,6 +120,8 @@ export class PdfRangeSource {
 
   /** Bytes [begin, end) as a fresh array the caller may hand away. */
   async read(begin: number, end: number): Promise<Uint8Array> {
+    this.controller.signal.throwIfAborted();
+    await this.kept();
     this.controller.signal.throwIfAborted();
     if (this.local) {
       const bytes = await this.local.slice(begin, end).arrayBuffer();
@@ -275,6 +311,7 @@ export class PdfRangeSource {
     if (this.blocks.has(index)) return;
     this.blocks.set(index, block);
     kept += block.length;
+    this.keep();
     for (const source of sources.values()) {
       if (kept <= KEEP_BYTES) break;
       for (const [old, bytes] of source.blocks) {
@@ -283,6 +320,26 @@ export class PdfRangeSource {
         kept -= bytes.length;
       }
     }
+  }
+
+  /** Once every block of a sheet-sized file is here, it stays on the device. */
+  private keep() {
+    const length = this.length;
+    if (this.saved || this.local || length === null) return;
+    if (length > DRAWING_KEPT_FILE) return;
+    const count = Math.ceil(length / PDF_RANGE_BLOCK);
+    if (this.blocks.size !== count || !mayKeepDrawing(this.url)) return;
+    const parts: Uint8Array<ArrayBuffer>[] = [];
+    let bytes = 0;
+    for (let index = 0; index < count; index++) {
+      const block = this.blocks.get(index);
+      if (!block) return;
+      bytes += block.length;
+      parts.push(block.slice());
+    }
+    if (bytes !== length) return;
+    this.saved = true;
+    void keepDrawing(this.url, new Blob(parts, { type: "application/pdf" }));
   }
 
   dispose() {

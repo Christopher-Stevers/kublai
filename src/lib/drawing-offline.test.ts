@@ -15,6 +15,7 @@ import {
   DrawingOfflineStore,
   setDrawingOfflineAccount,
 } from "./drawing-offline";
+import { keepDrawing, mayKeepDrawing, readKeptDrawing } from "./drawing-kept";
 
 const first =
   "/api/job-rooms/files/0391aed4-7773-47ec-9141-09df373ec008/d814fc88-da7c-4df5-aa89-fe3c1fde0462/floor-1.webp";
@@ -309,4 +310,21 @@ it("retains immutable document PDF pages privately across reopen and clears them
   const bob = new DrawingOfflineStore("org:bob");
   expect(await bob.readAsset(original)).toBeNull();
   await expect(reopened.readAsset(original)).rejects.toMatchObject({ name: "AbortError" });
+});
+
+it("gives sheets kept from earlier visits the same account, and removes them with the saved drawings", async () => {
+  const sheet = first.replace("floor-1.webp", "pages/1.pdf");
+  expect(mayKeepDrawing(sheet)).toBe(true);
+  expect(await keepDrawing(sheet, new Blob([new Uint8Array(300)]))).toBe(true);
+  await setDrawingOfflineAccount("org:bob");
+  expect(await readKeptDrawing(sheet)).toBeNull();
+  await setDrawingOfflineAccount("org:bob:simulation:one", "org:alice");
+  expect(mayKeepDrawing(sheet)).toBe(false);
+  await setDrawingOfflineAccount(null);
+  expect(mayKeepDrawing(sheet)).toBe(false);
+  // Signing back in finds the sheet still on the device.
+  await setDrawingOfflineAccount("org:alice");
+  expect((await readKeptDrawing(sheet))?.size).toBe(300);
+  await new DrawingOfflineStore("org:alice").clear();
+  expect(await readKeptDrawing(sheet)).toBeNull();
 });

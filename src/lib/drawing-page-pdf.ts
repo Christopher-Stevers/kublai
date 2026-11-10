@@ -7,6 +7,7 @@
  * The set's `plan.pdf` and page number stay the sheet's identity everywhere
  * else: only the bytes come from the page file.
  */
+import { keptDrawingBytes } from "./drawing-kept";
 import { hintPdfWhole } from "./pdf-range-source";
 
 export type PdfPageSource = { url: string; page: number };
@@ -16,6 +17,8 @@ export type SheetPdfSource = PdfPageSource & {
   /** Download sizes, for choosing what to load first on a weak signal. */
   pdfBytes?: number;
   imageBytes?: number | null;
+  /** The file is on this device from an earlier visit: no download. */
+  kept?: boolean;
 };
 
 type Index = { pages: { pdf: number | null; image: number | null }[] };
@@ -75,10 +78,22 @@ export async function sheetPdfSource(
 ): Promise<SheetPdfSource> {
   const base = mayHavePagePdf(source) ? PLAN.exec(source.url)?.[1] : null;
   if (!base) return source;
+  const url = `${base}/pages/${source.page}.pdf`;
+  // A sheet opened before is read from the device without asking the server.
+  const [page, set] = await keptDrawingBytes([url, source.url]);
+  if (page)
+    return {
+      url,
+      page: 1,
+      original: source,
+      pdfBytes: page,
+      imageBytes: null,
+      kept: true,
+    };
+  if (set) return { ...source, kept: true };
   const entry = (await readIndex(base))?.pages[source.page - 1];
   const bytes = entry?.pdf;
   if (typeof bytes !== "number" || !(bytes > 0)) return source;
-  const url = `${base}/pages/${source.page}.pdf`;
   if (bytes <= WHOLE_BYTES) hintPdfWhole(url, bytes);
   return {
     url,

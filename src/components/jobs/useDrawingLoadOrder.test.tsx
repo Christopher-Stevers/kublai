@@ -19,6 +19,8 @@ function Sheet({ src, plan }: { src: string; plan?: DrawingDetailPlan }) {
       data-slow={order.slow}
       data-hold={order.holdDetail}
       data-image={order.holdImage}
+      data-tiles={order.tiles}
+      data-rest={order.restTiles}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img ref={small} src="/small.webp" alt="" />
@@ -190,5 +192,122 @@ describe("drawing load order", () => {
     expect(read(view)).toEqual({ slow: false, holdDetail: true });
     load(view.container.querySelector('img[alt="Sheet"]')!);
     expect(read(view).holdDetail).toBe(false);
+  });
+
+  describe("zooming in as the sheet opens", () => {
+    const order = (view: { container: HTMLElement }) => {
+      const { hold, image, tiles, rest } =
+        view.container.querySelector("output")!.dataset;
+      return [
+        hold === "true" ? "pdf held" : "pdf",
+        image === "true" ? "image held" : "image",
+        tiles,
+        rest === "true" ? "rest" : "no rest",
+      ].join(", ");
+    };
+    // The image is the smaller download, so without a zoom it goes first.
+    const sheet: DrawingDetailPlan = {
+      pending: false,
+      pdfBytes: 600_000,
+      imageBytes: 300_000,
+      imageMayWait: true,
+      detailDone: false,
+      hasTiles: true,
+    };
+    const show = (plan: DrawingDetailPlan, src = "/floor-1.webp") => (
+      <Sheet src={src} plan={plan} />
+    );
+
+    it("loads the tiles on screen, then the PDF, then the image", () => {
+      noteDrawingTransfer(76_000, 1900);
+      const view = render(show(sheet));
+      expect(order(view)).toBe("pdf held, image, view, rest");
+      view.rerender(show({ ...sheet, zoomed: true }));
+      expect(order(view)).toBe("pdf held, image held, view, rest");
+      view.rerender(show({ ...sheet, zoomed: true, tilesReady: true }));
+      expect(order(view)).toBe("pdf, image held, view, rest");
+      // Panning to tiles that are not in yet does not stop the PDF again.
+      view.rerender(show({ ...sheet, zoomed: true, tilesReady: false }));
+      expect(order(view)).toBe("pdf, image held, view, rest");
+      view.rerender(show({ ...sheet, zoomed: true, detailDone: true }));
+      expect(order(view)).toBe("pdf, image, all, rest");
+      // Zooming back out does not start over, and the next sheet does.
+      view.rerender(show({ ...sheet, detailDone: true }));
+      expect(order(view)).toBe("pdf, image, all, rest");
+      view.rerender(show(sheet, "/floor-2.webp"));
+      expect(order(view)).toBe("pdf held, image, view, rest");
+    });
+
+    it("puts a small sheet PDF ahead of the tiles", () => {
+      noteDrawingTransfer(76_000, 1900);
+      const view = render(
+        show({
+          ...sheet,
+          pdfBytes: 150_000,
+          imageBytes: 100_000,
+          zoomed: true,
+        }),
+      );
+      expect(order(view)).toBe("pdf, image held, none, rest");
+    });
+
+    it("goes straight to the PDF on a sheet without tiles", () => {
+      noteDrawingTransfer(76_000, 1900);
+      const view = render(show({ ...sheet, hasTiles: false, zoomed: true }));
+      expect(order(view)).toBe("pdf, image held, none, rest");
+    });
+
+    it("starts the PDF beside the tiles on a fast link", () => {
+      // 600 KB in half a second.
+      noteDrawingTransfer(600_000, 500);
+      const view = render(show({ ...sheet, zoomed: true }));
+      expect(order(view)).toBe("pdf, image held, view, no rest");
+      view.rerender(show({ ...sheet, zoomed: true, detailDone: true }));
+      expect(order(view)).toBe("pdf, image, all, no rest");
+    });
+
+    it("applies on a middling link too, where the image would take the PDF's share", () => {
+      // 76 KB in 400 ms: good, not fast.
+      noteDrawingTransfer(76_000, 400);
+      const view = render(show(sheet));
+      expect(order(view)).toBe("pdf, image, view, rest");
+      view.rerender(show({ ...sheet, zoomed: true }));
+      expect(order(view)).toBe("pdf held, image held, view, rest");
+      view.rerender(show({ ...sheet, zoomed: true, tilesReady: true }));
+      expect(order(view)).toBe("pdf, image held, view, rest");
+    });
+
+    it("leaves the order alone for a zoom after the sheet has had time to load", () => {
+      vi.useFakeTimers();
+      try {
+        noteDrawingTransfer(76_000, 1900);
+        const view = render(show(sheet));
+        act(() => void vi.advanceTimersByTime(3_000));
+        view.rerender(show({ ...sheet, zoomed: true }));
+        expect(order(view)).toBe("pdf held, image, view, rest");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not keep the PDF back for tiles that never come", () => {
+      vi.useFakeTimers();
+      try {
+        noteDrawingTransfer(76_000, 1900);
+        const view = render(show({ ...sheet, zoomed: true }));
+        act(() => void vi.advanceTimersByTime(14_000));
+        expect(order(view)).toBe("pdf held, image held, view, rest");
+        act(() => void vi.advanceTimersByTime(1_500));
+        expect(order(view)).toBe("pdf, image held, view, rest");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("holds nothing for a sheet kept on the device", () => {
+      noteDrawingTransfer(76_000, 1900);
+      const view = render(show({ ...sheet, localPdf: true, zoomed: true }));
+      expect(order(view)).toBe("pdf, image, all, rest");
+    });
   });
 });

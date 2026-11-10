@@ -1,3 +1,4 @@
+import { clearKeptDrawings, setDrawingKeptAccount } from "./drawing-kept";
 import { registerLocalPdf, releaseLocalPdf } from "./pdf-range-source";
 import { isTileManifest, tileBase } from "./drawing-tiles";
 import { sourcePdfPage } from "./pdf-client";
@@ -63,6 +64,7 @@ function accountSignals() {
         return;
       // A message from another tab can revoke access, never grant an account.
       activeAccount = null;
+      setDrawingKeptAccount(null);
       bindingChanged();
       for (const store of stores) store.dispose();
       window.dispatchEvent(new Event("foremanhq-drawing-account-invalidated"));
@@ -157,6 +159,7 @@ export async function setDrawingOfflineAccount(accountKey: string | null, preser
     }
   }
   activeAccount = accountKey;
+  setDrawingKeptAccount(accountKey);
   // Keep normal account downloads on disk, but revoke all access immediately.
   // Simulation data is temporary and must not outlive its validated session.
   void preserveAccountKey;
@@ -562,6 +565,8 @@ export class DrawingOfflineStore {
       };
     }
     await complete;
+    // Sheets kept from earlier visits go with the saved ones.
+    await clearKeptDrawings();
     window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   dispose() {
