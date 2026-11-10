@@ -1,3 +1,4 @@
+import { AppPagesProvider } from "~/components/app/AppPagesProvider";
 import { devFeaturesEnabled } from "~/server/dev-features";
 import { DevFeaturesProvider } from "~/components/app/DevFeaturesProvider";
 import { DevVoiceProvider } from "~/components/voice/VoiceProvider";
@@ -103,6 +104,7 @@ export default async function JobsLayout({
                           .data ?? null
                       }
                     >
+                      <AppPagesProvider key={`${organizationId}:${effectiveUserId}:${identity.simulation?.id ?? ""}`}>
                       <div
                         data-app-shell
                         className="bg-canvas flex min-h-dvh flex-col"
@@ -138,6 +140,7 @@ export default async function JobsLayout({
                           </ChatViewProvider>
                         </main>
                       </div>
+                      </AppPagesProvider>
                     </LandingPageProvider>
                   </DrawingDestinationProvider>
                 </SnapshotProvider>

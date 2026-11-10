@@ -4,54 +4,29 @@ import {
   SnapshotSourceContext,
   type SnapshotSourceRegistry,
 } from "~/components/chat/SnapshotSourceContext";
-import { NewWindowButton } from "./NewWindowButton";
+const pages = vi.hoisted(() => ({ open: vi.fn(), show: vi.fn(), count: 3 }));
+vi.mock("./AppPagesProvider", () => ({ useAppPages: () => pages }));
+import { NewWindowButton, PageSwitcherButton } from "./NewWindowButton";
 afterEach(() => {
   cleanup();
-  vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
-it("opens distinct windows with the captured page and leaves this window in place", () => {
-  const windows = Array.from({ length: 2 }, () => ({
-    opener: window as Window | null,
-    location: { replace: vi.fn() },
-    focus: vi.fn(),
-  }));
-  const open = vi
-    .spyOn(window, "open")
-    .mockReturnValueOnce(windows[0] as unknown as Window)
-    .mockReturnValueOnce(windows[1] as unknown as Window);
+it("opens captured view inside ForemanHQ without a browser popup", () => {
+  const popup = vi.spyOn(window, "open");
   const href = "/jobs/job/drawings?drawingSheet=sheet#snapshot=state";
-  const registry = {
-    captureSource: () => ({
-      href,
-      title: "Drawing",
-      capturedAt: new Date().toISOString(),
-    }),
-  } as SnapshotSourceRegistry;
-  const original = window.location.href;
   render(
-    <SnapshotSourceContext.Provider value={registry}>
+    <SnapshotSourceContext.Provider
+      value={{ captureSource: () => ({ href }) } as SnapshotSourceRegistry}
+    >
       <NewWindowButton />
     </SnapshotSourceContext.Provider>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "New Window" }));
-  fireEvent.click(screen.getByRole("button", { name: "New Window" }));
-  expect(open).toHaveBeenCalledTimes(2);
-  expect(open).toHaveBeenCalledWith(
-    "",
-    "_blank",
-    expect.stringContaining("popup=yes"),
-  );
-  for (const child of windows) {
-    expect(child.opener).toBeNull();
-    expect(child.location.replace).toHaveBeenCalledWith(href);
-  }
-  expect(window.location.href).toBe(original);
+  fireEvent.click(screen.getByRole("button", { name: "New Page" }));
+  expect(pages.open).toHaveBeenCalledWith(href);
+  expect(popup).not.toHaveBeenCalled();
 });
-it("explains when the browser blocks a new window", () => {
-  vi.spyOn(window, "open").mockReturnValue(null);
-  render(<NewWindowButton />);
-  fireEvent.click(screen.getByRole("button", { name: "New Window" }));
-  expect(screen.getByRole("alert")).toHaveTextContent(
-    "Allow pop-ups for ForemanHQ",
-  );
+it("opens the page switcher from its count button", () => {
+  render(<PageSwitcherButton />);
+  fireEvent.click(screen.getByRole("button", { name: "Open pages (3)" }));
+  expect(pages.show).toHaveBeenCalledOnce();
 });

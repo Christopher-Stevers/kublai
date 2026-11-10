@@ -4,7 +4,7 @@ import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import { isDevOnlyPage } from "~/lib/dev-only-pages";
 import { LandscapeNavigation, useLandscapeLayout } from "~/components/app/LandscapeNavigation";
 
-import { NewWindowButton } from "~/components/app/NewWindowButton";
+import { NewWindowButton, PageSwitcherButton } from "~/components/app/NewWindowButton";
 import { DrawingDownloadStatus } from "~/components/jobs/DrawingDownloadStatus";
 import { useHyperlinkBack } from "~/hooks/use-hyperlink-back";
 import { AppDeviceReporter } from "~/components/app/AppDeviceReporter";
@@ -351,6 +351,7 @@ function HeaderFrame({
             </Button>
           )}
         </div>
+        {!sandbox && !simulation && <PageSwitcherButton />}
         <DrawingDownloadStatus />
         <InstallAppButton compact />
         {!sandbox && !simulation && sessionKey && (
@@ -451,7 +452,7 @@ function HeaderFrame({
               </div>
               <nav className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-1">
-                  {!sandbox && !simulation && <NewWindowButton className="h-12 w-full justify-start px-3 text-base" />}
+                  {!sandbox && !simulation && <NewWindowButton className="h-12 w-full justify-start px-3 text-base" onOpened={() => setMobileMenuOpen(false)} />}
                   {tabAccess.dashboard && (
                     <button
                       type="button"
