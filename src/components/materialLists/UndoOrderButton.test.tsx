@@ -22,3 +22,12 @@ it("leaves the order unchanged when the confirmation is cancelled",async()=>{
  await waitFor(()=>expect(state.confirm).toHaveBeenCalled());
  expect(state.undo).not.toHaveBeenCalled();
 });
+
+it("keeps confirmation required when undo is opened from the card menu", async () => {
+ const { DropdownMenu, DropdownMenuContent } = await import("~/components/ui/dropdown-menu");
+ state.confirm.mockResolvedValue(false);
+ render(<DropdownMenu defaultOpen><DropdownMenuContent><UndoOrderButton menuItem orderId="order" /></DropdownMenuContent></DropdownMenu>);
+ fireEvent.click(await screen.findByRole("menuitem", { name: "Undo order" }));
+ await waitFor(() => expect(state.confirm).toHaveBeenCalled());
+ expect(state.undo).not.toHaveBeenCalled();
+});
