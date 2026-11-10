@@ -116,7 +116,7 @@ export function DrawingAccountProvider({
   );
 }
 export const useDrawingAccount = () => useContext(Context);
-export const clearDrawingDownloadsOnSignOut = () => {
+export const lockDrawingDownloadsOnSignOut = () => {
   clearPrivateMemory();
   if (typeof window !== "undefined")
     window.dispatchEvent(new Event("foremanhq-drawing-account-invalidated"));

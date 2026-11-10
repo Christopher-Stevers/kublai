@@ -14,7 +14,7 @@ import { clearPdfDocuments } from "~/lib/pdf-client";
 import { clearDrawingTextIndexes } from "~/lib/drawing-text";
 import {
   DrawingAccountProvider,
-  clearDrawingDownloadsOnSignOut,
+  lockDrawingDownloadsOnSignOut,
   useDrawingAccount,
 } from "./DrawingAccountProvider";
 
@@ -168,7 +168,7 @@ describe("drawing account boundary", () => {
     );
     await screen.findByRole("button", { name: "Private org:alice draft 0" });
     await act(async () => {
-      await clearDrawingDownloadsOnSignOut();
+      await lockDrawingDownloadsOnSignOut();
     });
     await waitFor(() =>
       expect(

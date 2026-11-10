@@ -1,5 +1,7 @@
 "use client";
 
+import { OfflineStorageStatus } from "./OfflineStorageStatus";
+import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { drawingDownloadQueue } from "~/lib/drawing-download-queue";
 import { useDrawingDownloads } from "~/hooks/use-drawing-downloads";
 import { useDrawingUnit } from "./useDrawingUnit";
@@ -355,7 +357,7 @@ export function DrawingDocumentActions({
                   drawingDownloadQueue.enqueue({ id: downloadId, account: store.accountKey, label: scope === "folder" ? "Job drawings" : sheet.name }, async (signal, report) => {
                     const { warmDrawingPdfRuntime } = await import("~/lib/drawing-pdf-offline-runtime");
                     await warmDrawingPdfRuntime({ signal });
-                    await navigator.storage?.persist?.().catch(() => false);
+                    await requestPersistentDeviceStorage();
                     const estimate = await navigator.storage?.estimate?.().catch(() => undefined);
                     const existing = await store.summary();
                     const budgetBytes = estimate?.quota ? existing.bytes + Math.floor(Math.max(0, estimate.quota - (estimate.usage ?? 0)) * 0.9) : 2 * 1024 * 1024 * 1024;
@@ -390,6 +392,7 @@ export function DrawingDocumentActions({
             )}
           </div>
           {downloadTask && <p role="status" className="text-sm">{downloadTask.progress}{downloading && <button className={button} onClick={() => drawingDownloadQueue.cancel(downloadId)}>Cancel download</button>}</p>}
+          <OfflineStorageStatus />
           {summary && (
             <p className="text-muted-foreground text-xs">
               {summary.files} saved files · {megabytes(summary.bytes)}

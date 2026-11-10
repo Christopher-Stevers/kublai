@@ -642,7 +642,7 @@ describe("drawing set downloads", () => {
     state.canManage = false;
     render(<JobDrawingsView jobId="job" />);
     fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
-    await screen.findByText("Downloaded");
+    await screen.findByText(/^Saved ·/);
     expect(screen.getByRole("button", {name:"Mechanical downloaded"})).toBeDisabled();
     expect(state.fetchSet).toHaveBeenCalledWith({ setId: "set-1" });
     expect(store.saveAssets).toHaveBeenCalledWith(["/1.webp", "/2.webp", "/original.pdf"], expect.objectContaining({ budgetBytes: expect.any(Number) }));
@@ -668,13 +668,13 @@ describe("drawing set downloads", () => {
     } : {});
     store.readAsset.mockResolvedValue(new Blob(["PDF"]));
     const view = render(<JobDrawingsView jobId="job" />);
-    await screen.findByText("Downloaded");
+    await screen.findByText(/^Saved ·/);
     expect(screen.getByRole("button", {name:"Mechanical downloaded"})).toBeDisabled();
     view.unmount();
     store.readAsset.mockResolvedValue(null);
     render(<JobDrawingsView jobId="job" />);
     await waitFor(() => expect(store.readAsset).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText("Downloaded")).toBeNull();
+    expect(screen.queryByText(/^Saved ·/)).toBeNull();
   });
   it("allows another download when the cloud folder version changes", async () => {
     const store = offlineStore();
@@ -685,7 +685,7 @@ describe("drawing set downloads", () => {
     render(<JobDrawingsView jobId="job" />);
     await waitFor(() => expect(store.readSnapshot).toHaveBeenCalled());
     expect(screen.getByRole("button", {name:"Download Mechanical for offline use"})).toBeEnabled();
-    expect(screen.queryByText("Downloaded")).toBeNull();
+    expect(screen.queryByText(/^Saved ·/)).toBeNull();
   });
   it("upgrades a renamed folder's old marker using matching files without downloading them again", async () => {
     const store = offlineStore();
@@ -696,7 +696,7 @@ describe("drawing set downloads", () => {
     } : key === "drawing-set:set-1" ? { sheets: state.sheets } : {});
     store.readAsset.mockResolvedValue(new Blob(["PDF"]));
     render(<JobDrawingsView jobId="job" />);
-    await screen.findByText("Downloaded");
+    await screen.findByText(/^Saved ·/);
     expect(store.saveAssets).not.toHaveBeenCalled();
     expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ version: "content-v1" }));
   });
@@ -707,11 +707,35 @@ describe("drawing set downloads", () => {
     store.readSnapshot.mockImplementation(async (key: string) => key === "drawing-download:set-1" ? {
       version: "content-v1", urls: ["/1.webp", "/2.webp", "/original.pdf"], sheets: ["s1", "s2"],
     } : key === "drawing-set:set-1" ? { sheets: state.sheets } : {});
-    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    store.readAsset.mockImplementation(async url => url.endsWith("-new") ? null : new Blob(["PDF"]));
     render(<JobDrawingsView jobId="job" />);
     await waitFor(() => expect(state.fetchSet).toHaveBeenCalled());
-    expect(screen.queryByText("Downloaded")).toBeNull();
+    expect(screen.queryByText(/^Saved ·/)).toBeNull();
     expect(store.saveSnapshot.mock.calls.some(call => call[0] === "drawing-download:set-1")).toBe(false);
+  });
+  it("repairs a lost completion marker and workspace using saved bytes", async () => {
+    const store = offlineStore();
+    state.sets[0]!.downloadVersion = "content-v1";
+    state.fetchSet.mockResolvedValue({ sheets: state.sheets, downloadVersion: "content-v1" });
+    await store.saveSnapshot("drawing-set:set-1", { sheets: state.sheets, downloadVersion: "content-v1" });
+    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    render(<JobDrawingsView jobId="job" />);
+    await screen.findByText(/^Saved ·/);
+    expect(store.saveAssets).not.toHaveBeenCalled();
+    expect(store.saveSnapshot).toHaveBeenCalledWith("workspace:s1", expect.objectContaining({ sheetId: "s1" }));
+    expect(store.saveSnapshot).toHaveBeenCalledWith("drawing-download:set-1", expect.objectContaining({ bytes: 9 }));
+  });
+  it("keeps checking other sets when one set's storage read fails", async () => {
+    const store = offlineStore();
+    state.sets.push({ ...state.sets[0]!, id: "set-2", name: "Electrical" });
+    store.readSnapshot.mockImplementation(async key => {
+      if (key.includes("set-1")) throw new Error("unavailable");
+      if (key === "drawing-download:set-2") return { version: `${state.sets[0]!.updatedAt.toISOString()}:2`, urls: ["/original.pdf"], sheets: ["s1"] };
+      return {};
+    });
+    store.readAsset.mockResolvedValue(new Blob(["PDF"]));
+    render(<JobDrawingsView jobId="job" />);
+    await waitFor(() => expect(screen.getByRole("button", {name:"Electrical downloaded"})).toBeDisabled());
   });
   it("does not mark a failed download as complete", async () => {
     const store = offlineStore();
@@ -720,7 +744,7 @@ describe("drawing set downloads", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
     await waitFor(() => expect(store.saveAssets).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByText("Cancel download")).toBeNull());
-    expect(screen.queryByText("Downloaded")).toBeNull();
+    expect(screen.queryByText(/^Saved ·/)).toBeNull();
     expect(store.saveSnapshot.mock.calls.some(call => call[0] === "drawing-download:set-1")).toBe(false);
   });
 });

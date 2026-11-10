@@ -45,6 +45,7 @@ beforeEach(async () => {
   );
   revoke.mockClear();
   await setDrawingOfflineAccount("org:alice");
+  await new DrawingOfflineStore("org:alice").clear();
 });
 afterEach(async () => {
   await setDrawingOfflineAccount(null);
@@ -124,7 +125,7 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(await store.readAsset(first)).toBeNull();
   });
 
-  it("revokes blob URLs and discards private files/snapshots on account switch", async () => {
+  it("revokes access while retaining private files for the same authenticated account", async () => {
     const old = new DrawingOfflineStore("org:alice");
     await old.saveAssets([first]);
     await old.saveSnapshot("job", { private: "Alice" });
@@ -141,7 +142,7 @@ describe("explicit account-scoped drawing downloads", () => {
     await setDrawingOfflineAccount("org:alice");
     expect(
       await new DrawingOfflineStore("org:alice").readAsset(first),
-    ).toBeNull();
+    ).not.toBeNull();
   });
 
   it("preserves the actor's normal downloads across isolated simulation sessions", async () => {
@@ -161,7 +162,7 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(await restored.readSnapshot("job")).toEqual({ private: "Alice" });
     await setDrawingOfflineAccount(null);
     await setDrawingOfflineAccount("org:alice");
-    expect(await new DrawingOfflineStore("org:alice").readAsset(first)).toBeNull();
+    expect(await new DrawingOfflineStore("org:alice").readAsset(first)).not.toBeNull();
   });
 
   it("cannot restore a download after logout while its network response was pending", async () => {

@@ -31,7 +31,6 @@ export type DrawingOfflineSaveOptions = {
 };
 let database: Promise<IDBDatabase> | undefined;
 let activeAccount: string | null = null;
-let preservedAccount: string | null = null;
 const stores = new Set<DrawingOfflineStore>();
 export function isDrawingOfflineAccountActive(accountKey: string) {
   return activeAccount === accountKey;
@@ -155,24 +154,21 @@ export async function setDrawingOfflineAccount(accountKey: string | null, preser
     }
   }
   activeAccount = accountKey;
-  // Only a server-validated simulation may retain its actor’s normal downloads.
-  // Retention never grants read access to that account. Logout still clears all.
-  preservedAccount = accountKey?.includes(":simulation:") && preserveAccountKey ? preserveAccountKey : null;
+  // Keep normal account downloads on disk, but revoke all access immediately.
+  // Simulation data is temporary and must not outlive its validated session.
+  void preserveAccountKey;
   bindingChanged();
   for (const store of stores)
     if (store.accountKey !== accountKey) store.dispose();
   if (typeof indexedDB === "undefined") return;
   const db = await openDatabase();
-  const tx = db.transaction(["assets", "snapshots"], "readwrite"),
-    complete = done(tx);
+  const tx = db.transaction(["assets", "snapshots"], "readwrite"), complete = done(tx);
   for (const name of ["assets", "snapshots"]) {
     const cursor = tx.objectStore(name).openCursor();
     cursor.onsuccess = () => {
       if (!cursor.result) return;
-      // Consult the latest binding: a slow logout cleanup must not erase the
-      // new user's downloads if they sign in while IndexedDB opens.
       const item = cursor.result.value as Asset | Snapshot;
-      if (item.account !== activeAccount && item.account !== preservedAccount) cursor.result.delete();
+      if (item.account.includes(":simulation:") && item.account !== activeAccount) cursor.result.delete();
       cursor.result.continue();
     };
   }

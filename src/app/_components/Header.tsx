@@ -237,9 +237,9 @@ function HeaderFrame({
   const handleSignOut = async () => {
     if (sandbox) return;
     try {
-      const { clearDrawingDownloadsOnSignOut } =
+      const { lockDrawingDownloadsOnSignOut } =
         await import("~/components/jobs/DrawingAccountProvider");
-      await clearDrawingDownloadsOnSignOut();
+      await lockDrawingDownloadsOnSignOut();
     } catch {
       /* Signing out must still work if offline storage is unavailable. */
     }
