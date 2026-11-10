@@ -30,6 +30,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
+  FilterIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -140,6 +141,7 @@ export default function OrdersPage() {
   const [supplierFilter, setSupplierFilter] = usePageViewState<string | null>("orders:supplierFilter", null);
   const [dateFilter, setDateFilter] = usePageViewState<DateFilter>("orders:dateFilter", "all");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const markOrderSent = api.materialList.markOrderSent.useMutation({
     onSuccess: () => {
@@ -408,87 +410,7 @@ export default function OrdersPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-11 w-full justify-between"
-                  >
-                    <span className="truncate">
-                      {selectedJobName ?? "All jobs"}
-                    </span>
-                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  <DropdownMenuItem onClick={() => setJobFilter(null)}>
-                    All jobs
-                  </DropdownMenuItem>
-                  {jobOptions.map((job) => (
-                    <DropdownMenuItem
-                      key={job.id}
-                      onClick={() => setJobFilter(job.id)}
-                    >
-                      {job.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-11 w-full justify-between"
-                  >
-                    <span className="truncate">
-                      {selectedSupplierName ? supplierLabel(selectedSupplierName, "All price books") : "All suppliers"}
-                    </span>
-                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  <DropdownMenuItem onClick={() => setSupplierFilter(null)}>
-                    All suppliers
-                  </DropdownMenuItem>
-                  {supplierOptions.map((supplier) => (
-                    <DropdownMenuItem
-                      key={supplier.id}
-                      onClick={() => setSupplierFilter(supplier.id)}
-                    >
-                      <SupplierLabel name={supplier.name} bookName="All price books" />
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-11 w-full justify-between"
-                  >
-                    <span className="truncate">
-                      {DATE_FILTER_LABELS[dateFilter]}
-                    </span>
-                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map(
-                    (value) => (
-                      <DropdownMenuItem
-                        key={value}
-                        onClick={() => setDateFilter(value)}
-                      >
-                        {DATE_FILTER_LABELS[value]}
-                      </DropdownMenuItem>
-                    ),
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </div>
         )}
 
@@ -648,6 +570,104 @@ export default function OrdersPage() {
         )}
       </div>
 
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Filter orders</DialogTitle>
+            <DialogDescription>Filter by job, supplier, and date. Changes apply immediately.</DialogDescription>
+          </DialogHeader>
+            <div className="grid grid-cols-1 gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedJobName ?? "All jobs"}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuItem onClick={() => setJobFilter(null)}>
+                    All jobs
+                  </DropdownMenuItem>
+                  {jobOptions.map((job) => (
+                    <DropdownMenuItem
+                      key={job.id}
+                      onClick={() => setJobFilter(job.id)}
+                    >
+                      {job.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedSupplierName ? supplierLabel(selectedSupplierName, "All price books") : "All suppliers"}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuItem onClick={() => setSupplierFilter(null)}>
+                    All suppliers
+                  </DropdownMenuItem>
+                  {supplierOptions.map((supplier) => (
+                    <DropdownMenuItem
+                      key={supplier.id}
+                      onClick={() => setSupplierFilter(supplier.id)}
+                    >
+                      <SupplierLabel name={supplier.name} bookName="All price books" />
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {DATE_FILTER_LABELS[dateFilter]}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map(
+                    (value) => (
+                      <DropdownMenuItem
+                        key={value}
+                        onClick={() => setDateFilter(value)}
+                      >
+                        {DATE_FILTER_LABELS[value]}
+                      </DropdownMenuItem>
+                    ),
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          <div className="flex justify-between gap-2">
+            <Button variant="ghost" onClick={() => {
+              setJobFilter(null);
+              setSupplierFilter(null);
+              setDateFilter("all");
+            }}>Clear filters</Button>
+            <Button variant="outline" onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Pinned to the bottom of the window on every screen size. */}
       <div className="bg-card fixed inset-x-0 bottom-0 z-40 pin-viewport-bottom border-t px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-6">
         <PriorityActionBar
@@ -659,6 +679,11 @@ export default function OrdersPage() {
             placeholder: "Search items, jobs, suppliers...",
           }}
         >
+          <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setFiltersOpen(true)}>
+            <FilterIcon className="h-5 w-5" />
+            <span>Filter{(Number(!!jobFilter) + Number(!!supplierFilter) + Number(dateFilter !== "all")) > 0
+              ? ` (${Number(!!jobFilter) + Number(!!supplierFilter) + Number(dateFilter !== "all")})` : ""}</span>
+          </Button>
           {canSendOrders && (
             <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1" onClick={() => setCalendarOpen(true)}>
               <CalendarDaysIcon className="text-primary h-5 w-5" />
