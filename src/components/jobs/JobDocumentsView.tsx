@@ -1415,6 +1415,15 @@ export function JobDocumentsView({
             <MoreHorizontalIcon className="size-4" />
             Options
           </Button>
+          {canWrite && view === "files" && <Button
+            variant="outline"
+            className="h-11 gap-1 px-2 text-xs sm:text-sm"
+            disabled={processing}
+            onClick={() => openModal({ kind: "folder" })}
+          >
+            <FolderPlusIcon className="size-4 shrink-0" />
+            New Folder
+          </Button>}
           {canWrite && <Button
             className="h-11 gap-1 px-1 text-xs sm:text-sm"
             disabled={processing}
@@ -1516,19 +1525,6 @@ export function JobDocumentsView({
                 >
                   <ShieldIcon />
                   Permissions
-                </Button>
-              )}
-              {canWrite && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    openModal({ kind: "folder" });
-                  }}
-                >
-                  <FolderPlusIcon />
-                  New folder
                 </Button>
               )}
             </div>

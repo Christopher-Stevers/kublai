@@ -56,6 +56,13 @@ vi.mock("./documents/DocumentPdfPreview", async () => {
 import { JobDocumentsView } from "./JobDocumentsView";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
 
+function openOptions() {
+  if (!screen.queryByRole("button", { name: "Options" })) {
+    fireEvent.click(screen.getByRole("button", { name: "Expand all actions" }));
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Options" }));
+}
+
 let overview: DocumentOverview;
 let requests: Array<{ url: string; init?: RequestInit }>;
 const when = "2026-10-07T12:00:00.000Z";
@@ -242,7 +249,8 @@ describe("job documents workspace", () => {
   it("shows a restore action for recycled documents", async () => {
     overview.documents[0]!.deletedAt = when;
     render(<JobDocumentsView jobId="job-1" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Options" }));
+    await screen.findByRole("button", { name: "Contracts" });
+    openOptions();
     fireEvent.click(screen.getByRole("tab", { name: "Recycle bin" }));
     fireEvent.click(await screen.findByRole("button", { name: "Restore Specification.pdf" }));
     await waitFor(() => expect(jsonPosts()).toContainEqual({ jobId: "job-1", action: "restore", documentId: "doc-1" }));
@@ -323,8 +331,8 @@ describe("job documents workspace", () => {
       screen.getByRole("button", { name: "Open Agreement.docx" }),
     ).toBeInTheDocument();
     const search = () => {
-      fireEvent.click(screen.getByRole("button", { name: "Search" }));
-      fireEvent.change(screen.getByLabelText("Search documents"), {
+      fireEvent.click(screen.getByRole("button", { name: "Search documents" }));
+      fireEvent.change(screen.getByRole("searchbox", { name: "Search documents" }), {
         target: { value: "mechanical" },
       });
     };
@@ -336,7 +344,7 @@ describe("job documents workspace", () => {
       screen.queryByRole("button", { name: "Open Agreement.docx" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close search" }));
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+    openOptions();
     fireEvent.change(screen.getByLabelText("Filter by file type"), {
       target: { value: "word" },
     });
@@ -349,8 +357,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
-    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "New Folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: " Submittals " },
     });
@@ -558,8 +565,7 @@ describe("job documents workspace", () => {
           )
         : new Response(JSON.stringify(overview)),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
-    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "New Folder" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Private" },
     });
@@ -598,7 +604,7 @@ describe("job documents workspace", () => {
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
     fireEvent.click(screen.getByRole("button", { name: "Contracts" }));
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+    openOptions();
     fireEvent.click(screen.getByRole("button", { name: "Permissions" }));
     fireEvent.change(screen.getByLabelText("Access for Alex"), {
       target: { value: "viewer" },
@@ -674,7 +680,7 @@ describe("job documents workspace", () => {
       .mockImplementation(() => undefined);
     render(<JobDocumentsView jobId="job-1" />);
     await ready();
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+    openOptions();
     fireEvent.click(screen.getByRole("tab", { name: "Transmittals" }));
     fireEvent.click(screen.getByRole("button", { name: "Download manifest" }));
     const blob = createObjectURL.mock.calls[0]![0] as Blob | undefined;
@@ -857,7 +863,7 @@ function pendingSubmittal() {
 }
 async function openSubmittals() {
   await ready();
-  fireEvent.click(screen.getByRole("button", { name: "Options" }));
+  openOptions();
   fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
 }
 describe("dedicated submittal workspace", () => {
@@ -882,7 +888,7 @@ describe("dedicated submittal workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Open SUB-001 · valve.pdf" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+    openOptions();
     fireEvent.click(screen.getByRole("tab", { name: "Submittals" }));
     expect(
       screen.getByRole("button", { name: "Open SUB-002: Motor" }),
@@ -1069,7 +1075,7 @@ it("routes grouped approvals through the full review instead of approving unseen
     screen.queryByRole("button", { name: "Approve PDF" }),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open grouped review" }));
-  fireEvent.click(screen.getByRole("button", { name: "Options" }));
+  openOptions();
   expect(screen.getByRole("tab", { name: "Reviews" })).toHaveAttribute(
     "aria-selected",
     "true",
@@ -1084,14 +1090,15 @@ it("keeps the document workspace focused on the bottom controls", async () => {
   render(<JobDocumentsView jobId="job-1" />);
   await ready();
   const toolbar = screen.getByRole("toolbar", { name: "Document controls" });
-  expect(toolbar.querySelectorAll("button")).toHaveLength(3);
-  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  expect(toolbar.querySelectorAll("[data-action-bar-row] > [data-action-slot]")).toHaveLength(3);
+  expect(toolbar.querySelectorAll("[data-action-bar-row] > [data-action-slot]")[1]).toHaveTextContent("New Folder");
+  fireEvent.click(screen.getByRole("button", { name: "Search documents" }));
   expect(
     toolbar.contains(screen.getByRole("searchbox", { name: "Search documents" })),
   ).toBe(true);
   expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "New folder" }),
+    screen.queryByRole("button", { name: "New Folder" }),
   ).not.toBeInTheDocument();
 });
 
