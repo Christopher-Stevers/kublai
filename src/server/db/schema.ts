@@ -1888,6 +1888,8 @@ export const orders = createTable(
       .references(() => materialLists.id, { onDelete: "set null" }),
 
     orderNumber: d.varchar({ length: 100 }),
+    /** References on earlier paperwork, retained when internal numbering changes. */
+    previousOrderNumbers: d.jsonb().$type<string[]>().notNull().default(sql`'[]'::jsonb`),
 
     supplierId: d
       .uuid()

@@ -231,3 +231,21 @@ it("uses only ordered quantity cells to distinguish otherwise identical products
     quantityMatches: 0,
   });
 });
+
+
+describe("renumbered order references", () => {
+  it("retains the reference evidence from old paperwork", () => {
+    const renamed = {...pipe, orderNumber: "12-Next", previousOrderNumbers: ["7870158-Next"]};
+    const slip = rows("7870158-Next", "Copper pipe type L 3/4 x 12 ft CUL34");
+    const withHistory = findOrder(slip, [renamed]).ranked[0]!.score;
+    const withoutHistory = findOrder(slip, [{...renamed, previousOrderNumbers: []}]).ranked[0]!.score;
+    expect(withHistory - withoutHistory).toBeCloseTo(0.5);
+  });
+  it("does not use a reused number as evidence for either order", () => {
+    const renamed = {...pipe, orderNumber: "12-Next", previousOrderNumbers: ["175-Next"]};
+    const reused = {...fasteners, orderNumber: "175-Next"};
+    const products = "Copper pipe type L 3/4 x 12 ft CUL34";
+    expect(findOrder(rows("175-Next", products), [renamed, reused]).ranked)
+      .toEqual(findOrder(rows("Next", products), [renamed, reused]).ranked);
+  });
+});

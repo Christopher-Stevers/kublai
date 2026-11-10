@@ -1455,7 +1455,7 @@ ${foremanName}`;
 
           orderNumber = `TOOLS-${String(createdOrderSequence).padStart(3, "0")}`;
         } else {
-          orderNumber = await nextMaterialOrderNumber(tx, ctx.user.organizationId!, requestedSupplier?.name ?? "Supplier");
+          orderNumber = await nextMaterialOrderNumber(tx, ctx.user.organizationId!, materialList.jobId, requestedSupplier?.name ?? "Supplier");
         }
 
         const [createdOrder] = await tx

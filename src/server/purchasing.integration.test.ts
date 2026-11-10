@@ -33,7 +33,7 @@ vi.mock("~/server/db", async () => {
 vi.mock("~/server/api/trpc", async () => {
   const { initTRPC } = await import("@trpc/server");
   const t = initTRPC.create();
-  return { createTRPCRouter: t.router, hasAppAccess: t.procedure };
+  return { createTRPCRouter: t.router, hasAppAccess: t.procedure, hasDevAppAccess: t.procedure };
 });
 const supplierAccess = vi.hoisted(() => ({ financial: true, orders: true }));
 vi.mock("~/server/auth/permissions", () => ({
@@ -709,25 +709,33 @@ describe.skipIf(!socket)(
       await material.undoOrder({orderId:first.id});
       expect((await material.previewOrders({materialListId:copy.id})).possible).toHaveLength(0);
       const third = await material.sendGeneratedOrder({materialListId:list,supplierId:supplier,sentTo:"test@example.test"});
-      expect(third.orderNumber).toBe("3-Synthetic supplier");
+      expect(third.orderNumber).toBe("1-Synthetic supplier");
       expect((await material.getOrderById({orderId:second.id})).items).toHaveLength(1);
     });
     it("formats supplier names safely within the stored reference length", () => {
       expect(materialOrderReference(170, "  Fastening   House  ")).toBe("170-Fastening House");
       expect(materialOrderReference(171, "A".repeat(255))).toHaveLength(100);
     });
-    it("continues legacy numbers across jobs while keeping other companies separate", async () => {
+    it("fills gaps within a job without following imported supplier references", async () => {
       await db.insert(schema.orders).values([
-        { organizationId: org, jobId: id(903), supplierId: supplier, orderNumber: "ORDER-047", kind: "materials" },
-        { organizationId: id(901), jobId: id(902), supplierId: supplier, orderNumber: "ORDER-900", kind: "materials" },
+        { organizationId: org, jobId: job, supplierId: supplier, orderNumber: "1-Next", kind: "materials" },
+        { organizationId: org, jobId: job, supplierId: supplier, orderNumber: "3-Next", kind: "materials" },
+        { organizationId: org, jobId: job, supplierId: supplier, orderNumber: "7870155-00", kind: "materials" },
+        { organizationId: org, jobId: id(903), supplierId: supplier, orderNumber: "2-Next", kind: "materials" },
+        { organizationId: id(901), jobId: job, supplierId: supplier, orderNumber: "2-Next", kind: "materials" },
       ]);
-      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, "Next"))).toBe("48-Next");
+      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, job, "Next"))).toBe("2-Next");
+      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, id(904), "Next"))).toBe("1-Next");
     });
-    it("shares an atomic sequence across suppliers and retains it after deletion", async () => {
-      const refs = await Promise.all(["Next", "Fastening House"].map(name => db.transaction(tx => nextMaterialOrderNumber(tx, org, name))));
+    it("serializes allocation and insertion across suppliers and reuses deleted gaps", async () => {
+      const refs = await Promise.all(["Next", "Fastening House"].map(name => db.transaction(async tx => {
+        const orderNumber = await nextMaterialOrderNumber(tx, org, job, name);
+        await tx.insert(schema.orders).values({organizationId: org, jobId: job, supplierId: supplier, orderNumber, kind: "materials"});
+        return orderNumber;
+      })));
       expect(refs.map(ref => ref.match(/^(\d+)-/)![1]).sort()).toEqual(["1", "2"]);
       await db.delete(schema.orders);
-      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, "Next"))).toBe("3-Next");
+      expect(await db.transaction(tx => nextMaterialOrderNumber(tx, org, job, "Next"))).toBe("1-Next");
     });
     it("serializes simultaneous sends so a row is ordered once", async () => {
       const results = await Promise.allSettled([1, 2].map(() => material.sendGeneratedOrder({ materialListId: list, supplierId: supplier, sentTo: "supplier@example.test" })));

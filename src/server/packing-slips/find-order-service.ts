@@ -54,6 +54,7 @@ export async function jobOrders(access: DocumentAccess) {
     .select({
       id: orders.id,
       orderNumber: orders.orderNumber,
+      previousOrderNumbers: orders.previousOrderNumbers,
       supplier: suppliers.name,
       materialListId: orders.materialListId,
       materialListName: materialLists.name,
@@ -156,6 +157,7 @@ export async function jobOrders(access: DocumentAccess) {
       slip: {
         id: r.id,
         orderNumber: r.orderNumber ?? "",
+        previousOrderNumbers: r.previousOrderNumbers ?? [],
         supplier: r.supplier,
         items: own.map((i) => ({
           id: i.id,

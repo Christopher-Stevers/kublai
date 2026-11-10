@@ -2351,7 +2351,9 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       newOrder = (await db.select().from(schema.orders)).find(
         (o) => o.id === newDoc.packingSlip!.orderId,
       )!;
-    expect(newDoc.name).toBe("Packing slip - SLIP-PO-9.jpg");
+    expect(newDoc.name).toBe(`Packing slip - ${newOrder.orderNumber}.jpg`);
+    expect(newOrder.orderNumber).toMatch(/^1-/);
+    expect(newOrder.previousOrderNumbers).toEqual(["SLIP-PO-9"]);
     expect((await readableVersion(access, doc.versionId)).version.name).toBe(
       newDoc.name,
     );

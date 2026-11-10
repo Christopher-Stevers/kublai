@@ -1,3 +1,4 @@
+import { nextMaterialOrderNumber } from "~/server/order-number";
 import { receivingProgress } from "~/lib/receiving-progress";
 import { receivingQueueItems } from "./receiving-queue-items";
 import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
@@ -1785,13 +1786,15 @@ async function mutateReceivingImpl(
             .set({ quoteId })
             .where(eq(materialLists.id, list!.id));
         }
+        const orderNumber = await nextMaterialOrderNumber(tx, fresh.job.organizationId, fresh.job.id, supplier.name);
         const [order] = await tx
           .insert(orders)
           .values({
             organizationId: fresh.job.organizationId,
             jobId: fresh.job.id,
             materialListId: list!.id,
-            orderNumber: input.orderNumber,
+            orderNumber,
+            previousOrderNumbers: [input.orderNumber],
             supplierId: supplier.id,
             createdByUserId: fresh.user.id,
             status: "sent",
@@ -1811,7 +1814,7 @@ async function mutateReceivingImpl(
           await addOrderLine(tx, fresh, doc, lineFor(id), order!, quoteId, input);
         doc.packingSlip = {
           orderId: order!.id,
-          orderNumber: input.orderNumber,
+          orderNumber: order!.orderNumber!,
           materialListId: list!.id,
           materialListName: list!.name,
         };

@@ -15,6 +15,7 @@ import { EVIDENCE, prepared, type VisionAsk } from "./vision";
 export type SlipOrder = {
   id: string;
   orderNumber: string;
+  previousOrderNumbers?: string[];
   supplier: string | null;
   items: ReceiptOrderItem[];
 };
@@ -147,6 +148,17 @@ export function findOrder(
       quantityMatches: quantityItems.size,
     };
   });
+  // Renumbered references can collide with a different order's current number.
+  // Only unique references provide evidence; products still decide the match.
+  const referenceOwners = new Map<string, Set<string>>();
+  for (const order of orders)
+    for (const ref of [order.orderNumber, ...(order.previousOrderNumbers ?? [])]) {
+      const key = squash(ref);
+      const owners = referenceOwners.get(key) ?? new Set<string>();
+      owners.add(order.id);
+      referenceOwners.set(key, owners);
+    }
+  const slipTokens = new Set(text.toLowerCase().split(/[^a-z0-9-]+/).map(squash));
   const ranked = scored
     .map(({ order, recall, found, rowsFound, quantityMatches }) => {
       const precision = rowsFound.size / Math.max(1, explained.size);
@@ -155,15 +167,10 @@ export function findOrder(
           ? (2 * recall * precision) / (recall + precision)
           : 0;
       const named = supplierNamed(order.supplier, text);
-      const number = squash(order.orderNumber);
-      const ours =
-        number.length >= 5 &&
-        text
-          .toLowerCase()
-          .split(/[^a-z0-9-]+/)
-          .some((t) => squash(t) === number)
-          ? 0.5
-          : 0;
+      const ours = [order.orderNumber, ...(order.previousOrderNumbers ?? [])]
+        .map(squash)
+        .some(number => number.length >= 5 && referenceOwners.get(number)?.size === 1 && slipTokens.has(number))
+        ? 0.5 : 0;
       const delivered =
         order.items.length > 0 &&
         order.items.every((i) => i.received >= i.ordered);

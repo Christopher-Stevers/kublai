@@ -7,20 +7,26 @@ export function materialOrderReference(sequence: number, supplierName: string) {
   return prefix + Array.from(supplier).slice(0, 100 - prefix.length).join("");
 }
 
-/** One durable company counter, shared across suppliers and jobs. */
+/** Allocate inside the same transaction that inserts the order. The job lock
+ * serializes suppliers/senders; gaps are reusable after an order is removed. */
 export async function nextMaterialOrderNumber(
   tx: Pick<typeof db, "execute">,
   organizationId: string,
+  jobId: string,
   supplierName: string,
 ) {
-  const result = await tx.execute<{ lastNumber: number }>(sql`
-    insert into kublai_order_number_counter ("organizationId", "lastNumber")
-    select ${organizationId}::uuid,
-      coalesce(max(substring("orderNumber" from '^(?:ORDER-|PO-)?([0-9]{1,9})(?:-|$)')::int), 0) + 1
-    from kublai_order where "organizationId" = ${organizationId}::uuid and kind = 'materials'
-    on conflict ("organizationId") do update
-      set "lastNumber" = greatest(kublai_order_number_counter."lastNumber", excluded."lastNumber" - 1) + 1
-    returning "lastNumber"
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${organizationId}:${jobId}:orders`}))`);
+  const result = await tx.execute<{ nextNumber: number }>(sql`
+    with used as (
+      select distinct substring("orderNumber" from '^(?:ORDER-|PO-)?([0-9]{1,9})(?:-|$)')::int as n
+      from kublai_order
+      where "organizationId" = ${organizationId}::uuid
+        and "jobId" = ${jobId}::uuid and kind = 'materials'
+    ), candidates as (
+      select 1 as n union select n + 1 from used where n > 0
+    )
+    select min(c.n)::int as "nextNumber" from candidates c
+    where not exists (select 1 from used u where u.n = c.n)
   `);
-  return materialOrderReference(result[0]!.lastNumber, supplierName);
+  return materialOrderReference(result[0]!.nextNumber, supplierName);
 }
