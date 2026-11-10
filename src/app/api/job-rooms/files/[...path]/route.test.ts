@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   openFile: vi.fn(),
   openThumbnail: vi.fn(),
+  preparePage: vi.fn(async (_key: string) => undefined),
   stream: vi.fn(),
   close: vi.fn(),
   records: [] as { id: string; organizationId: string }[],
@@ -26,6 +27,12 @@ vi.mock("~/server/db", () => ({ db: { execute: mocks.execute } }));
 vi.mock("~/server/rooms/storage", () => ({
   openJobRoomFile: mocks.openFile,
   openJobRoomThumbnail: mocks.openThumbnail,
+}));
+
+vi.mock("~/server/rooms/page-pdfs", () => ({
+  PAGE_PDF_KEY:
+    /^([0-9a-f-]{36}\/[0-9a-f-]{36})\/pages\/(?:index\.json|[1-9]\d{0,4}\.pdf)$/i,
+  preparePagePdf: mocks.preparePage,
 }));
 
 import { GET, HEAD } from "./route";
@@ -111,6 +118,53 @@ test("an organization member can read its PDF with private cache headers", async
   expect(mocks.query.sql).toContain('"organizationId"');
   expect(mocks.query.params).toEqual([ownJob, "org-a"]);
   expect(mocks.openFile).toHaveBeenCalledWith(`${ownJob}/${upload}/plan.pdf`);
+});
+
+test("serves a sheet's own PDF and the page list, split on first use", async () => {
+  const page = await GET(request(), context(ownJob, upload, "pages", "7.pdf"));
+  expect(page.status).toBe(200);
+  expect(page.headers.get("content-type")).toBe("application/pdf");
+  expect(page.headers.get("cache-control")).toBe(
+    "private, max-age=3600, immutable, no-transform",
+  );
+  expect(mocks.preparePage).toHaveBeenCalledWith(
+    `${ownJob}/${upload}/pages/7.pdf`,
+  );
+  expect(mocks.openFile).toHaveBeenCalledWith(
+    `${ownJob}/${upload}/pages/7.pdf`,
+  );
+  const list = await GET(
+    request(),
+    context(ownJob, upload, "pages", "index.json"),
+  );
+  expect(list.headers.get("content-type")).toBe("application/json");
+
+  // Not split yet: nothing to cache, and the viewer reads the set instead.
+  mocks.openFile.mockRejectedValueOnce(new Error("ENOENT"));
+  const missing = await GET(
+    request(),
+    context(ownJob, upload, "pages", "8.pdf"),
+  );
+  expect(missing.status).toBe(404);
+  expect(missing.headers.get("cache-control")).toBe("private, no-store");
+});
+
+test("page files stay behind the organization check and inside the folder", async () => {
+  const foreign = await GET(
+    request(),
+    context(foreignJob, upload, "pages", "1.pdf"),
+  );
+  expect(foreign.status).toBe(404);
+  for (const path of [
+    [ownJob, "pages", "1.pdf"],
+    [ownJob, upload, "pages", "0.pdf"],
+    [ownJob, upload, "pages", "..", "plan.pdf"],
+    [ownJob, upload, "pages", "1.pdf", "x"],
+    [ownJob, upload, "pages", "other.json"],
+  ])
+    expect((await GET(request(), context(...path))).status).toBe(404);
+  expect(mocks.preparePage).not.toHaveBeenCalled();
+  expect(mocks.openFile).not.toHaveBeenCalled();
 });
 
 test("saved system vectors use the PDF authorization boundary", async () => {

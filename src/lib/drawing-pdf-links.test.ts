@@ -168,4 +168,41 @@ describe("original PDF hyperlinks", () => {
       ),
     ).toBeUndefined();
   });
+  it("finds a page file's sheet links in the whole set, only when tapped", async () => {
+    const original = { url: "/set/plan.pdf", page: 2 };
+    // The page file: the linked sheet is gone, so the target cannot be read.
+    const page = fixture([
+      annotation({ url: "https://example.com/detail" }),
+      annotation({ dest: [{ num: 9, gen: 0 }, { name: "Fit" }] }),
+      annotation({ rect: [80, 40, 120, 60], dest: "section" }),
+      annotation({ rect: [130, 40, 170, 60], dest: [{ num: 4, gen: 0 }] }),
+    ]);
+    const links = await readDrawingPdfLinks(
+      { url: "/set/pages/2.pdf", page: 1 },
+      undefined,
+      original,
+    );
+    expect(links.map((link) => [link.url, link.page])).toEqual([
+      ["https://example.com/detail", undefined],
+      [undefined, undefined],
+      [undefined, undefined],
+      [undefined, undefined],
+    ]);
+    expect(page.getPageIndex).not.toHaveBeenCalled();
+    expect(loadPdfDocument).toHaveBeenCalledTimes(1);
+
+    // The set knows the first two sheet links; the third is not in it.
+    const set = fixture([
+      annotation({ url: "https://example.com/detail" }),
+      annotation({ dest: [{ num: 9, gen: 0 }, { name: "Fit" }] }),
+      annotation({ rect: [80, 40, 120, 60], dest: [1, { name: "Fit" }] }),
+    ]);
+    expect(await drawingPdfLinkPage(links[1]!)).toBe(3);
+    expect(await drawingPdfLinkPage(links[2]!)).toBe(2);
+    expect(await drawingPdfLinkPage(links[3]!)).toBeUndefined();
+    expect(loadPdfDocument).toHaveBeenLastCalledWith("/set/plan.pdf");
+    expect(set.getPage).toHaveBeenCalledWith(2);
+    // The set is read once for all of the page's links.
+    expect(set.getPage).toHaveBeenCalledTimes(1);
+  });
 });

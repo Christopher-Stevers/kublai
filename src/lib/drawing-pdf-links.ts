@@ -36,6 +36,9 @@ export function drawingPdfLinkTarget<T extends { imageUrl: string }>(
   });
 }
 
+const BOUNDS = ["left", "top", "right", "bottom"] as const;
+type Bounds = Record<(typeof BOUNDS)[number], number>;
+
 function isPageRef(value: unknown): value is { num: number; gen: number } {
   return Boolean(
     value && typeof value === "object" && "num" in value && "gen" in value,
@@ -72,6 +75,10 @@ export async function drawingPdfLinkPage(link: DrawingPdfLink) {
 export function readDrawingPdfLinks(
   source: { url: string; page: number },
   parsedDocument?: PDFDocumentProxy,
+  /** When `source` is a sheet's own page file: its place in the whole set.
+   * A page file has no other pages, so links between sheets find their
+   * targets in the set, and only when one is tapped. */
+  original?: { url: string; page: number },
 ) {
   const key = `${source.url}:${source.page}`;
   const cached = links.get(key);
@@ -85,6 +92,22 @@ export function readDrawingPdfLinks(
       intent: "display",
     });
     const found: DrawingPdfLink[] = [];
+    const inSet = (bounds: Bounds) => {
+      let page: Promise<number | undefined> | undefined;
+      return () =>
+        (page ??= readDrawingPdfLinks(original!)
+          .then((links) => {
+            const match = links.find(
+              (link) =>
+                !link.url &&
+                BOUNDS.every(
+                  (side) => Math.abs(link[side] - bounds[side]) < 1e-4,
+                ),
+            );
+            return match ? drawingPdfLinkPage(match) : undefined;
+          })
+          .catch(() => undefined));
+    };
     for (const raw of annotations) {
       try {
         const annotation = raw as {
@@ -134,6 +157,12 @@ export function readDrawingPdfLinks(
         if (annotation.url) {
           const url = drawingPdfLinkUrl(annotation.url);
           if (url) found.push({ ...bounds, url });
+        } else if (original) {
+          if (
+            typeof annotation.dest === "string" ||
+            Array.isArray(annotation.dest)
+          )
+            found.push({ ...bounds, resolvePage: inSet(bounds) });
         } else {
           const dest = annotation.dest;
           if (typeof dest === "string") {

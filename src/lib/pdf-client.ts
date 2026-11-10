@@ -1,6 +1,7 @@
 "use client";
 
 import { clearDrawingGeometryWorkers } from "./drawing-geometry-client";
+import { clearSheetPdfSources } from "./drawing-page-pdf";
 import {
   clearPdfRangeSources,
   PDF_RANGE_BLOCK,
@@ -28,6 +29,7 @@ export function clearPdfDocuments() {
   documents.clear();
   for (const entry of entries) entry.destroy();
   clearPdfRangeSources();
+  clearSheetPdfSources();
 }
 
 export function loadPdfJs() {

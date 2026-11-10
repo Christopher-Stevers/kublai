@@ -34,6 +34,16 @@ const wait = (ms: number, signal: AbortSignal) =>
 
 let kept = 0;
 const sources = new Map<string, PdfRangeSource>();
+/** Small files worth one request for everything, with their sizes. */
+const whole = new Map<string, number>();
+
+/** A file this small is fetched in one request instead of piece by piece:
+ * every round trip is slow on a weak signal. */
+export function hintPdfWhole(url: string, bytes: number) {
+  whole.delete(url);
+  whole.set(url, bytes);
+  while (whole.size > 32) whole.delete(whole.keys().next().value!);
+}
 
 export class PdfRangeSource {
   private blocks = new Map<number, Uint8Array>();
@@ -45,6 +55,9 @@ export class PdfRangeSource {
 
   /** The file's size and first block, or null when ranges are not on offer. */
   open(): Promise<PdfRangeHead | null> {
+    const bytes = whole.get(this.url);
+    if (bytes && !this.opening)
+      this.request(0, Math.ceil(bytes / PDF_RANGE_BLOCK) - 1);
     const opening = (this.opening ??= this.block(0)
       .then((head) => ({ length: this.length!, head }))
       .catch((error: unknown) => {
@@ -285,5 +298,6 @@ export function pdfRangeSource(url: string) {
 export function clearPdfRangeSources() {
   for (const source of sources.values()) source.dispose();
   sources.clear();
+  whole.clear();
   kept = 0;
 }

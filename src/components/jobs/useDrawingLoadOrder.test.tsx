@@ -5,14 +5,21 @@ import {
   noteDrawingTransfer,
   resetDrawingNetworkForTest,
 } from "~/lib/drawing-network";
-import { useDrawingLoadOrder } from "./useDrawingLoadOrder";
+import {
+  useDrawingLoadOrder,
+  type DrawingDetailPlan,
+} from "./useDrawingLoadOrder";
 
-function Sheet({ src }: { src: string }) {
+function Sheet({ src, plan }: { src: string; plan?: DrawingDetailPlan }) {
   const image = useRef<HTMLImageElement>(null);
   const small = useRef<HTMLImageElement>(null);
-  const order = useDrawingLoadOrder(src, image, small);
+  const order = useDrawingLoadOrder(src, image, small, plan);
   return (
-    <output data-slow={order.slow} data-hold={order.holdDetail}>
+    <output
+      data-slow={order.slow}
+      data-hold={order.holdDetail}
+      data-image={order.holdImage}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img ref={small} src="/small.webp" alt="" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -82,6 +89,86 @@ describe("drawing load order", () => {
           .dispatchEvent(new Event("error")),
     );
     expect(read(view).holdDetail).toBe(false);
+  });
+
+  const holds = (view: { container: HTMLElement }) => {
+    const { hold, image } = view.container.querySelector("output")!.dataset;
+    return { detail: hold === "true", image: image === "true" };
+  };
+  const smaller: DrawingDetailPlan = {
+    pending: false,
+    pdfBytes: 600_000,
+    imageBytes: 1_300_000,
+    imageMayWait: true,
+    detailDone: false,
+  };
+
+  it("puts a smaller sheet PDF ahead of the sheet image on a weak signal", () => {
+    noteDrawingTransfer(76_000, 1900);
+    const view = render(<Sheet src="/floor-1.webp" plan={smaller} />);
+    expect(holds(view)).toEqual({ detail: false, image: true });
+    view.rerender(
+      <Sheet src="/floor-1.webp" plan={{ ...smaller, detailDone: true }} />,
+    );
+    expect(holds(view)).toEqual({ detail: false, image: false });
+    // The next sheet starts over.
+    view.rerender(<Sheet src="/floor-2.webp" plan={smaller} />);
+    expect(holds(view)).toEqual({ detail: false, image: true });
+  });
+
+  it("keeps the image first when it is the smaller download", () => {
+    noteDrawingTransfer(76_000, 1900);
+    for (const plan of [
+      { ...smaller, pdfBytes: 2_000_000 },
+      { ...smaller, imageBytes: null },
+      { ...smaller, pdfBytes: undefined },
+      { ...smaller, imageMayWait: false },
+    ]) {
+      const view = render(<Sheet src="/floor-1.webp" plan={plan} />);
+      expect(holds(view)).toEqual({ detail: true, image: false });
+      cleanup();
+    }
+  });
+
+  it("holds both only until it knows where the sheet's PDF is read from", () => {
+    const view = render(
+      <Sheet src="/floor-1.webp" plan={{ ...smaller, pending: true }} />,
+    );
+    expect(holds(view)).toEqual({ detail: true, image: true });
+    view.rerender(<Sheet src="/floor-1.webp" plan={smaller} />);
+    expect(holds(view)).toEqual({ detail: false, image: true });
+  });
+
+  it("starts everything at once on a good signal", () => {
+    noteDrawingTransfer(760_000, 500);
+    const view = render(
+      <Sheet src="/floor-1.webp" plan={{ ...smaller, pending: true }} />,
+    );
+    expect(holds(view)).toEqual({ detail: true, image: false });
+    view.rerender(<Sheet src="/floor-1.webp" plan={smaller} />);
+    expect(holds(view)).toEqual({ detail: false, image: false });
+  });
+
+  it("lets the image through when the signal turns out good", () => {
+    const view = render(<Sheet src="/floor-1.webp" plan={smaller} />);
+    expect(holds(view).image).toBe(true);
+    act(() => noteDrawingTransfer(760_000, 500));
+    expect(holds(view)).toEqual({ detail: false, image: false });
+  });
+
+  it("does not keep the image back forever for a stuck PDF", () => {
+    vi.useFakeTimers();
+    try {
+      noteDrawingTransfer(76_000, 1900);
+      const view = render(<Sheet src="/floor-1.webp" plan={smaller} />);
+      act(() => void vi.advanceTimersByTime(60_000));
+      expect(holds(view).image).toBe(true);
+      // 600 KB at 8 KB/s.
+      act(() => void vi.advanceTimersByTime(20_000));
+      expect(holds(view)).toEqual({ detail: false, image: false });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("learns nothing from a copy out of the browser's cache", () => {

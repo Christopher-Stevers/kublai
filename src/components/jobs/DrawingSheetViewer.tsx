@@ -10,6 +10,8 @@ import { measurementLayerNames } from "~/lib/measurement-layers";
 import { DrawingMeasureNode } from "./DrawingMeasureNode";
 import { SNAPSHOT_FREEZE_EVENT } from "~/lib/snapshot-source";
 import { useDrawingLoadOrder } from "./useDrawingLoadOrder";
+import { useSheetPdfSource } from "./useSheetPdfSource";
+import { mayHavePagePdf } from "~/lib/drawing-page-pdf";
 
 import {
   useCallback,
@@ -257,10 +259,29 @@ export function DrawingSheetViewer({
   const marks = useRef<SVGSVGElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const placeholderImage = useRef<HTMLImageElement>(null);
-  const loadOrder = useDrawingLoadOrder(src, image, placeholderImage);
-  const holdPdf = loadOrder.holdDetail;
-  // The page whose PDF detail has reached the screen.
+  // The sheet's bytes come from its own small PDF where the server has one;
+  // `pdf` stays the sheet's identity (its place in the uploaded set).
+  const sheetPdf = useSheetPdfSource(pdf);
+  const bytesUrl = sheetPdf?.url;
+  const bytesPage = sheetPdf?.page;
+  const pdfLinkKey = pdf ? `${pdf.url}:${pdf.page}` : "";
+  // The page whose PDF detail has reached the screen, or could not be drawn.
   const [pdfShown, setPdfShown] = useState("");
+  const [pdfFailed, setPdfFailed] = useState("");
+  const loadOrder = useDrawingLoadOrder(src, image, placeholderImage, {
+    pending: Boolean(pdf) && !sheetPdf,
+    pdfBytes: sheetPdf?.pdfBytes,
+    imageBytes: sheetPdf?.imageBytes,
+    imageMayWait:
+      mayHavePagePdf(pdf) &&
+      !comparison &&
+      Boolean(sourceSize?.width && sourceSize?.height),
+    detailDone:
+      pdfLinkKey !== "" &&
+      (pdfShown === pdfLinkKey || pdfFailed === pdfLinkKey),
+  });
+  const holdPdf = loadOrder.holdDetail;
+  const holdImage = loadOrder.holdImage;
   const [fit, setFit] = useState<{
     width: number;
     height: number;
@@ -290,13 +311,28 @@ export function DrawingSheetViewer({
   } | null>(null);
   const pdfLinkUrl = pdf?.url;
   const pdfLinkPage = pdf?.page;
-  const pdfLinkKey = pdf ? `${pdf.url}:${pdf.page}` : "";
   const readsPdfLinks = Boolean(onPdfLink);
   useEffect(() => {
-    if (!pdfLinkUrl || pdfLinkPage === undefined || !readsPdfLinks || holdPdf)
+    if (
+      !pdfLinkUrl ||
+      pdfLinkPage === undefined ||
+      !bytesUrl ||
+      bytesPage === undefined ||
+      !readsPdfLinks ||
+      holdPdf
+    )
       return;
     let cancelled = false;
-    void readDrawingPdfLinks({ url: pdfLinkUrl, page: pdfLinkPage })
+    const bytes = { url: bytesUrl, page: bytesPage };
+    void (
+      bytesUrl === pdfLinkUrl
+        ? readDrawingPdfLinks(bytes)
+        : // A page file: links between sheets find their targets in the set.
+          readDrawingPdfLinks(bytes, undefined, {
+            url: pdfLinkUrl,
+            page: pdfLinkPage,
+          })
+    )
       .then((links) => {
         if (!cancelled) setPdfLinks({ key: pdfLinkKey, links });
       })
@@ -306,7 +342,15 @@ export function DrawingSheetViewer({
     return () => {
       cancelled = true;
     };
-  }, [pdfLinkUrl, pdfLinkPage, pdfLinkKey, readsPdfLinks, holdPdf]);
+  }, [
+    pdfLinkUrl,
+    pdfLinkPage,
+    pdfLinkKey,
+    bytesUrl,
+    bytesPage,
+    readsPdfLinks,
+    holdPdf,
+  ]);
   const importedLinks = pdfLinks?.key === pdfLinkKey ? pdfLinks.links : [];
   const pdfLinkTap = useRef<{
     pointerId: number;
@@ -333,8 +377,8 @@ export function DrawingSheetViewer({
   const loupeCanvas = useRef<HTMLCanvasElement>(null);
   const pdfMagnifier = useRef<DrawingPdfMagnifier | null>(null);
   const [, repaintMagnifier] = useState(0);
-  const magnifierUrl = loupe && !comparison ? pdf?.url : undefined;
-  const magnifierPage = pdf?.page;
+  const magnifierUrl = loupe && !comparison ? bytesUrl : undefined;
+  const magnifierPage = bytesPage;
   useEffect(() => {
     if (!magnifierUrl || magnifierPage === undefined) return;
     const renderer = new DrawingPdfMagnifier(
@@ -815,7 +859,7 @@ export function DrawingSheetViewer({
   const pdfUrl = pdf?.url;
   const pdfPage = pdf?.page;
   useEffect(() => {
-    if (!pdfUrl || pdfPage == null) return;
+    if (!pdfUrl || pdfPage == null || !bytesUrl || bytesPage == null) return;
     if (!measuring) return;
     const key = `${pdfUrl}#${pdfPage}`;
     if (snapKey.current === key && snapSegments.current) return;
@@ -828,7 +872,7 @@ export function DrawingSheetViewer({
       dispatchRun({ type: "forget-lines" });
     }
     const controller = new AbortController();
-    void loadSnapLines({ url: pdfUrl, page: pdfPage })
+    void loadSnapLines({ url: bytesUrl, page: bytesPage })
       .then(async (segments) => {
         if (controller.signal.aborted) return;
         const aspect = fitRef.current?.aspect;
@@ -845,7 +889,7 @@ export function DrawingSheetViewer({
     return () => {
       controller.abort();
     };
-  }, [measuring, pdfUrl, pdfPage]);
+  }, [measuring, pdfUrl, pdfPage, bytesUrl, bytesPage]);
 
   useEffect(() => {
     const segments = snapSegments.current;
@@ -1243,7 +1287,7 @@ export function DrawingSheetViewer({
     const request = ++scaleRead.current;
     setScaleReadError(null);
     setReadingScale(true);
-    void readPdfSheetScale({ url: pdfUrl, page: pdfPage })
+    void readPdfSheetScale(sheetPdf ?? { url: pdfUrl, page: pdfPage })
       .then((result) => {
         if (scaleRead.current !== request) return;
         if (!result.ok) {
@@ -1605,7 +1649,7 @@ export function DrawingSheetViewer({
     if (!manifest || !tiles || !shownWidth || !shownHeight) return [];
     // On a weak signal, once the PDF page is here its detail costs no more
     // download; tiles for the same view would only spend the connection.
-    if (tilesSpared) return [];
+    if (tilesSpared || holdImage) return [];
     return planDrawingTiles(tiles, manifest, density, {
       left: -left / shownWidth,
       top: -top / shownHeight,
@@ -1616,6 +1660,7 @@ export function DrawingSheetViewer({
     manifest,
     tiles,
     tilesSpared,
+    holdImage,
     density,
     shownWidth,
     shownHeight,
@@ -2969,11 +3014,15 @@ export function DrawingSheetViewer({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={image}
-              src={src}
+              // On a weak signal a smaller sheet PDF goes first (holdImage).
+              src={holdImage ? undefined : src}
               alt={alt}
               draggable={false}
               className="absolute inset-0 h-full w-full"
-              style={{ opacity: usesInkComparison ? 0 : undefined }}
+              style={{
+                opacity: usesInkComparison ? 0 : undefined,
+                visibility: holdImage ? "hidden" : undefined,
+              }}
             />
             <DrawingTileLayer
               key={tiles ?? src}
@@ -2982,7 +3031,7 @@ export function DrawingSheetViewer({
             />
             {pdf && fit && comparison && (
               <DrawingPdfLayer
-                pdf={pdf}
+                pdf={sheetPdf ?? pdf}
                 fit={fit}
                 frameSize={frameSize}
                 view={view}
@@ -3030,7 +3079,7 @@ export function DrawingSheetViewer({
         )}
         {pdf && fit && !comparison && (
           <DrawingPdfLayer
-            pdf={pdf}
+            pdf={sheetPdf ?? pdf}
             fit={fit}
             frameSize={frameSize}
             view={view}
@@ -3043,7 +3092,10 @@ export function DrawingSheetViewer({
               setPdfShown(pdfLinkKey);
               onPdfReady?.();
             }}
-            onError={onPdfError}
+            onError={(error) => {
+              setPdfFailed(pdfLinkKey);
+              onPdfError?.(error);
+            }}
             paintRef={pdfPaint}
             zoom={ZOOM_LIMITS}
             appearanceFilter={appearanceFilter}

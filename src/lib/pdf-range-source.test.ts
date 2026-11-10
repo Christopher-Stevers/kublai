@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearPdfRangeSources,
+  hintPdfWhole,
   PDF_RANGE_BLOCK as BLOCK,
   pdfRangeSource,
 } from "./pdf-range-source";
@@ -137,6 +138,25 @@ describe("shared PDF range downloader", () => {
     plans = [{ status: 200 }];
     expect(await pdfRangeSource("/a.pdf")!.open()).toBeNull();
     expect(requests).toHaveLength(1);
+  });
+
+  it("fetches a small file in one request when told its size", async () => {
+    hintPdfWhole("/page.pdf", SIZE);
+    const source = pdfRangeSource("/page.pdf")!;
+    const opened = await source.open();
+    expect(opened!.length).toBe(SIZE);
+    // The end of the file, which PDF.js reads first, needs no second request.
+    expect(await source.read(SIZE - 300, SIZE)).toEqual(
+      file.slice(SIZE - 300, SIZE),
+    );
+    expect(await source.read(BLOCK, BLOCK * 3)).toEqual(
+      file.slice(BLOCK, BLOCK * 3),
+    );
+    expect(requests).toEqual([`bytes=0-${BLOCK * 6 - 1}`]);
+    // The hint goes with the cleared sources.
+    clearPdfRangeSources();
+    await pdfRangeSource("/page.pdf")!.open();
+    expect(requests[1]).toBe(`bytes=0-${BLOCK - 1}`);
   });
 
   it("leaves files already on the device to PDF.js", () => {

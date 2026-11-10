@@ -7,6 +7,7 @@ import {
   openJobRoomFile,
   openJobRoomThumbnail,
 } from "~/server/rooms/storage";
+import { PAGE_PDF_KEY, preparePagePdf } from "~/server/rooms/page-pdfs";
 import {
   isNotModified,
   rangeMatches,
@@ -39,11 +40,12 @@ async function serve(
   const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
   if (
     !jobId ||
-    !new RegExp(
+    (!new RegExp(
       // Saved system geometry and tiles live only under an immutable upload folder.
       `^${uuid}/(?:${uuid}/)?(?:plan\\.pdf|floor-\\d+\\.webp)$|^${uuid}/${uuid}/pipes-[1-9][0-9]*-v1\\.json$|^${uuid}/${uuid}/tiles/\\d+/(?:manifest\\.json|[24]/\\d+_\\d+\\.webp)$`,
       "i",
-    ).test(storageKey)
+    ).test(storageKey) &&
+      !PAGE_PDF_KEY.test(storageKey))
   ) {
     return NextResponse.json(
       { error: "Not found" },
@@ -82,6 +84,8 @@ async function serve(
     const thumbnail =
       new URL(request.url).searchParams.get("thumb") === "1" &&
       /\/floor-\d+\.webp$/i.test(storageKey);
+    // One small PDF per sheet is split from the upload's plan.pdf on first use.
+    await preparePagePdf(storageKey);
     const file = thumbnail
       ? await openJobRoomThumbnail(storageKey)
       : await openJobRoomFile(storageKey);
