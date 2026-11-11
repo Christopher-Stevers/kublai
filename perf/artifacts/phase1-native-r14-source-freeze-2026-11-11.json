@@ -1,0 +1,37 @@
+{
+  "status": "single-runtime-path-source-freeze-awaiting-root-compile-review",
+  "baseBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+  "baseSourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+  "runtimeOverlay": [
+    {
+      "path": "src/server/background/listen-lifecycle.ts",
+      "commit": "b2ca4cf42fb21db8dc3ab33b1f9227ffa9e80697",
+      "gitBlob": "7347ecc1b2a96f9042e4a9312c6fd7a65004d8cd",
+      "parentExactlyMatchesR13": true,
+      "preimageSha256": "7a9d1cb71955000d772024724800adf0848eb3f58e86f9d5a911cf28f6dfc5c2",
+      "postimageSha256": "2852294de448d8bff026ef89c7241f2066b7ee4483366a7da0b7e7aa648098a3"
+    }
+  ],
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-native-r14-20261111",
+    "runtimePathCount": 1,
+    "operationalPathCount": 0,
+    "changedPaths": [
+      "src/server/background/listen-lifecycle.ts"
+    ],
+    "unaffectedFiles": 5472,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "r8PressAndDirtySchemaWorkerZoomPackingSlipsExcluded": true,
+    "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2313,
+    "operationalPerfInputsUnchanged": true,
+    "operationalPerfInputCount": 4,
+    "serverOnlySymlinkTargetsUnchanged": true
+  },
+  "r13FailurePreserved": true,
+  "buildStarted": false,
+  "activated": false
+}
