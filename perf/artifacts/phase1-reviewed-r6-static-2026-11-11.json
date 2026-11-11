@@ -1,0 +1,88 @@
+{
+  "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+  "rejected": true,
+  "activated": false,
+  "rejectionReason": "Prepared only; no source-matched candidate lab regression result or activation clearance.",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "scope": {
+    "base": "unchanged frozen R5",
+    "runtimePaths": [
+      "src/hooks/use-job-chat-authority.ts",
+      "src/components/jobs/JobChatThread.tsx"
+    ],
+    "commit": "c60a76da",
+    "otherRuntimeChanges": 0,
+    "publicCorpusFiles": 3263,
+    "allPublicBytesMatchR5": true,
+    "privateViewRenameExcluded": true
+  },
+  "activityFixProvenance": "Root reviewed confirmed R5 ReactActivity hidden/resume authority regression and narrow fix, with59 matching focused tests passing. R5 remains unchanged and must not be activated.",
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485351,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755539,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1275529,
+      "passes": true
+    }
+  },
+  "sharedBreakdown": {
+    "frameworkGzipBytes": 118301,
+    "applicationGzipBytes": 367050
+  },
+  "r5ToR6FixPayload": {
+    "baselineBuild": "926ba7f209c5aba5c3e6ac637522946b06916a02dfd1d26b57e4af9dbaf52496",
+    "candidateBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 277,
+    "changedScripts": 6,
+    "changedRawBytes": 99673,
+    "changedGzipBytes": 36274,
+    "budgetGzipBytes": 100000,
+    "passes": true
+  },
+  "source": {
+    "build": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+    "sourceFileCount": 2283,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "httpProofPasses": true,
+    "activated": false
+  },
+  "ownProofServersStopped": true,
+  "limitations": [
+    "Static compression and URL proof are not a phone transfer or performance trace.",
+    "Accepted same-build baseline repeatability is separate from source-matched candidate regression, full Phase0 and physical evidence.",
+    "No capture or activation was performed during this build verification."
+  ]
+}
