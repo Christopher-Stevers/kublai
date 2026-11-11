@@ -66,13 +66,20 @@ export async function prepare({ page, base, journey }) {
         .getByRole("button", { name: /^(Verify part|Part verified complete)$/ })
         .first(),
     ).toBeVisible();
-  if (journey === "opensheetpinch")
+  if (journey === "opensheetpinch") {
+    await page
+      .getByRole("button", {
+        name: `Open ${fixture.setName ?? "Synthetic 40 Sheet Set"}`,
+        exact: true,
+      })
+      .click();
     await expect(
       page.getByRole("button", {
         name: `Open ${fixture.sheetName}`,
         exact: true,
       }),
     ).toBeVisible();
+  }
   if (journey === "sendchat")
     await expect(
       page.getByPlaceholder("Message everyone on this job…"),

@@ -11,7 +11,15 @@ export NEXT_PUBLIC_BUILD_ID=isolated-speed-pilot
 unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH
 cd "$snapshot"
 printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-latest-snapshot
-./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1 || { tail -80 "$snapshot/build.log"; exit 1; }
+while ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; do
+  tail -80 "$snapshot/build.log"
+  printf '%s\n' "Lab build failed; waiting up to five minutes for $snapshot/.retry-build"
+  for attempt in $(seq 1 300); do
+    if [[ -f "$snapshot/.retry-build" ]]; then rm "$snapshot/.retry-build"; break; fi
+    sleep 1
+  done
+  if [[ "$attempt" == 300 ]]; then exit 1; fi
+done
 ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3481 > "$snapshot/server.log" 2>&1 &
 server_pid=$!
 cleanup() { kill "$server_pid" 2>/dev/null || true; }
