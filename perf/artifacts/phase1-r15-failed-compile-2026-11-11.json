@@ -1,0 +1,19 @@
+{
+  "status": "failed-production-typescript",
+  "candidate": "R15",
+  "sourceFingerprint": "f4ffd52ab0633a4e0fd6f33c1b4b4b44678c83ace4b59e0e849f18bf84690d5a",
+  "logSha256": "09618ac4478fd81c333656ea8366585e2970d4e8fb9f0775201573a3ea10f997",
+  "webpackPassed": true,
+  "productionTypeScriptPassed": false,
+  "error": {
+    "path": "src/components/jobs/DrawingWorkspace.tsx",
+    "line": 1072,
+    "reason": "Nullable workspace passed to undefined-only optional hook input"
+  },
+  "completedBuild": false,
+  "staticProofAvailable": false,
+  "runtimeStarted": false,
+  "activated": false,
+  "retainedSourceUnchanged": true,
+  "followup": "R16 uses separate source identity with single reviewed null-to-undefined correction; no R15 evidence overwritten."
+}
