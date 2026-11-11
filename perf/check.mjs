@@ -89,6 +89,14 @@ export function compareReports(before, after) {
 export function checkRepeatability(first, second) {
   const errors = [...validateReport(first), ...validateReport(second)];
   if (errors.length) return errors;
+  if (
+    !first.timestamp ||
+    !second.timestamp ||
+    first.timestamp === second.timestamp
+  )
+    errors.push(
+      "Repeatability requires distinct captured runs, not the same report twice",
+    );
   if (!first.build || first.build === "unknown" || first.build !== second.build)
     errors.push("Repeatability requires matching explicit build IDs");
   for (const journey of budgets.journeys)
