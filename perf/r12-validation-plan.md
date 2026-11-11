@@ -154,3 +154,36 @@ and can be reused at `/tmp/foremanhq-speed-app-PEJvAh`, lab BUILD_ID
 `UlJL743lmFp6aZ8T1n7Tg`, with a fresh private DB; no rebuild is necessary for this
 observer-only correction. V3 is frozen separately; its rerun remains held pending
 root review/authorization. Full matrix/idle is still held.
+
+## V4 proxy wire observation — source only, next candidate required
+
+Both R12 functional failures are preserved. The emitted numeric-dirname defect
+requires a product fix/new candidate; no more R12 functional or full-matrix run is
+planned. V4's observer preparation removes dependence on Playwright body retrieval.
+A fixture using the installed streaming client confirms its fetch signal aborts
+after successfully consuming a real-server result. This explains why buffered
+body observation is risky, but does not retrospectively identify the retained v3
+Error, whose message was not recorded.
+
+The existing pass-through proxy forwards response chunks immediately while a
+bounded data listener collects only actual role/preference/mutation-ACK bytes.
+Instrumentation context/request headers map consumer versus producer requests and
+are stripped before the upstream app. Reads **and mutations** are decoded by the
+actual request trpc-accept contract; no method-based or body-sniffing guess.
+Collectors retain at most 512 KiB wire/decoded body, five seconds of collection
+and bounded official JSONL decoding, with explicit allowlisted failure reasons.
+Compressed HTTP bodies honor identity/gzip/deflate/br with decompression-output
+caps. SSE is neither collected nor given finite-response timeouts.
+
+For tracked finite responses, the already-requested upstream may finish briefly
+after browser cancellation so its real bytes remain observable. That changes
+cancellation timing in this **non-timing protocol**; it is disclosed, not an app
+transport optimization. No extra HTTP request is issued. Public producer saved UI
+and consumer changed select plus actual hint remain mandatory, so server ACK
+alone cannot stand in for client consumption. No cache certificates or SSE frames
+are injected. All authority/cadence/reconnect assertions remain consumer-only.
+
+Fourteen fixtures pass, including split/partial/abort/size/time/compression bounds,
+stripped context tags, real server header/error contracts and the installed client
+abort behavior. Syntax checks pass. This source preparation has not started an
+app/browser/DB run; next candidate identity and root authorization remain required.

@@ -5,7 +5,13 @@ import http from "node:http";
 import { createHash } from "node:crypto";
 import postgres from "postgres";
 import { chromium, expect } from "@playwright/test";
-import { decodePlaywrightTrpcResponse } from "./observed-trpc-response.mjs";
+import {
+  collectObservedWire,
+  stripObservationHeaders,
+  CONTEXT_HEADER,
+  REQUEST_HEADER,
+  observationFailureCode,
+} from "./proxy-wire-observer.mjs";
 import { createPreferenceObservationContext } from "./preference-observation-context.mjs";
 const config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const sha = (file) =>
@@ -14,13 +20,14 @@ const methodFiles = [
   "compiled-preferences-functional.mjs",
   "observed-trpc-response.mjs",
   "preference-observation-context.mjs",
+  "proxy-wire-observer.mjs",
 ];
 const methodHashes = () =>
   Object.fromEntries(
     methodFiles.map((file) => [file, sha(new URL(file, import.meta.url))]),
   );
 const report = {
-  protocol: "compiled-preferences-functional-v3",
+  protocol: "compiled-preferences-functional-v4",
   status: "incomplete",
   acceptedGateEvidence: false,
   physicalPhoneEvidence: false,
@@ -32,6 +39,7 @@ const report = {
   requests: [],
   httpAuthority: [],
   observationErrors: [],
+  wireResponses: [],
   frames: [],
   controlledMutations: [],
   limitations: [
@@ -70,6 +78,7 @@ const backend = new URL(config.backend),
   proxyBase = new URL(config.proxy);
 let sql, browser, proxy, restoreUser, context;
 const streams = new Set();
+const observationContexts = new Map();
 let denyStreams = false;
 
 const violations = [];
@@ -231,25 +240,176 @@ try {
     const u = original[0];
     await sql`update kublai_user set role=${u.role}, "stripeSubscriptionId"=${u.stripeSubscriptionId}, "subscriptionStatus"=${u.subscriptionStatus}, "subscriptionEndsAt"=${u.subscriptionEndsAt} where id=${fixture.userId} and "organizationId"=${fixture.organizationId}::uuid`;
   };
+  function acceptWire(state, metadata, observation, status) {
+    if (!state.active) return;
+    report.wireResponses.push({
+      contextId: state.contextId,
+      procedures: metadata.procs,
+      requestAt: metadata.at - started,
+      responseAt: Date.now() - started,
+      wireBytes: observation.wireBytes,
+      decodedBytes: observation.decodedBytes,
+      requestTransport: observation.requestTransport,
+      responseContentType: observation.responseContentType,
+    });
+    for (let index = 0; index < metadata.procs.length; index++) {
+      const procedure = metadata.procs[index],
+        row = observation.rows[index];
+      if (
+        ![
+          "user.getMyRole",
+          "user.getMaterialSortPreferences",
+          "user.setMaterialSortPreferences",
+        ].includes(procedure)
+      )
+        continue;
+      const requestAt = metadata.at,
+        responseAt = Date.now(),
+        success = status >= 200 && status < 300 && row?.ok === true;
+      if (procedure === "user.setMaterialSortPreferences") {
+        state.mutationAcks.push({
+          requestAt,
+          responseAt,
+          success,
+          data: success ? row.data : null,
+        });
+        report.httpAuthority.push({
+          contextId: state.contextId,
+          procedure,
+          requestAt: requestAt - started,
+          responseAt: responseAt - started,
+          success,
+        });
+        continue;
+      }
+      if (!success) {
+        report.httpAuthority.push({
+          contextId: state.contextId,
+          procedure,
+          requestAt: requestAt - started,
+          responseAt: responseAt - started,
+          success: false,
+          errorCode: row?.errorCode ?? "HTTP_ERROR",
+        });
+        if (procedure === "user.getMyRole") state.setRole(null);
+        else state.setPreference(null);
+        continue;
+      }
+      const data = row.data;
+      if (
+        !data ||
+        typeof data !== "object" ||
+        typeof data.canEditExecutive !== "boolean"
+      )
+        throw Object.assign(Error("Authority schema missing"), {
+          observationCode: "AUTHORITY_SCHEMA_MISSING",
+        });
+      const observed = {
+        requestAt,
+        responseAt,
+        canEditExecutive: data.canEditExecutive,
+      };
+      if (procedure === "user.getMyRole") {
+        Object.assign(observed, {
+          accountMatches:
+            data.accountScope === `${fixture.organizationId}:${fixture.userId}`,
+          appAccess: data.appAccess,
+          role: data.role,
+        });
+        state.setRole(observed);
+        report.httpAuthority.push({
+          contextId: state.contextId,
+          procedure,
+          requestAt: requestAt - started,
+          responseAt: responseAt - started,
+          success: true,
+          accountMatches: observed.accountMatches,
+          appAccess: observed.appAccess,
+          canEditExecutive: observed.canEditExecutive,
+          role: ["admin", "foreman", "worker"].includes(observed.role)
+            ? observed.role
+            : "other",
+        });
+      } else {
+        state.setPreference(observed);
+        report.httpAuthority.push({
+          contextId: state.contextId,
+          procedure,
+          requestAt: requestAt - started,
+          responseAt: responseAt - started,
+          success: true,
+          canEditExecutive: observed.canEditExecutive,
+        });
+      }
+    }
+  }
+  const wireError = (state, error) => {
+    if (state?.active) {
+      report.observationErrors.push({
+        contextId: state.contextId,
+        kind: "HTTP_WIRE_OBSERVATION_FAILED",
+        reason: observationFailureCode(error),
+        at: Date.now() - started,
+      });
+      write();
+    }
+  };
   proxy = http.createServer((req, res) => {
-    const url = new URL(req.url, proxyBase);
+    const url = new URL(req.url, proxyBase),
+      labels = stripObservationHeaders(req.headers),
+      state = observationContexts.get(labels.contextId),
+      metadata = state?.pendingRequests.get(labels.requestId);
+    const tracked = !!metadata;
     if (url.pathname === "/api/live" && denyStreams) {
       res.writeHead(503, { "cache-control": "no-store" });
       res.end("Functional SSE outage");
       return;
     }
+    let downstreamClosed = false,
+      collectionDone = false;
     const upstream = http.request(
       new URL(req.url, backend),
-      { method: req.method, headers: req.headers },
+      { method: req.method, headers: labels.headers },
       (response) => {
+        response.on("error", () => {
+          if (!res.destroyed) res.destroy();
+        });
+        if (tracked) {
+          void collectObservedWire(response, {
+            requestAccept: labels.headers["trpc-accept"] ?? null,
+            count: metadata.procs.length,
+          })
+            .then((observation) =>
+              acceptWire(state, metadata, observation, response.statusCode),
+            )
+            .catch((error) => wireError(state, error))
+            .finally(() => {
+              collectionDone = true;
+              upstream.setTimeout(0);
+              state.pendingRequests.delete(labels.requestId);
+              if (downstreamClosed) upstream.destroy();
+            });
+        }
         res.writeHead(response.statusCode, response.headers);
         response.pipe(res);
       },
     );
+    if (tracked)
+      upstream.setTimeout(5000, () => {
+        if (tracked)
+          wireError(
+            state,
+            Object.assign(Error("Wire timeout"), {
+              observationCode: "WIRE_TIMEOUT",
+            }),
+          );
+        upstream.destroy();
+      });
     const stream = url.pathname === "/api/live" ? { res, upstream } : null;
     if (stream) streams.add(stream);
     res.on("close", () => {
-      upstream.destroy();
+      downstreamClosed = true;
+      if (!tracked || collectionDone) upstream.destroy();
       if (stream) streams.delete(stream);
     });
     upstream.on("error", () => {
@@ -272,6 +432,10 @@ try {
       contextId,
       report,
     );
+    observedContext.pendingRequests = new Map();
+    observedContext.mutationAcks = [];
+    observationContexts.set(contextId, observedContext);
+    let requestSequence = 0;
     ctx.on("close", () => {
       observedContext.active = false;
     });
@@ -313,131 +477,42 @@ try {
         write();
         return route.abort("blockedbyclient");
       }
+      const procs = procedures(url),
+        at = Date.now();
+      for (const procedure of procs)
+        observedContext.recordRequest({
+          procedure,
+          method: request.method(),
+          at: at - started,
+        });
+      if (
+        procs.some((procedure) =>
+          [
+            "user.getMyRole",
+            "user.getMaterialSortPreferences",
+            "user.setMaterialSortPreferences",
+          ].includes(procedure),
+        )
+      ) {
+        const requestId = `${contextId}-${++requestSequence}`;
+        observedContext.pendingRequests.set(requestId, {
+          procs,
+          at,
+          method: request.method(),
+        });
+        return route.continue({
+          headers: {
+            ...request.headers(),
+            [CONTEXT_HEADER]: contextId,
+            [REQUEST_HEADER]: requestId,
+          },
+        });
+      }
       return route.continue();
     });
     const page = await ctx.newPage();
     page.setDefaultTimeout(15000);
     page.setDefaultNavigationTimeout(60000);
-    const pendingStarts = new WeakMap();
-    page.on("request", (request) => {
-      const url = new URL(request.url()),
-        procs = procedures(url);
-      if (procs.length) {
-        const at = Date.now();
-        pendingStarts.set(request, at);
-        for (const procedure of procs)
-          observedContext.recordRequest({
-            procedure,
-            method: request.method(),
-            at: at - started,
-          });
-      }
-    });
-    page.on("response", (response) => {
-      void (async () => {
-        const request = response.request(),
-          procs = procedures(new URL(response.url()));
-        if (
-          !procs.some(
-            (procedure) =>
-              procedure === "user.getMyRole" ||
-              procedure === "user.getMaterialSortPreferences",
-          )
-        )
-          return;
-        const rows = await decodePlaywrightTrpcResponse(response, procs.length);
-        if (!observedContext.active) return;
-        for (let i = 0; i < procs.length; i++) {
-          const procedure = procs[i];
-          if (
-            procedure !== "user.getMyRole" &&
-            procedure !== "user.getMaterialSortPreferences"
-          )
-            continue;
-          const row = rows[i];
-          const requestAt = pendingStarts.get(request),
-            responseAt = Date.now();
-          if (!Number.isFinite(requestAt))
-            throw Error("Observed request-start metadata missing");
-          if (!response.ok() || !row?.ok) {
-            report.httpAuthority.push({
-              contextId,
-              procedure,
-              requestAt: requestAt - started,
-              responseAt: responseAt - started,
-              success: false,
-              errorCode: row?.errorCode ?? "HTTP_ERROR",
-            });
-            if (procedure === "user.getMyRole") observedContext.setRole(null);
-            else observedContext.setPreference(null);
-            continue;
-          }
-          const data = row.data;
-          if (
-            !data ||
-            typeof data !== "object" ||
-            typeof data.canEditExecutive !== "boolean"
-          )
-            throw Error("Observed authority schema missing");
-          const observed = {
-            requestAt,
-            responseAt,
-            canEditExecutive: data.canEditExecutive,
-          };
-          if (procedure === "user.getMyRole") {
-            Object.assign(observed, {
-              accountMatches:
-                data.accountScope ===
-                `${fixture.organizationId}:${fixture.userId}`,
-              appAccess: data.appAccess,
-              role: data.role,
-            });
-            observedContext.setRole(observed);
-            report.httpAuthority.push({
-              contextId,
-              procedure,
-              requestAt: requestAt - started,
-              responseAt: responseAt - started,
-              success: true,
-              accountMatches: observed.accountMatches,
-              appAccess: observed.appAccess,
-              canEditExecutive: observed.canEditExecutive,
-              role: ["admin", "foreman", "worker"].includes(observed.role)
-                ? observed.role
-                : "other",
-            });
-          } else {
-            observedContext.setPreference(observed);
-            report.httpAuthority.push({
-              contextId,
-              procedure,
-              requestAt: requestAt - started,
-              responseAt: responseAt - started,
-              success: true,
-              canEditExecutive: observed.canEditExecutive,
-            });
-          }
-        }
-      })().catch((error) => {
-        if (observedContext.active) {
-          report.observationErrors.push({
-            contextId,
-            kind: "HTTP_DECODE_FAILED",
-            name: error.name,
-            requestTransport:
-              response.request().headers()["trpc-accept"] ===
-              "application/jsonl"
-                ? "jsonl"
-                : "json",
-            responseContentType: (response.headers()["content-type"] ?? "")
-              .split(";")[0]
-              .slice(0, 80),
-            at: Date.now() - started,
-          });
-          write();
-        }
-      });
-    });
     const cdp = await ctx.newCDPSession(page);
     await cdp.send("Network.enable");
     cdp.on("Network.eventSourceMessageReceived", (event) => {
@@ -534,23 +609,25 @@ try {
     .getByRole("button", { name: "Edit executive sorting", exact: true })
     .click();
   const beforeHint = consumer.frames.length;
-  const ackPromise = producer.page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      procedures(new URL(response.url())).includes(
-        "user.setMaterialSortPreferences",
-      ),
-  );
+  const mutationAt = Date.now();
   await producer.page.locator("#settings-list-sort").selectOption("recent");
-  const ack = await ackPromise;
-  const ackBody = await decodePlaywrightTrpcResponse(
-    ack,
-    procedures(new URL(ack.url())).length,
+  await wait(
+    () =>
+      producer.observed.mutationAcks.some(
+        (ack) =>
+          ack.requestAt >= mutationAt &&
+          ack.success &&
+          ack.data?.shared?.sortMode === "recent",
+      ),
+    15000,
+    "No real producer preference wire ACK",
   );
-  const ackProcs = procedures(new URL(ack.url()));
-  const ackRow = ackBody[ackProcs.indexOf("user.setMaterialSortPreferences")];
-  if (!ack.ok() || !ackRow?.ok || ackRow.data?.shared?.sortMode !== "recent")
-    throw Error("No real preference mutation ACK");
+  await expect(
+    producer.page.getByText(
+      "Sorting is saved to your account and available for offline lists.",
+      { exact: true },
+    ),
+  ).toBeVisible();
   await expect(page.locator("#settings-list-sort")).toHaveValue("recent");
   await wait(
     () =>

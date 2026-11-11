@@ -1,11 +1,11 @@
 {
-  "status": "source-prepared-not-executed",
-  "protocol": "compiled-preferences-functional-v3",
+  "status": "source-prepared-next-candidate-required",
+  "protocol": "compiled-preferences-functional-v4",
   "driver": "perf/live/compiled-preferences-functional.mjs",
-  "driverSha256": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
-  "expectedR12SourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "driverSha256": "76f42afa6798e0d15f33dcc41a5d681d05abfddf7101dadbe9b4f794bbcdda35",
+  "expectedR12SourceBuild": null,
   "expectedR12SourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
-  "expectedCompiledLabBuild": "UlJL743lmFp6aZ8T1n7Tg",
+  "expectedCompiledLabBuild": null,
   "rootRuntimeAuthorizationPending": true,
   "internalDeadlineSeconds": 420,
   "outerSetupRunCleanupSeconds": 480,
@@ -37,13 +37,14 @@
     "outerMinutes": 45,
     "authorized": false
   },
-  "validation": "Ten parser/context fixtures pass, including actual fetchRequestHandler JSONL under application/json, normal mutation/403, streamed BAD_REQUEST on HTTP200, producer wire and isolation. Source syntax checked; v3 app runtime not executed.",
+  "validation": "14 node fixtures pass: real installed framework header/deferred/error cases, context isolation, split-wire completion after downstream close, abort/partial/size/time/decompression bounds, header stripping, and installed streaming-client successful-result fetch-signal abort. Syntax passed. No new app runtime.",
   "dependencies": {
     "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
-    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8"
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b"
   },
   "observationDecoder": {
-    "method": "Actual observed request trpc-accept selects JSONL, regardless response Content-Type; same installed jsonlStreamConsumer/SuperJSON; no guessed-body fallback.",
+    "method": "Pass-through proxy tee of actual upstream bytes, actual request trpc-accept selection for reads AND mutation ACKs, official JSONL/SuperJSON decoder; no second request/cache grant or body sniffing.",
     "trpcVersion": "11.8.1",
     "bodyWaitMs": 5000,
     "decodeWaitMs": 5000,
@@ -58,5 +59,30 @@
   "preparedR12Source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
   "preparedR12CanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111/.next-web",
   "expectedR12SourceFileCount": 2308,
-  "priorFailedAttempt": "perf/artifacts/r12-preferences-functional-2026-11-11-attempt1"
+  "priorFailedAttempt": "perf/artifacts/r12-preferences-functional-2026-11-11-attempt2",
+  "blockedR12Build": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "blockedR12Reason": "Known emitted version lookup path.dirname(4636) returns null; no additional R12 functional/full run authorized.",
+  "proxyWirePolicy": {
+    "trackedProcedures": [
+      "user.getMyRole",
+      "user.getMaterialSortPreferences",
+      "user.setMaterialSortPreferences"
+    ],
+    "headersStripped": [
+      "x-perf-functional-context",
+      "x-perf-functional-request"
+    ],
+    "collectorSeconds": 5,
+    "maxWireBytes": 524288,
+    "maxDecodedBytes": 524288,
+    "encodings": [
+      "identity",
+      "gzip",
+      "deflate",
+      "br"
+    ],
+    "sseCollected": false,
+    "immediateForwarding": true,
+    "cancellationCaveat": "Tracked finite upstream may finish after browser cancellation within bounds; public producer saved UI and consumer select/hint assertions remain required to prove client consumption."
+  }
 }

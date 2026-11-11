@@ -1,0 +1,15 @@
+{
+  "kind": "source preparation only; no application runtime",
+  "checkedAt": "2026-11-11T12:17:25.758Z",
+  "protocol": "compiled-preferences-functional-v4",
+  "driverSha256": "76f42afa6798e0d15f33dcc41a5d681d05abfddf7101dadbe9b4f794bbcdda35",
+  "dependencies": {
+    "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b"
+  },
+  "fixturesPassed": 14,
+  "knownR12RuntimeBlocked": true,
+  "sourceEvidence": "Installed tRPC streaming client fixture confirms signal abort after success; does not retrospectively prove cause of prior generic observation Error.",
+  "runtimeAuthorizationPending": true
+}
