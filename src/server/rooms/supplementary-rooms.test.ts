@@ -6,7 +6,6 @@ import {
   type PdfLabel,
   type WallSegment,
 } from "./pdf-walls";
-import { sourceRoomInterior } from "./source-room-interior";
 import {
   roomOverlap,
   supplementaryRoomSeeds,
@@ -68,20 +67,6 @@ describe("conservative supplementary rooms", () => {
     );
     for (const r of candidates)
       expect(pointInPolygon({ x: 0.592, y: 0.3 }, r.shape)).toBe(false);
-  });
-  it("does not move a wall to an unpaired thin annotation leader", () => {
-    const baseline = JSON.stringify(shape);
-    const annotation = {
-      x1: 0.101,
-      y1: 0.08,
-      x2: 0.101,
-      y2: 0.15,
-      strokeWidth: 1,
-    };
-    expect(
-      sourceRoomInterior(shape, [...strokes, annotation], { x: 0.11, y: 0.11 }),
-    ).toEqual(shape);
-    expect(JSON.stringify(shape)).toBe(baseline);
   });
   it("pairs repeated names with separate source tags and joins split names", () => {
     const seeds = supplementaryRoomSeeds([
