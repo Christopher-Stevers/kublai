@@ -955,7 +955,7 @@
       "activation": false
     },
     "r18Candidate": {
-      "status": "canonical-and-http-passed-functional-running",
+      "status": "canonical-http-functional-passed-full-matrix-running",
       "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
       "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
       "sourceFileCount": 2317,
@@ -975,8 +975,14 @@
       "labBuild": "kQwDUUMWJAxQExPo56xqn",
       "labCompilePassed": true,
       "labReadPreflightPassed": 14,
-      "functionalV6": "running-separate-fresh-private-database",
+      "functionalV6": "passed-eight-of-eight-separate-fresh-private-database",
+      "functionalV6Proof": "perf/artifacts/r18-preferences-functional-2026-11-11-attempt1/report.json",
+      "functionalV6UnexpectedDatabaseErrors": 0,
+      "functionalV6CleanupConfirmed": true,
       "fullMatrixRun": false,
+      "fullMatrixStatus": "running-not-yet-completed-or-accepted",
+      "fullMatrixStartedUtc": "2026-11-11T15:15:07Z",
+      "fullMatrixPreparation": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11-preparation/",
       "activation": false
     },
     "openJobLaterFixes": {

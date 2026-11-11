@@ -751,3 +751,25 @@ not Phase2 domains, three-device convergence or live transport. See
 `artifacts/replicache-isolated-attempt2-2026-11-11.json`.
 
 Production remains the Phase0 bootstrap. Pixel work stays deferred as requested.
+
+## R18 functional checks pass; full comparison running — 2026-11-11 15:15 UTC
+
+All eight unchanged V6 functional checks pass on R18's separately compiled
+private app, including fresh HTTP authority, disabled editing after permission
+loss, fallback polling during a stream outage, and actual LISTEN recovery.
+There are zero unexpected database errors and one intentional listener
+termination. The actual schema, logs and method/source hashes are archived in
+`artifacts/r18-preferences-functional-2026-11-11-attempt1/`; all owned runtime
+was cleaned before the timing run.
+
+The full comparison now runs once against the original baseline-1 and frozen
+`ready-then-pinch-v2` method: ten minutes idle, then 120 samples. Its launcher
+explicitly checks the protocol before database startup and before capture.
+All fourteen actual read preflights passed on the new fixture. Sixteen
+database-free protocol/exit checks verify that failed evidence copies or cleanup
+propagate a failing exit status. Preparation and exact command hashes are in
+`artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11-preparation/`.
+
+No full timing result, acceptance or activation is claimed while this run is in
+progress. Other builds, tests and browser/database work are stopped to preserve
+the measurement window. Source-only reviews continue; the Pixel remains deferred.
