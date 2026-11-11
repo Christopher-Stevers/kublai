@@ -2,7 +2,7 @@
 
 Prepared source only. Do not run during the lab baseline CPU quiet window. Root owns Android pairing/ADB setup and runtime attestation after the lab. This runner is **not** in `HARNESS_FILES`, does not import or modify frozen `perf/run.mjs`/`journeys.mjs`, and cannot be reported as accepted `ready-then-pinch-v2` or an eight-journey/three-link matrix.
 
-The initial scope is two repeats of three **visited read** journeys: open job, open the job's material-list tab, and open a material list. Selectors mirror the existing adapter, but input is separately implemented page-CDP touch start/end. It warms each destination through the actual UI, returns by touching the actual app header's unique visible Go up one level control, then times the second opening. No quantity, receipt, order, chat, recognition, drawing edit or production write journey is executed. Natural device CPU is used: no four-times slowdown or CPU override, viewport emulation or link shaping. Heating/refresh rate are not inferred from the model name.
+The initial scope is two repeats of three **visited read** journeys: open job, open the job's material-list tab, and open a material list. Selectors mirror the existing adapter, but input is separately implemented page-CDP touch start/end. It warms each destination through the actual UI, returns by touching the actual app header's unique visible Go up one level control, then times the second opening. Protocol v3 also returns through that same guarded app-header control after every measured sample, outside its timing, before the next navigation. No quantity, receipt, order, chat, recognition, drawing edit or production write journey is executed. Natural device CPU is used: no four-times slowdown or CPU override, viewport emulation or link shaping. Heating/refresh rate are not inferred from the model name.
 
 ## Runtime needs, to arrange after quiet
 
@@ -47,7 +47,7 @@ Source was prepared during the baseline quiet window. After explicit release, fo
 For a separately launched disposable local Chromium smoke check, require both
 `PERF_PHONE_SMOKE=1` and `PERF_PHONE_CONTROL_TRANSPORT=local-smoke`. All lab
 attestation/isolation checks stay enabled. Reports use method
-`local-smoke-visited-reads-page-cdp-v2`, status `smoke-only`/`smoke-failed`, and
+`local-smoke-visited-reads-page-cdp-v3`, status `smoke-only`/`smoke-failed`, and
 `physicalPhoneEvidence:false`; those results must never be presented as phone
 evidence. Root owns launching that disposable browser and the later phone run.
 
@@ -208,3 +208,31 @@ from git or claimed to be independent execution-start snapshots. The private
 schema inventory was already cleaned and was not reconstructed. Raw browser
 shutdown errors are retained and qualified in provenance. No phone/ADB/browser
 runtime was performed to archive this evidence; prior v1 attempts are unchanged.
+
+## Protocol v3: reset between repeated samples
+
+New runs use `phone-visited-reads-page-cdp-v3` or `local-smoke-visited-reads-page-cdp-v3`. The existing unique visible app-header touch-back and source-path/unique-interactive-source/destination-absent guard are shared before and **after** each measured opening. Post-sample return is outside the measured interval and has its own `reset-after-sample` failure phase. The timed `tapRead` algorithm is unchanged.
+
+R7 Jobs stores its internal workspace under the unchanged `/jobs` history entry and last-location storage. Navigating to `/jobs` again is not a reset: it can restore the measured destination. The physical v2 attempt reached one openjob sample then failed at repeat1 source readiness; preserve that failed report and its completed sample as diagnostic-only. This source flow explains a concrete repeat-preparation risk; the report alone does not distinguish history reuse from reload/storage restoration.
+
+V3 preparation: `node --check perf/phone/run.mjs` passed. Driver SHA-256 `78f7b3f0e151124a8ca53643926ebde0b03a5839db321faaa1f6dd477eb7b735`. No v3 local browser smoke or physical execution was performed by this change; root will run a separate six-read local smoke before any phone attempt. All v1/v2 executed methods/artifacts remain unchanged. Privacy, newly-created-target ownership, target creation/cleanup and synthetic-only restrictions are unchanged; no storage clearing or raw history fallback was added.
+
+## Supplemental v3 diagnostic revision 1
+
+The separate six-read local v3 smoke completed four samples (both openjob and tab repeats) then failed during material-list warm opening with a generic evaluation error. It did **not** pass six reads. Its frozen method hash `78f7b3f0e151124a8ca53643926ebde0b03a5839db321faaa1f6dd477eb7b735` and failed report remain unchanged. A physical diagnostic uses a different platform and cannot retroactively pass that local smoke.
+
+New prepared method labels are `phone-visited-reads-page-cdp-v3-diagnostic-v1` and `local-smoke-visited-reads-page-cdp-v3-diagnostic-v1`; all augmented outcomes explicitly say supplemental diagnostic-only and accepted false. Gestures, readiness predicates and timer algorithm are unchanged. Added evidence is restricted to authored readiness-timeout classification, numeric pre-touch point/time-origin, target-hit/nested-interactive booleans, and a best-effort failure probe capped at1.5seconds on only the owned expected-origin synthetic page. The probe reports source/destination path **match booleans**, document time-origin change, control visibility, and evidence/start/release/done booleans; it never exports paths, DOM text, IDs, URLs/queries, raw exception descriptions, bodies or cookies. An unavailable probe says only that it was unavailable.
+
+`node --check perf/phone/run.mjs` passed; prepared driver SHA-256 `5efdf7245f56b71923705f83f1358845933c753a0f34b3f4712071b5ec13e877`. No local or physical execution by this source change. Root owns the separately authorized physical diagnostic; no local smoke or acceptance claim is made here.
+
+## Supplemental v4 diagnostic revision 1: initial normalization
+
+The physical v3 diagnostic stopped before its first sample at openjob source readiness. A newly created tab does not clear origin-scoped saved workspace state, so post-sample reset alone cannot normalize a previous failed attempt's destination. That failed method/report remain unchanged; no prior local/physical check is treated as passed.
+
+Prepared labels now use `phone-visited-reads-page-cdp-v4-diagnostic-v1` / `local-smoke-visited-reads-page-cdp-v4-diagnostic-v1`. After navigation, `initial-normalization` waits for the unique source control **or** the expected destination marker. Only when that expected marker is present does it touch the same unique app-header back control and apply the existing source-path/unique-source/destination-absent guard. There is no arbitrary destination fallback, repeated back loop, storage clear or app change. Warm-read/back/measured-read/post-sample-reset semantics otherwise remain unchanged.
+
+The bounded failure probe also operates before a first tap using the current journey: `preTouch` and time-origin comparison are null without a baseline; source/ready visibility and path-match booleans can still be reported. Expected-origin ownership/privacy rules remain in force. These augmented runs remain supplemental diagnostic-only, accepted false.
+
+`node --check perf/phone/run.mjs` passed. Prepared SHA-256 `8f39e11c1766eefcc15a2154e88d97e66b6b459ea6abe21d3ba3e214182831af`. No local/phone execution by this source change; root owns the separately bounded physical recheck.
+
+Root's subsequent physical v4 diagnostic completed two openjob samples (46.9/46.2ms browser timing) then failed during switchjobtabs warm opening. It is a failed partial diagnostic, not a passed six-read run or acceptance evidence; its raw artifacts are archived separately by measurement. Pre-touch containment plus observed down/up does not prove a compatibility click reached the card. Source inspection identifies a possible race: the runner's default-behavior `scrollIntoView` follows R7's smooth root scrolling, while `usePress` cancels a scroll-row gesture on any scroll event after pointerdown. No actual scroll/click/cancel metadata was captured to attribute this failure. No further method change or phone retry was made here; source V4 hash above remains unchanged.

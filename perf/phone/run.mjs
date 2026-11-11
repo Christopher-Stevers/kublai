@@ -5,9 +5,11 @@ import { createHash } from "node:crypto";
 import { performance as hostClock } from "node:perf_hooks";
 import { createCdpConnection } from "./cdp-transport.mjs";
 
-const physicalMethod = "phone-visited-reads-page-cdp-v2";
+const physicalMethod = "phone-visited-reads-page-cdp-v4-diagnostic-v1";
 const smoke = process.env.PERF_PHONE_SMOKE === "1";
-const METHOD = smoke ? "local-smoke-visited-reads-page-cdp-v2" : physicalMethod;
+const METHOD = smoke
+  ? "local-smoke-visited-reads-page-cdp-v4-diagnostic-v1"
+  : physicalMethod;
 let setupPhase = "configuration";
 const setupEvidence = { createdTargetKnown: false };
 async function main() {
@@ -256,6 +258,7 @@ async function main() {
           "Ambiguous synthetic control",
           "Destination visible before input",
           "Destination visible before timed input",
+          "Read readiness timeout",
         ])
           if (typeof description === "string" && description.includes(label))
             throw Error(label);
@@ -340,6 +343,59 @@ async function main() {
         ready: listReady,
       },
     ];
+    async function returnToSource(journey) {
+      await until(`Boolean(${appBack})`);
+      const backPoint = await own(
+        `(() => {const el=(${appBack});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
+      );
+      await send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [backPoint],
+      });
+      await send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await until(
+        `location.pathname===${JSON.stringify(journey.source)}&&Boolean(${journey.target})&&!Boolean(${journey.ready})`,
+      );
+    }
+    let activeReadProbe = null;
+    let activeJourney = null;
+    async function probeFailedRead() {
+      const journey = activeReadProbe?.journey ?? activeJourney;
+      if (!journey) return null;
+      const preTouch = activeReadProbe?.preTouch ?? null;
+      const destination =
+        journey.name === "openmateriallist"
+          ? listPath
+          : journey.name === "switchjobtabs"
+            ? `${jobPath}/material-lists`
+            : "/jobs";
+      let timer;
+      try {
+        const after = await Promise.race([
+          own(`(() => {const state=window.__phoneReadEvidence;return {
+            sourcePathMatches:location.pathname===${JSON.stringify(journey.source)},
+            destinationPathMatches:location.pathname===${JSON.stringify(destination)},
+            timeOriginChanged:${preTouch ? `performance.timeOrigin!==${JSON.stringify(preTouch.timeOrigin)}` : "null"},
+            targetVisible:Boolean(${journey.target}),readyVisible:Boolean(${journey.ready}),
+            evidenceExists:!!state,startSeen:state?.start!=null,releaseSeen:state?.release!=null,done:state?.done===true
+          };})()`),
+          new Promise((_, reject) => {
+            timer = setTimeout(
+              () => reject(Error("Failure probe unavailable")),
+              1500,
+            );
+          }),
+        ]);
+        return { preTouch, after };
+      } catch {
+        return { preTouch, after: { probeUnavailable: true } };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     async function tapRead(journey) {
       await until(`Boolean(${journey.target})`);
       await own(
@@ -348,6 +404,12 @@ async function main() {
       const point = await own(
         `(() => {const el=(${journey.target});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
       );
+      const preTouch = await own(`(() => {
+        const el=(${journey.target}),hit=document.elementFromPoint(${point.x},${point.y});
+        const interactive=hit?.closest('a,button,input,select,textarea,[role="button"],[role="menuitem"]');
+        return {x:${point.x},y:${point.y},timeOrigin:performance.timeOrigin,targetContainsHit:!!hit&&el.contains(hit),nestedInteractiveHit:!!interactive&&interactive!==el};
+      })()`);
+      activeReadProbe = { journey, preTouch };
       await own(`(() => {
     if(${journey.ready})throw Error('Destination visible before timed input');
     const state={start:null,release:null,gaps:[],last:null,done:false};
@@ -379,6 +441,7 @@ async function main() {
         touchPoints: [],
       });
       const browser = await own("window.__phoneReadEvidence.promise");
+      activeReadProbe = null;
       return { ...browser, driverWallclockMs: hostClock.now() - started };
     }
     let report;
@@ -402,34 +465,31 @@ async function main() {
       );
       for (const journey of journeys)
         for (let run = 0; run < repeats; run++) {
+          activeJourney = journey;
+          activeReadProbe = null;
           setPhase("navigate", journey.name, run);
           await navigate(journey.source);
+          setPhase("initial-normalization", journey.name, run);
+          await until(`Boolean(${journey.target})||Boolean(${journey.ready})`);
+          if (await own(`Boolean(${journey.ready})`)) {
+            await returnToSource(journey);
+          }
           setPhase("source-ready", journey.name, run);
           await until(`Boolean(${journey.target})`);
           setPhase("warmread", journey.name, run);
           await tapRead(journey); // Visit through the actual UI first.
           setPhase("back", journey.name, run);
-          await until(`Boolean(${appBack})`);
-          const backPoint = await own(
-            `(() => {const el=(${appBack});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
-          );
-          await send("Input.dispatchTouchEvent", {
-            type: "touchStart",
-            touchPoints: [backPoint],
-          });
-          await send("Input.dispatchTouchEvent", {
-            type: "touchEnd",
-            touchPoints: [],
-          });
-          await until(
-            `location.pathname===${JSON.stringify(journey.source)}&&Boolean(${journey.target})&&!Boolean(${journey.ready})`,
-          );
+          await returnToSource(journey);
           setPhase("visitedread", journey.name, run);
           samples.push({
             journey: journey.name,
             run,
             ...(await tapRead(journey)),
           });
+          // Leave the workspace at its source before the next same-URL visit;
+          // /jobs intentionally restores its saved local destination on reload.
+          setPhase("reset-after-sample", journey.name, run);
+          await returnToSource(journey);
         }
       const afterHealth = await databaseHealth();
       if (
@@ -442,7 +502,7 @@ async function main() {
         physicalPhoneEvidence: !smoke,
         method: METHOD,
         navigationPreparation:
-          "app-header-back-unique-source-destination-absent",
+          "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         driverSha256: createHash("sha256")
           .update(await fs.readFile(new URL(import.meta.url)))
@@ -479,12 +539,14 @@ async function main() {
         ],
       };
     } catch (error) {
+      const failureDiagnostics = await probeFailedRead();
       report = {
         status: smoke ? "smoke-failed" : "failed",
+        failureDiagnostics,
         physicalPhoneEvidence: false,
         method: METHOD,
         navigationPreparation:
-          "app-header-back-unique-source-destination-absent",
+          "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         sourceBuild: source.sourceBuild,
         sourceFingerprint: source.sourceFingerprint,
@@ -501,11 +563,15 @@ async function main() {
     } finally {
       connection.close();
       const cleanup = await closeCreatedTarget();
-      if (report) report.cleanup = cleanup;
+      if (report) {
+        report.cleanup = cleanup;
+        report.supplementalDiagnosticOnly = true;
+        report.accepted = false;
+      }
     }
     const output = path.resolve(
       process.env.PERF_PHONE_OUTPUT ??
-        `perf/artifacts/phone-v2-visited-reads-${Date.now()}.json`,
+        `perf/artifacts/phone-v4-diagnostic-v1-visited-reads-${Date.now()}.json`,
     );
     await fs.mkdir(path.dirname(output), { recursive: true });
     await fs.writeFile(output, JSON.stringify(report, null, 2));
@@ -537,7 +603,8 @@ await main().catch(async (error) => {
   const report = {
     status: smoke ? "smoke-setup-failed" : "setup-failed",
     method: METHOD,
-    navigationPreparation: "app-header-back-unique-source-destination-absent",
+    navigationPreparation:
+      "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
     physicalPhoneEvidence: false,
     accepted: false,
     timestamp: new Date().toISOString(),
