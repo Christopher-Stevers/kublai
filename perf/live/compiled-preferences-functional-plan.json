@@ -1,0 +1,41 @@
+{
+  "status": "source-prepared-not-executed",
+  "protocol": "compiled-preferences-functional-v1",
+  "driver": "perf/live/compiled-preferences-functional.mjs",
+  "driverSha256": "5b7c8ab7dcf421d74bd1f17a952c55b4eed01997fc0f5963467223171d0037b6",
+  "expectedR12SourceBuild": null,
+  "expectedR12SourceFingerprint": null,
+  "expectedCompiledLabBuild": null,
+  "rootRuntimeAuthorizationPending": true,
+  "internalDeadlineSeconds": 420,
+  "outerSetupRunCleanupSeconds": 480,
+  "healthyObservationSeconds": 75,
+  "outageObservationSeconds": 75,
+  "controlledSubscriptionExpirySeconds": 35,
+  "syntheticSqlAllowlist": [
+    "Exact seeded user role/subscription fields, restored in finally",
+    "Terminate exactly one private foremanhq_change LISTEN PID; expected administrator-FATAL separated"
+  ],
+  "httpMutationAllowlist": [
+    "appDevices.report",
+    "user.setMaterialSortPreferences"
+  ],
+  "fixedPostAllowlist": [
+    "/api/replicache/material-lists/pull",
+    "/api/replicache/catalogue/pull",
+    "/api/perf",
+    "/api/debug/client-console-error"
+  ],
+  "syncPushPolicy": "Only same-origin material-lists/catalogue push with empty mutations array",
+  "readinessPolicy": "Must observe real compiled preferences-ready true; false-only fails. No injected frames or QueryCache certificate grants.",
+  "timingMethodUnchanged": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "timingCapture": {
+    "samples": 120,
+    "idleMilliseconds": 600000,
+    "outerMinutes": 45,
+    "authorized": false
+  },
+  "validation": "node --check passed only; no browser/server/DB/build run for this protocol"
+}
