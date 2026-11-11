@@ -39,6 +39,25 @@ export function hidesCriteria(
         rule.size.unit === target.size?.unit))
   );
 }
+/**
+ * A touch tap sends its click to whatever is under the finger when the click
+ * fires. A pick made on lift has already swapped in the next step by then, so
+ * that click must not reach the card that appeared there.
+ */
+function swallowTapClick() {
+  const done = () => {
+    clearTimeout(timer);
+    window.removeEventListener("click", swallow, true);
+  };
+  const swallow = (event: MouseEvent) => {
+    if (event.detail === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    done();
+  };
+  const timer = setTimeout(done, 400);
+  window.addEventListener("click", swallow, true);
+}
 export function useCatalogueVisibility(
   criteria: CatalogueHideCriteria | CatalogueHideCriteria[] | undefined,
   onTap: () => void,
@@ -133,7 +152,10 @@ export function useCatalogueVisibility(
           e.stopPropagation();
           suppressClick.current = true;
           clear();
-          if (p.id === e.pointerId && !p.cancelled && !p.fired) onTap();
+          if (p.id === e.pointerId && !p.cancelled && !p.fired) {
+            swallowTapClick();
+            onTap();
+          }
         },
         onPointerCancelCapture: (e: PointerEvent<HTMLElement>) => {
           stop(e);

@@ -177,3 +177,30 @@ it("hides individual parts by identity and marks parts hidden by parent rules", 
   act(() => vi.advanceTimersByTime(600));
   expect(show).toHaveBeenCalledExactlyOnceWith([{ partId: "part" }]);
 });
+
+it("keeps the tap's click off the card that replaces the picked one", () => {
+  const next = vi.fn();
+  function Steps() {
+    return (
+      <>
+        <Card />
+        <button onClick={next}>Next step</button>
+      </>
+    );
+  }
+  render(<Steps />);
+  const card = screen.getByText("2 inch").closest('[role="button"]')!;
+  fireEvent.pointerDown(card, { button: 0, clientX: 10, clientY: 10 });
+  fireEvent.pointerUp(card, { button: 0, clientX: 10, clientY: 10 });
+  expect(tap).toHaveBeenCalledTimes(1);
+  // A touch tap clicks whatever is under the finger after the step changed.
+  fireEvent.click(screen.getByText("Next step"), { detail: 1 });
+  expect(next).not.toHaveBeenCalled();
+  // Only that one click: the next tap and keyboard picks go through.
+  fireEvent.click(screen.getByText("Next step"), { detail: 1 });
+  expect(next).toHaveBeenCalledTimes(1);
+  fireEvent.pointerDown(card, { button: 0, clientX: 10, clientY: 10 });
+  fireEvent.pointerUp(card, { button: 0, clientX: 10, clientY: 10 });
+  fireEvent.click(screen.getByText("Next step"), { detail: 0 });
+  expect(next).toHaveBeenCalledTimes(2);
+});
