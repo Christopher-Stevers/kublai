@@ -965,3 +965,25 @@ removes the new runtime hook; the original 18 tests pass with no new lint findin
 The experiment commit, diagnostic source, raw logs and failure are preserved in
 `artifacts/notification-role-identity-rejected-2026-11-11/`. No polling reduction
 is claimed, and the experiment never reached production.
+
+## Receiving/photo canonical proof authorized — 2026-11-11
+
+The photo metadata boundary (`e206f3a6`, corrected by `46a30bf2`) passes eleven
+focused tests. It defers the unchanged 1,467-entry framing map, reserves each
+photo box while loading and keeps a displayed failure fallback from later
+recropping. The exact cache-completion-before-effect race is covered. The old
+map-containing chunk is 53,313 gzip bytes; that is an opportunity, not a saving.
+
+Source freeze `d49f0f95` composes only these two image runtime paths and the eight
+reviewed receiving runtime postimages onto exact R19. Root independently confirms
+fingerprint `d22e3464…`, 2,322 source files and exactly ten changed/new runtime
+paths with no deletion. The protected-key prerequisite is included; public/config
+and R19's existing badge/quantity paths remain unchanged. No timing regression is
+reverted or waived. One canonical byte/type proof is authorized, with no HTTP,
+private database, browser matrix, worker or activation.
+
+The separate shared-bundle audit `9dcac8e5` retains the unchanged formal 477,538
+gzip-byte definition and identifies a 17,273-byte dropdown-engine opportunity
+ceiling. First-open/focus/keyboard risks keep that proposal source-only. Framework
+root files account for 118,402 bytes; this classification does not redefine the
+120 KB target or establish that all remaining code is removable.

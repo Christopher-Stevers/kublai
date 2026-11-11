@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-11T17:33:36.411Z",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-receiving-images-20261111",
+  "sourceFingerprint": "d22e346422aa5fc1827c1c6bca58b5eec6ad20badae874c9da0ece8b39eb6c1c",
+  "sourceFileCount": 2322,
+  "baseSourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "changedPaths": [
+    "src/components/catalogue/PartImage.tsx",
+    "src/components/materialLists/MaterialListScreen.tsx",
+    "src/components/materialLists/SavedOrderReading.tsx",
+    "src/hooks/use-receiving-order-read.ts",
+    "src/lib/device-query-cache.ts",
+    "src/lib/drawing-offline.ts",
+    "src/lib/part-image-layout-resource.ts",
+    "src/lib/receiving-order-reading.ts",
+    "src/lib/tier-one-cache-budget.ts",
+    "src/server/api/routers/materialList.ts"
+  ],
+  "deletedPaths": [],
+  "exactExpectedRuntimeDiff": true,
+  "buildAuthorized": true,
+  "activationAuthorized": false,
+  "buildAuthorizedAt": "2026-11-11T17:34:34.009583+00:00",
+  "buildScope": "One canonical compile/type/static-byte proof only; no app/DB/browser/timing/worker/activation."
+}

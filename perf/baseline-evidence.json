@@ -305,7 +305,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T17:22:23.573536+00:00",
+  "updatedAt": "2026-11-11T17:34:34.009945+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
@@ -1200,6 +1200,30 @@
         "Persisted epochs fence revocation and lifecycle, not server-version ordering across independent contexts.",
         "No new canonical build, browser/offline performance or receiving-worker proof."
       ]
+    },
+    "partImageMetadata": {
+      "status": "prepared-focused-tests-passed",
+      "sourceCommits": [
+        "e206f3a6",
+        "46a30bf2"
+      ],
+      "focusedTestsPassed": 11,
+      "auditedEntriesUnchanged": 1467,
+      "oldEmittedChunkGzipBytes": 53313,
+      "measuredSavings": null,
+      "source": "perf/part-image-metadata-boundary.md",
+      "activated": false
+    },
+    "receivingImagesBuild": {
+      "status": "source-reviewed-canonical-byte-proof-authorized",
+      "sourceFreezeCommit": "d49f0f95",
+      "sourceFingerprint": "d22e346422aa5fc1827c1c6bca58b5eec6ad20badae874c9da0ece8b39eb6c1c",
+      "sourceFileCount": 2322,
+      "runtimePathsChanged": 10,
+      "rootIndependentSourceReview": true,
+      "rootReview": "perf/artifacts/phase1-receiving-images-root-source-review-2026-11-11.json",
+      "fullMatrixScheduled": false,
+      "activationAuthorized": false
     }
   },
   "historicalCandidateRegressions": [
