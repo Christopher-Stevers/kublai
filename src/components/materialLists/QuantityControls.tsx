@@ -183,6 +183,7 @@ export function QuantityControls({
           variant="outline"
           size="sm"
           onClick={() => setQuantityImmediately(displayedQuantity + 1)}
+          pressFeedback="attribute"
           className={buttonClassName}
           aria-label="Increase quantity"
         >
@@ -214,6 +215,7 @@ export function QuantityControls({
           variant="outline"
           size="sm"
           onClick={() => setQuantityImmediately(displayedQuantity - 1)}
+          pressFeedback="attribute"
           disabled={displayedQuantity <= 1}
           className={buttonClassName}
           aria-label="Decrease quantity"
@@ -246,6 +248,7 @@ export function QuantityControls({
         variant="outline"
         size="sm"
         onClick={() => setQuantityImmediately(displayedQuantity - 1)}
+        pressFeedback="attribute"
         disabled={displayedQuantity <= 1}
         className={buttonClassName}
         aria-label="Decrease quantity"
@@ -278,6 +281,7 @@ export function QuantityControls({
         variant="outline"
         size="sm"
         onClick={() => setQuantityImmediately(displayedQuantity + 1)}
+        pressFeedback="attribute"
         className={buttonClassName}
         aria-label="Increase quantity"
       >

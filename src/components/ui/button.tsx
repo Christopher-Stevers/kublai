@@ -49,6 +49,7 @@ function Button({
   size,
   asChild = false,
   press = "release",
+  pressFeedback = "state",
   prepare,
   onClick,
   onPointerDown,
@@ -61,6 +62,7 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
     press?: PressMode;
+    pressFeedback?: "state" | "attribute";
     prepare?: PressPreparation;
   }) {
   const Comp = asChild ? Slot : "button";
@@ -68,6 +70,7 @@ function Button({
     // Slot children may own navigation or a Radix trigger; their native click
     // must remain intact. Explicit destructive styling also stays on release.
     press: asChild || variant === "destructive" ? "release" : press,
+    feedback: pressFeedback,
     prepare,
     disabled,
     onClick,
