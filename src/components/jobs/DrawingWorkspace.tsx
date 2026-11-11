@@ -1069,7 +1069,7 @@ export function DrawingWorkspace({
     omitHyperlinks: !hyperlinksVisible,
     viewScope: JSON.stringify([sourceId, form?.id ?? null, panel]),
     viewEntityId: form?.id ?? null,
-    workspace: data,
+    workspace: data ?? undefined,
     canStart: () => online && canStartDocumentWrite(),
     onAccepted: (entity) => {
       setError(null);
