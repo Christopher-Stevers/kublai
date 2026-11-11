@@ -47,6 +47,7 @@ export default function JobOptionsPage({
         <JobOverviewHeading job={job} onEdit={() => setShowEditDialog(true)} />
 
         <JobWorkspaceOptions
+          jobId={jobId}
           materialListCount={materialListCount}
           roomCount={roomCount.count}
           roomCountLoading={roomCount.loading}

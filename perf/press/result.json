@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "provenance": "isolated-production-react-primitives",
+  "browser": "Chromium desktop touch emulation",
+  "flings": 200,
+  "opens": 0,
+  "fixed": 2,
+  "writes": 1,
+  "prepared": 200,
+  "cancelled": 200,
+  "phoneOrAppLatencyEvidence": false
+}

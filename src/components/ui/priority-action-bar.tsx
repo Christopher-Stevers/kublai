@@ -78,6 +78,7 @@ function BarSearchButton({
   const value = search.value.trim();
   return (
     <Button
+      press="fixed"
       type="button"
       variant="outline"
       className={className}
@@ -287,6 +288,7 @@ export function PriorityActionBar({
               {search.step && (
                 <>
                   <Button
+      press="fixed"
                     type="button"
                     variant="ghost"
                     size="icon"
@@ -298,6 +300,7 @@ export function PriorityActionBar({
                     <ChevronLeftIcon className="size-5" />
                   </Button>
                   <Button
+      press="fixed"
                     type="button"
                     variant="ghost"
                     size="icon"
@@ -311,6 +314,7 @@ export function PriorityActionBar({
                 </>
               )}
               <Button
+      press="fixed"
                 type="button"
                 variant="ghost"
                 size="icon"
@@ -335,6 +339,7 @@ export function PriorityActionBar({
                 <div>
                   {shelved > 0 && (
                     <Button
+      press="fixed"
                       ref={tab}
                       type="button"
                       variant={expanded ? "default" : "outline"}
@@ -357,6 +362,7 @@ export function PriorityActionBar({
             {shelved > 0 && !hasSearch && (
               <div data-action-slot key="expand-actions">
                 <Button
+      press="fixed"
                   ref={tab}
                   type="button"
                   variant={expanded ? "default" : "outline"}
@@ -436,6 +442,7 @@ export function ViewerActionBar({
       <div data-landscape-navigation-slot />
       {overflowCount > 0 && (
         <Button
+      press="fixed"
           ref={trigger}
           type="button"
           variant="outline"

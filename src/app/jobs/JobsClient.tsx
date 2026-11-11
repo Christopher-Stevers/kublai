@@ -1,4 +1,6 @@
 "use client";
+import { PressableCard } from "~/components/ui/pressable-card";
+import { prepareJourney } from "~/routes/registry";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { JobOverviewHeading } from "~/components/jobs/JobOverviewHeading";
 import { JobOfflineNotice } from "~/components/jobs/JobOfflineNotice";
@@ -219,6 +221,7 @@ export function JobsClient({
 
               {offlineJobView === "options" ? (
                 <JobWorkspaceOptions
+                  jobId={sandbox ? undefined : offlineJobId}
                   materialListCount={offlineJobDetail?.materialLists.length ?? 0}
                   roomCount={roomCount.count}
                   roomCountLoading={roomCount.loading}
@@ -344,8 +347,9 @@ export function JobsClient({
                   : job.createdAt;
               const statusLabel = jobStatusLabels[job.status];
               return (
-                <Card
+                <PressableCard
                   key={job.id}
+                  prepare={signal => { if (!sandbox) void prepareJourney("openjob", { jobId: job.id }, signal); }}
                   data-tutorial="job-card"
                   role="button"
                   tabIndex={0}
@@ -434,7 +438,7 @@ export function JobsClient({
                       </span>
                     </div>
                   </CardContent>
-                </Card>
+                </PressableCard>
               );
             })}
           </div>

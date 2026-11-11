@@ -1,7 +1,14 @@
+"use client";
+
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import {
+  usePress,
+  type PressMode,
+  type PressPreparation,
+} from "~/hooks/use-press";
 import { cn } from "~/lib/utils";
 
 const buttonVariants = cva(
@@ -41,18 +48,57 @@ function Button({
   variant,
   size,
   asChild = false,
+  press = "release",
+  prepare,
+  onClick,
+  onPointerDown,
+  onKeyDown,
+  onKeyUp,
+  onBlur,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    press?: PressMode;
+    prepare?: PressPreparation;
   }) {
   const Comp = asChild ? Slot : "button";
+  const { pressProps } = usePress<HTMLButtonElement>({
+    // Slot children may own navigation or a Radix trigger; their native click
+    // must remain intact. Explicit destructive styling also stays on release.
+    press: asChild || variant === "destructive" ? "release" : press,
+    prepare,
+    disabled,
+    onClick,
+  });
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        "data-[pressed=true]:opacity-75 data-[pressed=true]:transition-none",
+      )}
       {...props}
+      {...pressProps}
+      disabled={disabled}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        if (!event.defaultPrevented) pressProps.onPointerDown(event);
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (!event.defaultPrevented) pressProps.onKeyDown(event);
+      }}
+      onKeyUp={(event) => {
+        onKeyUp?.(event);
+        pressProps.onKeyUp();
+      }}
+      onBlur={(event) => {
+        onBlur?.(event);
+        pressProps.onBlur();
+      }}
     />
   );
 }
@@ -64,7 +110,11 @@ function LargeButton({
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    press?: PressMode;
+    prepare?: PressPreparation;
+  }) {
   return (
     <Button
       className={cn(

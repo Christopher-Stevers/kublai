@@ -1,4 +1,5 @@
 "use client";
+import { prepareJourney } from "~/routes/registry";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { useState, type ComponentProps } from "react";
 import { PlusIcon } from "lucide-react";
@@ -163,6 +164,7 @@ export function JobMaterialListsView({
               canEdit={canEdit}
               canDelete={canDelete}
               actionsBusy={busy}
+              prepare={signal => { if (!sandbox) void prepareJourney("openmateriallist", { jobId, materialListId: list.id }, signal); }}
               onOpen={() => onOpen(list.id)}
               onDuplicate={() => duplicate.mutate({ materialListId: list.id })}
               onDelete={() =>

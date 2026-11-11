@@ -1,4 +1,6 @@
 "use client";
+import { PressableCard } from "~/components/ui/pressable-card";
+import type { PressPreparation } from "~/hooks/use-press";
 import { format } from "date-fns";
 import {
   CopyIcon,
@@ -47,6 +49,7 @@ type Props = {
   canDelete: boolean;
   actionsBusy: boolean;
   onOpen: () => void;
+  prepare?: PressPreparation;
   onDuplicate: () => void;
   onDelete: () => void;
 };
@@ -58,11 +61,15 @@ export function MaterialListCard({
   canDelete,
   actionsBusy,
   onOpen,
+  prepare,
   onDuplicate,
   onDelete,
 }: Props) {
   return (
-    <Card
+    <PressableCard
+      prepare={merge.active ? undefined : prepare}
+      role="button"
+      tabIndex={0}
       {...merge.cardProps(list)}
       className={
         "card-lift relative cursor-pointer overflow-hidden select-none" +
@@ -182,7 +189,7 @@ export function MaterialListCard({
           </div>
         </div>
       </CardContent>
-    </Card>
+    </PressableCard>
   );
 }
 

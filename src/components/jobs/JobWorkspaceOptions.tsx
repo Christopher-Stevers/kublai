@@ -1,4 +1,6 @@
 "use client";
+import { PressableCard } from "~/components/ui/pressable-card";
+import { prepareWorkspaceOption } from "~/routes/registry";
 import { useDevFeatures } from "~/components/app/DevFeaturesProvider";
 import { VoiceCard } from "~/components/voice/VoiceProvider";
 
@@ -21,12 +23,14 @@ import { DevBadge } from "~/components/app/DevBadge";
 export type { JobWorkspaceOptionId };
 
 export function JobWorkspaceOptions({
+  jobId,
   materialListCount = 0,
   roomCount,
   roomCountLoading = false,
   chatUnreadCount = 0,
   onSelect,
 }: {
+  jobId?: string;
   materialListCount?: number;
   roomCount?: number;
   roomCountLoading?: boolean;
@@ -39,8 +43,9 @@ export function JobWorkspaceOptions({
   return (
     <>
     <FrequentJobCards trailingCards={devFeatures ? <VoiceCard /> : null}>
-      <Card
+      <PressableCard
         data-job-card="material-lists"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("material-lists", jobId, signal); }}
         data-tutorial="material-lists"
         role="button"
         tabIndex={0}
@@ -68,10 +73,11 @@ export function JobWorkspaceOptions({
             </div>
           </div>
         </CardContent>
-      </Card>
+      </PressableCard>
       {canAccessDrawings && (
-        <Card
+        <PressableCard
           data-job-card="drawings"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("drawings", jobId, signal); }}
           data-tutorial="drawings"
           role="button"
           tabIndex={0}
@@ -95,10 +101,11 @@ export function JobWorkspaceOptions({
               <span>Drawing sets to view on site</span>
             </div>
           </CardContent>
-        </Card>
+        </PressableCard>
       )}
-      <Card
+      <PressableCard
         data-job-card="chat"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("chat", jobId, signal); }}
         role="button"
         data-tutorial="chat"
         tabIndex={0}
@@ -132,9 +139,10 @@ export function JobWorkspaceOptions({
             <span>Messages, photos &amp; files for this job</span>
           </div>
         </CardContent>
-      </Card>
-      <Card
+      </PressableCard>
+      <PressableCard
         data-job-card="documents"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("documents", jobId, signal); }}
         data-tutorial="documents"
         role="button"
         aria-label="Documents"
@@ -157,9 +165,10 @@ export function JobWorkspaceOptions({
             <span>Files, revisions, reviews &amp; Office documents</span>
           </div>
         </CardContent>
-      </Card>
-      <Card
+      </PressableCard>
+      <PressableCard
         data-job-card="rooms"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("rooms", jobId, signal); }}
         data-tutorial="rooms"
         aria-label="Rooms"
         role="button"
@@ -192,10 +201,11 @@ export function JobWorkspaceOptions({
             </div>
           </div>
         </CardContent>
-      </Card>
+      </PressableCard>
       {devFeatures && canAccessDrawings && (
-        <Card
+        <PressableCard
           data-job-card="models"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("models", jobId, signal); }}
           role="button"
           tabIndex={0}
           aria-label="Models, Dev"
@@ -220,10 +230,11 @@ export function JobWorkspaceOptions({
               <span>Revit &amp; IFC · 3D construction coordination</span>
             </div>
           </CardContent>
-        </Card>
+        </PressableCard>
       )}
-      {devFeatures && canAccessSystems && <Card
+      {devFeatures && canAccessSystems && <PressableCard
         data-job-card="systems"
+        prepare={signal => { if (jobId) void prepareWorkspaceOption("systems", jobId, signal); }}
         role="button"
         aria-label="Systems"
         tabIndex={0}
@@ -250,7 +261,7 @@ export function JobWorkspaceOptions({
             </span>
           </div>
         </CardContent>
-      </Card>}
+      </PressableCard>}
     </FrequentJobCards>
     </>
   );
