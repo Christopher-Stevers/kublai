@@ -2,6 +2,8 @@
 set -euo pipefail
 # Run only under perf/lab/database.sh, with its disposable database alive.
 snapshot=$(node perf/create-lab-snapshot.mjs)
+export FOREMANHQ_BACKGROUND_MODE=separate
+export BIM_WORKER_DISABLED=1
 export SKIP_ENV_VALIDATION=1
 export CLERK_SECRET_KEY=sk_test_speed_lab_only
 export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_speed_lab_only

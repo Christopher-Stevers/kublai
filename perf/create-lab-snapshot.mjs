@@ -81,7 +81,7 @@ if (!config.includes("const config = {"))
   throw new Error("Unknown Next config; refusing auth alias injection");
 config = config.replace(
   "const config = {",
-  `const config = {
+  () => `const config = {
   webpack(config) {
     config.resolve.alias = { ...config.resolve.alias,
       '@clerk/nextjs/server$': ${JSON.stringify(path.join(target, "perf/auth/clerk-server.mjs"))},
@@ -92,7 +92,8 @@ config = config.replace(
 );
 fs.writeFileSync(
   configPath,
-  `process.env.DATABASE_URL = ${JSON.stringify(rawDatabase)};\n` + config,
+  `process.env.DATABASE_URL = ${JSON.stringify(rawDatabase)};\nprocess.env.FOREMANHQ_BACKGROUND_MODE = "separate";\nprocess.env.BIM_WORKER_DISABLED = "1";\n` +
+    config,
 );
 if (process.env.PERF_LAB_FIXTURES)
   fs.copyFileSync(

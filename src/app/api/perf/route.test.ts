@@ -38,11 +38,11 @@ it("appends only anonymous schema to an isolated daily file", async () => {
     const names = await readdir(directory);
     expect(names).toHaveLength(1);
     expect(names[0]).toMatch(/^\d{4}-\d{2}-\d{2}\.jsonl$/);
-    const saved = JSON.parse(
+    const saved: unknown = JSON.parse(
       await readFile(path.join(directory, names[0]!), "utf8"),
     );
     expect(saved).toMatchObject(payload);
-    expect(Object.keys(saved).sort()).toEqual([
+    expect(Object.keys(saved as Record<string, unknown>).sort()).toEqual([
       "build",
       "device",
       "link",
