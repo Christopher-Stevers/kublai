@@ -1,0 +1,344 @@
+{
+  "status": "retained-evidence-audit-only",
+  "noNewCapture": true,
+  "noAlternativeComparator": true,
+  "predeclaredGateBaseline": "baseline1",
+  "stabilityReferenceOnly": "baseline2",
+  "thresholdUnchanged": 0.1,
+  "allFiveSamplesPerCapturePreserved": true,
+  "captures": [
+    {
+      "capture": "baseline1",
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "sha256": "c262451ec3ef1ca979585aeb29ccc6bd67444d0a323d248584ccf74bb6d9acd4",
+      "protocol": "ready-then-pinch-v2",
+      "method": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "cpuSlowdown": 4,
+      "outerMedianMs": 114.14365500002168,
+      "browserMarkMedianMs": 21.40000009536743,
+      "samples": [
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 26.5
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 0,
+          "durationMs": 111.41382000001613,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.399999618530273
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 1,
+          "durationMs": 125.0508929999778,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.40000009536743
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 2,
+          "durationMs": 114.14365500002168,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.799999713897705
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 3,
+          "durationMs": 115.41811500000767,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 18.699999809265137
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 4,
+          "durationMs": 109.10927999997512,
+          "variant": "operation"
+        }
+      ]
+    },
+    {
+      "capture": "baseline2",
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+      "sha256": "fa25762b3122cdebc609a045b084bc5322e2c061071a0eb0310842bf3f61a718",
+      "protocol": "ready-then-pinch-v2",
+      "method": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "cpuSlowdown": 4,
+      "outerMedianMs": 115.10305199993309,
+      "browserMarkMedianMs": 21.40000009536743,
+      "samples": [
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 20.90000009536743
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 0,
+          "durationMs": 123.94538399996236,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.600000381469727
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 1,
+          "durationMs": 115.10305199993309,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 22
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 2,
+          "durationMs": 114.91119100002106,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 16.90000009536743
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 3,
+          "durationMs": 109.35498900001403,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.40000009536743
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 4,
+          "durationMs": 118.1067289999919,
+          "variant": "operation"
+        }
+      ]
+    },
+    {
+      "capture": "R17",
+      "path": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/report.json",
+      "sha256": "72d1e2a352f3834bbc8dbdc0c2b661b36e952db548831ec91fd1ceeaece06a2c",
+      "protocol": "ready-then-pinch-v2",
+      "method": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "cpuSlowdown": 4,
+      "outerMedianMs": 120.5208739999216,
+      "browserMarkMedianMs": 20.699999809265137,
+      "samples": [
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 20.5
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 0,
+          "durationMs": 116.22501699998975,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 20.699999809265137
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 1,
+          "durationMs": 133.13259200006723,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 2,
+          "durationMs": 113.85808799997903,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 20.699999809265137
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 3,
+          "durationMs": 120.5208739999216,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.300000190734863
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 4,
+          "durationMs": 142.77212300000247,
+          "variant": "operation"
+        }
+      ]
+    },
+    {
+      "capture": "R18",
+      "path": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/report.json",
+      "sha256": "4bf81da063d35621fa3d02d83099eb521ba2be61066eeb0b2897aa9c1dcd34e8",
+      "protocol": "ready-then-pinch-v2",
+      "method": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "cpuSlowdown": 4,
+      "outerMedianMs": 132.0944390000077,
+      "browserMarkMedianMs": 21.299999713897705,
+      "samples": [
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 20.5
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 0,
+          "durationMs": 121.40256099996623,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.299999713897705
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 1,
+          "durationMs": 115.97635099990293,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21.59999990463257
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 2,
+          "durationMs": 141.18210599990562,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 21
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 3,
+          "durationMs": 132.0944390000077,
+          "variant": "operation"
+        },
+        {
+          "browserMeasures": [
+            {
+              "name": "write-to-paint",
+              "durationMs": 22.199999809265137
+            }
+          ],
+          "journey": "changeqty",
+          "link": "Office",
+          "run": 4,
+          "durationMs": 136.1096729999408,
+          "variant": "operation"
+        }
+      ]
+    }
+  ],
+  "frozenSourceHashes": {
+    "Phase0": {
+      "src/components/materialLists/QuantityControls.tsx": "e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b",
+      "src/components/ui/button.tsx": "0110ccd24f207397b5351f333be48f0604fbc6512ce4060699043a07b094e718",
+      "src/lib/speed-telemetry.ts": "596467185b98be134228672f0aa934e29e4f85307e79fcbb8cd6ffe50f3a16f2"
+    },
+    "R17": {
+      "src/components/materialLists/QuantityControls.tsx": "e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b",
+      "src/components/ui/button.tsx": "97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb",
+      "src/lib/speed-telemetry.ts": "596467185b98be134228672f0aa934e29e4f85307e79fcbb8cd6ffe50f3a16f2"
+    },
+    "R18": {
+      "src/components/materialLists/QuantityControls.tsx": "e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b",
+      "src/components/ui/button.tsx": "97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb",
+      "src/lib/speed-telemetry.ts": "596467185b98be134228672f0aa934e29e4f85307e79fcbb8cd6ffe50f3a16f2"
+    }
+  },
+  "timerBoundary": "Node performance.now before adapter invocation through initial textbox value read, default increase click, changed-value assertion and separate2rAF.",
+  "browserBoundary": "startSpeedPaint invoked inside quantity handler before state/commit; mark ends2rAF after completion callback. Overlaps outer duration; not a disjoint segment or physical paint proof.",
+  "notRetained": [
+    "Driver inputValue/click/assert/paint phase durations",
+    "Actual pointerdown/click or DOM-ready timestamps",
+    "Per-sample CPU/commit trace or mutation acknowledgement time"
+  ],
+  "conclusion": "Outer median failure remains. Stable browser mark medians cannot establish cause or justify comparator waiver."
+}
