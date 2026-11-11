@@ -1,33 +1,22 @@
 "use client";
+import { OrdinaryMaterialListItem } from "./OrdinaryMaterialListItem";
+import { InitialsSyncBadge, MaterialListPartPhoto, MaterialListRowMenu, MaterialListEditableFields } from "./MaterialListItemPresentation";
 import { useQueuedReceiptIntent } from "~/hooks/use-queued-receipt-intent";
 import { startSpeedPaint } from "~/lib/speed-telemetry";
-import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 import { firstText } from "~/lib/first-text";
 import type { SupplierVersion } from "~/lib/job-supplier-defaults";
-import { packContents } from "~/lib/pack-quantity";
 
 import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent } from "~/components/ui/card";
-import { QuantityControls } from "~/components/materialLists/QuantityControls";
-import { SupplierSelector } from "~/components/materialLists/SupplierSelector";
 import { VerticalPickerOverlay } from "~/components/materialLists/wizard/VerticalPickerOverlay";
-import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
+
 import {
   CheckCircle2Icon,
   Clock3Icon,
-  MoreVerticalIcon,
-  TrashIcon,
   XCircleIcon,
 } from "lucide-react";
-import Image from "~/components/catalogue/PartImage";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
 import { cn } from "~/lib/utils";
 import type { ReplicacheSupplier } from "~/hooks/use-replicache-suppliers";
@@ -40,7 +29,7 @@ import {
 type MaterialListSyncStatus = ReplicacheSyncStatus;
 type VerifyStatus = "pending" | "partial" | "complete" | "problem";
 
-interface MaterialListItemProps {
+export interface MaterialListItemProps {
   item: {
     jobPriceStatus?: string;
     sentOrderItemId?: string | null;
@@ -146,60 +135,6 @@ function VerifyQuantityColumn({
   );
 }
 
-function getUserInitials(name: string | null | undefined, email: string | null | undefined) {
-  const source = (firstText(name?.trim(), email?.split("@")[0]?.trim()) ?? "?").replace(
-    /[^a-z0-9\s._-]/gi,
-    "",
-  );
-  const parts = source
-    .split(/[\s._-]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-  }
-
-  return (parts[0] ?? "?").slice(0, 2).toUpperCase();
-}
-
-function InitialsSyncBadge({
-  user,
-  status,
-}: {
-  user: MaterialListItemProps["item"]["addedBy"] | null | undefined;
-  status: MaterialListSyncStatus;
-}) {
-  const displayName = firstText(user?.name?.trim(), user?.email?.trim()) ?? "Unknown user";
-  const initials = getUserInitials(user?.name, user?.email);
-  const statusLabel =
-    status === "syncing" ? "Syncing" : status === "pending" ? "Pending sync" : "Synced";
-
-  const statusClasses =
-    status === "syncing"
-      ? "ring-primary"
-      : status === "pending"
-        ? "ring-amber-500"
-        : "ring-emerald-500";
-
-  return (
-    <div
-      className="absolute top-2 left-2 z-20"
-      title={`Added by ${displayName} • ${statusLabel}`}
-      aria-label={`Added by ${displayName}. ${statusLabel}.`}
-    >
-      <div
-        className={cn(
-          "relative flex h-[27px] w-[27px] items-center justify-center rounded-full bg-white/95 text-[9px] font-semibold text-foreground shadow-sm ring-2 ring-offset-1 ring-offset-background/80 dark:bg-card/95 dark:text-foreground",
-          statusClasses,
-        )}
-      >
-        {initials}
-      </div>
-    </div>
-  );
-}
-
 function MaterialListItemComponent({
   item,
   materialListId,
@@ -247,7 +182,6 @@ function MaterialListItemComponent({
   const [verifyPickerQuantity, setVerifyPickerQuantity] = useState<number | null>(
     null,
   );
-  const quantity = parseFloat(item.quantity);
 
   const handleRemove = () => {
     if (removeInFlightRef.current) return;
@@ -709,82 +643,9 @@ function MaterialListItemComponent({
           <InitialsSyncBadge user={item.addedBy} status={itemSyncStatus} />
           {!verifyMode && !item.sentOrderItemId && (
             // Card actions live in a menu so more can be added later.
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="bg-card/90 ring-border text-muted-foreground hover:text-foreground absolute top-2 right-2 z-20 h-[27px] w-[27px] rounded-full p-0 shadow-sm ring-1 after:absolute after:-inset-2 after:rounded-full"
-                  aria-label={`More for ${partName}`}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <MoreVerticalIcon className="size-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-                <DropdownMenuItem variant="destructive" onSelect={handleRemove}>
-                  <TrashIcon className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <MaterialListRowMenu partName={partName} handleRemove={handleRemove} />
           )}
-          <div
-            className="part-photo-frame relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-muted"
-            style={
-              verifyMode
-                ? {
-                    WebkitTouchCallout: "none",
-                    WebkitUserSelect: "none",
-                    userSelect: "none",
-                  }
-                : undefined
-            }
-            onContextMenu={
-              verifyMode ? (event) => event.preventDefault() : undefined
-            }
-          >
-            {item.partDefinition?.imageUrl ? (
-              <Image
-                src={item.partDefinition.imageUrl}
-                alt={item.partDefinition.displayName}
-                fill
-                // Cards are under 300px wide unless one fills a phone screen.
-                sizes="(max-width: 420px) 100vw, 300px"
-                className="part-photo object-contain p-1"
-                draggable={false}
-                onContextMenu={
-                  verifyMode ? (event) => event.preventDefault() : undefined
-                }
-                style={
-                  verifyMode
-                    ? {
-                        WebkitTouchCallout: "none",
-                        WebkitUserSelect: "none",
-                        userSelect: "none",
-                      }
-                    : undefined
-                }
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-gray-300">
-                <svg
-                  className="h-7 w-7 sm:h-9 sm:w-9"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
-              </div>
-            )}
-            <QuotedBadge status={item.jobPriceStatus} onPhoto />
+          <MaterialListPartPhoto item={item} verifyMode={verifyMode}>
             {verifyMode && verifyBadge && (
               <div className="absolute top-2 right-2 z-20">{verifyBadge}</div>
             )}
@@ -813,7 +674,7 @@ function MaterialListItemComponent({
               </div>
             )}
 
-          </div>
+          </MaterialListPartPhoto>
 
           {verifyMode && (
             <div className="mb-3 grid grid-cols-3 gap-1">
@@ -840,47 +701,7 @@ function MaterialListItemComponent({
 
           {!verifyMode && item.sentOrder && <SentMaterialStatus order={item.sentOrder} materialListId={materialListId} unit={firstText(item.partDefinition?.bulkUnit, item.uom?.code)} />}
           {!verifyMode && !item.sentOrderItemId && (
-            <div className="mt-auto flex flex-col gap-2 pt-2">
-              {/* Each label sits just above its control. */}
-              <div className="flex flex-col gap-0.5">
-                {(isToolRequest || packContents(item.partDefinition?.piecesPerPack) === 1) && <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
-                  Quantity
-                </span>}
-                <QuantityControls
-                  itemId={item.id}
-                  quantity={quantity}
-                  orderMultiple={isToolRequest ? null : item.supplierPart?.packSize}
-                  piecesPerPack={isToolRequest ? null : item.partDefinition?.piecesPerPack} bulkUnit={item.partDefinition?.bulkUnit} individualUnit={item.partDefinition?.individualUnit}
-                  materialListId={materialListId}
-                  pendingSync={item.pendingSync}
-                  compact
-                />
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <span className="px-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
-                  Supplier
-                </span>
-                {isToolRequest ? (
-                  <span className="px-1 text-sm text-muted-foreground">
-                    Tool room
-                  </span>
-                ) : (
-                  <SupplierSelector
-                    currentVersion={item.supplierVersion}
-                    itemId={item.id}
-                    partDefinitionId={item.partDefinition?.id ?? ""}
-                    currentSupplierPartId={item.supplierPart?.id}
-                    currentSupplierId={item.selectedSupplierId}
-                    materialListId={materialListId}
-                    suppliers={suppliers}
-                    compact
-                  />
-                )}
-              </div>
-
-              {/* Line totals are hidden for now (prices are not set up yet). */}
-            </div>
+            <MaterialListEditableFields item={item} materialListId={materialListId} suppliers={suppliers} isToolRequest={isToolRequest} />
           )}
         </div>
       </CardContent>
@@ -902,4 +723,11 @@ function MaterialListItemComponent({
   );
 }
 
-export const MaterialListItem = memo(MaterialListItemComponent);
+/** Only never-sent, non-receiving rows can skip the receipt controller.
+ * Sent/read-only rows keep its existing lifecycle even outside verify mode. */
+function MaterialListItemBoundary(props: MaterialListItemProps) {
+  return !props.verifyMode && !props.item.sentOrderItemId && !props.item.sentOrder
+    ? <OrdinaryMaterialListItem {...props} />
+    : <MaterialListItemComponent {...props} />;
+}
+export const MaterialListItem = memo(MaterialListItemBoundary);

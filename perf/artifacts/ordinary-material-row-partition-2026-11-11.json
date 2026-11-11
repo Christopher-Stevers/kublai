@@ -1,0 +1,76 @@
+{
+  "kind": "source partition and focused functional checks; not performance evidence",
+  "createdAt": "2026-11-11T11:25:00.646Z",
+  "baseCommit": "d619ecc9c5566e757605ca14bc0adde383e934fb",
+  "baseRowSha256": "53bc702f7d0adddbf4044353bbc7ca19de91ca139bf7061c5447b9f353cc1b90",
+  "sourceSha256": {
+    "src/components/materialLists/MaterialListItem.tsx": "9661a0f5b719689adcd8915780409df00fe53c8cabc94ef1bcb6b2d026131431",
+    "src/components/materialLists/OrdinaryMaterialListItem.tsx": "e06d18696b67510d45b1871820b046f9ab5f48bdb59b7e1008bd526fe353f889",
+    "src/components/materialLists/MaterialListItemPresentation.tsx": "95d410f46829c268090d9d56b8f04120efa27e10e002f10a5ca081fb32ea223b",
+    "src/components/materialLists/MaterialListItem.ordinary.test.tsx": "8972a836b814f55043faa7e28139e924a72cdc21f1f4ce9105fcef9e146234eb"
+  },
+  "discriminator": "!verifyMode && !item.sentOrderItemId && !item.sentOrder",
+  "receiptLifecycle": {
+    "unchanged": true,
+    "scope": "Component declaration through verifyTappable, except moving the presentation-only quantity parse into shared fields",
+    "normalizedSha256": "6a85f92840635dd03984dd2cf747c8b98a9278ebf77eddbfdfa7e8e0d3181d46"
+  },
+  "sourceOnlyElisionsPerEligibleRow": {
+    "refs": [
+      "verifyLongPressTimerRef",
+      "receiptAllowed",
+      "verifyLongPressTriggeredRef",
+      "verifySuppressClickRef",
+      "verifyPointerStartYRef",
+      "verifyBaseQuantityRef",
+      "verifyDragQuantityRef",
+      "verifyActivePointerIdRef",
+      "verifyPickerTouchYRef",
+      "verifyPickerTouchAccumulatorRef",
+      "verifyPickerListenersRef",
+      "verifyTouchListenersRef",
+      "verifyValue",
+      "useQueuedReceiptIntent.pending"
+    ],
+    "states": [
+      "[verifyReceivedQuantity, setVerifyReceivedQuantity]",
+      "[verifyHasProblem, setVerifyHasProblem]",
+      "[verifyPickerQuantity, setVerifyPickerQuantity]",
+      "[verifyStarted, setVerifyStarted]"
+    ],
+    "layoutEffectRegistrations": 2,
+    "passiveEffectRegistrations": 2,
+    "queuedHookRefAndEffectIncluded": true
+  },
+  "fixtureProjection": {
+    "ordinaryRows": 24,
+    "refsNotMounted": 336,
+    "statesNotMounted": 96,
+    "layoutEffectsNotRegistered": 48,
+    "passiveEffectsNotRegistered": 48,
+    "qualification": "Static source projection, not measured effect invocation counts or milliseconds saved."
+  },
+  "validation": {
+    "focusedCommand": "pnpm exec vitest run src/components/materialLists/MaterialListItem.ordinary.test.tsx src/components/materialLists/MaterialListItem.verify.test.tsx src/components/materialLists/QuantityControls.test.tsx src/components/materialLists/PackQuantityControls.test.tsx src/components/materialLists/TableReceive.test.tsx src/hooks/use-queued-receipt-intent.test.ts --maxWorkers=1",
+    "filesPassed": 6,
+    "testsPassed": 39,
+    "scopedEslint": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "typecheck": {
+      "globalExitCode": 2,
+      "changedPathDiagnostics": [],
+      "qualification": "Repository-wide check still fails on unrelated existing paths; not a clean global typecheck."
+    },
+    "rawNavigationGate": "0 new handlers;32 existing exact exceptions",
+    "gitDiffCheck": "passed"
+  },
+  "transition": "Unsent row leaving verify mode unmounts controller and cancels ephemeral receipt click/hold; sent rows retain original controller irrespective of verifyMode. Ordinary refresh keeps stable child identity and durable quantity draft; account-key remount clears previous state.",
+  "limitations": [
+    "No canonical build/static-byte comparison or timing capture performed.",
+    "No speed/byte saving or full gate pass claimed.",
+    "Shared stateless presentation and dispatcher add React boundaries; net cost remains unmeasured.",
+    "R11 immutable source excludes this later candidate; no production/schema/worker/release action."
+  ]
+}
