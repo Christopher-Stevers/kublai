@@ -70,8 +70,23 @@ export function SpeedTelemetry() {
   }, [pathname]);
   useEffect(() => {
     if (typeof PerformanceObserver === "undefined") return;
-    let queue: (SpeedMetric & { screen: ReturnType<typeof speedScreen> })[] =
-      [];
+    const linkClass = () =>
+      !navigator.onLine
+        ? "offline"
+        : (navigator as Navigator & { connection?: { effectiveType?: string } })
+              .connection?.effectiveType === "4g"
+          ? "fast"
+          : (
+                navigator as Navigator & {
+                  connection?: { effectiveType?: string };
+                }
+              ).connection?.effectiveType
+            ? "slow"
+            : "unknown";
+    let queue: (SpeedMetric & {
+      screen: ReturnType<typeof speedScreen>;
+      link: string;
+    })[] = [];
     let sent = 0;
     const observers: PerformanceObserver[] = [];
     let active = true;
@@ -83,6 +98,7 @@ export function SpeedTelemetry() {
             name,
             durationMs: Math.round(value),
             screen: speedScreen(window.location.pathname),
+            link: linkClass(),
           });
       };
     onINP(vital("inp"));
@@ -90,7 +106,11 @@ export function SpeedTelemetry() {
     const flush = () => {
       if (!queue.length || sent >= 120 || !navigator.onLine) return;
       const batch = queue
-        .filter((metric) => metric.screen === queue[0]?.screen)
+        .filter(
+          (metric) =>
+            metric.screen === queue[0]?.screen &&
+            metric.link === queue[0]?.link,
+        )
         .slice(0, Math.min(30, 120 - sent));
       try {
         if (
@@ -108,21 +128,7 @@ export function SpeedTelemetry() {
                       : window.innerWidth < 1000
                         ? "tablet"
                         : "desktop",
-                  link: !navigator.onLine
-                    ? "offline"
-                    : (
-                          navigator as Navigator & {
-                            connection?: { effectiveType?: string };
-                          }
-                        ).connection?.effectiveType === "4g"
-                      ? "fast"
-                      : (
-                            navigator as Navigator & {
-                              connection?: { effectiveType?: string };
-                            }
-                          ).connection?.effectiveType
-                        ? "slow"
-                        : "unknown",
+                  link: batch[0]?.link,
                   metrics: batch.map(({ name, durationMs }) => ({
                     name,
                     durationMs,
@@ -168,6 +174,7 @@ export function SpeedTelemetry() {
                   : name,
               durationMs: Math.round(durationMs),
               screen: speedScreen(window.location.pathname),
+              link: linkClass(),
             });
           }
         }
