@@ -1,5 +1,6 @@
 import { MaterialListScreen as ActualMaterialListScreen } from "~/components/materialLists/MaterialListScreen";
 import {
+  act,
   cleanup,
   fireEvent,
   render as renderComponent,
@@ -22,6 +23,9 @@ function render(children: ReactNode) {
 }
 
 const state = vi.hoisted(() => ({
+  overviewLoad: vi.fn(async () => ({ unreadCount: 0 })),
+  view: "material-lists",
+  online: true,
   send: vi.fn(),
   fetch: vi.fn(),
   kind: "tools",
@@ -39,7 +43,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("~/hooks/use-job-workspace-navigation", () => ({
   useJobWorkspaceNavigation: () => ({
-    location: { jobId: "job", view: "material-lists", materialListId: state.materialListId },
+    location: { jobId: "job", view: state.view, materialListId: state.materialListId },
     navigate: vi.fn(),
     back: vi.fn(),
   }),
@@ -73,7 +77,10 @@ vi.mock("~/hooks/use-material-list-sort", () => ({
   useMaterialListSort: (items: unknown[]) => ({ sortedItems: items }),
 }));
 vi.mock("~/hooks/use-job-room-count", () => ({ useJobRoomCount: () => 0 }));
-vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
+vi.mock("~/hooks/use-online-status", () => ({
+  useOnlineStatus: () => state.online,
+  getBrowserOnlineStatus: () => state.online,
+}));
 vi.mock("~/hooks/use-page-view-state", async () => {
   const { useState } = await import("react");
   return {
@@ -137,47 +144,72 @@ vi.mock("~/components/app/DeferredFeatures", async () => ({
   JobDocumentsView: () => null,
   JobChatView: () => null,
 }));
-vi.mock("~/trpc/react", () => ({
-  api: {
-    useUtils: () => ({
-      materialList: {
-        previewOrders: { fetch: state.fetch, invalidate: vi.fn() },
-        getOrdersForMaterialList: { invalidate: vi.fn() },
-        listOrders: { invalidate: vi.fn() },
-      },
-      assets: { listRequests: { invalidate: vi.fn() } },
-    }),
-    user: {
-      getMyRole: {
-        useQuery: () => ({
-          isFetched: true,
-          data: {
-            organizationId: "org",
-            permissions: {
-              can: state.can,
-            },
-          },
-        }),
-      },
-    },
-    chat: { getOverview: { useQuery: () => ({}) } },
-    materialList: {
-      duplicate: { useMutation: () => ({ isPending: false }) },
-      getOrderById: { useQuery: () => ({}) },
-      updateOrderNotes: { useMutation: () => ({}) },
-      updateOrderItemVerification: { useMutation: () => ({}) },
-      markAllOrderItemsReceived: { useMutation: () => ({}) },
-      sendGeneratedOrder: { useMutation: () => ({ mutateAsync: state.send }) },
-    },
-    jobPricing: { get: { useQuery: () => ({data: state.priceBook}) }, requestApproval: { useMutation: () => ({}) } },
-  },
+vi.mock("~/components/jobs/JobWorkspaceOptions", () => ({
+  JobWorkspaceOptions: ({ chatUnreadCount = 0 }: { chatUnreadCount?: number }) => (
+    <output aria-label="Job chat unread">{chatUnreadCount}</output>
+  ),
 }));
+vi.mock("~/trpc/react", async () => {
+  const { useQuery } = await import("@tanstack/react-query");
+  function useOverviewQuery(input: { jobId: string }, options: object) {
+    return useQuery({
+      queryKey: [["chat", "getOverview"], { input, type: "query" }],
+      queryFn: state.overviewLoad,
+      ...options,
+    });
+  }
+  return {
+    api: {
+      useUtils: () => ({
+        materialList: {
+          previewOrders: { fetch: state.fetch, invalidate: vi.fn() },
+          getOrdersForMaterialList: { invalidate: vi.fn() },
+          listOrders: { invalidate: vi.fn() },
+        },
+        assets: { listRequests: { invalidate: vi.fn() } },
+      }),
+      user: {
+        getMyRole: {
+          useQuery: () => ({
+            isFetched: true,
+            data: {
+              organizationId: "org",
+              permissions: {
+                can: state.can,
+              },
+            },
+          }),
+        },
+      },
+      chat: {
+        getOverview: {
+          _def: () => ({ path: ["chat", "getOverview"] }),
+          useQuery: useOverviewQuery,
+        },
+      },
+      materialList: {
+        duplicate: { useMutation: () => ({ isPending: false }) },
+        getOrderById: { useQuery: () => ({}) },
+        updateOrderNotes: { useMutation: () => ({}) },
+        updateOrderItemVerification: { useMutation: () => ({}) },
+        markAllOrderItemsReceived: { useMutation: () => ({}) },
+        sendGeneratedOrder: { useMutation: () => ({ mutateAsync: state.send }) },
+      },
+      jobPricing: { get: { useQuery: () => ({data: state.priceBook}) }, requestApproval: { useMutation: () => ({}) } },
+    },
+  };
+});
 
+import { setAppPageActive } from "~/lib/app-page-activity";
 import { JobsClient } from "./JobsClient";
 afterEach(() => {
   cleanup();
   for (const client of queryClients.splice(0)) client.clear();
   state.items = null;
+  state.view = "material-lists";
+  state.online = true;
+  state.materialListId = "list";
+  setAppPageActive(true);
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -281,4 +313,39 @@ it("withholds list creation from verification-only members and while permissions
   }
   state.materialListId = "list";
   state.can = { "orders.send": false, "quotes.create": false };
+});
+
+
+it("keeps the cached job badge visible while an active revisit refreshes, and pauses until resume", async () => {
+  state.materialListId = null;
+  state.view = "material-lists";
+  let resolve!: (value: { unreadCount: number }) => void;
+  const refresh = new Promise<{ unreadCount: number }>((yes) => {
+    resolve = yes;
+  });
+  state.overviewLoad.mockReturnValue(refresh);
+  const tree = render(<JobsClient initialJobs={[]} />);
+  const client = queryClients.at(-1)!;
+  const key = [["chat", "getOverview"], { input: { jobId: "job" }, type: "query" }];
+  client.setQueryDefaults(key, { staleTime: 300_000 });
+  client.setQueryData(key, { unreadCount: 7 });
+  state.view = "options";
+  tree.rerender(
+    <QueryClientProvider client={client}>
+      <JobsClient initialJobs={[]} />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByLabelText("Job chat unread")).toHaveTextContent("7");
+  await waitFor(() => expect(state.overviewLoad).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    resolve({ unreadCount: 9 });
+    await refresh;
+  });
+  await waitFor(() => expect(screen.getByLabelText("Job chat unread")).toHaveTextContent("9"));
+  act(() => setAppPageActive(false));
+  expect(client.getQueryCache().find({ queryKey: key, exact: true })?.isActive()).toBe(false);
+  expect(state.overviewLoad).toHaveBeenCalledTimes(1);
+  act(() => setAppPageActive(true));
+  await waitFor(() => expect(state.overviewLoad).toHaveBeenCalledTimes(2));
+  expect(screen.getByLabelText("Job chat unread")).toHaveTextContent("9");
 });

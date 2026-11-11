@@ -30,6 +30,8 @@ import { useReplicacheJobDetail, useReplicacheJobsList,  } from "~/hooks/use-rep
 import { MaterialListScreen } from "~/components/app/DeferredFeatures";
 import { JobEditDialog } from "~/components/app/DeferredFeatures";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useJobRoomCount } from "~/hooks/use-job-room-count";
 import { useJobWorkspaceNavigation } from "~/hooks/use-job-workspace-navigation";
 import { useOnlineStatus } from "~/hooks/use-online-status";
@@ -90,10 +92,19 @@ export function JobsClient({
   const isBrowserOnline = useOnlineStatus();
   const roomCount = useJobRoomCount(offlineJobId, offlineJobView === "options");
 
-  const { data: chatOverview } = api.chat.getOverview.useQuery({ jobId: offlineJobId ?? "" }, {
-    enabled: isBrowserOnline && Boolean(offlineJobId) && offlineJobView === "options",
-    refetchInterval: 30_000, refetchIntervalInBackground: false,
-  });
+  const chatOverviewInput = { jobId: offlineJobId ?? "" };
+  const chatOverviewOptions = useTierOneReadOptions(
+    getQueryKey(api.chat.getOverview, chatOverviewInput, "query"),
+    isBrowserOnline && Boolean(offlineJobId) && offlineJobView === "options",
+  );
+  const { data: chatOverview } = api.chat.getOverview.useQuery(
+    chatOverviewInput,
+    {
+      ...chatOverviewOptions,
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+    },
+  );
 
   // Check user's organizationId status
   const { data: userData, isFetched: hasFetchedUser } =
