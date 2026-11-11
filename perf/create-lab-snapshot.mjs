@@ -32,7 +32,10 @@ execFileSync(
     "--exclude=.open-next",
     "--exclude=.env*",
     "--exclude=output",
-    "--exclude=data/perf",
+    "--exclude=data",
+    "--exclude=uploads",
+    "--exclude=.tmp",
+    "--exclude=.private",
     "--exclude=perf/fixtures.json",
     `${source}/`,
     `${target}/`,
@@ -44,6 +47,33 @@ fs.symlinkSync(
   path.join(target, "node_modules"),
   "dir",
 );
+// postgres-js does not interpret pg's URL socket query: replace all runtime
+// application connection constructors in the isolated copy with explicit options.
+const connectionOptions = JSON.stringify({
+  host: socket,
+  port: 55463,
+  database: "foremanhq_perf_lab",
+});
+for (const relative of [
+  "src/server/db/index.ts",
+  "src/server/background/hints.ts",
+  "src/server/background/worker.ts",
+]) {
+  const filename = path.join(target, relative);
+  let code = fs.readFileSync(filename, "utf8");
+  code = code
+    .replaceAll("postgres(env.DATABASE_URL)", `postgres(${connectionOptions})`)
+    .replaceAll(
+      "postgres(process.env.DATABASE_URL!, {",
+      `postgres({ ...${connectionOptions},`,
+    );
+  if (
+    code.includes("postgres(env.DATABASE_URL") ||
+    code.includes("postgres(process.env.DATABASE_URL")
+  )
+    throw new Error(`Unpatched database constructor: ${relative}`);
+  fs.writeFileSync(filename, code);
+}
 const configPath = path.join(target, "next.config.js");
 let config = fs.readFileSync(configPath, "utf8");
 if (!config.includes("const config = {"))
