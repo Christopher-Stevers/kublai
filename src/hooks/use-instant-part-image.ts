@@ -10,7 +10,7 @@ import { requestCatalogueReplicachePull } from "~/lib/replicache-catalogue";
 import { useInstantMutation } from "./use-instant-mutation";
 
 type Part = RouterOutputs["catalogue"]["getPart"];
-type Result = RouterOutputs["catalogue"]["updatePart"];
+type Result = NonNullable<RouterOutputs["catalogue"]["updatePart"]>;
 type Input = Pick<RouterInputs["catalogue"]["updatePart"], "partId"> & {
   imageUrl: string;
   expectedAccountKey: string;
