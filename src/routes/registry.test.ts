@@ -15,12 +15,15 @@ vi.mock("~/components/jobs/JobWorkspaceOptions", () => {
   return {};
 });
 vi.mock("~/components/materialLists/MaterialListScreen", () => ({}));
+vi.mock("~/components/materialLists/JobMaterialListsView", () => ({}));
 vi.mock("~/components/jobs/JobChatView", () => ({}));
 import { journeyRegistry, prepareJourney } from "./registry";
 beforeEach(() => {
   calls.query.mockReset();
   calls.readJob.mockReset();
-  calls.query.mockImplementation(async (fn) => fn({}));
+  calls.query.mockImplementation(
+    async (fn: (tx: Record<string, never>) => unknown) => fn({}),
+  );
 });
 describe("shared journey preparation", () => {
   it("maps all eight actual lab starting screens", () => {
@@ -50,9 +53,35 @@ describe("shared journey preparation", () => {
       "/jobs/material-lists/list%20id?orderId=order%20id",
     );
   });
-  it("uses the existing lightweight local job reader with no item scan", async () => {
+  it("aborted open-job preparation does not load code or read local data", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await prepareJourney("openjob", { jobId: "job" }, controller.signal);
+    expect(calls.code).not.toHaveBeenCalled();
+    expect(calls.query).not.toHaveBeenCalled();
+    expect(calls.readJob).not.toHaveBeenCalled();
+  });
+  it("prewarms open-job code without a discarded local query", async () => {
     await prepareJourney(
       "openjob",
+      { jobId: "job" },
+      new AbortController().signal,
+    );
+    expect(calls.code).toHaveBeenCalledOnce();
+    expect(calls.query).not.toHaveBeenCalled();
+    expect(calls.readJob).not.toHaveBeenCalled();
+    // Completed code preparation is shared; another press still adds no data query.
+    await prepareJourney(
+      "openjob",
+      { jobId: "job" },
+      new AbortController().signal,
+    );
+    expect(calls.code).toHaveBeenCalledOnce();
+    expect(calls.query).not.toHaveBeenCalled();
+  });
+  it("uses the existing lightweight local job reader with no item scan", async () => {
+    await prepareJourney(
+      "switchjobtabs",
       { jobId: "job" },
       new AbortController().signal,
     );
@@ -62,10 +91,14 @@ describe("shared journey preparation", () => {
   it("aborting before or during module preparation skips local data work", async () => {
     const first = new AbortController();
     first.abort();
-    await prepareJourney("openjob", { jobId: "job" }, first.signal);
+    await prepareJourney("switchjobtabs", { jobId: "job" }, first.signal);
     expect(calls.query).not.toHaveBeenCalled();
     const second = new AbortController(),
-      pending = prepareJourney("openjob", { jobId: "job" }, second.signal);
+      pending = prepareJourney(
+        "switchjobtabs",
+        { jobId: "job" },
+        second.signal,
+      );
     second.abort();
     await pending;
     expect(calls.query).not.toHaveBeenCalled();

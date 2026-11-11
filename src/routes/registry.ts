@@ -57,7 +57,7 @@ const noData = async (_p: JourneyParameters, _signal: AbortSignal) => undefined;
 // Private remote chat/drawing contents are not fetched or retained speculatively.
 export const journeyRegistry = {
   coldstart: { code: screenCode.jobs, data: noData, sourceHref: () => "/jobs" },
-  openjob: { code: screenCode.job, data: jobData, sourceHref: () => "/jobs" },
+  openjob: { code: screenCode.job, data: noData, sourceHref: () => "/jobs" },
   switchjobtabs: {
     code: screenCode.materialLists,
     data: jobData,
