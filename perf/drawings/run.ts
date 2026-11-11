@@ -158,7 +158,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       classification.unsupported.push("type3-font");
     const raster: any[] = [],
       fidelity: any[] = [];
-    for (const width of [512, 1024, 2048]) {
+    for (const width of imagePrototype ? [512, 1024] : [512, 1024, 2048]) {
       const vp = page.getViewport({ scale: width / viewport.width }),
         canvas = createCanvas(Math.ceil(vp.width), Math.ceil(vp.height));
       const t = performance.now();
@@ -201,15 +201,18 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
             canvas.height,
           ),
         });
-        if (reports.length < 4 && width === 1024) {
+        if ((imagePrototype || width === 1024) && reports.length < 4) {
           await writeFile(
-            path.join(previewRoot, `${sample.hash.slice(0, 12)}-reference.png`),
+            path.join(
+              previewRoot,
+              `${sample.hash.slice(0, 12)}-${imagePrototype ? `${width}-reference` : "reference"}.png`,
+            ),
             canvas.toBuffer("image/png"),
           );
           await writeFile(
             path.join(
               previewRoot,
-              `${sample.hash.slice(0, 12)}-${imagePrototype ? "image-prototype" : "prototype"}.png`,
+              `${sample.hash.slice(0, 12)}-${imagePrototype ? `${width}-image-prototype` : "prototype"}.png`,
             ),
             prototype.toBuffer("image/png"),
           );

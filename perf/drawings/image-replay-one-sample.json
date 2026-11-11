@@ -1,0 +1,75 @@
+{
+  "protocol": "decoded-image-replay-v1-single-existing-sample",
+  "sampleHash": "268d1043b94a91e45a813bd7c62f1ad966a0515045984de3536123c16fb00215",
+  "sampleSelection": "Smallest prior decoded image bytes among non-scan samples without prior unsupported classifications; operator inspection confirmed ordinary RGBA32 before rendering.",
+  "sampleCount": 1,
+  "viewportWidths": [
+    512,
+    1024
+  ],
+  "watchdogSeconds": 180,
+  "exitCode": 0,
+  "watchdogExpired": false,
+  "image": {
+    "kind": 3,
+    "width": 245,
+    "height": 314
+  },
+  "imageReplay": {
+    "placements": 1,
+    "uniqueResources": 1,
+    "ownedRgbaBytes": 307720,
+    "failures": [],
+    "imageReplayEligible": true,
+    "completeEncoding": false
+  },
+  "fidelity": [
+    {
+      "viewportWidth": 512,
+      "hostPrototypeMs": 112.68155299999944,
+      "minTileSsim": 0.004243759418262681,
+      "meanTileSsim": 0.3095969860968712,
+      "inkCoverageDifference": 0.3774671052631579,
+      "passes": false
+    },
+    {
+      "viewportWidth": 1024,
+      "hostPrototypeMs": 105.54398500000025,
+      "minTileSsim": 0.004294111990493712,
+      "meanTileSsim": 0.3173251616383677,
+      "inkCoverageDifference": 0.2562311264641288,
+      "passes": false
+    }
+  ],
+  "fullSheetFidelityPassed": false,
+  "completeEncoding": false,
+  "unsupported": [],
+  "prototypeOmissions": [
+    "all-text-glyphs",
+    "layers",
+    "nested-form-matrices",
+    "opacity-state"
+  ],
+  "visualReview": {
+    "tool": "view_image",
+    "bothReferencePrototypePairsInspected": true,
+    "finding": "Image-bearing title region is present and upright; most drawing content is absent. Text/glyph rendering was disabled, with nested forms/layers/opacity still incomplete. Image-only eligibility is not whole-sheet eligibility."
+  },
+  "nextStep": "Separately review existing glyph replay/text-state and nested-form semantics on this same sample before expanding corpus. No further run performed.",
+  "sourceHashesAfterExecution": {
+    "perf/drawings/run.ts": "2aac4c204d7c42d32d463fce41b96d443936e2525b6cee92a7091ec47213d16d",
+    "perf/drawings/operators.ts": "1ee0e5b12ade82708727671d691d8cc7e98df69d95c760f50814adf6cff1a8bf",
+    "perf/drawings/image-resources.ts": "a3f110537e4dadf33daf8faf17212cc8c4b38fb07c89b20b3b6030bf0f4a9710"
+  },
+  "sourceHashAttestation": "Recorded after execution; no independent execution-start source hash record. Source edits were confined to separate image-mode widths/preview names before launch.",
+  "privateOutputHash": "23c68c8cd565e8d8ac74bf7cf2128710e5eae6f8c3edf628465bee1b0b359321",
+  "privatePreviewHashes": {
+    "268d1043b94a-1024-image-prototype.png": "e4a3577dce96d663dcf0358a9043143fbaa28802863a0a65c5c75be37996c212",
+    "268d1043b94a-1024-reference.png": "63508eb51ce71c8c628df0b3bc54ab690824d245b34804098c086f50bfab773e",
+    "268d1043b94a-512-image-prototype.png": "84e41c11f0bfb39f3dd4e57054d5b70f4dc501e2da8ad3a0db9d49ae66452eaf",
+    "268d1043b94a-512-reference.png": "0266aee5d8ae3fe5f4d422ceb7b1295aec7fdbf9ad9da97b32a337e4df193e5a"
+  },
+  "privacy": "Source PDF, paths, titles, geometry and preview images remain ignored/private; only numeric metrics/content hashes committed.",
+  "historicalSpikeReportUnchanged": true,
+  "physicalPhoneEvidence": false
+}
