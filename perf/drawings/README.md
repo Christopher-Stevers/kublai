@@ -132,3 +132,34 @@ remaining stroke/style/text/path semantics still require work.
 before/after hashes, including proof that v1 and historical reports stayed
 unchanged. Images/PDF remain private. No retry, complete-encoding, size, corpus,
 phone/GPU or production claim is made; the owned process exited cleanly.
+
+### Source-only stroke follow-up (not implemented)
+
+Comparison with the installed primary reference,
+`pdfjs-dist/legacy/build/pdf.mjs`, identifies two concrete gaps after v2:
+
+- `CanvasGraphics.getScaleForStroking` / `rescaleAndStroke` (19268–19345)
+  preserve logical PDF width separately and enforce a device-pixel minimum for
+  width-zero hairlines and positive subpixel widths. Uniform and general affine
+  transforms have different compensation; anisotropic compensation also adjusts
+  dash lengths/phase. The prototype assigns only `ctx.lineWidth` and calls
+  `ctx.stroke()`, without these semantics.
+- `CanvasGraphics.setGState` (17374–17436) applies `LW/LC/LJ/ML/D` through the
+  ordinary width/cap/join/miter/dash setters. The prototype ignores those style
+  entries. Its ordinary direct cap/join mappings and miter/dash setters otherwise
+  match the installed setters (17344–17371). Alpha, blending, masks and transfer
+  functions are separate unsupported features, not implied by style support.
+
+These are source-proven discrepancies, not measured explanations of this
+sample's remaining error. Existing metadata records one GState operation but
+not its keys, and no distribution of zero/subpixel widths; attribution to the
+observed light linework remains unquantified.
+
+The next bounded synthetic step would test width-zero/subpixel strokes under
+identity, uniform enlargement/reduction, state save/form/restore, and equivalent
+ordinary versus GState style setters. Nonuniform/rotated/sheared or singular
+transforms need exact reference compensation or explicit unsupported handling;
+no approximate visual retuning. Any later metadata-only operator inspection
+must be separately authorized. No implementation, tests, PDF parsing, rendering
+or runtime was performed for this audit. V2's fidelity failure and unchanged
+thresholds remain the current result.
