@@ -111,7 +111,7 @@ describe("Blank document creation endpoint", () => {
     ).toBe(403);
     expect(state.persist).not.toHaveBeenCalled();
   });
-  it("enforces folder access and collision checks before blob persistence", async () => {
+  it("enforces folder access before blob persistence and numbers a repeated name", async () => {
     const folderId = randomUUID();
     state.workspace!.folders.push({
       id: folderId,
@@ -136,15 +136,18 @@ describe("Blank document creation endpoint", () => {
     ).toBe(404);
     expect(state.persist).not.toHaveBeenCalled();
     await POST(request({ jobId: state.jobId, name: "Report", kind: "word" }));
-    state.persist.mockClear();
+    // A second document of the same name is kept beside the first.
     expect(
       (
         await POST(
           request({ jobId: state.jobId, name: "Report", kind: "word" }),
         )
       ).status,
-    ).toBe(409);
-    expect(state.persist).not.toHaveBeenCalled();
+    ).toBe(201);
+    expect(state.workspace!.documents.map((doc) => doc.name)).toEqual([
+      "Report.docx",
+      "Report-2.docx",
+    ]);
   });
   it("rejects unauthenticated, foreign job and cross-origin requests", async () => {
     expect(

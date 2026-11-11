@@ -24,7 +24,7 @@ it("direct job links show only the current shared menu and keep navigation worki
   expect(screen.queryByRole("button", { name: "Tools" })).toBeNull();
   expect(screen.queryByText("Job pricing & approvals")).toBeNull();
   expect(screen.queryByText("Estimate this job")).toBeNull();
-  expect(screen.getAllByRole("button")).toHaveLength(8); // Seven cards and Edit job.
+  expect(screen.getAllByRole("button")).toHaveLength(6); // Five cards and Edit job; Models and Systems need Dev.
   fireEvent.click(screen.getByRole("button", { name: "Rooms" }));
   expect(mocks.push).toHaveBeenCalledWith("/jobs/alma/rooms");
 });

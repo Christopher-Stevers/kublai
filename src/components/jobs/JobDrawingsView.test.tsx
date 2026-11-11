@@ -308,14 +308,18 @@ describe("Drawings", () => {
     expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
   });
 
-  it("requests native fullscreen and synchronizes browser-initiated exit", async () => {
+  it("requests native fullscreen and keeps the drawing-only view when the browser ends it", async () => {
     const native = nativeFullscreen();
     try {
       openDrawing();
       await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));
       expect(native.request).toHaveBeenCalledWith({ navigationUI: "hide" });
       expect(document.fullscreenElement).toHaveAttribute("data-drawing-fullscreen", "true");
+      // Switching apps or locking the phone ends native fullscreen; only
+      // Exit or Escape leaves the drawing-only view.
       act(native.browserExit);
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Exit full screen" })));
+      expect(native.exit).not.toHaveBeenCalled();
       expect(screen.queryByRole("button", { name: "Exit full screen" })).toBeNull();
       expect(screen.getByRole("button", { name: "Full screen" })).toHaveFocus();
       await act(async () => fireEvent.click(screen.getByRole("button", { name: "Full screen" })));

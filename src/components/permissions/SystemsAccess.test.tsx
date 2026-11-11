@@ -3,6 +3,10 @@ import { afterEach, expect, it, vi } from "vitest";
 import { SystemsAccessProvider, SystemsAccessGate } from "./SystemsAccess";
 import { JobWorkspaceOptions } from "~/components/jobs/JobWorkspaceOptions";
 const state = vi.hoisted(() => ({ allowed: undefined as boolean | undefined }));
+// Systems is a Dev feature; these tests are about the access permission.
+vi.mock("~/components/app/DevFeaturesProvider", () => ({
+  useDevFeatures: () => true,
+}));
 vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("~/trpc/react", () => ({
   api: {

@@ -57,8 +57,6 @@ it("lets read-only users search lists by contained parts, open a result, and cle
   const input = screen.getByRole("searchbox", {
     name: "Search parts in material lists",
   });
-  // The search takes over the whole bar until it is closed.
-  expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
   fireEvent.change(input, { target: { value: "cap" } });
   expect(
     screen.queryByRole("button", { name: "Monday" }),

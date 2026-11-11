@@ -256,6 +256,12 @@ describe("supplier email handoff", () => {
 });
 
 describe("saved order email handoff", () => {
+  // The email action lives in each order card's menu.
+  const openActions = () =>
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: "Actions for order ORDER-001" }),
+      { key: "Enter" },
+    );
   it("prepares an unopened draft, then launches on a fresh tap before a slow resend save finishes", async () => {
     let finish!: () => void;
     state.resend.mockImplementation(
@@ -265,17 +271,17 @@ describe("saved order email handoff", () => {
         }),
     );
     render(<OrdersPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Prepare email" }));
-    const resend = await screen.findByRole("button", {
-      name: "Resend",
-    });
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Prepare email" }));
+    await screen.findByLabelText("Subject");
     expect(state.loadDraft).toHaveBeenCalledOnce();
     expect(launched).toEqual([]);
     expect(state.resend).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("Subject"), {
       target: { value: "Changed resend" },
     });
-    fireEvent.click(resend);
+    openActions();
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Resend" }));
     expect(launched).toHaveLength(1);
     expect(decodeURIComponent(launched[0]!.url)).toContain(
       "subject=Changed resend",
@@ -285,15 +291,19 @@ describe("saved order email handoff", () => {
       sentTo: "orders@example.com",
       notes: "note",
     });
-    fireEvent.click(resend);
+    // While the save runs the menu offers no second send.
+    openActions();
+    fireEvent.click((await screen.findAllByRole("menuitem"))[0]!);
+    expect(launched).toHaveLength(1);
     expect(state.resend).toHaveBeenCalledOnce();
     await act(async () => finish());
   });
   it("cannot resend or open email without permission", () => {
     state.permitted = false;
     render(<OrdersPage />);
-    const button = screen.getByRole("button", { name: "Prepare email" });
-    expect(button).toBeDisabled();
+    openActions();
+    const button = screen.getByRole("menuitem", { name: "Prepare email" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(button);
     expect(launched).toEqual([]);
     expect(state.resend).not.toHaveBeenCalled();

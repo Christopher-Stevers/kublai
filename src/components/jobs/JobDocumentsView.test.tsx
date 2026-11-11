@@ -1097,9 +1097,8 @@ it("keeps the document workspace focused on the bottom controls", async () => {
     toolbar.contains(screen.getByRole("searchbox", { name: "Search documents" })),
   ).toBe(true);
   expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-  expect(
-    screen.queryByRole("button", { name: "New Folder" }),
-  ).not.toBeInTheDocument();
+  // Search opens in its own row; the action buttons stay below it.
+  expect(screen.getByRole("button", { name: "New Folder" })).toBeInTheDocument();
 });
 
 it("moves selected files to a chosen folder in one request", async () => {

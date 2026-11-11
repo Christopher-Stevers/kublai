@@ -33,6 +33,12 @@ it("uses normal back/navigation in memory without reading or changing real works
     }),
   );
   expect(result.current.location?.materialListId).toBe("practice-list");
+  // Back climbs one level at a time: the list, the lists, the job menu.
+  act(() => result.current.back());
+  expect(result.current.location).toMatchObject({
+    view: "material-lists",
+    materialListId: null,
+  });
   act(() => result.current.back());
   expect(result.current.location?.view).toBe("options");
   act(() => result.current.back());

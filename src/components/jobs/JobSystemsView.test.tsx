@@ -26,6 +26,10 @@ const mock = vi.hoisted(() => ({
   search: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mock.push }) }));
+// Systems is a Dev feature and renders nothing with Dev off.
+vi.mock("~/components/app/DevFeaturesProvider", () => ({
+  useDevFeatures: () => true,
+}));
 vi.mock("~/components/ui/app-dialogs", () => ({
   confirmAction: vi.fn(async () => true),
 }));
