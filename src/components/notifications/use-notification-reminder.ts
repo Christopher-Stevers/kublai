@@ -13,12 +13,10 @@ export function useNotificationReminder(unreadCount: number, open: boolean) {
       if (document.visibilityState === "visible") setRing((value) => value + 1);
     };
     remind();
+    // The page interval reminds on its own when the page comes back, so a
+    // second listener here counted every return twice.
     const timer = setInterval(remind, NOTIFICATION_REMINDER_MS);
-    document.addEventListener("visibilitychange", remind);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", remind);
-    };
+    return () => clearInterval(timer);
   }, [unreadCount, open]);
   return ring;
 }
