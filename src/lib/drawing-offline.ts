@@ -21,7 +21,34 @@ type Snapshot = {
   value: unknown;
   savedAt: number;
   bytes?: number;
+  snapshotEpoch?: string;
 };
+
+// Reserved from the first capture: ordinary snapshot APIs cannot bypass a
+// protected key, including before its first successful save or after revocation.
+const GUARDED_SNAPSHOT_PREFIX = "authority-snapshot:";
+export type SnapshotAuthority = Readonly<{ key: string }>;
+type SnapshotAuthorityRecord = {
+  storedKey: string;
+  epoch: string;
+  accountEpoch: string;
+  generation: number;
+};
+const SNAPSHOT_SIGNAL = "foremanhq-snapshot-revoked-v1";
+function deleteGuardedSnapshotAuthorities(tx: IDBTransaction, account: string) {
+  const cursor = tx.objectStore("authority").openCursor();
+  cursor.onsuccess = () => {
+    if (!cursor.result) return;
+    const key = cursor.result.key;
+    if (Array.isArray(key) && key[0] === account && typeof key[1] === "string" && key[1].startsWith(GUARDED_SNAPSHOT_PREFIX))
+      cursor.result.delete();
+    cursor.result.continue();
+  };
+}
+function snapshotRevoked(account: string, key: string) {
+  window.dispatchEvent(new CustomEvent("foremanhq-snapshot-revoked", { detail: { account, key } }));
+}
+
 export type DrawingOfflineProgress = {
   completed: number;
   total: number;
@@ -55,6 +82,14 @@ let listening = false;
 function accountSignals() {
   if (listening || typeof window === "undefined") return;
   listening = true;
+  window.addEventListener("storage", (event) => {
+    if (event.key !== SNAPSHOT_SIGNAL || !event.newValue) return;
+    try {
+      const message = JSON.parse(event.newValue) as { account?: unknown; key?: unknown };
+      if (typeof message.account === "string" && message.account === activeAccount && typeof message.key === "string" && message.key.length > 0)
+        snapshotRevoked(message.account, message.key);
+    } catch { /* A hint cannot grant snapshot authority. */ }
+  });
   window.addEventListener("storage", (event) => {
     if (event.key !== ACCOUNT_SIGNAL || !event.newValue) return;
     try {
@@ -176,6 +211,7 @@ export async function revokeDrawingOfflineAccount(owner: string) {
   fence.onsuccess = () => {
     if ((fence.result ?? "") !== expectedAuthority) return;
     tx.objectStore("authority").put(crypto.randomUUID(), owner);
+    deleteGuardedSnapshotAuthorities(tx, owner);
     for (const name of ["assets", "snapshots"]) {
       const cursor = tx.objectStore(name).index("account").openCursor(owner);
       cursor.onsuccess = () => {
@@ -293,6 +329,7 @@ export class DrawingOfflineStore {
   private disposed = false;
   private generation = 0;
   private urls = new Map<string, string>();
+  private snapshotTokens = new WeakMap<SnapshotAuthority, SnapshotAuthorityRecord>();
   private controllers = new Set<AbortController>();
   constructor(readonly accountKey: string) {
     if (!accountKey || accountKey !== activeAccount)
@@ -587,7 +624,101 @@ export class DrawingOfflineStore {
       this.controllers.delete(controller);
     }
   }
+  /** Capture before starting a remote read. Registration and both persisted
+   * authorities are observed in one transaction; tokens are opaque/store-local. */
+  async captureSnapshotAuthority(key: string): Promise<SnapshotAuthority> {
+    if (!key || key.startsWith(GUARDED_SNAPSHOT_PREFIX)) throw new Error("A logical snapshot key is required.");
+    this.assertActive();
+    const generation = this.generation, accountEpoch = this.authorityEpoch;
+    const storedKey = GUARDED_SNAPSHOT_PREFIX + key;
+    const db = await openDatabase();
+    this.assertActive(generation);
+    const tx = db.transaction("authority", "readwrite"), complete = done(tx);
+    let epoch = "";
+    this.authorizeWrite(tx, () => {
+      const request = tx.objectStore("authority").get([this.accountKey, storedKey]);
+      request.onsuccess = () => {
+        try { this.assertActive(generation); } catch { tx.abort(); return; }
+        epoch = typeof request.result === "string" ? request.result : crypto.randomUUID();
+        if (request.result === undefined) tx.objectStore("authority").put(epoch, [this.accountKey, storedKey]);
+        else if (typeof request.result !== "string") tx.abort();
+      };
+    });
+    await complete;
+    this.assertActive(generation);
+    const token = Object.freeze({ key });
+    this.snapshotTokens.set(token, { storedKey, epoch, accountEpoch, generation });
+    return token;
+  }
+  private async snapshotTransaction<T>(
+    token: SnapshotAuthority,
+    mode: IDBTransactionMode,
+    operate: (tx: IDBTransaction, authority: SnapshotAuthorityRecord, set: (value: T) => void) => void,
+    staleNoop = false,
+  ): Promise<{ matched: boolean; value?: T }> {
+    const authority = this.snapshotTokens.get(token);
+    if (!authority) throw new DOMException("Snapshot token belongs to another binding.", "AbortError");
+    try { this.assertActive(authority.generation); } catch (error) {
+      if (staleNoop) return { matched: false };
+      throw error;
+    }
+    const db = await openDatabase();
+    try { this.assertActive(authority.generation); } catch (error) {
+      if (staleNoop) return { matched: false };
+      throw error;
+    }
+    const tx = db.transaction(["authority", "snapshots"], mode), complete = done(tx);
+    let matched = false, value: T | undefined;
+    const account = tx.objectStore("authority").get(this.accountKey);
+    account.onsuccess = () => {
+      if ((account.result ?? "") !== authority.accountEpoch) return;
+      const key = tx.objectStore("authority").get([this.accountKey, authority.storedKey]);
+      key.onsuccess = () => {
+        if (key.result !== authority.epoch) return;
+        try {
+          this.assertActive(authority.generation);
+          matched = true;
+          operate(tx, authority, (next) => { value = next; });
+        } catch { tx.abort(); }
+      };
+    };
+    await complete;
+    if (!matched && !staleNoop) throw new DOMException("Snapshot access was revoked.", "AbortError");
+    if (!staleNoop) this.assertActive(authority.generation);
+    return { matched, value };
+  }
+  async saveSnapshotWithAuthority<T>(token: SnapshotAuthority, value: T) {
+    const bytes = new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    await this.snapshotTransaction(token, "readwrite", (tx, authority) => {
+      tx.objectStore("snapshots").put({ account: this.accountKey, key: authority.storedKey,
+        value, bytes, savedAt: Date.now(), snapshotEpoch: authority.epoch } satisfies Snapshot);
+    });
+  }
+  async readSnapshotWithAuthority<T>(token: SnapshotAuthority): Promise<T | null> {
+    const result = await this.snapshotTransaction<T | null>(token, "readonly", (tx, authority, set) => {
+      const read = tx.objectStore("snapshots").get([this.accountKey, authority.storedKey]);
+      read.onsuccess = () => {
+        const snapshot = read.result as Snapshot | undefined;
+        set(snapshot?.snapshotEpoch === authority.epoch ? snapshot.value as T : null);
+      };
+    });
+    return result.value ?? null;
+  }
+  async revokeSnapshot(token: SnapshotAuthority): Promise<boolean> {
+    const nextEpoch = crypto.randomUUID();
+    const result = await this.snapshotTransaction(token, "readwrite", (tx, authority) => {
+      tx.objectStore("authority").put(nextEpoch, [this.accountKey, authority.storedKey]);
+      tx.objectStore("snapshots").delete([this.accountKey, authority.storedKey]);
+    }, true);
+    if (result.matched) {
+      snapshotRevoked(this.accountKey, token.key);
+      try { window.localStorage.setItem(SNAPSHOT_SIGNAL, JSON.stringify({ account: this.accountKey, key: token.key, epoch: nextEpoch })); }
+      catch { /* Persisted authority, not event delivery, fences later reads/writes. */ }
+    }
+    return result.matched;
+  }
   async saveSnapshot<T>(key: string, value: T) {
+    if (key.startsWith(GUARDED_SNAPSHOT_PREFIX)) throw new Error("Use snapshot authority for this protected key.");
     this.assertActive();
     const generation = this.generation;
     const serialized = JSON.stringify(value);
@@ -610,6 +741,7 @@ export class DrawingOfflineStore {
       window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   async readSnapshot<T>(key: string): Promise<T | null> {
+    if (key.startsWith(GUARDED_SNAPSHOT_PREFIX)) throw new Error("Use snapshot authority for this protected key.");
     const item = await this.authorizedRead<Snapshot | undefined>("snapshots", store => store.get([this.accountKey, key]) as IDBRequest<Snapshot | undefined>);
     return (item?.value as T | undefined) ?? null;
   }
@@ -629,6 +761,7 @@ export class DrawingOfflineStore {
     const nextEpoch = crypto.randomUUID();
     this.authorizeWrite(tx, () => {
     tx.objectStore("authority").put(nextEpoch, this.accountKey);
+    deleteGuardedSnapshotAuthorities(tx, this.accountKey);
     for (const name of ["assets", "snapshots"]) {
       const cursor = tx
         .objectStore(name)
