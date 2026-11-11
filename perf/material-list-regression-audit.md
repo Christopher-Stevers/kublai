@@ -122,3 +122,25 @@ Root authorized the bounded two-capture baseline/R6 visited Basement4×CPU diagn
 The [driver](material-list-cpu-diagnostic.mjs) and exact executed copies/scripts/configs/logs/reports are retained separately from the frozen acceptance method. `node --check` and shell syntax checks passed before execution; no successful capture or harness functional test is claimed. Both runs exited1 with both app PIDs and private PG directories gone and empty PG error reports; browser/context cleanup ran in finally. No production app source, acceptance artifacts or thresholds changed. The source-derived mount-work hypothesis remains unproven.
 
 A separately marked [unexecuted v2 method](artifacts/material-list-cpu-diagnostic-unexecuted-v2/README.md) fixes the driver metadata-loss defect: top-level sanitized rejection metadata is written before abort, including preparation failures. No guard is loosened; only method/fixed endpoint shape or procedure pathname/reason are retained, with no queries, bodies, cookies or arbitrary paths. This source revision has not been run or syntax-tested; both executed copies/hashes remain unchanged. No third attempt.
+
+## Reviewed third attempt: concrete startup-mutation guard failure
+
+Root subsequently authorized a third attempt and a reviewed v3 guard covering
+same-origin catalogue pulls and numeric telemetry already present in both sealed
+sources. [Attempt 3](artifacts/material-list-cpu-diagnostic-2026-11-11-attempt3/README.md)
+passed both source/private-database bindings and 14-query read preflights, then
+stopped before either profile on `POST /api/trpc/appDevices.report` and one
+redacted POST. Zero captures. Header mounts AppDeviceReporter, which reports its
+fresh browser-local device on the first animation frame; the procedure upserts
+the seeded user's device observation through `ctx.db`. This is a genuine startup
+mutation, correctly rejected by that method's narrow guard. The unidentified POST
+cannot be attributed to a source endpoint from the retained metadata alone.
+
+The copied v2 driver remained unexecuted; its coordinator prepared fixtures and
+waited at an unreleased barrier. A separately frozen v3 launcher ran the actual
+method and cleaned that setup coordinator. All exact driver/dependency/config
+hashes, source/schema/fixtures/preflight evidence, raw failure and empty post-stop
+PG ERROR reports are archived. Both servers/private databases were removed and
+the quiet window was released. Prior attempts/methods/full gates remain unchanged;
+no CPU attribution or threshold/performance claim follows. Root may separately
+review the permitted synthetic bootstrap writes for a distinct future method.

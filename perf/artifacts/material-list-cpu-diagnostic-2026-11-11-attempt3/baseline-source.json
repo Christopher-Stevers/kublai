@@ -1,0 +1,30 @@
+{
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2200,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2195,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash"
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "lab-only-stubbed-seeded-user",
+  "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+  "socket": "/tmp/foremanhq-perf-pg.e0jfWg",
+  "port": 3482,
+  "productionDatabase": false
+}

@@ -1,0 +1,29 @@
+{
+  "status": "failed-before-capture",
+  "acceptedGateEvidence": false,
+  "samples": 0,
+  "profiles": 0,
+  "frozenMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "material-list-cpu-diagnostic-v3",
+  "driverSha256": "71c8a28235c5128f3cca43acfa5dc6facd55ede52a122a25a67b2eaffa5cf592",
+  "priorAttemptsPreserved": true,
+  "v2DriverExecuted": false,
+  "preflightReadCounts": {
+    "baseline": 14,
+    "candidate": 14
+  },
+  "guard": "Only reviewed same-origin read synchronization, empty pushes and numeric lab telemetry permitted; genuine appDevices.report mutation rejected.",
+  "concreteCause": "Header mounts AppDeviceReporter, which reports the fresh browser device on its first animation frame. appDevices.report upserts the private seeded user device observation through ctx.db. It is a mutation, not a read endpoint.",
+  "unclassifiedPost": "One POST remains /unclassified-path. Source has /api/debug/client-console-error reporting, but retained runtime metadata cannot identify that POST; no inference asserted as observation.",
+  "sourceInspectionSha256": {
+    "src/components/app/AppDeviceReporter.tsx": "c7bd00b8c26dd81e470bb4fb56d1d0479a6b7ca8028e8e6ce92d993f831ba8b4",
+    "src/app/_components/Header.tsx": "fe425b2a2f525d0d3285124470624444ec5e7af6392e836cdcef3054fd608130",
+    "src/server/api/routers/appDevices.ts": "9b18b9d7c060993fac10241a3b802b80c2aaf7962664e28850f90aad4a45d388",
+    "src/server/app-devices/service.ts": "3a2feb32ebdfdfa38dcc8294b24ba09a25c8171b976748a4ce40dd48517f3cc3",
+    "src/components/debug/ClientConsoleErrorReporter.tsx": "dcf85ac22dd78fa2a087e26ea748d95047f99ed0427eae8c3e4bd0d3da517270",
+    "src/lib/replicache-catalogue.ts": "17f5127b41a59d6a4e1530b4c2a17eb6dd2165c5f053cdd80204aa546debdd9a",
+    "src/components/performance/SpeedTelemetry.tsx": "4e440ec4593f42934ea2052b5e1cf5d72a8926250086014f6f5a918a1f928ae9"
+  },
+  "performanceConclusion": "No CPU attribution or change to failed R6/R7 acceptance gates. Sampling/timeline instrumentation would perturb execution even if a profile were captured.",
+  "nextStep": "No automatic retry. Review appDevices.report synthetic initialization and unidentified POST coverage separately before any distinct method/run."
+}

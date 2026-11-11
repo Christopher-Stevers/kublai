@@ -1,0 +1,9 @@
+(node:4030438) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Prepared 113 unique declared tables and 0 enums from 16 schema modules.
+(node:4030618) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Reused only previously generated synthetic 40-page PDF/raster assets; database is freshly seeded.
+Seeded isolated lab: 2 jobs, 25 parts, 1 list/order/slip, chat, 40 synthetic sheets.
+Read endpoint preflight passed 14 actual application queries.
+MATERIAL_CPU_FIXTURE_READY

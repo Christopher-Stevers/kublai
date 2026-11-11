@@ -1,0 +1,18 @@
+{
+  "sealedAt": "2026-11-11T10:51:02Z",
+  "files": {
+    "/tmp/foremanhq-material-cpu-a3-method/perf/material-list-cpu-diagnostic.mjs": "237ab59e9ec4f2cb317fc9bdbcbc106b1b9eaf91cba40ed85d656dcb5554ceec",
+    "/tmp/foremanhq-material-cpu-a3-method/perf/budgets.json": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e",
+    "/tmp/foremanhq-material-cpu-a3-method/perf/harness-fingerprint.mjs": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f",
+    "/tmp/foremanhq-material-cpu-a3-method/perf/check.mjs": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259",
+    "/tmp/foremanhq-material-cpu-a3-run.sh": "18af6552440259ca60a14ebc1fa045ffcceb1d47dc2b0193492fcaf7d84d13ce",
+    "/tmp/foremanhq-material-cpu-a3-baseline-server.sh": "c269acb454eec15af445c3ec1fdd28dc3b2b7c0129bb369124be150c5bd31c16",
+    "/tmp/foremanhq-material-cpu-a3-candidate-server.sh": "5b5aeaf32be34ba871a32c9fea75195274875b5c031fcf267db71715082d7591"
+  },
+  "driverSha256": "237ab59e9ec4f2cb317fc9bdbcbc106b1b9eaf91cba40ed85d656dcb5554ceec",
+  "frozenHarness": "/tmp/foremanhq-perf-method-f9bHR6",
+  "outerBoundSeconds": 480,
+  "capturesMax": 2,
+  "perCaptureMaxMs": 3000,
+  "totalProfileMaxBytes": 57671680
+}

@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-11-11T10:55:03.562649+00:00",
+  "roles": {
+    "baseline": {
+      "serverPid": 4030708,
+      "serverPidAbsent": true,
+      "privatePgDirectoryAbsent": true,
+      "pgErrors": []
+    },
+    "candidate": {
+      "serverPid": 4030706,
+      "serverPidAbsent": true,
+      "privatePgDirectoryAbsent": true,
+      "pgErrors": []
+    }
+  },
+  "captures": 0,
+  "driverExitCode": 1,
+  "setupCoordinatorExitCode": 143,
+  "setupCoordinatorTermination": "V3 capture finally sent TERM after driver returned; original coordinator only waited at setup barrier, never ran v2.",
+  "browserClosedByDriverFinally": true,
+  "allOwnedListenersClosed": true,
+  "noExtraRun": true
+}

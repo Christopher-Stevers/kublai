@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-11-11T10:55:03.562508+00:00",
+  "files": {
+    "/tmp/foremanhq-material-cpu-a3-v3-method/perf/material-list-cpu-diagnostic.mjs": "71c8a28235c5128f3cca43acfa5dc6facd55ede52a122a25a67b2eaffa5cf592",
+    "/tmp/foremanhq-material-cpu-a3-v3-method/perf/harness-fingerprint.mjs": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f",
+    "/tmp/foremanhq-material-cpu-a3-v3-method/perf/check.mjs": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259",
+    "/tmp/foremanhq-material-cpu-a3-v3-method/perf/budgets.json": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e",
+    "/tmp/foremanhq-material-cpu-a3-v3-capture.sh": "5338012ac295a742572ac7a90dadb6279bb2ae58aad2ed918c5666ed9c3b758d",
+    "/tmp/foremanhq-material-cpu-a3-v3-config.json": "8eedb30dfd9d051f4d28bcdd3f4a4f2aac1a361051a7b34b1a45cb63e0848467"
+  },
+  "allFrozenFilesMatch": true,
+  "v2DriverExecuted": false,
+  "setupGoCreated": false
+}
