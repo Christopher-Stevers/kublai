@@ -294,7 +294,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T13:01:39.513926+00:00",
+  "updatedAt": "2026-11-11T13:31:14.494491+00:00",
   "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
@@ -623,6 +623,22 @@
         "strictChangedScriptPass": true,
         "fullMatrixRun": false,
         "activated": false
+      },
+      {
+        "name": "R17",
+        "sourceFreezeCommit": "dcb894bd",
+        "proofCommit": "19d14d27",
+        "artifact": "perf/artifacts/phase1-r17-build-proof-2026-11-11.json",
+        "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+        "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+        "sharedGzipBytes": 478165,
+        "heaviestGzipBytes": 627389,
+        "phase0RelativeDeployGzipBytes": 1324196,
+        "phase0ByteRatchetsPass": true,
+        "strictChangedScriptGzipBytes": 370555,
+        "strictChangedScriptPass": false,
+        "fullMatrixStatus": "in-progress-no-result",
+        "activated": false
       }
     ],
     "otherPreparedCommits": {
@@ -653,7 +669,12 @@
       "timesheetHints": "18023b1e",
       "compiledListenResolver": "b2ca4cf4",
       "executiveEditorTargetGuard": "adda6fbd",
-      "sharedIssueSave": "c38c454c"
+      "sharedIssueSave": "c38c454c",
+      "receivingResolutionBoundary": "0bab2c39",
+      "sharedIssueFollowups": [
+        "9cbe46d7",
+        "ecfa51dc"
+      ]
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
@@ -745,6 +766,38 @@
       "fullSheetFidelityPass": false,
       "historicalCorpusReportChanged": false,
       "productionRenderChanged": false
+    },
+    "failedCanonicalCandidates": {
+      "R15": "Nullable workspace caller mismatch; immutable failure preserved.",
+      "R16": "Optional workspace hash comparison; opaque tokens must not be ordered. Immutable failure preserved."
+    },
+    "r17FunctionalV6": {
+      "source": "perf/artifacts/r17-preferences-functional-2026-11-11-attempt1/report.json",
+      "status": "all-eight-assertions-passed",
+      "assertionsPassed": 8,
+      "deniedExecutiveEditorDisabled": true,
+      "unexpectedDatabaseErrors": 0,
+      "expectedAdministratorTerminations": 1,
+      "cleanupConfirmed": true,
+      "timingMethodChanged": false,
+      "acceptedForActivation": false
+    },
+    "r17HttpProof": {
+      "source": "perf/artifacts/phase1-r17-http-proof-2026-11-11.json",
+      "status": "passed",
+      "currentAssets": 293,
+      "historicalSamples": 10,
+      "databaseReadOnly": true,
+      "cleanupConfirmed": true,
+      "activation": false
+    },
+    "r17FullMatrix": {
+      "status": "running",
+      "samplesPlanned": 120,
+      "idleDurationMs": 600000,
+      "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "resultAvailable": false
     }
   }
 }

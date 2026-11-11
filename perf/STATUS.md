@@ -582,3 +582,51 @@ full-sheet fidelity fails both widths because other rendering semantics remain
 incomplete. This is not a sample-wide fidelity or compression result. Historical
 100-sheet evidence is unchanged, no production drawing path changed, and no
 runtime remains. See `drawings/image-replay-one-sample.json`.
+
+## R17 passes compiled correctness; full timing in progress — 2026-11-11
+
+Receiving resolution now loads only after selection (`0bab2c39`). Its controller
+and linking helper are unchanged; Close remains available while loading and an
+import failure can be retried without resetting a mounted editor. All 136 focused
+tests pass. This slice, executive-editor protection and shared-issue saving were
+composed into exact snapshots, excluding unrelated working changes and R8.
+
+The R15 and R16 builds failed production types and remain preserved. Follow-ups
+`9cbe46d7` and `ecfa51dc` correct the nullable caller boundary and remove a deeper
+error: workspace revisions are optional content hashes, not ordered counters.
+Recovery now compares only numeric entity revisions; a missing target preserves
+the cached issue and blocks another save pending authoritative reconciliation.
+The corrected hook and Workspace pass 127 focused tests. A complete isolated
+no-emit comparison finds zero production diagnostics and no new diagnostics
+against R14; 1,975 inherited test-only diagnostics are unchanged. Canonical
+production checking uses Next's existing test/spec filtering, with no config
+exception added for this work.
+
+R17 (`b1c2adf3…`, fingerprint `be7f2350…`, 2,316 source inputs) passes canonical
+webpack, production TypeScript, prerender and source laws. Shared/heaviest gzip
+metrics are 478,165 / 627,389, passing the Phase0 ratchets but not the eventual
+120,000 / 180,000 targets. Receiving is 13,274 bytes smaller than R14 and 131,142
+smaller than Phase0 under the unchanged manifest metric. Strict R14→R17 changed
+scripts total 370,555 gzip bytes: this combined batch fails 100,000. No waiver or
+actual-browser-download claim follows. The native resolver still passes.
+See `artifacts/phase1-r17-build-proof-2026-11-11.json`.
+
+All 293 current assets and ten actual retained live-build samples pass exact
+Brotli/decoded-byte HTTP checks; packaged worker and public endpoints match,
+and unauthenticated private binding remains 401. The first historical sample
+selection incorrectly used an unactivated candidate and is preserved separately;
+the corrected samples come from the actual retained live chain. Database
+read-only mode was enforced, and the proof server closed cleanly. See
+`artifacts/phase1-r17-http-proof-2026-11-11.json`.
+
+The separately compiled private app also passes all eight V6 functional checks,
+including the newly required disabled executive editor during permission loss.
+It records zero unexpected database errors, one intentional LISTEN termination,
+unchanged method hashes and complete cleanup. See
+`artifacts/r17-preferences-functional-2026-11-11-attempt1/`.
+
+One full R17 capture is now running on a new private database: the original
+ten-minute idle check and 120 samples, unchanged frozen v2 timing method and
+predeclared baseline-1 comparator. No result, timing improvement or activation
+is yet claimed. Builds, other heavy checks and phone work are stopped during
+this measurement window. Production remains the Phase0 bootstrap.
