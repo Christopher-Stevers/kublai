@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DevSettings } from "~/components/account/DevSettings";
@@ -46,12 +47,20 @@ async function start() {
     </VoiceProvider>,
   );
   expect(m.mic).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Start voice assistant" }).getAttribute("data-lit")).toBe("false");
+  expect(
+    (
+      await screen.findByRole("button", { name: "Start voice assistant" })
+    ).getAttribute("data-lit"),
+  ).toBe("false");
   fireEvent.click(
     screen.getByRole("button", { name: "Start voice assistant" }),
   );
   await screen.findByText("Listening");
-  expect(screen.getAllByRole("button", { name: "End voice session" })[0]!.getAttribute("data-lit")).toBe("true");
+  expect(
+    screen
+      .getAllByRole("button", { name: "End voice session" })[0]!
+      .getAttribute("data-lit"),
+  ).toBe("true");
 }
 it("starts only on a tap and releases the microphone on end", async () => {
   await start();
@@ -69,7 +78,11 @@ it("requires a separate screen tap to apply a proposal", async () => {
   });
   fireEvent.click(screen.getByLabelText("Send voice assistant message"));
   await screen.findByText("Create job Test");
-  expect(screen.getAllByRole("button", { name: "End voice session" })[0]!.getAttribute("data-lit")).toBe("false");
+  expect(
+    screen
+      .getAllByRole("button", { name: "End voice session" })[0]!
+      .getAttribute("data-lit"),
+  ).toBe("false");
   expect(calls.some((c) => c.action === "confirm")).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Apply change" }));
   await screen.findByText("Saved.");
@@ -92,11 +105,48 @@ it("unmounting releases the microphone", async () => {
 });
 
 it("turning Dev off releases an active microphone and removes Voice", async () => {
-  render(<DevFeaturesProvider enabled><DevSettings /><DevVoiceProvider><VoiceCard /></DevVoiceProvider></DevFeaturesProvider>);
-  fireEvent.click(screen.getByRole("button", { name: "Start voice assistant" }));
+  render(
+    <DevFeaturesProvider enabled>
+      <DevSettings />
+      <DevVoiceProvider>
+        <VoiceCard />
+      </DevVoiceProvider>
+    </DevFeaturesProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Start voice assistant" }),
+  );
   await screen.findByText("Listening");
   fireEvent.click(screen.getByRole("switch", { name: "Show Dev features" }));
   expect(m.close).toHaveBeenCalledOnce();
   expect(screen.queryByLabelText("Voice assistant")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Start voice assistant" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Start voice assistant" }),
+  ).toBeNull();
+});
+
+it("keeps workspace children and their draft mounted while the engine loads", async () => {
+  const mounted = vi.fn();
+  const unmounted = vi.fn();
+  function Draft() {
+    useEffect(() => {
+      mounted();
+      return unmounted;
+    }, []);
+    return <input aria-label="Workspace draft" defaultValue="" />;
+  }
+  render(
+    <VoiceProvider>
+      <Draft />
+      <VoiceCard />
+    </VoiceProvider>,
+  );
+  const input = screen.getByLabelText("Workspace draft");
+  fireEvent.change(input, { target: { value: "unsaved workspace note" } });
+  await screen.findByRole("button", { name: "Start voice assistant" });
+  expect(screen.getByLabelText("Workspace draft")).toBe(input);
+  expect(input).toHaveProperty("value", "unsaved workspace note");
+  expect(mounted).toHaveBeenCalledOnce();
+  expect(unmounted).not.toHaveBeenCalled();
+  expect(m.mic).not.toHaveBeenCalled();
 });
