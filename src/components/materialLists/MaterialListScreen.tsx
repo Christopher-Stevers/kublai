@@ -381,7 +381,7 @@ export function MaterialListScreen({
 
   if (isLoading && !mlHeader) {
     return (
-      <div className="flex h-[var(--app-content-height)] flex-col">
+      <div data-workspace-loading className="flex h-[var(--app-content-height)] flex-col">
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           <div className="mx-auto mb-6 max-w-6xl">
             <div className="flex items-start justify-between gap-3">

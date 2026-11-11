@@ -331,6 +331,7 @@ export function JobsClient({
           <div
             role="status"
             aria-label="Loading jobs"
+            data-workspace-loading
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
             {[0, 1, 2].map((index) => (

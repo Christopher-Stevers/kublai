@@ -119,6 +119,7 @@ export function JobMaterialListsView({
   return (
     <>
       <PageHeader level="section" title="Material Lists" />
+      {lists === undefined && <span data-workspace-loading aria-hidden="true" className="sr-only" />}
 
       {search.trim() && lists && (
         <p role="status" className="text-muted-foreground mb-4 text-sm">

@@ -3,6 +3,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { onINP, onLCP } from "web-vitals";
+import { installNavigationInput, navigationPaint, navigationScreen, subscribeNavigationScreen, setLocalNavigationScreen } from "~/lib/navigation-paint";
 import { SpeedMetricBuffer } from "~/lib/speed-metric-buffer";
 import {
   SpeedContextTimeline,
@@ -10,7 +11,6 @@ import {
 } from "~/lib/speed-context-timeline";
 import {
   SPEED_METRICS,
-  speedScreen,
   type SpeedMetric,
 } from "~/lib/speed-telemetry";
 
@@ -23,62 +23,14 @@ const DevelopmentOverlay =
 export function SpeedTelemetry() {
   const pathname = usePathname();
   const previousPath = useRef(pathname);
-  const pointerStart = useRef<number | null>(null);
   const recordContext = useRef<(() => void) | null>(null);
+  useEffect(() => installNavigationInput(), []);
   useEffect(() => {
-    const start = () => {
-      pointerStart.current = performance.now();
-    };
-    document.addEventListener("pointerdown", start, {
-      capture: true,
-      passive: true,
-    });
-    return () => document.removeEventListener("pointerdown", start, true);
-  }, []);
-  useEffect(() => {
-    recordContext.current?.();
-    if (pathname === previousPath.current) return;
+    if (!pathname || pathname === previousPath.current) return;
     previousPath.current = pathname;
-    const start = pointerStart.current;
-    pointerStart.current = null;
-    if (start === null || performance.now() - start > 5000) return;
-    let first = 0;
-    let second = 0;
-    let finished = false;
-    const observer = new MutationObserver(check);
-    function check() {
-      if (
-        finished ||
-        [
-          ...document.querySelectorAll(
-            "[data-route-loading], [data-app-startup-loading]",
-          ),
-        ].some((element) => element.getClientRects().length > 0)
-      )
-        return;
-      finished = true;
-      observer.disconnect();
-      first = requestAnimationFrame(() => {
-        second = requestAnimationFrame(() => {
-          performance.measure("foremenhq:tap-to-paint", {
-            start: start!,
-            end: performance.now(),
-          });
-        });
-      });
-    }
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["hidden", "style", "class"],
-    });
-    check();
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
-    };
+    setLocalNavigationScreen(null);
+    recordContext.current?.();
+    navigationPaint.commitPath(pathname);
   }, [pathname]);
   useEffect(() => {
     if (typeof PerformanceObserver === "undefined") return;
@@ -96,12 +48,13 @@ export function SpeedTelemetry() {
             ? "slow"
             : "unknown";
     const context = (): SpeedContext => ({
-      screen: speedScreen(window.location.pathname),
+      screen: navigationScreen(),
       link: linkClass(),
     });
     const contexts = new SpeedContextTimeline(context());
     const changedContext = () => contexts.record(performance.now(), context());
     recordContext.current = changedContext;
+    const stopLocalContext = subscribeNavigationScreen(changedContext);
     const connection = (
       navigator as Navigator & {
         connection?: {
@@ -194,7 +147,7 @@ export function SpeedTelemetry() {
                   ? custom
                   : name,
               durationMs: Math.round(durationMs),
-              screen: speedScreen(window.location.pathname),
+              screen: navigationScreen(),
               link: linkClass(),
             });
           }
@@ -227,6 +180,7 @@ export function SpeedTelemetry() {
       window.removeEventListener("online", changedContext);
       window.removeEventListener("offline", changedContext);
       connection?.removeEventListener?.("change", changedContext);
+      stopLocalContext();
       if (recordContext.current === changedContext)
         recordContext.current = null;
     };

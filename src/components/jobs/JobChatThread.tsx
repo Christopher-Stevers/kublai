@@ -176,7 +176,7 @@ export function JobChatThread({
   const memory = useChatViewMemory();
   if (memory && !memory.ready)
     return (
-      <p role="status" className="p-4">
+      <p role="status" data-workspace-loading className="p-4">
         Loading chat…
       </p>
     );
@@ -227,7 +227,7 @@ function AuthenticatedChatLobby({
   const simulation = useEmployeeSimulation();
   const userId = resolvedUserId ?? simulation?.employeeId ?? signedInUserId;
   return !isLoaded && !userId ? (
-    <p role="status" className="p-4">
+    <p role="status" data-workspace-loading className="p-4">
       Loading chat…
     </p>
   ) : userId ? (
@@ -1146,7 +1146,7 @@ function ChatLobby({
             </div>
           )}
           {history.data === undefined && online && !connectionError && (
-            <p role="status" className="text-center">
+            <p role="status" data-workspace-loading className="text-center">
               <span className="rounded-full bg-black/35 px-3 py-1 text-sm text-white">
                 Loading messages…
               </span>

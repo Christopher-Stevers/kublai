@@ -1,0 +1,27 @@
+# Internal Jobs navigation field telemetry — prepared candidate
+
+Prepared source only, outside canonical R7 and the frozen benchmark method. After the full R7 timing quiet window was released, focused behavior checks were run as recorded below. This does not change navigation behavior or claim an improvement in app latency.
+
+The previous field tap measure followed pathname commits; local Jobs workspace navigation keeps the pathname unchanged. One bounded coordinator now shares input ownership across local and pathname observers. Local navigate/back can claim only during real trusted input dispatch, then complete separately from the actual React layout commit. Initial restore/reset/programmatic navigation, a same-destination no-op, synthetic standalone input and uncorrelated popstate cannot start a local tap observation. A trusted activation key may own its synchronous synthetic click. No input timestamp is invented for native Back/CloseWatcher without a DOM input event.
+
+Readiness waits for visible route/startup/workspace loading markers and visible standard Skeleton/skeleton-shimmer nodes, then two requestAnimationFrame opportunities. Narrow no-copy markers cover the primary Jobs/material-list loading paths and three chat loading paragraphs. Hidden retained panels do not block a visible destination. Loading reappearing before completion, superseding input/navigation, pre-claim scroll/pointer cancellation, fresh pointer/wheel input, hidden/internal-page pause or owner cleanup prevents a stale observation. One input cannot emit both a local and pathname tap observation. Existing pathname correlation to recent real input remains bounded at five seconds; this is a correlation heuristic, not proof that any subsequent programmatic pathname change was caused by that input. In-progress readiness is bounded at thirty seconds.
+
+Only numeric duration and existing fixed screen categories enter the established telemetry pipeline; record IDs/names/URLs are never added to measures or payloads. Local commits also update the bounded context timeline so a delayed INP callback can retain its interaction-time category under unchanged /jobs. The local context is not an INP calculation and the tap metric is not INP.
+
+This is a **read-ready/two-rAF paint-opportunity proxy**, not hardware presentation, complete screen content, physical Pixel evidence, a benchmark-method replacement or a release gate. Unknown custom panel loaders without reviewed markers are not advertised as complete-content proof. The existing field buffer/sampling limits still apply, so this is not an unbiased interaction census.
+
+Prepared tests cover separate input/commit, deferred readiness, a loader reappearing, supersession and old cleanup, local/pathname deduplication, cancellation/pause/removal, synthetic input refusal, trusted-event-policy injection, activation-key ownership, actual local React commits/back/no-op/programmatic restore, Activity cleanup and delayed INP category attribution. Injected trusted-event metadata in unit tests is explicitly not proof of browser isTrusted handling or real device timing. The focused run passed 38 unique tests across eight files with one Vitest worker.
+
+Scroll qualification: a scroll event before a navigation claim cancels gesture attribution. Once a navigation owns a ticket, scroll alone is treated as possibly app-owned restoration and does not cancel; fresh real pointer/wheel input still cancels/supersedes it. A post-claim user scroll with no observable new pointer/wheel input cannot be distinguished from restoration by this lightweight observer. This is an explicit attribution limit, not inferred user intent. Malformed anchor URLs are caught and cannot escape into application input dispatch. Focused tests for both boundaries passed after quiet release.
+
+
+## Measurement population and bounds
+
+Future builds with this candidate add same-URL local Jobs transitions and activation-key/assistive-click coverage, and reject standalone synthetic input. This is a population/provenance change from old pathname-only field tap observations. Do not pool the two build populations as like-for-like latency evidence; retain build/source labels and describe the changed coverage. Neither local metric replaces INP or physical presentation timing.
+
+Pathname correlation retains the existing five-second recent-input heuristic. Local claims require the actual dispatch; committed read-readiness waits are bounded at thirty seconds. Work outside those bounds, canceled gestures and superseded/paused owners is **omitted**, never recorded as zero. Sampling/buffering and these omissions mean the observations are not a complete or unbiased latency census.
+
+
+## Verification checkpoint
+
+The 38-test run covers the coordinator/input policy, actual local navigation commits, existing workspace/tutorial navigation, field telemetry/INP context, payload validation, context timeline and metric buffer. New source/tests and SpeedTelemetry lint cleanly. Existing navigation hook set-state-in-effect and chat next-link error/img warning reproduce against committed HEAD; no new lint finding was added. Tests use injected trusted-event metadata where browser trust cannot be generated in jsdom, and fake rAF/readiness scheduling; they are behavior proofs, not browser/hardware timing. No canonical build, script-byte remeasurement, activation, phone work or frozen-method edit was performed. Those release/size gates remain open.
