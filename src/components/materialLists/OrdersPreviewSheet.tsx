@@ -115,7 +115,7 @@ export function OrdersPreviewSheet({
   const canGenerateDocuments =
     isToolRequest || hasToolItems || (userData?.permissions.can["orders.send"] ?? false);
 
-  const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation();
+  const sendGeneratedOrder = api.materialList.sendGeneratedOrder.useMutation({ retry: false });
   const requestApproval=api.jobPricing.requestApproval.useMutation({onSuccess:async()=>{setSyncError(null);await loadPreview();},onError:e=>setSyncError(e.message)});
 
   const applyPreviewData = (data: {
@@ -162,7 +162,7 @@ export function OrdersPreviewSheet({
       setEmailRecipients(new Map());
       setEmailCcRecipients(new Map());
       setEmailDrafts(new Map());
-      setSendingOrderId(null);
+      if (!sendInFlight.current) setSendingOrderId(null);
       setSyncError(null);
       setPreviewData(null);
       setLoadError(null);
@@ -237,9 +237,12 @@ export function OrdersPreviewSheet({
   };
 
   const handleSendToToolRoom = async (order: PreviewOrder) => {
-    if (!order.supplierId) return;
+    if (sendInFlight.current || !order.supplierId) return;
     const notes = orderNotes.get(order.id) ?? "";
+    sendInFlight.current = true;
     setSendingOrderId(order.id);
+    setSyncError(null);
+    let saved = false;
     try {
       await sendGeneratedOrder.mutateAsync({
         materialListId,
@@ -248,14 +251,17 @@ export function OrdersPreviewSheet({
         sentTo: "Tool room",
         notes: notes.trim() || undefined,
       });
+      saved = true;
       await refreshAfterSend();
     } catch (error) {
+      const detail = error instanceof Error ? error.message : "The request could not be confirmed.";
       setSyncError(
-        error instanceof Error
-          ? error.message
-          : "Could not send this request. Try again in a moment.",
+        saved
+          ? `The tool request was saved, but this preview could not refresh. Check Requests for its current status. ${detail}`
+          : `We could not confirm this tool request was saved. Your note is still here. Check Requests before trying again. ${detail}`,
       );
     } finally {
+      sendInFlight.current = false;
       setSendingOrderId(null);
     }
   };
@@ -308,6 +314,9 @@ export function OrdersPreviewSheet({
     const notes = orderNotes.get(order.id) ?? "";
     sendInFlight.current = true;
     setSendingOrderId(order.id);
+    setSyncError(null);
+    let emailRequested = false;
+    let saved = false;
     try {
       // Launch from this tap; waiting for persistence first lets Safari block it.
       openEmailCompose({
@@ -316,6 +325,7 @@ export function OrdersPreviewSheet({
         subject: draft.subject,
         body: draft.body,
       });
+      emailRequested = true;
       await sendGeneratedOrder.mutateAsync({
         materialListId,
         orderedItemIds,
@@ -324,6 +334,7 @@ export function OrdersPreviewSheet({
         sentTo: toRecipients.join(", "),
         notes: notes.trim() || undefined,
       });
+      saved = true;
 
       requestMaterialListReplicacheSync(0, "pull");
       setSyncError(null);
@@ -336,10 +347,13 @@ export function OrdersPreviewSheet({
       ]);
       await loadPreview();
     } catch (error) {
+      const detail = error instanceof Error ? error.message : "The order could not be confirmed.";
       setSyncError(
-        error instanceof Error
-          ? error.message
-          : "Could not send this order. Try again in a moment.",
+        saved
+          ? `The order was saved, but this preview could not refresh. Check Orders for its current status. Email delivery is not confirmed here. ${detail}`
+          : emailRequested
+            ? `The email app may already be open, but we could not confirm the order was saved. Your draft is still here. Check Orders and your email app before trying again. ${detail}`
+            : `The email draft could not be opened. Your draft is still here. ${detail}`,
       );
     } finally {
       sendInFlight.current = false;
@@ -477,7 +491,8 @@ export function OrdersPreviewSheet({
                 size="sm"
                 className="h-8 shrink-0"
                 onClick={() => handleSendToToolRoom(order)}
-                disabled={isSending}
+                disabled={sendingOrderId !== null}
+                aria-busy={isSending}
               >
                 {isSending ? "Sending..." : "Send"}
               </Button>
@@ -501,12 +516,14 @@ export function OrdersPreviewSheet({
                 <Textarea
                   value={orderNotes.get(order.id) ?? ""}
                   onChange={(event) => {
+                    if (sendInFlight.current) return;
                     const next = new Map(orderNotes);
                     next.set(order.id, event.target.value);
                     setOrderNotes(next);
                   }}
                   placeholder="Note for the tool room (needed by, drop-off, etc.)"
                   className="min-h-[70px]"
+                  disabled={sendingOrderId !== null}
                 />
               )}
               {isSent && order.notes && (
@@ -579,9 +596,10 @@ export function OrdersPreviewSheet({
                 size="sm"
                 className="h-8 w-full"
                 onClick={() => handleEmailOrder(order)}
-                disabled={!canGenerateDocuments || isSending || !draft || (order.approval?.required && !order.approval.allowed)}
+                disabled={!canGenerateDocuments || sendingOrderId !== null || !draft || (order.approval?.required && !order.approval.allowed)}
+                aria-busy={isSending}
               >
-                {isSending ? "Opening..." : "Send"}
+                {isSending ? "Saving..." : "Send"}
               </Button>
             )}
           </div>
@@ -590,12 +608,12 @@ export function OrdersPreviewSheet({
         {!isSent && order.approval?.required && <div className="mt-3 space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <p>{order.approval.allowed ? "Approved for this order." : `${order.approval.unlistedCount} unlisted ${order.approval.unlistedCount===1?"part requires":"parts require"} approval.`} {order.approval.status==="pending"&&"Waiting for an authorized reviewer."}</p>
           {order.approval.reviewNote&&<p>Review: {order.approval.reviewNote}</p>}
-          {!order.approval.allowed && order.approval.status!=="pending" && <><Textarea aria-label="Reason for unlisted parts" placeholder="Why are these unlisted parts needed?" value={orderNotes.get(order.id)??""} onChange={event=>setOrderNotes(new Map(orderNotes).set(order.id,event.target.value))}/><Button size="sm" variant="outline" disabled={requestApproval.isPending||(orderNotes.get(order.id)??"").trim().length<3||!isOnline} onClick={()=>order.supplierId&&requestApproval.mutate({materialListId,supplierId:order.supplierId,note:orderNotes.get(order.id)??""})}>Request approval</Button></>}
-          {!order.approval.allowed&&<Button size="sm" variant="outline" className="ml-2" onClick={()=>void loadPreview().catch(e=>setSyncError(String(e)))}>Check approval</Button>}
+          {!order.approval.allowed && order.approval.status!=="pending" && <><Textarea aria-label="Reason for unlisted parts" placeholder="Why are these unlisted parts needed?" value={orderNotes.get(order.id)??""} disabled={sendingOrderId !== null} onChange={event=>{if(!sendInFlight.current)setOrderNotes(new Map(orderNotes).set(order.id,event.target.value));}}/><Button size="sm" variant="outline" disabled={sendingOrderId !== null||requestApproval.isPending||(orderNotes.get(order.id)??"").trim().length<3||!isOnline} onClick={()=>{if(!sendInFlight.current&&order.supplierId)requestApproval.mutate({materialListId,supplierId:order.supplierId,note:orderNotes.get(order.id)??""});}}>Request approval</Button></>}
+          {!order.approval.allowed&&<Button size="sm" variant="outline" className="ml-2" disabled={sendingOrderId !== null} onClick={()=>{if(!sendInFlight.current)void loadPreview().catch(e=>setSyncError(String(e)));}}>Check approval</Button>}
           {order.jobId&&<a className="ml-2 underline" href={`/jobs/${order.jobId}/pricing`}>Job pricing & reviews</a>}
         </div>}
         {isExpanded && (
-          <div className="mt-4 space-y-4 pl-6">
+          <fieldset disabled={sendingOrderId !== null} className="mt-4 min-w-0 space-y-4 border-0 pl-6" aria-label="Order email draft">
             {!draft ? (
               <p className="text-muted-foreground text-sm">{order.approval?.required&&!order.approval.allowed?"The email becomes available after approval.":"Loading email..."}</p>
             ) : (
@@ -612,12 +630,13 @@ export function OrdersPreviewSheet({
                     type="text"
                     value={recipient}
                     onChange={(event) => {
+                      if (sendInFlight.current) return;
                       const next = new Map(emailRecipients);
                       next.set(order.id, event.target.value);
                       setEmailRecipients(next);
                     }}
                     placeholder="supplier@example.com"
-                    disabled={isSent}
+                    disabled={isSent || sendingOrderId !== null}
                   />
                 </div>
 
@@ -633,22 +652,23 @@ export function OrdersPreviewSheet({
                     type="text"
                     value={ccRecipient}
                     onChange={(event) => {
+                      if (sendInFlight.current) return;
                       const next = new Map(emailCcRecipients);
                       next.set(order.id, event.target.value);
                       setEmailCcRecipients(next);
                     }}
                     placeholder="cc@example.com"
-                    disabled={isSent}
+                    disabled={isSent || sendingOrderId !== null}
                   />
                 </div>
 
                 <OrderEmailFields id={order.id} supplierId={order.supplier?.id} draft={draft}
- disabled={isSent} notes={orderNotes.get(order.id) ?? ""}
- onDraftChange={next=>setEmailDrafts(previous=>new Map(previous).set(order.id,next))}
- onNotesChange={notes=>setOrderNotes(previous=>new Map(previous).set(order.id,notes))} />
+ disabled={isSent || sendingOrderId !== null} notes={orderNotes.get(order.id) ?? ""}
+ onDraftChange={next=>{if(!sendInFlight.current)setEmailDrafts(previous=>new Map(previous).set(order.id,next));}}
+ onNotesChange={notes=>{if(!sendInFlight.current)setOrderNotes(previous=>new Map(previous).set(order.id,notes));}} />
               </>
             )}
-          </div>
+          </fieldset>
         )}
       </div>
     );
