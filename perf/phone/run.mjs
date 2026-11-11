@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { performance as hostClock } from "node:perf_hooks";
+import { createCdpConnection } from "./cdp-transport.mjs";
 
 const physicalMethod = "phone-visited-reads-page-cdp-v1";
 const smoke = process.env.PERF_PHONE_SMOKE === "1";
@@ -228,7 +229,7 @@ async function main() {
     setupEvidence.cleanup = cleanupResult;
     return cleanupResult;
   };
-  let socket;
+  let socket, connection;
   try {
     const wsUrl = new URL(created.webSocketDebuggerUrl);
     if (
@@ -240,46 +241,9 @@ async function main() {
       throw Error("Only the newly created page WebSocket is allowed");
     setupPhase = "page-websocket-open";
     socket = new WebSocket(wsUrl);
-    let nextId = 0;
-    const pending = new Map();
-    socket.addEventListener("message", ({ data }) => {
-      const message = JSON.parse(String(data));
-      const call = pending.get(message.id);
-      if (!call) return; // No discovery/logging of other targets or unsolicited payloads.
-      pending.delete(message.id);
-      clearTimeout(call.timer);
-      if (message.error)
-        call.reject(Error(`Page CDP command failed: ${call.method}`));
-      else call.resolve(message.result);
-    });
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(Error("New-page CDP open timeout")),
-        10_000,
-      );
-      const opened = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      const failed = () => {
-        clearTimeout(timer);
-        reject(Error("New-page CDP connection failed"));
-      };
-      socket.addEventListener("open", opened, { once: true });
-      socket.addEventListener("error", failed, { once: true });
-      socket.addEventListener("close", failed, { once: true });
-    });
-    function send(method, params = {}) {
-      return new Promise((resolve, reject) => {
-        const id = ++nextId,
-          timer = setTimeout(() => {
-            pending.delete(id);
-            reject(Error(`Page CDP timeout: ${method}`));
-          }, 30_000);
-        pending.set(id, { resolve, reject, timer, method });
-        socket.send(JSON.stringify({ id, method, params }));
-      });
-    }
+    connection = createCdpConnection(socket);
+    await connection.ready;
+    const send = (method, params = {}) => connection.send(method, params);
     const evaluate = async (expression) => {
       const result = await send("Runtime.evaluate", {
         expression,
@@ -442,6 +406,11 @@ async function main() {
         driverSha256: createHash("sha256")
           .update(await fs.readFile(new URL(import.meta.url)))
           .digest("hex"),
+        transportSha256: createHash("sha256")
+          .update(
+            await fs.readFile(new URL("./cdp-transport.mjs", import.meta.url)),
+          )
+          .digest("hex"),
         sourceBuild: source.sourceBuild,
         sourceFingerprint: source.sourceFingerprint,
         controlTransport: transport,
@@ -482,15 +451,12 @@ async function main() {
         completedSamples: samples,
         completedSamplesDiagnosticOnly: true,
         error: error instanceof Error ? error.message : "Phone evidence failed",
+        ...(typeof error?.kind === "string" ? { errorKind: error.kind } : {}),
+        ...(Number.isInteger(error?.code) ? { errorCode: error.code } : {}),
         accepted: false,
       };
     } finally {
-      socket.close();
-      for (const call of pending.values()) {
-        clearTimeout(call.timer);
-        call.reject(Error("Phone runner closed"));
-      }
-      pending.clear();
+      connection.close();
       const cleanup = await closeCreatedTarget();
       if (report) report.cleanup = cleanup;
     }
@@ -505,7 +471,8 @@ async function main() {
       process.exitCode = 1;
   } finally {
     try {
-      socket?.close();
+      if (connection) connection.close();
+      else socket?.close();
     } catch {
       /* Still close only our explicit target. */
     }

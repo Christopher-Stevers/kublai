@@ -80,3 +80,79 @@ journey timings**. The owned tab close returned HTTP 200, forwards were removed,
 and the user was released. These diagnostics do not establish physical target
 performance, a completed phone benchmark, or an accepted matrix. No additional
 phone commands are part of this source follow-up.
+
+## Manual bounded protocol diagnostic
+
+`diagnose.mjs` is a separate **source-prepared, device-unexecuted** investigation tool.
+It does not run ADB, launch Chrome, alter forwarding, discover existing targets,
+or run automatically from any package script. A future phone session needs a
+new explicit user window and root's verified synthetic lab/forwarding setup.
+The previous physical attempt still provides **zero journey timings**.
+
+The diagnostic requires the same source/preflight/fixture/private-database
+evidence and loopback origins as `run.mjs`, plus the explicit opt-in
+`PERF_PHONE_DIAGNOSTIC=owned-target-only`. Root manually invokes
+`node perf/phone/diagnose.mjs` with those environment variables and may set
+`PERF_PHONE_DIAGNOSTIC_OUTPUT` to an evidence filename. There is no automatic
+launch, retained-browser mode, fallback, navigation retry or target recovery by listing.
+`PERF_PHONE_BROWSER_LIFETIME`, if supplied, must be `close-after-create`.
+
+The complete CLI has a **60-second hard process limit**: work is limited to
+50 seconds, leaving up to eight seconds for exact-ID cleanup and the remaining
+time for the report. Every fetch, socket opening and CDP command is bounded to
+at most five seconds and the remaining work budget. Root should keep the
+synthetic app isolated and available throughout this short manual window.
+
+The sequence is fixed:
+
+1. Attest the host lab, read `/json/version`, then issue exactly one browser
+   command: `Target.createTarget({url:"about:blank",forTab:false})`.
+2. Close the creation WebSocket, preserving the original runner's lifetime
+   choice, and connect only to `/devtools/page/<returned-ID>`. Enable Page and
+   Runtime, then bring only that created page to the front.
+3. Evaluate three booleans on the blank page: expected blank URL, complete
+   document and visibility. An unexpected or incomplete blank page stops work;
+   visibility is recorded without forcing additional UI actions.
+4. Navigate once to a fixed, network-free synthetic `data:text/html` document,
+   then wait up to five seconds for its expected URL and fixed probe element.
+5. Navigate once to the dedicated loopback `/api/perf-lab` endpoint, wait for
+   that expected URL and return only a boolean from its same-origin attestation
+   fetch. The Chrome JSON-viewer body is never parsed.
+6. Stop at the first failure and close only the known created target using
+   `/json/close/<returned-ID>`. Record the HTTP acknowledgment; this does not
+   independently prove target destruction. Unknown creation outcomes are not
+   recovered through discovery and may leave a blank tab for manual cleanup.
+
+Reports contain stage/command names, numeric CDP error codes, socket close/error
+observations with elapsed time, whitelisted event **names and counts only**,
+and the specific boolean checks. Event payloads, raw protocol errors, close
+reasons, private URLs, console messages, DOM text, cookies, screenshots and
+target IDs are not written. Browser-wide tracing, auto-attach and target
+listing remain excluded. Reports always set `accepted:false`,
+`physicalPhoneEvidence:false` and `completedSamples:[]`; even success is only
+`diagnostic-only`. This tool cannot supply physical performance evidence.
+
+Blank-runtime failure narrows attention to initial renderer/session readiness;
+network-free success followed by loopback failure narrows attention to Chrome's
+request/navigation path. Socket close/error observations distinguish a
+disconnect from an unanswered navigation. None alone establishes a root cause.
+
+Exact Chromium **157.0.8103.46** source supports preserving the current target
+and lifetime choices: [Android target creation](https://chromium.googlesource.com/chromium/src/+/refs/tags/157.0.8103.46/chrome/browser/devtools/protocol/target_handler_android.cc#65)
+defaults `forTab` to false and returns the page/frame host; [TabModel ownership](https://chromium.googlesource.com/chromium/src/+/refs/tags/157.0.8103.46/chrome/browser/ui/android/tab_model/tab_model_jni_bridge.cc#341)
+passes WebContents lifetime to Java. [Page.navigate](https://chromium.googlesource.com/chromium/src/+/refs/tags/157.0.8103.46/content/browser/devtools/protocol/page_handler.cc#995)
+can await navigation-request transfer/reset rather than full document load.
+These sources do not prove which condition caused the earlier timeout.
+
+The shared `cdp-transport.mjs` rejects all pending commands immediately on a
+post-open socket close/error, clears their timers and preserves numeric CDP
+error codes without raw error text. The visited-read runner keeps its existing
+30-second command/10-second opening limits and timing method; it records the
+transport's source hash alongside the runner hash. It does not enable event
+logging. `cdp-transport.test.mjs` uses only an in-memory mock socket and fake
+timers to check disconnects, errors, timeouts, sanitized observations and cleanup.
+After root released the quiet window, all **six mock transport tests passed**
+(zero failures), and `node --check` passed for the diagnostic, shared transport,
+transport test and visited-read runner. These tests use no HTTP/network,
+browser or Android actions. The new diagnostic remains unexecuted against a
+browser/device; no new phone timing samples or physical evidence were produced.
