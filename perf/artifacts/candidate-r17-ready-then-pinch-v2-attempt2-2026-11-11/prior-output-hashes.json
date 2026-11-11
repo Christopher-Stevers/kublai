@@ -1,0 +1,14 @@
+{
+  "preservedDirectory": "/tmp/foremanhq-r17-full-v2-attempt2-evidence/prior-outputs",
+  "immutablePriorArchive": "perf/artifacts/candidate-r17-incompatible-early-pinch-v1-2026-11-11",
+  "files": {
+    "server.log": "525eb11a79ff080713d3c431c4d9706359b52dc6eee2340275e3894dc3e894bb",
+    "candidate-regression.txt": "67af210a3f097e684dd47270663a96726f6ee8058d10ecc1d9dd779570e19891",
+    "static.json": "bad918f8bd03f824532edf5062456512b3a300401ea19987db2d5502154e31fe",
+    "lab-static-bytes.json": "14dfa1dfd5c42459c6e12b638608467c327fe9ba0ed4eb7c05dee7edfed45e53",
+    "static-bytes.json": "8f73236ae343512a68eb15a2a83a2b2f55288b3d1e6bd7ed80b984b4c12dbbfb",
+    "preflight.json": "ffd85c7bf80e0c909f6d17c43dd9695ac090b587fa47c7b71b17443300905e6a",
+    "idle.json": "a5a8a307a5b9226b5114dd3fc06d1d78c2d83a6d10e56c7fb17eec03fbe29340",
+    "candidate.json": "4ffc90b1664375239383bb90d7e3ec289f5a28400dec06634b57b590dab5e2aa"
+  }
+}

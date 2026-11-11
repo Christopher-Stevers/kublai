@@ -1,0 +1,18 @@
+{
+  "coordinatorExitCode": 1,
+  "reason": "unchanged formal comparator failure",
+  "ownedPort3481Closed": true,
+  "noOwnedNextOrWrapperProcessesObserved": true,
+  "privatePgDirectoryAbsent": true,
+  "unexpectedDatabaseErrorHeaders": [],
+  "captureDatabaseHealth": {
+    "count": 0,
+    "fatalCount": 0,
+    "windowStartedAt": "2026-11-11T14:22:40.463Z",
+    "observedAt": "2026-11-11T14:40:18.353Z",
+    "source": "private PostgreSQL ERROR/FATAL headers; no SQL or parameters"
+  },
+  "thisRunEvidenceCopiedBeforeHelperCleanup": true,
+  "schemaBeforeAfterEqual": true,
+  "noRetriesNoSampleExclusions": true
+}

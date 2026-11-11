@@ -1,0 +1,20 @@
+{
+  "startedAt": "2026-11-11T14:12:06.529765+00:00",
+  "trackedCommand": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11-preparation/full-command.sh",
+  "scriptHashes": {
+    "orchestration.sh": "015a11d2f23e975ae1a9302d5a06d81ab6454cfc6e80cfc037c9397206dffcb4",
+    "reuse-helper.mjs": "12bd93014b2322d913cb8cdbc79621243095899d4e5b5e3f37b6f9c4bcf96239",
+    "protocol-guard.mjs": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722",
+    "full-command.sh": "a732128e970d257155311218d36cc38f719964d57511d3229dbbbaee8ebeeec9",
+    "source-after.mjs": "4a2f74b7ba7d2822644acec55e819d83584c1a87ce97aafef3a0f1eb3a2e185b",
+    "check-protocol-config.node-test.mjs": "6ab23da06fc316e619a559bdb0544142e9cd12ba3ec779c9b60a52c174492a88",
+    "evidence-cleanup.node-test.mjs": "c510f2aecd8db20d98e9d2812fd3fa00036998e7618e723b0456d4794d4a151f"
+  },
+  "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+  "declaredProtocol": "ready-then-pinch-v2",
+  "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "quietQualification": "No declared heavy agent work/ADB; live production web/worker and ordinary OS background activity remain, not complete system isolation."
+}

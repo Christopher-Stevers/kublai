@@ -1,0 +1,7 @@
+# R17 corrected full v2 attempt2 — regression gate failed
+
+All120 samples/24cells and original600000ms idle completed using exact frozen ready-then-pinch-v2 and predeclared accepted baseline1. The unchanged10% median comparator failed openjob/Site and openjob/Office;22other cells passed. No reruns, sample exclusions, baseline swaps or threshold changes. Prior incompatible v1 execution remains separate and unchanged.
+
+Actual exported protocol was verified before database startup, before idle and before matrix; allowlisted effective environments retained. Same immutable R17 lab/source and29-file frozen method bound before/after. Fresh private fixture schema inventory, fixture,14-read preflight and private PG log were copied before helper cleanup; zero ERROR/FATAL entries. Final source attestation and operational script hashes unchanged. Owned Next/DB/wrapper processes ended, port3481 closed and private socket directory removed; quiet window released.
+
+Report, all raw durations/browser stages, all24cell assessment, idle/static bytes, standalone actual schema, source/method/config proofs and cleanup are preserved. Private PG log covers startup through post-app-stop copy, before helper shutdown. Source-declared schema coverage does not prove unexercised legacy functions/settings. Synthetic-auth/desktop/lab-transport/nonhex-SW qualifications remain. No physical, full Phase0, weekly soak or activation claim. Root review only; no next capture queued.

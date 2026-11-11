@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-11-11T14:42:32.978608+00:00",
+  "scriptHashes": {
+    "full-command.sh": "a732128e970d257155311218d36cc38f719964d57511d3229dbbbaee8ebeeec9",
+    "orchestration.sh": "015a11d2f23e975ae1a9302d5a06d81ab6454cfc6e80cfc037c9397206dffcb4",
+    "reuse-helper.mjs": "12bd93014b2322d913cb8cdbc79621243095899d4e5b5e3f37b6f9c4bcf96239",
+    "protocol-guard.mjs": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722",
+    "source-after.mjs": "4a2f74b7ba7d2822644acec55e819d83584c1a87ce97aafef3a0f1eb3a2e185b"
+  },
+  "scriptHashesUnchanged": true,
+  "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "methodBeforeAfterUnchanged": true,
+  "sourceFingerprintAfter": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "actualProtocol": "ready-then-pinch-v2"
+}
