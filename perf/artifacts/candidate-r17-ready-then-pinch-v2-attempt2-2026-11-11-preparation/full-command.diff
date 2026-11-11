@@ -1,0 +1,30 @@
+--- attempt1
++++ attempt2-explicit-protocol
+@@ -7,7 +7,24 @@
+ export PERF_COMPARISON_BASELINE=/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json
+ export PERF_REUSE_SNAPSHOT=/tmp/foremanhq-speed-app-epcRJM
+ export PERF_SYNTHETIC_CACHE_ROOT=/tmp/foremanhq-speed-app-5h2kmq
+-export PERF_PG_ERROR_REPORT=/tmp/foremanhq-r17-full-pg-errors.json
++export PERF_PG_ERROR_REPORT=/tmp/foremanhq-r17-full-v2-attempt2-pg-errors.json
+ export PERF_IDLE_DURATION_MS=600000
+-[[ ! -e "$PERF_REUSE_SNAPSHOT/candidate.json" && ! -e "$PERF_REUSE_SNAPSHOT/idle.json" ]]
+-exec timeout --signal=TERM --kill-after=20s 45m bash "$PERF_HARNESS_DIR/perf/lab/database.sh" bash /tmp/foremanhq-r17-candidate120-ready-v2.sh
++export PERF_SHEET_PROTOCOL=ready-then-pinch-v2
++export PERF_RUN_EVIDENCE_DIR=/tmp/foremanhq-r17-full-v2-attempt2-evidence
++# Fail BEFORE DB startup or any owned-output removal.
++node /tmp/foremanhq-r17-attempt2-protocol-guard.mjs > /tmp/foremanhq-r17-attempt2-effective-environment-before-db.json
++[[ ! -e "$PERF_RUN_EVIDENCE_DIR" ]]
++mkdir -m 700 "$PERF_RUN_EVIDENCE_DIR"
++cp /tmp/foremanhq-r17-attempt2-effective-environment-before-db.json "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-db.json"
++# Save all prior generated outputs before removing only exact owned filenames.
++[[ "$PERF_REUSE_SNAPSHOT" == /tmp/foremanhq-speed-app-epcRJM && -f "$PERF_REUSE_SNAPSHOT/PERF_LAB_ONLY" ]]
++[[ "$(cat "$PERF_REUSE_SNAPSHOT/.next/BUILD_ID")" == zNd84I0aO-5wNGl7s3g4z ]]
++mkdir -m 700 "$PERF_RUN_EVIDENCE_DIR/prior-outputs"
++for name in candidate.json idle.json preflight.json static-bytes.json lab-static-bytes.json static.json candidate-regression.txt server.log; do
++  if [[ -f "$PERF_REUSE_SNAPSHOT/$name" ]]; then
++    cp "$PERF_REUSE_SNAPSHOT/$name" "$PERF_RUN_EVIDENCE_DIR/prior-outputs/$name"
++    cmp "$PERF_REUSE_SNAPSHOT/$name" "$PERF_RUN_EVIDENCE_DIR/prior-outputs/$name"
++    rm -- "$PERF_REUSE_SNAPSHOT/$name"
++  fi
++done
++exec timeout --signal=TERM --kill-after=20s 45m bash "$PERF_HARNESS_DIR/perf/lab/database.sh" bash /tmp/foremanhq-r17-candidate120-ready-v2-attempt2.sh

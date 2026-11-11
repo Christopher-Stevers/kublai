@@ -1,0 +1,26 @@
+{
+  "status": "prepared-not-run-awaiting-root-quiet-GO",
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "lab": "/tmp/foremanhq-speed-app-epcRJM",
+  "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+  "timingMethod": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "samples": 120,
+  "idleDurationMs": 600000,
+  "outerBoundMinutes": 45,
+  "noRetryOrSampleExclusion": true,
+  "thisRunEvidenceDirectory": "/tmp/foremanhq-r17-full-v2-attempt2-evidence",
+  "databaseLogScope": "Copied after Next stop and before database.sh cleanup, excludes subsequent PG shutdown lines. Contains private fixture only; inspect/sanitize before repository archive.",
+  "standaloneSchemaPreserved": true,
+  "hashes": {
+    "orchestration.sh": "abf4e41b4aeee62010f9e8600e4e22bf59e0e492cf061f8950688c3c09fd4f67",
+    "reuse-helper.mjs": "12bd93014b2322d913cb8cdbc79621243095899d4e5b5e3f37b6f9c4bcf96239",
+    "protocol-guard.mjs": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722",
+    "full-command.sh": "a732128e970d257155311218d36cc38f719964d57511d3229dbbbaee8ebeeec9",
+    "source-after.mjs": "4a2f74b7ba7d2822644acec55e819d83584c1a87ce97aafef3a0f1eb3a2e185b"
+  },
+  "preflightTests": "7 node tests pass, including actual CLI missing/wrong/correct env cases without DB/browser",
+  "methodUnchanged": true,
+  "captureCleanupCaveat": "Normal completion/failure EXIT copies evidence before frozen database helper cleanup; SIGKILL cannot guarantee final copy. Startup schema/fixtures/source copied before any timed work."
+}
