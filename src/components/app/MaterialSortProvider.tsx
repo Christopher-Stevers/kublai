@@ -1,5 +1,13 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useMaterialSortAuthority } from "~/hooks/use-material-sort-authority";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { api } from "~/trpc/react";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
@@ -37,17 +45,33 @@ function usePreferenceState(userId: string, organizationId: string) {
     expectedUserId: userId,
     expectedOrganizationId: organizationId,
   };
-  const query = api.user.getMaterialSortPreferences.useQuery(input, {
-    enabled: online,
-    // This query also carries authoritative executive entitlement; realtime
-    // settings hints do not replace its session/role/subscription refresh.
-    refetchInterval: 60000,
-  });
-  useMaterialSortLive(
-    online,
-    liveAccountScope(organizationId, userId, simulation?.id),
-    () => query.refetch(),
+  const refresh = useRef<() => Promise<unknown>>(() =>
+    Promise.resolve(undefined),
   );
+  const expectedAccount = liveAccountScope(
+    organizationId,
+    userId,
+    simulation?.id,
+  );
+  const streamReady = useMaterialSortLive(online, expectedAccount, () =>
+    refresh.current(),
+  );
+  const authority = useMaterialSortAuthority(
+    expectedAccount,
+    online,
+    streamReady,
+    input,
+  );
+  const query = api.user.getMaterialSortPreferences.useQuery(input, {
+    enabled: online && authority.active,
+    refetchOnMount: "always",
+    refetchInterval: authority.suppressPoll ? false : 60000,
+    refetchIntervalInBackground: false,
+  });
+  const refetch = query.refetch;
+  useLayoutEffect(() => {
+    refresh.current = () => refetch({ cancelRefetch: false });
+  }, [refetch]);
   const mutation = api.user.setMaterialSortPreferences.useMutation({
     scope: { id: key },
   });
@@ -93,7 +117,8 @@ function usePreferenceState(userId: string, organizationId: string) {
   // browser preference. Simulation cannot publish another account's settings.
   useEffect(() => {
     if (
-      !query.data?.canEditExecutive ||
+      !authority.canEditExecutive ||
+      !query.data ||
       query.data.initialized ||
       seeded.current
     )
@@ -133,7 +158,7 @@ function usePreferenceState(userId: string, organizationId: string) {
       .catch(() =>
         setError("Could not save executive sorting. Please reload to retry."),
       );
-  }, [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query.data, authority.canEditExecutive]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const change = pending.current;
     if (!change || !draft) return;
@@ -167,7 +192,12 @@ function usePreferenceState(userId: string, organizationId: string) {
     return () => clearTimeout(timer);
   }, [draft]); // eslint-disable-line react-hooks/exhaustive-deps
   function update(next: State, target: "executive" | "personal") {
-    if (!online || !query.data) return;
+    if (
+      !authority.editable ||
+      !query.data ||
+      (target === "executive" && !authority.canEditExecutive)
+    )
+      return;
     revision.current++;
     pending.current = { state: next, target };
     setError("");
@@ -181,7 +211,7 @@ function usePreferenceState(userId: string, organizationId: string) {
   );
   const settings = editingExecutive ? state.shared : effective;
   function edit(settings: MaterialSortSettings) {
-    if (editingExecutive && state.canEditExecutive)
+    if (editingExecutive && authority.canEditExecutive)
       update({ ...state, shared: settings }, "executive");
     else if (state.custom) update({ ...state, personal: settings }, "personal");
   }
@@ -190,8 +220,8 @@ function usePreferenceState(userId: string, organizationId: string) {
     editorSettings: settings,
     custom: state.custom,
     editingExecutive,
-    canEditExecutive: state.canEditExecutive,
-    editable: online && !!query.data,
+    canEditExecutive: authority.canEditExecutive,
+    editable: authority.editable && !!query.data,
     saving,
     error:
       error ||

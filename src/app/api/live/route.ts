@@ -172,6 +172,10 @@ export async function GET(request: Request) {
             if (!closed)
               liveHub.publish(scope, { topic: "preferences", kind }, revision);
           },
+          (ready) =>
+            send(
+              `event: preferences-ready\ndata: ${JSON.stringify({ ready })}\n\n`,
+            ),
         );
       const resume = liveHub.resume(
         scope,

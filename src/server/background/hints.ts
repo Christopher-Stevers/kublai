@@ -1,3 +1,7 @@
+import {
+  installedPostgresVersion,
+  observeListenLoss,
+} from "./listen-lifecycle";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import type { Sql } from "postgres";
@@ -40,6 +44,8 @@ type HintState = {
   emitter: EventEmitter;
   connection?: Sql;
   starting?: Promise<void>;
+  listenerReady?: boolean;
+  stopLifecycle?: () => void;
 };
 const shared = globalThis as typeof globalThis & {
   __foremanBackgroundHints?: HintState;
@@ -78,6 +84,21 @@ export function onBackgroundHintReconnect(
     emitter.off("reconnected", listener);
   };
 }
+/** Only healthy when the pinned real LISTEN pool lifecycle is observable. */
+export function onBackgroundHintAvailability(
+  listener: (ready: boolean) => void,
+) {
+  emitter.on("availability", listener);
+  listener(state.listenerReady === true);
+  return () => {
+    emitter.off("availability", listener);
+  };
+}
+function listenerAvailability(ready: boolean) {
+  if (state.listenerReady === ready) return;
+  state.listenerReady = ready;
+  emitter.emit("availability", ready);
+}
 export function transactionalBackgroundHint(hint: BackgroundHint) {
   const parsed = hintSchema.parse(hint);
   if (
@@ -93,14 +114,32 @@ export function startBackgroundHints() {
   return (state.starting ??= (async () => {
     const { default: postgres } = await import("postgres");
     state.connection = postgres(process.env.DATABASE_URL!, { max: 1 });
-    await state.connection.listen(
+    const connection = state.connection;
+    let observed = false;
+    const listening = connection.listen(
       "foremanhq_change",
       acceptBackgroundHint,
       () => {
+        if (state.connection !== connection) return;
+        listenerAvailability(observed);
         emitter.emit("reconnected", randomUUID());
       },
     );
+    state.stopLifecycle?.();
+    const stop = observeListenLoss(
+      connection,
+      installedPostgresVersion(),
+      () => {
+        if (state.connection === connection) listenerAvailability(false);
+      },
+    );
+    observed = stop !== null;
+    state.stopLifecycle = stop ?? undefined;
+    await listening;
   })().catch(async () => {
+    listenerAvailability(false);
+    state.stopLifecycle?.();
+    state.stopLifecycle = undefined;
     const failed = state.connection;
     state.connection = undefined;
     await failed?.end({ timeout: 1 }).catch(() => undefined);

@@ -218,6 +218,8 @@ it("deduplicates preference source copies and sends content-free frames only to 
     await import("~/server/background/hints");
   const a = await open("?preferences=1"),
     b = await open("?preferences=1");
+  expect(text(await a.reader.read())).toContain("event: preferences-ready");
+  expect(text(await b.reader.read())).toContain("event: preferences-ready");
   await a.reader.read();
   await b.reader.read();
   const observer = vi.fn(),

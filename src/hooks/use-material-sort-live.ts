@@ -1,14 +1,23 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { subscribeLiveEvents } from "~/lib/live-client";
 import { isAppPageActive } from "~/lib/app-page-activity";
 
-/** Extra best-effort invalidations only. HTTP's 60-second authority poll stays. */
+/** Read invalidations and separate topic health; neither grants permissions. */
 export function useMaterialSortLive(
   online: boolean,
   expectedAccount: string,
   refresh: () => Promise<unknown>,
 ) {
+  const [health, setHealth] = useState<{
+    account: string;
+    binding: object;
+    ready: boolean;
+  } | null>(null);
+  const binding = useMemo(
+    () => ({ expectedAccount, online }),
+    [expectedAccount, online],
+  );
   const callback = useRef(refresh);
   useEffect(() => {
     callback.current = refresh;
@@ -17,6 +26,8 @@ export function useMaterialSortLive(
     if (!online || typeof EventSource === "undefined") return;
     let active = true,
       connected = false,
+      topicReady = false,
+      epoch = 0,
       busy = false,
       pending = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -31,8 +42,18 @@ export function useMaterialSortLive(
         if (!active || !connected || !isAppPageActive()) return;
         pending = false;
         busy = true;
+        const startedEpoch = epoch;
         void callback
           .current()
+          .then((result) => {
+            const success =
+              !!result &&
+              typeof result === "object" &&
+              "isSuccess" in result &&
+              result.isSuccess === true;
+            if (active && connected && topicReady && epoch === startedEpoch)
+              setHealth({ account: expectedAccount, binding, ready: success });
+          })
           .catch(() => undefined)
           .finally(() => {
             busy = false;
@@ -43,9 +64,19 @@ export function useMaterialSortLive(
     const unsubscribe = subscribeLiveEvents(
       { preferences: true, expectedAccount },
       {
+        preferencesReady: (value) => {
+          if (!active) return;
+          if (topicReady !== value) epoch++;
+          topicReady = value;
+          setHealth({ account: expectedAccount, binding, ready: false });
+          if (value) schedule();
+        },
         status: (value) => {
           connected = value;
           if (!value) {
+            epoch++;
+            topicReady = false;
+            setHealth({ account: expectedAccount, binding, ready: false });
             clearTimeout(timer);
             timer = undefined;
             pending = false;
@@ -62,5 +93,11 @@ export function useMaterialSortLive(
       clearTimeout(timer);
       unsubscribe();
     };
-  }, [online, expectedAccount]);
+  }, [online, expectedAccount, binding]);
+  return (
+    online &&
+    health?.account === expectedAccount &&
+    health.binding === binding &&
+    health.ready
+  );
 }

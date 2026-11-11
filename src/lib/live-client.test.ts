@@ -230,3 +230,25 @@ it("binds a new scoped subscriber mounted before the bootstrap account transitio
   Source.all[0]!.emit("live", { topic: "preferences", version: 1 });
   expect(hint).toHaveBeenCalledOnce();
 });
+
+it("distinguishes preference topic readiness from transport and drops it on hide/loss", () => {
+  const health = vi.fn();
+  manager.setAccount("org:user");
+  manager.subscribe(
+    { preferences: true },
+    { hint: vi.fn(), preferencesReady: health },
+  );
+  vi.advanceTimersByTime(0);
+  const source = Source.all[0]!;
+  source.emit("connected");
+  expect(health).toHaveBeenLastCalledWith(false);
+  source.emit("preferences-ready", { ready: true });
+  expect(health).toHaveBeenLastCalledWith(true);
+  source.emit("preferences-ready", { ready: false });
+  expect(health).toHaveBeenLastCalledWith(false);
+  source.emit("preferences-ready", { ready: true });
+  setAppPageActive(false);
+  expect(health).toHaveBeenLastCalledWith(false);
+  source.onerror?.();
+  expect(health).toHaveBeenLastCalledWith(false);
+});

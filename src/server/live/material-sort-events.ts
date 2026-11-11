@@ -1,5 +1,6 @@
 import {
   onBackgroundHint,
+  onBackgroundHintAvailability,
   onBackgroundHintReconnect,
   startBackgroundHints,
 } from "~/server/background/hints";
@@ -11,6 +12,7 @@ type Audience = { organizationId: string; userId: string };
 export function subscribeMaterialSortEvents(
   audience: Audience,
   invalidate: (kind: "settings" | "resync", revision: string) => void,
+  availability?: (ready: boolean) => void,
 ) {
   let active = true;
   const unsubscribe = onBackgroundHint((hint) => {
@@ -26,12 +28,18 @@ export function subscribeMaterialSortEvents(
   const reconnect = onBackgroundHintReconnect((revision) => {
     if (active) invalidate("resync", revision);
   });
-  // Best effort remains explicit: the unchanged HTTP authority poll recovers
+  const health = availability
+    ? onBackgroundHintAvailability((ready) => {
+        if (active) availability(ready);
+      })
+    : () => undefined;
+  // Best effort remains explicit: the retained HTTP fallback poll recovers
   // missed notifications while this shared LISTEN connection is unavailable.
   void startBackgroundHints();
   return () => {
     active = false;
     unsubscribe();
     reconnect();
+    health();
   };
 }

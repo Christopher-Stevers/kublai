@@ -24,6 +24,17 @@ const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   setData: vi.fn(),
   queryOptions: vi.fn(),
+  suppressPoll: false,
+}));
+// Legacy editor/draft fixtures keep their existing deterministic HTTP result.
+// Actual cache certificates/fallback are exercised by the integration suite.
+vi.mock("~/hooks/use-material-sort-authority", () => ({
+  useMaterialSortAuthority: () => ({
+    active: true,
+    suppressPoll: mocks.suppressPoll,
+    editable: mocks.online && !!mocks.data,
+    canEditExecutive: mocks.data?.canEditExecutive ?? false,
+  }),
 }));
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mocks.online,
@@ -75,6 +86,7 @@ const mount = (id = "crew") =>
 beforeEach(() => {
   vi.useFakeTimers();
   mocks.online = true;
+  mocks.suppressPoll = false;
   mocks.data = {
     shared: defaultMaterialSortSettings,
     personal: { ...defaultMaterialSortSettings, sortMode: "supplier" },
@@ -206,6 +218,16 @@ it("retains the 60-second authority refresh alongside realtime settings", () => 
   mount();
   expect(mocks.queryOptions).toHaveBeenLastCalledWith({
     enabled: true,
+    refetchOnMount: "always",
     refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
+});
+
+it("only disables the preference interval after the separate verified authority policy opts in", () => {
+  mocks.suppressPoll = true;
+  mount();
+  expect(mocks.queryOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ refetchInterval: false }),
+  );
 });

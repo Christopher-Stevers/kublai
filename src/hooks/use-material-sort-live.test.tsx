@@ -95,3 +95,34 @@ it("cancels queued reads and fences old callbacks on account change and disconne
   });
   expect(refresh).not.toHaveBeenCalled();
 });
+
+it("requires topic-ready plus successful HTTP catchup and loses health immediately", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("EventSource", class {});
+  const refresh = vi.fn().mockResolvedValue({ isSuccess: true });
+  const { result } = renderHook(() =>
+    useMaterialSortLive(true, "org:crew", refresh),
+  );
+  const listener = mocks.listeners[0]! as (typeof mocks.listeners)[number] & {
+    preferencesReady: (value: boolean) => void;
+  };
+  act(() => {
+    listener.status(true);
+    listener.catchUp();
+  });
+  expect(result.current).toBe(false);
+  await act(async () => {
+    vi.advanceTimersByTime(100);
+    await Promise.resolve();
+  });
+  expect(result.current).toBe(false);
+  act(() => listener.preferencesReady(true));
+  expect(result.current).toBe(false);
+  await act(async () => {
+    vi.advanceTimersByTime(100);
+    await Promise.resolve();
+  });
+  expect(result.current).toBe(true);
+  act(() => listener.preferencesReady(false));
+  expect(result.current).toBe(false);
+});

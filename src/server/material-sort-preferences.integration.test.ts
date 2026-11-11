@@ -20,6 +20,7 @@ it.skipIf(!socket)(
     });
     const inbox: unknown[] = [];
     const epochs: unknown[] = [];
+    const availability: boolean[] = [];
     const child = spawn(
       process.execPath,
       [
@@ -28,8 +29,8 @@ it.skipIf(!socket)(
         "--input-type=module",
         "-e",
         `
- import {startBackgroundHints,onBackgroundHint,onBackgroundHintReconnect} from './src/server/background/hints.ts';
- onBackgroundHint(hint=>process.send({hint}));onBackgroundHintReconnect(revision=>process.send({epoch:revision}));await startBackgroundHints();process.send({ready:true});
+ import {startBackgroundHints,onBackgroundHint,onBackgroundHintReconnect,onBackgroundHintAvailability} from './src/server/background/hints.ts';
+ onBackgroundHintAvailability(available=>process.send({available}));onBackgroundHint(hint=>process.send({hint}));onBackgroundHintReconnect(revision=>process.send({epoch:revision}));await startBackgroundHints();process.send({ready:true});
  `,
       ],
       {
@@ -44,7 +45,14 @@ it.skipIf(!socket)(
       },
     );
     child.on("message", (m) => {
-      if ((m as { epoch?: unknown }).epoch) epochs.push(m);
+      if (
+        m &&
+        typeof m === "object" &&
+        "available" in m &&
+        typeof m.available === "boolean"
+      )
+        availability.push(m.available);
+      else if ((m as { epoch?: unknown }).epoch) epochs.push(m);
       else inbox.push(m);
     });
     let stderr = "";
@@ -123,12 +131,14 @@ it.skipIf(!socket)(
       const rows = await sql`select scope from kublai_material_sort_preference`;
       expect(rows.map((r) => r.scope as unknown)).toEqual(["crew"]);
       expect(epochs).toHaveLength(1);
+      expect(availability).toEqual([false, true]);
       const listeners =
         await sql`select pid from pg_stat_activity where datname = current_database() and query ilike 'listen%'`;
       expect(listeners).toHaveLength(1);
       await sql`select pg_terminate_backend(${listeners[0]!.pid as number})`;
       await wait(() => epochs.length === 2);
       expect(epochs[0]).not.toEqual(epochs[1]);
+      expect(availability).toEqual([false, true, false, true]);
     } finally {
       child.kill("SIGKILL");
       await new Promise<void>((resolve) => {

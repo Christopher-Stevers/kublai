@@ -1,3 +1,4 @@
+import { liveAccountScope } from "~/lib/live-protocol";
 import { materialSortSettingsSchema } from "~/lib/material-sort-preferences";
 import {
   readMaterialSortPreferences,
@@ -215,8 +216,15 @@ export const userRouter = createTRPCRouter({
 
   getMyRole: protectedProcedure.query(async ({ ctx }) => {
     const permissions = getUserPermissions(ctx.user);
+    // Match hasAppAccess's org/status gate without changing this existing
+    // protected query into an app-access-only endpoint.
+    const appAccess = Boolean(ctx.user.organizationId) &&
+      (!ctx.user.organizationAccessStatus || ctx.user.organizationAccessStatus === "approved");
 
     return {
+      accountScope: ctx.user.organizationId ? liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id) : null,
+      appAccess,
+      canEditExecutive: appAccess && hasManagingSeat(ctx.user) && !ctx.simulation,
       role: ctx.user.role,
       organizationId: ctx.user.organizationId,
       hasOneTimeAccess: ctx.user.hasOneTimeAccess,

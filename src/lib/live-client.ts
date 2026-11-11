@@ -11,6 +11,7 @@ export type LiveSubscription = {
 export type LiveCallbacks = {
   hint: (hint: LiveHint) => void;
   status?: (connected: boolean) => void;
+  preferencesReady?: (ready: boolean) => void;
   catchUp?: () => void;
 };
 type Subscriber = {
@@ -27,6 +28,7 @@ export class LiveClient {
   private subscribers = new Set<Subscriber>();
   private source: EventSource | undefined;
   private connected = false;
+  private preferencesReady = false;
   private cursor = "";
   private chatVersions = new Map<string, number>();
   private signature = "";
@@ -49,14 +51,19 @@ export class LiveClient {
   }
   private status(connected: boolean) {
     this.connected = connected;
-    for (const sub of this.active())
+    for (const sub of this.active()) {
       sub.callbacks.status?.(connected && this.available());
+      sub.callbacks.preferencesReady?.(
+        connected && this.preferencesReady && this.available(),
+      );
+    }
   }
   private stop() {
     clearTimeout(this.retry);
     this.retry = undefined;
     this.source?.close();
     this.source = undefined;
+    this.preferencesReady = false;
     this.status(false);
   }
   private topics() {
@@ -138,6 +145,26 @@ export class LiveClient {
       if (this.available())
         for (const sub of this.active()) sub.callbacks.catchUp?.();
     });
+    source.addEventListener("preferences-ready", (event) => {
+      if (this.source !== source) return;
+      let ready = false;
+      try {
+        const value: unknown = JSON.parse((event as MessageEvent<string>).data);
+        ready =
+          !!value &&
+          typeof value === "object" &&
+          "ready" in value &&
+          value.ready === true;
+      } catch {
+        /* Stay unhealthy. */
+      }
+      this.preferencesReady = ready;
+      for (const sub of this.active())
+        if (sub.options.preferences)
+          sub.callbacks.preferencesReady?.(
+            ready && this.connected && this.available(),
+          );
+    });
     source.addEventListener("live", (event) => {
       if (this.source !== source) return;
       let hint: LiveHint | null;
@@ -171,6 +198,7 @@ export class LiveClient {
       if (this.source !== source) return;
       source.close();
       this.source = undefined;
+      this.preferencesReady = false;
       this.status(false);
       if (!this.available()) return;
       this.retry = setTimeout(() => {
@@ -216,6 +244,7 @@ export class LiveClient {
     const connected =
       this.active().includes(sub) && this.connected && this.available();
     callbacks.status?.(connected);
+    callbacks.preferencesReady?.(connected && this.preferencesReady);
     if (connected) callbacks.catchUp?.();
     return () => {
       this.subscribers.delete(sub);

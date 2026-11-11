@@ -116,3 +116,27 @@ These checks establish a functional update path, not idle-network, physical-phon
 or production performance evidence. Each actual write adds one transactional
 `pg_notify`; stream connect/resync can add one coalesced authoritative query in
 addition to the unchanged poll. No lower database-cost claim is made.
+
+### 2026-11-11: conditional preference poll replacement (prepared)
+
+The later authority integration supersedes the blanket “poll retained” conclusion
+above **only while its full health contract holds**. It reuses fresh successful
+HTTP responses from the three already-existing shared `user.getMyRole(undefined)`
+observers, adds exact account/app-access/executive metadata, and combines that
+with verified preference-topic LISTEN readiness plus authoritative catch-up.
+Cached/manual/late responses cannot grant a replacement binding; request-start
+order and a60second request-age deadline prevent stale capability revival.
+
+Only MaterialSortProvider's60second interval is conditionally disabled. On
+stream/listener loss or stale authority it immediately catches up and restores
+that fallback; HTTP editing authority still works during outage. No role poll,
+query key, observer, server polling loop or Clerk-validation loop was added.
+There is one nonpolling freshness deadline. The29-declaration inventory remains a
+historical source inventory: zero unconditional removals, one conditional
+suppression,28 other declarations untouched. New readiness frames contain only a
+boolean, never settings/capabilities.
+
+See [authority contract, pinned-driver upgrade guard and focused proof](material-sort-authority.md).
+This is prepared/tested source with78 focused tests plus one separate private-PG
+kill/reconnect integration, not a production idle-request, byte-budget or release
+pass. No build, activation, schema migration or worker release was performed.
