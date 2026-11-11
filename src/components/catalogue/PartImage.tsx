@@ -25,12 +25,13 @@ export default function PartImage(props: ImageProps) {
 function PartImageContent(props: ImageProps) {
   const source = typeof props.src === "string" ? props.src : "";
   const relevant = isCatalogueImageSource(source);
+  const cached = cachedPartImageLayouts();
   const [result, setResult] = useState<{
     source: string;
     failed: boolean;
   } | null>(null);
   useEffect(() => {
-    if (!relevant || cachedPartImageLayouts()) return;
+    if (!relevant || cached) return;
     let current = true;
     void loadPartImageLayouts().then(
       () => {
@@ -43,10 +44,10 @@ function PartImageContent(props: ImageProps) {
     return () => {
       current = false;
     };
-  }, [source, relevant]);
+  }, [source, relevant, cached]);
   // A displayed failure fallback never later jumps into an audited crop.
   const failed = result?.source === source && result.failed;
-  const audited = failed ? undefined : cachedPartImageLayouts();
+  const audited = failed ? undefined : cached;
   const pending = relevant && !failed && !audited;
   const layout = relevant ? audited?.[source] : undefined;
   if (pending) {

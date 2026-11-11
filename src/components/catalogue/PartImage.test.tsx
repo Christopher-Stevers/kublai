@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import PartImage from "./PartImage";
@@ -144,6 +145,30 @@ it("retries on a later mount after an uncached offline failure", async () => {
   );
   await act(async () => resolve());
   expect(screen.getByRole("img")).toHaveAttribute(
+    "data-part-image-layout",
+    "audited",
+  );
+});
+
+it("settles an empty render snapshot when another image fills cache before passive effects", async () => {
+  function CompleteOtherImage() {
+    useLayoutEffect(() => {
+      resource.cached = layouts;
+      resource.load.mockResolvedValue(layouts);
+    }, []);
+    return null;
+  }
+  render(
+    <>
+      <PartImage src={a} alt="Racing image" width={48} height={48} />
+      <CompleteOtherImage />
+    </>,
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(resource.load).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("img", { name: "Racing image" })).toHaveAttribute(
     "data-part-image-layout",
     "audited",
   );
