@@ -54,6 +54,11 @@ const migrations = [
 const operationalHashes = {};
 for (const file of [...helpers, ...migrations])
   operationalHashes[file] = sha(await fs.readFile(path.join(toolRoot, file)));
+operationalHashes["connectionGuard"] = sha(
+  await fs.readFile(
+    new URL("./replicache-isolated/connection-guard.mjs", import.meta.url),
+  ),
+);
 operationalHashes["supervisor"] = sha(
   await fs.readFile(
     new URL("./replicache-isolated/supervisor.mjs", import.meta.url),
@@ -164,7 +169,10 @@ try {
     PERF_LAB_SOCKET: lab,
     PERF_LAB_DATABASE_URL: `postgresql://localhost/foremanhq_perf_lab?host=${encodeURIComponent(lab)}&port=${port}`,
   };
-  env.DATABASE_URL = env.PERF_LAB_DATABASE_URL;
+  env.DATABASE_URL = "postgres:///foremanhq_perf_lab";
+  env.PGHOST = lab;
+  env.PGPORT = String(port);
+  env.PGDATABASE = "foremanhq_perf_lab";
   stage = "database-start";
   await run(
     path.join(pg, "initdb"),
@@ -269,8 +277,34 @@ try {
     path.join(lab, "ordered-schema.sql"),
     path.join(evidence, "schema.sql"),
   );
-  // This guard runs before dynamically importing the unchanged existing check.
-  const entry = `import postgres from 'postgres';\nimport fs from 'node:fs/promises';\nconst socket=${JSON.stringify(lab)};\nconst u=new URL(process.env.DATABASE_URL);\nif(u.searchParams.get('host')!==socket||u.searchParams.get('port')!=='55463'||u.pathname!=='/foremanhq_perf_lab')throw Error('Private URL mismatch');\nconst conn=postgres({host:socket,port:55463,database:'foremanhq_perf_lab',max:1});\ntry{const [r]=await conn\`select current_database() as name,inet_server_addr() as network,current_setting('data_directory') as directory\`;if(r.name!=='foremanhq_perf_lab'||r.network!==null||await fs.realpath(r.directory)!==await fs.realpath(socket+'/data'))throw Error('Private server mismatch');}finally{await conn.end({timeout:1});}\nawait import('./scripts/check-replicache-sync.ts');\n`;
+  const guardSource = await fs.readFile(
+    new URL("./replicache-isolated/connection-guard.mjs", import.meta.url),
+  );
+  if (sha(guardSource) !== operationalHashes.connectionGuard)
+    throw Error("Connection guard changed before copy");
+  await fs.writeFile(
+    path.join(snapshot, "isolated-connection-guard.mjs"),
+    guardSource,
+  );
+  // Import the ACTUAL app DB module; inspect its actual Drizzle client before SQL.
+  const entry = `import fs from 'node:fs/promises';
+import { assertPrivateEnvironment, assertPrivateClientOptions } from './isolated-connection-guard.mjs';
+const socket=${JSON.stringify(lab)};
+assertPrivateEnvironment(process.env,socket);
+let client;
+try {
+  const {db}=await import('./src/server/db/index.ts');
+  client=db.$client;
+  assertPrivateClientOptions(client?.options,socket);
+  if(client.options!==globalThis.conn?.options)throw Error('Application connection cache differs');
+  await client.begin('read only',async tx=>{
+    const [r]=await tx.unsafe("select current_database() as name,inet_server_addr() as network,current_setting('data_directory') as directory,current_setting('transaction_read_only') as readonly");
+    if(r.name!=='foremanhq_perf_lab'||r.network!==null||r.readonly!=='on'||await fs.realpath(r.directory)!==await fs.realpath(socket+'/data'))throw Error('Actual application server mismatch');
+  });
+  await fs.writeFile(${JSON.stringify(path.join(evidence, "actual-client-guard.json"))},JSON.stringify({actualApplicationModule:true,actualClientOptionsVerifiedBeforeSQL:true,sameGlobalCache:true,readOnlyServerCheckPassed:true,unixSocket:true,ownedDatabase:true,ownedDataDirectory:true})+String.fromCharCode(10));
+  await import('./scripts/check-replicache-sync.ts');
+} finally { const actual=client??globalThis.conn; if(actual)await actual.end({timeout:1}); }
+`;
   await fs.writeFile(path.join(snapshot, "isolated-check.mts"), entry, {
     mode: 0o600,
   });

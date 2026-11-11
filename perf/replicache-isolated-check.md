@@ -1,6 +1,6 @@
 # Prepared disposable Replicache contract check
 
-Runner and supervisor syntax checks pass; ten focused no-database supervisor/negative-input tests pass. One real-database attempt has now executed and **failed operational isolation before the first fixture insert**; see the result below.
+Runner and supervisor syntax checks pass; ten focused no-database supervisor/negative-input tests pass. Two separately authorized attempts are preserved below: the first failed operational isolation before the first fixture insert; the corrected actual-client method passed the existing contract check.
 Root review and a free canonical-build/benchmark slot are required first. No
 change to the existing assertion program or production implementation is made.
 
@@ -112,3 +112,57 @@ zero. The mode0700 evidence remains at
 outside git. [Metadata-only failed-attempt proof](artifacts/replicache-isolated-attempt1-2026-11-11.json)
 records source/method/log hashes and cleanup. Ten no-database supervisor tests
 passed; that result does not cure the application connection-binding failure.
+
+## Corrected actual-client method, prepared only
+
+The proposed second method keeps the failed attempt unchanged. The child gets
+explicit scrubbed PGHOST=owned socket, PGPORT=55463 and
+PGDATABASE=foremanhq_perf_lab, with the hostless
+`DATABASE_URL=postgres:///foremanhq_perf_lab` (no host/port query parameters).
+The separate PERF_LAB_DATABASE_URL remains only the existing schema helper's
+compatibility guard; that helper's database config uses explicit socket options.
+It is not the application's connection URL.
+
+The generated entry first validates that exact environment, then dynamically
+imports the unchanged canonical `src/server/db/index.ts`. Before any SQL, it
+checks the actual Drizzle `db.$client.options` forwarded by the timing proxy:
+exact Unix socket path, singleton owned host/port arrays, fixed database and
+SSL false. It also requires those options to be the application global cache's
+options. Only then does that same actual client perform a read-only transaction
+verifying current_database, null inet_server_addr, owned data_directory and
+transaction_read_only=on. The unchanged check imports the same module/cache
+afterward; no alternative client is injected and no app source is transformed.
+The finally block closes the actual client/cache, including on guard refusal.
+
+No-database tests use the installed postgres3.4.8 options parser without issuing
+SQL: expected hostless parsing succeeds; the original bad URL, TCP authority,
+wrong socket/path/port/database and missing/extra environment fields reject
+before connection. Generated-entry syntax is checked without importing app
+code. A newline-escaping preparation defect was caught by that syntax test and
+fixed before any real run. All 15 no-database checks pass. Real execution of
+this corrected method remains held for separate root review/clearance.
+
+## Separately authorized corrected attempt: passed existing assertions
+
+The reviewed actual-client runner (SHA256
+`1b228ed761b684b1e9e3047cfd7a1db8bd913133d63dc854f58e9aa8d92b6ca0`)
+ran once against the exact R17 source/build above and a fresh owned PostgreSQL.
+Actual app-client options passed before SQL; the same client's read-only server
+identity and shared cache check passed before importing the unchanged assertion
+program. All existing assertions completed, including 16 reported pull
+checkpoints covering missed/interrupted views, concurrent pull order, mutation
+acknowledgement/replay, duplicate IDs and deletion healing. The checkpoint count
+is not a count of every assertion or a performance measurement.
+
+The full seven-minute deadline did not expire. PostgreSQL logged zero ERROR/FATAL
+entries; its final log was preserved after stop. The owned server stopped and
+temporary source/data directory was removed. Private evidence remains at
+`/tmp/foremanhq-replicache-proof.YtBOMq`; only
+[metadata and hashes](artifacts/replicache-isolated-attempt2-2026-11-11.json)
+are committed. Attempt 1 is unchanged and is not backfilled as passing. No retry
+within either authorization or production/auth/worker/browser change occurred.
+
+This validates the existing server-side contract assertions for this frozen
+source and fresh schema. It does not prove live hints (disabled by existing test
+mode), real authentication, browser durability, long offline convergence, every
+mutation/permission race, Phase 2 rollout or a production migration.

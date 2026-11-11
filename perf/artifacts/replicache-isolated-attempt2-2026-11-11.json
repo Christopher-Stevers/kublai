@@ -1,0 +1,141 @@
+{
+  "protocol": "existing-replicache-contract-isolated-v2",
+  "status": "passed-existing-contract-check",
+  "attempt": 2,
+  "separatelyAuthorized": true,
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2316,
+  "sourceFingerprintMatchedBeforeAndAfter": true,
+  "passed": true,
+  "actualApplicationClientGuard": {
+    "actualApplicationModule": true,
+    "actualClientOptionsVerifiedBeforeSQL": true,
+    "sameGlobalCache": true,
+    "readOnlyServerCheckPassed": true,
+    "unixSocket": true,
+    "ownedDatabase": true,
+    "ownedDataDirectory": true
+  },
+  "existingAssertionProgramUnchanged": true,
+  "existingOutputPassed": true,
+  "reportedPullCheckpointCount": 16,
+  "reportedPullCheckpoints": [
+    {
+      "check": "catalog initial",
+      "operations": 4
+    },
+    {
+      "check": "second client initial",
+      "operations": 4
+    },
+    {
+      "check": "catalog unchanged",
+      "operations": 0
+    },
+    {
+      "check": "interrupted rename reply",
+      "operations": 1
+    },
+    {
+      "check": "reconnect over missed revision",
+      "operations": 2
+    },
+    {
+      "check": "second client catches up",
+      "operations": 2
+    },
+    {
+      "check": "concurrent pull one",
+      "operations": 0
+    },
+    {
+      "check": "concurrent pull two",
+      "operations": 0
+    },
+    {
+      "check": "offline create replay acknowledged",
+      "operations": 4
+    },
+    {
+      "check": "second workspace client",
+      "operations": 4
+    },
+    {
+      "check": "other client quantity change",
+      "operations": 2
+    },
+    {
+      "check": "second client acknowledged",
+      "operations": 2
+    },
+    {
+      "check": "duplicate mutation retry",
+      "operations": 0
+    },
+    {
+      "check": "offline delete replay",
+      "operations": 2
+    },
+    {
+      "check": "expired or restarted server view",
+      "operations": 3
+    },
+    {
+      "check": "catalog hard deletion",
+      "operations": 1
+    }
+  ],
+  "schemaInventory": {
+    "moduleCount": 16,
+    "tableCount": 113,
+    "enumCount": 0
+  },
+  "revisionSQLCompleted": true,
+  "operationalHashes": {
+    "perf/lab/schema-entry.mjs": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457",
+    "perf/lab/drizzle.config.ts": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211",
+    "perf/lab/order-schema.mjs": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d",
+    "drizzle/0039_reliability_revisions.sql": "804750d306cbb3cfd0e01f119e2de63eaa7a1e72d7bce18b9e9bfde36a591467",
+    "drizzle/0045_material_room.sql": "ecbfada301c398fafe73be1e0da6b921a210644449b31e15a1ea2ba376faec2b",
+    "drizzle/0091_job_pricing_sync.sql": "fa9a068fa32cbe02d879c2f5e3de0a17d1c609064465aab4c6ddccea69be4f5f",
+    "connectionGuard": "59127ca068aed331fc95428a4b93734f4cc822dbb268ef970e200e1413ccb3f9",
+    "supervisor": "7f21567ed2a170a6eab03e46dc454bbd523807c24b2c31663def7d15479660ad",
+    "runner": "1b228ed761b684b1e9e3047cfd7a1db8bd913133d63dc854f58e9aa8d92b6ca0"
+  },
+  "cleanup": {
+    "timedOut": false,
+    "interrupted": false,
+    "postgresStopped": true,
+    "logPreserved": true,
+    "temporaryDirectoryRemoved": true,
+    "pgErrors": 0,
+    "pgFatals": 0,
+    "errors": []
+  },
+  "privateArtifactHashes": {
+    "result.json": "3c27ec8212ac989a355960484d7d32221557ef35fe31f75e2ac2070f1267f911",
+    "actual-client-guard.json": "3821f6bdf0300cf3b49dae860456458bc1fa9b386af1c3483b10809cd719e07c",
+    "sync-integration.json": "6ecbc39967d48c03df3090ffcee06aca00698baf4e61df7d3bd4266e99b519a8",
+    "private-pg.log": "595c69f2190e5f50dd3132b7d7e4021345699ee3daa5acdad4ec26331435a93a",
+    "schema-inventory.json": "e236bd98d735dd861a6edb3b6cac7150db495f17ba7295ed2701be2b80b71094",
+    "schema.sql": "d56da305c634a73d1522d757a0cbacc378619abb0ddd29cc328ed9e9f82d6f45",
+    "sync-check.log": "bc7f57f4dd330d294ff096f26d8124cd118d5d78f08cd7a5f207276163f1a9a5"
+  },
+  "noDatabaseTests": {
+    "passed": 15,
+    "logSha256": "c69de7251823103eac826d18b1bc772af1ad969d111a59fdfc906bcb8c31bb23"
+  },
+  "failedFirstAttemptPreserved": true,
+  "limitations": [
+    "Existing source-bound server contract assertions only; not browser, real authentication, live hint transport, long-offline convergence or Phase2 rollout.",
+    "NODE_ENV=test uses existing hint suppression; no worker/app/browser was started.",
+    "Source-declared fresh schema plus separately pinned revision SQL; not a full migration/deployed-schema verification.",
+    "Reported pull checkpoint count is not a count of every assertion or a performance result.",
+    "SQL/content logs and synthetic identifiers remain only in private mode0700 evidence directory."
+  ],
+  "productionWrites": false,
+  "workerChanges": false,
+  "activated": false
+}
