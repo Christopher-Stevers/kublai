@@ -1,0 +1,5 @@
+# Activity panel bookkeeping bailout
+
+The retained-panel initializer already contains the active key and exact child node. Its mount layout effect nevertheless allocated an equivalent array and scheduled a synchronous state update. The updater now returns the previous array when ordered keys and node references are unchanged. Changed children, key switches, LRU eviction and outer-page pause still update normally; the active child remains immediate and retention stays bounded to two hidden panels.
+
+Root ran all six existing Activity tests with one Vitest worker; all pass, covering retained drafts, bounded eviction, hidden/internal-window pause, account/job identity and pending mutation settlement. Scoped ESLint retains one existing `react-hooks/set-state-in-effect` finding at line 40; linting the HEAD source through stdin confirms the same rule and location, with no added findings. No timing improvement is claimed: supplemental openjob observations show additional R6 work but do not attribute it to this component. The phone v2 method correction is separate, and the frozen lab method is unchanged.

@@ -37,14 +37,22 @@ export function JobActivityPanels({
     ...(pageActive ? retained.filter((panel) => panel.key !== activeKey) : []),
   ].slice(0, 3);
   useLayoutEffect(() => {
-    setRetained((previous) =>
-      [
+    setRetained((previous) => {
+      const next = [
         { key: activeKey, node: children },
         ...(pageActive
           ? previous.filter((panel) => panel.key !== activeKey)
           : []),
-      ].slice(0, 3),
-    );
+      ].slice(0, 3);
+      return next.length === previous.length &&
+        next.every(
+          (panel, index) =>
+            panel.key === previous[index]?.key &&
+            panel.node === previous[index]?.node,
+        )
+        ? previous
+        : next;
+    });
   }, [activeKey, children, pageActive]);
   return (
     <>
