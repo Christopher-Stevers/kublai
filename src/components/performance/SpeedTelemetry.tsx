@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { onINP, onLCP } from "web-vitals";
+import { SpeedMetricBuffer } from "~/lib/speed-metric-buffer";
 import {
   SPEED_METRICS,
   speedScreen,
@@ -83,18 +84,14 @@ export function SpeedTelemetry() {
               ).connection?.effectiveType
             ? "slow"
             : "unknown";
-    let queue: (SpeedMetric & {
-      screen: ReturnType<typeof speedScreen>;
-      link: string;
-    })[] = [];
-    let sent = 0;
+    const buffer = new SpeedMetricBuffer();
     const observers: PerformanceObserver[] = [];
     let active = true;
     const vital =
       (name: SpeedMetric["name"]) =>
       ({ value }: { value: number }) => {
-        if (active && queue.length < 30)
-          queue.push({
+        if (active)
+          buffer.push({
             name,
             durationMs: Math.round(value),
             screen: speedScreen(window.location.pathname),
@@ -104,14 +101,9 @@ export function SpeedTelemetry() {
     onINP(vital("inp"));
     onLCP(vital("lcp"));
     const flush = () => {
-      if (!queue.length || sent >= 120 || !navigator.onLine) return;
-      const batch = queue
-        .filter(
-          (metric) =>
-            metric.screen === queue[0]?.screen &&
-            metric.link === queue[0]?.link,
-        )
-        .slice(0, Math.min(30, 120 - sent));
+      if (!navigator.onLine) return;
+      const batch = buffer.peekBatch();
+      if (!batch.length) return;
       try {
         if (
           navigator.sendBeacon(
@@ -139,8 +131,7 @@ export function SpeedTelemetry() {
             ),
           )
         ) {
-          queue = queue.filter((metric) => !batch.includes(metric));
-          sent += batch.length;
+          buffer.acknowledge(batch);
         }
       } catch {
         /* Diagnostics must never affect an action. */
@@ -160,14 +151,13 @@ export function SpeedTelemetry() {
           const durationMs = entry.duration;
           if (
             Number.isFinite(durationMs) &&
-            durationMs >= 0 &&
-            queue.length < 30
+            durationMs >= 0
           ) {
             const custom = entry.name.replace(
               "foremenhq:",
               "",
             ) as SpeedMetric["name"];
-            queue.push({
+            buffer.push({
               name:
                 name === "action" && SPEED_METRICS.includes(custom)
                   ? custom
