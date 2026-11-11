@@ -1,0 +1,8 @@
+{
+  "capturedAt": "2026-11-11T00:48:48.934Z",
+  "windowDays": 7,
+  "source": "Read-only aggregate of durable sync mutation receipts; no payloads or identifiers.",
+  "limitations": "These receipt tables do not necessarily record every Replicache mutator.",
+  "material": [],
+  "entity": []
+}

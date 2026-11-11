@@ -6,16 +6,12 @@ import type { CatalogueHideRule } from "~/lib/catalogue-hidden";
 const state = vi.hoisted(() => ({
   hide: vi.fn(),
   show: vi.fn(),
-  setData: vi.fn(),
-  hideOptions: null as null | { onSuccess: (data: { rules: unknown[] }) => void },
+  onHidden: null as null | (() => void),
 }));
-vi.mock("~/trpc/react", () => ({
-  api: {
-    useUtils: () => ({ catalogue: { getHiddenParts: { setData: state.setData } } }),
-    catalogue: {
-      hideParts: { useMutation: (options: typeof state.hideOptions) => { state.hideOptions = options; return { mutate: state.hide, isPending: false }; } },
-      showHiddenParts: { useMutation: () => ({ mutate: state.show, isPending: false }) },
-    },
+vi.mock("~/hooks/use-hidden-parts-mutations", () => ({
+  useHiddenPartsMutations: (onHidden: () => void) => {
+    state.onHidden = onHidden;
+    return { hide: { mutate: state.hide, isPending: false }, show: { mutate: state.show, isPending: false } };
   },
 }));
 vi.mock("~/components/ui/app-dialogs", () => ({ notify: vi.fn() }));
@@ -54,9 +50,6 @@ it("hides parts from lists by any mix of criteria, offering only what fits the c
   expect(screen.getByRole("status")).toHaveTextContent("Hides 1 part");
   fireEvent.click(screen.getByRole("button", { name: "Hide" }));
   expect(state.hide).toHaveBeenCalledWith({ criteria: { catalogId: ids.plumbing, materialId: ids.copper, size: { nominal: 0.5, unit: "in" } } });
-  const rules = [{ id: "r", materialId: ids.copper }];
-  state.hideOptions!.onSuccess({ rules });
-  expect(state.setData).toHaveBeenCalledWith(undefined, { rules });
 });
 
 it("needs at least one choice and can hide a single part", () => {

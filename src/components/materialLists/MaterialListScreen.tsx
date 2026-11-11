@@ -23,7 +23,7 @@ import { AddPartDialog, QuotePreviewSheet, OrdersPreviewSheet, ExistingQuotesOrd
 import { useMaterialListSort } from "~/hooks/use-material-list-sort";
 
 
-import { useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button, LargeButton } from "~/components/ui/button";
@@ -52,6 +52,7 @@ import {
 import { useReplicacheJob } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useInstantOrderNotes } from "~/hooks/use-instant-order-notes";
 import { markUserAction } from "~/lib/performance-marks";
 
 // Each card keeps one receiving handler that calls the latest one, so
@@ -157,6 +158,8 @@ export function MaterialListScreen({
   // Notes opened from the material list are for the order on screen.
   const [listNotesOrderId, setListNotesOrderId] = useState<string | null>(null);
   const notesOrderId = verifyOrderId ?? listNotesOrderId;
+  const activeNotesOrder = useRef(notesOrderId);
+  useEffect(() => { activeNotesOrder.current = notesOrderId; }, [notesOrderId]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>();
   const [viewMode, setViewMode] = usePageViewState<"grid" | "table">(`list:${id}:viewMode`, "grid");
   const [partSearch, setPartSearch] = usePageViewState(`list:${id}:partSearch`, "");
@@ -199,11 +202,13 @@ export function MaterialListScreen({
     enabled: isBrowserOnline,
   });
   const utils = api.useUtils();
-  const updateOrderNotes = api.materialList.updateOrderNotes.useMutation({
-    onSuccess: (updatedOrder, { orderId }) => {
-      setVerifyOrderNotes(updatedOrder.notes ?? "");
-      void utils.materialList.getOrderById.invalidate({ orderId });
-      setShowVerifyNotesDialog(false);
+  const updateOrderNotes = useInstantOrderNotes({
+    onStart: () => setShowVerifyNotesDialog(false),
+    // Keep the unsaved text available if this request is refused.
+    onError: (input) => {
+      if (activeNotesOrder.current !== input.orderId) return;
+      setVerifyOrderNotes(input.notes ?? "");
+      setShowVerifyNotesDialog(true);
     },
   });
   const updateOrderItemVerification =
@@ -256,9 +261,13 @@ export function MaterialListScreen({
   const savedNotes = !notesOrderId ? "" : notesOrder ? (notesOrder.notes ?? "") : null;
   const savedNotesKey = savedNotes === null ? null : JSON.stringify([notesOrderId, savedNotes]);
   const [notesDraftKey, setNotesDraftKey] = useState<string | null>(null);
+  const [notesDraftOrderId, setNotesDraftOrderId] = useState<string | null>(null);
   if (savedNotes !== null && savedNotesKey !== notesDraftKey) {
     setNotesDraftKey(savedNotesKey);
-    setVerifyOrderNotes(savedNotes);
+    if (notesDraftOrderId !== notesOrderId || !showVerifyNotesDialog) {
+      setNotesDraftOrderId(notesOrderId);
+      setVerifyOrderNotes(savedNotes);
+    }
   }
 
   // Each order's parts sit under their own heading; once one scrolls up its

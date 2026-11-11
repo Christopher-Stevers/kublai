@@ -76,6 +76,16 @@ export function sameCriteria(a: CatalogueHideCriteria, b: CatalogueHideCriteria)
   );
 }
 
+/** Shared by the server and the immediate device preview. The server chooses
+ * the final id; an optimistic rule uses a temporary id until it is accepted. */
+export const addHideRule = (criteria: CatalogueHideCriteria) => (rules: CatalogueHideRule[]) =>
+  rules.some((rule) => sameCriteria(rule, criteria))
+    ? rules.some(rule => sameCriteria(rule, criteria) && rule.exceptions?.length) ? rules.map(rule => sameCriteria(rule, criteria) ? { ...rule, exceptions: [] } : rule) : rules
+    : [...rules, { ...criteria, id: crypto.randomUUID() }];
+
+export const removeHideRule = (id: string) => (rules: CatalogueHideRule[]) =>
+  rules.filter((rule) => rule.id !== id);
+
 /** True when every item in target belongs to scope. */
 export function criteriaContains(scope: CatalogueHideCriteria, target: CatalogueHideCriteria) {
   return (!scope.catalogId || scope.catalogId === target.catalogId) &&

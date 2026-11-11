@@ -3,10 +3,9 @@ import type { db } from "~/server/db";
 import {
   CATALOGUE_HIDDEN_SCOPE,
   catalogueHiddenSettingsSchema,
-  sameCriteria,
-  type CatalogueHideCriteria,
   type CatalogueHideRule,
 } from "~/lib/catalogue-hidden";
+export { addHideRule, removeHideRule } from "~/lib/catalogue-hidden";
 
 /** The company's hide rules live in the shared jsonb settings store, under
  * their own scope, so they need no table of their own. */
@@ -40,10 +39,3 @@ export async function changeHiddenPartRules(
   });
 }
 
-export const addHideRule = (criteria: CatalogueHideCriteria) => (rules: CatalogueHideRule[]) =>
-  rules.some((rule) => sameCriteria(rule, criteria))
-    ? rules.some(rule => sameCriteria(rule, criteria) && rule.exceptions?.length) ? rules.map(rule => sameCriteria(rule, criteria) ? { ...rule, exceptions: [] } : rule) : rules
-    : [...rules, { ...criteria, id: crypto.randomUUID() }];
-
-export const removeHideRule = (id: string) => (rules: CatalogueHideRule[]) =>
-  rules.filter((rule) => rule.id !== id);

@@ -50,6 +50,7 @@ import {
   readCatalogueImportWorkbook,
 } from "~/lib/catalogue-xlsx";
 import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useHiddenPartsMutations } from "~/hooks/use-hidden-parts-mutations";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
 import {
   Download,
@@ -236,14 +237,7 @@ function CatalogueWorkspace({ catalogKind, includeToolCatalogs, supplierMode, su
   } = usePartWizard(!supplierMode || !!supplierId, undefined, undefined, catalogKind, supplierMode ? supplierId : undefined, includeToolCatalogs);
 
   const [hideAcrossAll, setHideAcrossAll] = useState(false);
-  const quickHide = api.catalogue.hideParts.useMutation({
-    onSuccess: data => utils.catalogue.getHiddenParts.setData(undefined,data),
-    onError: () => notify("Could not hide those items. Try again.", "error"),
-  });
-  const quickShow = api.catalogue.showHiddenParts.useMutation({
-    onSuccess: data => utils.catalogue.getHiddenParts.setData(undefined, data),
-    onError: () => notify("Could not unhide those items. Try again.", "error"),
-  });
+  const { hide: quickHide, show: quickShow } = useHiddenPartsMutations();
   const hidingScope = {
     ...(wizardStage !== "catalog" && selectedCatalogId ? {catalogId:selectedCatalogId} : {}),
     ...(["size","category","part"].includes(wizardStage) && selectedMaterialId ? {materialId:selectedMaterialId} : {}),

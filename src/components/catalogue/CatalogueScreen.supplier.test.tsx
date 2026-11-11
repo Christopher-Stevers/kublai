@@ -2,6 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import { CatalogueScreen } from "./CatalogueScreen";
+vi.mock("~/hooks/use-hidden-parts-mutations", () => ({
+  useHiddenPartsMutations: () => ({ hide: { mutate: vi.fn(), isPending: false }, show: { mutate: vi.fn(), isPending: false } }),
+}));
 const state=vi.hoisted(()=>({wizard:vi.fn(),invalid:vi.fn(),listings:vi.fn(),hidden:[] as Array<{id:string;partId:string}>}));
 vi.mock("~/lib/snapshot-source",()=>({currentSnapshotState:()=>null}));
 vi.mock("~/hooks/use-online-status",()=>({useOnlineStatus:()=>true}));

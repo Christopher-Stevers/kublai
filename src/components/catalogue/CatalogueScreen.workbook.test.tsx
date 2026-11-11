@@ -10,6 +10,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CatalogueScreen } from "./CatalogueScreen";
 import type { CatalogueWorkbookOptions } from "~/lib/catalogue-xlsx-protocol";
+vi.mock("~/hooks/use-hidden-parts-mutations", () => ({
+  useHiddenPartsMutations: () => ({ hide: { mutate: vi.fn(), isPending: false }, show: { mutate: vi.fn(), isPending: false } }),
+}));
 const state = vi.hoisted(() => ({
   canEdit: true,
   online: true,

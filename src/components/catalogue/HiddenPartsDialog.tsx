@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Eye } from "lucide-react";
-import { api } from "~/trpc/react";
+import { useHiddenPartsMutations } from "~/hooks/use-hidden-parts-mutations";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { notify } from "~/components/ui/app-dialogs";
 import { facetCount } from "~/lib/catalogue-facets";
 import { formatSizeDimensions } from "~/lib/size-utils";
 import {
@@ -113,19 +112,8 @@ function HiddenPartsForm({
     categoryId: initial.categoryId ?? "",
     partId: initial.partId ?? "",
   }));
-  const utils = api.useUtils();
-  const saved = (data: { rules: CatalogueHideRule[] }) =>
-    utils.catalogue.getHiddenParts.setData(undefined, data);
-  const hide = api.catalogue.hideParts.useMutation({
-    onSuccess: (data) => {
-      saved(data);
-      setForm({ catalogId: "", materialId: "", size: "", categoryId: "", partId: "" });
-    },
-    onError: () => notify("Could not hide those parts. Try again.", "error"),
-  });
-  const show = api.catalogue.showHiddenParts.useMutation({
-    onSuccess: saved,
-    onError: () => notify("Could not offer those parts again. Try again.", "error"),
+  const { hide, show } = useHiddenPartsMutations(() => {
+    setForm({ catalogId: "", materialId: "", size: "", categoryId: "", partId: "" });
   });
 
   // Each choice offers only what is left after the choices above it.
