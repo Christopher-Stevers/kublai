@@ -1,0 +1,21 @@
+{
+  "status": "unexecuted-canonical-typescript-failure",
+  "sourceBuild": null,
+  "sourceFingerprint": null,
+  "sourceRoot": null,
+  "sourceFileCount": null,
+  "methodRoot": "/tmp/foremanhq-preference-functional-v6-method-emaxl6zm",
+  "driverSha256": "0c6be0868d633328cfaae8caf6a6d2cd0fd4ecb265bd7ccdfd402a104538f744",
+  "recipe": "Identity/path-only updates from archived R14 compile + V5 functional orchestration; actual candidate required before templates bind.",
+  "runtimeStarted": false,
+  "fullMatrixHeld": true,
+  "templateHashes": {
+    "foremanhq-r15-pref-v6-server.sh.template": "3b65e793deeb37fca83e47c6ca309aeeaaef1135cd2a58e93baa38d79cbedeb0",
+    "foremanhq-r15-pref-v6-command.sh.template": "a5b238306a424e691d7aec53737544af529385f4a98be0793f1ae526d6b14a4b",
+    "foremanhq-r15-compile-command.sh.template": "9141bfbf25aa63af79998e9522a608482f7e511f8d4539633428902d98e74b60",
+    "foremanhq-r15-compile-only.sh.template": "8fcf26442fe0968c9dfef64f19466e84b6e3d73d0cdf60769f89d860992e5dd4"
+  },
+  "failedCanonicalSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r15-20261111",
+  "failedCanonicalFingerprint": "f4ffd52ab0633a4e0fd6f33c1b4b4b44678c83ace4b59e0e849f18bf84690d5a",
+  "reason": "Canonical shared-issue caller passes nullable workspace to undefined-only hook; no accepted canonical build identity or lab/runtime. Root will freeze corrected R16 separately."
+}
