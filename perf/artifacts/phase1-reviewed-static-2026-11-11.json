@@ -52,7 +52,7 @@
     "SavedSnapshotPicker": "async and absent from all-jobs shared union",
     "drawing-geometry-fallback": "async and absent from all-jobs shared union",
     "RecipientChooser": "root async copy plus a different route initial copy; neither in all-jobs shared union",
-    "sharedChunkFlags": "all44 shared-union chunks initial:true; flags do not replace a route network trace"
+    "sharedChunkFlags": "All45 shared-union chunks initial:true, but initial:true can refer to another entry; not proof of eager loading on every jobs route."
   },
   "wholeChunkGzipComparisons": {
     "geometryContainingChunk": {
@@ -87,5 +87,36 @@
     "changedGzipBytes": 39423,
     "sourceRuntimeDifference": "app/jobs/JobsClient.tsx only, reverified by byte comparison",
     "note": "Separate Phase0 controlled-edit proof, not this large batch and not a candidate-specific typical edit."
+  },
+  "sourceBuild": "ec687e6e6e1d5cbfb8c716401bd3eee32157e85795026109acb274104da4193b",
+  "rejected": true,
+  "entryGraphs": {
+    "method": "Read actual emitted webpack entry dependency arrays and existing gzip9 sidecar lengths. Phase0 compiler chunk IDs are mapped from the separate one-page-title controlled build by stable chunk filename prefix; all mapping unique. Common root and receiving-entry graph evidence only, not browser download trace. Existing shared-reference gate remains unchanged.",
+    "phase0": {
+      "jobsCommonRoots": {
+        "files": 32,
+        "gzipBytes": 449264
+      },
+      "receivingEntry": {
+        "files": 43,
+        "gzipBytes": 701916
+      }
+    },
+    "candidate": {
+      "jobsCommonRoots": {
+        "files": 34,
+        "gzipBytes": 451435
+      },
+      "receivingEntry": {
+        "files": 43,
+        "gzipBytes": 707126
+      }
+    },
+    "delta": {
+      "jobsCommonRoots": 2171,
+      "receivingEntry": 5210
+    },
+    "candidateSharedReferenceUnionOutsideCommonRootsGzipBytes": 57030,
+    "limitation": "Supplemental emitted entry dependency graph, not browser route network trace. Client-reference union includes JobsClient, registry/deferred feature and receiving-only groups beyond common roots. Original shared-reference gate unchanged."
   }
 }
