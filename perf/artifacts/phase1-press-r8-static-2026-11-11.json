@@ -1,0 +1,149 @@
+{
+  "sourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+  "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+  "activated": false,
+  "status": "prepared-controlled-experiment-not-activated",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "scope": {
+    "base": "unchanged frozen R7",
+    "sourceCommit": "25d590c9",
+    "runtimePaths": [
+      "src/app/jobs/JobsClient.tsx",
+      "src/components/ui/pressable-card.tsx",
+      "src/hooks/use-press.ts"
+    ],
+    "otherOriginalSourceChanges": 0,
+    "publicCorpusFiles": 3263,
+    "allPublicBytesMatchR7": true,
+    "publicRuntimeSnapshotMatchesSource": true,
+    "newerTelemetryAndWriteFeedbackExcluded": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485725,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755922,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1281660,
+      "passes": true
+    }
+  },
+  "r7ToR8ControlledChangePayload": {
+    "baselineBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "candidateBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 246,
+    "changedScripts": 37,
+    "changedRawBytes": 846937,
+    "changedGzipBytes": 279829,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "source": {
+    "build": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+    "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+    "sourceFileCount": 2289,
+    "reviewedInputsChanged": 0,
+    "controlledSourceChanges": [
+      "src/app/jobs/JobsClient.tsx",
+      "src/components/ui/pressable-card.tsx",
+      "src/hooks/use-press.ts"
+    ],
+    "otherOriginalSourceChanges": 0,
+    "publicCorpusFiles": 3263,
+    "allPublicBytesMatchR7": true,
+    "publicRuntimeSnapshotMatchesSource": true,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "knownRejectedArtifact": false,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true
+  },
+  "ownProofServersStopped": true,
+  "proofServerExitCode": 0,
+  "chunkChurn": {
+    "changedPayloadGzipBytes": 279829,
+    "totalNetGzipSizeChangeBytes": 2723,
+    "groups": [
+      {
+        "group": "build-id-bound-client",
+        "count": 1,
+        "changedPayloadGzipBytes": 4486,
+        "netGzipSizeChangeBytes": 0
+      },
+      {
+        "group": "build-manifest",
+        "count": 2,
+        "changedPayloadGzipBytes": 757,
+        "netGzipSizeChangeBytes": 0
+      },
+      {
+        "group": "job-card-leaf",
+        "count": 1,
+        "changedPayloadGzipBytes": 7572,
+        "netGzipSizeChangeBytes": 11
+      },
+      {
+        "group": "pressable-card-copies",
+        "count": 6,
+        "changedPayloadGzipBytes": 46370,
+        "netGzipSizeChangeBytes": 52
+      },
+      {
+        "group": "shared-usePress-copies",
+        "count": 26,
+        "changedPayloadGzipBytes": 216146,
+        "netGzipSizeChangeBytes": 2660
+      },
+      {
+        "group": "webpack-runtime",
+        "count": 1,
+        "changedPayloadGzipBytes": 4498,
+        "netGzipSizeChangeBytes": 0
+      }
+    ],
+    "usePressModule": {
+      "oldPreMinifyBytes": 6978,
+      "newPreMinifyBytes": 7767,
+      "oldChunkMembershipCount": 26,
+      "newChunkMembershipCount": 26,
+      "membershipUnchanged": true,
+      "oldModuleId": 80007,
+      "newModuleId": 80007
+    },
+    "renamedButByteIdenticalScripts": 2,
+    "frameworkChunksChanged": 0
+  },
+  "limitations": [
+    "The strict100000gzip changed-payload target fails; Phase0 formal shared/heaviest/deploy ratchets pass under their unchanged definitions.",
+    "The earlier22739-byte single-file controlled edit remains separate evidence.",
+    "No press speed benefit is inferred from compile/static/HTTP or behavior tests.",
+    "R7 full performance gate remains failed; R8 timing outcome was not available when this evidence was prepared.",
+    "No production activation, schema/background worker change or fullPhase0 completion."
+  ]
+}
