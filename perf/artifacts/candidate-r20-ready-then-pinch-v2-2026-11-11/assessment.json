@@ -1,0 +1,430 @@
+{
+  "status": "failed-no-regression-gate",
+  "acceptedGateEvidence": false,
+  "samples": 120,
+  "cells": 24,
+  "passedCells": 23,
+  "failedCells": [
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "baselineMedianMs": 82.4440299999842,
+      "candidateMedianMs": 98.4157600000035,
+      "changePercent": 19.372815715124993,
+      "passed": false,
+      "candidateSamplesMs": [
+        99.02706100000069,
+        81.48908400000073,
+        98.4157600000035,
+        82.50417499998002,
+        99.27435100000002
+      ]
+    }
+  ],
+  "allCells": [
+    {
+      "journey": "coldstart",
+      "link": "Basement",
+      "baselineMedianMs": 20324.651497,
+      "candidateMedianMs": 19854.414440000008,
+      "changePercent": -2.3136291270204556,
+      "passed": true,
+      "candidateSamplesMs": [
+        19850.372959,
+        19855.105272,
+        19855.602172,
+        19851.582026000004,
+        19854.414440000008
+      ]
+    },
+    {
+      "journey": "coldstart",
+      "link": "Site",
+      "baselineMedianMs": 3610.493581999908,
+      "candidateMedianMs": 3567.7850900000194,
+      "changePercent": -1.182898986798142,
+      "passed": true,
+      "candidateSamplesMs": [
+        3562.2914459999884,
+        3569.6952599999495,
+        3570.2700170000317,
+        3563.8824889999814,
+        3567.7850900000194
+      ]
+    },
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "baselineMedianMs": 743.211593999993,
+      "candidateMedianMs": 722.3526589999674,
+      "changePercent": -2.806594403050422,
+      "passed": true,
+      "candidateSamplesMs": [
+        746.5157060000347,
+        758.2882120000431,
+        699.391604000004,
+        717.029882999952,
+        722.3526589999674
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "baselineMedianMs": 82.4440299999842,
+      "candidateMedianMs": 98.4157600000035,
+      "changePercent": 19.372815715124993,
+      "passed": false,
+      "candidateSamplesMs": [
+        99.02706100000069,
+        81.48908400000073,
+        98.4157600000035,
+        82.50417499998002,
+        99.27435100000002
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "baselineMedianMs": 82.45718499994837,
+      "candidateMedianMs": 82.66923500003759,
+      "changePercent": 0.2571637633389523,
+      "passed": true,
+      "candidateSamplesMs": [
+        98.36335799994413,
+        82.28797800000757,
+        82.66923500003759,
+        82.10199100000318,
+        98.87632100004703
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "baselineMedianMs": 82.27076399989892,
+      "candidateMedianMs": 86.17715000000317,
+      "changePercent": 4.748206787175402,
+      "passed": true,
+      "candidateSamplesMs": [
+        81.16940100002103,
+        85.64301300002262,
+        88.02924500009976,
+        99.7566419999348,
+        86.17715000000317
+      ]
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "baselineMedianMs": 165.57363499997882,
+      "candidateMedianMs": 165.70853000000352,
+      "changePercent": 0.08147130430802285,
+      "passed": true,
+      "candidateSamplesMs": [
+        165.16179300000658,
+        165.42147599998862,
+        165.70853000000352,
+        165.96872300002724,
+        165.82234600000083
+      ]
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "baselineMedianMs": 165.39708299993072,
+      "candidateMedianMs": 165.71451600000728,
+      "changePercent": 0.19192176447071496,
+      "passed": true,
+      "candidateSamplesMs": [
+        165.24033900001086,
+        166.5210659999866,
+        165.62194099999033,
+        165.71451600000728,
+        166.5180270000128
+      ]
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "baselineMedianMs": 165.55675099999644,
+      "candidateMedianMs": 165.99294700007886,
+      "changePercent": 0.2634721915281135,
+      "passed": true,
+      "candidateSamplesMs": [
+        166.13863599998876,
+        165.15424499998335,
+        165.99294700007886,
+        164.28984199999832,
+        166.3139979999978
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "baselineMedianMs": 215.1409510000376,
+      "candidateMedianMs": 218.5028029999812,
+      "changePercent": 1.5626276561095054,
+      "passed": true,
+      "candidateSamplesMs": [
+        218.5028029999812,
+        215.69040399999358,
+        219.89357000001473,
+        216.29181799996877,
+        224.36896599998
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "baselineMedianMs": 215.63234400004148,
+      "candidateMedianMs": 222.90738099999726,
+      "changePercent": 3.37381529366223,
+      "passed": true,
+      "candidateSamplesMs": [
+        248.32049299997743,
+        220.9048930000281,
+        221.68270899995696,
+        247.5507729999954,
+        222.90738099999726
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "baselineMedianMs": 228.89309700008016,
+      "candidateMedianMs": 223.68851000000723,
+      "changePercent": -2.273806885522245,
+      "passed": true,
+      "candidateSamplesMs": [
+        246.10809799993876,
+        223.34877100004815,
+        223.18147199996747,
+        223.68851000000723,
+        241.46925099997316
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Basement",
+      "baselineMedianMs": 98.41997200000333,
+      "candidateMedianMs": 98.84896500001196,
+      "changePercent": 0.43588002647330093,
+      "passed": true,
+      "candidateSamplesMs": [
+        97.34095400001388,
+        98.84896500001196,
+        99.16083499998786,
+        99.71174699999392,
+        98.82062699995004
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "baselineMedianMs": 115.20544599997811,
+      "candidateMedianMs": 115.58948199998122,
+      "changePercent": 0.33334882450191117,
+      "passed": true,
+      "candidateSamplesMs": [
+        115.92108000000007,
+        114.60366399993654,
+        115.20493200002238,
+        115.58948199998122,
+        116.06132300000172
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "baselineMedianMs": 114.14365500002168,
+      "candidateMedianMs": 115.29038599994965,
+      "changePercent": 1.0046384093165273,
+      "passed": true,
+      "candidateSamplesMs": [
+        115.29038599994965,
+        114.14468999998644,
+        110.49347200000193,
+        120.94541599997319,
+        128.31465800001752
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Basement",
+      "baselineMedianMs": 432.41626800002996,
+      "candidateMedianMs": 449.0386929999804,
+      "changePercent": 3.8440794738900275,
+      "passed": true,
+      "candidateSamplesMs": [
+        449.37790899991523,
+        448.6640990000451,
+        449.0386929999804,
+        448.1408389999997,
+        449.7352200000314
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Site",
+      "baselineMedianMs": 432.52204100007657,
+      "candidateMedianMs": 448.66510300000664,
+      "changePercent": 3.7323096789712906,
+      "passed": true,
+      "candidateSamplesMs": [
+        448.66510300000664,
+        450.0212820000015,
+        449.8461289999541,
+        431.97126699995715,
+        448.2658179999562
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "baselineMedianMs": 432.24044399987906,
+      "candidateMedianMs": 448.9641779999947,
+      "changePercent": 3.8690812561076093,
+      "passed": true,
+      "candidateSamplesMs": [
+        449.8251239999663,
+        449.0587330000708,
+        448.9641779999947,
+        432.48672799998894,
+        432.7459820000222
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "baselineMedianMs": 1504.493460000027,
+      "candidateMedianMs": 1498.867132000043,
+      "changePercent": -0.3739682590566895,
+      "passed": true,
+      "candidateSamplesMs": [
+        2048.0957209999906,
+        1498.867132000043,
+        1503.4995929999277,
+        1497.6167190000415,
+        1466.076921000029
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "baselineMedianMs": 1491.1436209999956,
+      "candidateMedianMs": 1481.6952010000823,
+      "changePercent": -0.6336358125971109,
+      "passed": true,
+      "candidateSamplesMs": [
+        1449.059041999979,
+        1465.4257760000182,
+        1481.6952010000823,
+        1498.6330529999686,
+        1498.9446229999885
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "baselineMedianMs": 1481.33909699996,
+      "candidateMedianMs": 1499.51666199998,
+      "changePercent": 1.2271035738429914,
+      "passed": true,
+      "candidateSamplesMs": [
+        1497.2879220000468,
+        1447.9979580000509,
+        1531.9146200000541,
+        1515.2549179999623,
+        1499.51666199998
+      ]
+    },
+    {
+      "journey": "sendchat",
+      "link": "Basement",
+      "baselineMedianMs": 231.5141809999477,
+      "candidateMedianMs": 231.84965900005773,
+      "changePercent": 0.14490602634404937,
+      "passed": true,
+      "candidateSamplesMs": [
+        216.2398539999267,
+        232.38342699990608,
+        216.3909439999843,
+        232.34175399993546,
+        231.84965900005773
+      ]
+    },
+    {
+      "journey": "sendchat",
+      "link": "Site",
+      "baselineMedianMs": 231.81477699999232,
+      "candidateMedianMs": 231.59496100002434,
+      "changePercent": -0.09482398094405875,
+      "passed": true,
+      "candidateSamplesMs": [
+        229.39907899999525,
+        232.1848600000376,
+        231.59496100002434,
+        227.7568629999878,
+        231.84752800001297
+      ]
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "baselineMedianMs": 232.0708399999421,
+      "candidateMedianMs": 215.97217000019737,
+      "changePercent": -6.936963730449186,
+      "passed": true,
+      "candidateSamplesMs": [
+        216.42384299985133,
+        231.43554700003006,
+        215.97217000019737,
+        215.9655100000091,
+        215.33897300017998
+      ]
+    }
+  ],
+  "validationErrors": [],
+  "baselineRepeatabilityErrors": [],
+  "formalComparatorErrors": [
+    "openjob/Basement: median 98.4ms exceeds 82.4ms baseline +10%"
+  ],
+  "formalComparatorExitCode": 1,
+  "protocol": "ready-then-pinch-v2",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "noiseRatio": 0.1,
+  "staticRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 477608,
+      "passed": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 627807,
+      "passed": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1322690,
+      "passed": true
+    },
+    "idlePolls": {
+      "baseline": 80,
+      "candidate": 74,
+      "passed": true
+    }
+  },
+  "limitations": [
+    "Synthetic Clerk identity; not physical-phone or field target proof.",
+    "Stock Next transport differs from production Brotli wrapper.",
+    "Nonhex lab build tag excludes private service-worker release-binding branches.",
+    "No declared heavy agent work/ADB; production services and OS background activity continued.",
+    "Idle is one jobs screen; stream request lifetime is not heartbeat proof.",
+    "R18 V6 remains R18-bound; not relabelled R20.",
+    "Compile/full raw PG log copies precede frozen helper shutdown; post-stop error summaries separately preserved.",
+    "No retries/exclusions or acceptance inference from earlier supplemental profiles."
+  ]
+}

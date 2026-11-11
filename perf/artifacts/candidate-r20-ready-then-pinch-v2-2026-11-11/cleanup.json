@@ -1,0 +1,31 @@
+{
+  "outerExitCode": 1,
+  "formalComparatorFailed": true,
+  "serverShutdowns": [
+    {
+      "pid": 83516,
+      "exitCode": 0
+    },
+    {
+      "pid": 85731,
+      "exitCode": 0
+    }
+  ],
+  "allServerPidsAbsent": true,
+  "serverExitCodesExpected": true,
+  "pgPid": 83303,
+  "pgPidAbsent": true,
+  "socketRemoved": true,
+  "port3481Closed": true,
+  "pgErrors": [],
+  "sourceBeforeAfterMatches": true,
+  "schemaBeforeAfterMatches": true,
+  "operationalChanges": [],
+  "wrapperFinalCleanup": {
+    "inputExitCode": 1,
+    "shutdownFailed": 0,
+    "evidenceCopyFailed": 0,
+    "finalExitCode": 1
+  },
+  "cleanupPassed": true
+}

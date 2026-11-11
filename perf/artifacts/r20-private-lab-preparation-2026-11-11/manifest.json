@@ -1,0 +1,21 @@
+{
+  "status": "private-compile-and14-read-preflight-passed-cleaned-no-timing",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r20-20261111",
+  "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "sourceFileCount": 2318,
+  "unchangedFilesChecked": 2313,
+  "harnessRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "newSnapshotRequired": true,
+  "outerCompileBoundSeconds": 360,
+  "noPrivateCompileOrDBExecuted": false,
+  "scriptHashes": {
+    "foremanhq-r20-compile-command.sh": "ce527e41f22c6a2d7774c5814ca622b0d681155ca8d6faedf11b0d61a3c5892a",
+    "foremanhq-r20-compile-only.sh": "f4e4150c3b15f6b16d7fa3a0e99ba88387ffcd4937325d8201ad74263b9b025b",
+    "storage-preflight.mjs": "0320b8eeeba663c1611a1e149e17f9092c220788588a5af76663841b48dbf1c7"
+  },
+  "reviewedFrozenSourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "lab": "/tmp/foremanhq-speed-app-l6aTWB",
+  "labBuild": "3c6Lvo7KDnEDe_Bzts7L-"
+}

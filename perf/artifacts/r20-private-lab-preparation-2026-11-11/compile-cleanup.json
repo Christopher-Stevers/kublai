@@ -1,0 +1,16 @@
+{
+  "compileExitCode": 0,
+  "serverPid": 82336,
+  "serverPidAbsent": true,
+  "pgPid": 80647,
+  "pgPidAbsent": true,
+  "privateSocketPath": "/tmp/foremanhq-perf-pg.Tm6Kvq",
+  "socketRemoved": true,
+  "port3483Closed": true,
+  "privateLogScope": "copied before frozen database helper shutdown; helper post-stop ERROR summary separately empty",
+  "errorSummary": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "cleanupPassed": true
+}

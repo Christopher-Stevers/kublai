@@ -1,0 +1,161 @@
+{
+  "status": "verified-durable-copy-after-r20-quiet-release",
+  "copiedAtUTC": "2026-11-11T23:44:39.857105+00:00",
+  "directory": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1",
+  "directoryMode": "0o700",
+  "fileCount": 21,
+  "totalBytes": 34612701,
+  "originalIndex": "perf/artifacts/failed-cells-diagnostic-2026-11-11-attempt1/raw-artifacts.json",
+  "originalIndexSHA256": "358447bf4d3444a54e96c4d2b43a9959740fe5b19d1e68ca07d7ecf7730d1e81",
+  "originalIndexUnchanged": true,
+  "originalFilesRetained": true,
+  "files": [
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/1-baseline-openjob-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/1-baseline-openjob-Site.cpuprofile",
+      "bytes": 217457,
+      "sha256": "e807aff9f83c2df44752d6c208f8dc9560f24dd7decfaf6616eb8d6b94fb8db4",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/1-baseline-openjob-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/1-baseline-openjob-Site.trace.json",
+      "bytes": 692896,
+      "sha256": "9a2fb9af1735ac211a2f15cca089dee063b7316bc548ba6bd870c97b2236d9b2",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/10-candidate-changeqty-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/10-candidate-changeqty-Site.cpuprofile",
+      "bytes": 212085,
+      "sha256": "2bd19a4c70124211efc4faaf4a28cd4ede8ae30eddc5a620afba261d20a79405",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/10-candidate-changeqty-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/10-candidate-changeqty-Site.trace.json",
+      "bytes": 689493,
+      "sha256": "f0a9f8ea2e986b5bc187e18a8df8b76f2663e4792d02ee2e14b8886ae1cf39c3",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/2-candidate-openjob-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/2-candidate-openjob-Site.cpuprofile",
+      "bytes": 270282,
+      "sha256": "cd8bdebaff28001944be0a2ffaa7760db201055629afaf2ea5e17da980250490",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/2-candidate-openjob-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/2-candidate-openjob-Site.trace.json",
+      "bytes": 2056010,
+      "sha256": "ef08096220163042efefa43402a26b02d1ec89bfac4c08b39ad84dd25e3fbe8d",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/3-candidate-openjob-Office.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/3-candidate-openjob-Office.cpuprofile",
+      "bytes": 346251,
+      "sha256": "0fa65ccb14f7c52ed1ef4a3897efbc371082873e5bbf55df14a85a1b92582233",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/3-candidate-openjob-Office.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/3-candidate-openjob-Office.trace.json",
+      "bytes": 2074884,
+      "sha256": "ea606746b8a0e3e9568298996baba245b7b7be56454938197bcdea233e32f8db",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/4-baseline-openjob-Office.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/4-baseline-openjob-Office.cpuprofile",
+      "bytes": 227692,
+      "sha256": "e461068a8b416ad9f9f773d142021d6e721a2384c94c28ba9a2320a5c0c5e82e",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/4-baseline-openjob-Office.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/4-baseline-openjob-Office.trace.json",
+      "bytes": 717944,
+      "sha256": "9dd81386718784df5dcb32bfd8205f853887a4162d2b07ffaf38989d0eccd460",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/5-baseline-openmateriallist-Basement.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/5-baseline-openmateriallist-Basement.cpuprofile",
+      "bytes": 556576,
+      "sha256": "f0bb141f5ad2913c9090580bd66fefbe120a61590a0130a18b76bbe0dfa072f8",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/5-baseline-openmateriallist-Basement.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/5-baseline-openmateriallist-Basement.trace.json",
+      "bytes": 2737124,
+      "sha256": "63b1e91000f813cea55cff79677c1dc999be98de84367b334765b14a8dd328d9",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/6-candidate-openmateriallist-Basement.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/6-candidate-openmateriallist-Basement.cpuprofile",
+      "bytes": 789062,
+      "sha256": "89ef2cebc347f6a7b1bf850082d9931cc0c34a26aa49d7a9f75e90e94506b76d",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/6-candidate-openmateriallist-Basement.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/6-candidate-openmateriallist-Basement.trace.json",
+      "bytes": 8490615,
+      "sha256": "786bfdd262c854b771f80ea95b09993327e9173e7b5e96983663d536f23be6f8",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/7-candidate-openmateriallist-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/7-candidate-openmateriallist-Site.cpuprofile",
+      "bytes": 736763,
+      "sha256": "d4c3bce7bbb042166de2dc7821554d887abce6792edf08cd50c51765a876b9ac",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/7-candidate-openmateriallist-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/7-candidate-openmateriallist-Site.trace.json",
+      "bytes": 8487570,
+      "sha256": "3e7dee7b71528a4827fc9a7fe9dd69098857506fd84de2c933a48ee49746c4bf",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/8-baseline-openmateriallist-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/8-baseline-openmateriallist-Site.cpuprofile",
+      "bytes": 650040,
+      "sha256": "72660a67aa3fc462870d733c5266ae11f97817c44632de3d5559460528d50123",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/8-baseline-openmateriallist-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/8-baseline-openmateriallist-Site.trace.json",
+      "bytes": 2767248,
+      "sha256": "38ddb4df9673e6d643849f947df6aeb3ce91ae45a26e953727192cac65b15d60",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/9-baseline-changeqty-Site.cpuprofile",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/9-baseline-changeqty-Site.cpuprofile",
+      "bytes": 218195,
+      "sha256": "03bb991ecd098fcd8bbe60b888e06e108309e6814a9bd73830f4e4aa72b55fef",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/captures/9-baseline-changeqty-Site.trace.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/9-baseline-changeqty-Site.trace.json",
+      "bytes": 218106,
+      "sha256": "ae04ef1138b1534abf5ad977c4bc2ee36ebd9e6fe16aa323b6afc016b854015f",
+      "verified": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-failed-cells-v1-attempt1/synthetic-cache-manifest.json",
+      "durablePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/failed-cells-diagnostic-20261111-attempt1/synthetic-cache-manifest.json",
+      "bytes": 1456408,
+      "sha256": "03a45dc8d487fd77d4485b9a12fd1230a3514a1f898e4d82108f6ed44aa74880",
+      "verified": true
+    }
+  ]
+}

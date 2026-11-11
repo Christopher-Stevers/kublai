@@ -1,0 +1,1993 @@
+{
+  "version": 1,
+  "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2318,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2313,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+    "preTransformUnchangedFilesChecked": 2318
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+  "harnessFileCount": 29,
+  "harnessToolchain": {
+    "node": "v26.8.2",
+    "playwright": "1.59.1",
+    "browser": "152.0.7977.82"
+  },
+  "harnessVerification": {
+    "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "immutable": true
+  },
+  "provenance": "isolated-seeded-app",
+  "cpuSlowdown": 4,
+  "build": "3c6Lvo7KDnEDe_Bzts7L-",
+  "timestamp": "2026-11-11T23:23:16.914Z",
+  "status": "complete",
+  "protocol": {
+    "id": "ready-then-pinch-v2",
+    "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+    "coveragePollMs": 50
+  },
+  "device": {
+    "kind": "desktop-chromium-mobile-emulation",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "physicalPixelMeasured": false
+  },
+  "samples": [
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 11166.199999809265
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 19850.372959,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 11237.099999904633
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 19855.105272,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 11172.400000095367
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 19855.602172,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 11067.699999809265
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 19851.582026000004,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 11103.599999904633
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 19854.414440000008,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 99.02706100000069,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 81.48908400000073,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 98.4157600000035,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 82.50417499998002,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 99.27435100000002,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 52.09999990463257
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 165.16179300000658,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 49.30000019073486
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 165.42147599998862,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 54
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 165.70853000000352,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 49.80000019073486
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 165.96872300002724,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 49.90000009536743
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 165.82234600000083,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 166.5
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 218.5028029999812,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 162.5
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 215.69040399999358,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 168.80000019073486
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 219.89357000001473,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 163.59999990463257
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 216.29181799996877,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 172.7999997138977
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 224.36896599998,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 22.59999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 97.34095400001388,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 22.59999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 98.84896500001196,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.59999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 99.16083499998786,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.40000009536743
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 99.71174699999392,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 19.90000009536743
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 98.82062699995004,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 18.90000009536743
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 449.37790899991523,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.5
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 448.6640990000451,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 19.90000009536743
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 449.0386929999804,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.200000286102295
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 448.1408389999997,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 18.399999618530273
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 449.7352200000314,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 1433.7000002861023
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 1360
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 295.19999980926514
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 533.4000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 239.60000038146973
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 2048.0957209999906,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 879.3000001907349
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 796.8000001907349
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 305.5
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 561.3000001907349
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 256.90000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 1498.867132000043,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 884.0999999046326
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 788
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 306.2000002861023
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 555.3000001907349
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 250.90000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 1503.4995929999277,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 892.8000001907349
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 825.2999997138977
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 299.40000009536743
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 535.5
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 237
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 1497.6167190000415,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 866.5
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 795.8000001907349
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 294
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 537.3000001907349
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 244.40000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 1466.076921000029,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 216.2398539999267,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 232.38342699990608,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 216.3909439999843,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 232.34175399993546,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 231.84965900005773,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 2378
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 3562.2914459999884,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 2402.199999809265
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 3569.6952599999495,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 2402.199999809265
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 3570.2700170000317,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 2379.7000002861023
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 3563.8824889999814,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 2400.4000000953674
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 3567.7850900000194,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 98.36335799994413,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 82.28797800000757,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 82.66923500003759,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 82.10199100000318,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 98.87632100004703,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 51.09999990463257
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 165.24033900001086,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 50.19999980926514
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 166.5210659999866,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 50.09999990463257
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 165.62194099999033,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 49.30000019073486
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 165.71451600000728,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 48.5
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 166.5180270000128,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 180
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 248.32049299997743,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 169.5
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 220.9048930000281,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 168.40000009536743
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 221.68270899995696,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 178.19999980926514
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 247.5507729999954,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 170.2999997138977
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 222.90738099999726,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 21.199999809265137
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 115.92108000000007,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.59999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 114.60366399993654,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.09999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 115.20493200002238,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.300000190734863
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 115.58948199998122,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 19.699999809265137
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 116.06132300000172,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.399999618530273
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 448.66510300000664,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 18.699999809265137
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 450.0212820000015,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.5
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 449.8461289999541,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.59999990463257
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 431.97126699995715,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 16.200000286102295
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 448.2658179999562,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 886.2000002861023
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 800.5
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 289.80000019073486
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 519.9000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 230.90000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 1449.059041999979,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 877.1999998092651
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 798.1999998092651
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 306.7999997138977
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 540.8999996185303
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 235
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 1465.4257760000182,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 888.1999998092651
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 804.5999999046326
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 295.3999996185303
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 540.0999999046326
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 245.60000038146973
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 1481.6952010000823,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 881.5
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 790.5
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 304.09999990463257
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 551.5999999046326
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 248.90000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 1498.6330529999686,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 870.5999999046326
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 804.2999997138977
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 277.90000009536743
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 558.9000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 282.2000002861023
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 1498.9446229999885,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 229.39907899999525,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 232.1848600000376,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 231.59496100002434,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 227.7568629999878,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 231.84752800001297,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 719.1999998092651
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 746.5157060000347,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 721
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 758.2882120000431,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 682.5999999046326
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 699.391604000004,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 688
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 717.029882999952,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "app-start-to-last-screen",
+          "durationMs": 694.0999999046326
+        }
+      ],
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 722.3526589999674,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 81.16940100002103,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 85.64301300002262,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 88.02924500009976,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 99.7566419999348,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 86.17715000000317,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 50.5
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 166.13863599998876,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 51.90000009536743
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 165.15424499998335,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 53.40000009536743
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 165.99294700007886,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 52.30000019073486
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 164.28984199999832,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 49.5
+        }
+      ],
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 166.3139979999978,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 177.5
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 246.10809799993876,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 171.5
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 223.34877100004815,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 172.69999980926514
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 223.18147199996747,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 172.69999980926514
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 223.68851000000723,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 173.2000002861023
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 241.46925099997316,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.699999809265137
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 115.29038599994965,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.799999713897705
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 114.14468999998644,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 21.40000009536743
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 110.49347200000193,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 21.09999990463257
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 120.94541599997319,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 22
+        }
+      ],
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 128.31465800001752,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.59999990463257
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 449.8251239999663,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 20.90000009536743
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 449.0587330000708,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 18.59999990463257
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 448.9641779999947,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 17.09999990463257
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 432.48672799998894,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "write-to-paint",
+          "durationMs": 18.09999990463257
+        }
+      ],
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 432.7459820000222,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 901.2000002861023
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 832.5
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 279.90000009536743
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 529.3000001907349
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 250.90000009536743
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 1497.2879220000468,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 878.5
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 794
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 282.69999980926514
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 513.4000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 232.30000019073486
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 1447.9979580000509,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 897
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 822.5999999046326
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 302.09999990463257
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 586.5999999046326
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 285.5
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 1531.9146200000541,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 940.5
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 868.3000001907349
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 301.90000009536743
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 528.9000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 228.09999990463257
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 1515.2549179999623,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 887.5
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 805.6999998092651
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 298.8999996185303
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 543.5999999046326
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 245.5
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 1499.51666199998,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 216.42384299985133,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 231.43554700003006,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 215.97217000019737,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 215.9655100000091,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 215.33897300017998,
+      "variant": "operation"
+    }
+  ],
+  "health": {
+    "preflight": {
+      "status": "passed",
+      "build": "3c6Lvo7KDnEDe_Bzts7L-",
+      "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+      "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2318,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2313,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+        "preTransformUnchangedFilesChecked": 2318
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "results": [
+        {
+          "procedure": "user.getMe",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "push.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "job.getJob",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getMaterialList",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getOrderById",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.listSets",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.getSet",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.get",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.changes",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.getOverview",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.history",
+          "status": "ok"
+        },
+        {
+          "procedure": "rooms.getJobRoomCount",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.overview",
+          "status": "ok"
+        }
+      ]
+    },
+    "fixtureSchema": {
+      "status": "source-declared-schemas-created",
+      "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+      "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+      "moduleCount": 16,
+      "tableCount": 113,
+      "coverage": "Source-declared tables only; migration-only functions/settings require endpoint preflight. Not a claim that unexercised features are complete."
+    },
+    "database": {
+      "count": 0,
+      "fatalCount": 0,
+      "windowStartedAt": "2026-11-11T23:23:16.914Z",
+      "observedAt": "2026-11-11T23:40:58.320Z",
+      "source": "private PostgreSQL ERROR/FATAL headers; no SQL or parameters"
+    }
+  },
+  "static": {
+    "build": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "sharedGzipBytes": 477608,
+    "screenGzipBytes": 627807,
+    "deployGzipBytes": 1322690,
+    "screenGzipByRoute": {
+      "/_global-error/page": 307485,
+      "/_not-found/page": 307485,
+      "/admin/page": 307485,
+      "/jobs/[jobId]/chat/page": 503535,
+      "/jobs/[jobId]/documents/page": 502851,
+      "/jobs/[jobId]/drawings/page": 502861,
+      "/jobs/[jobId]/material-lists/page": 502835,
+      "/jobs/[jobId]/models/page": 502405,
+      "/jobs/[jobId]/page": 499209,
+      "/jobs/[jobId]/pricing/page": 509093,
+      "/jobs/[jobId]/receiving/page": 627807,
+      "/jobs/[jobId]/rooms/page": 504059,
+      "/jobs/[jobId]/systems/page": 503725,
+      "/jobs/[jobId]/tool-requests/page": 499209,
+      "/jobs/account/page": 485743,
+      "/jobs/account/settings/page": 505968,
+      "/jobs/assets/activity/page": 491251,
+      "/jobs/assets/counts/[countId]/page": 497542,
+      "/jobs/assets/counts/page": 497235,
+      "/jobs/assets/labels/page": 501846,
+      "/jobs/assets/page": 489358,
+      "/jobs/assets/requests/[orderId]/page": 499253,
+      "/jobs/assets/requests/page": 491250,
+      "/jobs/assets/scan/[tag]/page": 552507,
+      "/jobs/assets/tools/[id]/page": 557954,
+      "/jobs/assets/tools/page": 500577,
+      "/jobs/assets/types/page": 529109,
+      "/jobs/assets/where/[type]/[id]/page": 507148,
+      "/jobs/assets/where/page": 496630,
+      "/jobs/assist/page": 477608,
+      "/jobs/catalogue/page": 518339,
+      "/jobs/chat/page": 509627,
+      "/jobs/draws/[jobId]/page": 491655,
+      "/jobs/draws/page": 482443,
+      "/jobs/estimating/[id]/page": 518282,
+      "/jobs/estimating/page": 499549,
+      "/jobs/material-lists/[id]/page": 585046,
+      "/jobs/orders/page": 497788,
+      "/jobs/organization/page": 532223,
+      "/jobs/page": 477608,
+      "/jobs/quotes/page": 485304,
+      "/jobs/suppliers/page": 492095,
+      "/jobs/timesheets/page": 495337,
+      "/licenses/page": 307650,
+      "/onboarding/page": 310562,
+      "/page": 307485,
+      "/pending-approval/page": 307485,
+      "/pricing/page": 310765,
+      "/sign-in/[[...sign-in]]/page": 309788,
+      "/sign-up/[[...sign-up]]/page": 309788
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.",
+    "idlePolls": 74,
+    "idleEvidence": {
+      "version": 1,
+      "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+      "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2318,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2313,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+        "preTransformUnchangedFilesChecked": 2318
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "provenance": "isolated-seeded-app",
+      "build": "3c6Lvo7KDnEDe_Bzts7L-",
+      "startedAt": "2026-11-11T23:13:15.459Z",
+      "durationMs": 600000,
+      "cpuSlowdown": 4,
+      "screen": "jobs",
+      "idlePolls": 74,
+      "readRequestsByProcedure": {
+        "user.getMyRole": 20,
+        "notifications.identity": 20,
+        "notifications.overview": 20,
+        "push.identity": 10,
+        "user.getMaterialSortPreferences": 4
+      },
+      "observedEventStreamPaths": [
+        "/api/live"
+      ],
+      "eventStreamConnections": {
+        "starts": 3,
+        "closes": 2,
+        "startsAfterPriorClose": 2,
+        "overlappingStarts": 0,
+        "peakActive": 1,
+        "activeAtWindowStart": 1,
+        "activeAtWindowEnd": 1,
+        "startsDuringWindow": 2,
+        "closesDuringWindow": 2
+      },
+      "method": "Counts actual GET tRPC request procedures after 15-second startup settling. Tracks /events and /api/live request starts, completion/failure, active and overlapping requests. startsAfterPriorClose is an observed repeat connection, not proof of why it reconnected; an open request does not establish healthy SSE message delivery.",
+      "limitations": "One isolated seeded jobs screen, Clerk stub; not every screen. Connection liveness is HTTP request lifetime, not server heartbeat receipt. Earlier archived 65-second observations retain their original narrower definition."
+    }
+  },
+  "labStatic": {
+    "build": "3c6Lvo7KDnEDe_Bzts7L-",
+    "sharedGzipBytes": 421016,
+    "screenGzipBytes": 570853,
+    "deployGzipBytes": 2766600,
+    "screenGzipByRoute": {
+      "/_global-error/page": 249489,
+      "/_not-found/page": 249489,
+      "/admin/page": 249489,
+      "/jobs/[jobId]/chat/page": 446677,
+      "/jobs/[jobId]/documents/page": 446004,
+      "/jobs/[jobId]/drawings/page": 446025,
+      "/jobs/[jobId]/material-lists/page": 447034,
+      "/jobs/[jobId]/models/page": 445568,
+      "/jobs/[jobId]/page": 442458,
+      "/jobs/[jobId]/pricing/page": 452340,
+      "/jobs/[jobId]/receiving/page": 570853,
+      "/jobs/[jobId]/rooms/page": 448150,
+      "/jobs/[jobId]/systems/page": 446850,
+      "/jobs/[jobId]/tool-requests/page": 442458,
+      "/jobs/account/page": 430468,
+      "/jobs/account/settings/page": 442906,
+      "/jobs/assets/activity/page": 434602,
+      "/jobs/assets/counts/[countId]/page": 440898,
+      "/jobs/assets/counts/page": 440592,
+      "/jobs/assets/labels/page": 445203,
+      "/jobs/assets/page": 432715,
+      "/jobs/assets/requests/[orderId]/page": 442662,
+      "/jobs/assets/requests/page": 434609,
+      "/jobs/assets/scan/[tag]/page": 495833,
+      "/jobs/assets/tools/[id]/page": 501288,
+      "/jobs/assets/tools/page": 443909,
+      "/jobs/assets/types/page": 472704,
+      "/jobs/assets/where/[type]/[id]/page": 450516,
+      "/jobs/assets/where/page": 440031,
+      "/jobs/assist/page": 421016,
+      "/jobs/catalogue/page": 461990,
+      "/jobs/chat/page": 453014,
+      "/jobs/draws/[jobId]/page": 435029,
+      "/jobs/draws/page": 425793,
+      "/jobs/estimating/[id]/page": 461697,
+      "/jobs/estimating/page": 442950,
+      "/jobs/material-lists/[id]/page": 528328,
+      "/jobs/orders/page": 441142,
+      "/jobs/organization/page": 475647,
+      "/jobs/page": 421016,
+      "/jobs/quotes/page": 428709,
+      "/jobs/suppliers/page": 435551,
+      "/jobs/timesheets/page": 438799,
+      "/licenses/page": 249655,
+      "/onboarding/page": 252532,
+      "/page": 249489,
+      "/pending-approval/page": 249489,
+      "/pricing/page": 252782,
+      "/sign-in/[[...sign-in]]/page": 250088,
+      "/sign-up/[[...sign-up]]/page": 250088
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "capturedAt": "2026-11-11T23:12:42.024Z",
+  "inputs": {
+    "status": "bound-prepared-not-executed",
+    "files": [
+      {
+        "archive": "full-command.sh",
+        "actual": "/tmp/foremanhq-r20-full-command.sh",
+        "sha256": "0f329b5556e0e03c647e39ab997b39902c6c97a18b8a642dea11d7980dc68efc"
+      },
+      {
+        "archive": "orchestration.sh",
+        "actual": "/tmp/foremanhq-r20-candidate120-ready-v2.sh",
+        "sha256": "362d67e085c4c1dcddfef7da4c89738f5f46328c0fdffdc0f5585442eefae795"
+      },
+      {
+        "archive": "reuse-helper.mjs",
+        "actual": "/tmp/foremanhq-r20-reuse-frozen-app.mjs",
+        "sha256": "a2275ed46413c3e490af2287816263e26e0089cfb83dcd0e7b973b31bc27679e"
+      },
+      {
+        "archive": "protocol-guard.mjs",
+        "actual": "/tmp/foremanhq-r20-protocol-guard.mjs",
+        "sha256": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722"
+      },
+      {
+        "archive": "source-after.mjs",
+        "actual": "/tmp/foremanhq-r20-source-after.mjs",
+        "sha256": "40f3bea129d05312dc51f63eff7c47905aa54e21d37a0a63b7d2ef24cab3ff6e"
+      },
+      {
+        "archive": "storage-preflight.mjs",
+        "actual": "/tmp/foremanhq-r20-storage-preflight.mjs",
+        "sha256": "0320b8eeeba663c1611a1e149e17f9092c220788588a5af76663841b48dbf1c7"
+      }
+    ],
+    "harnessRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+    "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4"
+  },
+  "harness": {
+    "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+    "harnessFileCount": 29,
+    "files": [
+      {
+        "path": "package.json",
+        "sha256": "d218e29ec01186542b0d85bdc6691d12514e4cdd0ba3b9cd81f253250c8d1e34"
+      },
+      {
+        "path": "perf/auth/clerk-client.jsx",
+        "sha256": "aaf7431cadb66761ee2fedff53e39388eb775c62bc33f3cf2a2ae51e40894039"
+      },
+      {
+        "path": "perf/auth/clerk-server.mjs",
+        "sha256": "31b7c60358bba0473cd23fe6344543a63b311a523eeba30ea7d6d7e9006beebe"
+      },
+      {
+        "path": "perf/budgets.json",
+        "sha256": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e"
+      },
+      {
+        "path": "perf/check.mjs",
+        "sha256": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259"
+      },
+      {
+        "path": "perf/create-lab-snapshot.mjs",
+        "sha256": "79b7c7952c1eae02496003ace6895aa14063a78fef0a5c25b0245139743bf715"
+      },
+      {
+        "path": "perf/freeze-harness.mjs",
+        "sha256": "b64ed881c0175952e64464917c37978292af0f03f718f881b02a4b7a6c9323e7"
+      },
+      {
+        "path": "perf/full-baseline.sh",
+        "sha256": "508f3adb603a99eadd8267cfdbc5cc6cf99be43e43717bce44f63822b6259822"
+      },
+      {
+        "path": "perf/harness-fingerprint.mjs",
+        "sha256": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f"
+      },
+      {
+        "path": "perf/idle.mjs",
+        "sha256": "86e737c3846d1b9fb6988267559465bdc320f2aed4de824f077f5aa77462f55a"
+      },
+      {
+        "path": "perf/journeys.mjs",
+        "sha256": "9e030388e3706bb8f2ae863b44773af98ed97523421adcecb2984f619d312683"
+      },
+      {
+        "path": "perf/lab/database.sh",
+        "sha256": "b8a9dea0f647033596fb4bd9a6ece1b6c49c3a2d8666892978cc3b19d16fc438"
+      },
+      {
+        "path": "perf/lab/drizzle.config.ts",
+        "sha256": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211"
+      },
+      {
+        "path": "perf/lab/make-set.mts",
+        "sha256": "32fe6aa2147142cc2d09a303efc4a4d371c0bb1495764d1db048781646a188a8"
+      },
+      {
+        "path": "perf/lab/order-schema.mjs",
+        "sha256": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d"
+      },
+      {
+        "path": "perf/lab/pg-error-report.mjs",
+        "sha256": "4214ce175fd44d79bb8082fd8e64be7ab625eed1f96516c86a409318ce3781dc"
+      },
+      {
+        "path": "perf/lab/reset-writes.mjs",
+        "sha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d"
+      },
+      {
+        "path": "perf/lab/schema-entry.mjs",
+        "sha256": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457"
+      },
+      {
+        "path": "perf/lab/seed.ts",
+        "sha256": "f4bf8a4b66ce237a7cdc921bad58fd98dbaf693e855e10e8ffe53d22b5d87835"
+      },
+      {
+        "path": "perf/pilot.sh",
+        "sha256": "423f003669430947395ca958fdaeadcb56c54c930ac372c6f9a4b78f0f7bc8fa"
+      },
+      {
+        "path": "perf/preflight.mjs",
+        "sha256": "51b571d38d66fbefc0a2ee234eeab250a84948d0701245a0315688cd5fad7530"
+      },
+      {
+        "path": "perf/refresh-lab.mjs",
+        "sha256": "d77c5a63c3e35d84178d076648ad7982481cc47022e98aeb0f147773d631c2f3"
+      },
+      {
+        "path": "perf/run.mjs",
+        "sha256": "6e03df0cb02eb9ea456121634cba42d815fd1aee6d451b5e7430f3dfc21d9e89"
+      },
+      {
+        "path": "perf/summarize.mjs",
+        "sha256": "aca38875f525cc8acae6f222de298cfd99df0a8cca2f2ab997271d9672c186a8"
+      },
+      {
+        "path": "scripts/release/script-map.mjs",
+        "sha256": "1574d433deaea2477b44a99a1670eb7f4de07a4918f2861caa51e88d49ddd225"
+      },
+      {
+        "path": "scripts/release/source-fingerprint.mjs",
+        "sha256": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9"
+      },
+      {
+        "path": "scripts/release/static-assets.mjs",
+        "sha256": "ae2da59e2536f0d90c8d7610fc910c87f59f1bd25501a20bcecadbdbc979bc29"
+      },
+      {
+        "path": "scripts/release/static-metrics.mjs",
+        "sha256": "d67d327be39081db242b4fb83119f2c4956a067ecf940397255cea2e0e721e2d"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "e3f85e3ec2ecd9cb723766b560b3da55a7f45f049ccbbbfa6bec8af1a3ff9434"
+      }
+    ]
+  },
+  "command": "bash perf/artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11-preparation/full-command.sh",
+  "commandSHA256": "0f329b5556e0e03c647e39ab997b39902c6c97a18b8a642dea11d7980dc68efc",
+  "baseline1SHA256": "c262451ec3ef1ca979585aeb29ccc6bd67444d0a323d248584ccf74bb6d9acd4",
+  "baseline2SHA256": "fa25762b3122cdebc609a045b084bc5322e2c061071a0eb0310842bf3f61a718"
+}

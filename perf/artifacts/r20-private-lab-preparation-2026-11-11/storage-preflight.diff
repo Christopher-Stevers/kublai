@@ -1,0 +1,33 @@
+--- reviewed-diagnostic-storage
++++ R20-storage-phase-guard
+@@ -3,12 +3,11 @@
+ import path from "node:path";
+ import { execFileSync } from "node:child_process";
+ import { createHash } from "node:crypto";
+-const root = process.argv[2];
+-if (
+-  root !== "/tmp/foremanhq-failed-cells-v1-attempt1" ||
+-  !fs.statSync(root).isDirectory()
+-)
+-  throw Error("Owned output required");
++const mode = process.argv[2];
++if (!["compile", "full"].includes(mode)) throw Error("R20 storage phase required");
++const root = `/tmp/foremanhq-r20-${mode}-storage`;
++if (fs.existsSync(root)) throw Error("Fresh R20 storage output required");
++fs.mkdirSync(root,{mode:0o700});
+ const cache = "/tmp/foremanhq-speed-app-5h2kmq";
+ if (!fs.existsSync(cache + "/PERF_LAB_ONLY"))
+   throw Error("Synthetic cache marker absent");
+@@ -54,9 +53,9 @@
+   .update(assetManifestBytes)
+   .digest("hex");
+ const available = fs.statfsSync("/tmp", { bigint: true });
+-// Both database assets plus both app-refresh copies: conservative two-copy peak per source.
+-const requiredBytes = bytes * 4 + 512 * 1024 ** 2,
+-  requiredInodes = files * 4 + 10000;
++// One private PG asset copy plus one new/refreshed app copy; compile adds2GiB for build/cache.
++const requiredBytes = bytes * 2 + (mode === "compile" ? 2 * 1024 ** 3 : 0) + 512 * 1024 ** 2,
++  requiredInodes = files * 2 + (mode === "compile" ? 30000 : 10000);
+ const quota = JSON.parse(
+   execFileSync(
+     "python3",

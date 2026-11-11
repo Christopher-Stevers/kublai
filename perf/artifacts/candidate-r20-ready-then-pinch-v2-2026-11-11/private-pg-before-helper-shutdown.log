@@ -1,0 +1,28 @@
+2026-11-11 18:12:43.369 EST [83303] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-11 18:12:43.369 EST [83303] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-11 18:12:43.369 EST [83303] LOG:  00000: listening on Unix socket "/tmp/foremanhq-perf-pg.SFqB00/.s.PGSQL.55463"
+2026-11-11 18:12:43.369 EST [83303] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-11 18:12:43.369 EST [83309] LOG:  00000: database system was shut down at 2026-11-11 18:12:43 EST
+2026-11-11 18:12:43.369 EST [83309] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-11 18:12:43.371 EST [83303] LOG:  00000: database system is ready to accept connections
+2026-11-11 18:12:43.371 EST [83303] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-11 18:17:43.470 EST [83307] LOG:  00000: checkpoint starting: time
+2026-11-11 18:17:43.470 EST [83307] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 18:20:09.859 EST [83307] LOG:  00000: checkpoint complete: wrote 1463 buffers (8.9%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=146.388 s, sync=0.001 s, total=146.389 s; sync files=906, longest=0.001 s, average=0.000 s; distance=9259 kB, estimate=9259 kB; lsn=0/206FE78, redo lsn=0/206EE20
+2026-11-11 18:20:09.859 EST [83307] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-11 18:22:43.951 EST [83307] LOG:  00000: checkpoint starting: time
+2026-11-11 18:22:43.951 EST [83307] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 18:22:44.252 EST [83307] LOG:  00000: checkpoint complete: wrote 3 buffers (0.0%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.301 s, sync=0.001 s, total=0.301 s; sync files=6, longest=0.001 s, average=0.000 s; distance=5 kB, estimate=8334 kB; lsn=0/2070550, redo lsn=0/20704F8
+2026-11-11 18:22:44.252 EST [83307] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-11 18:27:43.330 EST [83307] LOG:  00000: checkpoint starting: time
+2026-11-11 18:27:43.330 EST [83307] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 18:27:44.734 EST [83307] LOG:  00000: checkpoint complete: wrote 14 buffers (0.1%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.404 s, sync=0.001 s, total=1.404 s; sync files=16, longest=0.001 s, average=0.000 s; distance=64 kB, estimate=7507 kB; lsn=0/2080868, redo lsn=0/2080810
+2026-11-11 18:27:44.734 EST [83307] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-11 18:32:43.784 EST [83307] LOG:  00000: checkpoint starting: time
+2026-11-11 18:32:43.784 EST [83307] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 18:32:45.087 EST [83307] LOG:  00000: checkpoint complete: wrote 13 buffers (0.1%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.304 s, sync=0.001 s, total=1.304 s; sync files=15, longest=0.001 s, average=0.000 s; distance=70 kB, estimate=6763 kB; lsn=0/2092390, redo lsn=0/2092338
+2026-11-11 18:32:45.087 EST [83307] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-11 18:37:43.187 EST [83307] LOG:  00000: checkpoint starting: time
+2026-11-11 18:37:43.187 EST [83307] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 18:37:46.993 EST [83307] LOG:  00000: checkpoint complete: wrote 38 buffers (0.2%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.807 s, sync=0.001 s, total=3.807 s; sync files=34, longest=0.001 s, average=0.000 s; distance=122 kB, estimate=6099 kB; lsn=0/20C2928, redo lsn=0/20B0B58
+2026-11-11 18:37:46.993 EST [83307] LOCATION:  LogCheckpointEnd, xlog.c:6793

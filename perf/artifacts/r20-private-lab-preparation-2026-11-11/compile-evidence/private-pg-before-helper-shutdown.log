@@ -1,0 +1,8 @@
+2026-11-11 18:07:48.442 EST [80647] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-11 18:07:48.442 EST [80647] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-11 18:07:48.442 EST [80647] LOG:  00000: listening on Unix socket "/tmp/foremanhq-perf-pg.Tm6Kvq/.s.PGSQL.55463"
+2026-11-11 18:07:48.442 EST [80647] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-11 18:07:48.443 EST [80653] LOG:  00000: database system was shut down at 2026-11-11 18:07:48 EST
+2026-11-11 18:07:48.443 EST [80653] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-11 18:07:48.444 EST [80647] LOG:  00000: database system is ready to accept connections
+2026-11-11 18:07:48.444 EST [80647] LOCATION:  process_pm_child_exit, postmaster.c:2346
