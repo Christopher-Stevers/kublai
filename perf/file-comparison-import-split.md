@@ -1,0 +1,15 @@
+# Comparison viewer import boundary
+
+R11's receiving route statically imports `ReceivingWorkspace` → `FileComparison` → `DrawingSheetViewer` and `PassiveDocumentPdfPreview`, which in turn includes the drawing viewer. The emitted receiving entry graph includes mixed chunk 4268 at **91,743 gzip bytes**. It contains the comparison, drawing viewer, PDF layer, pipe dialogs/extraction and other controls. This is a measured containing-chunk upper bound, **not a measured saving**. Module sizes such as DrawingSheetViewer's 159,040 pre-minify bytes are attribution estimates and are not additive gzip savings.
+
+The public named `FileComparison` export now lazily imports its content. Its props are derived with a type-only import from the unchanged implementation. The entire former file moves byte-for-byte to `FileComparisonContent.tsx`: read requests, AbortController cleanup, independent panes, selection, drawing tools, callbacks and PDF behavior are unchanged. The facade has no static viewer dependency and does not prewarm it.
+
+Both existing callers mount the component conditionally: ReceivingWorkspace requires an explicitly selected matching `comparisonDocument`; DrawingWorkspace requires `fileComparisonOpen`. There is no existing `open` prop to reinterpret. Closed callers therefore mount no facade and make no comparison import/read. No receiving, PackingSlips, drawing workspace, account, protocol or zoom source is edited by this slice.
+
+Suspense is confined to the optional comparison content. Loading has an immediate Close control. A local error boundary has `allowReload={false}`, offers retry and Close, and provides no reload action. Parent receiving drafts and comparison intent remain above the boundary. Retrying replaces only the failed lazy type; ordinary rerenders retain the active content. Closing/unmounting before import resolution prevents the content from mounting. The unchanged loaded content still aborts its document read on unmount.
+
+Eight mocked tests in two files pass with one Vitest worker: explicit-selection-only loading, exact parent input/draft identity through loading, Close during delayed import, no late private viewer mount, failed-import local retry without a reload, independent drawing pagination/PDF selection, unavailable-document recovery, inline callback behavior and aborting a pending document read. The first existing inline test needed to await the loaded left pane rather than the equally named loading region. No test is treated as actual Next/browser/performance evidence.
+
+The facade and both test files pass scoped ESLint. The byte-identical moved implementation retains four existing findings (set-state-in-effect and three nullish-coalescing findings); comparison against the original parent via ESLint stdin reproduced the exact rule/line/column set. They are not new findings or silently fixed behavior.
+
+No canonical build, emitted saving, HTTP proof, journey, idle measurement or activation has run for this slice. A later reviewed candidate must measure its own unchanged static/strict-update gates; R11's 735-byte heaviest-screen headroom and existing failed targets remain explicit.

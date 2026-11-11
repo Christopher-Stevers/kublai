@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { FileComparison } from "./FileComparison";
 vi.mock("./documents/PassiveDocumentPdfPreview", () => ({PassiveDocumentPdfPreview: ({url,title}:{url:string;title:string}) => <div data-testid="pdf" data-url={url}>{title}</div>}));
@@ -7,7 +7,7 @@ afterEach(() => {cleanup();vi.unstubAllGlobals();});
 const docs = {documents:[{id:"one",name:"Current slip",currentVersionId:"v1"},{id:"two",name:"Earlier slip",currentVersionId:"v2"},{id:"deleted",name:"Deleted",deletedAt:"yesterday",currentVersionId:"v3"}],versions:[{id:"v1",mimeType:"application/pdf"},{id:"v2",mimeType:"application/pdf"},{id:"v3",mimeType:"application/pdf"}]};
 it("opens the two duplicate documents without changing receiving data", async () => {
  const request=vi.fn(async(_url: string)=>new Response(JSON.stringify(docs)));vi.stubGlobal("fetch",request);
- render(<FileComparison jobId="job" initialDocumentIds={["one","two"]} onClose={()=>{}} />);
+ render(<FileComparison jobId="job" initialDocumentIds={["one","two"]} onClose={vi.fn()} />);
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
  const panes=await screen.findAllByTestId("pdf");expect(panes.map(p=>p.getAttribute("data-url"))).toEqual(["/api/job-documents/files/v1?jobId=job","/api/job-documents/files/v2?jobId=job"]);
  expect(request).toHaveBeenCalledTimes(1);expect(request.mock.calls[0]?.[0]).toBe("/api/job-documents?jobId=job");
@@ -16,7 +16,7 @@ it("opens the two duplicate documents without changing receiving data", async ()
 it("pages each drawing set independently and allows switching one to a PDF", async () => {
  vi.stubGlobal("fetch",vi.fn(async(_url: string)=>new Response(JSON.stringify(docs))));
  const sheets=[{id:"a1",name:"A1",setId:"a",setName:"Mechanical",imageUrl:"/a1.png"},{id:"a2",name:"A2",setId:"a",setName:"Mechanical",imageUrl:"/a2.png"},{id:"b1",name:"B1",setId:"b",setName:"Plumbing",imageUrl:"/b1.png"}];
- render(<FileComparison jobId="job" sheets={sheets} initialSheetId="a1" onClose={()=>{}} />);
+ render(<FileComparison jobId="job" sheets={sheets} initialSheetId="a1" onClose={vi.fn()} />);
  await screen.findAllByRole("option",{name:"Earlier slip"});
  fireEvent.change(screen.getByLabelText("Right file"),{target:{value:"set:b"}});
  fireEvent.click(screen.getByRole("button",{name:"Left next sheet"}));
@@ -27,7 +27,7 @@ it("pages each drawing set independently and allows switching one to a PDF", asy
 });
 it("keeps an unavailable duplicate explicit and supports retry", async()=>{
  const request=vi.fn().mockResolvedValueOnce(new Response("error",{status:500})).mockResolvedValueOnce(new Response(JSON.stringify(docs)));vi.stubGlobal("fetch",request);
- render(<FileComparison jobId="job" initialDocumentIds={["one","missing"]} onClose={()=>{}} />);
+ render(<FileComparison jobId="job" initialDocumentIds={["one","missing"]} onClose={vi.fn()} />);
  expect(await screen.findByRole("alert")).toHaveTextContent("Could not load");
  fireEvent.click(screen.getByRole("button",{name:"Retry"}));await screen.findByTestId("pdf");
  expect(screen.getByText("This file is unavailable. Choose another file.")).toBeVisible();
@@ -38,10 +38,22 @@ it("fills the drawing area inline instead of opening a separate window", async (
  const sheets=[{id:"a1",name:"A1",setId:"a",setName:"Mechanical",imageUrl:"/a1.png"}];
  render(<FileComparison inline jobId="job" sheets={sheets} initialSheetId="a1" onClose={onClose} onOverlay={onOverlay} />);
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+ await screen.findByRole("region",{name:"Left comparison"});
  const region=screen.getByRole("region",{name:"Compare files"});
  expect(within(region).getByRole("region",{name:"Left comparison"})).toHaveTextContent("A1");
  expect(within(region).getByRole("region",{name:"Right comparison"})).toBeVisible();
  await screen.findAllByRole("option",{name:"Earlier slip"});
  fireEvent.click(screen.getByRole("button",{name:"Overlay"}));expect(onOverlay).toHaveBeenCalledOnce();
  fireEvent.click(screen.getByRole("button",{name:"Close comparison"}));expect(onClose).toHaveBeenCalledOnce();
+});
+
+it("aborts the existing read when the loaded comparison closes", async () => {
+ let signal: AbortSignal | undefined;
+ const request=vi.fn((_url: string, init: { signal: AbortSignal }) => { signal=init.signal;return new Promise<Response>(()=>{ /* Keep the read pending until cancellation. */ }); });
+ vi.stubGlobal("fetch",request);
+ const view=render(<FileComparison jobId="job" onClose={vi.fn()} />);
+ await waitFor(()=>expect(request).toHaveBeenCalledOnce());
+ expect(signal?.aborted).toBe(false);
+ view.unmount();
+ expect(signal?.aborted).toBe(true);
 });
