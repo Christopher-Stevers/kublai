@@ -1,3 +1,4 @@
+import { liveAccountScope } from "~/lib/live-protocol";
 import { restoreHiddenSelection } from "~/lib/catalogue-hidden";
 import { normalizePartSize } from "~/lib/part-size-input";
 import { partDeletionUsage, permanentlyDeletePart } from "~/server/catalogue/delete-part";
@@ -2276,6 +2277,7 @@ export const catalogueRouter = createTRPCRouter({
     .input(
       z.object({
         partId: z.string().uuid(),
+        expectedAccountKey: z.string().min(1).max(1024).optional(),
         displayName: z.string().min(1).max(255).optional(),
         piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
         bulkUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
@@ -2301,6 +2303,16 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        input.expectedAccountKey !== undefined &&
+        input.expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Your signed-in workspace changed. Reopen this part before saving.",
+        });
+      }
+
       if (input.isActive === false) {
         assertCanDeleteParts(ctx.user);
       } else {

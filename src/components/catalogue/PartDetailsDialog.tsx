@@ -1,4 +1,5 @@
 "use client";
+import { useInstantPartImage } from "~/hooks/use-instant-part-image";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { isPartSizeInput, normalizePartSize } from "~/lib/part-size-input";
@@ -676,6 +677,18 @@ export function PartDetailsDialog({
     },
   });
 
+  const instantPartImage = useInstantPartImage({
+    partId,
+    enabled: open && isOnline && isEditMode && Boolean(part?.isOrgSpecific) && !updatePart.isPending,
+    visibleImage: imageUrl,
+    onPreview: (image) => {
+      setImageUrl(image);
+      setIsGoogleImagePickerOpen(false);
+      setSubmitError(null);
+    },
+    onRestore: setImageUrl,
+  });
+
   const applyGooglePartImage = api.catalogue.applyGooglePartImage.useMutation({
     onSuccess: (result) => {
       setImageUrl(result.imageUrl);
@@ -751,6 +764,10 @@ export function PartDetailsDialog({
     }
 
     if (isStoredCatalogueImageUrl(trimmedUrl)) {
+      if (part?.isOrgSpecific) {
+        await instantPartImage.attach(trimmedUrl);
+        return;
+      }
       setImageUrl(trimmedUrl);
       await updatePart.mutateAsync({ partId, imageUrl: trimmedUrl });
       setIsGoogleImagePickerOpen(false);
@@ -766,13 +783,16 @@ export function PartDetailsDialog({
   };
 
   const attachUploadedImageToPart = async (file: File) => {
+    const attachOwned = isEditMode && partId && part?.isOrgSpecific
+      ? instantPartImage.captureUpload()
+      : null;
     const uploadedUrl = await uploadPartImage(file);
-    setImageUrl(uploadedUrl);
-
-    if (isEditMode && partId) {
-      await updatePart.mutateAsync({ partId, imageUrl: uploadedUrl });
+    if (attachOwned) {
+      await attachOwned(uploadedUrl);
+      return;
     }
-
+    setImageUrl(uploadedUrl);
+    if (isEditMode && partId) await updatePart.mutateAsync({ partId, imageUrl: uploadedUrl });
     setIsGoogleImagePickerOpen(false);
   };
 
@@ -900,7 +920,7 @@ export function PartDetailsDialog({
   const isLoading =
     checkingDelete || deletePart.isPending ||
     createPart.isPending ||
-    updatePart.isPending ||
+    updatePart.isPending || instantPartImage.isPending ||
     isProcessingImage ||
     isSubmittingInBackground;
   const isReviewingPhoto = applyGooglePartImage.isPending;
@@ -1071,6 +1091,7 @@ export function PartDetailsDialog({
 
   const showMoney = useFinancialVisibility();
   const handleSubmit = async () => {
+    if (instantPartImage.hasPending()) return;
     setSubmitError(null);
 
     if (!displayName.trim() || !catalogId) {
@@ -1827,6 +1848,15 @@ export function PartDetailsDialog({
             {isEditMode && <Button type="button" variant="destructive" disabled={isLoading || !isOnline} onClick={() => void handlePermanentDelete()}>
               {checkingDelete ? "Checking usage…" : "Delete permanently"}
             </Button>}
+            {instantPartImage.failedImage && (
+              <p role="status" className="text-muted-foreground text-sm">
+                The selected photo is kept here for retry.
+                <Button type="button" variant="outline" size="sm" disabled={!isOnline || instantPartImage.isPending}
+                  onClick={() => { if (instantPartImage.failedImage) void instantPartImage.attach(instantPartImage.failedImage).catch(() => undefined); }}>
+                  Retry photo attachment
+                </Button>
+              </p>
+            )}
             {submitError && (
               <p className="px-1 text-sm text-red-600" role="alert">
                 {submitError}

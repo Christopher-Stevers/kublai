@@ -1,6 +1,12 @@
+const photoTransport = vi.hoisted(() => ({ attach: vi.fn() }));
+vi.mock("~/hooks/use-instant-part-image", () => ({ useInstantPartImage: (options: {onPreview: (image: string) => void}) => ({
+  isPending: false, failedImage: null, hasPending: () => false,
+  attach: (image: string) => { options.onPreview(image); return photoTransport.attach(image); },
+  captureUpload: () => (image: string) => { options.onPreview(image); return photoTransport.attach(image); },
+}) }));
 import React from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PartDetailsDialog } from "./PartDetailsDialog";
 
 const deleteState = vi.hoisted(() => ({usage: vi.fn(), remove: vi.fn(), confirm: vi.fn()}));
@@ -276,6 +282,7 @@ vi.mock("~/trpc/react", () => {
 
 describe("PartDetailsDialog inline add", () => {
   beforeEach(() => {
+    photoTransport.attach.mockReset();
     familyState.data = undefined;
     familyState.lastInput = undefined;
     editState.part = undefined;
@@ -306,6 +313,59 @@ describe("PartDetailsDialog inline add", () => {
     expect(
       screen.getByRole("button", { name: /Get Image \/ Share Image/i }),
     ).toBeInTheDocument();
+  });
+
+  it("closes the stored-photo picker and paints its selection before attachment settles", async () => {
+    editState.part = {id: "part-existing", displayName: "Fixture owned part", sizeNominal: null, isOrgSpecific: true, imageUrl: "/images/catalog/uploads/old.webp", catalogId: "catalog-existing", isActive: true, aliases: []};
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    photoTransport.attach.mockImplementation(() => { editState.part = {...editState.part, imageUrl: "/images/catalog/uploads/new.webp"}; return pending; });
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const previous = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {configurable:true, value:{readText: async () => "/images/catalog/uploads/new.webp"}});
+    try {
+      render(<PartDetailsDialog mode="edit" partId="part-existing" open onOpenChange={() => {}} />);
+      fireEvent.change(screen.getByLabelText(/Part name/), {target:{value:"Unsaved name draft"}});
+      fireEvent.change(screen.getByPlaceholderText("e.g., Long sweep, DWV"), {target:{value:"Unsaved description draft"}});
+      fireEvent.click(screen.getByRole("button", {name: "Search For Image"}));
+      expect(screen.getByText("Find Part Image with Google")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", {name: "Paste", exact:true}));
+      await waitFor(() => expect(photoTransport.attach).toHaveBeenCalledExactlyOnceWith("/images/catalog/uploads/new.webp"));
+      expect(screen.queryByText("Find Part Image with Google")).toBeNull();
+      expect(document.querySelector('img[src="/images/catalog/uploads/new.webp"]')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Part name/)).toHaveValue("Unsaved name draft");
+      expect(screen.getByPlaceholderText("e.g., Long sweep, DWV")).toHaveValue("Unsaved description draft");
+      await act(async () => { finish(); await pending; });
+      expect(screen.getByLabelText(/Part name/)).toHaveValue("Unsaved name draft");
+      expect(screen.getByPlaceholderText("e.g., Long sweep, DWV")).toHaveValue("Unsaved description draft");
+    } finally {
+      if (previous) Object.defineProperty(navigator, "clipboard", previous); else Reflect.deleteProperty(navigator, "clipboard");
+      open.mockRestore();
+    }
+  });
+
+  it("waits for a real upload result before previewing its attachment, then closes the picker before attachment acknowledgement", async () => {
+    editState.part = {id: "part-existing", displayName: "Fixture owned part", sizeNominal: null, isOrgSpecific: true, imageUrl: "/images/catalog/uploads/old.webp", catalogId: "catalog-existing", isActive: true, aliases: []};
+    let uploaded!: (response: Response) => void, attached!: () => void;
+    const upload = new Promise<Response>(resolve => { uploaded = resolve; });
+    const attachment = new Promise<void>(resolve => { attached = resolve; });
+    photoTransport.attach.mockReturnValue(attachment);
+    const fetch = vi.spyOn(globalThis, "fetch").mockReturnValue(upload);
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const previous = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {configurable:true, value:{read:async()=>[{types:["image/png"],getType:async()=>new Blob(["synthetic"],{type:"image/png"})}]}});
+    try {
+      render(<PartDetailsDialog mode="edit" partId="part-existing" open onOpenChange={() => {}} />);
+      fireEvent.click(screen.getByRole("button", {name:"Search For Image"})); fireEvent.click(screen.getByRole("button", {name:"Paste",exact:true}));
+      await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+      expect(photoTransport.attach).not.toHaveBeenCalled(); expect(screen.getByText("Find Part Image with Google")).toBeInTheDocument();
+      await act(async () => { uploaded({ok:true,json:async()=>({url:"/images/catalog/uploads/uploaded.webp"})} as Response); await upload; });
+      await waitFor(() => expect(photoTransport.attach).toHaveBeenCalledExactlyOnceWith("/images/catalog/uploads/uploaded.webp"));
+      expect(screen.queryByText("Find Part Image with Google")).toBeNull(); expect(document.querySelector('img[src="/images/catalog/uploads/uploaded.webp"]')).toBeInTheDocument();
+      await act(async () => {attached();await attachment;});
+    } finally {
+      fetch.mockRestore();open.mockRestore();if(previous)Object.defineProperty(navigator,"clipboard",previous);else Reflect.deleteProperty(navigator,"clipboard");
+    }
   });
 
   it("gets an image from similar parts when the part has none", async () => {
