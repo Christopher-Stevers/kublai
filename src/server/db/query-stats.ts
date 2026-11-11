@@ -25,7 +25,7 @@ export function withQueryStats<T>(fn: () => Promise<T>) {
 /** Capture the request scope before a lazy database query starts. */
 export function startDatabaseTimer() {
   const scope = storage.getStore();
-  if (!scope) return () => {};
+  if (!scope) return () => undefined;
   const start = performance.now();
   let ended = false;
   return () => {

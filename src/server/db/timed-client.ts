@@ -37,23 +37,27 @@ export function timedPostgresClient<T extends object>(client: T): T {
     get(target, key) {
       const value = Reflect.get(target, key, target);
       if (typeof value !== "function") return value;
+      const call = value as (...args: unknown[]) => unknown;
       if (key === "unsafe") {
         return (...args: unknown[]) =>
-          timedQuery(Reflect.apply(value, target, args) as object);
+          timedQuery(Reflect.apply(call, target, args) as object);
       }
       if (key === "begin" || key === "savepoint") {
         return (...args: unknown[]) =>
           Reflect.apply(
-            value,
+            call,
             target,
             args.map((arg) =>
               typeof arg === "function"
-                ? (transaction: object) => arg(timedPostgresClient(transaction))
+                ? (transaction: object) =>
+                    (arg as (client: object) => unknown)(
+                      timedPostgresClient(transaction),
+                    )
                 : arg,
             ),
           );
       }
-      return typeof value === "function" ? value.bind(target) : value;
+      return call.bind(target);
     },
   });
 }
