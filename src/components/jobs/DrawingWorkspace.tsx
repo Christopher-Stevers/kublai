@@ -2176,7 +2176,7 @@ export function DrawingWorkspace({
       )}
       <div className="absolute inset-x-0 top-0 z-30 max-h-[45dvh] overflow-y-auto">
         {visibleRemoval && (
-          <p role="status" className="bg-muted/50 border-b px-3 py-2 text-sm">
+          <p role="status" className="bg-muted/50 truncate border-b px-3 py-2 text-sm">
             Removing {visibleRemoval.name}…
           </p>
         )}
