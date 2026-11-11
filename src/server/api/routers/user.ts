@@ -1,4 +1,3 @@
-import { notificationAccount } from "~/server/notifications/service";
 import { liveAccountScope } from "~/lib/live-protocol";
 import { materialSortSettingsSchema } from "~/lib/material-sort-preferences";
 import {
@@ -223,13 +222,6 @@ export const userRouter = createTRPCRouter({
       (!ctx.user.organizationAccessStatus || ctx.user.organizationAccessStatus === "approved");
 
     return {
-      notificationIdentity: {
-        accountKey: notificationAccount(ctx.user),
-        userId: ctx.user.id,
-        organizationId: ctx.user.organizationId ?? null,
-        actorId: ctx.actorUser?.id ?? ctx.user.id,
-        simulationId: ctx.simulation?.id ?? null,
-      },
       accountScope: ctx.user.organizationId ? liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id) : null,
       appAccess,
       canEditExecutive: appAccess && hasManagingSeat(ctx.user) && !ctx.simulation,

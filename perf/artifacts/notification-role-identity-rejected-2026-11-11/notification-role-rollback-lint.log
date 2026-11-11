@@ -1,0 +1,22 @@
+
+/home/tim/.openclaw/workspace/kublai/src/server/api/routers/user.ts
+   23:3    error  Unsafe assignment of an `any` value                          @typescript-eslint/no-unsafe-assignment
+   23:22   error  Unsafe member access .tutorialCompletedAt on an `any` value  @typescript-eslint/no-unsafe-member-access
+   24:3    error  Unsafe assignment of an `any` value                          @typescript-eslint/no-unsafe-assignment
+   24:18   error  Unsafe member access .tutorialOutcome on an `any` value      @typescript-eslint/no-unsafe-member-access
+  166:23   error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+  187:53   error  Unsafe member access .tutorialCompletedAt on an `any` value  @typescript-eslint/no-unsafe-member-access
+  188:50   error  Unsafe member access .tutorialCompletedAt on an `any` value  @typescript-eslint/no-unsafe-member-access
+  188:114  error  Unsafe member access .tutorialOutcome on an `any` value      @typescript-eslint/no-unsafe-member-access
+  190:25   error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+  207:25   error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+  254:25   error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+  256:11   error  Unsafe assignment of an `any` value                          @typescript-eslint/no-unsafe-assignment
+  256:21   error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+  257:11   error  Unsafe assignment of an `any` value                          @typescript-eslint/no-unsafe-assignment
+  257:23   error  Unsafe member access .name on an `any` value                 @typescript-eslint/no-unsafe-member-access
+  258:11   error  Unsafe assignment of an `any` value                          @typescript-eslint/no-unsafe-assignment
+  258:24   error  Unsafe member access .email on an `any` value                @typescript-eslint/no-unsafe-member-access
+
+✖ 17 problems (17 errors, 0 warnings)
+

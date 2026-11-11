@@ -1,3 +1,15 @@
+# Notification identity sharing — rejected and rolled back
+
+The experiment at `1ad6447c` is **not approved for release**. A subsequent real QueryClient/QueryObserver two-cycle diagnostic reproduced an open-dialog closure during normal role refresh and no sustained identity polling reduction. The strict 30-second request-start lease expires before the next normal 30-second poll completes with nonzero latency. Passing Header data explicitly would not fix that scheduling/lease conflict without broader changes.
+
+The rollback restores exact pre-experiment NotificationCenter polling, after-mount identity validation and failed-request behavior; removes the additive role payload and active receipt hook/tests. No push behavior, receiving source, frozen R19 or production activation changes are included. No replacement sharing architecture is introduced.
+
+Preserved evidence: `perf/artifacts/notification-role-identity-rejected-2026-11-11/`. The full final executed diagnostic is archived as non-active `.tsx.txt`, with raw attempt logs, SHA-256 hashes, exact experiment commit/blob IDs and explicit failed-attempt limitations. With 250ms responses, identity calls total 2 then 3 across two normal cycles; the first cycle clears the account key/closes the dialog. The second stays on standalone polling. These passing diagnostic assertions reproduce bad behavior, not optimization acceptance. Historical functional tests passed 37 cases but missed this recurring handoff.
+
+Rollback verification: the four restored existing TypeScript files are byte-identical to `1ad6447c^`; the new active hook and its two experiment test files are removed. The original NotificationCenter and role-authority suites pass **18 tests in two files** with one worker. Scoped ESLint reports only the same 17 inherited `user.ts` unsafe-any findings; the other three restored files are clean. Raw rollback test/lint logs are included in the archive. No full build/typecheck, HTTP, DB or browser run was performed for this rollback.
+
+## Historical experiment description (superseded)
+
 # Notification identity sharing (prepared source)
 
 NotificationCenter may reuse a fresh `user.getMyRole` HTTP response only inside a validated drawing account binding. The server returns the existing `notificationAccount(ctx.user)` result directly, alongside effective user, organization, actor and simulation fields. Its stricter approved-status/dashboard permission checks remain independent of legacy role `appAccess`; scope strings are never parsed.

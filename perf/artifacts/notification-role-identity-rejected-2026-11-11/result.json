@@ -1,0 +1,67 @@
+{
+  "classification": "rejected experiment; tests reproduce undesirable behavior, not optimization acceptance",
+  "experimentCommit": "1ad6447ca1d29b2b8d7123f4cd3db207542d3c0e",
+  "diagnosticSource": "NotificationCenter.identity-integration.test.tsx.txt",
+  "diagnosticSourceSha256": "02980cf54fe8a20a948da718bf4f75533f0925934b2e887de674c55399258ed2",
+  "diagnosticBase": "1ad6447c",
+  "diagnosticChanges": "Added two-cycle fake-timer real QueryObserver test and missing overview/list refetch mocks. No production changes after experiment commit.",
+  "sourceProvenance": {
+    "src/server/api/routers/user.ts": "0e470fc95cd2c8f6e91bcf3a7d93a574e56faad9",
+    "src/server/api/routers/user-role-authority.test.ts": "5fc9bc9a0f3de046e3c0aed904073865f26ab702",
+    "src/components/notifications/NotificationCenter.tsx": "1f1f850b4aafac3c5c6669ebd74676b09ee10045",
+    "src/components/notifications/NotificationCenter.test.tsx": "f2d6b3cbf9d30448a37f03665ba02589bf78e988",
+    "src/hooks/use-notification-role-identity.ts": "f389899f5a279b12596d0d9d5ad98b7cc6b6f6f1",
+    "src/hooks/use-notification-role-identity.test.tsx": "fcab3cf7bcc881de117e26d3218c4621a5bb32df",
+    "src/components/notifications/NotificationCenter.identity-integration.test.tsx": "6393d0df171e1ed96ffa0953012f1bcd47b19d17"
+  },
+  "responseLatencyMs": 250,
+  "roleIntervalMs": 30000,
+  "observations": [
+    {
+      "cycle": 1,
+      "roleCalls": 2,
+      "identityCalls": 2,
+      "dialogOpen": false,
+      "accountKey": ""
+    },
+    {
+      "cycle": 2,
+      "roleCalls": 3,
+      "identityCalls": 3,
+      "dialogOpen": true,
+      "accountKey": "user:org"
+    }
+  ],
+  "attempt1": "Failed expected second-cycle closure assertion; actual first-cycle closure already reproduced. Also threw because initial panel refetch mocks were absent. Raw log retained. Attempt1 exact source was not captured; do not claim final source hash for it.",
+  "attempt2": "Two tests passed with complete refetch fixture and assertions matching observed behavior. Exact executed source preserved.",
+  "priorFocusedTests": {
+    "passed": 37,
+    "files": 4,
+    "meaning": "Earlier functional cases missed recurring 30s lease handoff; not optimization acceptance."
+  },
+  "outcome": "First normal lease expiry remounts keyed inbox and closes an open dialog. Standalone identity keeps firing once per role cycle; no sustained saving. Rollback required.",
+  "logSha256": {
+    "notification-role-cycle-diagnostic-attempt1.log": "47f1aaeaa1c6c046e918b4c5bc34b7a98cf85e68f9945f811496f3409dea4ac8",
+    "notification-role-cycle-diagnostic-attempt2.log": "b91755df9e0be09db23361d4bf199593c173dac6754c2848b0e5f842012fb15f",
+    "notification-role-tests-final.log": "db8d30b93d91839e457ba94fc3404238971cd3e7f8d9603bd3af15a63613131d",
+    "notification-role-rollback-tests.log": "b10c74384e9f239e8e6f77ea87db0d6afdb2835a2838ce28979934b622e32449",
+    "notification-role-rollback-lint.log": "d8e0f287d92d179ab8a2a8dd2707b1e3d90528abc44d819a22b4f43e8ddd9c91"
+  },
+  "productionRequests": 0,
+  "browserOrDbChecks": false,
+  "frozenR19Changed": false,
+  "rollbackVerification": {
+    "restoredExistingPathsExactlyPreExperiment": [
+      "src/server/api/routers/user.ts",
+      "src/server/api/routers/user-role-authority.test.ts",
+      "src/components/notifications/NotificationCenter.tsx",
+      "src/components/notifications/NotificationCenter.test.tsx"
+    ],
+    "removedActiveHookAndExperimentTests": true,
+    "originalTestsPassed": 18,
+    "testFiles": 2,
+    "scopedLintNewFindings": 0,
+    "inheritedUserRouterFindings": 17,
+    "fullBuildOrTypecheckRun": false
+  }
+}

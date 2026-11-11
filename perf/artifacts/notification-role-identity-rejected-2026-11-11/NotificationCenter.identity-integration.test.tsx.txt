@@ -57,10 +57,11 @@ vi.mock("~/trpc/react", () => ({
           return {
             data: { unreadCount: input.accountKey ? 2 : 0 },
             isFetchedAfterMount: true,
+            refetch: async () => undefined,
           };
         },
       },
-      list: { useInfiniteQuery: () => ({}) },
+      list: { useInfiniteQuery: () => ({ refetch: async () => undefined }) },
       read: { useMutation: () => ({}) },
     },
   },
@@ -136,4 +137,40 @@ it("wires real standalone HTTP receipts and shared-null denial without reusing s
     expect(state.identity.mock.calls.length).toBeGreaterThan(calls),
   );
   await waitFor(() => expect(state.inputs.at(-1)).toBe("new:org"));
+});
+
+it("diagnoses expiry gaps across two normal delayed 30-second role cycles", async () => {
+  vi.useFakeTimers();
+  const observations: { cycle: number; roleCalls: number; identityCalls: number; dialogOpen: boolean; accountKey: string | undefined }[] = [];
+  const pendingRole: ((value: ReturnType<typeof role>) => void)[] = [];
+  const roleRead = vi.fn(() => new Promise<ReturnType<typeof role>>(resolve => pendingRole.push(resolve)));
+  render(<QueryClientProvider client={client}><NotificationCenter sessionKey="user" /></QueryClientProvider>);
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  const observer = new QueryObserver(client, { queryKey: roleKey, enabled: true, retry: false, refetchInterval: 30_000, queryFn: roleRead });
+  act(() => { stop = observer.subscribe(() => undefined); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(250); pendingRole.shift()!(role("user:org")); await Promise.resolve(); });
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    // Use a delayed identity response too: observe whether normal role expiry
+    // changes the keyed inbox before either fresh request can complete.
+    let finishIdentity!: (value: { accountKey: string | null }) => void;
+    state.identity.mockImplementationOnce(() => new Promise(resolve => { finishIdentity = resolve; }));
+    const button = screen.getByRole("button", { name: "Notifications, 2 unread" });
+    await act(async () => { button.click(); });
+    expect(screen.getByRole("dialog", { name: "Notifications" })).toBeVisible();
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    observations.push({ cycle, roleCalls: roleRead.mock.calls.length, identityCalls: state.identity.mock.calls.length,
+      dialogOpen: !!screen.queryByRole("dialog", { name: "Notifications" }), accountKey: state.inputs.at(-1) });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+      pendingRole.splice(0).forEach(resolve => resolve(role("user:org")));
+      finishIdentity({ accountKey: "user:org" });
+      await Promise.resolve();
+    });
+  }
+  console.log("notification-role-cycle-diagnostic", JSON.stringify(observations));
+  expect(observations).toEqual([
+    { cycle: 1, roleCalls: 2, identityCalls: 2, dialogOpen: false, accountKey: "" },
+    { cycle: 2, roleCalls: 3, identityCalls: 3, dialogOpen: true, accountKey: "user:org" },
+  ]);
+  vi.useRealTimers();
 });

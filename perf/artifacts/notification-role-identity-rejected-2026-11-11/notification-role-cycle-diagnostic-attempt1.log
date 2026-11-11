@@ -1,0 +1,106 @@
+(node:6457) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+stdout | src/components/notifications/NotificationCenter.identity-integration.test.tsx > diagnoses expiry gaps across two normal delayed 30-second role cycles
+notification-role-cycle-diagnostic [{"cycle":1,"roleCalls":2,"identityCalls":2,"dialogOpen":false,"accountKey":""},{"cycle":2,"roleCalls":3,"identityCalls":3,"dialogOpen":true,"accountKey":"user:org"}]
+
+ ❯ src/components/notifications/NotificationCenter.identity-integration.test.tsx (2 tests | 1 failed) 574ms
+   × diagnoses expiry gaps across two normal delayed 30-second role cycles 489ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/notifications/NotificationCenter.identity-integration.test.tsx > diagnoses expiry gaps across two normal delayed 30-second role cycles
+AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+@@ -5,12 +5,12 @@
+      "dialogOpen": false,
+      "identityCalls": 2,
+      "roleCalls": 2,
+    },
+    {
+-     "accountKey": "",
++     "accountKey": "user:org",
+      "cycle": 2,
+-     "dialogOpen": false,
++     "dialogOpen": true,
+      "identityCalls": 3,
+      "roleCalls": 3,
+    },
+  ]
+
+ ❯ src/components/notifications/NotificationCenter.identity-integration.test.tsx:170:24
+    168|   }
+    169|   console.log("notification-role-cycle-diagnostic", JSON.stringify(obs…
+    170|   expect(observations).toEqual([
+       |                        ^
+    171|     { cycle: 1, roleCalls: 2, identityCalls: 2, dialogOpen: false, acc…
+    172|     { cycle: 2, roleCalls: 3, identityCalls: 3, dialogOpen: false, acc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: overview.refetch is not a function
+ ❯ Object.onOpenChange [as current] src/components/notifications/NotificationCenter.tsx:207:25
+    205|         if (!value) setSettingsOpen(false);
+    206|         if (value && isOnline && accountKey) {
+    207|           void overview.refetch();
+       |                         ^
+    208|           void list.refetch();
+    209|         }
+ ❯ node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.2_@types+react@19.2.7_react@19.2.3/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs:37:32
+ ❯ node_modules/.pnpm/@radix-ui+react-dialog@1.1.15_@types+react-dom@19.2.3_@types+react@19.2.7__@types+react_66d7d575cbd072ce29e52afb89085e9d/node_modules/@radix-ui/react-dialog/dist/index.mjs:51:45
+ ❯ handleEvent node_modules/.pnpm/@radix-ui+primitive@1.1.3/node_modules/@radix-ui/primitive/dist/index.mjs:7:31
+ ❯ click src/hooks/use-press.ts:239:5
+ ❯ executeDispatch node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19116:9
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ ❯ processDispatchQueue node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19166:19
+ ❯ node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19767:9
+ ❯ batchedUpdates$1 node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:3255:40
+
+This error originated in "src/components/notifications/NotificationCenter.identity-integration.test.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "diagnoses expiry gaps across two normal delayed 30-second role cycles". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: overview.refetch is not a function
+ ❯ Object.onOpenChange [as current] src/components/notifications/NotificationCenter.tsx:207:25
+    205|         if (!value) setSettingsOpen(false);
+    206|         if (value && isOnline && accountKey) {
+    207|           void overview.refetch();
+       |                         ^
+    208|           void list.refetch();
+    209|         }
+ ❯ node_modules/.pnpm/@radix-ui+react-use-controllable-state@1.2.2_@types+react@19.2.7_react@19.2.3/node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs:37:32
+ ❯ node_modules/.pnpm/@radix-ui+react-dialog@1.1.15_@types+react-dom@19.2.3_@types+react@19.2.7__@types+react_66d7d575cbd072ce29e52afb89085e9d/node_modules/@radix-ui/react-dialog/dist/index.mjs:51:45
+ ❯ handleEvent node_modules/.pnpm/@radix-ui+primitive@1.1.3/node_modules/@radix-ui/primitive/dist/index.mjs:7:31
+ ❯ click src/hooks/use-press.ts:239:5
+ ❯ executeDispatch node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19116:9
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ ❯ processDispatchQueue node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19166:19
+ ❯ node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:19767:9
+ ❯ batchedUpdates$1 node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:3255:40
+
+This error originated in "src/components/notifications/NotificationCenter.identity-integration.test.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "diagnoses expiry gaps across two normal delayed 30-second role cycles". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+     Errors  2 errors
+   Start at  12:15:10
+   Duration  1.09s (transform 91ms, setup 31ms, import 168ms, tests 574ms, environment 250ms)
+
