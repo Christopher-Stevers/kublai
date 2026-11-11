@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-11T10:41:22.529Z",
+  "kind": "read-only source tooling evidence",
+  "frozenSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-press-r8-20261111",
+  "canonicalBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+  "baselineCommit": "168502f874bfeca0ccc1f0df7a457d5c121e4538",
+  "result": {
+    "violations": [],
+    "accepted": 32
+  },
+  "toolingSha256": {
+    "scripts/check-navigation.mjs": "b799d6f090289c73cbf9527b95c4a212385f8c8002d4ca437523667f45a0fb96",
+    "scripts/navigation/raw-navigation.mjs": "857be3b1dec97f68a578220cb69574e49d3107acfb1ab50fb81a71ce0e6e35be",
+    "scripts/navigation/baseline.json": "f47cd709b99e17e4715ef7a6bec085e79ed177e6d2d859bbb1750ad017616951",
+    "scripts/navigation/raw-navigation.node-test.mjs": "c0467aab9cc1c44ebb1445d573ea086b4a680965bed39e32b4b3a9554098f3bd",
+    "scripts/check-lint.mjs": "641ba0b4d5e19d3b498a7e0c486bd25bb4e3b02297c19f644e40e91e96d4847d",
+    "scripts/release/build.mjs": "44a0d9bc44d79a10c7752004579c0c978dd8cff19eb37f144113a2e231e0aa9f"
+  },
+  "tests": {
+    "command": "node --test scripts/navigation/raw-navigation.node-test.mjs",
+    "passed": 11
+  },
+  "runtimeChanged": false,
+  "performanceGateClaim": false
+}

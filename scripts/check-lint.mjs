@@ -1,3 +1,4 @@
+import { checkNavigation } from "./check-navigation.mjs";
 import { ESLint } from "eslint";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -12,6 +13,8 @@ const allowed = new Map(
     entry.count,
   ]),
 );
+// Run the handler-level speed-law gate before the broader historical lint debt.
+await checkNavigation();
 const eslint = new ESLint();
 const results = await eslint.lintFiles(["src"]);
 let existing = 0;

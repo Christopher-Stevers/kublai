@@ -1,0 +1,477 @@
+{
+  "version": "raw-navigation-v1",
+  "entries": [
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "button",
+      "digest": "94b03c215982284fad0f3a3b8a2c9e3028a47110d77ea61805b0899fadd09606",
+      "line": 292,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.history.pushState",
+        "window.history.replaceState",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        292
+      ],
+      "category": "preexisting",
+      "reason": "Existing landing-logo navigation includes header-back history coordination; retain until that exact contract is migrated."
+    },
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "button",
+      "digest": "19da98f9e15906e9cc9dae1728f31b002a7becd41718038a814a81e6bfa6996d",
+      "line": 322,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        322
+      ],
+      "category": "preexisting",
+      "reason": "Existing desktop navigation-strip link handler; precise debt retained pending shared press primitive conversion."
+    },
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "DropdownMenuItem",
+      "digest": "2f87df2f605cd56fafd4c44c3cbca60cae0f00db87c897ecdeda412c680f9476",
+      "line": 377,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        377
+      ],
+      "category": "keyboard",
+      "reason": "Settings dropdown item retains the menu library keyboard/release selection contract; no pointer-down conversion is authorized."
+    },
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "button",
+      "digest": "7c472cc46b3cef3fd1e4059ff1fd6fbaf4a28a2d25928b2b60a5c63992a98475",
+      "line": 472,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        472
+      ],
+      "category": "preexisting",
+      "reason": "Existing mobile menu link closes the menu before navigation; retain this exact ordering pending primitive conversion."
+    },
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "button",
+      "digest": "e8c099b42f351418379e9cdfc8a9f1643231fe7e812616eec39acb160dfe5966",
+      "line": 494,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        494
+      ],
+      "category": "preexisting",
+      "reason": "Existing mobile Settings choice closes the menu before navigation; retain exact handler pending primitive conversion."
+    },
+    {
+      "file": "src/app/_components/Header.tsx",
+      "tag": "button",
+      "digest": "0721cdf4dd71e36add29b7073ed0c5134c9b6a1e064c99480bc44ec18da05deb",
+      "line": 527,
+      "operations": [
+        "navigate",
+        "router.push",
+        "window.location.href="
+      ],
+      "count": 1,
+      "lines": [
+        527
+      ],
+      "category": "preexisting",
+      "reason": "Existing mobile account avatar closes the menu before opening account; retain exact handler pending primitive conversion."
+    },
+    {
+      "file": "src/app/error.tsx",
+      "tag": "button",
+      "digest": "1773815d9dc12f21f0b26b0a31e576ed4c3aad49669753d4cd4e4839e5e2ad26",
+      "line": 22,
+      "operations": [
+        "window.location.reload"
+      ],
+      "count": 1,
+      "lines": [
+        22
+      ],
+      "category": "manual",
+      "reason": "Manual error-recovery reload must remain an explicit released click; no automatic recovery or pointer-down reload."
+    },
+    {
+      "file": "src/components/app/FeatureErrorBoundary.tsx",
+      "tag": "button",
+      "digest": "1773815d9dc12f21f0b26b0a31e576ed4c3aad49669753d4cd4e4839e5e2ad26",
+      "line": 30,
+      "operations": [
+        "window.location.reload"
+      ],
+      "count": 1,
+      "lines": [
+        30
+      ],
+      "category": "manual",
+      "reason": "Manual feature-error reload must remain an explicit released click after the user reads the error."
+    },
+    {
+      "file": "src/components/assets/RequestsView.tsx",
+      "tag": "button",
+      "digest": "76b2c42eabac50585e2d964a5f54dce073dd24af8fbe97e23f0dc9346e5caf95",
+      "line": 53,
+      "operations": [
+        "router.replace"
+      ],
+      "count": 1,
+      "lines": [
+        53
+      ],
+      "category": "preexisting",
+      "reason": "Existing request-status filter updates router search parameters; retain exact URL/history behavior pending primitive conversion."
+    },
+    {
+      "file": "src/components/assets/RequestsView.tsx",
+      "tag": "button",
+      "digest": "bfcf6943307f275f8bf35798cef1109caf9ce25a1fdcf38aa40b7d25942a6dd0",
+      "line": 60,
+      "operations": [
+        "router.replace"
+      ],
+      "count": 1,
+      "lines": [
+        60
+      ],
+      "category": "preexisting",
+      "reason": "Existing request-kind filter updates router search parameters; retain exact URL/history behavior pending primitive conversion."
+    },
+    {
+      "file": "src/components/assets/ToolsView.tsx",
+      "tag": "tr",
+      "digest": "ef49fc9e186544f922d3e5e06ed261b5420fc30b99b832fa8f1a8f0cf99f71da",
+      "line": 109,
+      "operations": [
+        "router.replace"
+      ],
+      "count": 1,
+      "lines": [
+        109
+      ],
+      "category": "preexisting",
+      "reason": "Existing tool-type table row toggles a router filter; retain as exact debt rather than granting the table a file exemption."
+    },
+    {
+      "file": "src/components/estimating/EstimateWorkspace.tsx",
+      "tag": "button",
+      "digest": "b6281b9312266eb0dc38d919ea3a9c6e70b7b9b2610a4b1af26155e4a1102975",
+      "line": 771,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        771
+      ],
+      "category": "preexisting",
+      "reason": "Existing estimate tab selector; release behavior retained pending reviewed shared-control conversion."
+    },
+    {
+      "file": "src/components/estimating/EstimateWorkspace.tsx",
+      "tag": "button",
+      "digest": "6e871249b1770feaa020815f12915811357fded1136f81d4ace4befde861960f",
+      "line": 897,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        897
+      ],
+      "category": "preexisting",
+      "reason": "Existing estimate issue shortcut selects the issue line before opening costs; preserve exact ordering as migration debt."
+    },
+    {
+      "file": "src/components/estimating/EstimateWorkspace.tsx",
+      "tag": "button",
+      "digest": "b8ed2f244c6ae7a7b87128844a79c8813faff6c44a63ebeabb437f525f8f4ea5",
+      "line": 910,
+      "operations": [
+        "setTab"
+      ],
+      "count": 2,
+      "lines": [
+        910,
+        926
+      ],
+      "category": "preexisting",
+      "reason": "Existing estimate line warning selects its line before opening costs; preserve exact ordering as migration debt."
+    },
+    {
+      "file": "src/components/estimating/EstimateWorkspace.tsx",
+      "tag": "button",
+      "digest": "53bd91d10f4b28061a94b8d69ea37a20df1eee6964aa0276c21c108e3affa29d",
+      "line": 1071,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        1071
+      ],
+      "category": "preexisting",
+      "reason": "Existing estimate review shortcut; release behavior retained pending reviewed shared-control conversion."
+    },
+    {
+      "file": "src/components/jobs/documents/DocumentDetails.tsx",
+      "tag": "button",
+      "digest": "98aa8c581568abfac20005ba202b5e2a96af4d7f9c19a83008e8a6eaa55661b7",
+      "line": 550,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        550
+      ],
+      "category": "preexisting",
+      "reason": "Existing document details/comments tab selector; precise handler debt, not permission for new raw tabs."
+    },
+    {
+      "file": "src/components/jobs/DrawingAccountProvider.tsx",
+      "tag": "button",
+      "digest": "1773815d9dc12f21f0b26b0a31e576ed4c3aad49669753d4cd4e4839e5e2ad26",
+      "line": 151,
+      "operations": [
+        "window.location.reload"
+      ],
+      "count": 1,
+      "lines": [
+        151
+      ],
+      "category": "manual",
+      "reason": "Manual account-denial recovery reload follows the visible session warning; retain explicit released activation."
+    },
+    {
+      "file": "src/components/jobs/DrawingDocumentActions.tsx",
+      "tag": "button",
+      "digest": "929cbfd656c5d6f6082077f61a119100669b66b19f256e6dc965f90db2055ae6",
+      "line": 265,
+      "operations": [
+        "window.open"
+      ],
+      "count": 1,
+      "lines": [
+        265
+      ],
+      "category": "manual",
+      "reason": "Manual print reserves a blank window synchronously in the user click before asynchronous PDF preparation to avoid popup blocking."
+    },
+    {
+      "file": "src/components/jobs/DrawingWorkspace.tsx",
+      "tag": "button",
+      "digest": "52448035adee23b07a6c38a14bfb6b63e04ed95692472ee3793e0aa09e9eccf7",
+      "line": 3812,
+      "operations": [
+        "router.push",
+        "window.open"
+      ],
+      "count": 1,
+      "lines": [
+        3812
+      ],
+      "category": "preexisting",
+      "reason": "Existing drawing text-search result opens its hit through local/shared navigation helpers; preserve exact debt pending conversion."
+    },
+    {
+      "file": "src/components/jobs/DrawingWorkspace.tsx",
+      "tag": "button",
+      "digest": "6f2bc0a402aad63b5e0f584c70dd41dac10185c153058f6531c23c69215030b2",
+      "line": 3831,
+      "operations": [
+        "router.push",
+        "window.open"
+      ],
+      "count": 1,
+      "lines": [
+        3831
+      ],
+      "category": "preexisting",
+      "reason": "Existing drawing finder result opens its target through local/shared navigation helpers; preserve exact debt pending conversion."
+    },
+    {
+      "file": "src/components/jobs/JobDocumentsView.tsx",
+      "tag": "button",
+      "digest": "dadc952e1109e445f9270363379945fa918a76e86754a4e425ce785a84f1ddb1",
+      "line": 936,
+      "operations": [
+        "setView"
+      ],
+      "count": 1,
+      "lines": [
+        936
+      ],
+      "category": "preexisting",
+      "reason": "Existing document-root breadcrumb changes folder view; retain exact handler pending shared press conversion."
+    },
+    {
+      "file": "src/components/jobs/JobDocumentsView.tsx",
+      "tag": "button",
+      "digest": "ab71cce3aa48d314a9ba58e32e088ad13b42713adc30d2404970f8aa00902691",
+      "line": 950,
+      "operations": [
+        "setView"
+      ],
+      "count": 1,
+      "lines": [
+        950
+      ],
+      "category": "preexisting",
+      "reason": "Existing document ancestor breadcrumb changes folder view; retain exact handler pending shared press conversion."
+    },
+    {
+      "file": "src/components/jobs/JobDocumentsView.tsx",
+      "tag": "button",
+      "digest": "a427cba4efa9c5b48746ec4a90d72f98debaeacbbb0a615818d140efd9598ddb",
+      "line": 969,
+      "operations": [
+        "setView"
+      ],
+      "count": 1,
+      "lines": [
+        969
+      ],
+      "category": "preexisting",
+      "reason": "Existing document folder row changes folder view; retain exact debt without allowing additional raw rows."
+    },
+    {
+      "file": "src/components/jobs/JobDocumentsView.tsx",
+      "tag": "button",
+      "digest": "7adfb64ecf4e5b37be5e1463323db0f4f07f92b221b96a1d16190ec066cd529e",
+      "line": 1478,
+      "operations": [
+        "setView"
+      ],
+      "count": 1,
+      "lines": [
+        1478
+      ],
+      "category": "preexisting",
+      "reason": "Existing document tab selection also closes More and clears checked documents; retain exact ordering pending conversion."
+    },
+    {
+      "file": "src/components/materialLists/ScanSlipButton.tsx",
+      "tag": "button",
+      "digest": "e7f90c270ccc16b6c0c243ec903e0b0e0caa2f96a9b68819fa66fe761138f4c2",
+      "line": 384,
+      "operations": [
+        "router.push"
+      ],
+      "count": 1,
+      "lines": [
+        384
+      ],
+      "category": "preexisting",
+      "reason": "Existing scanned-slip choice closes scan UI before opening receiving review; preserve exact ordering as migration debt."
+    },
+    {
+      "file": "src/components/models/ModelDesignEditor.tsx",
+      "tag": "button",
+      "digest": "11ac68e64abba47320e824c2428e34f71414fbd72786e70d3a2fb81adac7a6a8",
+      "line": 793,
+      "operations": [
+        "setTab"
+      ],
+      "count": 2,
+      "lines": [
+        793,
+        1006
+      ],
+      "category": "preexisting",
+      "reason": "Existing model tool selection can change editor tab through startTool; conservative transitive navigation inventory, no timing conversion."
+    },
+    {
+      "file": "src/components/models/ModelDesignEditor.tsx",
+      "tag": "button",
+      "digest": "5377580c4f47f019084590f2ea482242c797f0b8137a0dba40928448b2ce3f20",
+      "line": 1037,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        1037
+      ],
+      "category": "preexisting",
+      "reason": "Existing model editor tab selector; precise release handler retained pending reviewed shared press conversion."
+    },
+    {
+      "file": "src/components/simulation/SimulationProvider.tsx",
+      "tag": "button",
+      "digest": "dd2eb0c67917cd2643b2dba47be56385a6769f0a0e6dcb767dd556f0a49b4b06",
+      "line": 147,
+      "operations": [
+        "window.location.assign"
+      ],
+      "count": 1,
+      "lines": [
+        147
+      ],
+      "category": "manual",
+      "reason": "Manual end-simulation action awaits authoritative session change before full navigation; retain busy/error and released-click behavior."
+    },
+    {
+      "file": "src/components/simulation/SimulationProvider.tsx",
+      "tag": "button",
+      "digest": "32eef24381815fc5c36c6a2bc05c0389e246cb45c0d510c0fb5a838d34a420d2",
+      "line": 169,
+      "operations": [
+        "window.location.assign"
+      ],
+      "count": 1,
+      "lines": [
+        169
+      ],
+      "category": "manual",
+      "reason": "Manual simulation recovery awaits authoritative session change before full navigation; preserve busy/error handling and release activation."
+    },
+    {
+      "file": "src/components/timesheets/TimesheetsView.tsx",
+      "tag": "button",
+      "digest": "29147eedc13c5eb9b71ecd4257e2fc1ce832f3c7182ebdbbc342a1593ef72627",
+      "line": 887,
+      "operations": [
+        "setTab"
+      ],
+      "count": 1,
+      "lines": [
+        887
+      ],
+      "category": "preexisting",
+      "reason": "Existing timesheet row selects date/person before switching detail tab; preserve exact ordering pending shared press conversion."
+    }
+  ],
+  "provenance": {
+    "commit": "168502f874bfeca0ccc1f0df7a457d5c121e4538",
+    "method": "Tracked source bytes from git show at initial inventory; not worktree contents. Line numbers are informational only."
+  }
+}
