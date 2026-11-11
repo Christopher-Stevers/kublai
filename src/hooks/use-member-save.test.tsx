@@ -16,7 +16,7 @@ function setup() {
   return { ...renderHook(() => useMemberSave({ save, refresh, onSaved })), write, read, save, refresh, onSaved };
 }
 beforeEach(() => vi.spyOn(navigator, "onLine", "get").mockReturnValue(true));
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 it("locks synchronously before network progress and sends a rapid double press once", async () => {
   const h = setup();
@@ -114,4 +114,28 @@ it("does not announce a saved result after its refresh outlives the view", async
   h.unmount();
   await act(async () => h.read.resolve());
   expect(h.onSaved).not.toHaveBeenCalled();
+});
+
+it("bounds a paused refresh, preserves acceptance across retries and ignores late old reads", async () => {
+  vi.useFakeTimers();
+  const h = setup();
+  act(() => h.result.current.save({}));
+  await act(async () => h.write.resolve());
+  await act(async () => vi.advanceTimersByTimeAsync(15_000));
+  expect(h.result.current.phase).toBe("needs-refresh");
+  expect(h.result.current.error).toMatch(/^Changes saved\./);
+  expect(h.save).toHaveBeenCalledOnce();
+  const second = deferred();
+  h.refresh.mockImplementationOnce(async () => { await second.promise; });
+  act(() => h.result.current.refresh());
+  await act(async () => h.read.resolve());
+  expect(h.result.current.phase).toBe("refreshing");
+  expect(h.onSaved).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTimeAsync(15_000));
+  expect(h.result.current.error).toMatch(/^Changes saved\./);
+  h.refresh.mockResolvedValueOnce(undefined);
+  await act(async () => h.result.current.refresh());
+  expect(h.onSaved).toHaveBeenCalledOnce();
+  expect(h.save).toHaveBeenCalledOnce();
+  expect(h.result.current.phase).toBe("idle");
 });

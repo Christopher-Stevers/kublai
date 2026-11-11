@@ -20,7 +20,7 @@ export function useMemberSave<Input>(options: {
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
-  const current = useRef({ mounted: false, epoch: 0, phase: "idle" as Phase });
+  const current = useRef({ mounted: false, epoch: 0, phase: "idle" as Phase, accepted: false });
   useLayoutEffect(() => {
     const owner = current.current;
     owner.mounted = true;
@@ -36,8 +36,16 @@ export function useMemberSave<Input>(options: {
     const owns = () => current.current.mounted && current.current.epoch === epoch;
     if (!owns()) return;
     move("refreshing");
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
-      await options.refresh();
+      // A query can pause indefinitely when connectivity disappears. Bound the
+      // read-only wait; an accepted mutation is never retried or called failed.
+      await Promise.race([
+        options.refresh(),
+        new Promise<never>((_, reject) => {
+          deadline = setTimeout(() => reject(new Error("Refresh timed out")), 10_000);
+        }),
+      ]);
     } catch {
       if (!owns()) return;
       move("needs-refresh");
@@ -45,10 +53,13 @@ export function useMemberSave<Input>(options: {
         ? "Changes saved. Refresh permissions before making another change."
         : "Permissions could not be refreshed. Your draft is still here.");
       return;
+    } finally {
+      clearTimeout(deadline);
     }
     if (!owns()) return;
     move("idle");
     setError("");
+    current.current.accepted = false;
     if (accepted) options.onSaved();
   };
   return {
@@ -63,6 +74,7 @@ export function useMemberSave<Input>(options: {
         return;
       }
       const epoch = current.current.epoch;
+      current.current.accepted = false;
       move("saving");
       setError("");
       void (async () => {
@@ -75,6 +87,8 @@ export function useMemberSave<Input>(options: {
           setError(`${reason ?? "The change could not be confirmed."} Your draft is still here. Refresh permissions before trying again.`);
           return;
         }
+        if (!current.current.mounted || current.current.epoch !== epoch) return;
+        current.current.accepted = true;
         await reconcile(epoch, true);
       })();
     },
@@ -84,7 +98,7 @@ export function useMemberSave<Input>(options: {
         setError("Reconnect to refresh permissions. Your draft is still here.");
         return;
       }
-      void reconcile(current.current.epoch, false);
+      void reconcile(current.current.epoch, current.current.accepted);
     },
   };
 }

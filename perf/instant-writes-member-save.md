@@ -18,6 +18,10 @@ A refused or uncertain write retains the draft, explains the result and offers
 server's explanation. If the write succeeded but refreshing failed, the notice
 says the changes were saved. Recovery never resends the write automatically.
 Current management rights still govern editing after refresh.
+The read-only refresh wait is bounded at ten seconds, so an offline-paused query
+cannot leave the editor indefinitely disabled. A timeout offers the same refresh
+action, preserves known acceptance across retries, and ignores late completion of
+an earlier read. The write itself is never replayed by this timeout.
 
 The detail is keyed by organization, effective user, simulation and selected
 member. An unmounted attempt cannot update or notify a replacement view, including
@@ -28,11 +32,12 @@ preset, organization and reporting checks remain. No schema change.
 
 Validation on 2026-11-11:
 
-- 39 tests across `use-member-save`, `MembersSection`, the account guard and
+- 40 tests across `use-member-save`, `MembersSection`, the account guard and
   existing organization invitation cases pass. They cover double dispatch,
   pending/refresh feedback, offline refusal, draft preservation, unknown and
   refused results, accepted-write/read failure, read-only recovery, account
-  replacement, late callbacks and existing protected-member/preset behavior.
+  replacement, late callbacks, paused refresh recovery and existing
+  protected-member/preset behavior.
 - New hook/tests/page are lint-clean. Existing MembersSection has one finding
   and organization router has 37, identical by rule/message/count to HEAD before
   this change. No findings added.
