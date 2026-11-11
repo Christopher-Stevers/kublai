@@ -14,8 +14,9 @@ desktop baselines and live telemetry, but controlled phone/Safari and remaining
 field targets are unproved. Tim deferred further Pixel debugging; independent
 work continues without requesting that connection again.
 
-The latest full candidate (R19) failed five of 24 timing cells and was not
-activated. The newer receiving/photo source passes focused checks and canonical
+The latest full candidate (R20) passed 23 of 24 timing cells and was not
+activated. Opening a job on the Basement profile measured 98.4 ms against the
+82.4 ms baseline, exceeding the unchanged 10% regression band. The newer receiving/photo source passes focused checks and canonical
 compilation/byte ratchets, but has no new full timing result. Its shared script is
 478,853 gzip bytes versus the 120 KB target; its R19-relative update is 445,298
 bytes versus the 100 KB target. Tested source is not a claim of live improvement.
@@ -1104,7 +1105,7 @@ scripts and passes 100 KB. That does not make the full Phase 0-to-R20 batch
 27 KB. Cookie-free read-only HTTP checks pass for 293 current assets and ten
 historical samples, packaged service worker, health/sign-in and denied anonymous
 private binding. Manifest validation is status plus build ID, not full-body
-byte equality. The proof server is stopped. See `phase1-r20-timer-proof.md`
+byte equality. The proof server is stopped. See `phase1-r20-byte-proof.md`
 and the source/build/HTTP artifacts.
 
 The new private lab build `3c6Lvo7KDnEDe_Bzts7L-` passes all fourteen actual
@@ -1115,3 +1116,37 @@ positive/negative checks. One full run started at 23:12:42 UTC: 600,000 ms idle
 plus all 120 samples, with baseline 1 as the unchanged comparator. No full result
 is available at this checkpoint. R19 remains rejected, production remains Phase
 0, and heavy parallel work is paused for the measurement window.
+
+
+## R20 full result — rejected, 2026-11-11
+
+All 120 samples and the ten-minute idle observation completed. R20 passes 23 of
+24 timing cells and all static/poll regression ratchets. The five failed R19
+cells now pass, but Basement job opening is 98.416 ms versus the fixed 82.444 ms
+baseline (+19.37%). Its five samples are 99.027, 81.489, 98.416, 82.504 and
+99.274 ms. No sample, comparator or threshold was replaced. This is a combined
+two-fix result, not isolated causal evidence for either timer change.
+
+Root independently reran report validation, accepted baseline repeatability,
+formal comparison and activation-report validation. Only that same timing cell
+fails; the candidate remains rejected. This is report-level activation rejection,
+not a passing complete asset/activation preflight. All source/schema/method
+bindings match, fourteen actual query preflights pass, database errors are zero,
+and all owned app/database processes, sockets and ports are cleaned. The idle
+observation records 74 queries, three stream starts, two closes and no overlap;
+it does not establish heartbeat delivery or zero polling. See
+`artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11/` (`47847d9f`) and its
+independent `root-review.json`.
+
+The one-frame-sized remaining difference warrants an unchanged-build control;
+it does not prove noise or waive the gate. One complete Phase 0 self-comparison
+is being prepared with the original method and fixed baseline pair. A pass would
+count only as one of the plan's twenty false-alarm validations and would not
+clear R20. A failure would demonstrate a false alarm on unchanged code and call
+for measurement calibration review. No automatic repeat-until-pass runs or
+candidate activation are authorized. Production remains the Phase 0 bootstrap.
+
+The 21 raw failed-cell diagnostic files (34,612,701 bytes) are also retained in a
+private persistent proof directory with verified hashes. The original report,
+index and source evidence remain unchanged; the durable mapping is
+`artifacts/failed-cells-diagnostic-durable-archive-2026-11-11.json`.
