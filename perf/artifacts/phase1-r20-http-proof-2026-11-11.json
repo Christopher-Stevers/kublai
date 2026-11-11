@@ -1,0 +1,101 @@
+{
+  "build": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+  "currentAssets": 293,
+  "currentScripts": 288,
+  "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+  "immutableStaticHeaders": true,
+  "previousReleaseSamples": 10,
+  "historicalSamples": [
+    {
+      "asset": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "UzwdBuKm2iDE8zDCyDcEI/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "ZRfPvd8bwvzuDDJvHXz1_/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_Nnpqrzp9ZPDOicKBkHnX/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_jYy29uYB_rXlSwfUp7w-/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "6C0P1mprL-QSjWOWNS84l/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "28koM8o3VXq3Bje-aNjrf/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    }
+  ],
+  "currentPressChunk": "chunks/app-press-browser-ec929538b30f0594.js",
+  "currentPressChunkBrotliDecodedExact": true,
+  "allHistoricalBytesExact": true,
+  "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+  "workerMatchesPackaged": true,
+  "releaseManifestStatus": 200,
+  "releaseManifestMatchesBuild": true,
+  "knownRejectedArtifact": false,
+  "healthStatus": 200,
+  "signInStatus": 200,
+  "unauthenticatedBindingStatus": 401,
+  "backgroundMode": "separate",
+  "bimDisabled": true,
+  "databaseReadOnlyVerified": true,
+  "allRequestsCookieFreeGet": true,
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "server": {
+    "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+    "pid": 80746,
+    "port": 3150,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "databaseReadOnlyVerified": true,
+    "credentialsLogged": false,
+    "pinnedWrapper": true
+  },
+  "cleanup": {
+    "exitCode": 0,
+    "ownServerStopped": true,
+    "forced": false,
+    "appMutationsRequested": false,
+    "databaseReadOnlyConfigured": true
+  },
+  "supervisorExitCode": 0,
+  "proofPidAbsentIndependentlyVerified": true,
+  "proofPort3150ClosedIndependentlyVerified": true,
+  "clientExitCode": 0,
+  "publicManifestAssertion": "HTTP200 and exact expected build field; full-body byte equality not asserted",
+  "activated": false,
+  "privateBrowserStarted": false,
+  "methodSha256": {
+    "client": "e0e5e9adce603edb7ab5c3f55eadb854545643e225083b6c145aaab4fc7d2419",
+    "supervisor": "6a45d9f904cd13f8eb2e96f13996b69fb1d7e962da21d5dcee2599eb708f8f20"
+  },
+  "externalEvidence": {
+    "directory": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110",
+    "clientReportSha256": "61a24c857551e2d72257a891fa640c2a300a17f8a2253fbee6145d009dba0164",
+    "wrapperLogSha256": "291ec2f66b73080fb4b99966703ae6b0df8267185ae2c8b2d47347f22c9e6cec",
+    "supervisorLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

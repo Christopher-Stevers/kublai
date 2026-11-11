@@ -19,3 +19,10 @@ Each formal metric grows70 bytes versus R19. The separate strict **R19→R20 cha
 Offline checks decoded exact Brotli/gzip sidecars for293 current JS/CSS assets, preserved1,120 active historical static files exactly and compared all3,263 source/runtime public files. Source fingerprint/postimages/unaffected inputs remain exact after the build. Actual emitted native lookup resolves postgres3.4.8 without the earlier free-factory/numeric-dirname error. Development overlay/probe strings are absent; the one dedicated press chunk is unchanged. The canonical builder lock is released.
 
 Complete metadata is `perf/artifacts/phase1-r20-build-proof-2026-11-11.json`; read-only inspection method is `perf/artifacts/phase1-r20-offline-proof.mjs`. First logs and full numeric reports remain `/home/tim/.openclaw/workspace/releases/speed-proof-20261110/phase1-r20-*`. No HTTP/app/browser/database/worker/journey/idle run or activation is part of this byte proof. R19 remains rejected; matching R20 runtime evidence is separate.
+
+
+## Separate read-only HTTP proof
+
+The subsequently authorized pinned R20 wrapper on localhost3150 served all293 current JS/CSS assets and ten retained samples with exact Brotli sidecar/decoded bytes; the current dedicated press chunk was also explicitly checked. Packaged SW bytes matched. Health/sign-in returned200 and unauthenticated device binding401. The generated public manifest returned200 with the exact R20 build field; its full body was not asserted byte-for-byte. All requests were cookie-free GETs, with no browser or authenticated writes. The database connection setting was forced and SHOW-verified read-only; background mode was separate and BIM disabled.
+
+Client, supervisor and owned server exited0; teardown was unforced, PID80746 was independently absent and port3150 closed before any acceptance timing. Metadata and exact executed helpers are `perf/artifacts/phase1-r20-http-proof-2026-11-11.json` and `phase1-r20-http-{client,supervisor}.mjs`. No activation occurred. The full matching R20 performance gate remains separate and cannot be inferred from this functional proof.
