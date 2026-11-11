@@ -1,0 +1,94 @@
+{
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "activated": false,
+  "status": "prepared-unmeasured-candidate",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "scope": {
+    "base": "unchanged frozen R6",
+    "commits": [
+      "9aed721c",
+      "df2f1400",
+      "d4b69ff0"
+    ],
+    "runtimePaths": [
+      "src/components/jobs/DrawingAccountProvider.tsx",
+      "src/components/jobs/DrawingEntityForm.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/jobs/JobActivityPanels.tsx",
+      "src/components/jobs/documents/DocumentDrawingWorkspace.tsx",
+      "src/components/jobs/documents/use-document-drawing-pages.ts",
+      "src/hooks/use-document-workspace-authority.ts",
+      "src/hooks/use-drawing-workspace-query.ts",
+      "src/hooks/use-instant-saved-view-name.ts",
+      "src/lib/device-query-cache.ts"
+    ],
+    "unchangedBaseFiles": 5433,
+    "publicCorpusFiles": 3263,
+    "allPublicBytesMatchR6": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485406,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755594,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1278937,
+      "passes": true
+    }
+  },
+  "r6ToR7FeaturePayload": {
+    "baselineBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "candidateBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 259,
+    "changedScripts": 24,
+    "changedRawBytes": 789812,
+    "changedGzipBytes": 252295,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "source": {
+    "build": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+    "sourceFileCount": 2289,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "knownRejectedArtifact": false,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true
+  },
+  "ownProofServersStopped": true,
+  "limitations": [
+    "The R6 full regression failure remains archived; R7 has not been timed yet.",
+    "No speed effect is inferred from the equivalent-array bailout or its six passing behavior tests.",
+    "The broad feature payload exceeds100KB; the earlier controlled-edit proof stays distinct.",
+    "Actual device, every-screen offline, full Phase0, one-stream/no-poll and final script targets remain open.",
+    "No production database change, receiving worker release or activation."
+  ]
+}
