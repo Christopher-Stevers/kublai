@@ -81,12 +81,12 @@ Phase 1 router/device-cache/update changes remain preparation only. Canonical
 candidate builds and HTTP proofs have now run outside the lab quiet windows;
 none has been activated. Cold private HTML caching remains disabled.
 
-## Reviewed candidate and baseline status — 2026-11-11
+## Historical rejected pairs and early candidate — 2026-11-11
 
 - The original two full `early-pinch-v1` captures each contain 120 samples, with
   passed read preflight and zero database errors. Repeatability failed one of
   24 cells: Site sheet opening/pinch moved from 973 to 1,432 ms median. Both raw
-  captures remain archived. There is still no accepted full baseline.
+  captures remain archived. At that checkpoint there was no accepted full baseline.
 - `ready-then-pinch-v2` explicitly waits for the initial sharp sheet before the
   same verified viewer pinch, charging both waits to the outer timer. Its
   calibration is a different method, not a repaired v1 result. The new frozen
@@ -94,7 +94,7 @@ none has been activated. Cold private HTML caching remains disabled.
   zero database errors, but failed Basement material-list repeatability:
   203.9 → 229.0 ms (+12.35%). The other 23 cells passed. Both raw reports and
   recorded brief ADB setup overlaps are archived; no samples were excluded.
-  There remains no accepted baseline and no cross-protocol improvement claim.
+  At that checkpoint there was no accepted baseline; no cross-protocol improvement claim follows.
 - The ten-minute isolated Jobs idle observation counted 80 background query
   reads and one stream request active at start/end with no observed reconnect
   or overlap. HTTP request lifetime does not establish heartbeat delivery,
@@ -181,5 +181,54 @@ medians within the unchanged 10% band, matching source/method and zero private
 database errors. The independent pair summary retains all original values and
 stage occurrences without pooling or exclusions. Earlier four failed full
 captures remain archived and rejected. This accepts desktop-emulated same-build
-repeatability only: no candidate timing comparison, physical-phone, full Phase 0
-or activation claim. See `artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-pair-summary.json`.
+repeatability only. The later R6 candidate comparison below fails; there is no
+physical-phone, full Phase 0 or activation claim. See `artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-pair-summary.json`.
+
+
+## Current measured candidate and supplemental evidence — 2026-11-11
+
+The accepted sealed v2 baseline pair remains two complete 120-sample captures,
+24/24 repeatability cells passing with the unchanged 10% threshold. Older failed
+pairs and diagnostics remain intact. The full R6 candidate (`c49e8cba…`) has all
+120 samples, exact source/method/preflight bindings and zero private DB errors,
+but fails the original predeclared baseline-1 comparison: openjob Basement
+82.44 → 98.70 ms and Office 82.27 → 98.68 ms. Site passes at 82.46 → 83.15 ms;
+22/24 cells pass overall. Baseline 2 remains stability evidence, not a substitute
+comparator. No waiver, sample replacement or activation follows. See
+`artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json`.
+
+The separate 20-sample alternating baseline/R6 diagnostic passed every
+hidden-destination-before-input precondition and observed actual pointer/click/
+DOM-ready events. Browser pointerdown-to-DOM-ready medians were 11.0/10.8 ms
+for baseline and 18.4/18.3 ms for R6 (Basement/Office). Driver/rAF alignment also
+varied; no ≥50 ms long tasks were observed. These are real browser-local
+readiness differences, not proof of a component cause, actual first paint, or
+physical pixels. Instrumentation and two idle app servers add their own work;
+desktop-UA sentinel history differs from Android CloseWatcher behavior. The
+original openjob report has no app browser-stage marks because that workspace
+transition uses local state rather than a pathname change. This supplemental
+protocol neither retracts nor replaces its failed wallclock gate. All samples,
+hashes, source/preflight/health and cleanup are archived in
+`artifacts/openjob-phase-diagnostic-2026-11-11-assessment.json`.
+
+The unchanged timing harness sets `NEXT_PUBLIC_BUILD_ID=isolated-speed-baseline`,
+which is not a canonical 64-hex build ID. Production private service-worker
+binding and `reloadReleaseOnce` branches are therefore not exercised by these
+full matrices. Canonical source/static bindings remain verified; private Flight
+cache and background-update release gates remain separate and unproven.
+
+A distinct source-bound functional fixture passes 12 assertions using actual
+provider/worker modules, valid-hex fixture builds and synthetic HttpOnly
+loopback binding/read/Flight endpoints. It covers visited/tree scoping versus
+prefetch, account/denial/logout fences, asset warmup and malformed manifest
+rejection. It does not establish actual Next router/Flight compatibility, real
+authentication, automatic quiet reload/chunk recovery, cold private HTML auth,
+or performance. It does not fill the non-hex timing coverage gap by inference.
+See `artifacts/private-cache-contract-r6-2026-11-11.json`; later actual-app
+protocol preparation is not a passing result.
+
+Controlled physical timing remains zero samples. The earlier Pixel CDP attempt
+timed out at Page.navigate before attestation; a later bounded check had no
+usable Wi-Fi ADB advertisement, so no new physical run began. Uncontrolled,
+participant-attributed field telemetry remains separate. None of this completes
+Phase 0, twenty-run stability, every-frame sharpness or the final speed targets.

@@ -11,7 +11,10 @@
     "Keep canonical production static bytes separate from auth-stubbed lab bytes.",
     "The first complete v1 and v2 baseline pairs each failed one cell and remain rejected. The separately archived v2 rerun passes all 24 cells without exclusions or threshold changes.",
     "Physical phone CDP attempt failed attestation Page.navigate with zero completed samples; local smoke is separate functionality evidence.",
-    "Earlier source-only reconciliation retained four archived captures/zero accepted while the rerun was pending. Reviewed 7fd11c0d assessment now adds two complete v2 captures accepted only for same-build repeatability; all older raw artifacts stay unchanged."
+    "Earlier source-only reconciliation retained four archived captures/zero accepted while the rerun was pending. Reviewed 7fd11c0d assessment now adds two complete v2 captures accepted only for same-build repeatability; all older raw artifacts stay unchanged.",
+    "The full R6 candidate retains all 120 samples and fails two openjob regression cells against predeclared accepted baseline1; baseline2 remains stability evidence.",
+    "The 20-sample browser-local phase diagnostic observes real input-to-DOM-ready differences without causal component attribution or a gate waiver.",
+    "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -28,7 +31,10 @@
     "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-pair-summary.json",
     "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-idle.json",
     "perf/artifacts/server-reads-nonstream-2026-11-11-1.json",
-    "perf/artifacts/server-reads-nonstream-2026-11-11-2.json"
+    "perf/artifacts/server-reads-nonstream-2026-11-11-2.json",
+    "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json",
+    "perf/artifacts/openjob-phase-diagnostic-2026-11-11-assessment.json",
+    "perf/artifacts/private-cache-contract-r6-2026-11-11.json"
   ],
   "rows": [
     {
@@ -50,7 +56,8 @@
       },
       "measuredAt": "2026-11-11T04:22:07.587029+00:00",
       "source": "perf/artifacts/field-review-2026-11-10-2322.json",
-      "reportedP95Ms": 880
+      "reportedP95Ms": 880,
+      "labCandidateQualification": "R6 full matrix fails predeclared openjob Basement/Office regression cells; supplemental 20-sample browser-local DOM readiness is not p95/physical paint or replacement gate evidence."
     },
     {
       "measure": "Write feedback",
@@ -85,7 +92,7 @@
       "measure": "First Site visit to working",
       "target": "<3000ms",
       "state": "missing-baseline",
-      "evidence": "Two newly archived full v2 desktop-emulated captures pass all 24 median-repeatability cells. This is an auth-stubbed page-navigation journey, not real sign-in or a final <3000 ms target pass; a source-matched candidate comparison is still absent."
+      "evidence": "Accepted v2 baseline pair passes all 24 same-build repeatability cells. A separately source-bound full R6 candidate comparison now exists but fails two openjob cells. Auth-stubbed page navigation does not establish real sign-in, controlled physical conditions or the final <3000 ms working-screen target."
     },
     {
       "measure": "Shared script",
@@ -94,14 +101,18 @@
       "applicationGzipBytes": 384689,
       "frameworkGzipBytes": 117929,
       "totalGzipBytes": 502618,
-      "evidence": "Actual canonical dependency-map intersection, gzip9 per file. Application-only figure matches the plan's approximate 390 KB definition; framework-inclusive total remains the static gate definition. Conditional references can overstate requests."
+      "evidence": "Actual canonical dependency-map intersection, gzip9 per file. Application-only figure matches the plan's approximate 390 KB definition; framework-inclusive total remains the static gate definition. Conditional references can overstate requests.",
+      "latestTimedCandidateGzipBytes": 485351,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Heaviest screen, receiving",
       "targetGzipBytes": 180000,
       "state": "measured-static-bound",
       "gzipBytes": 758531,
-      "evidence": "Canonical client-reference dependency union, including shared scripts; not a browser transfer trace."
+      "evidence": "Canonical client-reference dependency union, including shared scripts; not a browser transfer trace.",
+      "latestTimedCandidateGzipBytes": 755539,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Cached sheet sharp after pinch",
@@ -134,7 +145,7 @@
       "state": "controlled-proof-only",
       "controlledSmallEditGzipBytes": 39423,
       "phase1FoundationGzipBytes": 947890,
-      "evidence": "The separate R2\u2192R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3\u2192R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison.",
+      "evidence": "The separate R2\u2192R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3\u2192R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison. The later full R6 payload is 1,275,529 gzip bytes: its formal byte ratchets pass separately, while the unchanged full timing gate fails two openjob cells. No activation.",
       "reviewedCandidateGzipBytes": 1236327,
       "historicalEvidence": {
         "source": "Earlier Phase0 controlled title edit and reviewed foundation artifacts",
@@ -143,7 +154,9 @@
       "latestControlledEditGzipBytes": 22739,
       "latestControlledEditSource": "perf/artifacts/phase1-controlled-r3-static-2026-11-11.json",
       "latestPreparedPhotoFeatureGzipBytes": 283891,
-      "latestPreparedSource": "perf/artifacts/phase1-photo-r4-static-2026-11-11.json"
+      "latestPreparedSource": "perf/artifacts/phase1-photo-r4-static-2026-11-11.json",
+      "latestTimedCandidateGzipBytes": 1275529,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Idle requests",
@@ -154,7 +167,18 @@
       "observedIdleReadProcedures": 80,
       "observationDurationMs": 600000,
       "source": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-idle.json",
-      "measuredAt": "2026-11-11T04:55:39.951Z"
+      "measuredAt": "2026-11-11T04:55:39.951Z",
+      "candidateR6Observation": {
+        "source": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-idle.json",
+        "durationMs": 600000,
+        "queryProcedureReads": 80,
+        "streamStarts": 3,
+        "streamCloses": 2,
+        "overlappingStarts": 0,
+        "activeAtWindowStart": 1,
+        "activeAtWindowEnd": 1,
+        "qualification": "Request lifetime only; not uninterrupted heartbeat health or no-poll proof."
+      }
     },
     {
       "measure": "Server read p95",
@@ -248,5 +272,77 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T05:48:11.903Z"
+  "updatedAt": "2026-11-11T07:03:54.670566+00:00",
+  "completedCandidateLabCaptures": 1,
+  "candidateRegression": {
+    "status": "failed",
+    "source": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json",
+    "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+    "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+    "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+    "samples": 120,
+    "cellsPassed": 22,
+    "cellsTotal": 24,
+    "errors": [
+      "openjob/Basement: median 98.7ms exceeds 82.4ms baseline +10%",
+      "openjob/Office: median 98.7ms exceeds 82.3ms baseline +10%"
+    ],
+    "originalGateUnchanged": true,
+    "acceptedForActivation": false
+  },
+  "openjobPhaseDiagnostic": {
+    "status": "supplemental-only",
+    "source": "perf/artifacts/openjob-phase-diagnostic-2026-11-11-assessment.json",
+    "samples": 20,
+    "allDestinationHiddenBeforeInput": true,
+    "allInputAndReadyEventsObserved": true,
+    "browserPointerdownToDomReadyMedianMs": {
+      "baseline": {
+        "Basement": 11.0,
+        "Office": 10.8
+      },
+      "candidate": {
+        "Basement": 18.4,
+        "Office": 18.3
+      }
+    },
+    "interpretation": "Real browser-local input-to-DOM-ready differences and driver/rAF variability were observed. No component cause or actual first-paint delay is established; this does not waive the failed original gate.",
+    "gateReplacement": false
+  },
+  "timingLabCoverage": {
+    "buildTag": "isolated-speed-baseline",
+    "buildTagIsCanonical64Hex": false,
+    "productionPrivateSwBindingExercised": false,
+    "productionReloadReleaseOnceBranchExercised": false,
+    "privateFlightCachePerformanceProven": false,
+    "backgroundUpdateGatesProven": false,
+    "evidence": "Frozen full-baseline.sh sets a non-hex public build tag; source/canonical static identity remains separately verified.",
+    "otherLimits": "Stubbed Clerk, stock next start transport, desktop Chromium emulation; no controlled physical/offline/first-paint proof."
+  },
+  "privateCacheContract": {
+    "status": "partial-contract-smoke",
+    "source": "perf/artifacts/private-cache-contract-r6-2026-11-11.json",
+    "passedAssertions": 12,
+    "scope": "Source-bound actual provider/worker modules with synthetic HttpOnly loopback binding/read/Flight endpoints and valid-hex fixture builds. Covers scoped replay/prefetch distinction, account/denial/logout fences, asset warmup and malformed manifest rejection.",
+    "comparableTimingEvidence": false,
+    "productionAuthEvidence": false,
+    "actualNextFlightEvidence": false,
+    "automaticQuietReloadAndChunkFailureRecoveryProven": false,
+    "coldPrivateHtmlAuthProven": false,
+    "unproved": [
+      "actual Next router/Flight compatibility",
+      "real authentication",
+      "performance/full release gates",
+      "automatic quiet reload and chunk-failure recovery (registration coordinator not included)",
+      "cold private HTML auth (synthetic document endpoint)"
+    ]
+  },
+  "controlledPhysicalStatus": {
+    "completedTimingSamples": 0,
+    "acceptedTargetProof": false,
+    "historicalAttempt": "CDP Page.navigate timed out during synthetic app attestation; no physical samples.",
+    "latestAvailability": "No usable Wi-Fi ADB advertisement at the later bounded foreground/connection check; no new physical timing run.",
+    "separateFieldEvidence": "Participant-attributed uncontrolled live telemetry remains separate and does not identify hardware per anonymous row."
+  }
 }
