@@ -2,12 +2,24 @@ import { MaterialListScreen as ActualMaterialListScreen } from "~/components/mat
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderComponent,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+
+const queryClients: QueryClient[] = [];
+function render(children: ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  queryClients.push(client);
+  return renderComponent(
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  );
+}
 
 const state = vi.hoisted(() => ({
   send: vi.fn(),
@@ -164,6 +176,7 @@ vi.mock("~/trpc/react", () => ({
 import { JobsClient } from "./JobsClient";
 afterEach(() => {
   cleanup();
+  for (const client of queryClients.splice(0)) client.clear();
   state.items = null;
   vi.clearAllMocks();
   vi.unstubAllGlobals();

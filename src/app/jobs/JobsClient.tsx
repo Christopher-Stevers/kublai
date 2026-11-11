@@ -1,4 +1,5 @@
 "use client";
+import { JobActivityPanels } from "~/components/jobs/JobActivityPanels";
 import { PressableCard } from "~/components/ui/pressable-card";
 import { prepareJourney } from "~/routes/registry";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
@@ -14,7 +15,7 @@ import { JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobCha
 import { JobMaterialListsView } from "~/components/materialLists/JobMaterialListsView";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "~/trpc/react";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -194,20 +195,36 @@ export function JobsClient({
 
   if (!sandbox && hasFetchedUser && userData && !userData.organizationId) return null;
 
+  // Retain only reviewed local workspace screens. External editors and model/
+  // systems workflows keep their existing lifecycle until save cleanup is audited.
+  const retainPanel = (screen: ReactNode) => {
+    const reviewed = offlineJobId !== null && (Boolean(offlineMaterialListId) ||
+      ["options", "material-lists", "tool-requests", "rooms", "drawings", "chat"].includes(offlineJobView));
+    if (!reviewed) return screen;
+    return (
+      <JobActivityPanels
+        key={offlineJobId}
+        activeKey={offlineMaterialListId ? `list:${offlineMaterialListId}` : `view:${offlineJobView}`}
+      >
+        {screen}
+      </JobActivityPanels>
+    );
+  };
+
   if (offlineJobId && !offlineMaterialListId && offlineJobView === "chat") {
-    return <JobChatView key={offlineJobId} jobId={offlineJobId} />;
+    return retainPanel(<JobChatView key={offlineJobId} jobId={offlineJobId} />);
   }
 
   // Tutorial and live lists share rendering; the sandbox supplies isolated data.
   if (offlineMaterialListId) {
-    return <MaterialListScreen key={offlineMaterialListId} id={offlineMaterialListId} embedded />;
+    return retainPanel(<MaterialListScreen key={offlineMaterialListId} id={offlineMaterialListId} embedded />);
   }
 
   if (offlineJobId) {
     const fallbackJob = jobs.find((job) => job.id === offlineJobId) ?? null;
     const offlineJob = offlineJobDetail?.job ?? fallbackJob;
 
-    return (
+    return retainPanel(
       <div className="px-4 pt-6 pb-24 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-6xl">
           {!isBrowserOnline && <JobOfflineNotice />}
