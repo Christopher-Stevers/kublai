@@ -1,0 +1,39 @@
+{
+  "status": "source-prepared-not-built-not-activated",
+  "baseBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+  "baseSourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+  "runtimePaths": [
+    "src/components/materialLists/ReceivingResolve.tsx",
+    "src/components/materialLists/ReceivingResolveContent.tsx",
+    "src/components/materialLists/receiving-link-action.ts"
+  ],
+  "parentFacadeSha256": "8f5bce3507feeb64fd281ea5baf43cea6024757c89f2e95cb1703d84ba4b51b4",
+  "controllerEditorTailByteIdentical": true,
+  "linkingFunctionByteIdentical": true,
+  "beforeMetrics": {
+    "formalSharedGzipBytes": 478139,
+    "formalHeaviestGzipBytes": 640663,
+    "supplementalCommonInitialGzipBytes": 423535,
+    "supplementalReceivingInitialGzipBytes": 573805,
+    "mixedContainingChunkGzipBytes": 69491
+  },
+  "actualSavingMeasured": false,
+  "validation": {
+    "tests": 136,
+    "files": 5,
+    "staticGraphExcludesOptionalEditor": true,
+    "plantedStaticEdgesDetected": true,
+    "ownedCleanLintFiles": 7,
+    "workspaceFixtureExistingFindings": 9,
+    "workspaceFixtureAddedLintFindings": 0,
+    "workspaceProductionChanged": false,
+    "testOnlyAwaitAdjustments": 3,
+    "comparisonAsyncFailureReproducedWithOriginalResolutionModule": true
+  },
+  "limits": [
+    "No canonical build or actual emitted saving measured",
+    "No browser/functional journey/timing/activation",
+    "Containing mixed chunk bytes are not attributed per-module savings",
+    "Existing authority/cache/protocol/durability behavior remains unchanged"
+  ]
+}

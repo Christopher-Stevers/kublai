@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { ReceivingResolve, type ResolveTarget } from "./ReceivingResolve";
+import { ReceivingResolve, type ResolveTarget } from "./ReceivingResolveContent";
 import type { ReceivingDetail, ReceivingAction } from "./ReceivingWorkspace";
 import type { ResolveSlipSourceProps } from "./ResolveSlipSource";
 import { initialReview, type ReceivingLine } from "~/lib/receiving-review";

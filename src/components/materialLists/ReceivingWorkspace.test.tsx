@@ -1438,7 +1438,7 @@ it("opens Resolve in the main window and header back returns to lines", async ()
     (await screen.findAllByRole("button", { name: "Resolve" }))[0]!,
   );
   expect(
-    screen.getByRole("region", { name: "Resolve packing-slip line" }),
+    await screen.findByRole("region", { name: "Resolve packing-slip line" }),
   ).toBeInTheDocument();
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(posts).toEqual([]);
@@ -1454,7 +1454,7 @@ it("saves a Resolve correction for review without confirming or approving", asyn
   fireEvent.click(
     (await screen.findAllByRole("button", { name: "Resolve" }))[0]!,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Correct the reading" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Correct the reading" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Save reading for review" }),
   );
@@ -2271,6 +2271,7 @@ it("opens duplicate comparison in the main viewer and returns to the same review
     ? Response.json({documents:[],versions:[]}) : serve(url, opts));
   render(<ReceivingWorkspace jobId="job" />);
   fireEvent.click(await screen.findByRole("button", {name:"Compare files"}));
+  await screen.findByRole("region", {name:"Left comparison"});
   const viewer = screen.getByRole("main", {name:"Packing slip comparison"});
   expect(viewer).toHaveClass("app-below-header");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
