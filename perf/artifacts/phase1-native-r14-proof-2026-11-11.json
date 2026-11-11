@@ -1,0 +1,145 @@
+{
+  "status": "canonical-resolver-only-candidate-native-metadata-check-passed-no-app-runtime-not-activated",
+  "sourceFreezeCommit": "714138c1",
+  "runtimeSourceCommit": "b2ca4cf42fb21db8dc3ab33b1f9227ffa9e80697",
+  "baseBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+  "source": {
+    "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+    "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+    "sourceFileCount": 2313,
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "controlledSourceChanges": [
+      "src/server/background/listen-lifecycle.ts"
+    ],
+    "runtimePathCount": 1,
+    "operationalPathCount": 0,
+    "unaffectedFiles": 5472,
+    "publicCorpusFiles": 3263,
+    "unexpectedSourceChanges": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModulePattern": "SpeedDevelopmentOverlay",
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true,
+    "fingerprintMatchesReviewedFreeze": true,
+    "navigationPreflight": "pass",
+    "providerPreflight": "pass",
+    "webpackProductionTypesPrerender": "pass first try",
+    "nativeMetadataResolverInspectionPassed": true,
+    "nativeResolvedPackageVersion": "3.4.8",
+    "nativeInspectionIsActualListenProof": false,
+    "r13FailurePreserved": true,
+    "r8PressExcluded": true,
+    "workerExecutableAndSchemaUnchanged": true,
+    "proofServerStarted": false,
+    "activated": false,
+    "originalSourceFingerprintRechecked": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r13": 478143,
+      "r14": 478139,
+      "deltaFromR13": -4,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r13": 640667,
+      "r14": 640663,
+      "deltaFromR13": -4,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r13": 1320297,
+      "r14": 1320293,
+      "deltaFromR13": -4,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "formalMetricMethod": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.",
+  "strictSingleServerEditPayload": {
+    "baselineBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+    "candidateBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 287,
+    "reusedScripts": 282,
+    "changedScripts": 5,
+    "changedRawBytes": 53694,
+    "changedGzipBytes": 20570,
+    "budgetGzipBytes": 100000,
+    "passes": true
+  },
+  "emittedNativeInspection": {
+    "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+    "method": "Exact emitted resolver evaluated alone with the native external objects to which its emitted bindings resolve; no app module, listener or database evaluated.",
+    "emittedFile": "server/chunks/4735.js",
+    "nativeExternalBindingFile": "server/instrumentation.js",
+    "nativeExternalModuleId": 98995,
+    "namespaceBindingRetained": true,
+    "namespaceDefaultFallbackRetained": true,
+    "resolverSha256": "f0f3a960a11021828cf0cf57781805a2ca679a84a18e372043d02af2ed31e7c9",
+    "runtimeCwdRetained": true,
+    "numericDirnameIntroduced": false,
+    "metadataVersion": "3.4.8",
+    "copies": [
+      {
+        "file": "server/app/api/chat/attachments/[id]/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/chat/attachments/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/conversations/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/material-lists/[id]/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/3524.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4589.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4735.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/8439.js",
+        "freeNamedFactoryCall": false
+      }
+    ],
+    "passed": true,
+    "limitations": [
+      "This is metadata binding/resolution evidence, not an actual LISTEN health or private application functional run."
+    ],
+    "appRuntimeStarted": false,
+    "databaseStarted": false
+  },
+  "r13FailurePreserved": true,
+  "finalTargets": {
+    "sharedGzipBytes": {
+      "target": 120000,
+      "measured": 478139,
+      "passes": false
+    },
+    "heaviestGzipBytes": {
+      "target": 180000,
+      "measured": 640663,
+      "passes": false
+    }
+  },
+  "limits": [
+    "Metadata resolver inspection is not an actual LISTEN readiness or app functional pass.",
+    "One controlled server-only edit passes 100KB; prior failed shared-hook/UI batch targets are not waived.",
+    "No HTTP server, app/DB runtime, full journey or activation ran.",
+    "Final byte targets and existing performance gates remain incomplete."
+  ]
+}

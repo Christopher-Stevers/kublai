@@ -129,3 +129,16 @@ or passed functionality claim. R13 runtime remains held. Formal byte ratchets
 pass at 478,143/640,667/1,320,297 gzip bytes; strict update target fails at
 359,750 (32/287 scripts changed). See `perf/phase1-r13-source-freeze.md`.
 No HTTP/app/DB runtime, full journey or activation ran.
+
+
+R14 resolver-only candidate (2026-11-11) preserves exact R13 plus one approved
+file from b2ca4cf4. Build
+`a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096`,
+source fingerprint `6f5dfb96…30b4eabf4`; canonical types/prerender/source checks
+pass first try. Actual emitted native binding and isolated metadata resolver
+pass (3.4.8), without patching/injecting a missing factory. This is not actual
+LISTEN/app functional evidence. Formal byte ratchets pass at
+478,139/640,663/1,320,293; strict single-server-edit payload passes at 20,570
+gzip bytes (5/287 scripts changed). Final byte targets remain unmet and prior
+failed update cases remain failures. No HTTP/app/DB runtime or activation ran.
+See `perf/phase1-r14-native-fix.md`; R13 failure remains preserved.
