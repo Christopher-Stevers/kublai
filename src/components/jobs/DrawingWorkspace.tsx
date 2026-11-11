@@ -754,6 +754,15 @@ export function DrawingWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
   const [pending, setPending] = useState(0);
+  const archiveInFlight = useRef(false);
+  const [removing, setRemoving] = useState<{
+    id: string;
+    name: string;
+    sheetId: string;
+    accountKey: string | undefined;
+  } | null>(null);
+  const visibleRemoval = data && removing?.sheetId === sheet.id &&
+    removing.accountKey === account?.accountKey ? removing : null;
   const [optimistic, setOptimistic] = useState<DrawingEntity[]>([]);
   const [sourceOverride, setSourceOverride] = useState<string | null>(
     entryDrawing?.sourceSheetId ?? null,
@@ -1393,7 +1402,11 @@ export function DrawingWorkspace({
     setPanel("selected");
   };
   const archive = async (entity: DrawingEntity) => {
-    if (!deletable(entity)) return false;
+    // The ref also covers repeated keyboard/viewer callbacks before React commits
+    // the disabled controls. Keep the record until the server accepts removal.
+    if (archiveInFlight.current || !deletable(entity)) return false;
+    archiveInFlight.current = true;
+    setRemoving({ id: entity.id, name: nameOf(entity), sheetId: sheet.id, accountKey: account?.accountKey });
     setPending((n) => n + 1);
     setError(null);
     try {
@@ -1412,6 +1425,8 @@ export function DrawingWorkspace({
       fail(reason);
       return false;
     } finally {
+      archiveInFlight.current = false;
+      setRemoving(null);
       setPending((n) => n - 1);
     }
   };
@@ -2160,6 +2175,11 @@ export function DrawingWorkspace({
         />
       )}
       <div className="absolute inset-x-0 top-0 z-30 max-h-[45dvh] overflow-y-auto">
+        {visibleRemoval && (
+          <p role="status" className="bg-muted/50 border-b px-3 py-2 text-sm">
+            Removing {visibleRemoval.name}…
+          </p>
+        )}
         {error && (
           <div
             role="alert"
@@ -2848,9 +2868,10 @@ export function DrawingWorkspace({
                             <Button
                               size="sm"
                               variant="outline"
+                              disabled={!deletable(selected)}
                               onClick={() => void archive(selected)}
                             >
-                              Delete
+                              {visibleRemoval?.id === selected.id ? "Removing…" : "Delete"}
                             </Button>
                           )}
                         {online &&

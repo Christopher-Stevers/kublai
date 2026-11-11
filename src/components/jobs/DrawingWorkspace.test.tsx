@@ -1552,6 +1552,47 @@ describe("drawing workspace workflows", () => {
     expect(mocks.archive).toHaveBeenCalledWith({sheetId,id:entity.id,expectedRevision:4});
     expect(mocks.save).not.toHaveBeenCalled();
   });
+  it("shows removal intent immediately and keeps a refused drawing item available", async () => {
+    const entity = existingMarkup("published");
+    mocks.data!.entities = [entity];
+    let reject!: (reason: Error) => void;
+    mocks.archive.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Select first annotation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+    const panel = screen.getByLabelText("Drawing tools panel");
+    fireEvent.click(within(panel).getByRole("button", { name: "Delete", exact: true }));
+    expect(within(panel).getByRole("button", { name: "Removing…" })).toBeDisabled();
+    expect(screen.getByText(`Removing ${entity.data.type}…`)).toBeVisible();
+    expect(mocks.data!.entities[0]!.visibility).toBe("published");
+    await act(async () => { reject(new Error("This item changed. Refresh and try again.")); });
+    expect(screen.queryByText(`Removing ${entity.data.type}…`)).toBeNull();
+    expect(screen.getByText("This item changed. Refresh and try again.")).toBeVisible();
+    expect(within(panel).getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
+    expect(mocks.data!.entities[0]!.visibility).toBe("published");
+  });
+  it("sends one removal for duplicate viewer callbacks before controls rerender", async () => {
+    const entity = existingMarkup("published");
+    mocks.data!.entities = [entity];
+    let resolve!: (value: DrawingEntity) => void;
+    mocks.archive.mockImplementationOnce(() => new Promise<DrawingEntity>(done => { resolve = done; }));
+    open();
+    const viewer = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    let first!: Promise<boolean>, duplicate!: Promise<boolean>;
+    act(() => {
+      first = viewer.onRemoveMeasurement!(entity.id);
+      duplicate = viewer.onRemoveMeasurement!(entity.id);
+    });
+    expect(mocks.archive).toHaveBeenCalledOnce();
+    expect(await duplicate).toBe(false);
+    expect(mocks.data!.entities[0]!.visibility).toBe("published");
+    await act(async () => {
+      resolve({ ...entity, visibility: "archived", revision: entity.revision + 1 });
+      expect(await first).toBe(true);
+    });
+    expect(mocks.data!.entities[0]!.visibility).toBe("archived");
+    expect(screen.queryByText(`Removing ${entity.data.type}…`)).toBeNull();
+  });
   it("selects a measurement normally and resumes only from Edit", async () => {
     const entity=existingMarkup("published");
     mocks.data!.entities=[{...entity,data:{...entity.data,type:"dimension",parents:[null,0],points:[{x:.2,y:.2},{x:.5,y:.2}],unit:"m",scale:100}} as DrawingEntity];
