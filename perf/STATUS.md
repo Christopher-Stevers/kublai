@@ -320,3 +320,23 @@ component cause. A fresh browser per block is an untimed supplemental difference
 from the full matrix. No R8 full matrix is approved or queued; the unchanged R7
 four-cell failure remains authoritative. See
 `artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json`.
+
+## Release and reference-device checkpoint — 2026-11-11 08:55 UTC
+
+R8 passed canonical compilation, source binding, formal Phase0 byte ratchets,
+and HTTP/Brotli checks for 288 current assets plus ten historical samples. The
+strict 100 KB changed-script target separately failed: 279,829 gzip bytes changed
+despite only 2,723 bytes of net growth. The shared press hook is copied into 26
+output chunks with unchanged membership; this is not framework churn. See
+`artifacts/phase1-press-r8-static-2026-11-11.json` and the adjacent chunk-churn
+report. The controlled timing result above does not justify a new full matrix.
+
+`measurement-definition-audit.md` separates the frozen automation end-to-end
+metric from a prospective browser-input-to-ready/paint-opportunity metric. No
+definition, threshold, old result or release gate changed. A future metric would
+require its own complete calibration and repeatability evidence.
+
+At 08:55 UTC the paired reference Pixel was absent from ADB and did not advertise
+wireless debugging. No valid physical timing samples have been collected. The
+live `.next` target remains the Phase0 bootstrap; no candidate activation,
+production database change or receiving-worker release occurred.
