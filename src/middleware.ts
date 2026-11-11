@@ -14,6 +14,7 @@ const isPublicRoute = createRouteMatcher([
   "/beta(.*)",
   "/join(.*)",
   "/api/health",
+  "/foremanhq-release-assets.json",
   "/api/catalogue/images(.*)",
   "/api/webhooks(.*)",
   "/api/auth(.*)",

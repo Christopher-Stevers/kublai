@@ -126,6 +126,15 @@ describe("middleware provider isolation", () => {
     expect(mocks.auth).not.toHaveBeenCalled();
   });
 
+  it("allows only the exact public release asset manifest", async () => {
+    expect(await run(request("/foremanhq-release-assets.json?check=1"))).toEqual({kind: "next"});
+    expect(mocks.auth).not.toHaveBeenCalled();
+    for (const path of ["/foremanhq-release-assets.json/private", "/private.json", "/jobs/private.json"]) {
+      expect(await run(request(path))).toMatchObject({kind: "redirect"});
+    }
+    expect(await run(request("/api/device-cache-binding"))).toMatchObject({kind: "json", status: 401});
+  });
+
   it.each([
     "/api/job-documents/wopi/test-id",
     "/api/job-documents/wopi/test-id/contents",
