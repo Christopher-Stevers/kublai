@@ -1,0 +1,24 @@
+{
+  "status": "failed",
+  "physicalPhoneEvidence": false,
+  "method": "phone-visited-reads-page-cdp-v1",
+  "timestamp": "2026-11-11T04:15:12.799Z",
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "controlTransport": "adb-wifi",
+  "targetCreation": "browser-create-target",
+  "phase": {
+    "stage": "attestation",
+    "journey": null,
+    "run": null
+  },
+  "completedSamples": [],
+  "completedSamplesDiagnosticOnly": true,
+  "error": "Page CDP timeout: Page.navigate",
+  "accepted": false,
+  "cleanup": {
+    "method": "http-close-created-id",
+    "acknowledged": true,
+    "httpStatus": 200
+  }
+}

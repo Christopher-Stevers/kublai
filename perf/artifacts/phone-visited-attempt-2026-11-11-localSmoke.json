@@ -1,0 +1,88 @@
+{
+  "status": "smoke-only",
+  "physicalPhoneEvidence": false,
+  "method": "local-smoke-visited-reads-page-cdp-v1",
+  "timestamp": "2026-11-11T04:14:42.243Z",
+  "driverSha256": "1af9b26f5e5b5b65395abd63ae65069ae2d594db8e7eb5fa00c0e478598e0b84",
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "controlTransport": "local-smoke",
+  "targetCreation": "browser-create-target",
+  "cpu": "natural-host-no-throttling",
+  "network": "host-loopback-lab",
+  "input": "page-scoped-CDP-touch-events",
+  "deviceRuntime": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "devicePixelRatio": 1,
+    "screen": {
+      "width": 800,
+      "height": 600
+    },
+    "viewport": {
+      "width": 500,
+      "height": 845
+    },
+    "hardwareConcurrency": 28
+  },
+  "deviceModel": "not-a-phone-local-smoke",
+  "refreshRateHz": null,
+  "thermalState": "unrecorded",
+  "databaseHealth": {
+    "before": {
+      "errors": 0,
+      "fatals": 0
+    },
+    "after": {
+      "errors": 0,
+      "fatals": 0
+    }
+  },
+  "samples": [
+    {
+      "journey": "openjob",
+      "run": 0,
+      "browserDurationMs": 47.299999713897705,
+      "gestureHoldMs": 15.400000095367432,
+      "frameGapsMs": [
+        16.567999999999984
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 58.528321000000005
+    },
+    {
+      "journey": "switchjobtabs",
+      "run": 0,
+      "browserDurationMs": 66.09999990463257,
+      "gestureHoldMs": 16.800000190734863,
+      "frameGapsMs": [
+        16.700000000000045,
+        16.599999999999966
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 94.25511199999994
+    },
+    {
+      "journey": "openmateriallist",
+      "run": 0,
+      "browserDurationMs": 66.5,
+      "gestureHoldMs": 16.299999713897705,
+      "frameGapsMs": [
+        16.600000000000023,
+        16.699999999999932
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 75.04094399999985
+    }
+  ],
+  "limitations": [
+    "Exploratory device/browser timing, not physical pixel/compositor proof",
+    "Not the accepted v2 lab method or the 8x3 journey/link matrix",
+    "Driver wallclock and touch hold include ADB control latency; browser rAF readiness is a paint opportunity",
+    "No link shaping, offline test, CPU emulation, production writes, cookies, target listing or browser-wide trace"
+  ],
+  "cleanup": {
+    "method": "http-close-created-id",
+    "acknowledged": true,
+    "httpStatus": 200
+  }
+}

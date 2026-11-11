@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "recordedAt": "2026-11-11T03:17:02.440306+00:00",
+  "recordedAt": "2026-11-11T04:17:17.125Z",
   "referenceDevice": "Google Pixel 9 Pro XL / Chrome",
   "liveBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
   "phase0Complete": false,
@@ -8,14 +8,18 @@
   "notes": [
     "Ledger of verified evidence and missing measurements, not an accepted baseline or speed pass.",
     "Earlier pilot/full captures with incomplete schema are invalid baselines.",
-    "Keep canonical production static bytes separate from auth-stubbed lab bytes."
+    "Keep canonical production static bytes separate from auth-stubbed lab bytes.",
+    "Separate complete v1 and v2 baseline pairs each failed one repeatability cell; neither is accepted.",
+    "Physical phone CDP attempt failed attestation Page.navigate with zero completed samples; local smoke is separate functionality evidence."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
     "perf/artifacts/field-review-2026-11-10-2034.json",
     "perf/artifacts/phase1-cache-static-2026-11-10.json",
     "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/bootstrap-static-metrics.json",
-    "perf/artifacts/server-read-observations-2026-11-10.json"
+    "perf/artifacts/server-read-observations-2026-11-10.json",
+    "perf/artifacts/baseline-ready-then-pinch-v2-assessment-2026-11-10.json",
+    "perf/artifacts/phone-visited-attempt-2026-11-11-assessment.json"
   ],
   "rows": [
     {
@@ -28,7 +32,7 @@
       "measure": "Visited screen paint",
       "target": "p95 <100ms on every link and offline",
       "state": "partial-field-observation",
-      "evidence": "Two materials tap-to-paint marks have a descriptive nearest-rank p95 of 880ms (n=2), not statistically sufficient p95 proof. Participant confirms Pixel 9 Pro XL/Chrome use during the field window; anonymous rows are not independently device-linked and repeat-visit status is unknown. Controlled reference links and complete lab repeatability remain unproven.",
+      "evidence": "Two materials tap-to-paint marks have a descriptive nearest-rank p95 of 880ms (n=2), not statistically sufficient p95 proof. Participant confirms Pixel 9 Pro XL/Chrome use during the field window; anonymous rows are not independently device-linked and repeat-visit status is unknown. Controlled reference links and complete lab repeatability remain unproven. A separate controlled phone attempt failed CDP attestation before any timing sample; desktop local smoke is not physical proof.",
       "fieldSamples": 2
     },
     {
@@ -53,7 +57,7 @@
       "measure": "First Site visit to working",
       "target": "<3000ms",
       "state": "missing-baseline",
-      "evidence": "Full lab capture pending. Isolated auth stubs exclude real sign-in cost."
+      "evidence": "Two complete v2 desktop-emulated captures exist but failed matrix repeatability in another cell; no accepted full baseline. Auth stubs exclude real sign-in cost."
     },
     {
       "measure": "Shared script",
@@ -75,7 +79,7 @@
       "measure": "Cached sheet sharp after pinch",
       "target": "Sharp in every frame",
       "state": "missing-accepted-baseline",
-      "evidence": "Two full early-pinch-v1 captures failed Site repeatability (973 vs1432ms). New ready-then-pinch-v2 baseline pair is separate and pending. Neither method proves physical sharpness in every frame."
+      "evidence": "Separate full v1 pair failed Site pinch repeatability; full v2 pair passed all sheet cells but failed Basement material-list repeatability (203.9→229.0ms,+12.35%). V2 opening readiness remains charged. Neither method proves physical sharpness every frame."
     },
     {
       "measure": "New Basement sheet readable",
@@ -108,9 +112,11 @@
     {
       "measure": "Idle requests",
       "target": "One stream, no polls",
-      "state": "partial-source-audit",
+      "state": "measured-isolated-jobs-only",
       "refetchIntervalDeclarations": 29,
-      "evidence": "Single browser transport prepared, all 29 polling declarations retained until producer coverage is proven. Ten-minute measured idle capture pending."
+      "evidence": "Ten-minute isolated Jobs observation counted 80 GET query-procedure reads and 1 stream request active at start/end, no observed close/restart/overlap. HTTP lifetime is not heartbeat health; not every screen and not a no-poll pass.29 poll declarations remain.",
+      "observedIdleReadProcedures": 80,
+      "observationDurationMs": 600000
     },
     {
       "measure": "Server read p95",
@@ -129,5 +135,6 @@
       "samples": 3,
       "evidence": "web-vitals INP on phone viewport/fast tags. Too few samples for stable percentile; Pixel identity is not collected."
     }
-  ]
+  ],
+  "completedFullLabCaptures": 4
 }

@@ -1,0 +1,12 @@
+{
+  "deviceModel": "Pixel 9 Pro XL",
+  "android": "17",
+  "controlTransport": "adb-wifi",
+  "userConfirmedFullscreen": true,
+  "batteryLevel": 20,
+  "batteryTemperature": 326,
+  "batteryVoltage": 3690,
+  "chromeVersion": "157.0.8103.46",
+  "peakRefreshRateSetting": "Infinity",
+  "minRefreshRateSetting": "0.0"
+}

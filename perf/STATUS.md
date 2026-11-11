@@ -89,8 +89,24 @@ none has been activated. Cold private HTML caching remains disabled.
   captures remain archived. There is still no accepted full baseline.
 - `ready-then-pinch-v2` explicitly waits for the initial sharp sheet before the
   same verified viewer pinch, charging both waits to the outer timer. Its
-  calibration is a different method, not a repaired v1 result. A new frozen
-  Phase 0 pair is running; no cross-protocol comparison is accepted.
+  calibration is a different method, not a repaired v1 result. The new frozen
+  Phase 0 pair completed 240 samples with matching method/source bindings and
+  zero database errors, but failed Basement material-list repeatability:
+  203.9 → 229.0 ms (+12.35%). The other 23 cells passed. Both raw reports and
+  recorded brief ADB setup overlaps are archived; no samples were excluded.
+  There remains no accepted baseline and no cross-protocol improvement claim.
+- The ten-minute isolated Jobs idle observation counted 80 background query
+  reads and one stream request active at start/end with no observed reconnect
+  or overlap. HTTP request lifetime does not establish heartbeat delivery,
+  every-screen behavior, or a no-poll pass.
+- The controlled Pixel attempt reached CDP setup but timed out on Page.navigate
+  during lab attestation, completing zero physical timing samples. The latest
+  three-journey local desktop smoke passed, proving adapter functionality only.
+  Phone metadata, failure, local smoke, preflight and private-DB health are
+  archived separately under artifacts/phone-visited-attempt-2026-11-11-*.
+  The created phone tab was closed; forwarding was removed. The isolated phone
+  server and its fresh private database were stopped and cleaned with no DB
+  errors. No phone speed target or accepted v2 gate follows from this attempt.
 - The reviewed candidate `ec687e6e…` passed canonical compilation, TypeScript
   and prerender. Its production output contains neither the development speed
   overlay string nor its module. All 282 current script/style assets passed

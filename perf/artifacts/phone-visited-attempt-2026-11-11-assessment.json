@@ -1,0 +1,52 @@
+{
+  "status": "blocked-no-physical-timing",
+  "acceptedGateEvidence": false,
+  "completedPhysicalSamples": 0,
+  "archived": {
+    "failure": {
+      "path": "perf/artifacts/phone-visited-attempt-2026-11-11-failure.json",
+      "sha256": "a91f46b72eba49415ff2d7825cbcddb01fbd3d2eab4b3a5a1da13085c9277a8a"
+    },
+    "metadata": {
+      "path": "perf/artifacts/phone-visited-attempt-2026-11-11-metadata.json",
+      "sha256": "ca490228abd65f932994dd9fc0b3830d0bba3059b60189314a383c7f126ea9c2"
+    },
+    "localSmoke": {
+      "path": "perf/artifacts/phone-visited-attempt-2026-11-11-localSmoke.json",
+      "sha256": "e5b9310016a8dd3d14d49e7a99b118bb7ee1c4b51bac6145d18e0bb995f07539"
+    },
+    "preflight": {
+      "path": "perf/artifacts/phone-visited-attempt-2026-11-11-preflight.json",
+      "sha256": "527e02045add4e9ce5c8cb1646cb90267d731b8130000033024d12827236d810"
+    }
+  },
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "labBuild": "GcT0nDLwoIP5cQRRILfyc",
+  "provenance": "Same frozen Phase0 source and compiled isolated artifact; Clerk lab stubs and synthetic seeded data only.",
+  "database": {
+    "productionDatabase": false,
+    "privateUnixSocket": true,
+    "freshlySeeded": true,
+    "backgroundWorkersDisabled": true,
+    "finalErrorSummary": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "serverStopped": true,
+    "port3482NoListener": true,
+    "privateDatabaseDirectoryRemoved": true,
+    "createdPhoneTabCloseAcknowledged": true,
+    "createdPhoneTabCloseHttpStatus": 200,
+    "adbForwardAndReverseRemoved": "Root confirmed both removed"
+  },
+  "limitations": [
+    "Physical Chrome Page.navigate timed out during attestation; zero completed physical samples.",
+    "Latest local desktop smoke completed 3 journeys and is adapter-functionality evidence only, not accepted v2 matrix or physical-device timing.",
+    "Pixel metadata confirms setup, not a controlled timing result; refresh settings do not measure active panel rate.",
+    "Original artifacts contain no target identifiers, IP addresses, authentication secrets or app content.",
+    "No production writes; no claim of sign-in startup, offline latency, frame sharpness or speed-gate success."
+  ]
+}
