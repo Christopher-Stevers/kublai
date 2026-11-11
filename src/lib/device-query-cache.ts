@@ -288,6 +288,7 @@ export function startDeviceQueryCache(
   let restored = false;
   let generation = "";
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let saveAfter = 0;
   const save = () => {
     if (stopped || !restored) return storageWork;
     return enqueue(async () => {
@@ -299,6 +300,17 @@ export function startDeviceQueryCache(
           payload: encodeDeviceQueries(client),
         });
     });
+  };
+  const saveWhenQuiet = () => {
+    const remaining = saveAfter - performance.now();
+    // Keep the trailing quiet period without cancelling/recreating a native
+    // timer for every observer notification while a screen mounts.
+    if (remaining > 0) {
+      timer = setTimeout(saveWhenQuiet, remaining);
+    } else {
+      timer = undefined;
+      void save();
+    }
   };
   const ready = enqueue(async () => {
     generation = await storage.generation?.() ?? "";
@@ -334,8 +346,10 @@ export function startDeviceQueryCache(
       reportDeviceReadDenial(((event.query as Pick<Query, "queryKey">).queryKey[0] as string[]).join("."), "query", event.action.error, authority);
       return;
     }
-    clearTimeout(timer);
-    timer = setTimeout(() => { void save(); }, 300);
+    // All events still participate: observer options can change persistence
+    // eligibility without changing data. Authority denials above stay immediate.
+    saveAfter = performance.now() + 300;
+    timer ??= setTimeout(saveWhenQuiet, 300);
   });
   const session = {
     client,
@@ -346,7 +360,8 @@ export function startDeviceQueryCache(
       stopped = true;
       activeCaches.delete(session);
       unsubscribe();
-      clearTimeout(timer);
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
       if (wipe) {
         if (clientAccounts.get(client) === account) {
           void clearAccountQueryMemory(client);
