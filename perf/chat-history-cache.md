@@ -1,9 +1,10 @@
 # Selected job chat: Phase 1 cached reads
 
 Prepared 2026-11-11. This slice has not been activated. The focused run passed
-58 tests across the reader, existing delivery fixtures and shared cache,
-including the final same-object manual-authority edge (three files, one worker,
-2.59 seconds). This is not an activation or physical-phone performance pass.
+59 tests across the reader, existing delivery fixtures and shared cache,
+including manual-authority and real React Activity hide/show edges (three files,
+one worker, 4.05 seconds). This is not an activation or physical-phone performance
+pass.
 
 The mounted real job-chat reader opts in only
 `[["chat","history"], {input:{jobId,limit:50},type:"query"}]`, with a UUID job id
@@ -30,6 +31,17 @@ cannot establish authority or replace the accepted permission object. A transien
 overview failure retains the timeline and draft while keeping
 these actions unavailable until another accepted overview. Existing join behavior
 resumes only after fresh confirmation; no offline send or queue is introduced.
+
+The first implementation missed React Activity's effect-only teardown: it retained
+an accepted overview while a job panel was hidden without changing global page
+activity. A real Activity reader test reproduced an enabled Send control before
+the new overview response. The follow-up clears the live certificate synchronously
+in layout cleanup and clears its retained render state. Mutation dispatch also
+checks that live certificate, fencing old passive-effect closures during reveal.
+The regression test changes the cached displayed sequence while hidden and proves
+zero join, read-receipt or send calls and no stale moderation while the resumed
+overview is pending. Saved rows and the draft remain visible; a fresh response
+unlocks the reader again. This follow-up requires its own candidate build/evidence.
 
 Recent saved rows paint while an older reading range is unavailable. Loaded older
 message pages remain memory-only and can refresh once access is confirmed; exact

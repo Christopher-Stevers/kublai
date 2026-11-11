@@ -326,13 +326,17 @@ function ChatLobby({
         !inTutorial && visible && online ? (connected ? 30_000 : 5_000) : false,
     },
   );
-  const freshOverview = useJobChatAuthority(
+  const { confirmed: freshOverviewConfirmed, isCurrent: currentOverview } = useJobChatAuthority(
     overviewKey,
     overviewOptions.enabled,
     userId,
     overview,
   );
-  const overviewConfirmed = inTutorial || freshOverview;
+  const overviewConfirmed = inTutorial || freshOverviewConfirmed;
+  const hasFreshOverview = useCallback(
+    () => inTutorial || currentOverview(),
+    [inTutorial, currentOverview],
+  );
   const accessRevoked = isDeviceReadDenial(overview.error);
   const historyOptions = useTierOneReadOptions(
     getQueryKey(api.chat.history, { jobId, limit: 50 }, "query"),
@@ -509,7 +513,7 @@ function ChatLobby({
       await saveChatDraft(draftKey, null).catch(() => setStorageError(true));
   }, [draftKey, inTutorial]);
   const joinLobby = useCallback(async () => {
-    if (!overviewConfirmed || !online || accessError || !ownsReadAuthority())
+    if (!overviewConfirmed || !hasFreshOverview() || !online || accessError || !ownsReadAuthority())
       return;
     joinAttempted.current = true;
     setError("");
@@ -525,6 +529,7 @@ function ChatLobby({
     join,
     utils,
     overviewConfirmed,
+    hasFreshOverview,
     online,
     accessError,
     ownsReadAuthority,
@@ -548,6 +553,7 @@ function ChatLobby({
       !online ||
       !visible ||
       !canWrite ||
+      !hasFreshOverview() ||
       typeof EventSource === "undefined"
     )
       return;
@@ -569,7 +575,7 @@ function ChatLobby({
       unsubscribe();
       setConnected(false);
     };
-  }, [jobId, online, visible, canWrite, utils, inTutorial]);
+  }, [jobId, online, visible, canWrite, hasFreshOverview, utils, inTutorial]);
 
   useEffect(() => {
     if (restoring || !timeline.current || !atBottomRef.current) return;
@@ -578,6 +584,7 @@ function ChatLobby({
   useEffect(() => {
     if (
       !canWrite ||
+      !hasFreshOverview() ||
       !ownsReadAuthority() ||
       !visible ||
       !atBottom ||
@@ -608,6 +615,7 @@ function ChatLobby({
     displayedSequence,
     history.data,
     canWrite,
+    hasFreshOverview,
     ownsReadAuthority,
     jobId,
     markRead,
@@ -749,7 +757,7 @@ function ChatLobby({
     }
   }
   async function sendDraft() {
-    if (sendingRef.current || !canWrite || !ownsReadAuthority() || !draftLoaded)
+    if (sendingRef.current || !canWrite || !hasFreshOverview() || !ownsReadAuthority() || !draftLoaded)
       return;
     let next = draftRef.current;
     // Attachments use raw upload URLs, outside the tutorial's local tRPC transport.
@@ -760,7 +768,7 @@ function ChatLobby({
     setError("");
     try {
       for (let index = 0; index < next.attachments.length; index++) {
-        if (!writeAllowed.current || !ownsReadAuthority()) return;
+        if (!writeAllowed.current || !hasFreshOverview() || !ownsReadAuthority()) return;
         const attachment = next.attachments[index]!;
         if (attachment.uploaded) continue;
         if (!attachment.file)
@@ -802,7 +810,7 @@ function ChatLobby({
       changeDraft(next);
       if (!inTutorial)
         await saveChatDraft(draftKey, next).catch(() => setStorageError(true));
-      if (!writeAllowed.current || !ownsReadAuthority()) return;
+      if (!writeAllowed.current || !hasFreshOverview() || !ownsReadAuthority()) return;
       const message = await send.mutateAsync({
         jobId,
         clientId: next.clientId,
@@ -935,7 +943,7 @@ function ChatLobby({
     composer.current?.focus();
   }
   async function deleteMessage(message: ChatMessage) {
-    if (inTutorial || !canWrite || !ownsReadAuthority()) return;
+    if (inTutorial || !canWrite || !hasFreshOverview() || !ownsReadAuthority()) return;
     if (
       !(await confirmAction({
         title: "Delete this message?",
@@ -945,7 +953,7 @@ function ChatLobby({
       }))
     )
       return;
-    if (!writeAllowed.current || !ownsReadAuthority()) return;
+    if (!writeAllowed.current || !hasFreshOverview() || !ownsReadAuthority()) return;
     try {
       await remove.mutateAsync({ jobId, messageId: message.id });
       storeMessage({

@@ -1,5 +1,5 @@
 "use client";
-import { useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { hashKey, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { captureDeviceReadAuthority } from "~/lib/device-query-cache";
 
@@ -15,12 +15,14 @@ export function useJobChatAuthority(
   const client = useQueryClient();
   const hash = hashKey(key);
   const [boundary, setBoundary] = useState(() => ({ hash, enabled, userId }));
-  const [accepted, setAccepted] = useState<{
+  type Certificate = {
     boundary: typeof boundary;
     query: object;
     data: unknown;
     authority: ReturnType<typeof captureDeviceReadAuthority>;
-  } | null>(null);
+  };
+  const [accepted, setAccepted] = useState<Certificate | null>(null);
+  const current = useRef<Certificate | null>(null);
   const same =
     boundary.hash === hash &&
     boundary.enabled === enabled &&
@@ -29,28 +31,56 @@ export function useJobChatAuthority(
   useLayoutEffect(() => {
     if (!enabled) return;
     const authority = captureDeviceReadAuthority();
-    return client.getQueryCache().subscribe((event) => {
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
       if (
         event.query.queryHash !== hash ||
         event.type !== "updated" ||
         event.action.type !== "success" ||
         client.getQueryCache().get(hash) !== event.query ||
         authority !== captureDeviceReadAuthority()
-      ) return;
+      )
+        return;
       // Even a manual same-object update cannot renew a permission certificate.
       if (event.action.manual) {
+        current.current = null;
         setAccepted(null);
         return;
       }
-      setAccepted({
+      const certificate: Certificate = {
         boundary,
         query: event.query,
         data: event.action.data,
         authority,
-      });
+      };
+      current.current = certificate;
+      setAccepted(certificate);
     });
+    return () => {
+      // Activity destroys effects while retaining state. Revoke synchronously
+      // when hidden, before any retained passive mutation effect can reconnect.
+      current.current = null;
+      unsubscribe();
+      setAccepted(null);
+    };
   }, [client, hash, enabled, boundary]);
-  return (
+  const isCurrent = useCallback(() => {
+    const certificate = current.current;
+    const query = client.getQueryCache().get(hash);
+    const data = certificate?.data;
+    return (
+      enabled &&
+      certificate?.boundary === boundary &&
+      certificate.query === query &&
+      certificate.authority === captureDeviceReadAuthority() &&
+      query?.state.status === "success" &&
+      data === query.state.data &&
+      !!data &&
+      typeof data === "object" &&
+      "userId" in data &&
+      data.userId === userId
+    );
+  }, [client, hash, enabled, boundary, userId]);
+  const confirmed =
     enabled &&
     same &&
     accepted?.boundary === boundary &&
@@ -59,6 +89,6 @@ export function useJobChatAuthority(
     accepted.data === overview.data &&
     overview.isSuccess &&
     !overview.error &&
-    overview.data?.userId === userId
-  );
+    overview.data?.userId === userId;
+  return { confirmed, isCurrent };
 }

@@ -20,8 +20,10 @@ vi.mock("~/hooks/use-tier-one-read-options", () => ({
   }),
 }));
 vi.mock("~/hooks/use-job-chat-authority", () => ({
-  useJobChatAuthority: (_key: unknown, enabled: boolean) =>
-    enabled && !mock.overviewError,
+  useJobChatAuthority: (_key: unknown, enabled: boolean) => ({
+    confirmed: enabled && !mock.overviewError,
+    isCurrent: () => enabled && !mock.overviewError,
+  }),
 }));
 
 const mock = vi.hoisted(() => ({

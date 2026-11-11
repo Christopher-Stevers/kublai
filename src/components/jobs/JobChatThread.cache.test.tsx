@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Activity, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   act,
   cleanup,
@@ -95,8 +95,7 @@ vi.mock("~/trpc/react", () => {
     },
   });
   const mutation = (mutateAsync: (input: unknown) => Promise<unknown>) => ({
-    useMutation: () =>
-      useMemo(() => ({ mutateAsync, isPending: false }), []),
+    useMutation: () => useMemo(() => ({ mutateAsync, isPending: false }), []),
   });
   return {
     api: {
@@ -233,12 +232,17 @@ async function fixture(saved = true) {
     cache = startDeviceQueryCache(queries, "org:user-one", store);
   caches.push(cache);
   await cache.ready;
-  const view = (scope = "org:user-one") => (
+  const view = (
+    scope = "org:user-one",
+    mode: "visible" | "hidden" = "visible",
+  ) => (
     <QueryClientProvider client={queries}>
       <Fence>
-        <ChatViewProvider key={scope} scope={scope}>
-          <JobChatThread jobId={jobId} />
-        </ChatViewProvider>
+        <Activity mode={mode}>
+          <ChatViewProvider key={scope} scope={scope}>
+            <JobChatThread jobId={jobId} />
+          </ChatViewProvider>
+        </Activity>
       </Fence>
     </QueryClientProvider>
   );
@@ -311,7 +315,7 @@ it("paints saved acknowledged rows before the unresolved overview, without sendi
   fireEvent.submit(
     screen.getByRole("textbox", { name: "Message" }).closest("form")!,
   );
-  fireEvent.contextMenu(screen.getByLabelText(/Message from Crew/));
+  fireEvent.contextMenu(screen.getAllByLabelText(/Message from Crew/).at(-1)!);
   expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
   fireEvent.keyDown(window, { key: "Escape" });
   expect(state.history).not.toHaveBeenCalled();
@@ -368,13 +372,18 @@ it("does not let a manual overview replacement reuse earlier server authority", 
     target: { value: "Keep my draft" },
   });
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Send message" })).not.toBeDisabled(),
+    expect(
+      screen.getByRole("button", { name: "Send message" }),
+    ).not.toBeDisabled(),
   );
   await waitFor(() =>
     expect(app.queries.getQueryState(overviewKey)?.fetchStatus).toBe("idle"),
   );
   await act(async () => {
-    app.queries.setQueryData(overviewKey, app.queries.getQueryData(overviewKey));
+    app.queries.setQueryData(
+      overviewKey,
+      app.queries.getQueryData(overviewKey),
+    );
   });
   expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   await act(async () => {
@@ -483,6 +492,63 @@ it("requires another successful overview on page reactivation even when successf
     ).not.toBeDisabled(),
   );
   expect(state.send).not.toHaveBeenCalled();
+});
+
+it("requires fresh permissions after a real Activity hide/show without changing global page activity", async () => {
+  state.overview.mockResolvedValue({ ...overview(), canModerate: true });
+  const app = await fixture(),
+    mounted = render(app.view());
+  await screen.findByText("Saved job message");
+  fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
+    target: { value: "Retained draft" },
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Send message" }),
+    ).not.toBeDisabled(),
+  );
+  await waitFor(() =>
+    expect(app.queries.getQueryState(overviewKey)?.fetchStatus).toBe("idle"),
+  );
+  fireEvent.contextMenu(screen.getByLabelText(/Message from Crew/));
+  expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  fireEvent.keyDown(window, { key: "Escape" });
+  mounted.rerender(app.view("org:user-one", "hidden"));
+  state.markRead.mockClear();
+  state.join.mockClear();
+  state.send.mockClear();
+  const request = deferred<ReturnType<typeof overview>>();
+  state.overview.mockReturnValue(request.promise);
+  await act(async () => {
+    app.queries.setQueryData(
+      historyKey,
+      history([message(52, "Saved while hidden")]),
+    );
+  });
+  mounted.rerender(app.view());
+  expect(screen.getByText("Saved while hidden")).toBeVisible();
+  expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
+    "Retained draft",
+  );
+  expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+  fireEvent.submit(
+    screen.getByRole("textbox", { name: "Message" }).closest("form")!,
+  );
+  fireEvent.contextMenu(screen.getAllByLabelText(/Message from Crew/).at(-1)!);
+  expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(state.join).not.toHaveBeenCalled();
+  expect(state.markRead).not.toHaveBeenCalled();
+  expect(state.send).not.toHaveBeenCalled();
+  await act(async () => request.resolve(overview()));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Send message" }),
+    ).not.toBeDisabled(),
+  );
+  expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(
+    "Retained draft",
+  );
 });
 
 it.each(["overview", "history", "members"] as const)(
