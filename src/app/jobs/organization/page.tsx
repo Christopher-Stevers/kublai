@@ -51,6 +51,10 @@ export default function OrganizationPage() {
     { enabled: isOnline, retry: false, refetchInterval: 30_000 },
   );
   const refresh = async () => {
+    await utils.organization.getOrganizationSettings.invalidate();
+    await utils.user.getMyRole.invalidate();
+  };
+  const refreshMember = async () => {
     // Refetch failures must reach save feedback; invalidation alone can settle
     // successfully while leaving stale permission data on screen.
     await settings.refetch({ throwOnError: true });
@@ -136,7 +140,7 @@ export default function OrganizationPage() {
             {settings.error?.message ?? "Could not load the organization."}
           </div>
         ) : section === "members" ? (
-          <MembersSection settings={data} onSaved={refresh} />
+          <MembersSection settings={data} onSaved={refreshMember} />
         ) : section === "departments" ? (
           <DepartmentsSection settings={data} onSaved={refresh} />
         ) : section === "presets" ? (
