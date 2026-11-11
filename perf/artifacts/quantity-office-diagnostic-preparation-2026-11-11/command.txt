@@ -1,0 +1,1 @@
+PERF_QUANTITY_METHOD_ROOT=/tmp/foremanhq-quantity-office-method.65s1q61q python3 /tmp/foremanhq-quantity-office-method.65s1q61q/perf/lab/owned-process-supervisor.py run --seconds 480 --record /tmp/foremanhq-quantity-office-v1-attempt1-outer-processes.json -- bash /tmp/foremanhq-quantity-office-method.65s1q61q/perf/lab/quantity-office-setup.sh
