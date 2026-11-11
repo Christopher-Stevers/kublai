@@ -1,0 +1,5 @@
+openjob/Site: median 98.8ms exceeds 82.5ms baseline +10%
+openjob/Office: median 99.3ms exceeds 82.3ms baseline +10%
+openmateriallist/Basement: median 243.2ms exceeds 215.1ms baseline +10%
+openmateriallist/Site: median 242.9ms exceeds 215.6ms baseline +10%
+changeqty/Site: median 130.7ms exceeds 115.2ms baseline +10%

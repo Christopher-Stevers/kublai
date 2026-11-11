@@ -1,0 +1,29 @@
+{
+  "coordinatorExitCode": 1,
+  "reason": "unchanged formal comparator regression failure",
+  "ownedPort3481Closed": true,
+  "ownedServerShutdowns": [
+    {
+      "pid": 4181764,
+      "exitCode": 0
+    },
+    {
+      "pid": 4184900,
+      "exitCode": 0
+    }
+  ],
+  "privatePgDirectoryAbsent": true,
+  "unexpectedDatabaseErrorHeaders": [],
+  "captureDatabaseHealth": {
+    "count": 0,
+    "fatalCount": 0,
+    "windowStartedAt": "2026-11-11T16:48:39.644Z",
+    "observedAt": "2026-11-11T17:06:22.417Z",
+    "source": "private PostgreSQL ERROR/FATAL headers; no SQL or parameters"
+  },
+  "thisRunEvidenceCopiedBeforeHelperCleanup": true,
+  "schemaBeforeAfterEqual": true,
+  "sourceAndMethodAndOperationalHashesUnchanged": true,
+  "noRetriesNoSampleExclusions": true,
+  "quietReleased": true
+}

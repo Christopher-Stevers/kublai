@@ -1,0 +1,136 @@
+(node:4181574) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Prepared 113 unique declared tables and 0 enums from 16 schema modules.
+(node:4181647) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Reused only previously generated synthetic 40-page PDF/raster assets; database is freshly seeded.
+Seeded isolated lab: 2 jobs, 25 parts, 1 list/order/slip, chat, 40 synthetic sheets.
+Read endpoint preflight passed 14 actual application queries.
+{"version":1,"sourceBuild":"47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece","sourceFingerprint":"4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7","sourceFingerprintAlgorithm":"foremanhq-lab-source-v1","sourceFileCount":2317,"sourceVerification":{"stage":"after-lab-transforms","unchangedFilesChecked":2312,"allowedLabTransforms":["next.config.js","tsconfig.json","src/server/db/index.ts","src/server/background/hints.ts","src/server/background/worker.ts"],"additionalLabRoute":"src/app/api/perf-lab/route.ts","scope":"src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash","preTransformUnchangedFilesChecked":2317},"sourceBinding":{"method":"frozen-release-inputs-sha256","algorithm":"foremanhq-lab-source-v1","sourceBuild":"47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece","scope":"Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."},"authentication":"stubbed-seeded-user","provenance":"isolated-seeded-app","build":"2e5AUhfrGey7tubpAbx-8","startedAt":"2026-11-11T16:38:38.193Z","durationMs":600000,"cpuSlowdown":4,"screen":"jobs","idlePolls":74,"readRequestsByProcedure":{"user.getMyRole":20,"notifications.identity":20,"notifications.overview":20,"push.identity":10,"user.getMaterialSortPreferences":4},"observedEventStreamPaths":["/api/live"],"eventStreamConnections":{"starts":3,"closes":2,"startsAfterPriorClose":2,"overlappingStarts":0,"peakActive":1,"activeAtWindowStart":1,"activeAtWindowEnd":1,"startsDuringWindow":2,"closesDuringWindow":2},"method":"Counts actual GET tRPC request procedures after 15-second startup settling. Tracks /events and /api/live request starts, completion/failure, active and overlapping requests. startsAfterPriorClose is an observed repeat connection, not proof of why it reconnected; an open request does not establish healthy SSE message delivery.","limitations":"One isolated seeded jobs screen, Clerk stub; not every screen. Connection liveness is HTTP request lifetime, not server heartbeat receipt. Earlier archived 65-second observations retain their original narrower definition."}
+Reset only synthetic quantity, receipt and lab chat writes before independent capture.
+coldstart/Basement/1: 19846.3ms
+coldstart/Basement/2: 19854.2ms
+coldstart/Basement/3: 19851.0ms
+coldstart/Basement/4: 19854.9ms
+coldstart/Basement/5: 19854.0ms
+openjob/Basement/1: 98.3ms
+openjob/Basement/2: 82.1ms
+openjob/Basement/3: 82.3ms
+openjob/Basement/4: 82.1ms
+openjob/Basement/5: 82.1ms
+switchjobtabs/Basement/1: 165.7ms
+switchjobtabs/Basement/2: 164.2ms
+switchjobtabs/Basement/3: 165.2ms
+switchjobtabs/Basement/4: 165.9ms
+switchjobtabs/Basement/5: 164.7ms
+openmateriallist/Basement/1: 256.5ms
+openmateriallist/Basement/2: 258.4ms
+openmateriallist/Basement/3: 224.5ms
+openmateriallist/Basement/4: 242.9ms
+openmateriallist/Basement/5: 243.2ms
+changeqty/Basement/1: 99.3ms
+changeqty/Basement/2: 98.2ms
+changeqty/Basement/3: 98.9ms
+changeqty/Basement/4: 99.7ms
+changeqty/Basement/5: 99.4ms
+receiveline/Basement/1: 432.6ms
+receiveline/Basement/2: 432.6ms
+receiveline/Basement/3: 448.1ms
+receiveline/Basement/4: 448.9ms
+receiveline/Basement/5: 432.4ms
+opensheetpinch/Basement/1: 2082.7ms
+opensheetpinch/Basement/2: 1465.9ms
+opensheetpinch/Basement/3: 1499.6ms
+opensheetpinch/Basement/4: 1482.4ms
+opensheetpinch/Basement/5: 1516.1ms
+sendchat/Basement/1: 232.5ms
+sendchat/Basement/2: 232.7ms
+sendchat/Basement/3: 233.4ms
+sendchat/Basement/4: 233.0ms
+sendchat/Basement/5: 232.5ms
+coldstart/Site/1: 3526.9ms
+coldstart/Site/2: 3594.8ms
+coldstart/Site/3: 3557.0ms
+coldstart/Site/4: 3534.5ms
+coldstart/Site/5: 3539.7ms
+openjob/Site/1: 98.8ms
+openjob/Site/2: 98.8ms
+openjob/Site/3: 98.6ms
+openjob/Site/4: 99.0ms
+openjob/Site/5: 98.2ms
+switchjobtabs/Site/1: 166.4ms
+switchjobtabs/Site/2: 165.8ms
+switchjobtabs/Site/3: 166.4ms
+switchjobtabs/Site/4: 166.0ms
+switchjobtabs/Site/5: 166.2ms
+openmateriallist/Site/1: 245.1ms
+openmateriallist/Site/2: 221.9ms
+openmateriallist/Site/3: 250.6ms
+openmateriallist/Site/4: 242.9ms
+openmateriallist/Site/5: 242.1ms
+changeqty/Site/1: 131.1ms
+changeqty/Site/2: 115.6ms
+changeqty/Site/3: 114.7ms
+changeqty/Site/4: 130.7ms
+changeqty/Site/5: 131.9ms
+receiveline/Site/1: 448.8ms
+receiveline/Site/2: 449.9ms
+receiveline/Site/3: 449.6ms
+receiveline/Site/4: 449.1ms
+receiveline/Site/5: 448.8ms
+opensheetpinch/Site/1: 1448.8ms
+opensheetpinch/Site/2: 1464.9ms
+opensheetpinch/Site/3: 1529.5ms
+opensheetpinch/Site/4: 1483.2ms
+opensheetpinch/Site/5: 1483.2ms
+sendchat/Site/1: 231.3ms
+sendchat/Site/2: 230.3ms
+sendchat/Site/3: 232.1ms
+sendchat/Site/4: 231.6ms
+sendchat/Site/5: 231.2ms
+coldstart/Office/1: 782.7ms
+coldstart/Office/2: 770.8ms
+coldstart/Office/3: 759.7ms
+coldstart/Office/4: 757.1ms
+coldstart/Office/5: 701.5ms
+openjob/Office/1: 99.2ms
+openjob/Office/2: 122.7ms
+openjob/Office/3: 95.7ms
+openjob/Office/4: 99.6ms
+openjob/Office/5: 99.3ms
+switchjobtabs/Office/1: 166.7ms
+switchjobtabs/Office/2: 165.2ms
+switchjobtabs/Office/3: 166.0ms
+switchjobtabs/Office/4: 166.4ms
+switchjobtabs/Office/5: 165.3ms
+openmateriallist/Office/1: 240.5ms
+openmateriallist/Office/2: 243.2ms
+openmateriallist/Office/3: 247.2ms
+openmateriallist/Office/4: 241.5ms
+openmateriallist/Office/5: 249.0ms
+changeqty/Office/1: 111.8ms
+changeqty/Office/2: 115.5ms
+changeqty/Office/3: 130.2ms
+changeqty/Office/4: 122.2ms
+changeqty/Office/5: 121.1ms
+receiveline/Office/1: 448.8ms
+receiveline/Office/2: 449.0ms
+receiveline/Office/3: 449.7ms
+receiveline/Office/4: 448.0ms
+receiveline/Office/5: 449.0ms
+opensheetpinch/Office/1: 1516.0ms
+opensheetpinch/Office/2: 1481.7ms
+opensheetpinch/Office/3: 1531.9ms
+opensheetpinch/Office/4: 1481.5ms
+opensheetpinch/Office/5: 1480.9ms
+sendchat/Office/1: 248.1ms
+sendchat/Office/2: 231.3ms
+sendchat/Office/3: 231.8ms
+sendchat/Office/4: 215.4ms
+sendchat/Office/5: 231.0ms
+Independent complete candidate capture finished.
+openjob/Site: median 98.8ms exceeds 82.5ms baseline +10%
+openjob/Office: median 99.3ms exceeds 82.3ms baseline +10%
+openmateriallist/Basement: median 243.2ms exceeds 215.1ms baseline +10%
+openmateriallist/Site: median 242.9ms exceeds 215.6ms baseline +10%
+changeqty/Site: median 130.7ms exceeds 115.2ms baseline +10%
