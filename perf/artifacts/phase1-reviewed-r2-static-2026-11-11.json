@@ -1,0 +1,147 @@
+{
+  "sourceBuild": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+  "sourceFingerprint": "1d8b3744ede468ab9db08245cb497f1dd5de60b28daa3cfc90dd376e206b4f62",
+  "rejected": true,
+  "activated": false,
+  "compile": "canonical webpack, TypeScript and prerender passed",
+  "source": {
+    "build": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "sourceFingerprint": "1d8b3744ede468ab9db08245cb497f1dd5de60b28daa3cfc90dd376e206b4f62",
+    "sourceFileCount": 2280,
+    "reviewedPaths": 162,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "delta": {
+    "baselineBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "candidateBuild": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 71,
+    "changedScripts": 212,
+    "changedRawBytes": 3836758,
+    "changedGzipBytes": 1260984,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "referenceUnion": {
+    "method": "Actual canonical webpack module attribution for the intersection of jobs client-reference chunks plus root main files. Conditional references can overstate startup transfer. Gzip level 9 per emitted chunk; module sizes are compiler estimates, not additive gzip attribution.",
+    "gzipBytes": 485100,
+    "frameworkGzipBytes": 118302,
+    "applicationGzipBytes": 366798,
+    "deltaVersusPhase0": -17518,
+    "deltaVersusPriorRejectedCandidate": -23365,
+    "gateDefinitionChanged": false
+  },
+  "entryGraph": {
+    "sourceBuild": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "method": "Read actual emitted webpack entry dependency arrays and existing gzip9 sidecar lengths. Phase0 compiler chunk IDs are mapped from the separate one-page-title controlled build by stable chunk filename prefix; all mapping unique. Common root and receiving-entry graph evidence only, not browser download trace. Existing shared-reference gate remains unchanged.",
+    "phase0": {
+      "jobsCommonRoots": {
+        "files": 32,
+        "gzipBytes": 449264
+      },
+      "receivingEntry": {
+        "files": 43,
+        "gzipBytes": 701916
+      }
+    },
+    "priorRejectedCandidate": {
+      "jobsCommonRoots": {
+        "files": 34,
+        "gzipBytes": 451435
+      },
+      "receivingEntry": {
+        "files": 43,
+        "gzipBytes": 707126
+      }
+    },
+    "candidate": {
+      "jobsCommonRoots": {
+        "files": 33,
+        "gzipBytes": 431002
+      },
+      "receivingEntry": {
+        "files": 42,
+        "gzipBytes": 687105
+      }
+    },
+    "deltaVersusPhase0": {
+      "jobsCommonRoots": -18262,
+      "receivingEntry": -14811
+    },
+    "deltaVersusPriorCandidate": {
+      "jobsCommonRoots": -20433,
+      "receivingEntry": -20021
+    },
+    "sharedReferenceGateUnchanged": true
+  },
+  "http": {
+    "build": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "httpProofPasses": true,
+    "activated": false,
+    "byteRatchetsPass": true,
+    "fullActivationGatesUnverified": true
+  },
+  "publicCorpusFiles": 3263,
+  "ownProofServersStopped": true,
+  "sourceScope": "Prior immutable reviewed source plus exact a7133c59/dcb8b852, cca5cef3 production paths only, aaec63f3 seven paths; no working-tree or global HEAD archive. PackingSlips bytes match approved git commit, excluding dirty comparison hunks.",
+  "limitations": [
+    "The whole batch is1260984 gzip bytes; a separate R2 controlled typical-edit proof has not run.",
+    "No accepted baseline, candidate matrix or phone evidence.",
+    "Entry graph is supplemental emitted dependency evidence, not browser transfer trace.",
+    "No candidate-specific controlled small-edit build performed."
+  ],
+  "formalByteRatchets": {
+    "method": "Unchanged compareReports byte rule: each candidate shared/heaviest-screen/deploy gzip metric must not increase above measured Phase0 baseline. This evaluates only these three byte metrics, not polls/timings or activation.",
+    "baselineBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "candidateBuild": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "metrics": {
+      "sharedGzipBytes": {
+        "baseline": 502618,
+        "candidate": 485100,
+        "delta": -17518,
+        "passes": true
+      },
+      "screenGzipBytes": {
+        "baseline": 758531,
+        "candidate": 755290,
+        "delta": -3241,
+        "passes": true
+      },
+      "deployGzipBytes": {
+        "baseline": 2734731,
+        "candidate": 1260984,
+        "delta": -1473747,
+        "passes": true
+      }
+    },
+    "allThreePass": true,
+    "heaviestRouteTemplate": "/jobs/[jobId]/receiving/page"
+  },
+  "strictTypicalEdit": {
+    "status": "not measured on R2; requires separate controlled edit build",
+    "targetGzipBytesStrictlyBelow": 100000,
+    "wholeBatchChangedGzipBytes": 1260984,
+    "wholeBatchExceedsTypicalThreshold": true,
+    "phase0ControlledEditProofGzipBytes": 39423,
+    "phase0ProofIsSeparate": true
+  },
+  "rejectionReason": "Activation remains held: no accepted complete measured baseline/candidate matrix or phone evidence. Three formal byte ratchets pass; R2 typical-edit target remains unverified."
+}
