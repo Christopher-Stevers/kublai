@@ -16,6 +16,9 @@ const fixture = JSON.parse(
     process.env.PERF_FIXTURES ?? new URL("./fixtures.json", import.meta.url),
   ),
 );
+const sourceEvidence = fs.existsSync("source-evidence.json")
+  ? JSON.parse(fs.readFileSync("source-evidence.json"))
+  : {};
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
   args: ["--no-sandbox"],
@@ -68,6 +71,7 @@ try {
   measuring = false;
   const report = {
     version: 1,
+    ...sourceEvidence,
     provenance: "isolated-seeded-app",
     build: process.env.PERF_BUILD ?? "unknown",
     startedAt,

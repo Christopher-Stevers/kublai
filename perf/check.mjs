@@ -3,8 +3,69 @@ import { pathToFileURL } from "node:url";
 export const budgets = JSON.parse(
   fs.readFileSync(new URL("./budgets.json", import.meta.url)),
 );
+export const READ_PREFLIGHT_PROCEDURES = [
+  "user.getMe",
+  "notifications.identity",
+  "push.identity",
+  "job.getJob",
+  "materialList.getMaterialList",
+  "materialList.getOrderById",
+  "drawings.listSets",
+  "drawings.getSet",
+  "drawingsWorkspace.get",
+  "drawingsWorkspace.changes",
+  "chat.getOverview",
+  "chat.history",
+  "rooms.getJobRoomCount",
+  "notifications.overview",
+];
 export function validateReport(report) {
   const errors = [];
+  if (
+    !/^[a-f0-9]{64}$/.test(report?.sourceBuild ?? "") ||
+    !/^[a-f0-9]{64}$/.test(report?.sourceFingerprint ?? "")
+  )
+    errors.push("Canonical source build and source fingerprint are required");
+  const preflight = report?.health?.preflight;
+  if (
+    !preflight ||
+    preflight.status !== "passed" ||
+    preflight.build !== report.build ||
+    preflight.sourceBuild !== report.sourceBuild ||
+    preflight.sourceFingerprint !== report.sourceFingerprint ||
+    READ_PREFLIGHT_PROCEDURES.some(
+      (name) =>
+        !preflight.results?.some(
+          (row) => row.procedure === name && row.status === "ok",
+        ),
+    )
+  )
+    errors.push(
+      "Source-bound read-endpoint preflight evidence is missing or failed",
+    );
+  const database = report?.health?.database;
+  if (
+    !database ||
+    database.count !== 0 ||
+    database.fatalCount !== 0 ||
+    database.windowStartedAt !== report.timestamp ||
+    !database.observedAt
+  )
+    errors.push(
+      "Capture requires an observed private database window with zero ERROR/FATAL entries",
+    );
+  const fixture = report?.health?.fixtureSchema;
+  if (
+    !fixture ||
+    fixture.status !== "source-declared-schemas-created" ||
+    fixture.sourceBuild !== report.sourceBuild ||
+    fixture.sourceFingerprint !== report.sourceFingerprint ||
+    !Number.isInteger(fixture.tableCount) ||
+    fixture.tableCount < 1 ||
+    !Number.isInteger(fixture.moduleCount) ||
+    fixture.moduleCount < 1
+  )
+    errors.push("Source-bound fixture schema inventory is missing");
   if (
     typeof report?.build !== "string" ||
     !report.build ||

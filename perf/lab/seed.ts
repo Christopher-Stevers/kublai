@@ -1,9 +1,10 @@
 import { randomUUID, createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, cp, realpath } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { eq } from "drizzle-orm";
 import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
 import * as s from "../../src/server/db/schema";
@@ -108,6 +109,10 @@ try {
     materialListId,
     createdByUserId: userId,
   });
+  await db
+    .update(s.materialLists)
+    .set({ quoteId })
+    .where(eq(s.materialLists.id, materialListId));
   await db.insert(s.orders).values({
     id: orderId,
     organizationId,
@@ -152,21 +157,53 @@ try {
   const folder = path.join(assetRoot, "uploads/job-floor-plans", jobId, setId);
   await mkdir(folder, { recursive: true });
   const pdfPath = path.join(folder, "plan.pdf");
-  const generated = spawnSync(
-    process.execPath,
-    ["--import", "tsx", "perf/lab/make-set.mts", pdfPath],
-    { stdio: "inherit", env: { ...process.env, PAGES: "40" } },
-  );
-  if (generated.status !== 0)
-    throw new Error("Synthetic PDF generation failed");
-  // Render the actual fixture, not a placeholder image. This matches the existing PDF path.
-  const rendered = spawnSync(
-    "pdftoppm",
-    ["-scale-to", "1600", "-png", pdfPath, path.join(folder, "preview")],
-    { stdio: "inherit" },
-  );
-  if (rendered.status !== 0)
-    throw new Error("Synthetic preview generation failed");
+  if (process.env.PERF_SYNTHETIC_CACHE_ROOT) {
+    const cachedRoot = await realpath(process.env.PERF_SYNTHETIC_CACHE_ROOT);
+    if (!cachedRoot.startsWith("/tmp/foremanhq-speed-app-"))
+      throw new Error(
+        "Only a generated lab snapshot may supply synthetic assets",
+      );
+    await readFile(path.join(cachedRoot, "PERF_LAB_ONLY"));
+    const cached = JSON.parse(
+      await readFile(path.join(cachedRoot, "perf/fixtures.json"), "utf8"),
+    );
+    if (
+      cached.provenance !== "isolated-seeded-app" ||
+      cached.productionDatabase !== false ||
+      cached.userId !== "perf-lab-user"
+    )
+      throw new Error("Synthetic cached fixture attestation failed");
+    const cachedFolder = await realpath(
+      path.join(
+        cachedRoot,
+        "uploads/job-floor-plans",
+        cached.jobId,
+        cached.setId,
+      ),
+    );
+    if (!cachedFolder.startsWith(cachedRoot + "/uploads/job-floor-plans/"))
+      throw new Error("Cached assets escaped generated lab tree");
+    await cp(cachedFolder, folder, { recursive: true });
+    console.log(
+      "Reused only previously generated synthetic 40-page PDF/raster assets; database is freshly seeded.",
+    );
+  } else {
+    const generated = spawnSync(
+      process.execPath,
+      ["--import", "tsx", "perf/lab/make-set.mts", pdfPath],
+      { stdio: "inherit", env: { ...process.env, PAGES: "40" } },
+    );
+    if (generated.status !== 0)
+      throw new Error("Synthetic PDF generation failed");
+    // Render the actual fixture, not a placeholder image. This matches the existing PDF path.
+    const rendered = spawnSync(
+      "pdftoppm",
+      ["-scale-to", "1600", "-png", pdfPath, path.join(folder, "preview")],
+      { stdio: "inherit" },
+    );
+    if (rendered.status !== 0)
+      throw new Error("Synthetic preview generation failed");
+  }
   const document = await PDFDocument.load(await readFile(pdfPath));
   const sheets = [];
   await db.insert(s.jobDrawingSets).values({

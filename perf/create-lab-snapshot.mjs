@@ -67,8 +67,7 @@ execFileSync(
   ],
   { stdio: "inherit" },
 );
-const sourceBuildDir =
-  process.env.PERF_SOURCE_BUILD_DIST ?? process.env.PERF_BASELINE_DIST;
+const sourceBuildDir = process.env.PERF_SOURCE_BUILD_DIST;
 if (!sourceBuildDir)
   throw new Error(
     "PERF_SOURCE_BUILD_DIST (actual release build directory) is required for source binding",
@@ -93,6 +92,7 @@ const safeHarnessNames = new Set([
   "idle.mjs",
   "summarize.mjs",
   "reference-device.json",
+  "preflight.mjs",
 ]);
 fs.cpSync(harnessRoot, path.join(target, "perf"), {
   recursive: true,

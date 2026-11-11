@@ -2,8 +2,13 @@
 set -euo pipefail
 # Freeze a copy before execution; run under perf/lab/database.sh.
 harness_root=$PWD
-: "${PERF_BASELINE_DIST:?Set actual active release build directory}"
-snapshot=$(node perf/create-lab-snapshot.mjs)
+: "${PERF_BASELINE_DIST:?Set actual previous canonical release build directory}"
+: "${PERF_SOURCE_BUILD_DIST:?Set actual canonical source release build directory}"
+if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+  snapshot=$(node perf/refresh-lab.mjs)
+else
+  snapshot=$(node perf/create-lab-snapshot.mjs)
+fi
 export FOREMANHQ_BACKGROUND_MODE=separate BIM_WORKER_DISABLED=1 SKIP_ENV_VALIDATION=1
 export CLERK_SECRET_KEY=sk_test_speed_lab_only NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_speed_lab_only
 export STRIPE_SECRET_KEY=sk_test_speed_lab_only NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_speed_lab_only
@@ -11,7 +16,9 @@ export NEXT_PUBLIC_BUILD_ID=isolated-speed-baseline
 unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
 cd "$snapshot"
 printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-full-snapshot
-./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1 || { tail -80 "$snapshot/build.log"; exit 1; }
+if [[ -z "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+  ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1 || { tail -80 "$snapshot/build.log"; exit 1; }
+fi
 export PERF_BUILD=$(cat .next/BUILD_ID)
 export PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER=./perf/journeys.mjs
 server_pid=
@@ -26,10 +33,12 @@ start_server() {
   done
   tail -50 "$snapshot/server.log"; exit 1
 }
-node "$harness_root/scripts/release/static-metrics.mjs" "$snapshot/.next" "$PERF_BASELINE_DIST" > "$snapshot/static-bytes.json"
+node "$harness_root/scripts/release/static-metrics.mjs" "$PERF_SOURCE_BUILD_DIST" "$PERF_BASELINE_DIST" > "$snapshot/static-bytes.json"
+node "$harness_root/scripts/release/static-metrics.mjs" "$snapshot/.next" "$PERF_BASELINE_DIST" > "$snapshot/lab-static-bytes.json"
 start_server
+node perf/preflight.mjs
 PERF_IDLE_OUTPUT="$snapshot/idle.json" node perf/idle.mjs
-node --input-type=module -e 'import fs from "node:fs";const bytes=JSON.parse(fs.readFileSync("static-bytes.json"));const idle=JSON.parse(fs.readFileSync("idle.json"));if(bytes.build!==idle.build)throw Error("Static and idle evidence build mismatch");fs.writeFileSync("static.json",JSON.stringify({...bytes,idlePolls:idle.idlePolls,idleEvidence:idle},null,2));'
+node --input-type=module -e 'import fs from "node:fs";const bytes=JSON.parse(fs.readFileSync("static-bytes.json"));const idle=JSON.parse(fs.readFileSync("idle.json"));if(bytes.build!==idle.sourceBuild)throw Error("Canonical static and idle source build mismatch");fs.writeFileSync("static.json",JSON.stringify({...bytes,idlePolls:idle.idlePolls,idleEvidence:idle},null,2));'
 export PERF_STATIC_REPORT="$snapshot/static.json"
 for capture in 1 2; do
   cleanup; server_pid=

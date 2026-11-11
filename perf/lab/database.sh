@@ -21,7 +21,8 @@ export DATABASE_URL="$PERF_LAB_DATABASE_URL"
 export PERF_LAB_FIXTURES="$lab_dir/fixtures.json"
 export PERF_LAB_ASSETS="$lab_dir/assets"
 cd "$repo_root"
-./node_modules/.bin/drizzle-kit export --config perf/lab/drizzle.config.ts > "$lab_dir/schema.sql"
+node perf/lab/schema-entry.mjs
+./node_modules/.bin/drizzle-kit export --config perf/lab/drizzle.config.ts > "$lab_dir/schema.sql" || { tail -50 "$lab_dir/schema.sql"; exit 1; }
 node perf/lab/order-schema.mjs "$lab_dir/schema.sql" "$lab_dir/ordered-schema.sql"
 "$pg_bin/psql" -h "$lab_dir" -p 55463 -d foremanhq_perf_lab -v ON_ERROR_STOP=1 -f "$lab_dir/ordered-schema.sql" > "$lab_dir/schema.log" 2>&1 || { cat "$lab_dir/schema.log"; exit 1; }
 ./node_modules/.bin/tsx perf/lab/seed.ts

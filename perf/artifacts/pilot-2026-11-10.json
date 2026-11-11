@@ -71,6 +71,8 @@
     "Wallclock journey timings include Playwright and assertion overhead; not interaction p95 or field INP.",
     "Clerk authentication and its script bytes/timing are excluded.",
     "Synthetic 40-page drawings, jobs, lists, order, slip and chat; no live-data writes.",
-    "No physical phone, Safari, offline matrix, independent repeatability or week-long field soak evidence."
-  ]
+    "No physical phone, Safari, offline matrix, independent repeatability or week-long field soak evidence.",
+    "Fixture schema incomplete: standalone drawing notification table missing (PostgreSQL 42P01); UI-only pilot completion did not prove error-free endpoint execution."
+  ],
+  "fixtureSchemaComplete": false
 }

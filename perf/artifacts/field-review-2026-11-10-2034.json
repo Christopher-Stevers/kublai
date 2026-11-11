@@ -1,0 +1,191 @@
+{
+  "capturedAt": "2026-11-11T01:35:19.105185+00:00",
+  "sinceActivation": "2026-11-11T00:38:47Z",
+  "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "acceptedBeaconRows": 16,
+  "numericMetricSamples": 353,
+  "invalidOrUnexpectedRows": 0,
+  "groups": [
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "navigation",
+      "count": 2,
+      "p75Ms": 2279,
+      "p95Ms": 2279
+    },
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "app-start-to-last-screen",
+      "count": 1,
+      "p75Ms": 2530,
+      "p95Ms": 2530
+    },
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "longtask",
+      "count": 3,
+      "p75Ms": 86,
+      "p95Ms": 86
+    },
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "interaction",
+      "count": 51,
+      "p75Ms": 24,
+      "p95Ms": 72
+    },
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "lcp",
+      "count": 1,
+      "p75Ms": 940,
+      "p95Ms": 940
+    },
+    {
+      "screen": "materials",
+      "device": "phone",
+      "link": "fast",
+      "metric": "tap-to-paint",
+      "count": 2,
+      "p75Ms": 880,
+      "p95Ms": 880
+    },
+    {
+      "screen": "job",
+      "device": "phone",
+      "link": "fast",
+      "metric": "interaction",
+      "count": 184,
+      "p75Ms": 24,
+      "p95Ms": 80
+    },
+    {
+      "screen": "job",
+      "device": "phone",
+      "link": "fast",
+      "metric": "longtask",
+      "count": 3,
+      "p75Ms": 187,
+      "p95Ms": 187
+    },
+    {
+      "screen": "job",
+      "device": "phone",
+      "link": "fast",
+      "metric": "navigation",
+      "count": 6,
+      "p75Ms": 554,
+      "p95Ms": 816
+    },
+    {
+      "screen": "job",
+      "device": "phone",
+      "link": "fast",
+      "metric": "app-start-to-last-screen",
+      "count": 3,
+      "p75Ms": 766,
+      "p95Ms": 766
+    },
+    {
+      "screen": "job",
+      "device": "phone",
+      "link": "fast",
+      "metric": "lcp",
+      "count": 2,
+      "p75Ms": 340,
+      "p95Ms": 340
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "fast",
+      "metric": "inp",
+      "count": 3,
+      "p75Ms": 104,
+      "p95Ms": 104
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "fast",
+      "metric": "navigation",
+      "count": 4,
+      "p75Ms": 380,
+      "p95Ms": 380
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "fast",
+      "metric": "app-start-to-last-screen",
+      "count": 2,
+      "p75Ms": 641,
+      "p95Ms": 641
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "fast",
+      "metric": "lcp",
+      "count": 2,
+      "p75Ms": 352,
+      "p95Ms": 352
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "fast",
+      "metric": "interaction",
+      "count": 52,
+      "p75Ms": 64,
+      "p95Ms": 64
+    },
+    {
+      "screen": "other",
+      "device": "phone",
+      "link": "unknown",
+      "metric": "navigation",
+      "count": 1,
+      "p75Ms": 2872,
+      "p95Ms": 2872
+    },
+    {
+      "screen": "other",
+      "device": "phone",
+      "link": "unknown",
+      "metric": "app-start-to-last-screen",
+      "count": 1,
+      "p75Ms": 3159,
+      "p95Ms": 3159
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "unknown",
+      "metric": "interaction",
+      "count": 29,
+      "p75Ms": 32,
+      "p95Ms": 40
+    },
+    {
+      "screen": "jobs",
+      "device": "phone",
+      "link": "unknown",
+      "metric": "lcp",
+      "count": 1,
+      "p75Ms": 1836,
+      "p95Ms": 1836
+    }
+  ],
+  "physicalDeviceEvidence": "Unknown: device tag is viewport class, not verified Pixel identity; field data is separate from lab emulation."
+}

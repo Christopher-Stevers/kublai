@@ -551,6 +551,8 @@
   "limitations": [
     "Short concurrent single-worker tests/typechecks occurred during collection.",
     "Initial idle window overlapped validation reset SQL; provisional, not accepted idle evidence.",
-    "Clerk stub; desktop mobile emulation, no physical Pixel measurements."
-  ]
+    "Clerk stub; desktop mobile emulation, no physical Pixel measurements.",
+    "Fixture schema incomplete: standalone drawing notification table missing (PostgreSQL 42P01); UI-only pilot completion did not prove error-free endpoint execution."
+  ],
+  "fixtureSchemaComplete": false
 }

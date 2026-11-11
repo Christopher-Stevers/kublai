@@ -7,6 +7,7 @@ Object.defineProperty(BigInt.prototype, "toJSON", {
   configurable: true,
 });
 import type { Config } from "drizzle-kit";
+import path from "node:path";
 const directory = process.env.PERF_LAB_SOCKET;
 const url = process.env.PERF_LAB_DATABASE_URL;
 if (
@@ -18,7 +19,7 @@ if (
     "Disposable performance database required; no DATABASE_URL fallback",
   );
 export default {
-  schema: "./src/server/db/schema.ts",
+  schema: path.join(directory, "schema-entry.ts"),
   dialect: "postgresql",
   dbCredentials: {
     host: directory,
@@ -27,6 +28,5 @@ export default {
     user: process.env.USER ?? "tim",
     ssl: false,
   },
-  tablesFilter: ["kublai_*"],
   schemaFilter: ["public"],
 } satisfies Config;

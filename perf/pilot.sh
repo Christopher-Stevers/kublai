@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Run only under perf/lab/database.sh, with its disposable database alive.
-snapshot=$(node perf/create-lab-snapshot.mjs)
+if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+  snapshot=$(node perf/refresh-lab.mjs)
+else
+  snapshot=$(node perf/create-lab-snapshot.mjs)
+fi
 export FOREMANHQ_BACKGROUND_MODE=separate
 export BIM_WORKER_DISABLED=1
 export SKIP_ENV_VALIDATION=1
@@ -13,7 +17,7 @@ export NEXT_PUBLIC_BUILD_ID=isolated-speed-pilot
 unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
 cd "$snapshot"
 printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-latest-snapshot
-while ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; do
+while [[ -z "${PERF_REUSE_SNAPSHOT:-}" ]] && ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; do
   tail -80 "$snapshot/build.log"
   printf '%s\n' "Lab build failed; waiting up to five minutes for $snapshot/.retry-build"
   for attempt in $(seq 1 300); do
@@ -31,4 +35,5 @@ for attempt in $(seq 1 120); do
   if curl -fsS http://127.0.0.1:3481/api/perf-lab > /dev/null; then break; fi
   sleep 1
 done
+PERF_BASE_URL=http://127.0.0.1:3481 node perf/preflight.mjs
 PERF_PILOT=1 PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER=./perf/journeys.mjs PERF_OUTPUT="$snapshot/pilot.json" node perf/run.mjs

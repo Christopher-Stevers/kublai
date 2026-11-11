@@ -243,7 +243,7 @@ export async function opensheetpinch({ page, cdp }) {
             }
           return true;
         }),
-      { timeout: 120000 },
+      { timeout: 120000, intervals: [50] },
     )
     .toBe(true);
   await painted(page);

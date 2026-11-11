@@ -33,9 +33,59 @@ const browser = await chromium.launch({
 const sourceEvidence = fs.existsSync("source-evidence.json")
   ? JSON.parse(fs.readFileSync("source-evidence.json"))
   : {};
+const labStatic = fs.existsSync("lab-static-bytes.json")
+  ? JSON.parse(fs.readFileSync("lab-static-bytes.json"))
+  : undefined;
 const samples = [];
 const timestamp = new Date().toISOString();
 const staticMetrics = await adapter.staticMetrics?.();
+const preflight = JSON.parse(fs.readFileSync("preflight.json"));
+if (
+  preflight.status !== "passed" ||
+  preflight.build !== process.env.PERF_BUILD ||
+  preflight.sourceFingerprint !== sourceEvidence.sourceFingerprint
+)
+  throw new Error("Source-bound endpoint preflight must pass before timing");
+const pgDirectory = process.env.PERF_LAB_SOCKET;
+if (!pgDirectory?.startsWith("/tmp/foremanhq-perf-pg."))
+  throw new Error("Private database observation path required");
+const inventory = JSON.parse(
+  fs.readFileSync(path.join(pgDirectory, "schema-inventory.json")),
+);
+const databaseCounts = () => {
+  const text = fs.readFileSync(path.join(pgDirectory, "server.log"), "utf8");
+  return {
+    count: (text.match(/^\d{4}-\d{2}-\d{2}.*?\bERROR:/gm) ?? []).length,
+    fatalCount: (text.match(/^\d{4}-\d{2}-\d{2}.*?\bFATAL:/gm) ?? []).length,
+  };
+};
+const beforeDatabase = databaseCounts();
+if (beforeDatabase.count || beforeDatabase.fatalCount)
+  throw new Error(
+    "Fixture startup/preflight already produced database errors; capture cannot begin",
+  );
+const health = () => {
+  const current = databaseCounts();
+  return {
+    preflight,
+    fixtureSchema: {
+      status: "source-declared-schemas-created",
+      sourceBuild: sourceEvidence.sourceBuild,
+      sourceFingerprint: sourceEvidence.sourceFingerprint,
+      moduleCount: inventory.moduleCount,
+      tableCount: inventory.tables.length,
+      coverage: inventory.limitations,
+    },
+    database: {
+      count: current.count - beforeDatabase.count,
+      fatalCount: current.fatalCount - beforeDatabase.fatalCount,
+      windowStartedAt: timestamp,
+      observedAt: new Date().toISOString(),
+      source: "private PostgreSQL ERROR/FATAL headers; no SQL or parameters",
+    },
+  };
+};
+
 const save = (status) =>
   fs.writeFileSync(
     process.env.PERF_OUTPUT ?? "perf-report.json",
@@ -55,7 +105,9 @@ const save = (status) =>
           physicalPixelMeasured: false,
         },
         samples,
+        health: health(),
         static: staticMetrics,
+        labStatic,
       },
       null,
       2,
@@ -186,6 +238,11 @@ try {
               : "operation",
           });
           save("incomplete");
+          const databaseHealth = health().database;
+          if (databaseHealth.count || databaseHealth.fatalCount)
+            throw new Error(
+              "Private database reported ERROR/FATAL during capture; timing evidence invalid",
+            );
           console.log(
             `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
           );
@@ -216,7 +273,9 @@ try {
       physicalPixelMeasured: false,
     },
     samples,
+    health: health(),
     static: staticMetrics,
+    labStatic,
   };
   const errors = validateReport(report);
   if (errors.length && !process.env.PERF_PILOT)
