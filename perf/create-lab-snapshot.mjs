@@ -110,6 +110,9 @@ fs.cpSync(harnessRoot, path.join(target, "perf"), {
     );
   },
 });
+// The attested timing tree stays sealed. Its generated app-copy directory must
+// accept the synthetic fixture file even when copied from a read-only method.
+fs.chmodSync(path.join(target, "perf"), 0o700);
 fs.symlinkSync(
   path.join(path.dirname(harnessRoot), "node_modules"),
   path.join(target, "node_modules"),
