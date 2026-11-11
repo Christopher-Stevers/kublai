@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,11 +38,11 @@ export function AssetsOverview() {
   const router = useRouter();
   const isOnline = useIsOnline();
   const utils = api.useUtils();
-  const overview = api.assets.overview.useQuery(undefined, { enabled: isOnline });
-  const holders = api.assets.holders.useQuery(undefined, { enabled: isOnline });
+  const overview = api.assets.overview.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.overview, undefined, "query"), isOnline));
+  const holders = api.assets.holders.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.holders, undefined, "query"), isOnline));
   const requests = api.assets.listRequests.useQuery({ status: "open" }, { enabled: isOnline });
-  const damaged = api.assets.listAssets.useQuery({ status: "damaged", limit: 20 }, { enabled: isOnline });
-  const missing = api.assets.listAssets.useQuery({ status: "missing", limit: 20 }, { enabled: isOnline });
+  const damaged = api.assets.listAssets.useQuery({ status: "damaged", limit: 20 }, useTierOneReadOptions(getQueryKey(api.assets.listAssets, { status: "damaged", limit: 20 }, "query"), isOnline));
+  const missing = api.assets.listAssets.useQuery({ status: "missing", limit: 20 }, useTierOneReadOptions(getQueryKey(api.assets.listAssets, { status: "missing", limit: 20 }, "query"), isOnline));
   const setup = api.assets.setup.useMutation({
     onSuccess: () => utils.assets.invalidate(),
   });
@@ -62,10 +65,14 @@ export function AssetsOverview() {
         )
       }
     >
+      <DeviceReadNotice query={overview} />
+      <DeviceReadNotice query={holders} />
+      <DeviceReadNotice query={damaged} />
+      <DeviceReadNotice query={missing} />
       {overview.isLoading ? (
         <ListPageSkeleton label="Loading asset management" />
-      ) : overview.error ? (
-        <ErrorText message={overview.error.message} />
+      ) : blocksCachedRead(overview) ? (
+        <ErrorText message={overview.error?.message} />
       ) : !data?.isSetUp ? (
         <div className="bg-card rounded-lg border p-6">
           <WrenchIcon className="text-muted-foreground h-10 w-10" />

@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,7 +41,7 @@ export function HolderView({ holder }: { holder: HolderRef }) {
   const isOnline = useIsOnline();
   const { canManage } = useToolRoom();
   const utils = api.useUtils();
-  const query = api.assets.holdings.useQuery({ holder }, { enabled: isOnline });
+  const query = api.assets.holdings.useQuery({ holder }, useTierOneReadOptions(getQueryKey(api.assets.holdings, { holder }, "query"), isOnline));
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<"move" | "return" | "checkin" | null>(null);
@@ -101,9 +104,10 @@ export function HolderView({ holder }: { holder: HolderRef }) {
         </>
       }
     >
+      <DeviceReadNotice query={query} />
       {query.isLoading ? (
         <ListPageSkeleton label="Loading tools" />
-      ) : query.error || !data ? (
+      ) : blocksCachedRead(query) || !data ? (
         <ErrorText message={query.error?.message ?? "Not found."} />
       ) : tools.length + stock.length === 0 ? (
         <EmptyState icon={<PackageOpenIcon />} title="No tools here">

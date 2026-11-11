@@ -33,7 +33,7 @@ const READS = new Set([
   "assets.activity",
 ]);
 // Authority reads may revoke separate drawing snapshots without being persisted.
-const AUTHORITY_READS = new Set([...READS, "drawingsWorkspace.get", "drawingsWorkspace.list", "drawingsWorkspace.changes"]);
+const AUTHORITY_READS = new Set([...READS, "rooms.getFloorRooms", "drawingsWorkspace.get", "drawingsWorkspace.list", "drawingsWorkspace.changes"]);
 function reviewedAuthorityRead(query: Pick<Query, "queryKey">) {
   const path = query.queryKey[0];
   return Array.isArray(path) && AUTHORITY_READS.has(path.join("."));

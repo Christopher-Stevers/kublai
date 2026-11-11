@@ -1,4 +1,6 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
 import { OfflineStorageStatus } from "./OfflineStorageStatus";
 import { verifyDrawingDownload, type DownloadMarker } from "~/lib/drawing-download-check";
@@ -197,7 +199,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const [savedSets, setSavedSets] = useState<Record<string, string>>({});
   const summaries = api.drawingsWorkspace.list.useQuery(
     { jobId },
-    { staleTime: 30_000 },
+    { ...useTierOneReadOptions(getQueryKey(api.drawingsWorkspace.list, { jobId }, "query")), staleTime: 30_000 },
   );
   const summarySnapshot = useDrawingSnapshot(
     `drawing-index:${jobId}`,
@@ -248,10 +250,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     };
   }, [jobId, setSetId, setSheetId]);
 
-  const sets = api.drawings.listSets.useQuery({ jobId });
+  const sets = api.drawings.listSets.useQuery({ jobId }, useTierOneReadOptions(getQueryKey(api.drawings.listSets, { jobId }, "query")));
   const set = api.drawings.getSet.useQuery(
     { setId: setId ?? "" },
-    { enabled: Boolean(setId) },
+    useTierOneReadOptions(getQueryKey(api.drawings.getSet, { setId: setId ?? "" }, "query"), Boolean(setId)),
   );
   const instantMetadata = useInstantDrawingMetadata({
     jobId, setId,

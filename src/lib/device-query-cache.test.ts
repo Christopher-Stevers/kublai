@@ -281,3 +281,16 @@ it("does not hydrate or discard a fresh generation observed after an older resto
   expect((await device.read())?.generation).toBe("new");
   await session.stop();
 });
+
+it("treats a selected-floor denial as authority without persisting floor detail", async () => {
+  const client = new QueryClient(), device = storage();
+  const session = startDeviceQueryCache(client, "org:rooms", device); await session.ready;
+  const key = [["rooms", "getFloorRooms"], { input: { jobId: "job", floorId: "floor" }, type: "query" }];
+  client.setQueryData(key, { id: "floor", rooms: [{ id: "private-room" }] });
+  expect(decodeDeviceQueries(encodeDeviceQueries(client)).queries).toHaveLength(0);
+  const denied = vi.fn(); window.addEventListener(DEVICE_QUERY_DENIED_EVENT, denied);
+  try {
+    await client.fetchQuery({ queryKey: key, staleTime: 0, retry: false, queryFn: async () => { throw Object.assign(new Error("No access"), { data: { code: "FORBIDDEN" } }); } }).catch(() => undefined);
+    expect(denied).toHaveBeenCalledOnce(); expect(client.getQueryData(key)).toBeUndefined();
+  } finally { window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied); await session.stop(); client.clear(); }
+});

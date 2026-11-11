@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { DrawingThumbnail } from "./DrawingThumbnail";
 import { ViewToggle } from "~/components/ui/view-toggle";
@@ -166,7 +169,7 @@ export function JobRoomsView({
   const roomsQuery = api.rooms.getJobRooms.useQuery(
     { jobId, includeRooms: false },
     {
-      enabled: online,
+      ...useTierOneReadOptions(getQueryKey(api.rooms.getJobRooms, { jobId, includeRooms: false }, "query")),
       refetchInterval: (query) =>
         !sandbox &&
         query.state.data?.floors.some((floor) => detectionBusy(floor.detection))
@@ -180,7 +183,7 @@ export function JobRoomsView({
       jobId,
       floorId: selectedFloorId ?? "00000000-0000-0000-0000-000000000000",
     },
-    { enabled: online && Boolean(selectedFloorId), refetchOnMount: "always" },
+    useTierOneReadOptions(getQueryKey(api.rooms.getFloorRooms, { jobId, floorId: selectedFloorId ?? "00000000-0000-0000-0000-000000000000" }, "query"), Boolean(selectedFloorId)),
   );
   const refreshRooms = useCallback(async () => {
     await Promise.all([
@@ -645,7 +648,7 @@ export function JobRoomsView({
 
   if (
     !data ||
-    (selectedFloorId && (!selectedFloor || (online && floorQuery.isError)))
+    (selectedFloorId && (!selectedFloor || (online && blocksCachedRead(floorQuery))))
   ) {
     const loading =
       Boolean(selectedFloorId) &&
@@ -683,6 +686,7 @@ export function JobRoomsView({
   if (selectedRoom && selectedFloor) {
     return (
       <div className="space-y-4">
+        <DeviceReadNotice query={floorQuery} />
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-foreground text-xl font-semibold">
@@ -725,6 +729,8 @@ export function JobRoomsView({
 
   return (
     <>
+      <DeviceReadNotice query={roomsQuery} />
+      <DeviceReadNotice query={floorQuery} />
       {!selectedFloor ? (
         <div className={canUpload ? "sm:pb-20" : undefined}>
           <div className="mb-6 flex items-center justify-between gap-3">

@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import Link from "next/link";
@@ -44,7 +47,7 @@ function Row({ href, kind, label, sub, action }: { href: string; kind: string; l
 export function WhereView() {
   const isOnline = useIsOnline();
   const { canManage } = useToolRoom();
-  const holders = api.assets.holders.useQuery(undefined, { enabled: isOnline });
+  const holders = api.assets.holders.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.holders, undefined, "query"), isOnline));
   const [editing, setEditing] = useState<Location | "new" | null>(null);
   const [showArchived, setShowArchived] = usePageViewState("assets:showArchived", false);
   const data = holders.data;
@@ -62,9 +65,10 @@ export function WhereView() {
         )
       }
     >
+      <DeviceReadNotice query={holders} />
       {holders.isLoading ? (
         <ListPageSkeleton label="Loading" />
-      ) : holders.error || !data ? (
+      ) : blocksCachedRead(holders) || !data ? (
         <ErrorText message={holders.error?.message ?? "Could not load."} />
       ) : (
         <div className="grid gap-5 lg:grid-cols-3">

@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
@@ -42,13 +45,10 @@ export function ToolsView() {
   const [moveOpen, setMoveOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
-  const types = api.assets.listTypes.useQuery(undefined, { enabled: isOnline });
-  const tools = api.assets.listAssets.useQuery(
-    { status, partId, search: deferredSearch || undefined, limit: 500 },
-    { enabled: isOnline },
-  );
+  const types = api.assets.listTypes.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.listTypes, undefined, "query"), isOnline));
+  const tools = api.assets.listAssets.useQuery({ status, partId, search: deferredSearch || undefined, limit: 500 }, useTierOneReadOptions(getQueryKey(api.assets.listAssets, { status, partId, search: deferredSearch || undefined, limit: 500 }, "query"), isOnline));
   const type = types.data?.find((t) => t.partId === partId);
-  const stock = api.assets.listStock.useQuery({ partId }, { enabled: isOnline && type?.tracking === "quantity" });
+  const stock = api.assets.listStock.useQuery({ partId }, useTierOneReadOptions(getQueryKey(api.assets.listStock, { partId }, "query"), isOnline && type?.tracking === "quantity"));
 
   const setFilter = (key: "status" | "type", value: string | undefined) => {
     const next = new URLSearchParams(params.toString());
@@ -73,10 +73,13 @@ export function ToolsView() {
       title="Tools"
       description="Every tool type, and each tagged tool with where it is right now"
     >
+      <DeviceReadNotice query={types} />
+      <DeviceReadNotice query={tools} />
+      <DeviceReadNotice query={stock} />
       {types.isLoading ? (
         <ListPageSkeleton label="Loading tools" />
-      ) : types.error ? (
-        <ErrorText message={types.error.message} />
+      ) : blocksCachedRead(types) ? (
+        <ErrorText message={types.error?.message} />
       ) : !types.data?.length ? (
         <EmptyState icon={<WrenchIcon />} title="No tool types yet">
           Start by adding tool types (e.g. &ldquo;Hilti TE 30 hammer drill&rdquo;) on the{" "}

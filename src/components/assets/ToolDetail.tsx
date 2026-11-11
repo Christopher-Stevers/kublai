@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import PartImage from "~/components/catalogue/PartImage";
 
 import { useEffect, useState } from "react";
@@ -35,7 +38,7 @@ import {
 export function ToolDetail({ id, tag }: { id?: string; tag?: string }) {
   const isOnline = useIsOnline();
   const utils = api.useUtils();
-  const query = api.assets.getAsset.useQuery(id ? { id } : { tag }, { enabled: isOnline, retry: false });
+  const query = api.assets.getAsset.useQuery(id ? { id } : { tag }, { ...useTierOneReadOptions(getQueryKey(api.assets.getAsset, id ? { id } : { tag }, "query"), isOnline), retry: false });
   const [moveOpen, setMoveOpen] = useState(false);
   const [problemOpen, setProblemOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -48,9 +51,10 @@ export function ToolDetail({ id, tag }: { id?: string; tag?: string }) {
 
   return (
     <AssetsShell title={tool ? tool.name : tag ? `Tool ${tag}` : "Tool"}>
+      <DeviceReadNotice query={query} />
       {query.isLoading ? (
         <ListPageSkeleton rows={3} label="Loading tool" />
-      ) : query.error || !tool || !holder ? (
+      ) : blocksCachedRead(query) || !tool || !holder ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="font-medium">{query.error?.message ?? "Tool not found."}</p>
           {tag && <p className="text-muted-foreground mt-1 text-sm">No tool in your company has the tag {tag}.</p>}

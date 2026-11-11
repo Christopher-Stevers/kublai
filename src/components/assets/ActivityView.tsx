@@ -1,4 +1,7 @@
 "use client";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 
 import Link from "next/link";
 import { HistoryIcon } from "lucide-react";
@@ -10,14 +13,15 @@ import { AssetsShell, EmptyState, ErrorText, describeMovement, formatWhen, useIs
 
 export function ActivityView() {
   const isOnline = useIsOnline();
-  const activity = api.assets.activity.useQuery({ limit: 200 }, { enabled: isOnline });
+  const activity = api.assets.activity.useQuery({ limit: 200 }, useTierOneReadOptions(getQueryKey(api.assets.activity, { limit: 200 }, "query"), isOnline));
 
   return (
     <AssetsShell title="Activity" description="Every check-out, return, move, status change and count">
+      <DeviceReadNotice query={activity} />
       {activity.isLoading ? (
         <ListPageSkeleton label="Loading activity" />
-      ) : activity.error ? (
-        <ErrorText message={activity.error.message} />
+      ) : blocksCachedRead(activity) ? (
+        <ErrorText message={activity.error?.message} />
       ) : !activity.data?.length ? (
         <EmptyState icon={<HistoryIcon />} title="No activity yet" />
       ) : (

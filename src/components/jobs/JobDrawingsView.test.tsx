@@ -1,3 +1,8 @@
+vi.mock("@trpc/react-query", () => ({ getQueryKey: () => [] }));
+vi.mock("~/hooks/use-tier-one-read-options", () => ({
+  useTierOneReadOptions: (_key: unknown, enabled = true) => ({ enabled, refetchOnMount: "always" }),
+  blocksCachedRead: (query: { data?: unknown; error?: unknown; isError?: boolean }) => Boolean(query.error || query.isError),
+}));
 import { useRef, type Ref } from "react";
 import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 import {
