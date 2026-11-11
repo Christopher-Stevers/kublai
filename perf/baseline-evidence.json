@@ -57,7 +57,8 @@
     "perf/r18-r19-failed-cell-source-evidence-2026-11-11.json",
     "perf/artifacts/notification-role-identity-rejected-2026-11-11/result.json",
     "perf/artifacts/receiving-saved-order-focused-2026-11-11.json",
-    "perf/artifacts/phase1-receiving-images-build-proof-2026-11-11.json"
+    "perf/artifacts/phase1-receiving-images-build-proof-2026-11-11.json",
+    "perf/artifacts/part-image-browser-2026-11-11.json"
   ],
   "rows": [
     {
@@ -306,7 +307,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T17:45:29.287969+00:00",
+  "updatedAt": "2026-11-11T17:55:39.643397+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
@@ -1251,6 +1252,24 @@
       "publicFilesExact": 3263,
       "nativeMetadataResolutionPass": true,
       "httpStarted": false
+    },
+    "photoComponentBrowser": {
+      "sourceCommit": "e23e71d2",
+      "evidence": "perf/artifacts/part-image-browser-2026-11-11.json",
+      "status": "passed-component-proof-only",
+      "claims": [
+        "stable fixed/fill geometry",
+        "audited synthetic framing",
+        "latched failure fallback",
+        "same-page cached metadata remount"
+      ],
+      "limits": [
+        "explicit metadata fixture and local synthetic assets",
+        "not production chunk offline availability",
+        "not real-photo fidelity or physical/Safari performance",
+        "not a release gate pass"
+      ],
+      "cleanup": "browser, loopback server and temporary profile removed"
     }
   },
   "historicalCandidateRegressions": [

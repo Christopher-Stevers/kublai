@@ -5,6 +5,26 @@ Source plan: `perf/SPEED_PLAN.md`, copied unchanged from
 Its original plan-only header is superseded by Tim’s subsequent authorization.
 Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 
+## Current checkpoint — 2026-11-11
+
+The work is in Phase 1 preparation; no broad Phase 1 candidate has passed the
+release gate. Production still runs the Phase 0 measurement bootstrap, including
+the canonical release foundation. Phase 0 has a working synthetic lab, repeatable
+desktop baselines and live telemetry, but controlled phone/Safari and remaining
+field targets are unproved. Tim deferred further Pixel debugging; independent
+work continues without requesting that connection again.
+
+The latest full candidate (R19) failed five of 24 timing cells and was not
+activated. The newer receiving/photo source passes focused checks and canonical
+compilation/byte ratchets, but has no new full timing result. Its shared script is
+478,853 gzip bytes versus the 120 KB target; its R19-relative update is 445,298
+bytes versus the 100 KB target. Tested source is not a claim of live improvement.
+
+Phase 2 has an audited and tested existing Replicache contract; new offline job,
+receiving and chat domains remain unimplemented. The Phase 3 drawing spike failed
+visual fidelity, so its production compiler is stopped and today's renderer is
+retained. This is an observed stop decision, not a completed drawing workstream.
+
 ## Decisions recorded
 
 - Start phases 0 and 1, using the plan's measured gates and one release recipe.
@@ -1006,3 +1026,15 @@ and 3,263 public files match; native metadata resolution and production-overlay
 exclusion pass. Proof `ab3ee49c`, detailed in `receiving-images-byte-proof.md`.
 No HTTP/application/private database/browser matrix/worker/activation ran. The
 R19 timing rejection still stands; no new full matrix is scheduled.
+
+## Photo component browser proof — 2026-11-11
+
+The isolated browser proof (`e23e71d2`) exercises the actual PartImage component
+and Next Image implementation with local synthetic assets and an explicit
+metadata fixture. Fixed/fill geometry, audited SVG framing, latched failure
+fallback and a same-page cached-metadata remount pass. No page errors or external
+requests occurred; the browser, loopback server and temporary profile were
+cleaned up. Three earlier harness failures are preserved separately. This proves
+component behavior, not production chunk availability offline, real-photo visual
+fidelity, Safari, phone performance or release acceptance. See
+`part-image-browser.md` and `artifacts/part-image-browser-2026-11-11.json`.
