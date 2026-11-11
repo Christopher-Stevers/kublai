@@ -299,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T16:18:00Z",
+  "updatedAt": "2026-11-11T16:12:13Z",
   "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
