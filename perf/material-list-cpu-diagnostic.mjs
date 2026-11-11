@@ -29,7 +29,7 @@ const expected = {
   ],
 };
 const report = {
-  protocol: "material-list-cpu-diagnostic-v2",
+  protocol: "material-list-cpu-diagnostic-v4",
   guardRejections: [],
   attemptId: config.attemptId ?? "attempt1",
   acceptedGateEvidence: false,
@@ -206,7 +206,7 @@ try {
         u.origin === s.base.origin &&
         (["GET", "HEAD"].includes(method) ||
           (method === "POST" &&
-            u.pathname === "/api/replicache/material-lists/pull") ||
+            ["/api/replicache/material-lists/pull", "/api/replicache/catalogue/pull", "/api/perf", "/api/trpc/appDevices.report", "/api/debug/client-console-error"].includes(u.pathname)) ||
           emptyPush);
       if (!safe && !["data:", "blob:"].includes(u.protocol)) {
         // Persist before abort, including failures before a sample exists. Only
@@ -214,10 +214,11 @@ try {
         // request bodies, cookies, arbitrary path segments or external origins.
         const sameOrigin = u.origin === s.base.origin;
         const procedurePath = /^\/api\/trpc\/[A-Za-z][A-Za-z0-9_]{0,63}\.[A-Za-z][A-Za-z0-9_]{0,63}(,[A-Za-z][A-Za-z0-9_]{0,63}\.[A-Za-z][A-Za-z0-9_]{0,63})*$/.test(u.pathname);
-        const replicachePath = /^\/api\/replicache\/material-lists\/(pull|push)$/.test(u.pathname);
+        const replicachePath = /^\/api\/replicache\/(material-lists|catalogue)\/(pull|push)$/.test(u.pathname);
+        const telemetryPath = u.pathname === "/api/perf" || u.pathname === "/api/debug/client-console-error";
         const rejection = {
           method: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].includes(method) ? method : "OTHER",
-          path: sameOrigin && (procedurePath || replicachePath) ? u.pathname.slice(0, 180) : "/unclassified-path",
+          path: sameOrigin && (procedurePath || replicachePath || telemetryPath) ? u.pathname.slice(0, 180) : "/unclassified-path",
           reason: sameOrigin ? "method-or-post-path-rejected" : "origin-rejected",
         };
         denied.push(rejection);

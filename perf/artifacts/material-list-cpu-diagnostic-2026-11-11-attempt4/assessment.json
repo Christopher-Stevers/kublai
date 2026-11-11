@@ -1,0 +1,33 @@
+{
+  "status": "complete-supplemental-profile-only",
+  "acceptedGateEvidence": false,
+  "captures": 2,
+  "driverSha256": "c1b01577a21a71cb95ed6f183233bb44b72aa1e957c7f242dd19fbffc3faa069",
+  "frozenMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "preflightReadCounts": {
+    "baseline": 14,
+    "candidate": 14
+  },
+  "guardRejections": [],
+  "sourceAndMethodAfterValidated": true,
+  "observedIncreaseButtons": {
+    "baseline": 24,
+    "candidate": 24
+  },
+  "totalRawProfileBytes": 1628574,
+  "hostContention": "No declared agent-driven heavy work or ADB during quiet; live production services and ordinary OS background activity continued, not proven system isolation.",
+  "findings": [
+    "Injected observer FunctionCall spans48.698ms/48.203ms, with getClientRects sampled stacks descending from diagnostic observe. This is instrumentation overhead, not an app attribution.",
+    "One capture each: click-to-ready146.767ms/147.711ms and pointerdown-to-click1.408ms/7.347ms. These do not replace the original driver metric or failed gate.",
+    "Shared React runtime callback spans56.715ms/57.024ms; minified profiles do not isolate component render versus commit costs.",
+    "Observed24 visible Increase controls support24 ordinary quantity rows and their48 quantity buttons under the source fixture. Receipt layout-effect and press-effect invocation counts remain source-derived, not directly measured.",
+    "R6 samples include modules containing press-gesture and receipt-helper code. Modules can contain multiple functions; code markers are not exclusive receipt/press self-time attribution.",
+    "No named IndexedDB functions were sampled. Some Replicache/IDB module frames are present; asynchronous waiting and unsampled work are not excluded."
+  ],
+  "negativeRawDeltas": {
+    "baseline": 29,
+    "candidate": 34
+  },
+  "analysisMethod": "Raw cumulative sample timestamps sorted only in offline analysis before clipped interval weighting; original profiles unchanged. Module identification uses exact script bytes + webpack module IDs + disclosed string-presence markers.",
+  "performanceConclusion": "No significance or causality claim from N=1/source; R6/R7 full acceptance failures remain unchanged. No additional capture authorized by this archive."
+}

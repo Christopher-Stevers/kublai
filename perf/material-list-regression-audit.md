@@ -144,3 +144,35 @@ PG ERROR reports are archived. Both servers/private databases were removed and
 the quiet window was released. Prior attempts/methods/full gates remain unchanged;
 no CPU attribution or threshold/performance claim follows. Root may separately
 review the permitted synthetic bootstrap writes for a distinct future method.
+
+## Fourth reviewed attempt: two completed profiles
+
+[Attempt 4 raw profiles and analysis](artifacts/material-list-cpu-diagnostic-2026-11-11-attempt4/README.md)
+finally reached both captures. Root reviewed the synthetic seeded-user device
+observation write and the exact debug endpoint, which only logs to this private
+Next process; arbitrary/nonempty other writes and external origins stayed blocked.
+Both source/private-database bindings and 14-query preflights passed, guard
+rejections were zero, method/source checks after capture matched, and all owned
+app/PG resources were cleaned with empty PG ERROR reports. No build or phone.
+
+One profiled read/source is supplemental evidence. Pointerdown→click was
+1.408/7.347ms and click→observer-ready146.767/147.711ms (Phase0/R6). A concrete
+instrumentation limitation is now visible: `getClientRects` samples descend from
+the injected `observe` callback, whose trace FunctionCall spans48.698/48.203ms.
+That is diagnostic overhead, not app cost. Shared React-runtime callback spans
+were56.715/57.024ms; minified frames do not separate component render/commit.
+
+The24 observed visible Increase controls corroborate24 ordinary rows/48 quantity
+buttons. The earlier50 receipt layout callbacks and96 press passive registrations
+remain source-derived expected counts, not measured invocations. R6 sampled
+modules containing receipt helpers, material rows and press code; modules may
+contain multiple functions and inclusive sample weights overlap. They cannot be
+reported as receipt-only or press-only render costs. No named IndexedDB functions
+were sampled, which does not exclude asynchronous waiting or unsampled work.
+
+The offline analyzer groups phases/scripts/webpack modules/callframes and
+explicitly handles the profiles'29/34 negative raw deltas by sorting accumulated
+sample timestamps for interval weighting; original bytes remain unchanged.
+Archived analysis reproduces byte-for-byte. These two perturbed captures do not
+establish significance, explain the prior full-matrix failure or waive any gate.
+No additional run or source fix is authorized by this evidence alone.

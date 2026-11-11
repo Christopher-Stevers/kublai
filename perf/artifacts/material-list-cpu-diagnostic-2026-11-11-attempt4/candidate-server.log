@@ -1,0 +1,40 @@
+▲ Next.js 16.1.1
+- Local:         http://127.0.0.1:3483
+- Network:       http://127.0.0.1:3483
+
+✓ Starting...
+✓ Ready in 116ms
+[TRPC] user.getMe took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] job.getJob took 10ms to execute (5 queries) [database 7.9ms]
+[TRPC] materialList.getMaterialList took 11ms to execute (5 queries) [database 9.3ms]
+[TRPC] materialList.getOrderById took 2ms to execute (2 queries) [database 1.2ms]
+[TRPC] drawings.listSets took 2ms to execute (4 queries) [database 1.3ms]
+[TRPC] drawings.getSet took 1ms to execute (2 queries) [database 0.5ms]
+[TRPC] sign-in check took 0ms
+[TRPC] drawingsWorkspace.get took 9ms to execute (11 queries) [database 30.5ms] 16 KB
+[TRPC] sign-in check took 1ms
+[TRPC] drawingsWorkspace.changes took 6ms to execute (12 queries) [database 11.9ms] 16 KB
+[TRPC] chat.getOverview took 2ms to execute (5 queries) [database 1.8ms]
+[TRPC] chat.history took 3ms to execute (5 queries) [database 1.8ms]
+[TRPC] rooms.getJobRoomCount took 1ms to execute (2 queries) [database 0.6ms]
+[TRPC] notifications.overview took 4ms to execute (1 queries) [database 3.8ms]
+[TRPC] push.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMe took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMaterialSortPreferences took 3ms to execute (1 queries) [database 1.3ms]
+[TRPC] supplierPriceBooks.labelContext took 3ms to execute (2 queries) [database 1.7ms]
+[TRPC] appDevices.report took 2ms to execute (1 queries) [database 1.5ms]
+[TRPC] job.getJob took 3ms to execute (5 queries) [database 2.7ms]
+[TRPC] notifications.overview took 5ms to execute (1 queries) [database 4.3ms]
+[replicache] catalogue pull took 11ms (revision 1ms, build 4ms, 27 patch ops, attempt 1)
+[replicache] material-lists pull took 14ms (revision 0ms, build 10ms, 30 patch ops, attempt 1)
+[replicache] catalogue pull took 4ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[replicache] material-lists pull took 2ms (revision 1ms, cached view, 0 patch ops, attempt 1)
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] supplierPriceBooks.labelContext took 4ms to execute (3 queries) [database 2.2ms]
+[TRPC] jobPricing.get took 4ms to execute (3 queries) [database 2.4ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] push.identity took 1ms to execute (0 queries) [database 0.0ms]

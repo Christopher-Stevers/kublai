@@ -1,0 +1,4614 @@
+{
+  "protocol": "material-list-cpu-offline-summary-v1",
+  "acceptedGateEvidence": false,
+  "roles": {
+    "baseline": {
+      "rawSha256": {
+        "cpu": "f226ebf53f3bfccf95b6303fd3f6e5703045ced92faa2240977d4e218b0a8c64",
+        "trace": "9e6a453965446faf9fa4faa96dbcf52c03ffa19d7a80a2c35542bdc8ca815a62"
+      },
+      "sampleTimeHandling": {
+        "negativeRawDeltaCount": 29,
+        "method": "Accumulate original deltas into absolute sample timestamps, sort chronologically (stable original index tie-break), weight intervals since previous chronological sample, clip to phase; preserve raw profile unchanged."
+      },
+      "cpuRecordedMs": 754.343,
+      "phases": {
+        "pre-input": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 440.321
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+              "webpackModule": "34199",
+              "moduleMarkers": [],
+              "sampledMs": 0.232
+            }
+          ],
+          "durationMs": 440.321,
+          "sampleCount": 44,
+          "byScript": [
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 412.653
+            },
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 22.967
+            },
+            {
+              "script": "native/automation/elementsFromPoint",
+              "sampledSelfMs": 2.15
+            },
+            {
+              "script": "native/automation/queryAll",
+              "sampledSelfMs": 1.79
+            },
+            {
+              "script": "native/automation/oneLine",
+              "sampledSelfMs": 0.494
+            },
+            {
+              "script": "native/automation/setTimeout",
+              "sampledSelfMs": 0.232
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.035
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 412.653,
+              "sampleCount": 16
+            },
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 22.967,
+              "sampleCount": 22
+            },
+            {
+              "function": "elementsFromPoint",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.15,
+              "sampleCount": 2
+            },
+            {
+              "function": "queryAll",
+              "script": "(no script URL)",
+              "line0": 6670,
+              "column0": 21,
+              "sampledSelfMs": 1.79,
+              "sampleCount": 1
+            },
+            {
+              "function": "oneLine",
+              "script": "(no script URL)",
+              "line0": 7826,
+              "column0": 16,
+              "sampledSelfMs": 0.494,
+              "sampleCount": 1
+            },
+            {
+              "function": "setTimeout",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.232,
+              "sampleCount": 1
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.035,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "pointer-to-click": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 0.906
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.502
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.502
+            }
+          ],
+          "durationMs": 1.408,
+          "sampleCount": 19,
+          "byScript": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 0.502
+            },
+            {
+              "script": "native/automation/pointer",
+              "sampledSelfMs": 0.493
+            },
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 0.382
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.031
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "nU",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 20174,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.502,
+              "sampleCount": 1
+            },
+            {
+              "function": "pointer",
+              "script": "(no script URL)",
+              "line0": 13,
+              "column0": 22,
+              "sampledSelfMs": 0.493,
+              "sampleCount": 1
+            },
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.382,
+              "sampleCount": 15
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.031,
+              "sampleCount": 2
+            }
+          ]
+        },
+        "click-to-ready": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 81.203
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 23.259
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledMs": 6.221
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 4.948
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 3.2
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 3.122
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledMs": 2.453
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledMs": 2.443
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "85032",
+              "moduleMarkers": [],
+              "sampledMs": 2.178
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "50341",
+              "moduleMarkers": [],
+              "sampledMs": 2.092
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "webpackModule": "17871",
+              "moduleMarkers": [],
+              "sampledMs": 1.869
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "57793",
+              "moduleMarkers": [],
+              "sampledMs": 1.506
+            },
+            {
+              "script": "/_next/static/chunks/2142-e358aa4e736c8622.js",
+              "webpackModule": "56893",
+              "moduleMarkers": [],
+              "sampledMs": 1.485
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "68859",
+              "moduleMarkers": [],
+              "sampledMs": 1.213
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "72649",
+              "moduleMarkers": [],
+              "sampledMs": 1.203
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "65760",
+              "moduleMarkers": [],
+              "sampledMs": 1.088
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "40528",
+              "moduleMarkers": [],
+              "sampledMs": 1.023
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "23747",
+              "moduleMarkers": [
+                "shared-button-code"
+              ],
+              "sampledMs": 0.924
+            },
+            {
+              "script": "/_next/static/chunks/3539-b812bbf0596b1ee0.js",
+              "webpackModule": "53895",
+              "moduleMarkers": [],
+              "sampledMs": 0.817
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "97160",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "86357",
+              "moduleMarkers": [],
+              "sampledMs": 0.76
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.758
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "60478",
+              "moduleMarkers": [],
+              "sampledMs": 0.748
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "47046",
+              "moduleMarkers": [],
+              "sampledMs": 0.726
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "65073",
+              "moduleMarkers": [],
+              "sampledMs": 0.714
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 75.558
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 18.489
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 9.099
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "41588",
+              "moduleMarkers": [],
+              "sampledMs": 9.099
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "14491",
+              "moduleMarkers": [],
+              "sampledMs": 7.356
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledMs": 6.221
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 6.189
+            },
+            {
+              "script": "/_next/static/chunks/7354-17b31ebe72dd0055.js",
+              "webpackModule": "47864",
+              "moduleMarkers": [],
+              "sampledMs": 5.426
+            },
+            {
+              "script": "/_next/static/chunks/8663-0a293889e1c5734f.js",
+              "webpackModule": "51041",
+              "moduleMarkers": [],
+              "sampledMs": 5.105
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "83094",
+              "moduleMarkers": [],
+              "sampledMs": 4.594
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledMs": 4.59
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "86357",
+              "moduleMarkers": [],
+              "sampledMs": 4.151
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "68859",
+              "moduleMarkers": [],
+              "sampledMs": 3.391
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 3.122
+            },
+            {
+              "script": "/_next/static/chunks/6906-fa61fb83a4a2bd02.js",
+              "webpackModule": "65196",
+              "moduleMarkers": [],
+              "sampledMs": 3.01
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledMs": 2.453
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "85032",
+              "moduleMarkers": [],
+              "sampledMs": 2.178
+            },
+            {
+              "script": "/_next/static/chunks/5566-6ea0df6b9044430a.js",
+              "webpackModule": "25566",
+              "moduleMarkers": [],
+              "sampledMs": 2.149
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "50341",
+              "moduleMarkers": [],
+              "sampledMs": 2.092
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "60478",
+              "moduleMarkers": [],
+              "sampledMs": 1.9
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "webpackModule": "17871",
+              "moduleMarkers": [],
+              "sampledMs": 1.869
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "90800",
+              "moduleMarkers": [],
+              "sampledMs": 1.869
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "57793",
+              "moduleMarkers": [],
+              "sampledMs": 1.506
+            },
+            {
+              "script": "/_next/static/chunks/2142-e358aa4e736c8622.js",
+              "webpackModule": "56893",
+              "moduleMarkers": [],
+              "sampledMs": 1.485
+            },
+            {
+              "script": "/_next/static/chunks/1552-f4d77c3ad78f4da1.js",
+              "webpackModule": "58651",
+              "moduleMarkers": [],
+              "sampledMs": 1.485
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "34042",
+              "moduleMarkers": [],
+              "sampledMs": 1.233
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "72649",
+              "moduleMarkers": [],
+              "sampledMs": 1.203
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledMs": 1.203
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "65760",
+              "moduleMarkers": [],
+              "sampledMs": 1.088
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "40528",
+              "moduleMarkers": [],
+              "sampledMs": 1.023
+            },
+            {
+              "script": "/_next/static/chunks/5577-30d79f7f9d222690.js",
+              "webpackModule": "68869",
+              "moduleMarkers": [],
+              "sampledMs": 0.97
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "23747",
+              "moduleMarkers": [
+                "shared-button-code"
+              ],
+              "sampledMs": 0.924
+            },
+            {
+              "script": "/_next/static/chunks/3755-5652ad0d0b9f60ab.js",
+              "webpackModule": "99105",
+              "moduleMarkers": [],
+              "sampledMs": 0.899
+            },
+            {
+              "script": "/_next/static/chunks/3539-b812bbf0596b1ee0.js",
+              "webpackModule": "53895",
+              "moduleMarkers": [],
+              "sampledMs": 0.817
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "97160",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "42208",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "75595",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "5632",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "88878",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "18804",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "38340",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "70824",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "86185",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/3755-5652ad0d0b9f60ab.js",
+              "webpackModule": "92911",
+              "moduleMarkers": [],
+              "sampledMs": 0.814
+            },
+            {
+              "script": "/_next/static/chunks/6906-fa61fb83a4a2bd02.js",
+              "webpackModule": "35383",
+              "moduleMarkers": [],
+              "sampledMs": 0.76
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.758
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "51792",
+              "moduleMarkers": [],
+              "sampledMs": 0.748
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "47046",
+              "moduleMarkers": [],
+              "sampledMs": 0.726
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "65073",
+              "moduleMarkers": [],
+              "sampledMs": 0.714
+            },
+            {
+              "script": "/_next/static/chunks/7354-17b31ebe72dd0055.js",
+              "webpackModule": "19026",
+              "moduleMarkers": [
+                "quantity-control-code"
+              ],
+              "sampledMs": 0.714
+            }
+          ],
+          "durationMs": 146.767,
+          "sampleCount": 172,
+          "byScript": [
+            {
+              "script": "native/automation/getClientRects",
+              "sampledSelfMs": 47.145
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 23.259
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "sampledSelfMs": 13.555
+            },
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 13.165
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "sampledSelfMs": 10.302
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "sampledSelfMs": 8.405
+            },
+            {
+              "script": "native/automation/createElementNS",
+              "sampledSelfMs": 3.393
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "sampledSelfMs": 2.453
+            },
+            {
+              "script": "native/automation/query",
+              "sampledSelfMs": 2.413
+            },
+            {
+              "script": "native/automation/appendChild",
+              "sampledSelfMs": 2.366
+            },
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 2.116
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "sampledSelfMs": 1.947
+            },
+            {
+              "script": "native/automation/fetch",
+              "sampledSelfMs": 1.936
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "sampledSelfMs": 1.869
+            },
+            {
+              "script": "/_next/static/chunks/2142-e358aa4e736c8622.js",
+              "sampledSelfMs": 1.485
+            },
+            {
+              "script": "native/automation/observe",
+              "sampledSelfMs": 1.431
+            },
+            {
+              "script": "native/automation/(anonymous)",
+              "sampledSelfMs": 1.245
+            },
+            {
+              "script": "native/automation/getAriaRole",
+              "sampledSelfMs": 1.078
+            },
+            {
+              "script": "native/automation/forEach",
+              "sampledSelfMs": 1.074
+            },
+            {
+              "script": "native/automation/setAttribute",
+              "sampledSelfMs": 1.053
+            },
+            {
+              "script": "native/automation/isError",
+              "sampledSelfMs": 0.948
+            },
+            {
+              "script": "native/automation/removeChild",
+              "sampledSelfMs": 0.934
+            },
+            {
+              "script": "/_next/static/chunks/3539-b812bbf0596b1ee0.js",
+              "sampledSelfMs": 0.817
+            },
+            {
+              "script": "native/automation/createElement",
+              "sampledSelfMs": 0.8
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "sampledSelfMs": 0.758
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "sampledSelfMs": 0.714
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.093
+            },
+            {
+              "script": "native/automation/postMessage",
+              "sampledSelfMs": 0.013
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "getClientRects",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 47.145,
+              "sampleCount": 45
+            },
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 13.165,
+              "sampleCount": 40
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "line0": 1,
+              "column0": 9205,
+              "scriptSha256": "37e9cc83454253b5bb7706a3017e4acc5c16d321eb34b6afadd17ab6d8934762",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledSelfMs": 6.221,
+              "sampleCount": 6
+            },
+            {
+              "function": "createElementNS",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 3.393,
+              "sampleCount": 3
+            },
+            {
+              "function": "t.exports",
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "line0": 0,
+              "column0": 55628,
+              "scriptSha256": "e4dcf8a63ef423f7479f1ec3cb777b67e4076e66bb4864c68e8636bc3826b074",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledSelfMs": 3.247,
+              "sampleCount": 3
+            },
+            {
+              "function": "m",
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "line0": 0,
+              "column0": 4054,
+              "scriptSha256": "566a371f8332e984fccad9d82fa3c945685eddfa8f3467c3be61441acd69f67c",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledSelfMs": 2.453,
+              "sampleCount": 2
+            },
+            {
+              "function": "ln",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 39446,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 2.441,
+              "sampleCount": 2
+            },
+            {
+              "function": "query",
+              "script": "(no script URL)",
+              "line0": 4953,
+              "column0": 16,
+              "sampledSelfMs": 2.413,
+              "sampleCount": 2
+            },
+            {
+              "function": "appendChild",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.366,
+              "sampleCount": 2
+            },
+            {
+              "function": "ca",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 158690,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 2.315,
+              "sampleCount": 2
+            },
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.116,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 20421,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledSelfMs": 2.029,
+              "sampleCount": 2
+            },
+            {
+              "function": "fetch",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.936,
+              "sampleCount": 2
+            },
+            {
+              "function": "nx",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 14395,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.928,
+              "sampleCount": 2
+            },
+            {
+              "function": "get",
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "line0": 0,
+              "column0": 4746,
+              "scriptSha256": "2332e0dc7d4d5f7a01faf7b8c1cfe0c5b783c8d133c85ef561cb000a876b8581",
+              "webpackModule": "17871",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.869,
+              "sampleCount": 2
+            },
+            {
+              "function": "ib",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 92339,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.753,
+              "sampleCount": 2
+            },
+            {
+              "function": "useQuery",
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "line0": 0,
+              "column0": 62933,
+              "scriptSha256": "e4dcf8a63ef423f7479f1ec3cb777b67e4076e66bb4864c68e8636bc3826b074",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.701,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "line0": 0,
+              "column0": 74247,
+              "scriptSha256": "e4dcf8a63ef423f7479f1ec3cb777b67e4076e66bb4864c68e8636bc3826b074",
+              "webpackModule": "85032",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.516,
+              "sampleCount": 1
+            },
+            {
+              "function": "n",
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "line0": 1,
+              "column0": 17766,
+              "scriptSha256": "37e9cc83454253b5bb7706a3017e4acc5c16d321eb34b6afadd17ab6d8934762",
+              "webpackModule": "57793",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.506,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/2142-e358aa4e736c8622.js",
+              "line0": 0,
+              "column0": 13069,
+              "scriptSha256": "104b3e179609fff18712f35cd57859bfcab20ab3f48050162a2da332ca00ca04",
+              "webpackModule": "56893",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.485,
+              "sampleCount": 1
+            },
+            {
+              "function": "observe",
+              "script": "(no script URL)",
+              "line0": 2,
+              "column0": 22,
+              "sampledSelfMs": 1.431,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 5115,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.423,
+              "sampleCount": 1
+            },
+            {
+              "function": "sp",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 128046,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.379,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.245,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "ready-to-two-raf": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 47.915
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 4.098
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 2.171
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "webpackModule": "81337",
+              "moduleMarkers": [],
+              "sampledMs": 1.306
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 1.299
+            },
+            {
+              "script": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+              "webpackModule": "98288",
+              "moduleMarkers": [],
+              "sampledMs": 1.276
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledMs": 1.14
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 1.129
+            },
+            {
+              "script": "/_next/static/chunks/4909-861e29397d4a72cb.js",
+              "webpackModule": "8276",
+              "moduleMarkers": [],
+              "sampledMs": 0.992
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "14491",
+              "moduleMarkers": [],
+              "sampledMs": 0.708
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "76902",
+              "moduleMarkers": [],
+              "sampledMs": 0.464
+            },
+            {
+              "script": "/_next/static/chunks/1552-f4d77c3ad78f4da1.js",
+              "webpackModule": "58651",
+              "moduleMarkers": [],
+              "sampledMs": 0.035
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "18232",
+              "moduleMarkers": [],
+              "sampledMs": 0.003
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 14.154
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 6.877
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 4.21
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "14491",
+              "moduleMarkers": [],
+              "sampledMs": 3.911
+            },
+            {
+              "script": "/_next/static/chunks/4822-2b0c11fe8c07b252.js",
+              "webpackModule": "24822",
+              "moduleMarkers": [],
+              "sampledMs": 2.415
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "webpackModule": "81337",
+              "moduleMarkers": [],
+              "sampledMs": 1.306
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "90800",
+              "moduleMarkers": [],
+              "sampledMs": 1.306
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 1.299
+            },
+            {
+              "script": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+              "webpackModule": "98288",
+              "moduleMarkers": [],
+              "sampledMs": 1.276
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "99487",
+              "moduleMarkers": [],
+              "sampledMs": 1.239
+            },
+            {
+              "script": "/_next/static/chunks/6906-fa61fb83a4a2bd02.js",
+              "webpackModule": "65196",
+              "moduleMarkers": [],
+              "sampledMs": 1.144
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "70464",
+              "moduleMarkers": [],
+              "sampledMs": 1.144
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledMs": 1.14
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 1.129
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "41588",
+              "moduleMarkers": [],
+              "sampledMs": 1.129
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "51792",
+              "moduleMarkers": [],
+              "sampledMs": 1.062
+            },
+            {
+              "script": "/_next/static/chunks/4909-861e29397d4a72cb.js",
+              "webpackModule": "8276",
+              "moduleMarkers": [],
+              "sampledMs": 0.992
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "61655",
+              "moduleMarkers": [],
+              "sampledMs": 0.992
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "webpackModule": "76902",
+              "moduleMarkers": [],
+              "sampledMs": 0.464
+            },
+            {
+              "script": "/_next/static/chunks/6756-2cc64f8af2d0daef.js",
+              "webpackModule": "70738",
+              "moduleMarkers": [],
+              "sampledMs": 0.464
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.464
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "65760",
+              "moduleMarkers": [],
+              "sampledMs": 0.252
+            },
+            {
+              "script": "/_next/static/chunks/4822-2b0c11fe8c07b252.js",
+              "webpackModule": "48568",
+              "moduleMarkers": [],
+              "sampledMs": 0.252
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "webpackModule": "41160",
+              "moduleMarkers": [],
+              "sampledMs": 0.047
+            },
+            {
+              "script": "/_next/static/chunks/1552-f4d77c3ad78f4da1.js",
+              "webpackModule": "58651",
+              "moduleMarkers": [],
+              "sampledMs": 0.035
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "webpackModule": "34478",
+              "moduleMarkers": [],
+              "sampledMs": 0.012
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "18232",
+              "moduleMarkers": [],
+              "sampledMs": 0.003
+            }
+          ],
+          "durationMs": 62.536,
+          "sampleCount": 134,
+          "byScript": [
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 32.892
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 4.098
+            },
+            {
+              "script": "native/automation/query",
+              "sampledSelfMs": 3.332
+            },
+            {
+              "script": "native/automation/(anonymous)",
+              "sampledSelfMs": 2.323
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "sampledSelfMs": 2.174
+            },
+            {
+              "script": "native/automation/isElementHiddenForAria",
+              "sampledSelfMs": 1.861
+            },
+            {
+              "script": "native/automation/getCSSContent",
+              "sampledSelfMs": 1.676
+            },
+            {
+              "script": "native/automation/getComputedStyle",
+              "sampledSelfMs": 1.349
+            },
+            {
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "sampledSelfMs": 1.306
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "sampledSelfMs": 1.299
+            },
+            {
+              "script": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+              "sampledSelfMs": 1.276
+            },
+            {
+              "script": "native/automation/getAriaRole",
+              "sampledSelfMs": 1.235
+            },
+            {
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "sampledSelfMs": 1.172
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "sampledSelfMs": 1.14
+            },
+            {
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "sampledSelfMs": 1.129
+            },
+            {
+              "script": "/_next/static/chunks/4909-861e29397d4a72cb.js",
+              "sampledSelfMs": 0.992
+            },
+            {
+              "script": "native/automation/querySelectorAll",
+              "sampledSelfMs": 0.883
+            },
+            {
+              "script": "native/automation/belongsToDisplayNoneOrAriaHiddenOrNonSlotted",
+              "sampledSelfMs": 0.807
+            },
+            {
+              "script": "native/automation/fetch",
+              "sampledSelfMs": 0.724
+            },
+            {
+              "script": "native/automation/forEach",
+              "sampledSelfMs": 0.42
+            },
+            {
+              "script": "native/automation/pushState",
+              "sampledSelfMs": 0.252
+            },
+            {
+              "script": "native/automation/abort",
+              "sampledSelfMs": 0.095
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.054
+            },
+            {
+              "script": "/_next/static/chunks/1552-f4d77c3ad78f4da1.js",
+              "sampledSelfMs": 0.035
+            },
+            {
+              "script": "native/automation/measure",
+              "sampledSelfMs": 0.012
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 32.892,
+              "sampleCount": 89
+            },
+            {
+              "function": "query",
+              "script": "(no script URL)",
+              "line0": 4953,
+              "column0": 16,
+              "sampledSelfMs": 3.332,
+              "sampleCount": 3
+            },
+            {
+              "function": "isElementHiddenForAria",
+              "script": "(no script URL)",
+              "line0": 3097,
+              "column0": 31,
+              "sampledSelfMs": 1.861,
+              "sampleCount": 2
+            },
+            {
+              "function": "getCSSContent",
+              "script": "(no script URL)",
+              "line0": 3169,
+              "column0": 22,
+              "sampledSelfMs": 1.676,
+              "sampleCount": 2
+            },
+            {
+              "function": "getComputedStyle",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.349,
+              "sampleCount": 1
+            },
+            {
+              "function": "e",
+              "script": "/_next/static/chunks/2578-54adf6b6929ec9cc.js",
+              "line0": 0,
+              "column0": 26171,
+              "scriptSha256": "2332e0dc7d4d5f7a01faf7b8c1cfe0c5b783c8d133c85ef561cb000a876b8581",
+              "webpackModule": "81337",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.306,
+              "sampleCount": 1
+            },
+            {
+              "function": "c",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 19949,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.299,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": 3075,
+              "column0": 20,
+              "sampledSelfMs": 1.289,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+              "line0": 0,
+              "column0": 41041,
+              "scriptSha256": "bcf5d4476b2d4f4eed16ea93c9c39d93f90513b9de17731d7d8d9ed4a7e6655a",
+              "webpackModule": "98288",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.276,
+              "sampleCount": 1
+            },
+            {
+              "function": "getAriaRole",
+              "script": "(no script URL)",
+              "line0": 3080,
+              "column0": 20,
+              "sampledSelfMs": 1.235,
+              "sampleCount": 1
+            },
+            {
+              "function": "p",
+              "script": "/_next/static/chunks/app/layout-5fcb535209446343.js",
+              "line0": 1,
+              "column0": 24058,
+              "scriptSha256": "30beaba9c42ea045ceff9d60ec8bc058dba31d69b3c1ac8bd569176c00071319",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.14,
+              "sampleCount": 1
+            },
+            {
+              "function": "B",
+              "script": "/_next/static/chunks/6229-323872466ac6ae71.js",
+              "line0": 0,
+              "column0": 58310,
+              "scriptSha256": "e4dcf8a63ef423f7479f1ec3cb777b67e4076e66bb4864c68e8636bc3826b074",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.129,
+              "sampleCount": 1
+            },
+            {
+              "function": "A",
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "line0": 1,
+              "column0": 23045,
+              "scriptSha256": "37e9cc83454253b5bb7706a3017e4acc5c16d321eb34b6afadd17ab6d8934762",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.109,
+              "sampleCount": 1
+            },
+            {
+              "function": "e",
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "line0": 1,
+              "column0": 23351,
+              "scriptSha256": "37e9cc83454253b5bb7706a3017e4acc5c16d321eb34b6afadd17ab6d8934762",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.062,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 46037,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.052,
+              "sampleCount": 1
+            },
+            {
+              "function": "useState",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 67913,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.047,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.034,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 47042,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1,
+              "sampleCount": 1
+            },
+            {
+              "function": "o0",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 73576,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.987,
+              "sampleCount": 1
+            },
+            {
+              "function": "querySelectorAll",
+              "script": "(no script URL)",
+              "line0": 6595,
+              "column0": 18,
+              "sampledSelfMs": 0.883,
+              "sampleCount": 1
+            },
+            {
+              "function": "p",
+              "script": "/_next/static/chunks/4909-861e29397d4a72cb.js",
+              "line0": 0,
+              "column0": 1086,
+              "scriptSha256": "166ed31d72b2c70052d06b647e3a81f0d67ed463f335881fe005ada126a69295",
+              "webpackModule": "8276",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.849,
+              "sampleCount": 1
+            },
+            {
+              "function": "belongsToDisplayNoneOrAriaHiddenOrNonSlotted",
+              "script": "(no script URL)",
+              "line0": 3116,
+              "column0": 53,
+              "sampledSelfMs": 0.807,
+              "sampleCount": 1
+            },
+            {
+              "function": "fetch",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.724,
+              "sampleCount": 6
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/626-950005aba9f594f9.js",
+              "line0": 0,
+              "column0": 47963,
+              "scriptSha256": "bef16b44d506693e0deeaf5cb3ff64b43e97c92b19f9b1fffdaa2d16fed80b09",
+              "webpackModule": "14491",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.708,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "tail": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 100.917
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.973
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.973
+            },
+            {
+              "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 0.973
+            }
+          ],
+          "durationMs": 103.311,
+          "sampleCount": 100,
+          "byScript": [
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 100.141
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 0.973
+            },
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 0.772
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.004
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 100.141,
+              "sampleCount": 95
+            },
+            {
+              "function": "ig",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 91481,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.973,
+              "sampleCount": 1
+            },
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.772,
+              "sampleCount": 3
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.004,
+              "sampleCount": 1
+            }
+          ]
+        }
+      },
+      "eventDispatch": [
+        {
+          "type": "pointerup",
+          "durationMs": 0.577
+        },
+        {
+          "type": "click",
+          "durationMs": 1.931
+        }
+      ],
+      "observerFunctionTraceMs": [
+        0.074,
+        48.698
+      ],
+      "nativeGetClientRectsStacks": [
+        {
+          "hitCount": 45,
+          "stack": [
+            {
+              "function": "getClientRects",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": 7,
+              "column0": 17
+            },
+            {
+              "function": "observe",
+              "script": "(no script URL)",
+              "line0": 2,
+              "column0": 22
+            },
+            {
+              "function": "(root)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1
+            }
+          ]
+        }
+      ],
+      "topFunctionTraceIntervals": [
+        {
+          "durationMs": 56.715,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 48.698,
+          "function": "observe",
+          "script": "(injected/unspecified)",
+          "line1": 3,
+          "column1": 23
+        },
+        {
+          "durationMs": 11.046,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        },
+        {
+          "durationMs": 5.03,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        },
+        {
+          "durationMs": 4.259,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 3.992,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 3.598,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        },
+        {
+          "durationMs": 3.022,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        },
+        {
+          "durationMs": 2.91,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        },
+        {
+          "durationMs": 1.827,
+          "function": "fT",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 188888
+        },
+        {
+          "durationMs": 1.216,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-439885ebf40c7725.js",
+          "line1": 1,
+          "column1": 61197
+        }
+      ],
+      "namedIndexedDbFrames": [],
+      "styleLayoutPaintIntervals": [
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.1
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.672
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.008
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.122
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.11
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 4.794
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.777
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 5.137
+        },
+        {
+          "name": "Layout",
+          "durationMs": 2.368
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.97
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.837
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.007
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.51
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.365
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.694
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.03
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.692
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.006
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.173
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.711
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.889
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.697
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.796
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.995
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.442
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.449
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.518
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.771
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.773
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.204
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.87
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.886
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.014
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.883
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.673
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.989
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.192
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.879
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.473
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.215
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.576
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.156
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.577
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.505
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.322
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.871
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.526
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.984
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.758
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.436
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.49
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.312
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.831
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.805
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.706
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.013
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.611
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.306
+        },
+        {
+          "name": "Paint",
+          "durationMs": 2.68
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.037
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.707
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.524
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.414
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.005
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.003
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.026
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.006
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.031
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.74
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.021
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.497
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.554
+        }
+      ]
+    },
+    "candidate": {
+      "rawSha256": {
+        "cpu": "e33b74a2b9af1953dc517407be5e9b10be4231e8c2312cc3d6bba3cb59ab1691",
+        "trace": "3661ee53d4f1a1c254ac9ad2ac61bc148a96fd70f2b05a4aa79ab5181ec2ea54"
+      },
+      "sampleTimeHandling": {
+        "negativeRawDeltaCount": 34,
+        "method": "Accumulate original deltas into absolute sample timestamps, sort chronologically (stable original index tie-break), weight intervals since previous chronological sample, clip to phase; preserve raw profile unchanged."
+      },
+      "cpuRecordedMs": 811.268,
+      "phases": {
+        "pre-input": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 488.591
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41511",
+              "moduleMarkers": [],
+              "sampledMs": 0.968
+            },
+            {
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "webpackModule": "35679",
+              "moduleMarkers": [],
+              "sampledMs": 0.8
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.754
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "webpackModule": "35679",
+              "moduleMarkers": [],
+              "sampledMs": 1.844
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41511",
+              "moduleMarkers": [],
+              "sampledMs": 0.968
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.754
+            }
+          ],
+          "durationMs": 491.113,
+          "sampleCount": 49,
+          "byScript": [
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 466.59
+            },
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 17.684
+            },
+            {
+              "script": "native/automation/contains",
+              "sampledSelfMs": 1.091
+            },
+            {
+              "script": "native/automation/(anonymous)",
+              "sampledSelfMs": 1.059
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "sampledSelfMs": 0.968
+            },
+            {
+              "script": "native/automation/query",
+              "sampledSelfMs": 0.812
+            },
+            {
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "sampledSelfMs": 0.8
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 0.754
+            },
+            {
+              "script": "native/automation/elementsFromPoint",
+              "sampledSelfMs": 0.638
+            },
+            {
+              "script": "native/automation/enclosingShadowRootOrDocument",
+              "sampledSelfMs": 0.607
+            },
+            {
+              "script": "native/automation/put",
+              "sampledSelfMs": 0.076
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.034
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 466.59,
+              "sampleCount": 22
+            },
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 17.684,
+              "sampleCount": 16
+            },
+            {
+              "function": "contains",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.091,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.059,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 23693,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "41511",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.968,
+              "sampleCount": 1
+            },
+            {
+              "function": "query",
+              "script": "(no script URL)",
+              "line0": 5259,
+              "column0": 20,
+              "sampledSelfMs": 0.812,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "line0": 0,
+              "column0": 5412,
+              "scriptSha256": "f65441fa12ea7d2d6e9c5cf127c9070234e9acaf62df191911d8ed1bebdd989a",
+              "webpackModule": "35679",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.793,
+              "sampleCount": 1
+            },
+            {
+              "function": "nU",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 20174,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.754,
+              "sampleCount": 1
+            },
+            {
+              "function": "elementsFromPoint",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.638,
+              "sampleCount": 1
+            },
+            {
+              "function": "enclosingShadowRootOrDocument",
+              "script": "(no script URL)",
+              "line0": 2685,
+              "column0": 38,
+              "sampledSelfMs": 0.607,
+              "sampleCount": 1
+            },
+            {
+              "function": "put",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.076,
+              "sampleCount": 1
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.034,
+              "sampleCount": 1
+            },
+            {
+              "function": "write",
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "line0": 0,
+              "column0": 4008,
+              "scriptSha256": "f65441fa12ea7d2d6e9c5cf127c9070234e9acaf62df191911d8ed1bebdd989a",
+              "webpackModule": "35679",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.007,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "pointer-to-click": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 3.746
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 2.11
+            },
+            {
+              "script": "/_next/static/chunks/app/jobs/%5BjobId%5D/material-lists/page-da8bf3670591b857.js",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 1.193
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.298
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 2.11
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "70216",
+              "moduleMarkers": [
+                "press-gesture-code"
+              ],
+              "sampledMs": 0.702
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.298
+            }
+          ],
+          "durationMs": 7.347,
+          "sampleCount": 34,
+          "byScript": [
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 3.707
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 2.11
+            },
+            {
+              "script": "/_next/static/chunks/app/jobs/%5BjobId%5D/material-lists/page-da8bf3670591b857.js",
+              "sampledSelfMs": 1.193
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "sampledSelfMs": 0.298
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.039
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 3.707,
+              "sampleCount": 27
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/app/jobs/%5BjobId%5D/material-lists/page-da8bf3670591b857.js",
+              "line0": 0,
+              "column0": 5046,
+              "sampledSelfMs": 1.193,
+              "sampleCount": 1
+            },
+            {
+              "function": "lt",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 39953,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.727,
+              "sampleCount": 1
+            },
+            {
+              "function": "eW",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 8796,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.702,
+              "sampleCount": 1
+            },
+            {
+              "function": "nu",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 10428,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.681,
+              "sampleCount": 1
+            },
+            {
+              "function": "tU",
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "line0": 0,
+              "column0": 30098,
+              "scriptSha256": "3638bef2076fafbe681debe8858b4a11fb4157fd83965f5f015b8d2dca966229",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledSelfMs": 0.298,
+              "sampleCount": 1
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.039,
+              "sampleCount": 2
+            }
+          ]
+        },
+        "click-to-ready": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 89.555
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 20.628
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 5.421
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 3.466
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledMs": 2.925
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "87444",
+              "moduleMarkers": [
+                "material-row-code"
+              ],
+              "sampledMs": 2.642
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledMs": 2.634
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83094",
+              "moduleMarkers": [],
+              "sampledMs": 1.864
+            },
+            {
+              "script": "/_next/static/chunks/8663-0a293889e1c5734f.js",
+              "webpackModule": "51041",
+              "moduleMarkers": [],
+              "sampledMs": 1.838
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledMs": 1.696
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "12569",
+              "moduleMarkers": [
+                "queued-receipt-intent-code"
+              ],
+              "sampledMs": 1.629
+            },
+            {
+              "script": "/_next/static/chunks/449-b44955a00ba27fd0.js",
+              "webpackModule": "53895",
+              "moduleMarkers": [],
+              "sampledMs": 1.556
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "38577",
+              "moduleMarkers": [],
+              "sampledMs": 1.555
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "33083",
+              "moduleMarkers": [
+                "queued-receipt-intent-code",
+                "instant-receipt-code"
+              ],
+              "sampledMs": 1.419
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "61655",
+              "moduleMarkers": [],
+              "sampledMs": 1.344
+            },
+            {
+              "script": "/_next/static/chunks/5264-1159397ebf773b47.js",
+              "webpackModule": "66012",
+              "moduleMarkers": [],
+              "sampledMs": 1.259
+            },
+            {
+              "script": "/_next/static/chunks/6630-763cf8a407c2da5b.js",
+              "webpackModule": "66630",
+              "moduleMarkers": [],
+              "sampledMs": 1.179
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "88479",
+              "moduleMarkers": [],
+              "sampledMs": 1.053
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "60478",
+              "moduleMarkers": [],
+              "sampledMs": 0.984
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "97160",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 0.709
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "23747",
+              "moduleMarkers": [
+                "shared-button-code"
+              ],
+              "sampledMs": 0.64
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "85032",
+              "moduleMarkers": [],
+              "sampledMs": 0.494
+            },
+            {
+              "script": "/_next/static/chunks/5969-783268106e73e806.js",
+              "webpackModule": "15969",
+              "moduleMarkers": [],
+              "sampledMs": 0.441
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 77.234
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 15.744
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 8.874
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "33083",
+              "moduleMarkers": [
+                "queued-receipt-intent-code",
+                "instant-receipt-code"
+              ],
+              "sampledMs": 7.533
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledMs": 5.421
+            },
+            {
+              "script": "/_next/static/chunks/8663-0a293889e1c5734f.js",
+              "webpackModule": "51041",
+              "moduleMarkers": [],
+              "sampledMs": 5.411
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledMs": 5.219
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "87444",
+              "moduleMarkers": [
+                "material-row-code"
+              ],
+              "sampledMs": 5.079
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83094",
+              "moduleMarkers": [],
+              "sampledMs": 4.847
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledMs": 3.994
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 3.86
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41588",
+              "moduleMarkers": [],
+              "sampledMs": 3.86
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "47864",
+              "moduleMarkers": [],
+              "sampledMs": 3.805
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "65196",
+              "moduleMarkers": [],
+              "sampledMs": 3.16
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "86357",
+              "moduleMarkers": [],
+              "sampledMs": 3.151
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledMs": 2.489
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "88479",
+              "moduleMarkers": [],
+              "sampledMs": 1.934
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "47046",
+              "moduleMarkers": [],
+              "sampledMs": 1.736
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "70216",
+              "moduleMarkers": [
+                "press-gesture-code"
+              ],
+              "sampledMs": 1.668
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "12569",
+              "moduleMarkers": [
+                "queued-receipt-intent-code"
+              ],
+              "sampledMs": 1.629
+            },
+            {
+              "script": "/_next/static/chunks/449-b44955a00ba27fd0.js",
+              "webpackModule": "53895",
+              "moduleMarkers": [],
+              "sampledMs": 1.556
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "38577",
+              "moduleMarkers": [],
+              "sampledMs": 1.555
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "40528",
+              "moduleMarkers": [],
+              "sampledMs": 1.555
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "23747",
+              "moduleMarkers": [
+                "shared-button-code"
+              ],
+              "sampledMs": 1.528
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "61655",
+              "moduleMarkers": [],
+              "sampledMs": 1.344
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "68859",
+              "moduleMarkers": [],
+              "sampledMs": 1.287
+            },
+            {
+              "script": "/_next/static/chunks/5264-1159397ebf773b47.js",
+              "webpackModule": "66012",
+              "moduleMarkers": [],
+              "sampledMs": 1.259
+            },
+            {
+              "script": "/_next/static/chunks/6630-763cf8a407c2da5b.js",
+              "webpackModule": "66630",
+              "moduleMarkers": [],
+              "sampledMs": 1.179
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "83405",
+              "moduleMarkers": [],
+              "sampledMs": 1.005
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "60478",
+              "moduleMarkers": [],
+              "sampledMs": 0.984
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "51792",
+              "moduleMarkers": [],
+              "sampledMs": 0.984
+            },
+            {
+              "script": "/_next/static/chunks/5383-34f84d55c1bd6c0b.js",
+              "webpackModule": "35383",
+              "moduleMarkers": [],
+              "sampledMs": 0.977
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "webpackModule": "50341",
+              "moduleMarkers": [],
+              "sampledMs": 0.895
+            },
+            {
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "webpackModule": "35679",
+              "moduleMarkers": [],
+              "sampledMs": 0.793
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "14441",
+              "moduleMarkers": [],
+              "sampledMs": 0.793
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "97160",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "42208",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "75595",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "5632",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "88878",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "18804",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "38340",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "70824",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "86185",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/2911-27e47a0af49148c2.js",
+              "webpackModule": "92911",
+              "moduleMarkers": [],
+              "sampledMs": 0.78
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "85032",
+              "moduleMarkers": [],
+              "sampledMs": 0.494
+            },
+            {
+              "script": "/_next/static/chunks/5969-783268106e73e806.js",
+              "webpackModule": "15969",
+              "moduleMarkers": [],
+              "sampledMs": 0.441
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "65760",
+              "moduleMarkers": [],
+              "sampledMs": 0.415
+            }
+          ],
+          "durationMs": 147.711,
+          "sampleCount": 172,
+          "byScript": [
+            {
+              "script": "native/automation/getClientRects",
+              "sampledSelfMs": 48.078
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 20.628
+            },
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 13.061
+            },
+            {
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "sampledSelfMs": 9.039
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "sampledSelfMs": 7.171
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "sampledSelfMs": 5.816
+            },
+            {
+              "script": "native/automation/removeChild",
+              "sampledSelfMs": 5.729
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "sampledSelfMs": 4.271
+            },
+            {
+              "script": "native/automation/appendChild",
+              "sampledSelfMs": 3.722
+            },
+            {
+              "script": "native/automation/setAttribute",
+              "sampledSelfMs": 2.936
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "sampledSelfMs": 2.763
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "sampledSelfMs": 2.195
+            },
+            {
+              "script": "native/automation/fetch",
+              "sampledSelfMs": 2.107
+            },
+            {
+              "script": "/_next/static/chunks/8663-0a293889e1c5734f.js",
+              "sampledSelfMs": 1.838
+            },
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 1.748
+            },
+            {
+              "script": "native/automation/read",
+              "sampledSelfMs": 1.736
+            },
+            {
+              "script": "/_next/static/chunks/449-b44955a00ba27fd0.js",
+              "sampledSelfMs": 1.556
+            },
+            {
+              "script": "native/automation/URL",
+              "sampledSelfMs": 1.468
+            },
+            {
+              "script": "native/automation/query",
+              "sampledSelfMs": 1.455
+            },
+            {
+              "script": "/_next/static/chunks/5264-1159397ebf773b47.js",
+              "sampledSelfMs": 1.259
+            },
+            {
+              "script": "/_next/static/chunks/6630-763cf8a407c2da5b.js",
+              "sampledSelfMs": 1.179
+            },
+            {
+              "script": "native/automation/getBoundingClientRect",
+              "sampledSelfMs": 1.069
+            },
+            {
+              "script": "native/automation/getImplicitAriaRole",
+              "sampledSelfMs": 1.007
+            },
+            {
+              "script": "native/automation/querySelectorAll",
+              "sampledSelfMs": 1.005
+            },
+            {
+              "script": "native/automation/set value",
+              "sampledSelfMs": 0.997
+            },
+            {
+              "script": "native/automation/getAriaRole",
+              "sampledSelfMs": 0.954
+            },
+            {
+              "script": "native/automation/checkVisibility",
+              "sampledSelfMs": 0.937
+            },
+            {
+              "script": "native/automation/clearTimeout",
+              "sampledSelfMs": 0.793
+            },
+            {
+              "script": "native/automation/(anonymous)",
+              "sampledSelfMs": 0.652
+            },
+            {
+              "script": "/_next/static/chunks/5969-783268106e73e806.js",
+              "sampledSelfMs": 0.441
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.101
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "getClientRects",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 48.078,
+              "sampleCount": 46
+            },
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 13.061,
+              "sampleCount": 39
+            },
+            {
+              "function": "removeChild",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 5.729,
+              "sampleCount": 5
+            },
+            {
+              "function": "ca",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 158690,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 3.738,
+              "sampleCount": 3
+            },
+            {
+              "function": "appendChild",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 3.722,
+              "sampleCount": 4
+            },
+            {
+              "function": "ak",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 53019,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 2.981,
+              "sampleCount": 3
+            },
+            {
+              "function": "setAttribute",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.936,
+              "sampleCount": 3
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "line0": 1,
+              "column0": 9205,
+              "scriptSha256": "8aea87eccd10a56a8e4f171229c0b8e2caf58f99ff262bb3008fa2896da1f46b",
+              "webpackModule": "52453",
+              "moduleMarkers": [],
+              "sampledSelfMs": 2.925,
+              "sampleCount": 3
+            },
+            {
+              "function": "t.cloneElement",
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "line0": 1,
+              "column0": 26779,
+              "scriptSha256": "8aea87eccd10a56a8e4f171229c0b8e2caf58f99ff262bb3008fa2896da1f46b",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledSelfMs": 2.585,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 20421,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledSelfMs": 2.245,
+              "sampleCount": 2
+            },
+            {
+              "function": "fetch",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.107,
+              "sampleCount": 2
+            },
+            {
+              "function": "um",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 115945,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 2.044,
+              "sampleCount": 2
+            },
+            {
+              "function": "h",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 72890,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "83094",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.864,
+              "sampleCount": 2
+            },
+            {
+              "function": "c",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 19949,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "79183",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.848,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/8663-0a293889e1c5734f.js",
+              "line0": 0,
+              "column0": 47104,
+              "scriptSha256": "b4e1f41660c50ef2ee36fb707ff093d4bbde63c6c9ef68db7c7a2145ccd6a103",
+              "webpackModule": "51041",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.838,
+              "sampleCount": 2
+            },
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.748,
+              "sampleCount": 2
+            },
+            {
+              "function": "read",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.736,
+              "sampleCount": 1
+            },
+            {
+              "function": "setOptions",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 7643,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.696,
+              "sampleCount": 1
+            },
+            {
+              "function": "i",
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "line0": 0,
+              "column0": 3421,
+              "scriptSha256": "0e02ccbdd7a161979433934c394ffb356f0191decc221e559cc97573c789e708",
+              "webpackModule": "12569",
+              "moduleMarkers": [
+                "queued-receipt-intent-code"
+              ],
+              "sampledSelfMs": 1.629,
+              "sampleCount": 1
+            },
+            {
+              "function": "rS",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 32905,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.557,
+              "sampleCount": 2
+            },
+            {
+              "function": "r",
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "line0": 1,
+              "column0": 3198,
+              "scriptSha256": "aef7c7fa85cf6447bad576780ce20937203b7c1c411d4ffc4b6d894d39dc1cc1",
+              "webpackModule": "38577",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.555,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/368-6ce8b22456ab9b29.js",
+              "line0": 4,
+              "column0": 5115,
+              "scriptSha256": "57af846afbedfa84648a134ffecc1c62202b3c86c851df520f0c722c23469d7c",
+              "webpackModule": "59709",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.515,
+              "sampleCount": 1
+            },
+            {
+              "function": "URL",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.468,
+              "sampleCount": 2
+            },
+            {
+              "function": "query",
+              "script": "(no script URL)",
+              "line0": 4953,
+              "column0": 16,
+              "sampledSelfMs": 1.455,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "ready-to-two-raf": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 44.242
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 3.264
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledMs": 1.977
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledMs": 1.77
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "33083",
+              "moduleMarkers": [
+                "queued-receipt-intent-code",
+                "instant-receipt-code"
+              ],
+              "sampledMs": 1.539
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "88479",
+              "moduleMarkers": [],
+              "sampledMs": 1.472
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "87444",
+              "moduleMarkers": [
+                "material-row-code"
+              ],
+              "sampledMs": 1.126
+            },
+            {
+              "script": "/_next/static/chunks/4822-8bd2460ed11bce30.js",
+              "webpackModule": "24822",
+              "moduleMarkers": [],
+              "sampledMs": 1.093
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledMs": 1.052
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "1053",
+              "moduleMarkers": [],
+              "sampledMs": 0.936
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "62773",
+              "moduleMarkers": [],
+              "sampledMs": 0.911
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.894
+            },
+            {
+              "script": "/_next/static/chunks/9661-fd1cd2446438c046.js",
+              "webpackModule": "8276",
+              "moduleMarkers": [],
+              "sampledMs": 0.86
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "68859",
+              "moduleMarkers": [],
+              "sampledMs": 0.796
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41588",
+              "moduleMarkers": [],
+              "sampledMs": 0.757
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "99487",
+              "moduleMarkers": [],
+              "sampledMs": 0.006
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 16.153
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 7.761
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "33083",
+              "moduleMarkers": [
+                "queued-receipt-intent-code",
+                "instant-receipt-code"
+              ],
+              "sampledMs": 3.952
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "99487",
+              "moduleMarkers": [],
+              "sampledMs": 3.221
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledMs": 1.988
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledMs": 1.977
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83094",
+              "moduleMarkers": [],
+              "sampledMs": 1.81
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledMs": 1.77
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41588",
+              "moduleMarkers": [],
+              "sampledMs": 1.553
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "88479",
+              "moduleMarkers": [],
+              "sampledMs": 1.472
+            },
+            {
+              "script": "/_next/static/chunks/8675-e414b7f14ef2182d.js",
+              "webpackModule": "70464",
+              "moduleMarkers": [],
+              "sampledMs": 1.291
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "65196",
+              "moduleMarkers": [],
+              "sampledMs": 1.241
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "webpackModule": "87444",
+              "moduleMarkers": [
+                "material-row-code"
+              ],
+              "sampledMs": 1.126
+            },
+            {
+              "script": "/_next/static/chunks/4822-8bd2460ed11bce30.js",
+              "webpackModule": "24822",
+              "moduleMarkers": [],
+              "sampledMs": 1.093
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "72649",
+              "moduleMarkers": [],
+              "sampledMs": 0.963
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "14441",
+              "moduleMarkers": [],
+              "sampledMs": 0.963
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "1053",
+              "moduleMarkers": [],
+              "sampledMs": 0.936
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "17008",
+              "moduleMarkers": [],
+              "sampledMs": 0.936
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "44963",
+              "moduleMarkers": [],
+              "sampledMs": 0.936
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "62773",
+              "moduleMarkers": [],
+              "sampledMs": 0.911
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "webpackModule": "33875",
+              "moduleMarkers": [
+                "replicache-idb-code"
+              ],
+              "sampledMs": 0.894
+            },
+            {
+              "script": "/_next/static/chunks/9661-fd1cd2446438c046.js",
+              "webpackModule": "8276",
+              "moduleMarkers": [],
+              "sampledMs": 0.86
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "webpackModule": "61655",
+              "moduleMarkers": [],
+              "sampledMs": 0.86
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "61954",
+              "moduleMarkers": [],
+              "sampledMs": 0.86
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "16008",
+              "moduleMarkers": [],
+              "sampledMs": 0.82
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "68859",
+              "moduleMarkers": [],
+              "sampledMs": 0.796
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "86357",
+              "moduleMarkers": [],
+              "sampledMs": 0.796
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "83009",
+              "moduleMarkers": [],
+              "sampledMs": 0.796
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "webpackModule": "83405",
+              "moduleMarkers": [],
+              "sampledMs": 0.142
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "webpackModule": "41160",
+              "moduleMarkers": [],
+              "sampledMs": 0.05
+            }
+          ],
+          "durationMs": 62.695,
+          "sampleCount": 134,
+          "byScript": [
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 22.731
+            },
+            {
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "sampledSelfMs": 5.008
+            },
+            {
+              "script": "native/automation/isElementHiddenForAria",
+              "sampledSelfMs": 3.478
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 3.264
+            },
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 2.967
+            },
+            {
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "sampledSelfMs": 2.45
+            },
+            {
+              "script": "native/automation/isElementStyleVisibilityVisible",
+              "sampledSelfMs": 1.774
+            },
+            {
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "sampledSelfMs": 1.77
+            },
+            {
+              "script": "native/automation/isElementIgnoredForAria",
+              "sampledSelfMs": 1.409
+            },
+            {
+              "script": "native/automation/(anonymous)",
+              "sampledSelfMs": 1.325
+            },
+            {
+              "script": "native/automation/parentElementOrShadowHost",
+              "sampledSelfMs": 1.284
+            },
+            {
+              "script": "native/automation/matchesAttributePart",
+              "sampledSelfMs": 1.267
+            },
+            {
+              "script": "native/automation/closest",
+              "sampledSelfMs": 1.154
+            },
+            {
+              "script": "native/automation/fetch",
+              "sampledSelfMs": 1.136
+            },
+            {
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "sampledSelfMs": 1.126
+            },
+            {
+              "script": "/_next/static/chunks/4822-8bd2460ed11bce30.js",
+              "sampledSelfMs": 1.093
+            },
+            {
+              "script": "native/automation/pipeThrough",
+              "sampledSelfMs": 1.065
+            },
+            {
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "sampledSelfMs": 1.052
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "sampledSelfMs": 0.936
+            },
+            {
+              "script": "native/automation/match",
+              "sampledSelfMs": 0.92
+            },
+            {
+              "script": "native/automation/getCSSContent",
+              "sampledSelfMs": 0.904
+            },
+            {
+              "script": "/_next/static/chunks/6022d3e3-4f329216a6203e66.js",
+              "sampledSelfMs": 0.894
+            },
+            {
+              "script": "native/automation/postMessage",
+              "sampledSelfMs": 0.863
+            },
+            {
+              "script": "/_next/static/chunks/9661-fd1cd2446438c046.js",
+              "sampledSelfMs": 0.86
+            },
+            {
+              "script": "native/automation/getReader",
+              "sampledSelfMs": 0.82
+            },
+            {
+              "script": "native/automation/dispatchEvent",
+              "sampledSelfMs": 0.454
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.355
+            },
+            {
+              "script": "native/automation/getItem",
+              "sampledSelfMs": 0.129
+            },
+            {
+              "script": "native/automation/forEach",
+              "sampledSelfMs": 0.105
+            },
+            {
+              "script": "native/automation/abort",
+              "sampledSelfMs": 0.089
+            },
+            {
+              "script": "native/automation/measure",
+              "sampledSelfMs": 0.013
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 22.731,
+              "sampleCount": 81
+            },
+            {
+              "function": "isElementHiddenForAria",
+              "script": "(no script URL)",
+              "line0": 3097,
+              "column0": 31,
+              "sampledSelfMs": 3.478,
+              "sampleCount": 3
+            },
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 2.967,
+              "sampleCount": 3
+            },
+            {
+              "function": "isElementStyleVisibilityVisible",
+              "script": "(no script URL)",
+              "line0": 2715,
+              "column0": 40,
+              "sampledSelfMs": 1.774,
+              "sampleCount": 2
+            },
+            {
+              "function": "c",
+              "script": "/_next/static/chunks/app/layout-6326961aa985cac4.js",
+              "line0": 1,
+              "column0": 27472,
+              "scriptSha256": "aef7c7fa85cf6447bad576780ce20937203b7c1c411d4ffc4b6d894d39dc1cc1",
+              "webpackModule": "91615",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.77,
+              "sampleCount": 1
+            },
+            {
+              "function": "s",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 79479,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "88479",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.472,
+              "sampleCount": 1
+            },
+            {
+              "function": "isElementIgnoredForAria",
+              "script": "(no script URL)",
+              "line0": 3094,
+              "column0": 32,
+              "sampledSelfMs": 1.409,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": 0,
+              "column0": 0,
+              "sampledSelfMs": 1.325,
+              "sampleCount": 1
+            },
+            {
+              "function": "parentElementOrShadowHost",
+              "script": "(no script URL)",
+              "line0": 2677,
+              "column0": 34,
+              "sampledSelfMs": 1.284,
+              "sampleCount": 1
+            },
+            {
+              "function": "uk",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 119531,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.27,
+              "sampleCount": 1
+            },
+            {
+              "function": "matchesAttributePart",
+              "script": "(no script URL)",
+              "line0": 4743,
+              "column0": 29,
+              "sampledSelfMs": 1.267,
+              "sampleCount": 1
+            },
+            {
+              "function": "closest",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.154,
+              "sampleCount": 1
+            },
+            {
+              "function": "fetch",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.136,
+              "sampleCount": 6
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/9528-fb6d3c041107fc7b.js",
+              "line0": 0,
+              "column0": 20515,
+              "scriptSha256": "0e02ccbdd7a161979433934c394ffb356f0191decc221e559cc97573c789e708",
+              "webpackModule": "87444",
+              "moduleMarkers": [
+                "material-row-code"
+              ],
+              "sampledSelfMs": 1.126,
+              "sampleCount": 1
+            },
+            {
+              "function": "tq",
+              "script": "/_next/static/chunks/1854-2a3168e21dca1f83.js",
+              "line0": 0,
+              "column0": 57543,
+              "scriptSha256": "3da57053c65b1a9501a8aca99a2fbead4e35c6c6a0e706f3e752ea50833514d5",
+              "webpackModule": "33083",
+              "moduleMarkers": [
+                "queued-receipt-intent-code",
+                "instant-receipt-code"
+              ],
+              "sampledSelfMs": 1.102,
+              "sampleCount": 2
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/4822-8bd2460ed11bce30.js",
+              "line0": 0,
+              "column0": 312,
+              "scriptSha256": "604dd773a592cbc062b9708b81a7db41a3af739812b735e8f3605455c5370042",
+              "webpackModule": "24822",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.093,
+              "sampleCount": 1
+            },
+            {
+              "function": "pipeThrough",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 1.065,
+              "sampleCount": 1
+            },
+            {
+              "function": "m",
+              "script": "/_next/static/chunks/2184-aad60dbe1f50e97c.js",
+              "line0": 0,
+              "column0": 4054,
+              "scriptSha256": "566a371f8332e984fccad9d82fa3c945685eddfa8f3467c3be61441acd69f67c",
+              "webpackModule": "52184",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.052,
+              "sampleCount": 1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 93754,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 1.016,
+              "sampleCount": 1
+            },
+            {
+              "function": "setOptions",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 7643,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledSelfMs": 1.014,
+              "sampleCount": 1
+            },
+            {
+              "function": "aw",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 53203,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.978,
+              "sampleCount": 1
+            },
+            {
+              "function": "onQueryUpdate",
+              "script": "/_next/static/chunks/6229-0e4b2a0f09aa03ae.js",
+              "line0": 0,
+              "column0": 12973,
+              "scriptSha256": "5feced260a03b0722d7f885dac9b9298fbd245037f4ad65dfcc361145d57673e",
+              "webpackModule": "22327",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.963,
+              "sampleCount": 1
+            },
+            {
+              "function": "r",
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "line0": 0,
+              "column0": 1055,
+              "scriptSha256": "8aea87eccd10a56a8e4f171229c0b8e2caf58f99ff262bb3008fa2896da1f46b",
+              "webpackModule": "1053",
+              "moduleMarkers": [],
+              "sampledSelfMs": 0.936,
+              "sampleCount": 1
+            },
+            {
+              "function": "match",
+              "script": "(no script URL)",
+              "line0": 4922,
+              "column0": 16,
+              "sampledSelfMs": 0.92,
+              "sampleCount": 1
+            }
+          ]
+        },
+        "tail": {
+          "byModuleSelf": [
+            {
+              "script": "(no script URL)",
+              "webpackModule": null,
+              "moduleMarkers": [],
+              "sampledMs": 100.926
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.706
+            }
+          ],
+          "byModuleInclusive": [
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledMs": 0.706
+            },
+            {
+              "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+              "webpackModule": "44737",
+              "moduleMarkers": [],
+              "sampledMs": 0.706
+            }
+          ],
+          "durationMs": 102.402,
+          "sampleCount": 100,
+          "byScript": [
+            {
+              "script": "native/automation/(idle)",
+              "sampledSelfMs": 75.691
+            },
+            {
+              "script": "native/automation/(garbage collector)",
+              "sampledSelfMs": 13.769
+            },
+            {
+              "script": "native/automation/(program)",
+              "sampledSelfMs": 11.462
+            },
+            {
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "sampledSelfMs": 0.706
+            },
+            {
+              "script": "native/automation/mark",
+              "sampledSelfMs": 0.004
+            }
+          ],
+          "topFrames": [
+            {
+              "function": "(idle)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 75.691,
+              "sampleCount": 71
+            },
+            {
+              "function": "(garbage collector)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 13.769,
+              "sampleCount": 13
+            },
+            {
+              "function": "(program)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 11.462,
+              "sampleCount": 14
+            },
+            {
+              "function": "(anonymous)",
+              "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+              "line0": 0,
+              "column0": 122156,
+              "scriptSha256": "3a56e87bc65cfaae4f450a7cce015a30c319888862e2d3be56f1e413913c3ab4",
+              "webpackModule": "1120",
+              "moduleMarkers": [
+                "react-runtime-code"
+              ],
+              "sampledSelfMs": 0.706,
+              "sampleCount": 1
+            },
+            {
+              "function": "mark",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1,
+              "sampledSelfMs": 0.004,
+              "sampleCount": 1
+            }
+          ]
+        }
+      },
+      "eventDispatch": [
+        {
+          "type": "pointerup",
+          "durationMs": 1.539
+        },
+        {
+          "type": "click",
+          "durationMs": 1.985
+        }
+      ],
+      "observerFunctionTraceMs": [
+        0.06,
+        0.012,
+        0.013,
+        48.203
+      ],
+      "nativeGetClientRectsStacks": [
+        {
+          "hitCount": 46,
+          "stack": [
+            {
+              "function": "getClientRects",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1
+            },
+            {
+              "function": "(anonymous)",
+              "script": "(no script URL)",
+              "line0": 7,
+              "column0": 17
+            },
+            {
+              "function": "observe",
+              "script": "(no script URL)",
+              "line0": 2,
+              "column0": 22
+            },
+            {
+              "function": "(root)",
+              "script": "(no script URL)",
+              "line0": -1,
+              "column0": -1
+            }
+          ]
+        }
+      ],
+      "topFunctionTraceIntervals": [
+        {
+          "durationMs": 57.024,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 48.203,
+          "function": "observe",
+          "script": "(injected/unspecified)",
+          "line1": 3,
+          "column1": 23
+        },
+        {
+          "durationMs": 10.168,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 6.501,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 4.428,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 4.426,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        },
+        {
+          "durationMs": 4.05,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 4.035,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 3.916,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 1.672,
+          "function": "fT",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 188888
+        },
+        {
+          "durationMs": 1.315,
+          "function": "M",
+          "script": "/_next/static/chunks/7170-70e561883f235b2f.js",
+          "line1": 1,
+          "column1": 61199
+        },
+        {
+          "durationMs": 1.039,
+          "function": "(anonymous)",
+          "script": "/_next/static/chunks/b8732823-7797ec9f260ecd81.js",
+          "line1": 1,
+          "column1": 147376
+        }
+      ],
+      "namedIndexedDbFrames": [],
+      "styleLayoutPaintIntervals": [
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.165
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.388
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.67
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.762
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.506
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.006
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.783
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.77
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 3.067
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 2.522
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.115
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.01
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 4.934
+        },
+        {
+          "name": "Layout",
+          "durationMs": 2.279
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.302
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.287
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.718
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.891
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.85
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.619
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.997
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.857
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.492
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.113
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.029
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.698
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.887
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.462
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.285
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.434
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.012
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.188
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.922
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.779
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.837
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.519
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.49
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.021
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.084
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.178
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.395
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.698
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.075
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.495
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.803
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.73
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.751
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.939
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.35
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.191
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.637
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.572
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.034
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.656
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.914
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.904
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.824
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.468
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 1.211
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.709
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.009
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.066
+        },
+        {
+          "name": "Layout",
+          "durationMs": 1.029
+        },
+        {
+          "name": "Paint",
+          "durationMs": 2.647
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.077
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.332
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.121
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.097
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.005
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.003
+        },
+        {
+          "name": "Paint",
+          "durationMs": 0.027
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.589
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.03
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.653
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.023
+        },
+        {
+          "name": "Layout",
+          "durationMs": 0.08
+        },
+        {
+          "name": "UpdateLayoutTree",
+          "durationMs": 0.037
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "One profiled navigation per source; no statistical, regression-pass or causal claim.",
+    "Sampling/timeline instrumentation and the injected MutationObserver perturb execution.",
+    "Sample weights approximate self time; raw negative deltas are retained and cumulative sample timestamps are sorted only for analysis, then interval edges are clipped to each phase.",
+    "Minified webpack module markers identify code present, not necessarily the sampled component or render/commit phase.",
+    "Trace duration rows can nest/overlap and must not be added together.",
+    "Idle/program/native/automation samples are retained separately; missing IndexedDB samples do not prove no IndexedDB waiting.",
+    "Provider startup uses synthetic auth and a nonhex lab build tag; no private-SW or physical-device proof."
+  ]
+}
