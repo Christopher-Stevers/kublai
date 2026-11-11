@@ -678,7 +678,7 @@ export function PartDetailsDialog({
   });
 
   const instantPartImage = useInstantPartImage({
-    partId,
+    partId: partId ?? undefined,
     enabled: open && isOnline && isEditMode && Boolean(part?.isOrgSpecific) && !updatePart.isPending,
     visibleImage: imageUrl,
     onPreview: (image) => {
