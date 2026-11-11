@@ -1,0 +1,12 @@
+{
+  "serverPid": 4081791,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "ownedPorts3483And3484Closed": true,
+  "coordinatorExitCode": 0,
+  "unexpectedDatabaseErrors": 0,
+  "expectedAdministratorFatal": 1,
+  "assertionsPassed": 8,
+  "fullMatrixNotStarted": true,
+  "noRetry": true
+}

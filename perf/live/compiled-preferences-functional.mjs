@@ -27,7 +27,7 @@ const methodHashes = () =>
     methodFiles.map((file) => [file, sha(new URL(file, import.meta.url))]),
   );
 const report = {
-  protocol: "compiled-preferences-functional-v4",
+  protocol: "compiled-preferences-functional-v6",
   status: "incomplete",
   acceptedGateEvidence: false,
   physicalPhoneEvidence: false,
@@ -42,12 +42,64 @@ const report = {
   wireResponses: [],
   frames: [],
   controlledMutations: [],
+  publicExecutiveStates: [],
   limitations: [
     "Synthetic Clerk identity; actual app HTTP/SQL/SSE/UI, not live Clerk session revocation proof.",
     "Functional intervals and fault injection are separate from the frozen timing driver and ten-minute idle.",
     "Suppresses one covered preference interval only; other polls/server work remain.",
   ],
 };
+async function executiveState(page, checkpoint, expected = "granted") {
+  const edit = page.getByRole("button", { name: "Edit executive sorting", exact: true });
+  const close = page.getByRole("button", { name: "Close executive settings", exact: true });
+  const describe = async (locator) => {
+    const count = await locator.count();
+    return { count, visible: count === 1 && await locator.isVisible(), enabled: count === 1 && await locator.isEnabled() };
+  };
+  const snapshot = async () => ({
+    checkpoint, expected, at: Date.now() - started,
+    edit: await describe(edit), close: await describe(close),
+    select: await describe(page.locator("#settings-list-sort")),
+    editingTextVisible: await page.getByText("Editing executive sorting", { exact: true }).isVisible(),
+    viewingTextVisible: await page.getByText("Viewing executive sorting", { exact: true }).isVisible(),
+  });
+  try {
+    if (expected === "denied") {
+      await expect(edit).toHaveCount(0);
+      await expect(close).toHaveCount(0);
+      await expect(page.locator("#settings-list-sort")).toBeVisible();
+      await expect(page.locator("#settings-list-sort")).toBeDisabled();
+      await expect(page.getByText("Viewing executive sorting", { exact: true })).toBeVisible();
+      await expect(page.getByText("Editing executive sorting", { exact: true })).toHaveCount(0);
+    } else {
+      await expect(edit.or(close)).toHaveCount(1);
+      const editing = await close.count() === 1;
+      const button = editing ? close : edit;
+      await expect(button).toBeVisible();
+      await expect(button).toBeEnabled();
+      const editingText = page.getByText("Editing executive sorting", { exact: true });
+      if (editing) {
+        await expect(editingText).toBeVisible();
+        await expect(page.locator("#settings-list-sort")).toBeVisible();
+        await expect(page.locator("#settings-list-sort")).toBeEnabled();
+      } else {
+        await expect(editingText).toHaveCount(0);
+        // The public personal-mode button determines whether a personal editor exists.
+        const personal = page.getByRole("button", { name: "Use executive sorting", exact: true });
+        if (await personal.count()) {
+          await expect(page.locator("#settings-list-sort")).toBeVisible();
+          await expect(page.locator("#settings-list-sort")).toBeEnabled();
+        } else {
+          await expect(page.getByRole("button", { name: "Set my own sorting", exact: true })).toBeVisible();
+          await expect(page.locator("#settings-list-sort")).toHaveCount(0);
+        }
+      }
+    }
+  } finally {
+    report.publicExecutiveStates.push(await snapshot());
+    write();
+  }
+}
 const started = Date.now(),
   deadline = started + 7 * 60_000;
 const output = path.resolve(config.output);
@@ -575,9 +627,7 @@ try {
     35000,
     "No actual matching role/preference HTTP authority",
   );
-  await expect(
-    page.getByRole("button", { name: "Edit executive sorting", exact: true }),
-  ).toBeEnabled();
+  await executiveState(page, "initial-authority-grant");
   pass("compiled LISTEN ready and real HTTP authority grant public controls");
   await sleep(2000);
   report.stage = "healthy-observation";
@@ -664,12 +714,7 @@ try {
     70000,
     "Expiry did not revoke through real role HTTP",
   );
-  await expect(
-    page.getByRole("button", { name: "Edit executive sorting", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Close executive settings", exact: true }),
-  ).toHaveCount(0);
+  await executiveState(page, "expired-authority-denial", "denied");
   pass(
     "time expiry revokes executive controls through actual shared role HTTP without preference mutation",
   );
@@ -682,9 +727,7 @@ try {
     35000,
     "Fresh role HTTP did not restore authority",
   );
-  await expect(
-    page.getByRole("button", { name: "Edit executive sorting", exact: true }),
-  ).toBeEnabled();
+  await executiveState(page, "restored-authority-grant");
   pass("fresh real HTTP authority restores controls");
   report.stage = "stream-outage";
   const outage = Date.now();
@@ -711,9 +754,7 @@ try {
     consumer.latestRole.requestAt < outage
   )
     throw Error("No fresh HTTP authority during stream outage");
-  await expect(
-    page.getByRole("button", { name: "Edit executive sorting", exact: true }),
-  ).toBeEnabled();
+  await executiveState(page, "stream-outage-authority-grant");
   pass(
     "SSE outage restores preference fallback while fresh HTTP keeps executive editing available",
   );

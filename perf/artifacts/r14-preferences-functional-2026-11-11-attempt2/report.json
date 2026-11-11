@@ -1,0 +1,979 @@
+{
+  "protocol": "compiled-preferences-functional-v5",
+  "status": "complete",
+  "acceptedGateEvidence": false,
+  "physicalPhoneEvidence": false,
+  "startedAt": "2026-11-11T12:45:05.524Z",
+  "driverSha256": "3cbb8595a60f6e4e18f61339ac9a932ba1acc8cef8f0fc05015b09cc706b25bd",
+  "protocolDependencyHashesBefore": {
+    "compiled-preferences-functional.mjs": "3cbb8595a60f6e4e18f61339ac9a932ba1acc8cef8f0fc05015b09cc706b25bd",
+    "observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b"
+  },
+  "stage": "listen-reconnect",
+  "assertions": [
+    {
+      "name": "compiled LISTEN ready and real HTTP authority grant public controls",
+      "at": 497
+    },
+    {
+      "name": "75-second healthy preference interval suppressed while existing role HTTP refreshes continue",
+      "at": 77556
+    },
+    {
+      "name": "public producer write reaches other public UI through real content-free hint and HTTP catch-up",
+      "at": 78550
+    },
+    {
+      "name": "time expiry revokes executive controls through actual shared role HTTP without preference mutation",
+      "at": 120460
+    },
+    {
+      "name": "fresh real HTTP authority restores controls",
+      "at": 150481
+    },
+    {
+      "name": "SSE outage restores preference fallback while fresh HTTP keeps executive editing available",
+      "at": 225524
+    },
+    {
+      "name": "transport reconnect reestablishes real topic readiness",
+      "at": 241574
+    },
+    {
+      "name": "compiled private LISTEN loss/resubscribe emits false/true and successful consumer HTTP catch-up",
+      "at": 241676
+    }
+  ],
+  "requests": [
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 360,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 364,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 408,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMe",
+      "method": "GET",
+      "at": 408,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "pipeSpecs.aiConnection",
+      "method": "GET",
+      "at": 408,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 408,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "appDevices.report",
+      "method": "POST",
+      "at": 410,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 422,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 540,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 30410,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 30420,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 30441,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 60410,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 60419,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 60430,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 60450,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 77779,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 77789,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 77834,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMe",
+      "method": "GET",
+      "at": 77834,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "pipeSpecs.aiConnection",
+      "method": "GET",
+      "at": 77834,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 77834,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "appDevices.report",
+      "method": "POST",
+      "at": 77834,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 77853,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 77952,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.setMaterialSortPreferences",
+      "method": "POST",
+      "at": 78327,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 78438,
+      "contextId": "producer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 78438,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 90430,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 90441,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 90463,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 120422,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 120438,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 120450,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 120472,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 150446,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 150462,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 150481,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 150484,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 180431,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 180454,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 180468,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 180489,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 210464,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 210485,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 210490,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 210498,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 240439,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 240472,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 240491,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.overview",
+      "method": "GET",
+      "at": 240507,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 241622,
+      "contextId": "consumer"
+    }
+  ],
+  "httpAuthority": [
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 364,
+      "responseAt": 380,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 408,
+      "responseAt": 433,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 540,
+      "responseAt": 547,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 30410,
+      "responseAt": 30416,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 60419,
+      "responseAt": 60427,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "producer",
+      "procedure": "user.getMyRole",
+      "requestAt": 77789,
+      "responseAt": 77798,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "producer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 77834,
+      "responseAt": 77846,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "producer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 77952,
+      "responseAt": 77957,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "producer",
+      "procedure": "user.setMaterialSortPreferences",
+      "requestAt": 78327,
+      "responseAt": 78336,
+      "success": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 78438,
+      "responseAt": 78444,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "producer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 78438,
+      "responseAt": 78445,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 90430,
+      "responseAt": 90435,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "foreman"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 120438,
+      "responseAt": 120442,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": false,
+      "role": "foreman"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 150446,
+      "responseAt": 150452,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 150484,
+      "responseAt": 150488,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 180454,
+      "responseAt": 180460,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 210464,
+      "responseAt": 210469,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 210490,
+      "responseAt": 210495,
+      "success": true,
+      "canEditExecutive": true
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 240472,
+      "responseAt": 240476,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    },
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMaterialSortPreferences",
+      "requestAt": 241622,
+      "responseAt": 241630,
+      "success": true,
+      "canEditExecutive": true
+    }
+  ],
+  "observationErrors": [],
+  "wireResponses": [
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 364,
+      "responseAt": 380,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "notifications.identity",
+        "user.getMe",
+        "pipeSpecs.aiConnection",
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 408,
+      "responseAt": 433,
+      "wireBytes": 1393,
+      "decodedBytes": 1393,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 540,
+      "responseAt": 547,
+      "wireBytes": 716,
+      "decodedBytes": 716,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 30410,
+      "responseAt": 30416,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 60419,
+      "responseAt": 60427,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "producer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 77789,
+      "responseAt": 77798,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "producer",
+      "procedures": [
+        "notifications.identity",
+        "user.getMe",
+        "pipeSpecs.aiConnection",
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 77834,
+      "responseAt": 77846,
+      "wireBytes": 1393,
+      "decodedBytes": 1393,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "producer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 77952,
+      "responseAt": 77957,
+      "wireBytes": 716,
+      "decodedBytes": 716,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "producer",
+      "procedures": [
+        "user.setMaterialSortPreferences"
+      ],
+      "requestAt": 78327,
+      "responseAt": 78336,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 78438,
+      "responseAt": 78444,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "producer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 78438,
+      "responseAt": 78445,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 90430,
+      "responseAt": 90435,
+      "wireBytes": 1870,
+      "decodedBytes": 1870,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 120438,
+      "responseAt": 120442,
+      "wireBytes": 1903,
+      "decodedBytes": 1903,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 150446,
+      "responseAt": 150452,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 150484,
+      "responseAt": 150488,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 180454,
+      "responseAt": 180460,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 210464,
+      "responseAt": 210469,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 210490,
+      "responseAt": 210495,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMyRole"
+      ],
+      "requestAt": 240472,
+      "responseAt": 240476,
+      "wireBytes": 1853,
+      "decodedBytes": 1853,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    },
+    {
+      "contextId": "consumer",
+      "procedures": [
+        "user.getMaterialSortPreferences"
+      ],
+      "requestAt": 241622,
+      "responseAt": 241630,
+      "wireBytes": 713,
+      "decodedBytes": 713,
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json"
+    }
+  ],
+  "frames": [
+    {
+      "contextId": "consumer",
+      "event": "preferences-ready",
+      "ready": true,
+      "at": 438
+    },
+    {
+      "contextId": "producer",
+      "event": "preferences-ready",
+      "ready": true,
+      "at": 77850
+    },
+    {
+      "contextId": "producer",
+      "event": "preferences",
+      "kind": "settings",
+      "at": 78336
+    },
+    {
+      "contextId": "consumer",
+      "event": "preferences",
+      "kind": "settings",
+      "at": 78336
+    },
+    {
+      "contextId": "consumer",
+      "event": "preferences-ready",
+      "ready": true,
+      "at": 241521
+    },
+    {
+      "contextId": "consumer",
+      "event": "preferences-ready",
+      "ready": false,
+      "at": 241578
+    },
+    {
+      "contextId": "consumer",
+      "event": "preferences-ready",
+      "ready": true,
+      "at": 241584
+    },
+    {
+      "contextId": "consumer",
+      "event": "preferences",
+      "kind": "resync",
+      "at": 241584
+    }
+  ],
+  "controlledMutations": [
+    {
+      "kind": "seeded-user-subscription-expiry",
+      "at": 78550
+    },
+    {
+      "kind": "terminate-exact-private-listen-backend",
+      "at": 241575,
+      "expectedAdminFatal": 1
+    }
+  ],
+  "publicExecutiveStates": [
+    {
+      "checkpoint": "initial-authority-grant",
+      "expected": "granted",
+      "at": 489,
+      "edit": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "close": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "select": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "editingTextVisible": false
+    },
+    {
+      "checkpoint": "expired-authority-denial",
+      "expected": "denied",
+      "at": 120453,
+      "edit": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "close": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "select": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "editingTextVisible": true
+    },
+    {
+      "checkpoint": "restored-authority-grant",
+      "expected": "granted",
+      "at": 150473,
+      "edit": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "close": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "select": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "editingTextVisible": true
+    },
+    {
+      "checkpoint": "stream-outage-authority-grant",
+      "expected": "granted",
+      "at": 225518,
+      "edit": {
+        "count": 0,
+        "visible": false,
+        "enabled": false
+      },
+      "close": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "select": {
+        "count": 1,
+        "visible": true,
+        "enabled": true
+      },
+      "editingTextVisible": true
+    }
+  ],
+  "limitations": [
+    "Synthetic Clerk identity; actual app HTTP/SQL/SSE/UI, not live Clerk session revocation proof.",
+    "Functional intervals and fault injection are separate from the frozen timing driver and ten-minute idle.",
+    "Suppresses one covered preference interval only; other polls/server work remain."
+  ],
+  "guardRejections": [],
+  "databaseHealthBefore": {
+    "unexpectedErrors": 0,
+    "adminFatal": 0
+  },
+  "source": {
+    "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+    "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+    "labBuild": "mu9f2AHO5oiJ6QRfA0svV",
+    "preflightQueries": 14,
+    "privateProcessBinding": true
+  },
+  "databaseHealthAfter": {
+    "unexpectedErrors": 0,
+    "adminFatal": 1
+  },
+  "protocolDependencyHashesAfter": {
+    "compiled-preferences-functional.mjs": "3cbb8595a60f6e4e18f61339ac9a932ba1acc8cef8f0fc05015b09cc706b25bd",
+    "observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b"
+  },
+  "driverSha256After": "3cbb8595a60f6e4e18f61339ac9a932ba1acc8cef8f0fc05015b09cc706b25bd",
+  "endedAt": "2026-11-11T12:49:07.233Z"
+}

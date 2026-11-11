@@ -1,0 +1,10 @@
+{
+  "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v5-final-psvlaeao",
+  "driverSha256": "3cbb8595a60f6e4e18f61339ac9a932ba1acc8cef8f0fc05015b09cc706b25bd",
+  "scripts": {
+    "/tmp/foremanhq-r14-pref-v5-command.sh": "768e19f50199f0943eeffd3f7d93e867d34b77bd7cab22d3b53ced9471cd23e3",
+    "/tmp/foremanhq-r14-pref-v5-server.sh": "ab737551e42b51badc56a1405a53b012b0b064b20b2fdf0d5adc3730dc3c1b29"
+  },
+  "status": "sealed-before-execution"
+}

@@ -1,0 +1,28 @@
+--- executed-V5
++++ unexecuted-V6
+@@ -27,7 +27,7 @@
+     methodFiles.map((file) => [file, sha(new URL(file, import.meta.url))]),
+   );
+ const report = {
+-  protocol: "compiled-preferences-functional-v5",
++  protocol: "compiled-preferences-functional-v6",
+   status: "incomplete",
+   acceptedGateEvidence: false,
+   physicalPhoneEvidence: false,
+@@ -61,11 +61,16 @@
+     edit: await describe(edit), close: await describe(close),
+     select: await describe(page.locator("#settings-list-sort")),
+     editingTextVisible: await page.getByText("Editing executive sorting", { exact: true }).isVisible(),
++    viewingTextVisible: await page.getByText("Viewing executive sorting", { exact: true }).isVisible(),
+   });
+   try {
+     if (expected === "denied") {
+       await expect(edit).toHaveCount(0);
+       await expect(close).toHaveCount(0);
++      await expect(page.locator("#settings-list-sort")).toBeVisible();
++      await expect(page.locator("#settings-list-sort")).toBeDisabled();
++      await expect(page.getByText("Viewing executive sorting", { exact: true })).toBeVisible();
++      await expect(page.getByText("Editing executive sorting", { exact: true })).toHaveCount(0);
+     } else {
+       await expect(edit.or(close)).toHaveCount(1);
+       const editing = await close.count() === 1;

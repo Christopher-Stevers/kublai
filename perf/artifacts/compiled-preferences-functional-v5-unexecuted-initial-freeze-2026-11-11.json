@@ -1,0 +1,19 @@
+{
+  "status": "source-frozen-unexecuted-awaiting-reviewed-rerun",
+  "frozenAt": "2026-11-11T12:43:15.645723+00:00",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v5-method-kgau6kwf",
+  "driverSha256": "14c737ba93cf46efbf81021dc98aedcbf98839c94df820e1a718fb16273daccd",
+  "files": {
+    "perf/live/compiled-preferences-functional-plan.json": "5e28e6adc578e97d26e171b9c5792b3e82fce7d5b0e3dda1820eed669e557173",
+    "perf/live/compiled-preferences-functional.mjs": "14c737ba93cf46efbf81021dc98aedcbf98839c94df820e1a718fb16273daccd",
+    "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "perf/live/observed-trpc-response.node-test.mjs": "4af1559cb8eaa90c44f4bf69d492c6d378c4770d7db8a52e0bd44c739aaa0e0c",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/preference-observation-context.node-test.mjs": "62815bea6719d4300d2e6e21f179256cc5ef7ef448d370858d9e9078875e2723",
+    "perf/live/proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b",
+    "perf/live/proxy-wire-observer.node-test.mjs": "349a56e91208204bc280bc4aec62f2cc53a6ee7361bc0d17e7f0b261aaa6143f"
+  },
+  "revision": "V4-to-V5 only exact Edit/Close public-state assertions and checkpoint snapshots; denial still requires both absent; no app/timing changes",
+  "originalV4Failure": "perf/artifacts/r14-preferences-functional-2026-11-11-attempt1/",
+  "expectedSourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096"
+}
