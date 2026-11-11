@@ -176,3 +176,31 @@ sample timestamps for interval weighting; original bytes remain unchanged.
 Archived analysis reproduces byte-for-byte. These two perturbed captures do not
 establish significance, explain the prior full-matrix failure or waive any gate.
 No additional run or source fix is authorized by this evidence alone.
+
+## Fifth attempt: lower-overhead first-control observer
+
+Root reviewed a distinct v5 diagnostic after the fourth profile showed roughly
+48 ms of observer work. [Attempt 5](artifacts/material-list-cpu-diagnostic-2026-11-11-attempt5/README.md)
+asserts the exact source path/unique visible target/zero any Increase controls
+before capture. Its observer requires the exact destination path and first exact
+button, checks visibility with one bounding rect, latches and disconnects; the
+full count is after CPU/trace stop. The default click and two rAF remain. A real
+Chromium fixture checked wrong route, hidden first control, unmounted control,
+one geometry read/mark and disconnect before the two source-bound profiles.
+
+Both profiles completed with zero guard rejections and 24 post-trace Increase
+controls each. Observer FunctionCall spans were 8.254/7.753 ms (Phase0/R6), a
+reduction in **diagnostic overhead**, not a product improvement. Trace click→ready
+was 108.310/117.024 ms; pointer→click 1.259/7.995 ms. The largest same React-runtime
+callback spanned 56.354/64.849 ms. R6 has additional sampled work in React and
+Button/material-row/receipt-containing modules, but inclusive weights overlap,
+modules contain multiple functions, and minified profiles do not isolate each
+component's render/commit cost. The observed quantity controls corroborate the
+ordinary-row fanout; predicted receipt/press effect registrations remain source
+counts, not measured invocation counts.
+
+This one sample/source exposes application-region work with less observer
+dominance; it neither establishes a cause nor changes the failed full gate. Both
+private databases/servers were cleaned with empty PG ERROR reports, method/source
+checks matched after capture, and quiet was released. Previous protocols/results
+remain unchanged. No further timing run or app change follows automatically.

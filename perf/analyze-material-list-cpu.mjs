@@ -7,7 +7,7 @@ const directory=path.resolve(process.argv[2]);
 const config=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
 const round=n=>Math.round(n*1000)/1000;
 const digest=p=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
-const result={protocol:'material-list-cpu-offline-summary-v1',acceptedGateEvidence:false,roles:{},limitations:[
+const result={protocol:'material-list-cpu-offline-summary-v2',acceptedGateEvidence:false,roles:{},limitations:[
  'One profiled navigation per source; no statistical, regression-pass or causal claim.',
  'Sampling/timeline instrumentation and the injected MutationObserver perturb execution.',
  'Sample weights approximate self time; raw negative deltas are retained and cumulative sample timestamps are sorted only for analysis, then interval edges are clipped to each phase.',
@@ -54,12 +54,12 @@ for(const role of ['baseline','candidate']){
   phaseData[name]={byModuleSelf:groupModule(moduleSelf),byModuleInclusive:groupModule(moduleInclusive),durationMs:round((end-start)/1000),sampleCount:count,byScript:[...scripts].sort((a,b)=>b[1]-a[1]).map(([script,ms])=>({script,sampledSelfMs:round(ms)})),topFrames:[...frames.values()].sort((a,b)=>b.sampledSelfMs-a.sampledSelfMs).slice(0,24).map(x=>({...x,sampledSelfMs:round(x.sampledSelfMs)}))};
  }
  const stack=node=>{const frames=[];for(let n=node;n;n=nodes.get(parents.get(n.id)))frames.push(location(n.callFrame));return frames;};
- const observedStacks=cpu.nodes.filter(n=>n.callFrame.functionName==='getClientRects'&&n.hitCount).map(n=>({hitCount:n.hitCount,stack:stack(n)}));
- const events=trace.filter(e=>e.ph==='X'&&e.ts>=marks.pointerdown&&e.ts<=marks['two-raf']);
+ const observedStacks=cpu.nodes.filter(n=>['getClientRects','getBoundingClientRect'].includes(n.callFrame.functionName)&&n.hitCount).map(n=>({hitCount:n.hitCount,stack:stack(n)}));
+ const events=trace.filter(e=>e.ph==='X'&&e.ts+(e.dur??0)>=marks.pointerdown&&e.ts<=marks['two-raf']);
  const observer=events.filter(e=>e.name==='FunctionCall'&&e.args?.data?.functionName==='observe');
  const eventRows=events.filter(e=>e.name==='EventDispatch'&&['pointerdown','pointerup','click'].includes(e.args?.data?.type)).map(e=>({type:e.args.data.type,durationMs:round(e.dur/1000)}));
  const topFunctions=events.filter(e=>e.name==='FunctionCall'&&e.dur>1000).sort((a,b)=>b.dur-a.dur).slice(0,12).map(e=>({durationMs:round(e.dur/1000),function:e.args.data.functionName||'(anonymous)',script:e.args.data.url?new URL(e.args.data.url).pathname:'(injected/unspecified)',line1:e.args.data.lineNumber,column1:e.args.data.columnNumber}));
  const idbFrames=cpu.nodes.filter(n=>/indexeddb|\bIDB|replicache/i.test(n.callFrame.functionName));
- result.roles[role]={rawSha256:{cpu:digest(cpuPath),trace:digest(tracePath)},sampleTimeHandling:{negativeRawDeltaCount:cpu.timeDeltas.filter(d=>d<0).length,method:'Accumulate original deltas into absolute sample timestamps, sort chronologically (stable original index tie-break), weight intervals since previous chronological sample, clip to phase; preserve raw profile unchanged.'},cpuRecordedMs:round((cpu.endTime-cpu.startTime)/1000),phases:phaseData,eventDispatch:eventRows,observerFunctionTraceMs:observer.map(e=>round(e.dur/1000)),nativeGetClientRectsStacks:observedStacks,topFunctionTraceIntervals:topFunctions,namedIndexedDbFrames:idbFrames.map(n=>({frame:location(n.callFrame),hitCount:n.hitCount??0})),styleLayoutPaintIntervals:events.filter(e=>['UpdateLayoutTree','Layout','Paint'].includes(e.name)).map(e=>({name:e.name,durationMs:round(e.dur/1000)}))};
+ result.roles[role]={rawSha256:{cpu:digest(cpuPath),trace:digest(tracePath)},sampleTimeHandling:{negativeRawDeltaCount:cpu.timeDeltas.filter(d=>d<0).length,method:'Accumulate original deltas into absolute sample timestamps, sort chronologically (stable original index tie-break), weight intervals since previous chronological sample, clip to phase; preserve raw profile unchanged.'},cpuRecordedMs:round((cpu.endTime-cpu.startTime)/1000),phases:phaseData,eventDispatch:eventRows,observerFunctionTraceMs:observer.map(e=>round(e.dur/1000)),nativeGeometryStacks:observedStacks,topFunctionTraceIntervals:topFunctions,namedIndexedDbFrames:idbFrames.map(n=>({frame:location(n.callFrame),hitCount:n.hitCount??0})),styleLayoutPaintIntervals:events.filter(e=>['UpdateLayoutTree','Layout','Paint'].includes(e.name)).map(e=>({name:e.name,durationMs:round(e.dur/1000)}))};
 }
 fs.writeFileSync(process.argv[4],JSON.stringify(result,null,2)+'\n');

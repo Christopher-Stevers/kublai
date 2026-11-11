@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-11-11T11:12:59.898280+00:00",
+  "roles": {
+    "baseline": {
+      "serverPid": 4037897,
+      "serverPidAbsent": true,
+      "privatePgDirectoryAbsent": true,
+      "pgErrors": []
+    },
+    "candidate": {
+      "serverPid": 4037915,
+      "serverPidAbsent": true,
+      "privatePgDirectoryAbsent": true,
+      "pgErrors": []
+    }
+  },
+  "captures": 2,
+  "coordinatorExitCode": 0,
+  "browserClosedByDriverFinally": true,
+  "allOwnedListenersClosed": true,
+  "noExtraRun": true
+}

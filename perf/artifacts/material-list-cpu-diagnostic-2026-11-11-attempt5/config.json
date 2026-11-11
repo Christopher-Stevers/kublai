@@ -1,0 +1,29 @@
+{
+  "harnessRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "baseline": {
+    "base": "http://127.0.0.1:3482/",
+    "fixtures": "/tmp/foremanhq-speed-app-5h2kmq/perf/fixtures.json",
+    "sourceEvidence": "/tmp/foremanhq-speed-app-5h2kmq/source-evidence.json",
+    "preflight": "/tmp/foremanhq-material-cpu-a5-baseline-preflight.json",
+    "databaseLog": "/tmp/foremanhq-perf-pg.PEF5tY/server.log",
+    "expectedSourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "expectedSourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+    "expectedLabBuild": "cI20Tzl0OAQscfvjfmtFW",
+    "snapshot": "/tmp/foremanhq-speed-app-5h2kmq",
+    "serverPid": "/tmp/foremanhq-material-cpu-a5-baseline-server.pid"
+  },
+  "candidate": {
+    "base": "http://127.0.0.1:3483/",
+    "fixtures": "/tmp/foremanhq-speed-app-eNPXZh/perf/fixtures.json",
+    "sourceEvidence": "/tmp/foremanhq-speed-app-eNPXZh/source-evidence.json",
+    "preflight": "/tmp/foremanhq-material-cpu-a5-candidate-preflight.json",
+    "databaseLog": "/tmp/foremanhq-perf-pg.rGiEBF/server.log",
+    "expectedSourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+    "expectedSourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+    "expectedLabBuild": "Wz70iMefdUyNAKmtpjQJw",
+    "snapshot": "/tmp/foremanhq-speed-app-eNPXZh",
+    "serverPid": "/tmp/foremanhq-material-cpu-a5-candidate-server.pid"
+  },
+  "outputDirectory": "/tmp/foremanhq-material-cpu-a5-output",
+  "attemptId": "attempt5-latched-first-control-v5"
+}

@@ -1,0 +1,14 @@
+{
+  "command": "node --test perf/material-list-readiness.node-test.mjs",
+  "observedResult": "1 Chromium fixture test passed before capture",
+  "physicalEvidence": false,
+  "cases": [
+    "Wrong route does not latch",
+    "Hidden first exact control does not fall through to later visible one",
+    "Inserted and unmounted control does not latch",
+    "First visible control causes exactly one geometry read and one readiness mark",
+    "Later mutations cause no extra geometry reads or readiness marks",
+    "All-control count runs only in finish"
+  ],
+  "methodTestSha256": "0d540f3b78995e25af328bbb28563cf00869b5ff9b0e2289a00ad23ae8d4958f"
+}

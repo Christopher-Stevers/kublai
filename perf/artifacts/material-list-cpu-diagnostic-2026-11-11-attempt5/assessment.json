@@ -1,0 +1,55 @@
+{
+  "status": "complete-supplemental-profile-only",
+  "acceptedGateEvidence": false,
+  "captures": 2,
+  "protocol": "material-list-cpu-diagnostic-v5",
+  "driverSha256": "9bf55294d4b4b7f331f8e02ea5c744a38c069dc1e59da57e09992df0fed06b2e",
+  "readinessSha256": "5d9df20bc6579c49c5d8f290d8594d0286918ecfa45d113c2dc6bffb5a072493",
+  "frozenMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "preflightReadCounts": {
+    "baseline": 14,
+    "candidate": 14
+  },
+  "guardRejections": [],
+  "sourceAndMethodAfterValidated": true,
+  "totalRawProfileBytes": 1780842,
+  "hostContention": "No declared agent-driven heavy work or ADB during quiet; live production services and ordinary OS background activity continued, not proven system isolation.",
+  "readinessProtocol": "Untimed source exact pathname/unique visible target/zero any destination controls; exact destination pathname and first exact button connected/CSS visible/one positive bounding rect; latch/disconnect; original default click/Playwright first visible/two rAF; full count after CPU/trace stop.",
+  "observations": {
+    "baseline": {
+      "rawBrowserPointerToClickMs": 1.1999998092651367,
+      "rawBrowserClickToReadyMs": 108.40000009536743,
+      "tracePointerToClickMs": 1.259,
+      "traceClickToReadyMs": 108.31,
+      "observerFunctionTraceMs": [
+        0.083,
+        8.254
+      ],
+      "observedIncreaseCount": 24
+    },
+    "candidate": {
+      "rawBrowserPointerToClickMs": 7.5,
+      "rawBrowserClickToReadyMs": 117.59999990463257,
+      "tracePointerToClickMs": 7.995,
+      "traceClickToReadyMs": 117.024,
+      "observerFunctionTraceMs": [
+        0.756,
+        0.008,
+        0.018,
+        7.753
+      ],
+      "observedIncreaseCount": 24
+    }
+  },
+  "findings": [
+    "Observer spans now8.254/7.753ms. Lower than v4 instrumentation; protocol comparison is not product improvement.",
+    "Same React-runtime callback spans56.354/64.849ms. R6 click-to-ready shows additional sampled work in React, Button/material-row and receipt-containing modules; inclusive weights overlap and do not isolate each hook or component.",
+    "24 Increase controls each corroborate24 ordinary rows/48 quantity buttons. Source-predicted receipt/press effect registrations are not measured invocation counts.",
+    "Pointer-to-click trace1.259/7.995ms and click-to-ready108.310/117.024ms are one profiled diagnostic each; native performance.now records differ slightly from later trace mark timestamps and are retained separately."
+  ],
+  "negativeRawDeltas": {
+    "baseline": 28,
+    "candidate": 38
+  },
+  "performanceConclusion": "No significance or causal attribution from N=1/source. R6/R7 full acceptance failures and metric/threshold definitions remain unchanged. No additional capture authorized by this archive."
+}

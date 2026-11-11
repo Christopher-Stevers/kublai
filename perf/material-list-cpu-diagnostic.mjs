@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium, expect } from "@playwright/test";
+import { installMaterialReadiness } from "./material-list-readiness.mjs";
 import { verifyFrozenHarness } from "./harness-fingerprint.mjs";
 import { READ_PREFLIGHT_PROCEDURES, budgets } from "./check.mjs";
 const config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -29,7 +30,7 @@ const expected = {
   ],
 };
 const report = {
-  protocol: "material-list-cpu-diagnostic-v4",
+  protocol: "material-list-cpu-diagnostic-v5",
   guardRejections: [],
   attemptId: config.attemptId ?? "attempt1",
   acceptedGateEvidence: false,
@@ -267,55 +268,12 @@ try {
       .getByText(s.fixture.materialListName, { exact: true })
       .count();
     if (sourceCount !== 1) throw Error("Ambiguous source");
-    await page.evaluate(() => {
-      const d = { pointerdown: [], click: [], ready: null };
-      const observe = () => {
-        const n = [
-          ...document.querySelectorAll(
-            'button[aria-label="Increase quantity"]',
-          ),
-        ].filter((x) => x.getClientRects().length).length;
-        if (n && d.ready === null) {
-          d.ready = { at: performance.now(), count: n };
-          performance.mark("material-cpu:ready");
-        }
-      };
-      const pointer = (e) => {
-        if (e.isTrusted) {
-          d.pointerdown.push(performance.now());
-          performance.mark("material-cpu:pointerdown");
-        }
-      };
-      const click = (e) => {
-        if (e.isTrusted) {
-          d.click.push(performance.now());
-          performance.mark("material-cpu:click");
-        }
-      };
-      const observer = new MutationObserver(observe);
-      observer.observe(document.documentElement, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-      });
-      document.addEventListener("pointerdown", pointer, true);
-      document.addEventListener("click", click, true);
-      window.__materialCpu = {
-        finish: () => {
-          observer.disconnect();
-          document.removeEventListener("pointerdown", pointer, true);
-          document.removeEventListener("click", click, true);
-          return {
-            ...d,
-            quantityCount: [
-              ...document.querySelectorAll(
-                'button[aria-label="Increase quantity"]',
-              ),
-            ].filter((x) => x.getClientRects().length).length,
-          };
-        },
-      };
-    });
+    const sourcePathname = `/jobs/${encodeURIComponent(s.fixture.jobId)}/material-lists`;
+    const destinationPathname = `/jobs/material-lists/${encodeURIComponent(s.fixture.materialListId)}`;
+    if (new URL(page.url()).pathname !== sourcePathname) throw Error("Wrong source pathname");
+    report.sources[role].sourcePreconditions = { sourcePathname, destinationPathname, sourceTargetUniqueVisible: true, exactDestinationControlCount: 0 };
+    write();
+    await page.evaluate(installMaterialReadiness, destinationPathname);
     page.setDefaultTimeout(3000);
     page.setDefaultNavigationTimeout(3000);
     const requestBefore = { ...requests };
@@ -341,6 +299,7 @@ try {
         (async () => {
           await target.click();
           await expect(ready.first()).toBeVisible();
+          if (new URL(page.url()).pathname !== destinationPathname) throw Error("Wrong destination pathname");
           await page.evaluate(
             () =>
               new Promise((resolve) =>

@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-11T11:12:59.898119+00:00",
+  "files": {
+    "/tmp/foremanhq-material-cpu-a5-method/perf/material-list-readiness.node-test.mjs": "0d540f3b78995e25af328bbb28563cf00869b5ff9b0e2289a00ad23ae8d4958f",
+    "/tmp/foremanhq-material-cpu-a5-method/perf/material-list-readiness.mjs": "5d9df20bc6579c49c5d8f290d8594d0286918ecfa45d113c2dc6bffb5a072493",
+    "/tmp/foremanhq-material-cpu-a5-method/perf/material-list-cpu-diagnostic.mjs": "9bf55294d4b4b7f331f8e02ea5c744a38c069dc1e59da57e09992df0fed06b2e",
+    "/tmp/foremanhq-material-cpu-a5-method/perf/budgets.json": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e",
+    "/tmp/foremanhq-material-cpu-a5-method/perf/harness-fingerprint.mjs": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f",
+    "/tmp/foremanhq-material-cpu-a5-method/perf/check.mjs": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259",
+    "/tmp/foremanhq-material-cpu-a5-run.sh": "56597520a918d1c21a5bad6ae3abfbcc8cc30dc5927202d8eb490da79a723372",
+    "/tmp/foremanhq-material-cpu-a5-baseline-server.sh": "159548a759f094367e90698d0e5157e9a78346becadc946e998496a1f6fff7cf",
+    "/tmp/foremanhq-material-cpu-a5-candidate-server.sh": "ad427981bff7a0abd93c45df700ac1d4598388ce544cef440e0753a700f301a5"
+  },
+  "allFrozenFilesMatch": true,
+  "configSha256": "65fd442a01641b2a122b100edf359df7a581262f1d6a56c809d12d0e6ebac3ad",
+  "configMatches": true,
+  "analysisCreatedAfterCapture": true,
+  "analysisSha256": "5ccb8b40d8236004ea3607045c055ec5d0afb7349e51bcebf630e9d7c3f5b3a1"
+}
