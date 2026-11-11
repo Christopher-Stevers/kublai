@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setDrawingOfflineAccount } from "~/lib/drawing-offline";
+import { setDrawingOfflineAccount, revokeDrawingOfflineAccount } from "~/lib/drawing-offline";
 import { clearPdfDocuments } from "~/lib/pdf-client";
 import { clearDrawingTextIndexes } from "~/lib/drawing-text";
 import {
@@ -21,15 +21,16 @@ import {
 const dispose = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/drawing-offline", () => ({
   setDrawingOfflineAccount: vi.fn(),
+  revokeDrawingOfflineAccount: vi.fn().mockResolvedValue(undefined),
   DrawingOfflineStore: class {
     dispose = dispose;
   },
 }));
 vi.mock("~/lib/pdf-client", () => ({ clearPdfDocuments: vi.fn() }));
 vi.mock("~/lib/drawing-text", () => ({ clearDrawingTextIndexes: vi.fn() }));
-beforeEach(() =>
-  vi.mocked(setDrawingOfflineAccount).mockResolvedValue(undefined),
-);
+beforeEach(() => {
+  vi.mocked(setDrawingOfflineAccount).mockResolvedValue(undefined);
+});
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -47,6 +48,18 @@ function PrivateView() {
   );
 }
 describe("drawing account boundary", () => {
+  it("locks and purges separate drawing storage after an unpersisted workspace read is denied", async () => {
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><DrawingAccountProvider userId="alice" organizationId="org"><PrivateView /></DrawingAccountProvider></QueryClientProvider>);
+    await screen.findByRole("button", {name: "Private org:alice draft 0"});
+    const queryKey = [["drawingsWorkspace", "get"], {input: {sheetId: "one"}}];
+    client.setQueryData(queryKey, {private: "previous workspace"});
+    await act(async () => {await client.fetchQuery({queryKey, staleTime: 0, retry: false, queryFn: async () => {throw Object.assign(new Error("Access denied"), {data: {code: "FORBIDDEN"}});}}).catch(() => undefined);});
+    expect(screen.queryByText(/Private org:alice/)).not.toBeInTheDocument();
+    expect(revokeDrawingOfflineAccount).toHaveBeenCalledWith("org:alice");
+    expect(client.getQueryData(queryKey)).toBeUndefined();
+  });
+
   it("keeps the employee identity separate from each simulation's private cache", async () => {
     const client = new QueryClient();
     const view = (simulationId?: string) => (

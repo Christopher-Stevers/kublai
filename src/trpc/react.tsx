@@ -7,6 +7,8 @@ import {
   loggerLink,
   splitLink,
 } from "@trpc/client";
+import { observable } from "@trpc/server/observable";
+import { captureDeviceReadAuthority, reportDeviceReadDenial } from "~/lib/device-query-cache";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useEffect, useState } from "react";
@@ -50,9 +52,9 @@ async function blockedServerFetch(
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.includes("json")) {
     const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
-    throw new Error(
+    throw Object.assign(new Error(
       `ForemenHQ API returned HTTP ${status} with ${contentType || "no content type"}`,
-    );
+    ), {data: {httpStatus: response.status}});
   }
   return response;
 }
@@ -145,6 +147,18 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [
+        () => ({op, next}) => observable(observer => {
+          const authority = captureDeviceReadAuthority();
+          const subscription = next(op).subscribe({
+            next: result => observer.next(result),
+            error: error => {
+              reportDeviceReadDenial(op.path, op.type, error, authority);
+              observer.error(error);
+            },
+            complete: () => observer.complete(),
+          });
+          return () => subscription.unsubscribe();
+        }),
         loggerLink({
           enabled: (op) => {
             const path = "path" in op ? op.path : undefined;

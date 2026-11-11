@@ -12,6 +12,7 @@ import {
 } from "vitest";
 import {
   collectDrawingOfflineUrls,
+  revokeDrawingOfflineAccount,
   DrawingOfflineStore,
   setDrawingOfflineAccount,
 } from "./drawing-offline";
@@ -24,6 +25,8 @@ const fetchMock = vi.fn<typeof fetch>();
 const revoke = vi.fn();
 beforeAll(() => {
   vi.stubGlobal("indexedDB", new IDBFactory());
+  const saved = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {configurable: true, value: {setItem: (key: string, value: string) => saved.set(key, value), getItem: (key: string) => saved.get(key) ?? null, removeItem: (key: string) => saved.delete(key)}});
   vi.stubGlobal("Blob", NativeBlob);
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal(
@@ -56,6 +59,29 @@ afterAll(() => {
 });
 
 describe("explicit account-scoped drawing downloads", () => {
+  it("purges denied snapshots and fences late writers before the same account reopens", async () => {
+    const store = new DrawingOfflineStore("org:alice");
+    await store.saveSnapshot("private", {secret: true});
+    await store.saveAssets([first]);
+    const late = store.saveSnapshot("late", {secret: true});
+    const lateResult = late.catch(() => undefined);
+    await revokeDrawingOfflineAccount("org:alice");
+    await lateResult;
+    await expect(store.readSnapshot("private")).rejects.toThrow();
+    await setDrawingOfflineAccount("org:alice");
+    const reopened = new DrawingOfflineStore("org:alice");
+    expect(await reopened.readSnapshot("private")).toBeNull();
+    expect(await reopened.readSnapshot("late")).toBeNull();
+    expect(await reopened.summary()).toEqual({files: 0, bytes: 0});
+  });
+  it("retries a persisted denial fence before binding a reloaded account", async () => {
+    const store = new DrawingOfflineStore("org:alice");
+    await store.saveSnapshot("private", {secret: true});
+    window.localStorage.setItem("foremanhq-denied-drawings-v1:org:alice", "1");
+    await setDrawingOfflineAccount("org:alice");
+    expect(await new DrawingOfflineStore("org:alice").readSnapshot("private")).toBeNull();
+  });
+
   it("preserves exact bytes and snapshots across store instances, deduplicating source URLs", async () => {
     const store = new DrawingOfflineStore("org:alice");
     const progress = vi.fn();
@@ -246,6 +272,48 @@ describe("explicit account-scoped drawing downloads", () => {
     expect(
       await new DrawingOfflineStore("org:alice").readAsset(first),
     ).toBeNull();
+  });
+
+  it("atomically rejects an old tab writer without relying on storage event delivery", async () => {
+    vi.resetModules();
+    const other = await import("./drawing-offline");
+    await other.setDrawingOfflineAccount("org:alice");
+    const stale = new other.DrawingOfflineStore("org:alice");
+    const staleClear = new other.DrawingOfflineStore("org:alice");
+    await stale.saveSnapshot("stale-tab", {private: true});
+    await stale.saveAssets([first]);
+    await stale.resolveAssetUrl(first);
+    await revokeDrawingOfflineAccount("org:alice");
+    // Other module/context has received no storage event and remains bound.
+    await expect(stale.saveSnapshot("resurrected", {private: true})).rejects.toThrow();
+    await expect(stale.readSnapshot("stale-tab")).rejects.toThrow();
+    await expect(stale.resolveAssetUrl(first)).rejects.toThrow();
+    await setDrawingOfflineAccount("org:alice");
+    const fresh = new DrawingOfflineStore("org:alice");
+    expect(await fresh.readSnapshot("resurrected")).toBeNull();
+    await fresh.saveSnapshot("fresh", {allowed: true});
+    expect(await fresh.readSnapshot("fresh")).toEqual({allowed: true});
+    await expect(staleClear.clear()).rejects.toThrow();
+    await other.revokeDrawingOfflineAccount("org:alice");
+    expect(await fresh.readSnapshot("fresh")).toEqual({allowed: true});
+    stale.dispose();
+  });
+  it("does not let a delayed denial recovery replace a newer account binding", async () => {
+    window.localStorage.setItem("foremanhq-denied-drawings-v1:org:alice", "1");
+    const staleBinding = setDrawingOfflineAccount("org:alice");
+    await setDrawingOfflineAccount("org:bob");
+    await staleBinding;
+    expect(() => new DrawingOfflineStore("org:alice")).toThrow();
+    const bob = new DrawingOfflineStore("org:bob");
+    await bob.saveSnapshot("fresh", {name: "Bob"});
+    expect(await bob.readSnapshot("fresh")).toEqual({name: "Bob"});
+  });
+
+  it("locks an already open tab when another tab broadcasts a denial", async () => {
+    const store = new DrawingOfflineStore("org:alice");
+    window.dispatchEvent(new StorageEvent("storage", {key: "foremanhq-drawing-account-signal-v1", newValue: JSON.stringify({account: null})}));
+    await expect(store.readSnapshot("private")).rejects.toMatchObject({name: "AbortError"});
+    expect(() => new DrawingOfflineStore("org:alice")).toThrow(/Sign in/);
   });
 
   it("treats cross-tab identity messages as revocation, never authentication", async () => {

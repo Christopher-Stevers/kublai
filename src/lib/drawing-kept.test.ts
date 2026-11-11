@@ -2,6 +2,7 @@ import { Blob as NativeBlob } from "node:buffer";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  captureDrawingKeptAuthority,
   clearKeptDrawings,
   keepDrawing,
   keptDrawingBytes,
@@ -112,5 +113,61 @@ describe("sheets kept on the device", () => {
     expect(await size(page(1))).toBeNull();
     expect(await keptDrawingBytes([page(1)])).toEqual([null]);
     await expect(clearKeptDrawings()).resolves.toBeUndefined();
+  });
+});
+
+describe("persisted kept-PDF authority", () => {
+  beforeEach(() => {
+    vi.stubGlobal("indexedDB", new IDBFactory());
+    vi.stubGlobal("Blob", NativeBlob);
+    resetDrawingKeptForTest();
+    setDrawingKeptAccount("org:tim");
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fences a separate stale context without storage events and permits a newly validated bind", async () => {
+    vi.resetModules();
+    const stale = await import("./drawing-kept");
+    stale.setDrawingKeptAccount("org:tim");
+    const old = await stale.captureDrawingKeptAuthority("org:tim");
+    expect(await keepDrawing(page(1), sheet(100))).toBe(true);
+    setDrawingKeptAccount(null);
+    await clearKeptDrawings("org:tim", true, old);
+    expect(await stale.keepDrawing(page(2), sheet(100))).toBe(false);
+    expect(await stale.readKeptDrawing(page(1))).toBeNull();
+    expect(await stale.keptDrawingBytes([page(1)])).toEqual([null]);
+    setDrawingKeptAccount("org:tim");
+    expect(await keepDrawing(page(3), sheet(300))).toBe(true);
+    // A deferred clear from the old session must not erase fresh data.
+    await stale.clearKeptDrawings("org:tim", true, old);
+    expect(await size(page(3))).toBe(300);
+    expect(await stale.readKeptDrawing(page(3))).toBeNull();
+    stale.setDrawingKeptAccount("org:tim");
+    expect((await stale.readKeptDrawing(page(3)))?.size).toBe(300);
+  });
+
+  it("keeps a user-clear binding usable while its old context remains fenced", async () => {
+    vi.resetModules();
+    const stale = await import("./drawing-kept");
+    stale.setDrawingKeptAccount("org:tim");
+    await stale.captureDrawingKeptAuthority("org:tim");
+    expect(await keepDrawing(page(1), sheet(100))).toBe(true);
+    await clearKeptDrawings();
+    expect(await size(page(1))).toBeNull();
+    expect(await keepDrawing(page(2), sheet(200))).toBe(true);
+    expect(await stale.keepDrawing(page(3), sheet(300))).toBe(false);
+    expect(await size(page(2))).toBe(200);
+  });
+
+  it("clears a captured owner independently of the current binding", async () => {
+    expect(await keepDrawing(page(1), sheet(100))).toBe(true);
+    const generation = await captureDrawingKeptAuthority("org:tim");
+    // Capture from the active static module, then switch before deletion.
+    setDrawingKeptAccount("org:other");
+    await clearKeptDrawings("org:tim", true, generation);
+    setDrawingKeptAccount("org:tim");
+    expect(await size(page(1))).toBeNull();
   });
 });

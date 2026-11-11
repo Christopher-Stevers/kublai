@@ -1,4 +1,4 @@
-import { clearKeptDrawings, setDrawingKeptAccount } from "./drawing-kept";
+import { captureDrawingKeptAuthority, clearKeptDrawings, setDrawingKeptAccount } from "./drawing-kept";
 import { registerLocalPdf, releaseLocalPdf } from "./pdf-range-source";
 import { isTileManifest, tileBase } from "./drawing-tiles";
 import { sourcePdfPage } from "./pdf-client";
@@ -35,6 +35,8 @@ export type DrawingOfflineSaveOptions = {
 };
 let database: Promise<IDBDatabase> | undefined;
 let activeAccount: string | null = null;
+let activeEpoch = "";
+let bindingGeneration = 0;
 const stores = new Set<DrawingOfflineStore>();
 export function isDrawingOfflineAccountActive(accountKey: string) {
   return activeAccount === accountKey;
@@ -63,6 +65,7 @@ function accountSignals() {
       )
         return;
       // A message from another tab can revoke access, never grant an account.
+      bindingGeneration++;
       activeAccount = null;
       setDrawingKeptAccount(null);
       bindingChanged();
@@ -76,9 +79,11 @@ function accountSignals() {
 
 function openDatabase() {
   database ??= new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, 1);
+    const request = indexedDB.open(DATABASE, 2);
     request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("authority")) request.result.createObjectStore("authority");
       for (const name of ["assets", "snapshots"]) {
+        if (request.result.objectStoreNames.contains(name)) continue;
         const store = request.result.createObjectStore(name, {
           keyPath: ["account", name === "assets" ? "url" : "key"],
         });
@@ -86,7 +91,7 @@ function openDatabase() {
       }
     };
     request.onsuccess = () => {
-      request.result.onversionchange = () => request.result.close();
+      request.result.onversionchange = () => { request.result.close(); database = undefined; };
       resolve(request.result);
     };
     request.onerror = () =>
@@ -145,9 +150,64 @@ function assetPath(url: string) {
   return parsed.pathname;
 }
 
+const DENIED_DRAWINGS = "foremanhq-denied-drawings-v1:";
+const deniedAccounts = new Map<string, string>();
+/** Delete by captured account, even after its live store has been disposed. */
+export async function revokeDrawingOfflineAccount(owner: string) {
+  const keptAuthority = captureDrawingKeptAuthority(owner);
+  void keptAuthority.catch(() => undefined);
+  const authority = activeAccount === owner ? Promise.resolve(activeEpoch) : typeof indexedDB === "undefined" ? Promise.resolve("") : openDatabase().then(db => result(db.transaction("authority").objectStore("authority").get(owner))).then((value: unknown) => typeof value === "string" ? value : "");
+  const revocation = crypto.randomUUID();
+  bindingGeneration++;
+  deniedAccounts.set(owner, revocation);
+  try { window.localStorage.setItem(DENIED_DRAWINGS + owner, revocation); } catch { /* Memory fence remains active. */ }
+  try { window.localStorage.setItem(ACCOUNT_SIGNAL, JSON.stringify({account: null, nonce: crypto.randomUUID()})); } catch { /* Same-tab fencing still applies. */ }
+  if (activeAccount === owner) {
+    activeAccount = null;
+    setDrawingKeptAccount(null);
+    bindingChanged();
+  }
+  for (const store of stores) if (store.accountKey === owner) store.dispose();
+  if (typeof indexedDB === "undefined") return;
+  const expectedAuthority = await authority;
+  const tx = (await openDatabase()).transaction(["assets", "snapshots", "authority"], "readwrite");
+  const complete = done(tx);
+  const fence = tx.objectStore("authority").get(owner);
+  fence.onsuccess = () => {
+    if ((fence.result ?? "") !== expectedAuthority) return;
+    tx.objectStore("authority").put(crypto.randomUUID(), owner);
+    for (const name of ["assets", "snapshots"]) {
+      const cursor = tx.objectStore(name).index("account").openCursor(owner);
+      cursor.onsuccess = () => {
+        if (!cursor.result) return;
+        cursor.result.delete();
+        cursor.result.continue();
+      };
+    }
+  };
+  await complete;
+  await clearKeptDrawings(owner, true, await keptAuthority);
+  if (deniedAccounts.get(owner) === revocation) deniedAccounts.delete(owner);
+  try { if (window.localStorage.getItem(DENIED_DRAWINGS + owner) === revocation) window.localStorage.removeItem(DENIED_DRAWINGS + owner); } catch { /* A retained marker only repeats the safe purge. */ }
+}
+
 /** Bind only a server-validated account (org:user); null on logout, never infer it from a cache. */
 export async function setDrawingOfflineAccount(accountKey: string | null, preserveAccountKey?: string) {
   accountSignals();
+  const binding = ++bindingGeneration;
+  let denied = accountKey !== null && deniedAccounts.has(accountKey);
+  try { denied ||= accountKey !== null && window.localStorage.getItem(DENIED_DRAWINGS + accountKey) !== null; } catch { /* Restricted storage. */ }
+  if (accountKey && denied) {
+    await revokeDrawingOfflineAccount(accountKey);
+    // The purge itself advances the generation; any other binding wins.
+    if (bindingGeneration !== binding + 1) return;
+  }
+  const expectedBinding = bindingGeneration;
+  const epoch = accountKey && typeof indexedDB !== "undefined"
+    ? (await result((await openDatabase()).transaction("authority").objectStore("authority").get(accountKey))) as string | undefined
+    : undefined;
+  if (expectedBinding !== bindingGeneration) return;
+  activeEpoch = epoch ?? "";
   if (accountKey !== activeAccount && typeof window !== "undefined") {
     try {
       window.localStorage.setItem(
@@ -229,6 +289,7 @@ export async function collectDrawingOfflineUrls(
 }
 
 export class DrawingOfflineStore {
+  private authorityEpoch = activeEpoch;
   private disposed = false;
   private generation = 0;
   private urls = new Map<string, string>();
@@ -246,17 +307,38 @@ export class DrawingOfflineStore {
     )
       throw new DOMException("The drawing account changed.", "AbortError");
   }
-  async readAsset(url: string): Promise<Blob | null> {
+  private authorizeWrite(tx: IDBTransaction, write: () => void) {
+    const generation = this.generation, epoch = this.authorityEpoch;
+    const request = tx.objectStore("authority").get(this.accountKey);
+    request.onsuccess = () => {
+      if ((request.result ?? "") !== epoch) { tx.abort(); return; }
+      try { this.assertActive(generation); write(); } catch { tx.abort(); }
+    };
+  }
+  private async assertStoredAuthority() {
+    const epoch: unknown = await result((await openDatabase()).transaction("authority").objectStore("authority").get(this.accountKey));
+    if ((epoch ?? "") !== this.authorityEpoch) throw new DOMException("Drawing access was revoked", "AbortError");
     this.assertActive();
-    const generation = this.generation;
-    const db = await openDatabase();
-    const item = (await result(
-      db
-        .transaction("assets", "readonly")
-        .objectStore("assets")
-        .get([this.accountKey, assetPath(url)]),
-    )) as Asset | undefined;
+  }
+  private async authorizedRead<T>(name: string, read: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+    this.assertActive();
+    const generation = this.generation, epoch = this.authorityEpoch;
+    const tx = (await openDatabase()).transaction(["authority", name], "readonly");
+    const complete = done(tx);
+    let value: T | undefined;
+    const authority = tx.objectStore("authority").get(this.accountKey);
+    authority.onsuccess = () => {
+      if ((authority.result ?? "") !== epoch) { tx.abort(); return; }
+      const request = read(tx.objectStore(name));
+      request.onsuccess = () => { value = request.result; };
+    };
+    await complete;
     this.assertActive(generation);
+    return value as T;
+  }
+  async readAsset(url: string): Promise<Blob | null> {
+    const key = assetPath(url);
+    const item = await this.authorizedRead<Asset | undefined>("assets", store => store.get([this.accountKey, key]) as IDBRequest<Asset | undefined>);
     return item?.blob ?? null;
   }
   async resolveAssetUrl(url: string): Promise<string> {
@@ -264,7 +346,10 @@ export class DrawingOfflineStore {
     const generation = this.generation;
     const key = assetPath(url),
       cached = this.urls.get(key);
-    if (cached) return cached;
+    if (cached) {
+      try { await this.assertStoredAuthority(); } catch (error) { this.dispose(); throw error; }
+      return cached;
+    }
     const blob = await this.readAsset(key);
     if (!blob) return url;
     this.assertActive(generation);
@@ -277,14 +362,7 @@ export class DrawingOfflineStore {
   }
   async summary() {
     this.assertActive();
-    const db = await openDatabase();
-    const records = (await result(
-      db
-        .transaction("assets", "readonly")
-        .objectStore("assets")
-        .index("account")
-        .getAll(this.accountKey),
-    )) as Asset[];
+    const records = await this.authorizedRead<Asset[]>("assets", store => store.index("account").getAll(this.accountKey) as IDBRequest<Asset[]>);
     this.assertActive();
     return {
       files: records.length,
@@ -462,11 +540,12 @@ export class DrawingOfflineStore {
         this.assertActive(generation);
         const blob = new Blob(chunks, { type });
         const db = await openDatabase();
-        const tx = db.transaction("assets", "readwrite"),
+        const tx = db.transaction(["assets", "authority"], "readwrite"),
           complete = done(tx),
           store = tx.objectStore("assets");
         // Sum and write inside the same transaction: concurrent tabs cannot
         // both consume the same remaining byte budget.
+        this.authorizeWrite(tx, () => {
         const existing = store.index("account").getAll(this.accountKey);
         existing.onsuccess = () => {
           try {
@@ -491,6 +570,7 @@ export class DrawingOfflineStore {
             tx.abort();
           }
         };
+        });
         await complete;
         downloaded += bytes;
         completed++;
@@ -514,13 +594,13 @@ export class DrawingOfflineStore {
     const bytes = new TextEncoder().encode(serialized).byteLength;
     const db = await openDatabase();
     this.assertActive(generation);
-    const tx = db.transaction("snapshots", "readwrite");
+    const tx = db.transaction(["snapshots", "authority"], "readwrite");
     const complete = done(tx);
     // IndexedDB enforces the device's real quota. Arbitrary record/byte caps
     // prevented additional sets from being saved despite available storage.
-    tx.objectStore("snapshots").put({
+    this.authorizeWrite(tx, () => tx.objectStore("snapshots").put({
       account: this.accountKey, key, value, bytes, savedAt: Date.now(),
-    } satisfies Snapshot);
+    } satisfies Snapshot));
     await complete.catch((error: unknown) => {
       if (tx.error?.name === "QuotaExceededError")
         throw new Error("This device's browser storage is full. Free device storage or remove saved drawings, then retry.");
@@ -530,19 +610,13 @@ export class DrawingOfflineStore {
       window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   async readSnapshot<T>(key: string): Promise<T | null> {
-    this.assertActive();
-    const generation = this.generation;
-    const db = await openDatabase();
-    const item = (await result(
-      db
-        .transaction("snapshots", "readonly")
-        .objectStore("snapshots")
-        .get([this.accountKey, key]),
-    )) as Snapshot | undefined;
-    this.assertActive(generation);
+    const item = await this.authorizedRead<Snapshot | undefined>("snapshots", store => store.get([this.accountKey, key]) as IDBRequest<Snapshot | undefined>);
     return (item?.value as T | undefined) ?? null;
   }
   async clear() {
+    const expectedEpoch = this.authorityEpoch;
+    const keptAuthority = captureDrawingKeptAuthority(this.accountKey);
+    void keptAuthority.catch(() => undefined);
     this.assertActive();
     this.generation++;
     for (const controller of this.controllers) controller.abort();
@@ -550,8 +624,11 @@ export class DrawingOfflineStore {
     this.urls.clear();
     const db = await openDatabase();
     this.assertActive();
-    const tx = db.transaction(["assets", "snapshots"], "readwrite"),
+    const tx = db.transaction(["assets", "snapshots", "authority"], "readwrite"),
       complete = done(tx);
+    const nextEpoch = crypto.randomUUID();
+    this.authorizeWrite(tx, () => {
+    tx.objectStore("authority").put(nextEpoch, this.accountKey);
     for (const name of ["assets", "snapshots"]) {
       const cursor = tx
         .objectStore(name)
@@ -564,9 +641,12 @@ export class DrawingOfflineStore {
         }
       };
     }
+    });
     await complete;
+    this.authorityEpoch = nextEpoch;
+    if (this.accountKey === activeAccount && activeEpoch === expectedEpoch) activeEpoch = nextEpoch;
     // Sheets kept from earlier visits go with the saved ones.
-    await clearKeptDrawings();
+    await clearKeptDrawings(this.accountKey, true, await keptAuthority);
     window.dispatchEvent(new Event("foremanhq-drawing-downloads-changed"));
   }
   dispose() {

@@ -1,6 +1,7 @@
 "use client";
 import {
   startDeviceQueryCache,
+  DEVICE_QUERY_DENIED_EVENT,
   wipeDeviceQueryCaches,
 } from "~/lib/device-query-cache";
 import { simulationViewHeaders } from "~/lib/employee-simulation";
@@ -9,6 +10,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient, type Query } from "@tanstack/react-query";
 import {
   DrawingOfflineStore,
+  revokeDrawingOfflineAccount,
   setDrawingOfflineAccount,
 } from "~/lib/drawing-offline";
 import { clearPdfDocuments } from "~/lib/pdf-client";
@@ -80,10 +82,13 @@ export function DrawingAccountProvider({
     bindController();
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.addEventListener("controllerchange", bindController);
-    const flushDeviceCache = () => deviceCache.flush();
+    const flushDeviceCache = () => { void deviceCache.flush(); };
     window.addEventListener("pagehide", flushDeviceCache);
-    const invalidate = () => {
+    const invalidate = (event?: Event) => {
+      if (event?.type !== "foremanhq-drawing-account-invalidated" && (event as CustomEvent<{drawings?: boolean}> | undefined)?.detail?.drawings !== false)
+        void revokeDrawingOfflineAccount(accountKey).catch(() => { /* Denial fence remains until a later successful purge. */ });
       disposed = true;
+      void setDrawingOfflineAccount(null);
       bindNavigation(null);
       void deviceCache.stop(true);
       clearPrivateMemory();
@@ -98,6 +103,7 @@ export function DrawingAccountProvider({
       if (data?.type === "FOREMENHQ_NAVIGATION_REVOKED") invalidate();
     };
     navigator.serviceWorker?.addEventListener("message", workerMessage);
+    window.addEventListener(DEVICE_QUERY_DENIED_EVENT, invalidate);
     window.addEventListener(
       "foremanhq-drawing-account-invalidated",
       invalidate,
@@ -116,6 +122,7 @@ export function DrawingAccountProvider({
       bindNavigation(null);
       void deviceCache.stop();
       window.removeEventListener("pagehide", flushDeviceCache);
+      window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, invalidate);
       navigator.serviceWorker?.removeEventListener("message", workerMessage);
       if ("serviceWorker" in navigator)
         navigator.serviceWorker.removeEventListener(
@@ -135,8 +142,8 @@ export function DrawingAccountProvider({
   if (locked)
     return (
       <main className="mx-auto max-w-lg space-y-3 p-6" role="alert">
-        <h1 className="text-lg font-semibold">Your account changed</h1>
-        <p>Reload to continue with the current account.</p>
+        <h1 className="text-lg font-semibold">Refresh this workspace</h1>
+        <p>Reload to check the latest available view.</p>
         <button
           type="button"
           className="rounded border px-4 py-2"
