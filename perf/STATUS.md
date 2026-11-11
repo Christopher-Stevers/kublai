@@ -8,6 +8,7 @@ Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 ## Decisions recorded
 
 - Start phases 0 and 1, using the plan's measured gates and one release recipe.
+- Reference phone: Google Pixel 9 Pro XL with Chrome, confirmed by Tim.
 - Production drawing sample reads and home-directory Rust setup: approved.
   Rust/cargo 1.99.0 are already installed; no replacement needed.
 - Saved private last screen: wait for sign-in confirmation. A cold offline launch

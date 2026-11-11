@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "source": "user-confirmed",
+  "device": "Google Pixel 9 Pro XL",
+  "browser": "Chrome",
+  "physicalMeasurementsCollected": false,
+  "note": "Do not infer physical-device results from the desktop CDP emulation profile. Browser version, frame rate, thermal state and actual connection are recorded when measuring."
+}
