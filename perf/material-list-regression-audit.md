@@ -72,3 +72,42 @@ R7 Basement fails against capture 1 by 13.746%; Site (+2.748%) and Office (+7.45
 No concrete R7-specific material-list hot-path defect was established. Five samples and source equality cannot establish absence of a regression, explain shared chunk costs, or dismiss a failing gate as noise. Existing browser marks/two-frame readiness are not hardware presentation proof.
 
 The smallest useful additional evidence, if separately authorized, is a source-bound material-list phase diagnostic across Phase0/R6/R7: actual input, router dispatch, Replicache-ready destination DOM, two-frame completion, and relevant resource/read counts. This could separate already-present preparation/render work from later waiting; it would remain supplemental evidence, not a selective replacement for the full gate. No such trace or new run is authorized by this audit.
+
+## Follow-up: baseline→R6 destination mount hypothesis
+
+Source inspection only; no profiler, runtime counts, new timing, or production change. This examines work already present in R6, not an R7-specific cause.
+
+The frozen baseline lab source `/tmp/foremanhq-speed-app-5h2kmq` has the same `MaterialListScreen.tsx` as sealed Phase0. Its relevant source hashes are below; auth/private-database lab transforms are not the differences identified here. R6 paths refer to the sealed R6 directory above.
+
+| Source path | Frozen baseline SHA-256 | R6 SHA-256 |
+| --- | --- | --- |
+| `src/components/materialLists/MaterialListItem.tsx` | `4dbf23058d9fef66b845955b7cd77009903268eb0f6fd00f301e9cbef6e2d78c` | `53bc702f7d0adddbf4044353bbc7ca19de91ca139bf7061c5447b9f353cc1b90` |
+| `src/components/materialLists/MaterialListScreen.tsx` | `af9f991360e11cef398015dc045659759444b79a23712cf64e9d34d4f685147b` | `78a5d99d4651eff90d2524f5af1ebf42ed4182c35b4d7761a1742201497e08ac` |
+| `src/components/materialLists/QuantityControls.tsx` | `e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b` | same |
+| `src/components/ui/button.tsx` | `0110ccd24f207397b5351f333be48f0604fbc6512ce4060699043a07b094e718` | `97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb` |
+| `src/hooks/use-replicache-material-list.ts` | `3d93560269fb3dcea4a7c1a6e5156182f4573c68df5f7f2e156c70a6039eea0f` | same |
+
+Additional R6 source hashes:
+
+- `src/hooks/use-press.ts`: `a2df179682c0927a8b589bfd0fee1c9c88e3eee2ee56a1395def2ae8e27f6e80`
+- `src/hooks/use-instant-receipt-verification.ts`: `7af92f4f95b2dbafae722b5dc571bd30d18beeaff32750d846fa4db2ada4b04f`
+- `src/hooks/use-queued-receipt-intent.ts`: `ec56661c7393783123f7a674505f1127fd889a2d4b9141e2f4414ff5ffb8f1dc`
+
+The frozen baseline `perf/lab/seed.ts` SHA-256 is `f4bf8a4b66ce237a7cdc921bad58fd98dbaf693e855e10e8ffe53d22b5d87835`, matching the method seed inspected in the working repository. Lines 89–97 create 25 parts; lines 136–147 create 25 quote items with only index 0 linked to the sent order item. The parts omit pack sizes.
+
+R6 `MaterialListScreen.tsx:514–544` maps grid rows into `MaterialListItem`; `verifyMode` is true for an explicit verification order or a receivable order line. For the ordinary default-grid fixture, the expected tree has 25 rows, one sent/receipt row and 24 unsent rows. `MaterialListItem.tsx:842–858` renders `QuantityControls` for unsent, non-verification rows. Its unchanged plain horizontal branch (`QuantityControls.tsx:237–285`) renders Increase and Decrease buttons: **at least 48 quantity buttons** before counting menu/header controls. These are source-derived expected counts, not observed mounted DOM/profiler counts.
+
+Two concrete additions scale with those rows/controls:
+
+1. R6 `MaterialListItem.tsx:227` unconditionally mounts the queued receipt-intent hook. Lines 229 and 246 add two receipt-related `useLayoutEffect` callbacks without dependency arrays, copying the latest permission/guard and receipt values on every commit. They execute even with `verifyMode=false`: **50 added layout callbacks for 25 expected rows**, including 48 callbacks across the 24 non-receipt rows. The queued-intent hook also registers its cleanup effect (`use-queued-receipt-intent.ts:34`), preserving the grid's cancel-on-unmount policy.
+2. R6 `Button.tsx:67–74` unconditionally mounts `usePress`, including default release controls and Slot children. `use-press.ts:93–118` adds one state, three refs and two passive effects per button. For the minimum 48 quantity buttons this means 48 states, 144 refs and 96 passive effect registrations, plus handler allocations/attributes. This is destination mount work even though these quantity buttons were not pressed. The passive effects' scheduling relative to readiness is not established; only the layout callbacks are necessarily in the commit's layout phase.
+
+There is also screen-level receipt preparation (`MaterialListScreen.tsx:215–227`): scan items into receipt snapshots and always mount the new helper. `use-instant-receipt-verification.ts:27` evaluates a new Map as the `useRef` argument on each render; lines 28–50 build another Map and queue preview reconciliation. With no previews the updater returns the same state, so this is allocation/scan/microtask work, **not evidence of a guaranteed extra render**. The hook effect depends on snapshots and previews; the row layout effects have no dependencies. The underlying Replicache reader remains unchanged.
+
+A plausible narrow hypothesis is extra destination render/commit cost from shared Button mount fanout and inert receipt bookkeeping. No cost was measured or attributed, and this cannot explain the R7-only change by itself.
+
+### Extraction constraints, not an implementation proposal approved to run
+
+A conditional receipt hook call inside the current row is unsafe because `verifyMode` can change. A separate ordinary-row/receipt-controller boundary could avoid mounting receipt-only state/effects for inert rows, but the current receipt state, handlers and rendering are intertwined; a safe extraction must preserve row identity, mode-change initialization/reset, latest bulk/readOnly guards, duplicate suppression, cancel-on-unmount debounce, and already-authorized request behavior. Table receive intentionally uses a different flush-on-unmount policy and must retain it. Moving callbacks back into replayable React state updaters is not acceptable.
+
+Simply returning early inside the two layout effects still registers/invokes the effects and may save little. Shared Button press cost is a separate potential target; no default gesture/keyboard/Slot behavior should be removed based on source counts alone. Profile evidence should precede either correctness-sensitive change. No extraction, profile or additional run was performed or authorized here.
