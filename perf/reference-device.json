@@ -18,5 +18,17 @@
     "scope": "Participant confirms live app use during this window. Anonymous telemetry has no per-device or participant identifier, so individual rows are not independently model-verified.",
     "controlledReferenceLink": false,
     "controlledPhysicalTargetProof": false
+  },
+  "debuggingConnection": {
+    "transport": "adb-wifi",
+    "verifiedAt": "2026-11-11T03:40:54Z",
+    "reportedModel": "Pixel 9 Pro XL",
+    "reportedAndroidVersion": "17",
+    "verification": "Authorized ADB getprop; device identifiers and pairing credentials not recorded",
+    "diagnosticAttempt": "Created and closed a dedicated synthetic tab; Page.navigate timed out before any timing sample",
+    "validPhysicalTimingSamples": 0,
+    "temporaryForwardingRemoved": true,
+    "evidence": "artifacts/phone-visited-attempt-2026-11-11-assessment.json",
+    "phoneTimingCaptureCompleted": false
   }
 }

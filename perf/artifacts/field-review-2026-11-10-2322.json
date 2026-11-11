@@ -1,0 +1,81 @@
+{
+  "capturedAt": "2026-11-11T04:22:07.587029+00:00",
+  "source": "Anonymous live field beacons; read-only one-file snapshot",
+  "sourceSnapshotSha256": "a4487d90d21dca4d46536b85c096e7b08afc3e544ba11467c21406dbe3533c9b",
+  "beacons": 60,
+  "metrics": 1428,
+  "quantiles": "p75/p95 nearest-rank; median averages the middle pair",
+  "groups": [
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "app-start-to-last-screen",
+      "count": 20,
+      "medianMs": 808.5,
+      "p75Ms": 1445,
+      "p95Ms": 2530
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "inp",
+      "count": 4,
+      "medianMs": 88.0,
+      "p75Ms": 104,
+      "p95Ms": 232
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "interaction",
+      "count": 1336,
+      "medianMs": 24.0,
+      "p75Ms": 32,
+      "p95Ms": 72
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "lcp",
+      "count": 10,
+      "medianMs": 428.0,
+      "p75Ms": 624,
+      "p95Ms": 1836
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "longtask",
+      "count": 17,
+      "medianMs": 72,
+      "p75Ms": 82,
+      "p95Ms": 187
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "navigation",
+      "count": 38,
+      "medianMs": 359.5,
+      "p75Ms": 674,
+      "p95Ms": 2279
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "tap-to-paint",
+      "count": 3,
+      "medianMs": 593,
+      "p75Ms": 880,
+      "p95Ms": 880
+    }
+  ],
+  "acceptedGateEvidence": false,
+  "limitations": [
+    "Viewport phone class is not per-row verified Pixel hardware; participant attribution does not identify individual records.",
+    "Field records may include QA and no controlled network profile or repeat-visit status is established.",
+    "Startup mark starts at document navigation origin and ends after startup-cover removal; it is not an OS app-icon-to-pixel measurement.",
+    "Live bootstrap sampling may drop late vital/journey observations; prepared priority sampling is not deployed.",
+    "Few INP or navigation samples do not establish stable field percentiles; callback-time screen/link attribution is not retroactively corrected."
+  ]
+}

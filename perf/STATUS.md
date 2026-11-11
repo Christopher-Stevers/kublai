@@ -140,3 +140,29 @@ results. The shared live stream is a compatibility stage; 29 polling declaration
 remain until producer coverage is proven. No production database change, worker
 release, pre-auth private paint, full offline-convergence pass, or drawing
 compiler rollout has occurred.
+
+## Revised candidate and field checkpoint — 2026-11-11 04:22 UTC
+
+R2 (`b1e2af3f…`) passes the unchanged **byte regression ratchets** against Phase 0:
+shared gzip 502,618 → 485,100; heaviest route 758,531 → 755,290; full deployment
+payload 2,734,731 → 1,260,984 bytes. This does not meet the final 120 KB/180 KB
+script targets or prove a typical R2 edit stays below 100 KB. The 1.26 MB complete
+batch is a different measurement from the earlier 39 KB controlled edit.
+Canonical compilation/TypeScript and exact HTTP checks for 288 current assets
+and ten historical samples pass; the public manifest now returns 200. No
+activation: the full timing baseline and physical-phone evidence remain open.
+See `artifacts/phase1-reviewed-r2-static-2026-11-11.json`.
+
+A separate prepared change reduces the ready-page startup cover fade to 120 ms,
+within the plan's 150 ms motion limit. It keeps the existing readiness and
+sign-in boundary. Five existing handoff tests and scoped lint pass. It is not
+part of R2, the frozen baseline, or the live bootstrap.
+
+The refreshed anonymous field snapshot contains 60 beacons and 1,428 observations.
+Twenty phone-class startup marks have a median of 808.5 ms; four INP observations
+have a sample p75 of 104 ms; three navigation marks have a median of 593 ms.
+These small, uncontrolled samples are not accepted physical reference gates.
+The startup mark spans document navigation to cover removal, not an OS icon tap.
+Hardware, link and repeat-visit conditions are not established per row, and the
+live bootstrap still has its documented sampling/late-context limits. See
+`artifacts/field-review-2026-11-10-2322.json`.
