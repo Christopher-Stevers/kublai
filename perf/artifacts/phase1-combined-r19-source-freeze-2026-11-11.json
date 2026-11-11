@@ -1,0 +1,122 @@
+{
+  "status": "source-frozen-awaiting-root-review-NO-build-authorization",
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111",
+  "baseBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "baseSourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111",
+  "groups": [
+    {
+      "group": "hook-feedback-only",
+      "commit": "25d590c9403fc2d8b9ba6e6306ed482d2df7ea53",
+      "paths": [
+        {
+          "path": "src/hooks/use-press.ts",
+          "parentExactlyMatchesComposition": true,
+          "reviewedNormalizedParentExactlyMatches": true,
+          "commitParentSha256": "a2df179682c0927a8b589bfd0fee1c9c88e3eee2ee56a1395def2ae8e27f6e80",
+          "preimageSha256": "a2df179682c0927a8b589bfd0fee1c9c88e3eee2ee56a1395def2ae8e27f6e80",
+          "commitPostimageSha256": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+          "postimageSha256": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+          "parentException": null
+        }
+      ],
+      "patchSha256": "e006ed7a6da4da613eac4d12b3dba0a14425d9f5007d89509101d7bbaf71af86",
+      "appliesWithoutConflict": true
+    },
+    {
+      "group": "quantity-attribute-feedback",
+      "commit": "d5f30d710d6bff88e2e755169fd5f99d760e9c52",
+      "paths": [
+        {
+          "path": "src/components/ui/button.tsx",
+          "parentExactlyMatchesComposition": true,
+          "reviewedNormalizedParentExactlyMatches": true,
+          "commitParentSha256": "97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb",
+          "preimageSha256": "97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb",
+          "commitPostimageSha256": "4a03ed88948ecbfa979f0b5db3259c4715c9665d7b9e91112f912b93833dc84b",
+          "postimageSha256": "4a03ed88948ecbfa979f0b5db3259c4715c9665d7b9e91112f912b93833dc84b",
+          "parentException": null
+        },
+        {
+          "path": "src/components/materialLists/QuantityControls.tsx",
+          "parentExactlyMatchesComposition": true,
+          "reviewedNormalizedParentExactlyMatches": true,
+          "commitParentSha256": "e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b",
+          "preimageSha256": "e8327ff7be1115aa94e665e6da464521d0d8094ba798cbd45cbec56df450b87b",
+          "commitPostimageSha256": "f8d315f8bde373ee7890ff4def1676d0678d389b85a6a3b2b5af18b8322e2891",
+          "postimageSha256": "f8d315f8bde373ee7890ff4def1676d0678d389b85a6a3b2b5af18b8322e2891",
+          "parentException": null
+        }
+      ],
+      "patchSha256": "d7cf0b4e702d7a24c0db0d2122e4fd57e1868cf81c42c5a1d18c20f85e1a9687",
+      "appliesWithoutConflict": true
+    },
+    {
+      "group": "badge-refresh-only",
+      "commit": "51b43717c3836c33a7158c789e22d121db34603a",
+      "paths": [
+        {
+          "path": "src/app/jobs/JobsClient.tsx",
+          "parentExactlyMatchesComposition": false,
+          "reviewedNormalizedParentExactlyMatches": true,
+          "commitParentSha256": "4e494966bba8dcba1eb31d95d02f9d345239912bfccd38cf41200bbe04f347fd",
+          "preimageSha256": "c1d0421cc4dc7bbacacbcd699060230e288b5d33fa4e3ba549aab981600c0cd9",
+          "commitPostimageSha256": "94f717f275f2c2dd8e4de6192b7fa9525d4ad55d9f0fa90093d5ff1a3c27841b",
+          "postimageSha256": "f7261eb730c86b0eac064515df5abe10424c0dfd1fccdd15d3bbb6cae1d4758b",
+          "parentException": "Only independent R8 JobsCard feedback attribute line is absent from R18 and intentionally remains absent; exact badge-only commit patch applied."
+        }
+      ],
+      "patchSha256": "84b37d6264b543583d0849df637c794e679762f492a03930f89dfb2fb299fa62",
+      "appliesWithoutConflict": true
+    }
+  ],
+  "runtimePathCount": 4,
+  "operationalPathCount": 0,
+  "changedPaths": [
+    "src/app/jobs/JobsClient.tsx",
+    "src/components/materialLists/QuantityControls.tsx",
+    "src/components/ui/button.tsx",
+    "src/hooks/use-press.ts"
+  ],
+  "unaffectedFiles": 5473,
+  "actualSrcTreeFileCount": 1713,
+  "expectedSourceFingerprintFileCount": 2317,
+  "publicCorpusFiles": 3263,
+  "publicChanged": 0,
+  "configsPackageLockTsconfigUnchanged": true,
+  "curatedPerfAndExistingTestsUnchanged": true,
+  "perfDirectoryPresentInBase": false,
+  "preparationAttempts": [
+    {
+      "attempt": 1,
+      "status": "failed-before-overlay",
+      "reason": "Earlier helper assumed optional perf directory; R18 has none",
+      "preservedPartialSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111-preparation-failed1"
+    },
+    {
+      "attempt": 2,
+      "status": "runtime-source-composed-and-verified; metadata helper failed",
+      "reason": "Undefined preparation provenance variable"
+    },
+    {
+      "attempt": 3,
+      "status": "verification-only; metadata helper failed",
+      "reason": "R18 REVIEWED_SOURCE layout has no earlier-helper paths key"
+    },
+    {
+      "attempt": 4,
+      "status": "verification-only completed; no runtime recomposition; final metadata written"
+    }
+  ],
+  "serverOnlySymlinkTargetsUnchanged": true,
+  "r8JobsCardAndPressableCardExcluded": true,
+  "schemaWorkerPackingSlipsZoomUnchanged": true,
+  "unrelatedChanges": 0,
+  "composition": "Exact immutable R18 copy plus only selected runtime git diffs. JobsClient commit parent/postimage normalization excludes exactly the independent R8 attribute line; badge diff itself is unmodified. No raw HEAD, dirty source, diagnostics or operational test additions.",
+  "buildStarted": false,
+  "activated": false,
+  "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2317,
+  "baseFingerprintVerified": true
+}
