@@ -299,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T16:30:28Z",
+  "updatedAt": "2026-11-11T16:44:28Z",
   "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
@@ -1026,7 +1026,7 @@
       "productionActivated": false
     },
     "r19Candidate": {
-      "status": "canonical-and-offline-proofs-passed-http-and-full-matrix-pending",
+      "status": "private-compile-preflight-passed-full-v2-running",
       "sourceFreezeCommit": "231bb1dd",
       "source": "perf/artifacts/phase1-combined-r19-source-freeze-2026-11-11.json",
       "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
@@ -1035,7 +1035,7 @@
       "rootIndependentlyVerifiedFingerprint": true,
       "r8JobCardOptInExcluded": true,
       "buildStarted": true,
-      "fullMatrixRun": false,
+      "fullMatrixRun": true,
       "activation": false,
       "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
       "buildPassed": true,
@@ -1052,7 +1052,21 @@
       "httpPassed": true,
       "httpProof": "perf/artifacts/phase1-r19-http-proof-2026-11-11.json",
       "httpProofCommit": "7a9c17e5",
-      "httpRuntimeCleaned": true
+      "httpRuntimeCleaned": true,
+      "newLabSnapshot": "/tmp/foremanhq-speed-app-PSljsn",
+      "labBuild": "2e5AUhfrGey7tubpAbx-8",
+      "labCompilePassed": true,
+      "labReadPreflightPassed": 14,
+      "labCompileCleanupConfirmed": true,
+      "labCompileUnexpectedDatabaseErrors": 0,
+      "fullMatrixStatus": "running-no-result",
+      "fullMatrixStartedUtc": "2026-11-11T16:38:05Z",
+      "fullMatrixPreparation": "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-preparation/",
+      "fullMatrixSamplesPlanned": 120,
+      "idleDurationMs": 600000,
+      "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "timingMethodUnchanged": true,
+      "v6Evidence": "Retained R18 proof only; no R19 V6 rerun or relabelling."
     },
     "protectedSnapshotPrimitive": {
       "commit": "9ace848a",

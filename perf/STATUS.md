@@ -889,3 +889,19 @@ returned 200; unauthenticated cache binding returned 401. Server/supervisor exit
 cleanly and port3150 closed. Proof `7a9c17e5`; production remains Phase0.
 The exact private R19 compile/preflight is now cleared after storage recovery;
 its full timing comparison is still pending.
+
+## R19 full comparison running — 2026-11-11 16:38 UTC
+
+The new R19 private app compiled as `2e5AUhfrGey7tubpAbx-8`, with all fourteen
+actual reads passing, 113 tables from sixteen schema modules, zero PostgreSQL
+errors and verified cleanup. It binds exactly to canonical build `47b6e705…`
+and fingerprint `4541b37e…`; it is never a deployable artifact. The prior V6
+functional proof remains R18-bound and is not relabelled.
+
+One original v2 full run began at 16:38:05 UTC: ten minutes idle, then all
+120 samples against the unchanged original baseline1. Root recomputed the five
+operational hashes and frozen method; source/method/semantic environment guards
+passed before database startup and idle. The launcher differs from the executed
+R18 launcher only in R19 identities/paths, and contains no diagnostic process
+monitor. No retry, exclusion, result or activation is authorized by this start.
+All other tests/builds/app work are stopped while source reviews continue.
