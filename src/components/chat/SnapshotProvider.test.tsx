@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -153,6 +154,47 @@ function editSetup() {
     </SnapshotProvider>,
   );
 }
+it("does not search for fullscreen hosts during idle page updates or after closing", async () => {
+  const select = vi.spyOn(document, "querySelector");
+  const hostReads = () => select.mock.calls.filter(([selector]) => selector === '[data-drawing-fullscreen="true"]').length;
+  render(<SnapshotProvider><Launcher /></SnapshotProvider>);
+  const changed = document.createElement("div");
+  await act(async () => {
+    document.body.append(changed);
+    changed.dataset.drawingFullscreen = "true";
+  });
+  expect(hostReads()).toBe(0);
+  fireEvent.click(screen.getByText("Start snapshot"));
+  // The capture is still pending, but its overlay already uses the right host.
+  expect(changed.contains(screen.getByRole("dialog", { name: "Select snapshot area" }))).toBe(true);
+  await screen.findByAltText("Page ready for snapshot selection");
+  expect(hostReads()).toBeGreaterThan(0);
+  fireEvent.click(screen.getByLabelText("Cancel snapshot"));
+  await act(async () => undefined);
+  const readsAtClose = hostReads();
+  await act(async () => {
+    changed.remove();
+    const unrelated = document.createElement("span");
+    document.body.append(unrelated);
+    unrelated.remove();
+  });
+  expect(hostReads()).toBe(readsAtClose);
+});
+
+it("uses a newly opened fullscreen host when snapshot is reopened", async () => {
+  render(<SnapshotProvider><Launcher /></SnapshotProvider>);
+  fireEvent.click(screen.getByText("Start snapshot"));
+  await screen.findByAltText("Page ready for snapshot selection");
+  fireEvent.click(screen.getByLabelText("Cancel snapshot"));
+  const drawing = document.createElement("div");
+  drawing.dataset.drawingFullscreen = "true";
+  document.body.append(drawing);
+  try {
+    fireEvent.click(screen.getByText("Start snapshot"));
+    expect(drawing.contains(screen.getByRole("dialog", { name: "Select snapshot area" }))).toBe(true);
+    await screen.findByAltText("Page ready for snapshot selection");
+  } finally { drawing.remove(); }
+});
 it("opens directly in selection mode with compact capture controls", async () => {
   setup();
   await screen.findByAltText("Page ready for snapshot selection");

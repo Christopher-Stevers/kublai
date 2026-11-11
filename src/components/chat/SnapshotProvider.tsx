@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useEffectEvent,
   useRef,
   useMemo,
@@ -97,8 +98,15 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
     },
     { enabled: editing, retry: false, refetchOnWindowFocus: false },
   );
+  const [phase, setPhase] = useState<
+    "idle" | "capture" | "screen" | "select" | "share" | "error"
+  >("idle");
   const [portalHost, setPortalHost] = useState<Element | null>(null);
-  useEffect(() => {
+  const needsPortalHost = editing || phase !== "idle";
+  useLayoutEffect(() => {
+    if (!needsPortalHost) return;
+    // Fullscreen changes matter only while snapshot UI is open. Resolve its
+    // host before paint, without watching every idle app DOM mutation.
     const chooseHost = () =>
       setPortalHost(
         document.fullscreenElement ??
@@ -118,10 +126,7 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
       observer.disconnect();
       document.removeEventListener("fullscreenchange", chooseHost);
     };
-  }, []);
-  const [phase, setPhase] = useState<
-    "idle" | "capture" | "screen" | "select" | "share" | "error"
-  >("idle");
+  }, [needsPortalHost]);
   const [capture, setCapture] = useState<Capture | null>(null);
   const [rect, setRect] = useState<SnapshotRect | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
