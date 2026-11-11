@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "date": "2026-11-10",
+  "provenance": "production-db-referenced-local-upload-storage",
+  "host": {
+    "node": "v26.8.2",
+    "platform": "linux",
+    "cpu": "Intel(R) Core(TM) i7-14700F",
+    "concurrentBenchmarkProcesses": true
+  },
+  "sample": {
+    "sheets": 100,
+    "distinctSourcePageSlots": 100,
+    "sourceSets": 50,
+    "selection": "Round-robin first/middle/last, then consecutive distinct pages across DB-referenced originals; byte-identical source PDFs removed. Trade labels are keyword heuristics, not reviewed annotations; scan/hatch/font diversity not a certified representative distribution."
+  },
+  "pdfBytes": {
+    "min": 36322,
+    "median": 348236,
+    "max": 15625901
+  },
+  "operators": {
+    "setLineWidth": 174372,
+    "setStrokeRGBColor": 34312,
+    "setFillRGBColor": 34516,
+    "setLineCap": 10469,
+    "setLineJoin": 20596,
+    "constructPath": 2602415,
+    "save": 139333,
+    "clip": 2119,
+    "restore": 139333,
+    "transform": 186169,
+    "dependency": 1980,
+    "paintImageXObject": 1004,
+    "beginText": 23339,
+    "setFont": 21094,
+    "setLeading": 5877,
+    "moveText": 12520,
+    "showText": 32423,
+    "endText": 23339,
+    "setGState": 2161,
+    "setTextMatrix": 20159,
+    "eoClip": 4924,
+    "nextLine": 831,
+    "beginAnnotation": 209,
+    "setMiterLimit": 14368,
+    "endAnnotation": 209,
+    "setDash": 291,
+    "setFlatness": 6,
+    "paintFormXObjectBegin": 177,
+    "beginMarkedContentProps": 24397,
+    "setCharSpacing": 9586,
+    "setWordSpacing": 641,
+    "setTextRise": 54,
+    "setHScale": 8245,
+    "setTextRenderingMode": 8552,
+    "endMarkedContent": 125379,
+    "paintFormXObjectEnd": 177,
+    "beginGroup": 69,
+    "endGroup": 69,
+    "setRenderingIntent": 6,
+    "setLeadingMoveText": 26,
+    "beginMarkedContent": 100982,
+    "paintImageMaskXObject": 64,
+    "paintInlineImageXObject": 14223
+  },
+  "paths": {
+    "min": 0,
+    "median": 4451.5,
+    "max": 469169
+  },
+  "segments": {
+    "min": 0,
+    "median": 10915,
+    "max": 494892
+  },
+  "curves": {
+    "min": 0,
+    "median": 42,
+    "max": 16349
+  },
+  "featureCoverage": {
+    "sheetsWithText": 87,
+    "sheetsWithImages": 93,
+    "sheetsWithClips": 81,
+    "scanCandidatesUnreviewed": 9,
+    "explicitUnsupportedFeatureSheets": 1,
+    "unsupportedCategories": {
+      "blend-mode": 1
+    },
+    "tradeKeywordHeuristics": {
+      "architectural": 38,
+      "mechanical": 29,
+      "electrical": 31,
+      "fire": 13,
+      "plumbing": 23,
+      "structural": 29
+    }
+  },
+  "resourceAccounting": {
+    "glyphOutlines": 11229,
+    "unresolvedGlyphOutlines": 0,
+    "glyphBrotliBytes": {
+      "min": 1,
+      "median": 10408,
+      "max": 34223
+    },
+    "geometryBrotliBytes": {
+      "min": 6,
+      "median": 29864,
+      "max": 1615753
+    },
+    "coarseGeometryBrotliBytes": {
+      "min": 6,
+      "median": 21649,
+      "max": 335540
+    },
+    "originalEncodedImageStreamBytes": {
+      "min": 0,
+      "median": 98350,
+      "max": 7245890
+    },
+    "partialGeometryGlyphImageComponentBytes": {
+      "min": 27604,
+      "median": 301650.5,
+      "max": 7255057
+    },
+    "wholePdfSidecarTransportBytes": {
+      "min": 36329,
+      "median": 403104,
+      "max": 15635068
+    },
+    "note": "Components are measured, not a complete compiled encoding. Styles, clips, layers, full resource dictionaries, triangulation, tile index/placement and render validation are unfinished. Coarse bbox culling is not an approved first-view LOD. PDF sidecar transport retains the entire original as a conservative fallback, not a vector size win."
+  },
+  "hostRasterByWidth": {
+    "512": {
+      "min": 26.816405000001396,
+      "median": 553.4931495000019,
+      "max": 53843.783563000005
+    },
+    "1024": {
+      "min": 8.30233600000065,
+      "median": 226.01040299999295,
+      "max": 47948.495051999984
+    },
+    "2048": {
+      "min": 9.133218999999372,
+      "median": 219.86761950000528,
+      "max": 45987.49689499999
+    }
+  },
+  "fidelity": {
+    "pathOnlySheets": 100,
+    "pathOnlyAllTilesPass": 0,
+    "glyphPrototypeSheets": 10,
+    "glyphPrototypeAllTilesPass": 0,
+    "note": "64px luminance SSIM tiles, two raster widths, ink threshold 0.005. Limited prototype intentionally omits images/patterns/layers/opacity/forms; failures are prototype gaps, not evidence the proposed architecture cannot work. Manual review only inspected a reference/prototype pair."
+  },
+  "gates": {
+    "compile85Percent": "UNPROVEN: parser feature eligibility is not successful compilation",
+    "fullSizeMedian610KB": "UNPROVEN: only partial resource-aware encodings measured",
+    "firstViewMedian150KB": "UNPROVEN: no fidelity-approved complete LOD package",
+    "denseSheetGPU8ms": "UNPROVEN: no WebGL2 renderer or physical-phone frame measurement",
+    "phoneRasterThreeZooms": "UNPROVEN: runnable local phone harness provided, no physical-phone result",
+    "decision": "Do not enable vector rendering or begin a production Rust port on this evidence. Continue the isolated compiler/renderer spike; no architecture stop is justified by omitted prototype features."
+  }
+}

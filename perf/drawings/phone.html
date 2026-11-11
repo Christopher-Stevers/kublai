@@ -1,0 +1,92 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Authorized drawing raster spike</title>
+<style>
+  body {
+    font: 16px system-ui;
+    margin: 24px;
+  }
+  button {
+    padding: 12px;
+  }
+  canvas {
+    max-width: 100%;
+    border: 1px solid #aaa;
+  }
+  pre {
+    white-space: pre-wrap;
+  }
+</style>
+<h1>Drawing raster timings</h1>
+<p>
+  This local-only run reads the authorized sample and measures pdf.js raster
+  work. Keep this page in the foreground. It does not measure the proposed GPU
+  renderer.
+</p>
+<button id="run">Run all sample sheets</button>
+<pre id="status"></pre>
+<canvas id="canvas"></canvas>
+<script type="module">
+  import { getDocument, GlobalWorkerOptions } from "/pdf.mjs";
+  GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
+  const button = document.querySelector("#run"),
+    status = document.querySelector("#status"),
+    canvas = document.querySelector("canvas");
+  button.onclick = async () => {
+    button.disabled = true;
+    const manifest = await (await fetch("/manifest")).json();
+    const results = [];
+    for (const sample of manifest.samples) {
+      let task;
+      try {
+        const response = await fetch("/sheet/" + sample.hash),
+          bytes = await response.arrayBuffer();
+        task = getDocument({
+          data: bytes,
+          standardFontDataUrl: "/fonts/",
+          cMapUrl: "/cmaps/",
+          cMapPacked: true,
+          wasmUrl: "/wasm/",
+        });
+        const doc = await task.promise,
+          page = await doc.getPage(1),
+          base = page.getViewport({ scale: 1 });
+        const timings = [];
+        for (const width of [512, 1024, 2048]) {
+          const viewport = page.getViewport({ scale: width / base.width });
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          const start = performance.now();
+          await page.render({ canvas, viewport }).promise;
+          timings.push({
+            viewportWidth: width,
+            rasterMs: performance.now() - start,
+          });
+          await new Promise(requestAnimationFrame);
+        }
+        results.push({ hash: sample.hash, timings });
+      } catch (error) {
+        results.push({ hash: sample.hash, error: String(error) });
+      } finally {
+        await task?.destroy();
+      }
+      status.textContent = `${results.length}/${manifest.samples.length}`;
+    }
+    const report = {
+      version: 1,
+      physicalPhoneAttestationRequired: true,
+      devicePixelRatio,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      results,
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], {
+        type: "application/json",
+      }),
+      link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "drawing-phone-raster.json";
+    link.textContent = "Download report";
+    document.body.append(link);
+    button.disabled = false;
+  };
+</script>
