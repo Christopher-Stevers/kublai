@@ -1,7 +1,6 @@
 "use client";
 import {
   Activity,
-  useLayoutEffect,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -30,30 +29,25 @@ export function JobActivityPanels({
   const [retained, setRetained] = useState<Panel[]>(() => [
     { key: activeKey, node: children },
   ]);
-  // The active child is always rendered immediately, before cache bookkeeping.
+  // The active child always comes directly from current props.
   // At most two visited inactive panels survive; no unopened screen is rendered.
   const panels = [
     { key: activeKey, node: children },
     ...(pageActive ? retained.filter((panel) => panel.key !== activeKey) : []),
   ].slice(0, 3);
-  useLayoutEffect(() => {
-    setRetained((previous) => {
-      const next = [
-        { key: activeKey, node: children },
-        ...(pageActive
-          ? previous.filter((panel) => panel.key !== activeKey)
-          : []),
-      ].slice(0, 3);
-      return next.length === previous.length &&
-        next.every(
-          (panel, index) =>
-            panel.key === previous[index]?.key &&
-            panel.node === previous[index]?.node,
-        )
-        ? previous
-        : next;
-    });
-  }, [activeKey, children, pageActive]);
+  // Pure, bounded adjustment of this component's own state. React retries this
+  // render before committing children; stable props make the equality guard
+  // terminate. An abandoned concurrent render cannot publish a ref-held panel.
+  if (
+    panels.length !== retained.length ||
+    panels.some(
+      (panel, index) =>
+        panel.key !== retained[index]?.key ||
+        panel.node !== retained[index]?.node,
+    )
+  ) {
+    setRetained(panels);
+  }
   return (
     <>
       {panels.map((panel) => (

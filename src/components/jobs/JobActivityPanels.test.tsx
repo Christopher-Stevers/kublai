@@ -9,7 +9,14 @@ import {
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useInstantMutation } from "~/hooks/use-instant-mutation";
-import { useEffect, useState } from "react";
+import {
+  Profiler,
+  StrictMode,
+  Suspense,
+  startTransition,
+  useEffect,
+  useState,
+} from "react";
 import { JobActivityPanels } from "./JobActivityPanels";
 import { isAppPageActive, setAppPageActive } from "~/lib/app-page-activity";
 let instance = 0;
@@ -173,4 +180,71 @@ describe("bounded visited job activity panels", () => {
     expect(send).toHaveBeenCalledOnce();
     client.clear();
   });
+});
+
+it("commits a fresh active child prop exactly once without post-commit bookkeeping", () => {
+  const phases: string[] = [];
+  const measured = (revision: number) => (
+    <Profiler id="panels" onRender={(_id, phase) => phases.push(phase)}>
+      <JobActivityPanels activeKey="lists">
+        <Panel name={`lists-${revision}`} />
+      </JobActivityPanels>
+    </Profiler>
+  );
+  const ui = render(measured(0));
+  phases.length = 0;
+  ui.rerender(measured(1));
+  expect(screen.getByLabelText("lists-1")).toBeVisible();
+  expect(phases).toEqual(["update"]);
+});
+
+it("keeps the same active DOM/draft across fresh child nodes in Strict Mode", () => {
+  const measured = () => <StrictMode>{view("lists")}</StrictMode>;
+  const ui = render(measured());
+  const input = screen.getByLabelText("lists");
+  fireEvent.change(input, { target: { value: "still editing" } });
+  ui.rerender(measured());
+  expect(screen.getByLabelText("lists")).toBe(input);
+  expect(input).toHaveValue("still editing");
+  expect([...connected]).toEqual(["lists"]);
+});
+
+it("does not retain a panel from an abandoned suspended transition", () => {
+  const blocked = new Promise<void>(() => undefined);
+  function Content({ name }: { name: string }) {
+    if (name === "blocked") {
+      // React Suspense explicitly uses a pending thenable, rather than an Error.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw blocked;
+    }
+    return <Panel name={name} />;
+  }
+  function Owner() {
+    const [name, setName] = useState("lists");
+    return (
+      <>
+        <button onClick={() => startTransition(() => setName("blocked"))}>
+          Start suspended
+        </button>
+        <button onClick={() => setName("chat")}>Override transition</button>
+        <button onClick={() => setName("lists")}>Return to lists</button>
+        <Suspense fallback={<span>Pending panel</span>}>
+          <JobActivityPanels activeKey={name}>
+            <Content name={name} />
+          </JobActivityPanels>
+        </Suspense>
+      </>
+    );
+  }
+  const ui = render(<Owner />);
+  const input = screen.getByLabelText("lists");
+  fireEvent.change(input, { target: { value: "committed draft" } });
+  fireEvent.click(screen.getByText("Start suspended"));
+  expect(screen.getByLabelText("lists")).toBe(input);
+  fireEvent.click(screen.getByText("Override transition"));
+  expect(screen.getByLabelText("chat")).toBeVisible();
+  expect(ui.container.querySelector('[data-job-panel="blocked"]')).toBeNull();
+  fireEvent.click(screen.getByText("Return to lists"));
+  expect(screen.getByLabelText("lists")).toBe(input);
+  expect(input).toHaveValue("committed draft");
 });
