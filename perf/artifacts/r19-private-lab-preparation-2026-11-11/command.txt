@@ -1,0 +1,1 @@
+PERF_EXPECTED_SOURCE_BUILD=47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece bash /tmp/foremanhq-r19-compile-command.sh

@@ -1,0 +1,81 @@
+--- executed-R18-private-compile
++++ prepared-R19-identities-explicit-EXIT
+@@ -1,10 +1,10 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+ harness=${PERF_HARNESS_DIR:?}
+-: "${PERF_EXPECTED_SOURCE_BUILD:?Root-reviewed R18 build identity required}"
++: "${PERF_EXPECTED_SOURCE_BUILD:?Root-reviewed R19 build identity required}"
+ [[ "$PERF_EXPECTED_SOURCE_BUILD" =~ ^[a-f0-9]{64}$ ]]
+ [[ "$harness" == /tmp/foremanhq-perf-method-f9bHR6 ]]
+-[[ "${PERF_SOURCE_ROOT:?}" == /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111 ]]
++[[ "${PERF_SOURCE_ROOT:?}" == /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111 ]]
+ [[ "${PERF_SOURCE_BUILD_DIST:?}" == "$PERF_SOURCE_ROOT/.next-web" ]]
+ [[ "$(cat "$PERF_SOURCE_BUILD_DIST/BUILD_ID")" == "$PERF_EXPECTED_SOURCE_BUILD" ]]
+ export FOREMANHQ_BACKGROUND_MODE=separate BIM_WORKER_DISABLED=1 SKIP_ENV_VALIDATION=1
+@@ -12,7 +12,7 @@
+ export STRIPE_SECRET_KEY=sk_test_speed_lab_only NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_speed_lab_only
+ export NEXT_PUBLIC_BUILD_ID=isolated-speed-baseline
+ unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
+-evidence_dir=/tmp/foremanhq-r18-compile-evidence
++evidence_dir=/tmp/foremanhq-r19-compile-evidence
+ [[ ! -e "$evidence_dir" ]]
+ mkdir -m 700 "$evidence_dir"
+ server_pid=
+@@ -22,33 +22,35 @@
+   cp "$PERF_LAB_SOCKET/schema-inventory.json" "$evidence_dir/schema-inventory.json" || failed=1
+   cp "$PERF_LAB_FIXTURES" "$evidence_dir/fixtures.json" || failed=1
+   cp "$PERF_LAB_SOCKET/server.log" "$evidence_dir/private-pg-before-helper-shutdown.log" || failed=1
+-  if [[ "$failed" != 0 ]];then printf '%s\n' COMPILE_EVIDENCE_COPY_FAILED >&2;return 1;fi
+-  return "$status"
++  if [[ "$failed" != 0 ]];then printf '%s\n' COMPILE_EVIDENCE_COPY_FAILED >&2;status=1;fi
++  trap - EXIT
++  if [[ "$failed" != 0 ]];then status=1;fi
++  exit "$status"
+ }
+ trap cleanup EXIT
+ trap 'exit 130' INT
+ trap 'exit 143' TERM
+ snapshot=$(node "$harness/perf/create-lab-snapshot.mjs")
+-printf '%s\n' "$snapshot" > /tmp/foremanhq-r18-compiled-snapshot
+-export PERF_R18_SNAPSHOT="$snapshot"
++printf '%s\n' "$snapshot" > /tmp/foremanhq-r19-compiled-snapshot
++export PERF_R19_SNAPSHOT="$snapshot"
+ node --input-type=module <<'JS'
+ import fs from 'node:fs';import path from 'node:path';
+-const s=process.env.PERF_R18_SNAPSHOT,e=JSON.parse(fs.readFileSync(path.join(s,'source-evidence.json')));
+-if(!s.startsWith('/tmp/foremanhq-speed-app-')||!fs.existsSync(path.join(s,'PERF_LAB_ONLY'))||e.sourceBuild!==process.env.PERF_EXPECTED_SOURCE_BUILD||e.sourceFingerprint!=='ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd'||e.sourceFileCount!==2317||e.sourceVerification.unchangedFilesChecked!==2312)throw Error('Wrong R18 snapshot');
+-fs.writeFileSync('/tmp/foremanhq-r18-compile-source-before.json',JSON.stringify(e,null,2));
++const s=process.env.PERF_R19_SNAPSHOT,e=JSON.parse(fs.readFileSync(path.join(s,'source-evidence.json')));
++if(!s.startsWith('/tmp/foremanhq-speed-app-')||!fs.existsSync(path.join(s,'PERF_LAB_ONLY'))||e.sourceBuild!==process.env.PERF_EXPECTED_SOURCE_BUILD||e.sourceFingerprint!=='4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7'||e.sourceFileCount!==2317||e.sourceVerification.unchangedFilesChecked!==2312)throw Error('Wrong R19 snapshot');
++fs.writeFileSync('/tmp/foremanhq-r19-compile-source-before.json',JSON.stringify(e,null,2));
+ JS
+ cd "$snapshot"
+-./node_modules/.bin/next build --webpack > /tmp/foremanhq-r18-lab-build.log 2>&1 || { tail -70 /tmp/foremanhq-r18-lab-build.log;exit 1; }
++./node_modules/.bin/next build --webpack > /tmp/foremanhq-r19-lab-build.log 2>&1 || { tail -70 /tmp/foremanhq-r19-lab-build.log;exit 1; }
+ node --input-type=module <<'JS'
+ import fs from 'node:fs';import path from 'node:path';import{pathToFileURL}from'node:url';
+-const{sourceEvidence}=await import(pathToFileURL(process.env.PERF_HARNESS_DIR+'/scripts/release/source-fingerprint.mjs'));const s=process.env.PERF_R18_SNAPSHOT;const e=await sourceEvidence(process.env.PERF_SOURCE_ROOT,s,process.env.PERF_EXPECTED_SOURCE_BUILD,'after-lab-transforms');if(e.sourceFingerprint!=='ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd')throw Error('Source changed during compile');
+-fs.writeFileSync('/tmp/foremanhq-r18-lab-compiled.json',JSON.stringify({snapshot:s,labBuild:fs.readFileSync(path.join(s,'.next/BUILD_ID'),'utf8').trim(),source:e,compileOnly:true,serverStarted:false},null,2));
++const{sourceEvidence}=await import(pathToFileURL(process.env.PERF_HARNESS_DIR+'/scripts/release/source-fingerprint.mjs'));const s=process.env.PERF_R19_SNAPSHOT;const e=await sourceEvidence(process.env.PERF_SOURCE_ROOT,s,process.env.PERF_EXPECTED_SOURCE_BUILD,'after-lab-transforms');if(e.sourceFingerprint!=='4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7')throw Error('Source changed during compile');
++fs.writeFileSync('/tmp/foremanhq-r19-lab-compiled.json',JSON.stringify({snapshot:s,labBuild:fs.readFileSync(path.join(s,'.next/BUILD_ID'),'utf8').trim(),source:e,compileOnly:true,serverStarted:false},null,2));
+ JS
+ 
+ # Source-bound, fixture-only startup/read preflight after this private compile.
+ export PERF_FIXTURES="$snapshot/perf/fixtures.json" PERF_BUILD=$(cat "$snapshot/.next/BUILD_ID")
+ export PERF_LOG_DIR="$snapshot/data/performance-compile-preflight"
+-./node_modules/.bin/next start --hostname 127.0.0.1 --port 3483 > /tmp/foremanhq-r18-compile-preflight-server.log 2>&1 &
++./node_modules/.bin/next start --hostname 127.0.0.1 --port 3483 > /tmp/foremanhq-r19-compile-preflight-server.log 2>&1 &
+ server_pid=$!
+ printf '%s\n' "$server_pid" > "$evidence_dir/server.pid"
+ for attempt in $(seq 1 90);do
+@@ -59,4 +61,8 @@
+ PERF_BASE_URL=http://127.0.0.1:3483 node "$harness/perf/preflight.mjs"
+ cp "$snapshot/preflight.json" "$evidence_dir/preflight.json"
+ cp "$snapshot/source-evidence.json" "$evidence_dir/source-evidence.json"
+-cp /tmp/foremanhq-r18-compile-preflight-server.log "$evidence_dir/server.log"
++cp /tmp/foremanhq-r19-compile-preflight-server.log "$evidence_dir/server.log"
++
++node --input-type=module <<'JS'
++import fs from'node:fs';const file='/tmp/foremanhq-r19-lab-compiled.json';const data=JSON.parse(fs.readFileSync(file));const preflight=JSON.parse(fs.readFileSync(process.env.PERF_R19_SNAPSHOT+'/preflight.json'));if(preflight.status!=='passed'||preflight.build!==data.labBuild||preflight.sourceBuild!==process.env.PERF_EXPECTED_SOURCE_BUILD)throw Error('Compile preflight binding failed');fs.writeFileSync(file,JSON.stringify({...data,compileOnly:false,serverPreflightCompleted:true,preflightQueryCount:preflight.results.length},null,2)+'\n');
++JS

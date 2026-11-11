@@ -1,0 +1,17 @@
+{
+  "status": "prepared-not-run-awaiting-storage-and-HTTP-clearance",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111",
+  "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "sourceFileCount": 2317,
+  "unchangedFilesChecked": 2312,
+  "harnessRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "newSnapshotRequired": true,
+  "noR18V6Relabel": "Existing V6 proof remains bound to R18 only. No separate R19 V6 requested.",
+  "outerCompileBoundSeconds": 360,
+  "scriptHashes": {
+    "foremanhq-r19-compile-only.sh": "da897a8b60188a953549221590be22185f73c84bcd8805d167b9b3c95df83ca6",
+    "foremanhq-r19-compile-command.sh": "8a360f64eb2346e7aaf37978cef5f2c690ef5176953502686f90dce9bfa6e4e8"
+  }
+}
