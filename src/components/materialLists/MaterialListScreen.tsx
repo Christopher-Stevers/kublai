@@ -1,4 +1,7 @@
 "use client";
+import { useReceivingOrderReads } from "~/hooks/use-receiving-order-read";
+import { SavedOrderReading } from "./SavedOrderReading";
+
 import { createReceiptIntentGate } from "~/lib/receipt-intent-gate";
 import { materialListPartSearchText, matchesMaterialListPart } from "~/lib/material-list-part-search";
 import { MaterialFocusSection } from "./MaterialFocusSection";
@@ -173,16 +176,10 @@ export function MaterialListScreen({
 
   const { materialList: mlHeader, items: unsortedItems, isLoading } =
     useReplicacheMaterialList(id);
-  const { data: verifyOrder, isLoading: isLoadingVerifyOrder } =
-    api.materialList.getOrderById.useQuery(
-      { orderId: verifyOrderId ?? "" },
-      { enabled: isBrowserOnline && !!verifyOrderId },
-    );
-  const { data: notesOrder, isLoading: isLoadingNotesOrder } =
-    api.materialList.getOrderById.useQuery(
-      { orderId: notesOrderId ?? "" },
-      { enabled: isBrowserOnline && !!notesOrderId },
-    );
+  const orderReads = useReceivingOrderReads({ verificationOrderId: verifyOrderId, notesOrderId,
+    materialListId: id, jobId: mlHeader?.jobId, headerReady: !!mlHeader });
+  const { data: verifyOrder, isLoading: isLoadingVerifyOrder, isFetching: refreshingOrder, savedReading } = orderReads.verification;
+  const { data: notesOrder, isLoading: isLoadingNotesOrder } = orderReads.notes;
   useHeaderBackOverride(!embedded && mlHeader?.jobId ? () => {
     router.replace(`/jobs/${encodeURIComponent(mlHeader.jobId)}/material-lists`);
   } : null, { priority: -50 });
@@ -464,6 +461,7 @@ export function MaterialListScreen({
               </div>
             </div>
           </div>
+          {savedReading && <SavedOrderReading reading={savedReading} refreshing={refreshingOrder} online={isBrowserOnline} />}
           {verifyOrderId && (
             <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-950">
               <span className="font-semibold">Verify Order</span>

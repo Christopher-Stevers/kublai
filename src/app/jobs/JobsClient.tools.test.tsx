@@ -189,7 +189,7 @@ vi.mock("~/trpc/react", async () => {
       },
       materialList: {
         duplicate: { useMutation: () => ({ isPending: false }) },
-        getOrderById: { useQuery: () => ({}) },
+        getOrderById: { _def: () => ({ path: ["materialList", "getOrderById"] }), useQuery: () => ({}) },
         updateOrderNotes: { useMutation: () => ({}) },
         updateOrderItemVerification: { useMutation: () => ({}) },
         markAllOrderItemsReceived: { useMutation: () => ({}) },

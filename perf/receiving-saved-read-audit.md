@@ -1,5 +1,10 @@
 # Receiving saved-read boundary — source audit
 
+The original hold below was superseded by the approved existing-store primitive
+`9ace848a` and the [bounded receiving follow-up](receiving-saved-order.md). The
+audit remains as the reason for scoped generation fencing, not a current claim
+that the store lacks that API. No second persistence/sync engine was introduced.
+
 Source-only during the R18 timing quiet window. No implementation, runtime,
 benchmark, database or test was run. Frozen R18 and dirty receiving files are
 unchanged. This is a proposed partial Tier1 read, not acceptance or permission to
@@ -95,3 +100,41 @@ and accepted-write reconciliation must remain untouched.
 The current tests prove individual receipt optimism/rollback and packing-slip
 UI/network workflows; they do not establish this new projection's durable denial
 or read-only behavior. No test count or runtime timing is claimed by this audit.
+
+## Per-order denial prerequisite — persistence held
+
+Follow-up source review found an existing request-start hook already captures
+`captureDeviceReadAuthority()` in `trpc/react.tsx:150–157` before `next(op)`.
+It handles imperative and observed tRPC requests; adding a duplicate request engine
+is unnecessary. However getOrderById is not an authority-classified read. Merely
+adding it would route order NOT_FOUND through the current default account-wide
+snapshot purge/reload gate. A deleted order must not revoke unrelated app/drawing
+reads, so that change is not proposed. Identity-level 401/403 handling requires
+separate semantic review; no global policy was broadened.
+
+The current DrawingOfflineStore API cannot safely implement a narrow order404
+fence: `saveSnapshot` (590–610) blindly writes after account-generation validation;
+`readSnapshot` (612–615) checks only that account authority. The atomic transaction
+checks (310–336) and clear (617 onward) are account-wide. There is no public
+per-snapshot generation/delete/revoke/CAS operation.
+
+Concrete counterexample: same-account tab A has an old HTTP response or pending
+snapshot write; tab B records a deleted-order tombstone using saveSnapshot.
+Account authority has intentionally not changed. A's late save still passes the
+account epoch check and overwrites that tombstone. A second snapshot key,
+local-state canceled flag or storage-event notification cannot atomically reject
+that writer after missed events/reload. Existing A→B→A account disposal/generation
+fences remain useful but do not solve this same-account per-order race.
+
+A correct later design needs an atomic account **and per-order** generation token,
+captured before the request, checked in the same IDB transaction as projection
+write/read, and advanced with deletion on terminal order denial. Active readers
+must also hide the matching saved summary without gating unrelated UI; late
+requests/old contexts cannot clear a newer tombstone or recover it without a new
+authoritative read. Existing storage offers no such scoped operation. Implementing
+it now would create a new revocation mechanism even if it reused an object store.
+Under the current bounded Tier1 scope, **hold receiving persistence**, rather
+than add a parallel cache engine or silently reuse account-wide revocation.
+No runtime changes or new tests were made for this follow-up. The prior proposed
+projection and deferred cross-tab/account/disk tests remain a design prerequisite,
+not an implementation or durable-revocation proof.

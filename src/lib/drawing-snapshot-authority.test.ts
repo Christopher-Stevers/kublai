@@ -1,4 +1,8 @@
-import { IDBFactory } from "fake-indexeddb";
+import {
+  IDBFactory,
+  IDBKeyRange,
+  IDBObjectStore as FakeObjectStore,
+} from "fake-indexeddb";
 import type * as DrawingOfflineModule from "./drawing-offline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 vi.mock("./pdf-client", () => ({ sourcePdfPage: () => null }));
@@ -9,6 +13,7 @@ const protectedKey = `authority-snapshot:${key}`;
 beforeEach(async () => {
   vi.resetModules();
   vi.stubGlobal("indexedDB", new IDBFactory());
+  vi.stubGlobal("IDBKeyRange", IDBKeyRange);
   const memory = new Map<string, string>();
   Object.defineProperty(window, "localStorage", {
     configurable: true,
@@ -130,4 +135,159 @@ it("couples tokens to account clear, disposal and A to B to A lifecycle", async 
   await expect(
     fresh.saveSnapshotWithAuthority(afterReturn, { late: true }),
   ).rejects.toThrow();
+});
+
+it("atomically bounds only its protected namespace and respects a late view cancellation", async () => {
+  const store = new api.DrawingOfflineStore(account);
+  const first = await store.captureSnapshotAuthority("receiving-order:a"),
+    second = await store.captureSnapshotAuthority("receiving-order:b");
+  const unrelated = await store.captureSnapshotAuthority("drawing-read:a");
+  await store.saveSnapshotWithAuthority(unrelated, { keep: true });
+  await store.saveSnapshot("ordinary", { keep: true });
+  const budget = {
+    namespace: "receiving-order:",
+    maxBytes: 100,
+    maxEntryBytes: 80,
+  };
+  expect(
+    await store.saveSnapshotWithAuthority(
+      first,
+      { label: "a".repeat(40) },
+      budget,
+    ),
+  ).toBe(true);
+  expect(
+    await store.saveSnapshotWithAuthority(
+      second,
+      { label: "b".repeat(40) },
+      budget,
+    ),
+  ).toBe(true);
+  expect(await store.readSnapshotWithAuthority(first)).toBeNull();
+  expect(await store.readSnapshotWithAuthority(second)).toEqual({
+    label: "b".repeat(40),
+  });
+  expect(
+    await store.saveSnapshotWithAuthority(
+      second,
+      { label: "large".repeat(100) },
+      budget,
+    ),
+  ).toBe(false);
+  expect(
+    await store.saveSnapshotWithAuthority(
+      first,
+      { label: "cancelled" },
+      { ...budget, canWrite: () => false },
+    ),
+  ).toBe(false);
+  expect(await store.readSnapshotWithAuthority(first)).toBeNull();
+  expect(await store.readSnapshotWithAuthority(unrelated)).toEqual({
+    keep: true,
+  });
+  expect(await store.readSnapshot("ordinary")).toEqual({ keep: true });
+});
+
+it("aborts budget eviction and put when disposed at the deferred cursor callback", async () => {
+  const originalStore = new api.DrawingOfflineStore(account);
+  const original =
+    await originalStore.captureSnapshotAuthority("receiving-order:a");
+  const budget = {
+    namespace: "receiving-order:",
+    maxBytes: 100,
+    maxEntryBytes: 80,
+  };
+  await originalStore.saveSnapshotWithAuthority(
+    original,
+    { label: "a".repeat(40) },
+    budget,
+  );
+  const pendingStore = new api.DrawingOfflineStore(account);
+  const pending =
+    await pendingStore.captureSnapshotAuthority("receiving-order:b");
+  // eslint-disable-next-line @typescript-eslint/unbound-method -- The spy forwards the original with apply(this, args).
+  const open = FakeObjectStore.prototype.openCursor;
+  let disposedInCallback = false;
+  const spy = vi
+    .spyOn(FakeObjectStore.prototype, "openCursor")
+    .mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore["openCursor"]>
+    ) {
+      const request = open.apply(this, args);
+      if (this.name === "snapshots" && !disposedInCallback)
+        request.addEventListener(
+          "success",
+          () => {
+            disposedInCallback = true;
+            pendingStore.dispose();
+          },
+          { once: true },
+        );
+      return request;
+    });
+  try {
+    await expect(
+      pendingStore.saveSnapshotWithAuthority(
+        pending,
+        { label: "b".repeat(40) },
+        budget,
+      ),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+      snapshotAuthorityRevoked: true,
+    });
+  } finally {
+    spy.mockRestore();
+  }
+  expect(disposedInCallback).toBe(true);
+  const fresh = new api.DrawingOfflineStore(account);
+  const a = await fresh.captureSnapshotAuthority("receiving-order:a"),
+    b = await fresh.captureSnapshotAuthority("receiving-order:b");
+  expect(await fresh.readSnapshotWithAuthority(a)).toEqual({
+    label: "a".repeat(40),
+  });
+  expect(await fresh.readSnapshotWithAuthority(b)).toBeNull();
+});
+
+it("readonly capture never registers a missing key and existing tokens still fence revocation", async () => {
+  const store = new api.DrawingOfflineStore(account);
+  expect(
+    await store.captureExistingSnapshotAuthority("receiving-order:missing"),
+  ).toBeNull();
+  const open = indexedDB.open("foremanhq-drawing-downloads-v1", 2);
+  const database = await new Promise<IDBDatabase>((resolve, reject) => {
+    open.onsuccess = () => resolve(open.result);
+    open.onerror = () =>
+      reject(open.error ?? new Error("Fake database open failed"));
+  });
+  const request = database
+    .transaction("authority", "readonly")
+    .objectStore("authority")
+    .get([account, "authority-snapshot:receiving-order:missing"]);
+  expect(
+    await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () =>
+        reject(request.error ?? new Error("Fake authority read failed"));
+    }),
+  ).toBeUndefined();
+  database.close();
+  const original = await store.captureSnapshotAuthority(key);
+  await store.saveSnapshotWithAuthority(original, { name: "old" });
+  const fallback = await store.captureExistingSnapshotAuthority(key);
+  expect(fallback).not.toBeNull();
+  const other = new api.DrawingOfflineStore(account),
+    revoke = await other.captureExistingSnapshotAuthority(key);
+  expect(await other.revokeSnapshot(revoke!)).toBe(true);
+  await expect(
+    store.readSnapshotWithAuthority(fallback!),
+  ).rejects.toMatchObject({
+    name: "AbortError",
+    snapshotAuthorityRevoked: true,
+  });
+  await expect(
+    store.saveSnapshotWithAuthority(fallback!, { name: "late" }),
+  ).rejects.toThrow();
+  expect(await store.revokeSnapshot(fallback!)).toBe(false);
 });

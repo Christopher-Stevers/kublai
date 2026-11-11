@@ -1,3 +1,5 @@
+import { liveAccountScope } from "~/lib/live-protocol";
+import { RECEIVING_ACCOUNT_CHANGED_MESSAGE } from "~/lib/receiving-order-reading";
 import { assertManualReceiptEditable } from "~/server/packing-slips/manual-receiving";
 import { nextMaterialOrderNumber } from "~/server/order-number";
 import { jobPriceStatus } from "~/lib/job-price-status";
@@ -1929,8 +1931,9 @@ ${foremanName}`;
    * Get a specific order by ID with items
    */
   getOrderById: hasAppAccess
-    .input(z.object({ orderId: z.string().uuid() }))
-    .query(async ({ ctx, input }) => {
+    .input(z.object({ orderId: z.string().uuid(), expectedAccountKey: z.string().min(1).max(512).optional() }))
+    .query(async ({ ctx, input: request }) => {
+      const { expectedAccountKey, ...input } = request;
       if (!ctx.user.organizationId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1938,9 +1941,14 @@ ${foremanName}`;
         });
       }
 
+      if (expectedAccountKey !== undefined && expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)) {
+        throw new TRPCError({ code: "CONFLICT", message: RECEIVING_ACCOUNT_CHANGED_MESSAGE });
+      }
+
       const [order] = await ctx.db
         .select({
           id: orders.id,
+          jobId: orders.jobId,
           orderNumber: orders.orderNumber,
           status: orders.status,
           notes: orders.notes,
@@ -2003,6 +2011,7 @@ ${foremanName}`;
 
       return {
         id: order.id,
+        jobId: order.jobId,
         orderNumber: order.orderNumber,
         status: order.status,
         notes: order.notes,

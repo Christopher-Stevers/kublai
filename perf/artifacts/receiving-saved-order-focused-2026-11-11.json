@@ -1,0 +1,119 @@
+{
+  "status": "focused-tests-lint-and-root-scoped-runtime-typecheck-passed",
+  "scope": "Prepared receiving slice, excluded from frozen R19; no application/browser/real DB/build/activation",
+  "ownedSourceAndTestPaths": [
+    "src/components/materialLists/MaterialListScreen.tsx",
+    "src/components/materialLists/SavedOrderReading.tsx",
+    "src/components/materialLists/SavedOrderReading.test.tsx",
+    "src/hooks/use-receiving-order-read.ts",
+    "src/hooks/use-receiving-order-read.test.tsx",
+    "src/lib/receiving-order-reading.ts",
+    "src/lib/receiving-order-reading.test.ts",
+    "src/lib/tier-one-cache-budget.ts",
+    "src/lib/device-query-cache.ts",
+    "src/lib/device-query-cache.test.ts",
+    "src/lib/drawing-offline.ts",
+    "src/lib/drawing-snapshot-authority.test.ts",
+    "src/server/api/routers/materialList.ts",
+    "src/server/api/routers/receiving-order-account.test.ts",
+    "src/app/jobs/JobsClient.tools.test.tsx",
+    "src/app/jobs/JobsClient.activity.test.tsx"
+  ],
+  "sourceSha256": {
+    "src/components/materialLists/MaterialListScreen.tsx": "ac889c67343bd239cfbb654ab8ecd6d1de35c56d5cba7796fdc26ec44a57de71",
+    "src/components/materialLists/SavedOrderReading.tsx": "de1180bf03b78f1ea48205d35f0b7507b77d5196e4bddfacc62ccd74ddbad1ff",
+    "src/components/materialLists/SavedOrderReading.test.tsx": "ebde266baa53b3f7e8e63fa722927aadded89e1e6ccb9bcaa8f2e4356cd75948",
+    "src/hooks/use-receiving-order-read.ts": "dcb2e2f6b0a9de9cde81b9cdca04afe59a6e9e95af92832b0d094cfffef92b26",
+    "src/hooks/use-receiving-order-read.test.tsx": "c12e9ccce9c0e9f73367431380045aef329aafb378ea945e0494fa8c337a7504",
+    "src/lib/receiving-order-reading.ts": "f4f7bcdee121d210f32452ccb7fcfb9a5e8b8ba6a685650419dace0335b45f14",
+    "src/lib/receiving-order-reading.test.ts": "764136982145d3cacb515da2f5b0f5a05a349bb5a22370f2e76c7c99b9f2d914",
+    "src/lib/tier-one-cache-budget.ts": "a46c892384ed70bc4c4034c65669ee872395881618d737f2d9ed75f0bea20573",
+    "src/lib/device-query-cache.ts": "3c3a3f68ffda95052c4e35af6e2ba5682b88564fcd0acd919575217f70b246f8",
+    "src/lib/device-query-cache.test.ts": "12b0bdbad115d8986361ba82f39fb9cb46d54b54c20e717d8158ea33555e443c",
+    "src/lib/drawing-offline.ts": "d60d4b3f4745ce0bf6d4aa0d25eedb933aa45907463abd0e4d7578a6fb6ba838",
+    "src/lib/drawing-snapshot-authority.test.ts": "cd9b67ae1ae5e8a6e3b57c54d41176cd33676f0393c86f33a769b13ae9dca1d2",
+    "src/server/api/routers/materialList.ts": "bd05a71b40131a43830b543bd6f2e76a1ad286f7eddfe208641a89325b4e7ab5",
+    "src/server/api/routers/receiving-order-account.test.ts": "96f2a28f4068af7b780f8884e6dc07b3bfa0c8c95eccd554b154928a93ab6108",
+    "src/app/jobs/JobsClient.tools.test.tsx": "1bf657b880a105675bdcd1c341286f33b5b42f45f9b1f6266b63411b761b116d",
+    "src/app/jobs/JobsClient.activity.test.tsx": "62804a43d2ccec0402913db3a097a3c5a7fcc9142f2c3e35d8105fc9f8077ab0"
+  },
+  "tests": {
+    "command": "NODE_OPTIONS=--no-experimental-webstorage pnpm exec vitest run src/hooks/use-receiving-order-read.test.tsx src/lib/receiving-order-reading.test.ts src/lib/drawing-snapshot-authority.test.ts src/lib/drawing-offline.test.ts src/lib/device-query-cache.test.ts src/components/materialLists/SavedOrderReading.test.tsx src/server/api/routers/receiving-order-account.test.ts src/app/jobs/JobsClient.tools.test.tsx src/app/jobs/JobsClient.activity.test.tsx src/hooks/use-instant-order-notes.test.tsx src/hooks/use-instant-receipt-verification.test.tsx --maxWorkers=1",
+    "files": 11,
+    "uniquePassed": 103,
+    "failed": 0,
+    "initialRun": {
+      "files": 9,
+      "passed": 88,
+      "failed": 2,
+      "cause": "Earlier badge integration activity fixture lacked endpoint _def and real QueryClient provider; fixture-only correction retained all assertions."
+    }
+  },
+  "lint": {
+    "checkedFiles": 16,
+    "newErrors": 0,
+    "newWarnings": 0,
+    "inherited": [
+      {
+        "path": "src/server/api/routers/materialList.ts",
+        "current": {
+          "errors": 153,
+          "warnings": 1
+        },
+        "head": {
+          "errors": 153,
+          "warnings": 1
+        },
+        "sameNormalizedRuleMessageColumnAndSource": true
+      },
+      {
+        "path": "src/app/jobs/JobsClient.activity.test.tsx",
+        "current": {
+          "errors": 2,
+          "warnings": 0
+        },
+        "head": {
+          "errors": 2,
+          "warnings": 0
+        },
+        "sameNormalizedRuleMessageColumnAndSource": true
+      }
+    ]
+  },
+  "logs": {
+    "/tmp/receiving-focused-attempt1.log": {
+      "sha256": "177444422e4364040dfe983992fa24bdb09e59a59b9aeeea737d7dca1eaf7ba6",
+      "bytes": 3088
+    },
+    "/tmp/receiving-focused-final.log": {
+      "sha256": "7ef6e78b6606bd148edbd2e3cb9621067b9095a50f65b3a6af163a3d3a916fc5",
+      "bytes": 504
+    },
+    "/tmp/receiving-reviewed-final-tests.log": {
+      "sha256": "d5bd9a0d2cf8ec2c7946e10a50cae62b04d62c36461f24d18e660e5ec9aee3d0",
+      "bytes": 509
+    },
+    "/tmp/receiving-lint-attempt1.log": {
+      "sha256": "b661a7dfac43ed7da278d553f495062b551d5c747c2603130d1e9a74131334ca",
+      "bytes": 30693
+    },
+    "/tmp/receiving-lint-final.json": {
+      "sha256": "e1b3304520358bd406f308144b5653ed461e9b2a64672b7523527e7a6c11a337",
+      "bytes": 145898
+    },
+    "/tmp/receiving-lint-baseline.json": {
+      "sha256": "c6b036d49b005bd3e395ff21d3f713d8b84752186067dfbd0793c8c483869ad4",
+      "bytes": 68789
+    }
+  },
+  "scopedTypecheck": {
+    "owner": "root",
+    "command": "timeout 180s pnpm exec tsc --noEmit --incremental false --pretty false --project /tmp/foremanhq-receiving-notification-types-20261111.json",
+    "exit": 0,
+    "runtimeRoots": 11,
+    "scope": "Explicit receiving+notification current-source runtime roots plus next-env/src declarations/import closure; not a canonical production build or all-test typecheck",
+    "log": "/tmp/foremanhq-receiving-notification-types-attempt1.log",
+    "logBytes": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

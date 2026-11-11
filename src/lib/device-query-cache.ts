@@ -6,11 +6,12 @@ import {
   type DehydratedState,
 } from "@tanstack/react-query";
 import SuperJSON from "superjson";
+import { QUERY_PAYLOAD_BUDGET } from "./tier-one-cache-budget";
 import { isInstantQueryPending } from "./instant-query-update";
 
 export const DEVICE_QUERY_VERSION = 2;
 export const DEVICE_QUERY_DENIED_EVENT = "foremanhq-device-read-denied";
-export const DEVICE_QUERY_BUDGET = 20 * 1024 * 1024;
+export const DEVICE_QUERY_BUDGET = QUERY_PAYLOAD_BUDGET;
 const DATABASE = "foremanhq-device-queries";
 const STORE = "cache";
 // Deliberately opt in reviewed reads; new endpoints (including payments,
@@ -43,6 +44,7 @@ const AUTHORITY_READS = new Set([
   "chat.getOverview",
   "chat.history",
   "chat.members",
+  "materialList.getOrderById",
 ]);
 function reviewedAuthorityRead(query: Pick<Query, "queryKey">) {
   const path = query.queryKey[0];
@@ -98,6 +100,9 @@ let currentReadAuthority: object | null = null;
 export const captureDeviceReadAuthority = () => currentReadAuthority;
 export function reportDeviceReadDenial(path: string, type: string, error: unknown, expectedAuthority = currentReadAuthority) {
   if (expectedAuthority !== currentReadAuthority) return false;
+  // A missing single order is not an account-wide revocation. Its selected
+  // saved-reading hook revokes only the captured protected snapshot key.
+  if (path === "materialList.getOrderById" && ["NOT_FOUND", 404, 410].includes(denialCode(error) as string | number)) return false;
   // This mutation materializes already-authorized page identities for a read.
   // Its ACL denial revokes saved reads; ordinary mutation refusals never do.
   const materializationRead = type === "mutation" && path === "drawingsWorkspace.openDocument";

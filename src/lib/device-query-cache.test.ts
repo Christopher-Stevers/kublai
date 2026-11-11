@@ -433,3 +433,19 @@ it("treats only the exact document materialization mutation as a read denial and
     expect(denied).toHaveBeenCalledOnce();
   } finally {window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied); await fresh.stop();}
 });
+
+it("scopes missing orders away from global revocation while retaining identity denial and no persistence", async () => {
+  const session = startDeviceQueryCache(new QueryClient(), "org:order-reader", storage()); await session.ready;
+  const authority = captureDeviceReadAuthority();
+  const denied = vi.fn(); window.addEventListener(DEVICE_QUERY_DENIED_EVENT, denied);
+  try {
+    expect(reportDeviceReadDenial("materialList.getOrderById", "query", { data: { code: "NOT_FOUND" } }, authority)).toBe(false);
+    expect(reportDeviceReadDenial("materialList.getOrderById", "query", { data: { httpStatus: 410 } }, authority)).toBe(false);
+    expect(denied).not.toHaveBeenCalled();
+    expect(captureDeviceReadAuthority()).toBe(authority);
+    expect(shouldPersistDeviceQuery({ queryKey: [["materialList", "getOrderById"], { input: { orderId: "order" }, type: "query" }], state: { status: "success", data: { canReceive: true } }, meta: {} } as never)).toBe(false);
+    expect(reportDeviceReadDenial("materialList.getOrderById", "mutation", { data: { code: "FORBIDDEN" } }, authority)).toBe(false);
+    expect(reportDeviceReadDenial("materialList.getOrderById", "query", { data: { code: "FORBIDDEN" } }, authority)).toBe(true);
+    expect(denied).toHaveBeenCalledOnce();
+  } finally { window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied); await session.stop(); }
+});

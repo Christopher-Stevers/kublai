@@ -3,10 +3,17 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
+  render as renderComponent,
   screen,
 } from "@testing-library/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const clients: QueryClient[] = [];
+function render(children: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  return renderComponent(children, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+}
 import { setAppPageActive } from "~/lib/app-page-activity";
 const state = vi.hoisted(() => ({
   view: "options",
@@ -42,7 +49,7 @@ vi.mock("~/hooks/use-workspace-mutations", () => ({
     mutateAndSync: vi.fn(),
   }),
 }));
-vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => false }));
+vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => false, getBrowserOnlineStatus: () => false }));
 vi.mock("~/hooks/use-remembered-scroll", () => ({ useScrollToTop: () => {} }));
 vi.mock("~/components/tutorial/tutorial-sandbox-context", () => ({
   useTutorialSandbox: () => null,
@@ -80,7 +87,7 @@ vi.mock("~/components/app/DeferredFeatures", () => ({
 }));
 vi.mock("~/trpc/react", () => ({
   api: {
-    chat: { getOverview: { useQuery: () => ({}) } },
+    chat: { getOverview: { _def: () => ({ path: ["chat", "getOverview"] }), useQuery: () => ({}) } },
     user: {
       getMyRole: {
         useQuery: () => ({
@@ -104,6 +111,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  for (const client of clients.splice(0)) client.clear();
   setAppPageActive(true);
 });
 describe("reviewed local Jobs workspace retention", () => {

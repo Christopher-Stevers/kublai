@@ -54,3 +54,12 @@ was formatted. Logs: `/tmp/drawing-snapshot-authority-tests.log` (26 pass),
 `/tmp/drawing-snapshot-authority-lint-final.log`. No app, browser, real DB, full
 build/typecheck, benchmark or activation ran. A receiving implementation remains
 held until its request-start/read-only-projection/terminal-denial UI is reviewed.
+
+
+The receiving follow-up adds captureExistingSnapshotAuthority: a readonly capture
+of an existing account/key epoch, returning null rather than registering a missing
+key. Tagged known account/lifecycle revocation differs from operational storage
+loss. Optional namespace byte limits evict only oldest matching rows inside the
+same transaction; cursor/eviction/put callbacks recheck store lifecycle independently
+of the optional caller view gate. These follow-up cases are included in the
+103-test receiving proof; the earlier 26-test primitive record remains historical.
