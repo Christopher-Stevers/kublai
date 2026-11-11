@@ -8,6 +8,7 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
+import { Button } from "~/components/ui/button";
 import type { FileComparison as Content } from "./FileComparisonContent";
 
 export type FileComparisonProps = ComponentProps<typeof Content>;
@@ -20,14 +21,15 @@ const loadComparison = () =>
 
 function CloseComparison({ onClose }: Pick<FileComparisonProps, "onClose">) {
   return (
-    <button
+    <Button
       type="button"
-      className="rounded-md border px-3 py-2 text-sm"
+      variant="outline"
+      size="sm"
       onClick={onClose}
       aria-label="Close comparison"
     >
       Close comparison
-    </button>
+    </Button>
   );
 }
 
@@ -38,7 +40,6 @@ class ComparisonBoundary extends Component<
     children: ReactNode;
     onRetry: () => void;
     onClose: () => void;
-    allowReload: false;
   },
   { failed: boolean }
 > {
@@ -56,16 +57,17 @@ class ComparisonBoundary extends Component<
         <p role="alert">
           Comparison could not load. Check your connection and try again.
         </p>
-        <button
+        <Button
           type="button"
-          className="rounded-md border px-3 py-2 text-sm"
+          variant="outline"
+          size="sm"
           onClick={() => {
             this.props.onRetry();
             this.setState({ failed: false });
           }}
         >
           Try again
-        </button>
+        </Button>
         <CloseComparison onClose={this.props.onClose} />
       </section>
     );
@@ -77,7 +79,6 @@ export function FileComparison(props: FileComparisonProps) {
   const [Panel, setPanel] = useState(loadComparison);
   return (
     <ComparisonBoundary
-      allowReload={false}
       onClose={props.onClose}
       onRetry={() => setPanel(loadComparison)}
     >
