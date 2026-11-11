@@ -49,7 +49,10 @@ export function startSpeedPaint(
     | "app-start-to-last-screen"
     | "sheet-open-to-sharp",
 ) {
-  if (typeof performance === "undefined") return () => {};
+  if (typeof performance === "undefined")
+    return () => {
+      /* Browser timings are unavailable during server rendering. */
+    };
   const start = performance.now();
   let finished = false;
   return () => {
@@ -76,12 +79,12 @@ export const SPEED_SCREENS = [
   "other",
 ] as const;
 export function speedScreen(pathname: string): (typeof SPEED_SCREENS)[number] {
-  if (/material-lists/.test(pathname)) return "materials";
-  if (/receiv/.test(pathname)) return "receiving";
+  if (pathname.includes("material-lists")) return "materials";
+  if (pathname.includes("receiv")) return "receiving";
   if (/drawing|sheet/.test(pathname)) return "drawing";
-  if (/chat/.test(pathname)) return "chat";
+  if (pathname.includes("chat")) return "chat";
   if (/^\/jobs\/?$/.test(pathname)) return "jobs";
-  if (/^\/jobs\//.test(pathname)) return "job";
+  if (pathname.startsWith("/jobs/")) return "job";
   return "other";
 }
 export function parseSpeedPayload(value: unknown) {
