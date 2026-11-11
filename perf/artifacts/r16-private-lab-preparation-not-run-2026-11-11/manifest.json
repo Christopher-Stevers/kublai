@@ -1,0 +1,17 @@
+{
+  "status": "unexecuted-canonical-typescript-failure",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r16-20261111",
+  "sourceFingerprint": "a41fa2a6ebe83463e396ca612bbae2e72aa670f8d5cb5b868fc0e5a1ae0152f6",
+  "sourceFileCount": 2316,
+  "sourceBuild": null,
+  "methodRoot": "/tmp/foremanhq-preference-functional-v6-method-emaxl6zm",
+  "driverSha256": "0c6be0868d633328cfaae8caf6a6d2cd0fd4ecb265bd7ccdfd402a104538f744",
+  "runtimeStarted": false,
+  "templateHashes": {
+    "foremanhq-r16-compile-only.sh.template": "092c708ee926646fe590f1a01fb5ae184f9b60a68c6898c924b686ee0132da70",
+    "foremanhq-r16-compile-command.sh.template": "9e819450e04a86be32008b2f1d6c66600f6efa14f0ea2d5429d541594fbd3026",
+    "foremanhq-r16-pref-v6-command.sh.template": "63b9e5eac0335cd18ff3b3accd5e2755c05d8642c1b6802fb2b95456da7abc40",
+    "foremanhq-r16-pref-v6-server.sh.template": "2d7a49db0b14fb16a16009d4c0c04ecf464c901a50141d0d3ff7d35862ae54bd"
+  },
+  "reason": "Canonical shared-issue hook compares optional workspace revision; no completed build identity or lab/runtime. Corrected next candidate pending isolated no-emit diagnostics."
+}

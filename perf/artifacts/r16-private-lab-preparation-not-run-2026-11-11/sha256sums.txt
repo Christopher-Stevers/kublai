@@ -1,0 +1,5 @@
+9e819450e04a86be32008b2f1d6c66600f6efa14f0ea2d5429d541594fbd3026  foremanhq-r16-compile-command.sh.template
+092c708ee926646fe590f1a01fb5ae184f9b60a68c6898c924b686ee0132da70  foremanhq-r16-compile-only.sh.template
+63b9e5eac0335cd18ff3b3accd5e2755c05d8642c1b6802fb2b95456da7abc40  foremanhq-r16-pref-v6-command.sh.template
+2d7a49db0b14fb16a16009d4c0c04ecf464c901a50141d0d3ff7d35862ae54bd  foremanhq-r16-pref-v6-server.sh.template
+c12927786555263857be603a15cf5320f07a7be6172bb32fd4fd3d0eb491f06c  manifest.json
