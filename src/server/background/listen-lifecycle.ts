@@ -15,9 +15,17 @@ const registry = (shared.__foremanListenLifecycle ??= new WeakMap());
  * bundled/unresolvable/changed driver is unsupported and keeps HTTP fallback. */
 export function installedPostgresVersion(): string | null {
   try {
-    let directory = path.dirname(
-      createRequire(import.meta.url).resolve("postgres"),
-    );
+    // webpack tags a direct createRequire(...).resolve("postgres") as its own
+    // resolve expression and emits a numeric module ID. Indirect invocation
+    // deliberately keeps Node's native runtime resolver and package metadata.
+    // Release start fixes cwd to the runtime root; never bake a temporary
+    // builder/source location into the deployed package lookup.
+    const runtimeRequire = Reflect.apply(createRequire, undefined, [
+      path.join(process.cwd(), "package.json"),
+    ]);
+    const resolved: unknown = runtimeRequire.resolve("postgres");
+    if (typeof resolved !== "string" || !path.isAbsolute(resolved)) return null;
+    let directory = path.dirname(resolved);
     for (
       let depth = 0;
       depth < 4;
