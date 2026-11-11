@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   act,
@@ -130,4 +131,63 @@ it("lets go of the window when a card goes away in the middle of a hold", () => 
   for (const listener of added) expect(removed.has(listener)).toBe(true);
   add.mockRestore();
   remove.mockRestore();
+});
+
+it("blocks bulk during a delayed single tap and preserves cancellation on removal", async () => {
+  vi.useFakeTimers();
+  const { createReceiptIntentGate } = await import("~/lib/receipt-intent-gate");
+  const gate = createReceiptIntentGate(), send = vi.fn();
+  const view = render(<MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4"
+    onVerifyStateChange={send} onVerifyPendingChange={active => gate.change("oi", active)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Verify part" }));
+  expect(gate.tryStartBulk(false)).toBe(false); expect(send).not.toHaveBeenCalled();
+  view.unmount();
+  expect(send).not.toHaveBeenCalled();
+  await act(async () => { await vi.runAllTimersAsync(); });
+  expect(send).not.toHaveBeenCalled(); expect(gate.hasQueued()).toBe(false);
+});
+
+it("replaces a delayed single tap with one double-tap problem intent", async () => {
+  vi.useFakeTimers(); const send = vi.fn(), pending = vi.fn();
+  render(<MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4"
+    onVerifyStateChange={send} onVerifyPendingChange={pending} />);
+  const card = screen.getByRole("button", { name: "Verify part" });
+  fireEvent.click(card); fireEvent.click(card);
+  await act(async () => { await vi.runAllTimersAsync(); });
+  expect(send).toHaveBeenCalledExactlyOnceWith({ receivedQuantity: 4, verificationStatus: "problem" });
+  expect(pending.mock.calls).toEqual([[true], [false]]);
+});
+
+it("does not start a delayed single tap after read-only changes", () => {
+  vi.useFakeTimers(); const send = vi.fn();
+  const card = (locked: boolean) => <MaterialListItem item={item} materialListId="m" verifyMode verifyReadOnly={locked}
+    verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4" onVerifyStateChange={send} />;
+  const view = render(card(false)); view.rerender(card(true));
+  fireEvent.click(screen.getByText("Valve"));
+  act(() => vi.runAllTimers()); expect(send).not.toHaveBeenCalled();
+});
+
+
+it("dispatches keyboard completion and problem changes once under StrictMode", () => {
+  vi.useFakeTimers(); const send = vi.fn();
+  render(<StrictMode><MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4" onVerifyStateChange={send} /></StrictMode>);
+  const card = screen.getByRole("button", { name: "Verify part" });
+  fireEvent.keyDown(card, { key: "Enter" });
+  expect(send).toHaveBeenCalledExactlyOnceWith({ receivedQuantity: 10, verificationStatus: "complete" });
+  send.mockClear();
+  fireEvent.click(card);
+  fireEvent.click(card);
+  act(() => vi.runAllTimers());
+  expect(send).toHaveBeenCalledExactlyOnceWith({ receivedQuantity: 10, verificationStatus: "problem" });
+});
+
+it("rejects a same-turn card click or keyboard action after bulk starts, before readOnly rerenders", async () => {
+  vi.useFakeTimers(); const { createReceiptIntentGate } = await import("~/lib/receipt-intent-gate");
+  const gate = createReceiptIntentGate(), send = vi.fn();
+  render(<MaterialListItem item={item} materialListId="m" verifyMode verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4"
+    canStartReceipt={gate.canStartReceipt} onVerifyStateChange={send} />);
+  const card = screen.getByRole("button", { name: "Verify part" });
+  expect(gate.tryStartBulk(false)).toBe(true);
+  fireEvent.click(card); fireEvent.keyDown(card, { key: "Enter" });
+  act(() => vi.runAllTimers()); expect(send).not.toHaveBeenCalled();
 });

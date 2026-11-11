@@ -61,3 +61,31 @@ gesture and send. Catalogue UI regression tests and shared hide-rule tests pass.
 These establish behavior, not a phone-frame timing result. The app benchmark,
 reference Pixel timing and the plan's no-regression gate are still required
 before this broader change is activated.
+
+Receipt bulk ordering follow-up (verified after explicit release of the baseline
+quiet window): table stepper debounce and the grid's delayed single click register
+an ephemeral intent synchronously, before the mutation begins. Bulk all/none
+controls include those intents in their disabled state and use the same synchronous
+guard at dispatch, including the in-flight individual request and bulk request.
+The intent remains registered through the microtask handoff to the request. Table
+queued intents flush exactly once on removal; grid delayed single clicks retain
+their existing cancellation-on-removal behavior; a double click replaces the
+pending grid single-click action. New table, card and picker intents consult the
+latest read-only state and a synchronous bulk gate callback, without discarding an
+already-authorized queued send. Callback identities include the durable order
+line so a delayed intent cannot switch to a different order when a material row's
+latest order changes. Card completion/problem callbacks run outside functional React state updaters,
+so updater replay cannot duplicate a write. This is short-lived UI ordering, not
+a second offline queue.
+
+Bulk receipt dispatch also checks connectivity synchronously and uses
+`networkMode: "always"` with retries disabled. It cannot pause and replay on
+reconnect. Confirmed bulk writes schedule refresh without awaiting a paused
+refetch, so the ordering lock does not depend on connectivity after acceptance.
+No bulk credited quantity is fabricated. The final combined owned run passed
+101 tests across 10 files with one Vitest worker; it includes deferred individual
+requests, debounce-to-request handoff, unmount policy, same-turn reverse bulk
+locking, offline rejection, and StrictMode dispatch-once assertions. Production
+ESLint returned no errors (three existing drawing-view warnings). Whole-source
+TypeScript remains blocked by existing repository test typing errors; no changed
+production path reported an error. No release or phone-timing gate is claimed.

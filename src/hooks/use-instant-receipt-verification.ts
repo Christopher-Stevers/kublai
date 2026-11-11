@@ -99,6 +99,7 @@ export function useInstantReceiptVerification(snapshots: readonly ReceiptSnapsho
   return {
     ...mutation,
     isPending: Object.values(previews).some(value => value.saving),
+    hasPending: () => pending.current.size > 0,
     previews,
     resetVersions,
   };

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useQueuedReceiptIntent } from "~/hooks/use-queued-receipt-intent";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -20,6 +21,8 @@ export type TableReceive = {
   /** Reset local controls after a refused save. */
   resetVersion?: number;
   saving?: boolean;
+  canStartReceipt?: () => boolean;
+  onPendingChange?: (pending: boolean) => void;
   /** The order was cancelled; nothing is coming. */
   cancelled?: boolean;
   /** What a packing slip says about this part. */
@@ -43,10 +46,10 @@ export function useTableReceive(receive: TableReceive) {
   const [received, setReceived] = useState(initial);
   const [problem, setProblem] = useState(initialProblem);
   const [text, setText] = useState<string | null>(null);
-  const pending = useRef<{
-    timer: ReturnType<typeof setTimeout>;
-    send: () => void;
-  } | null>(null);
+  const latest = useRef(receive);
+  useLayoutEffect(() => { latest.current = receive; });
+  const intent = useQueuedReceiptIntent(receive.onPendingChange);
+  const locked = () => !!latest.current.readOnly || !!latest.current.cancelled || latest.current.canStartReceipt?.() === false;
   // Saved changes come back as new props; show them.
   const resetVersion = receive.resetVersion ?? 0;
   const [shown, setShown] = useState({ initial, initialProblem, resetVersion });
@@ -56,16 +59,6 @@ export function useTableReceive(receive: TableReceive) {
     setProblem(initialProblem);
     setText(null);
   }
-  // A count still waiting to save is sent when the row goes away.
-  useEffect(
-    () => () => {
-      if (!pending.current) return;
-      clearTimeout(pending.current.timer);
-      pending.current.send();
-    },
-    [],
-  );
-
   const statusOf = (count: number, flagged: boolean): ReceiveStatus =>
     flagged
       ? "problem"
@@ -75,25 +68,19 @@ export function useTableReceive(receive: TableReceive) {
           ? "partial"
           : "pending";
   const save = (count: number, flagged: boolean, delay = 0) => {
-    if (pending.current) clearTimeout(pending.current.timer);
-    pending.current = null;
-    const send = () => {
-      pending.current = null;
-      receive.onChange?.({
-        receivedQuantity: count,
-        verificationStatus: statusOf(count, flagged),
-      });
-    };
-    if (delay) pending.current = { timer: setTimeout(send, delay), send };
-    else send();
+    intent.schedule(() => receive.onChange?.({
+      receivedQuantity: count,
+      verificationStatus: statusOf(count, flagged),
+    }), delay);
   };
   const setCount = (count: number, delay = SAVE_DELAY) => {
+    if (locked()) return;
     const next = Math.max(0, Math.min(ordered, Math.round(count)));
     setReceived(next);
     save(next, problem, delay);
   };
   const commitText = () => {
-    if (text === null) return;
+    if (locked() || text === null) return;
     setText(null);
     if (text.trim() && Number.isFinite(Number(text))) setCount(Number(text), 0);
   };
@@ -106,16 +93,18 @@ export function useTableReceive(receive: TableReceive) {
     locked: !!receive.readOnly || !!receive.cancelled,
     unit: receive.unit ? ` ${receive.unit}` : "",
     text,
-    setText,
+    setText: (value: string | null) => { if (!locked()) setText(value); },
     commitText,
     step: (delta: number) => setCount(received + delta),
     toggleAll: () => {
+      if (locked()) return;
       const next = received >= ordered ? 0 : ordered;
       setProblem(false);
       setReceived(next);
       save(next, false);
     },
     toggleProblem: () => {
+      if (locked()) return;
       setProblem(!problem);
       save(received, !problem);
     },

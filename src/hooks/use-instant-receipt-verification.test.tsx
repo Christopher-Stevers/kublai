@@ -21,7 +21,7 @@ const deferred = () => {
   const promise = new Promise<typeof change>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 };
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.clearAllMocks(); onlineManager.setOnline(true); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.clearAllMocks(); onlineManager.setOnline(true); });
 
 it("holds the visible accepted receipt until sync catches up, without altering saved rows", async () => {
   const request = deferred(); server.save.mockReturnValue(request.promise);
@@ -119,4 +119,29 @@ it("treats a vanished order line as a refusal, not a successful receipt", async 
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.previews.line).toBeUndefined();
   expect(server.pull).not.toHaveBeenCalled();
+});
+
+it("keeps bulk excluded across table debounce and the deferred individual receipt request", async () => {
+  vi.useFakeTimers();
+  const { createReceiptIntentGate } = await import("~/lib/receipt-intent-gate");
+  const gate = createReceiptIntentGate(), request = deferred();
+  server.save.mockReturnValue(request.promise);
+  const hook = renderHook(() => {
+    const mutation = useInstantReceiptVerification(saved);
+    const control = useTableReceive({ ordered: 10, received: 2, status: "partial",
+      onPendingChange: active => gate.change("line", active),
+      onChange: input => queueMicrotask(() => mutation.mutate({ orderItemId: "line", ...input })),
+    });
+    return { mutation, control };
+  }, { wrapper });
+  act(() => hook.result.current.control.step(1));
+  expect(gate.tryStartBulk(hook.result.current.mutation.hasPending())).toBe(false);
+  await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+  expect(server.save).toHaveBeenCalledExactlyOnceWith({ orderItemId: "line", receivedQuantity: 3, verificationStatus: "partial" });
+  expect(gate.hasQueued()).toBe(false);
+  expect(gate.tryStartBulk(hook.result.current.mutation.hasPending())).toBe(false);
+  await act(async () => { request.resolve(change); await request.promise; });
+  expect(hook.result.current.mutation.hasPending()).toBe(false);
+  expect(gate.tryStartBulk(false)).toBe(true);
+  vi.useRealTimers();
 });

@@ -1,4 +1,5 @@
 "use client";
+import { createReceiptIntentGate } from "~/lib/receipt-intent-gate";
 import { materialListPartSearchText, matchesMaterialListPart } from "~/lib/material-list-part-search";
 import { MaterialFocusSection } from "./MaterialFocusSection";
 import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-context";
@@ -224,15 +225,38 @@ export function MaterialListScreen({
     })),
   ], [items, verifyOrder]);
   const updateOrderItemVerification = useInstantReceiptVerification(receiptSnapshots);
+  const [receiptIntentGate] = useState(createReceiptIntentGate);
+  const [, setReceiptIntentVersion] = useState(0);
+  const receiptIntentChanged = (id: string, active: boolean) => {
+    receiptIntentGate.change(id, active);
+    setReceiptIntentVersion(value => value + 1);
+  };
+  const hasQueuedReceipt = receiptIntentGate.hasQueued();
   const markAllReceived = api.materialList.markAllOrderItemsReceived.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
+    networkMode: "always",
+    retry: false,
+    onSettled: () => { receiptIntentGate.finishBulk(); },
+    onSuccess: () => {
+      void Promise.all([
         utils.materialList.getOrderById.invalidate(),
         utils.materialList.listOrders.invalidate(),
         utils.materialList.getOrdersForMaterialList.invalidate(),
-      ]);
+      ]).catch(() => undefined);
     },
   });
+  const submitReceipt = (input: Parameters<typeof updateOrderItemVerification.mutate>[0]) => {
+    // Keep the gate synchronous while preserving the existing microtask
+    // handoff for parent state/mutation work.
+    receiptIntentGate.change(input.orderItemId, true);
+    queueMicrotask(() => {
+      try { updateOrderItemVerification.mutate(input); }
+      finally { receiptIntentChanged(input.orderItemId, false); }
+    });
+  };
+  const receiveBulk = (input: { orderId: string; allReceived?: boolean }) => {
+    if (!receiptIntentGate.tryStartBulk(updateOrderItemVerification.hasPending(), navigator.onLine)) return;
+    markAllReceived.mutate(input);
+  };
   const canReceive = !sandbox && !!userData?.permissions.can["orders.receive"];
   // Read packing slips fill in the parts here; each is confirmed in one go.
   const slipDrafts = useSlipDrafts({
@@ -517,8 +541,10 @@ export function MaterialListScreen({
                             suppliers={suppliers}
                             verifyMode={!!verifyOrderId || !!listOrder}
                             orderHasReceipts={section.hasReceivedItems}
-                            verifyReadOnly={!!receiptPreview?.saving || (!!listOrder && (!canReceive || !isBrowserOnline))}
+                            verifyReadOnly={markAllReceived.isPending || !!receiptPreview?.saving || (!!listOrder && (!canReceive || !isBrowserOnline))}
                             isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
+                            canStartReceipt={receiptIntentGate.canStartReceipt}
+                            onVerifyPendingChange={orderLine ? active => receiptIntentChanged(orderLine.id, active) : undefined}
                             verifyResetVersion={orderLine ? updateOrderItemVerification.resetVersions[orderLine.id] : undefined}
                             verifyOrderedQuantity={orderLine?.quantity}
                             verifyInitialReceivedQuantity={
@@ -532,17 +558,17 @@ export function MaterialListScreen({
                             verifyBadge={slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : receiptPreview?.saving ? <span role="status" className="text-xs">Saving receipt…</span> : undefined}
                             onVerifyStateChange={
                               orderLine
-                                ? verifyHandler(item.id, (state) => {
+                                ? verifyHandler(`${item.id}:${orderLine.id}`, (state) => {
                                     if (slipFound && slipEntry) {
-                                      // The card reports from inside its own state update.
+                                      // Keep draft updates aligned with receipt dispatch.
                                       queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
                                       return;
                                     }
-                                    queueMicrotask(() => updateOrderItemVerification.mutate({
+                                    submitReceipt({
                                       orderItemId: orderLine.id,
                                       receivedQuantity: state.receivedQuantity,
                                       verificationStatus: state.verificationStatus,
-                                    }));
+                                    });
                                   })
                                 : undefined
                             }
@@ -578,20 +604,22 @@ export function MaterialListScreen({
                         : receiptPreview?.verificationStatus ?? listOrder.verificationStatus,
                       resetVersion: updateOrderItemVerification.resetVersions[orderItemId],
                       saving: receiptPreview?.saving,
+                      canStartReceipt: receiptIntentGate.canStartReceipt,
+                      onPendingChange: active => receiptIntentChanged(orderItemId, active),
                       unit: item.partDefinition?.bulkUnit ?? item.uom?.code,
-                      readOnly: !!receiptPreview?.saving || !canReceive || !isBrowserOnline,
+                      readOnly: markAllReceived.isPending || !!receiptPreview?.saving || !canReceive || !isBrowserOnline,
                       badge: slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : undefined,
-                      onChange: verifyHandler(item.id, (state) => {
+                      onChange: verifyHandler(`${item.id}:${orderItemId}`, (state) => {
                         // While a read slip is being checked, changes stay on the slip until it is confirmed.
                         if (slipFound && slipEntry) {
                           slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem");
                           return;
                         }
-                        queueMicrotask(() => updateOrderItemVerification.mutate({
+                        submitReceipt({
                           orderItemId,
                           receivedQuantity: state.receivedQuantity,
                           verificationStatus: state.verificationStatus,
-                        }));
+                        });
                       }),
                     };
                   }}
@@ -613,10 +641,10 @@ export function MaterialListScreen({
           packingSlips={canReceive && mlHeader.jobId && (verifyOrderId ? verifyOrder?.materialListId === id : hasReceivableOrder) ? (
             <ScanSlipButton materialListId={id} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
           ) : undefined}
-          onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId }) : undefined}
-          onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => markAllReceived.mutate({ orderId: verifyOrderId, allReceived: false }) : undefined}
+          onMarkAllReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => receiveBulk({ orderId: verifyOrderId }) : undefined}
+          onMarkNoneReceived={verifyOrderId && userData?.permissions.can["orders.receive"] ? () => receiveBulk({ orderId: verifyOrderId, allReceived: false }) : undefined}
           receivingAll={markAllReceived.isPending}
-          receiveDisabled={!verifyOrder?.items.length || updateOrderItemVerification.isPending}
+          receiveDisabled={!verifyOrder?.items.length || hasQueuedReceipt || updateOrderItemVerification.isPending}
           orderActive={!!(partSearch.trim() ? searchOrderId : orderInView) && (partSearch.trim() ? searchOrderId : orderInView) === orderBarId}
           orderActions={!verifyOrderId && canReceive && orderBarSection && orderBarId && mlHeader.jobId ? (
             <OrderReceiveActions
@@ -630,10 +658,10 @@ export function MaterialListScreen({
               packingSlips={
                 <ScanSlipButton materialListId={id} key={orderBarId} jobId={mlHeader.jobId} compact className={MATERIAL_LIST_ACTION_CLASS} />
               }
-              onMarkAllReceived={() => markAllReceived.mutate({ orderId: orderBarId })}
-              onMarkNoneReceived={() => markAllReceived.mutate({ orderId: orderBarId, allReceived: false })}
+              onMarkAllReceived={() => receiveBulk({ orderId: orderBarId })}
+              onMarkNoneReceived={() => receiveBulk({ orderId: orderBarId, allReceived: false })}
               receivingAll={markAllReceived.isPending}
-              receiveDisabled={updateOrderItemVerification.isPending}
+              receiveDisabled={hasQueuedReceipt || updateOrderItemVerification.isPending}
             />
           ) : undefined}
           isToolRequest={isToolRequest} materialListId={id} />

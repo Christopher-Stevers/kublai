@@ -1,4 +1,5 @@
 "use client";
+import { useQueuedReceiptIntent } from "~/hooks/use-queued-receipt-intent";
 import { startSpeedPaint } from "~/lib/speed-telemetry";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
@@ -6,7 +7,7 @@ import { firstText } from "~/lib/first-text";
 import type { SupplierVersion } from "~/lib/job-supplier-defaults";
 import { packContents } from "~/lib/pack-quantity";
 
-import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent } from "~/components/ui/card";
 import { QuantityControls } from "~/components/materialLists/QuantityControls";
@@ -98,6 +99,8 @@ interface MaterialListItemProps {
   verifyInitialStatus?: string | null;
   /** Reset a locally edited receipt after a refused save, even if saved values did not change. */
   verifyResetVersion?: number;
+  canStartReceipt?: () => boolean;
+  onVerifyPendingChange?: (pending: boolean) => void;
   onVerifyStateChange?: (state: {
     receivedQuantity: number;
     verificationStatus: VerifyStatus;
@@ -209,6 +212,8 @@ function MaterialListItemComponent({
   verifyInitialStatus,
   verifyResetVersion = 0,
   onVerifyStateChange,
+  onVerifyPendingChange,
+  canStartReceipt,
   verifyBadge,
   verifyCaption,
   verifyReadOnly = false,
@@ -219,9 +224,10 @@ function MaterialListItemComponent({
   const verifyLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const verifyClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const verifySingleClick = useQueuedReceiptIntent(onVerifyPendingChange, "cancel");
+  const receiptAllowed = useRef({ verifyReadOnly, verifyMode, canStartReceipt });
+  useLayoutEffect(() => { receiptAllowed.current = { verifyReadOnly, verifyMode, canStartReceipt }; });
+  const verifyLocked = () => receiptAllowed.current.verifyReadOnly || !receiptAllowed.current.verifyMode || receiptAllowed.current.canStartReceipt?.() === false;
   const verifyLongPressTriggeredRef = useRef(false);
   const verifySuppressClickRef = useRef(false);
   const verifyPointerStartYRef = useRef<number | null>(null);
@@ -236,6 +242,8 @@ function MaterialListItemComponent({
   const verifyTouchListenersRef = useRef<(() => void) | null>(null);
   const [verifyReceivedQuantity, setVerifyReceivedQuantity] = useState(0);
   const [verifyHasProblem, setVerifyHasProblem] = useState(false);
+  const verifyValue = useRef({ quantity: verifyReceivedQuantity, problem: verifyHasProblem });
+  useLayoutEffect(() => { verifyValue.current = { quantity: verifyReceivedQuantity, problem: verifyHasProblem }; });
   const [verifyPickerQuantity, setVerifyPickerQuantity] = useState<number | null>(
     null,
   );
@@ -299,12 +307,10 @@ function MaterialListItemComponent({
 
   useEffect(() => {
     const longPressTimer = verifyLongPressTimerRef;
-    const clickTimer = verifyClickTimerRef;
     const pickerListeners = verifyPickerListenersRef;
     const touchListeners = verifyTouchListenersRef;
     return () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
-      if (clickTimer.current) clearTimeout(clickTimer.current);
       pickerListeners.current?.();
       touchListeners.current?.();
     };
@@ -339,25 +345,25 @@ function MaterialListItemComponent({
   };
 
   const toggleVerifyComplete = () => {
-    if (!verifyMode) return;
+    if (verifyLocked()) return;
+    verifySingleClick.cancel();
     const painted = startSpeedPaint("write-to-paint");
+    const nextQuantity = verifyValue.current.quantity >= orderedQuantityNumber ? 0 : orderedQuantityNumber;
+    verifyValue.current = { quantity: nextQuantity, problem: false };
     setVerifyHasProblem(false);
-    setVerifyReceivedQuantity((currentValue) => {
-      const nextQuantity =
-        currentValue >= orderedQuantityNumber ? 0 : orderedQuantityNumber;
-      notifyVerifyStateChange(nextQuantity, false);
-      return nextQuantity;
-    });
+    setVerifyReceivedQuantity(nextQuantity);
+    notifyVerifyStateChange(nextQuantity, false);
     painted();
   };
 
   const toggleVerifyProblem = () => {
-    if (!verifyMode) return;
-    setVerifyHasProblem((currentValue) => {
-      const nextHasProblem = !currentValue;
-      notifyVerifyStateChange(verifyReceivedQuantity, nextHasProblem);
-      return nextHasProblem;
-    });
+    if (verifyLocked()) return;
+    verifySingleClick.cancel();
+    const nextHasProblem = !verifyValue.current.problem;
+    const quantity = verifyValue.current.quantity;
+    verifyValue.current = { quantity, problem: nextHasProblem };
+    setVerifyHasProblem(nextHasProblem);
+    notifyVerifyStateChange(quantity, nextHasProblem);
   };
 
   const clearVerifyLongPressTimer = () => {
@@ -394,7 +400,9 @@ function MaterialListItemComponent({
   }
 
   function finishVerifyPickerSelection() {
+    if (verifyLocked()) { cancelVerifyPickerSelection(); return; }
     const nextQuantity = verifyDragQuantityRef.current;
+    verifyValue.current.quantity = nextQuantity;
     setVerifyReceivedQuantity(nextQuantity);
     notifyVerifyStateChange(nextQuantity, verifyHasProblem);
     setVerifyPickerQuantity(null);
@@ -512,7 +520,7 @@ function MaterialListItemComponent({
   const handleVerifyPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
-    if (!verifyMode) return;
+    if (verifyLocked()) return;
     if (event.pointerType === "touch") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
@@ -527,6 +535,7 @@ function MaterialListItemComponent({
     event.currentTarget.setPointerCapture(event.pointerId);
 
     verifyLongPressTimerRef.current = setTimeout(() => {
+      if (verifyLocked()) return;
       verifyLongPressTriggeredRef.current = true;
       verifySuppressClickRef.current = true;
       setVerifyPickerQuantity(verifyBaseQuantityRef.current);
@@ -551,7 +560,7 @@ function MaterialListItemComponent({
   };
 
   const handleVerifyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (!verifyMode) return;
+    if (verifyLocked()) return;
 
     const touchY = event.touches[0]?.clientY;
     if (touchY === undefined) {
@@ -585,6 +594,7 @@ function MaterialListItemComponent({
     };
 
     verifyLongPressTimerRef.current = setTimeout(() => {
+      if (verifyLocked()) return;
       verifyLongPressTriggeredRef.current = true;
       verifySuppressClickRef.current = true;
       setVerifyPickerQuantity(verifyBaseQuantityRef.current);
@@ -607,22 +617,26 @@ function MaterialListItemComponent({
   };
 
   const handleVerifyClick = () => {
-    if (!verifyMode) return;
+    if (verifyLocked()) return;
     if (verifySuppressClickRef.current) {
       verifySuppressClickRef.current = false;
       return;
     }
-
-    if (verifyClickTimerRef.current) {
-      clearTimeout(verifyClickTimerRef.current);
-      verifyClickTimerRef.current = null;
+    if (verifySingleClick.hasPending()) {
+      verifySingleClick.cancel();
       toggleVerifyProblem();
       return;
     }
-
-    verifyClickTimerRef.current = setTimeout(() => {
-      verifyClickTimerRef.current = null;
-      toggleVerifyComplete();
+    // Capture this click's count; removal cancels it as before. The table
+    // separately preserves its existing flush-on-removal behavior.
+    const nextQuantity = verifyReceivedQuantity >= orderedQuantityNumber ? 0 : orderedQuantityNumber;
+    verifySingleClick.schedule(() => {
+      const painted = startSpeedPaint("write-to-paint");
+      verifyValue.current = { quantity: nextQuantity, problem: false };
+      setVerifyHasProblem(false);
+      setVerifyReceivedQuantity(nextQuantity);
+      notifyVerifyStateChange(nextQuantity, false);
+      painted();
     }, 260);
   };
 
