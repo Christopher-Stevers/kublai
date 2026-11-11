@@ -1,0 +1,15 @@
+{
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r17-20261111",
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "sourceFileCount": 2316,
+  "unchangedFilesChecked": 2311,
+  "methodRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "functionalMethodRoot": "/tmp/foremanhq-preference-functional-v6-method-emaxl6zm",
+  "functionalDriverSha256": "0c6be0868d633328cfaae8caf6a6d2cd0fd4ecb265bd7ccdfd402a104538f744",
+  "status": "sealed-before-private-compile",
+  "scriptHashes": {
+    "foremanhq-r17-compile-only.sh": "96c092ab30fd73f4b3ce70e06e0e93946177bd89834a521bef7544c395f09889",
+    "foremanhq-r17-compile-command.sh": "3700ad03b3623f438d6fc05b4fc2f90a48f1ba9006fc2169c7f1d51e23eaf28c"
+  }
+}

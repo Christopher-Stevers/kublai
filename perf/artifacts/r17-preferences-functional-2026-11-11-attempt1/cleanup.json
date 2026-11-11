@@ -1,0 +1,10 @@
+{
+  "serverPid": 4098385,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "coordinatorExitCode": 0,
+  "unexpectedDatabaseErrors": 0,
+  "expectedAdministratorFatal": 1,
+  "assertionsPassed": 8,
+  "noRetry": true
+}

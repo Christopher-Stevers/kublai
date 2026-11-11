@@ -1,0 +1,32 @@
+{
+  "status": "rejected-incompatible-protocol",
+  "acceptedGateEvidence": false,
+  "completeSamples": 120,
+  "completeCells": 24,
+  "requiredProtocol": "ready-then-pinch-v2",
+  "recordedProtocol": "early-pinch-v1",
+  "formalComparatorExitCode": 1,
+  "formalComparatorMessage": "Journey protocol differs; timings cannot be compared",
+  "cause": "New full-command launcher omitted PERF_SHEET_PROTOCOL=ready-then-pinch-v2; adapter defaults early-pinch-v1. Code fingerprint alone did not bind semantic environment.",
+  "baselineComparisonPerformed": false,
+  "noRelabelNoExclusionsNoRetry": true,
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "harnessVerification": {
+    "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "immutable": true
+  },
+  "idleDurationMs": 600000,
+  "unexpectedDatabaseErrors": 0,
+  "cleanup": {
+    "sessionExited": true,
+    "coordinatorExitCode": 1,
+    "ownedPort3481Closed": true,
+    "privatePgOwnerExited": true,
+    "ordinaryHostActivityQualification": "No declared agent heavy work/ADB; live production and OS background activity continued."
+  },
+  "schemaEvidence": "14-query source-bound actual read preflight retained. Full-run private schema-inventory file was not independently copied before automatic DB deletion; prior separate functional DB inventory cannot substitute.",
+  "nextStep": "Root review only. No additional run authorized by this assessment."
+}

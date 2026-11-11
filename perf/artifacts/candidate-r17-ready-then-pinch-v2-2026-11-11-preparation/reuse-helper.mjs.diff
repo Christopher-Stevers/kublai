@@ -1,0 +1,21 @@
+--- approved-R14
++++ R17-identity-only
+@@ -3,15 +3,15 @@
+ import {execFileSync} from 'node:child_process';
+ import {pathToFileURL} from 'node:url';
+ const target=fs.realpathSync(process.env.PERF_REUSE_SNAPSHOT??'');
+-if(target!=='/tmp/foremanhq-speed-app-EFjPHx'||!fs.existsSync(path.join(target,'PERF_LAB_ONLY')))throw Error('Exact marked R14 compiled snapshot required');
+-if(fs.readFileSync(path.join(target,'.next/BUILD_ID'),'utf8').trim()!=='mu9f2AHO5oiJ6QRfA0svV')throw Error('Unexpected compiled R14 lab artifact');
++if(target!=='/tmp/foremanhq-speed-app-epcRJM'||!fs.existsSync(path.join(target,'PERF_LAB_ONLY')))throw Error('Exact marked R17 compiled snapshot required');
++if(fs.readFileSync(path.join(target,'.next/BUILD_ID'),'utf8').trim()!=='zNd84I0aO-5wNGl7s3g4z')throw Error('Unexpected compiled R17 lab artifact');
+ if(!fs.readFileSync(path.join(target,'next.config.js'),'utf8').includes('const labDatabase = new URL(process.env.PERF_LAB_DATABASE_URL'))throw Error('Runtime private socket guard missing');
+ const database=new URL(process.env.PERF_LAB_DATABASE_URL??'http://invalid'),socket=database.searchParams.get('host');
+ if(database.pathname!=='/foremanhq_perf_lab'||!socket?.startsWith('/tmp/foremanhq-perf-pg.')||!fs.existsSync(socket+'/.s.PGSQL.55463'))throw Error('Fresh private socket required');
+ const {sourceEvidence}=await import(pathToFileURL(path.join(process.env.PERF_HARNESS_DIR,'scripts/release/source-fingerprint.mjs')));
+ const source=fs.realpathSync(process.env.PERF_SOURCE_ROOT),build=fs.readFileSync(path.join(process.env.PERF_SOURCE_BUILD_DIST,'BUILD_ID'),'utf8').trim();
+ const current=await sourceEvidence(source,target,build,'after-lab-transforms'),prior=JSON.parse(fs.readFileSync(path.join(target,'source-evidence.json')));
+-if(build!=='a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096'||current.sourceFingerprint!=='6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4'||current.sourceFileCount!==2313||current.sourceVerification.unchangedFilesChecked!==2308||prior.sourceBuild!==build||prior.sourceFingerprint!==current.sourceFingerprint)throw Error('R14 exact source verification failed');
++if(build!=='b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b'||current.sourceFingerprint!=='be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc'||current.sourceFileCount!==2316||current.sourceVerification.unchangedFilesChecked!==2311||prior.sourceBuild!==build||prior.sourceFingerprint!==current.sourceFingerprint)throw Error('R17 exact source verification failed');
+ const fixture=JSON.parse(fs.readFileSync(process.env.PERF_LAB_FIXTURES));
+ if(fixture.provenance!=='isolated-seeded-app'||fixture.productionDatabase!==false)throw Error('Synthetic fixture attestation required');
+ fs.copyFileSync(process.env.PERF_LAB_FIXTURES,path.join(target,'perf/fixtures.json'));

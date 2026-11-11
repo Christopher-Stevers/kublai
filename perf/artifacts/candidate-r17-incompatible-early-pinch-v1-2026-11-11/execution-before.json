@@ -1,0 +1,13 @@
+{
+  "startedAt": "2026-11-11T13:30:08.628489+00:00",
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+  "method": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "orchestrationBefore": "d3a07778c020d7a922d54610ad7f513b816ec9fc4526ca5e60ea31674099b43c",
+  "reuseHelperBefore": "12bd93014b2322d913cb8cdbc79621243095899d4e5b5e3f37b6f9c4bcf96239",
+  "fullCommandBefore": "bfd07a564249844395c6a943b76711a769ae90a7db783ce01e8218418d926a63",
+  "baseline": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "staticBaseline": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "quietQualification": "No declared agent-driven heavy tests/builds/compression/browser/ADB; live production web/worker and ordinary OS background activity remain, not complete host isolation."
+}

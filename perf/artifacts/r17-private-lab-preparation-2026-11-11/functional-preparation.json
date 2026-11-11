@@ -1,0 +1,12 @@
+{
+  "status": "prepared-not-run-awaiting-private-compile-and-runtime-authorization",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v6-method-emaxl6zm",
+  "driverSha256": "0c6be0868d633328cfaae8caf6a6d2cd0fd4ecb265bd7ccdfd402a104538f744",
+  "scriptHashes": {
+    "foremanhq-r17-pref-v6-command.sh": "a39dd217a5500d07fc907775780c20c90cf664612ec4da346da543bac8ab0a69",
+    "foremanhq-r17-pref-v6-server.sh": "d90bed9fbc24357ef7b12101eaa3796bbf88b0227147d413f9e56bad8cdd54ad"
+  },
+  "separateFreshPrivatePg": true,
+  "outerBoundSeconds": 480,
+  "fullMatrixHeld": true
+}

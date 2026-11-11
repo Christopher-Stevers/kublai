@@ -1,0 +1,5 @@
+# R17 compiled preference functional V6 — complete
+
+All eight supplemental assertions passed on the exact compiled R17 source with fresh disposable fixtures and 14 real read preflights. Genuine compiled LISTEN readiness, real consumer HTTP authority, healthy preference poll suppression, cross-page producer save/hint/catch-up, expiry denial/read-only editor, restored editing, outage fallback, reconnect and LISTEN resubscribe with successful consumer HTTP catch-up were observed. Denial snapshot records disabled visible executive select, Viewing executive sorting and absent editing text/toggles. No denied write was injected.
+
+This is synthetic-auth functional evidence, separate from unchanged performance timings and physical-phone evidence. Actual SQL/SSE/UI paths were exercised; no frames/cache grants fabricated. All owned runtime stopped; fresh PG removed, zero unexpected SQL errors, one expected LISTEN administrator-FATAL separated. Prior R14 V4 failure and V5 editor defect remain unchanged. Full120/idle requires a distinct fresh private DB and retains original metrics/thresholds.

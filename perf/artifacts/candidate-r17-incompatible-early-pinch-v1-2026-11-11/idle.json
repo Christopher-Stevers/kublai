@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2316,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2311,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+    "preTransformUnchangedFilesChecked": 2316
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "provenance": "isolated-seeded-app",
+  "build": "zNd84I0aO-5wNGl7s3g4z",
+  "startedAt": "2026-11-11T13:30:40.938Z",
+  "durationMs": 600000,
+  "cpuSlowdown": 4,
+  "screen": "jobs",
+  "idlePolls": 74,
+  "readRequestsByProcedure": {
+    "user.getMyRole": 20,
+    "notifications.identity": 20,
+    "notifications.overview": 20,
+    "push.identity": 10,
+    "user.getMaterialSortPreferences": 4
+  },
+  "observedEventStreamPaths": [
+    "/api/live"
+  ],
+  "eventStreamConnections": {
+    "starts": 3,
+    "closes": 2,
+    "startsAfterPriorClose": 2,
+    "overlappingStarts": 0,
+    "peakActive": 1,
+    "activeAtWindowStart": 1,
+    "activeAtWindowEnd": 1,
+    "startsDuringWindow": 2,
+    "closesDuringWindow": 2
+  },
+  "method": "Counts actual GET tRPC request procedures after 15-second startup settling. Tracks /events and /api/live request starts, completion/failure, active and overlapping requests. startsAfterPriorClose is an observed repeat connection, not proof of why it reconnected; an open request does not establish healthy SSE message delivery.",
+  "limitations": "One isolated seeded jobs screen, Clerk stub; not every screen. Connection liveness is HTTP request lifetime, not server heartbeat receipt. Earlier archived 65-second observations retain their original narrower definition."
+}

@@ -1,0 +1,88 @@
+▲ Next.js 16.1.1
+- Local:         http://127.0.0.1:3483
+- Network:       http://127.0.0.1:3483
+
+✓ Starting...
+✓ Ready in 116ms
+[TRPC] user.getMe took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] job.getJob took 12ms to execute (5 queries) [database 10.2ms]
+[TRPC] materialList.getMaterialList took 12ms to execute (5 queries) [database 10.6ms]
+[TRPC] materialList.getOrderById took 2ms to execute (2 queries) [database 1.2ms]
+[TRPC] drawings.listSets took 2ms to execute (4 queries) [database 1.5ms]
+[TRPC] drawings.getSet took 1ms to execute (2 queries) [database 0.6ms]
+[TRPC] sign-in check took 1ms
+[TRPC] drawingsWorkspace.get took 8ms to execute (11 queries) [database 28.4ms] 16 KB
+[TRPC] sign-in check took 0ms
+[TRPC] drawingsWorkspace.changes took 4ms to execute (12 queries) [database 6.6ms] 16 KB
+[TRPC] chat.getOverview took 5ms to execute (5 queries) [database 4.5ms]
+[TRPC] chat.history took 2ms to execute (5 queries) [database 1.5ms]
+[TRPC] rooms.getJobRoomCount took 1ms to execute (2 queries) [database 0.5ms]
+[TRPC] notifications.overview took 4ms to execute (1 queries) [database 3.8ms]
+[TRPC] push.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMe took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] pipeSpecs.aiConnection took 4ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMaterialSortPreferences took 6ms to execute (1 queries) [database 5.9ms]
+[TRPC] appDevices.report took 4ms to execute (1 queries) [database 3.2ms]
+[TRPC] notifications.overview took 5ms to execute (1 queries) [database 4.4ms]
+[replicache] material-lists pull took 16ms (revision 0ms, build 10ms, 30 patch ops, attempt 1)
+[replicache] catalogue pull took 10ms (revision 0ms, build 6ms, 27 patch ops, attempt 1)
+[replicache] material-lists pull took 7ms (revision 1ms, cached view, 0 patch ops, attempt 1)
+[replicache] catalogue pull took 3ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[TRPC] user.getMaterialSortPreferences took 2ms to execute (1 queries) [database 0.8ms]
+[TRPC] user.getMyRole took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 3ms to execute (1 queries) [database 2.6ms]
+[TRPC] push.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 6ms to execute (1 queries) [database 6.0ms]
+[replicache] material-lists pull took 3ms (revision 1ms, cached view, 0 patch ops, attempt 1)
+[TRPC] push.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMe took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] pipeSpecs.aiConnection took 3ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMaterialSortPreferences took 5ms to execute (1 queries) [database 4.3ms]
+[TRPC] appDevices.report took 4ms to execute (1 queries) [database 3.1ms]
+[replicache] material-lists pull took 5ms (revision 0ms, cached view, 30 patch ops, attempt 1)
+[TRPC] notifications.overview took 7ms to execute (1 queries) [database 6.6ms]
+[replicache] catalogue pull took 2ms (revision 0ms, cached view, 27 patch ops, attempt 1)
+[replicache] material-lists pull took 3ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[replicache] catalogue pull took 2ms (revision 1ms, cached view, 0 patch ops, attempt 1)
+[TRPC] user.getMaterialSortPreferences took 2ms to execute (1 queries) [database 0.8ms]
+[TRPC] user.setMaterialSortPreferences took 5ms to execute (3 queries) [database 2.1ms]
+[TRPC] user.getMaterialSortPreferences took 1ms to execute (1 queries) [database 0.9ms]
+[TRPC] user.getMaterialSortPreferences took 1ms to execute (1 queries) [database 0.9ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 2ms to execute (1 queries) [database 2.3ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 1ms to execute (0 queries) [database 0.0ms]
+[replicache] material-lists pull took 2ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[TRPC] notifications.overview took 4ms to execute (1 queries) [database 4.0ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 5ms to execute (1 queries) [database 4.4ms]
+[TRPC] user.getMaterialSortPreferences took 1ms to execute (1 queries) [database 0.8ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] user.getMyRole took 1ms to execute (0 queries) [database 0.0ms]
+[replicache] material-lists pull took 3ms (revision 1ms, cached view, 0 patch ops, attempt 1)
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 3ms to execute (1 queries) [database 2.7ms]
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 3ms to execute (1 queries) [database 2.2ms]
+[TRPC] user.getMaterialSortPreferences took 1ms to execute (1 queries) [database 0.7ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[replicache] material-lists pull took 1ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[TRPC] user.getMyRole took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.overview took 5ms to execute (1 queries) [database 3.9ms]
+[replicache] material-lists pull took 1ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[replicache] catalogue pull took 2ms (revision 0ms, cached view, 0 patch ops, attempt 1)
+[TRPC] user.getMaterialSortPreferences took 1ms to execute (1 queries) [database 0.5ms]
