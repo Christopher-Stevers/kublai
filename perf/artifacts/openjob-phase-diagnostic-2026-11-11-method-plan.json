@@ -1,0 +1,6 @@
+{
+  "method": "/tmp/foremanhq-openjob-phase-method-Wfbfpu",
+  "driverSha256": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "protocol": "openjob-phase-diagnostic-v1",
+  "gateReplacement": false
+}

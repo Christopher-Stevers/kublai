@@ -1,0 +1,120 @@
+{
+  "status": "complete-supplemental-only",
+  "acceptedGateEvidence": false,
+  "originalR6Gate": "Failed openjob/Basement and openjob/Office; unchanged, no waiver or replacement.",
+  "raw": {
+    "path": "perf/artifacts/openjob-phase-diagnostic-2026-11-11-report.json",
+    "sha256": "326a6f66bf46e4948182eb42306683204cb57f04c51cbd5655aa2ff57e435d73"
+  },
+  "samples": 20,
+  "allSourcePairsAlternated": true,
+  "allDestinationHiddenBeforeInput": true,
+  "allPointerAndClickAndDomReadyObserved": true,
+  "driverHashBefore": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "driverHashAfter": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "frozenPreparationMethodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "frozenPreparationMethodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "rows": [
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 74.64576499999384,
+        "driverClick": 51.121234999998705,
+        "driverAssert": 2.567524999991292,
+        "driverTwoRaf": 20.90143500000704,
+        "browserInstalledToPointerdown": 28.09999990463257,
+        "browserPointerdownToClick": 1.6000003814697266,
+        "browserPointerdownToDomReady": 11,
+        "browserClickToDomReady": 9.299999713897705,
+        "browserDomReadyToSecondExplicitRaf": 34.70000000000073
+      },
+      "observedLongTasks": 0,
+      "allLongTaskObserversSupported": true
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 88.619211000012,
+        "driverClick": 67.40109900000971,
+        "driverAssert": 2.432529000012437,
+        "driverTwoRaf": 18.88591699997778,
+        "browserInstalledToPointerdown": 42.5,
+        "browserPointerdownToClick": 1.8999996185302734,
+        "browserPointerdownToDomReady": 10.800000190734863,
+        "browserClickToDomReady": 9.299999713897705,
+        "browserDomReadyToSecondExplicitRaf": 35.10000028610227
+      },
+      "observedLongTasks": 0,
+      "allLongTaskObserversSupported": true
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 91.58596899999975,
+        "driverClick": 56.0394849999866,
+        "driverAssert": 2.802637999993749,
+        "driverTwoRaf": 31.968138999975054,
+        "browserInstalledToPointerdown": 28.90000009536743,
+        "browserPointerdownToClick": 4.599999904632568,
+        "browserPointerdownToDomReady": 18.40000009536743,
+        "browserClickToDomReady": 13.400000095367432,
+        "browserDomReadyToSecondExplicitRaf": 43.00000009536598
+      },
+      "observedLongTasks": 0,
+      "allLongTaskObserversSupported": true
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 98.61633300001267,
+        "driverClick": 66.67990600000485,
+        "driverAssert": 2.4589759999944363,
+        "driverTwoRaf": 30.954110999999102,
+        "browserInstalledToPointerdown": 37.5,
+        "browserPointerdownToClick": 4.5,
+        "browserPointerdownToDomReady": 18.300000190734863,
+        "browserClickToDomReady": 13.600000381469727,
+        "browserDomReadyToSecondExplicitRaf": 43.50000009536734
+      },
+      "observedLongTasks": 0,
+      "allLongTaskObserversSupported": true
+    }
+  ],
+  "health": {
+    "baseline": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    },
+    "candidate": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "ports3482And3483NoListener": true,
+    "bothPrivateDatabaseDirectoriesRemoved": true
+  },
+  "interpretation": "Both sources performed real hidden-to-visible transitions. Candidate browser pointerdown→DOM-ready medians are 18.3–18.4 ms versus 10.8–11.0 ms baseline. Candidate pointerdown→click is 4.5–4.6 ms versus 1.6–1.9 ms, and click→DOM-ready 13.4–13.6 ms versus 9.3 ms. Thus this diagnostic does not support attributing the whole difference solely to Playwright. Driver/rAF alignment also varies; no specific source cause or actual first-paint delay is established.",
+  "limitations": [
+    "Separate instrumented protocol; original frozen gate and failed candidate remain unchanged.",
+    "DOM visibility and rAF callbacks are readiness/paint opportunities, not physical first paint or compositor display.",
+    "MutationObserver, continuous rAF and PerformanceObserver add browser work; both sources receive identical instrumentation.",
+    "Two isolated app servers run concurrently; idle-server overhead is a supplemental diagnostic difference.",
+    "No true device/production auth/private SW/background-update/offline target proof.",
+    "Shared host production/OS activity remains uncontrolled.",
+    "Desktop Chromium UA/headless emulation exercises header-back sentinel history; not Android CloseWatcher semantics. isMobile viewport does not set Android user agent.",
+    "Continuous rAF/DOM/long-task observers add work; two concurrent synthetic app servers differ from full gate setup.",
+    "No observed long tasks ≥50 ms does not rule out shorter work/style/layout/render costs.",
+    "Browser-local DOM-ready and rAF are not physical pixels or actual first paint; no causal inference from frame-sized deltas.",
+    "All 20 samples retained, no app changes, no new full capture or gate metric swap.",
+    "No declared agent-heavy/ADB/phone work; production/OS activity remained uncontrolled."
+  ]
+}
