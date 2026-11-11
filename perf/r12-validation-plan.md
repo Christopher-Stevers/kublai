@@ -104,3 +104,31 @@ fresh Clerk session validation. No all-polls or performance improvement claim.
 The exact driver/config/dependency hash manifest will be sealed when root supplies
 R12 identity and authorizes setup. This document and script are preparation only;
 no server, database, compile, browser or fault has been started for R12.
+
+## Protocol review correction: streamed reads and page ownership
+
+Functional protocol v2 supersedes the preserved **unexecuted** v1 source under
+`artifacts/compiled-preferences-functional-unexecuted-v1`. Installed tRPC 11.8.1
+`@trpc/client/src/links/httpBatchStreamLink.ts` uses `jsonlStreamConsumer` and
+SuperJSON, awaiting head entry → result → data. The observer now uses that same
+installed decoder rather than response.json(); ordinary mutation JSON remains
+supported. Parser fixtures generate actual JSONL envelopes with the installed
+producer, covering deferred success/error and normal JSON. Invalid/truncated,
+missing-entry, oversized and body-wait failures fail closed and are reported as
+consumer observation errors rather than silently dropped.
+
+Observed bodies have a five-second wait and decode bound, 512 KiB parse cap,
+4,096 JSONL-line cap and 128-entry cap. Playwright buffers response bodies;
+content-length is rejected early where present, otherwise the size bound is
+applied after receipt before parsing. This is not a streaming memory guarantee.
+No extra HTTP request or application cache mutation is used for observation.
+
+Consumer/producer each own their role/preference responses, request counters and
+SSE frames. Every global output row labels contextId. All readiness, role grant,
+expiry/recovery, quiet/fallback cadence, producer-to-consumer hint, transport and
+LISTEN assertions use **consumer** records exclusively; producer is checked only
+for its own actual mutation ACK. Closed contexts cannot update live observations.
+Seven node parser/context fixtures pass. The driver and both helper hashes are
+recorded before/after; exact prepared hashes/dependency version are in the plan
+JSON. These source checks are not a compiled-runtime pass, and execution remains
+held for frozen R12 identity/static and corrected-protocol review.

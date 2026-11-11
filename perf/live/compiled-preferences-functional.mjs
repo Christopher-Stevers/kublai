@@ -5,20 +5,33 @@ import http from "node:http";
 import { createHash } from "node:crypto";
 import postgres from "postgres";
 import { chromium, expect } from "@playwright/test";
+import { decodePlaywrightTrpcResponse } from "./observed-trpc-response.mjs";
+import { createPreferenceObservationContext } from "./preference-observation-context.mjs";
 const config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const sha = (file) =>
   createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+const methodFiles = [
+  "compiled-preferences-functional.mjs",
+  "observed-trpc-response.mjs",
+  "preference-observation-context.mjs",
+];
+const methodHashes = () =>
+  Object.fromEntries(
+    methodFiles.map((file) => [file, sha(new URL(file, import.meta.url))]),
+  );
 const report = {
-  protocol: "compiled-preferences-functional-v1",
+  protocol: "compiled-preferences-functional-v2",
   status: "incomplete",
   acceptedGateEvidence: false,
   physicalPhoneEvidence: false,
   startedAt: new Date().toISOString(),
   driverSha256: sha(new URL(import.meta.url)),
+  protocolDependencyHashesBefore: methodHashes(),
   stage: "attestation",
   assertions: [],
   requests: [],
   httpAuthority: [],
+  observationErrors: [],
   frames: [],
   controlledMutations: [],
   limitations: [
@@ -40,6 +53,10 @@ const pass = (name) => {
 const wait = async (predicate, ms, label) => {
   const end = Math.min(deadline, Date.now() + ms);
   while (Date.now() < end) {
+    if (
+      report.observationErrors.some((error) => error.contextId === "consumer")
+    )
+      throw Error("Consumer real HTTP observation decoding failed");
     if (await predicate()) return;
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -54,8 +71,7 @@ const backend = new URL(config.backend),
 let sql, browser, proxy, restoreUser, context;
 const streams = new Set();
 let denyStreams = false;
-let latestRole = null,
-  latestPreference = null;
+
 const violations = [];
 report.guardRejections = violations;
 const fixedPosts = new Set([
@@ -72,7 +88,6 @@ const procedures = (url) => {
   const name = decodeURIComponent(url.pathname).replace(/^\/api\/trpc\//, "");
   return /^\w+\.\w+(,\w+\.\w+)*$/.test(name) ? name.split(",") : [];
 };
-const unwrap = (row) => row?.result?.data?.json ?? row?.result?.data;
 const expectedReads = [
   "user.getMe",
   "notifications.identity",
@@ -251,8 +266,15 @@ try {
     executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
     args: ["--no-sandbox"],
   });
-  async function openPage() {
+  async function openPage(contextId) {
     const ctx = await browser.newContext();
+    const observedContext = createPreferenceObservationContext(
+      contextId,
+      report,
+    );
+    ctx.on("close", () => {
+      observedContext.active = false;
+    });
     await ctx.route("**/*", async (route) => {
       const request = route.request(),
         url = new URL(request.url());
@@ -304,7 +326,7 @@ try {
         const at = Date.now();
         pendingStarts.set(request, at);
         for (const procedure of procs)
-          report.requests.push({
+          observedContext.recordRequest({
             procedure,
             method: request.method(),
             at: at - started,
@@ -317,32 +339,66 @@ try {
           procs = procedures(new URL(response.url()));
         if (
           !procs.some(
-            (p) =>
-              p === "user.getMyRole" || p === "user.getMaterialSortPreferences",
+            (procedure) =>
+              procedure === "user.getMyRole" ||
+              procedure === "user.getMaterialSortPreferences",
           )
         )
           return;
-        const raw = await response.json();
-        const rows = Array.isArray(raw) ? raw : [raw];
+        const rows = await decodePlaywrightTrpcResponse(response, procs.length);
+        if (!observedContext.active) return;
         for (let i = 0; i < procs.length; i++) {
-          const data = unwrap(rows[i]);
-          if (!response.ok() || !data) continue;
-          const observed = {
-            requestAt: pendingStarts.get(request),
-            responseAt: Date.now(),
-            accountMatches:
-              data.accountScope ===
-              `${fixture.organizationId}:${fixture.userId}`,
-            appAccess: data.appAccess,
-            canEditExecutive: data.canEditExecutive,
-            role: data.role,
-          };
-          if (procs[i] === "user.getMyRole") {
-            latestRole = observed;
+          const procedure = procs[i];
+          if (
+            procedure !== "user.getMyRole" &&
+            procedure !== "user.getMaterialSortPreferences"
+          )
+            continue;
+          const row = rows[i];
+          const requestAt = pendingStarts.get(request),
+            responseAt = Date.now();
+          if (!Number.isFinite(requestAt))
+            throw Error("Observed request-start metadata missing");
+          if (!response.ok() || !row?.ok) {
             report.httpAuthority.push({
-              procedure: procs[i],
-              requestAt: observed.requestAt - started,
-              responseAt: observed.responseAt - started,
+              contextId,
+              procedure,
+              requestAt: requestAt - started,
+              responseAt: responseAt - started,
+              success: false,
+              errorCode: row?.errorCode ?? "HTTP_ERROR",
+            });
+            if (procedure === "user.getMyRole") observedContext.setRole(null);
+            else observedContext.setPreference(null);
+            continue;
+          }
+          const data = row.data;
+          if (
+            !data ||
+            typeof data !== "object" ||
+            typeof data.canEditExecutive !== "boolean"
+          )
+            throw Error("Observed authority schema missing");
+          const observed = {
+            requestAt,
+            responseAt,
+            canEditExecutive: data.canEditExecutive,
+          };
+          if (procedure === "user.getMyRole") {
+            Object.assign(observed, {
+              accountMatches:
+                data.accountScope ===
+                `${fixture.organizationId}:${fixture.userId}`,
+              appAccess: data.appAccess,
+              role: data.role,
+            });
+            observedContext.setRole(observed);
+            report.httpAuthority.push({
+              contextId,
+              procedure,
+              requestAt: requestAt - started,
+              responseAt: responseAt - started,
+              success: true,
               accountMatches: observed.accountMatches,
               appAccess: observed.appAccess,
               canEditExecutive: observed.canEditExecutive,
@@ -350,22 +406,29 @@ try {
                 ? observed.role
                 : "other",
             });
-          }
-          if (procs[i] === "user.getMaterialSortPreferences") {
-            latestPreference = {
-              requestAt: observed.requestAt,
-              responseAt: observed.responseAt,
-              canEditExecutive: data.canEditExecutive,
-            };
+          } else {
+            observedContext.setPreference(observed);
             report.httpAuthority.push({
-              procedure: procs[i],
-              requestAt: observed.requestAt - started,
-              responseAt: observed.responseAt - started,
-              canEditExecutive: data.canEditExecutive,
+              contextId,
+              procedure,
+              requestAt: requestAt - started,
+              responseAt: responseAt - started,
+              success: true,
+              canEditExecutive: observed.canEditExecutive,
             });
           }
         }
-      })().catch(() => {});
+      })().catch((error) => {
+        if (observedContext.active) {
+          report.observationErrors.push({
+            contextId,
+            kind: "HTTP_DECODE_FAILED",
+            name: error.name,
+            at: Date.now() - started,
+          });
+          write();
+        }
+      });
     });
     const cdp = await ctx.newCDPSession(page);
     await cdp.send("Network.enable");
@@ -383,11 +446,13 @@ try {
           typeof data.ready !== "boolean"
         )
           violations.push({ reason: "Non-content-free readiness frame" });
-        report.frames.push({
+        const frame = {
+          contextId,
           event: "preferences-ready",
           ready: data.ready,
           at: Date.now() - started,
-        });
+        };
+        observedContext.recordFrame(frame);
       } else if (data.topic === "preferences") {
         if (
           Object.keys(data).some(
@@ -395,31 +460,35 @@ try {
           )
         )
           violations.push({ reason: "Non-content-free preference frame" });
-        report.frames.push({
+        const frame = {
+          contextId,
           event: "preferences",
           kind: data.kind,
           at: Date.now() - started,
-        });
+        };
+        observedContext.recordFrame(frame);
       }
     });
     await page.goto(new URL("/jobs/account/settings", proxyBase).href);
-    return { ctx, page };
+    return { ctx, page, observed: observedContext };
   }
-  context = await openPage();
+  context = await openPage("consumer");
   const { page } = context;
+  const consumer = context.observed;
   report.stage = "compiled-readiness";
   write();
   await wait(
-    () => report.frames.some((f) => f.event === "preferences-ready" && f.ready),
+    () =>
+      consumer.frames.some((f) => f.event === "preferences-ready" && f.ready),
     30000,
     "Compiled LISTEN readiness never became true",
   );
   await wait(
     () =>
-      latestRole?.accountMatches &&
-      latestRole?.appAccess &&
-      latestRole?.canEditExecutive &&
-      latestPreference?.canEditExecutive,
+      consumer.latestRole?.accountMatches &&
+      consumer.latestRole?.appAccess &&
+      consumer.latestRole?.canEditExecutive &&
+      consumer.latestPreference?.canEditExecutive,
     35000,
     "No actual matching role/preference HTTP authority",
   );
@@ -431,12 +500,12 @@ try {
   report.stage = "healthy-observation";
   const quiet = Date.now();
   await sleep(75000);
-  const reads = report.requests.filter(
+  const reads = consumer.requests.filter(
     (r) =>
       r.at >= quiet - started &&
       r.procedure === "user.getMaterialSortPreferences",
   );
-  const roles = report.requests.filter(
+  const roles = consumer.requests.filter(
     (r) => r.at >= quiet - started && r.procedure === "user.getMyRole",
   );
   if (reads.length !== 0 || roles.length < 2)
@@ -452,11 +521,11 @@ try {
   await page
     .getByRole("button", { name: "Edit executive sorting", exact: true })
     .click();
-  const producer = await openPage();
+  const producer = await openPage("producer");
   await producer.page
     .getByRole("button", { name: "Edit executive sorting", exact: true })
     .click();
-  const beforeHint = report.frames.length;
+  const beforeHint = consumer.frames.length;
   const ackPromise = producer.page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -466,19 +535,18 @@ try {
   );
   await producer.page.locator("#settings-list-sort").selectOption("recent");
   const ack = await ackPromise;
-  const ackBody = await ack.json();
-  const ackProcs = procedures(new URL(ack.url()));
-  const ackRow = unwrap(
-    Array.isArray(ackBody)
-      ? ackBody[ackProcs.indexOf("user.setMaterialSortPreferences")]
-      : ackBody,
+  const ackBody = await decodePlaywrightTrpcResponse(
+    ack,
+    procedures(new URL(ack.url())).length,
   );
-  if (!ack.ok() || ackRow?.shared?.sortMode !== "recent")
+  const ackProcs = procedures(new URL(ack.url()));
+  const ackRow = ackBody[ackProcs.indexOf("user.setMaterialSortPreferences")];
+  if (!ack.ok() || !ackRow?.ok || ackRow.data?.shared?.sortMode !== "recent")
     throw Error("No real preference mutation ACK");
   await expect(page.locator("#settings-list-sort")).toHaveValue("recent");
   await wait(
     () =>
-      report.frames
+      consumer.frames
         .slice(beforeHint)
         .some((f) => f.event === "preferences" && f.kind === "settings"),
     10000,
@@ -498,16 +566,16 @@ try {
   });
   await wait(
     () =>
-      latestRole?.requestAt >= expiresStart &&
-      latestRole.role === "foreman" &&
-      latestRole.canEditExecutive === true,
+      consumer.latestRole?.requestAt >= expiresStart &&
+      consumer.latestRole.role === "foreman" &&
+      consumer.latestRole.canEditExecutive === true,
     34000,
     "No live role HTTP before controlled expiry",
   );
   await wait(
     () =>
-      latestRole?.requestAt > expiresStart + 35000 &&
-      latestRole.canEditExecutive === false,
+      consumer.latestRole?.requestAt > expiresStart + 35000 &&
+      consumer.latestRole.canEditExecutive === false,
     70000,
     "Expiry did not revoke through real role HTTP",
   );
@@ -524,8 +592,8 @@ try {
   await restoreUser();
   await wait(
     () =>
-      latestRole?.requestAt >= restoreAt &&
-      latestRole.canEditExecutive === true,
+      consumer.latestRole?.requestAt >= restoreAt &&
+      consumer.latestRole.canEditExecutive === true,
     35000,
     "Fresh role HTTP did not restore authority",
   );
@@ -541,7 +609,7 @@ try {
     stream.res.destroy();
   }
   await sleep(75000);
-  const fallbackReads = report.requests.filter(
+  const fallbackReads = consumer.requests.filter(
     (r) =>
       r.at >= outage - started &&
       r.procedure === "user.getMaterialSortPreferences",
@@ -553,7 +621,10 @@ try {
     throw Error(
       "No immediate catch-up plus fallback preference cadence during sustained outage",
     );
-  if (!latestRole?.canEditExecutive || latestRole.requestAt < outage)
+  if (
+    !consumer.latestRole?.canEditExecutive ||
+    consumer.latestRole.requestAt < outage
+  )
     throw Error("No fresh HTTP authority during stream outage");
   await expect(
     page.getByRole("button", { name: "Edit executive sorting", exact: true }),
@@ -565,7 +636,7 @@ try {
   denyStreams = false;
   await wait(
     () =>
-      report.frames.some(
+      consumer.frames.some(
         (f) =>
           f.at >= reconnect - started &&
           f.event === "preferences-ready" &&
@@ -589,7 +660,7 @@ try {
   });
   await wait(
     () =>
-      report.frames.some(
+      consumer.frames.some(
         (f) =>
           f.at >= lossAt - started &&
           f.event === "preferences-ready" &&
@@ -600,7 +671,7 @@ try {
   );
   await wait(
     () =>
-      report.frames.some(
+      consumer.frames.some(
         (f) =>
           f.at >= lossAt - started &&
           f.event === "preferences-ready" &&
@@ -611,7 +682,7 @@ try {
   );
   await wait(
     () =>
-      report.requests.some(
+      consumer.requests.some(
         (r) =>
           r.at >= lossAt - started &&
           r.procedure === "user.getMaterialSortPreferences",
@@ -663,6 +734,15 @@ try {
       report.databaseHealthUnavailable = true;
       process.exitCode = 1;
     }
+  }
+  report.protocolDependencyHashesAfter = methodHashes();
+  if (
+    JSON.stringify(report.protocolDependencyHashesBefore) !==
+    JSON.stringify(report.protocolDependencyHashesAfter)
+  ) {
+    report.status = "failed";
+    report.protocolDependenciesChanged = true;
+    process.exitCode = 1;
   }
   report.driverSha256After = sha(new URL(import.meta.url));
   if (report.driverSha256After !== report.driverSha256) {

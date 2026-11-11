@@ -1,8 +1,8 @@
 {
   "status": "source-prepared-not-executed",
-  "protocol": "compiled-preferences-functional-v1",
+  "protocol": "compiled-preferences-functional-v2",
   "driver": "perf/live/compiled-preferences-functional.mjs",
-  "driverSha256": "5b7c8ab7dcf421d74bd1f17a952c55b4eed01997fc0f5963467223171d0037b6",
+  "driverSha256": "b5e82bee1e56fe3326a6ff878953a89f86b7c17a66edc51d4b71a3119a491b3f",
   "expectedR12SourceBuild": null,
   "expectedR12SourceFingerprint": null,
   "expectedCompiledLabBuild": null,
@@ -37,5 +37,21 @@
     "outerMinutes": 45,
     "authorized": false
   },
-  "validation": "node --check passed only; no browser/server/DB/build run for this protocol"
+  "validation": "Seven node parser/context fixtures pass, including real installed JSONL producer wire and normal JSON; syntax checks passed. No app/browser/DB/build run.",
+  "dependencies": {
+    "perf/live/observed-trpc-response.mjs": "f31aa7ffa7bba57bd15fe08bebef3cb9d438507b62a3851536c9f332c683e22a",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8"
+  },
+  "observationDecoder": {
+    "method": "Same installed jsonlStreamConsumer+SuperJSON and nested promises as httpBatchStreamLink; normal JSON also supported",
+    "trpcVersion": "11.8.1",
+    "bodyWaitMs": 5000,
+    "decodeWaitMs": 5000,
+    "maxObservedBodyBytes": 524288,
+    "maxJsonlLines": 4096,
+    "maxBatchEntries": 128,
+    "memoryLimit": "Playwright buffers an observed body; content-length is rejected early if present, otherwise size is rejected after receipt before parsing. No streaming memory guarantee asserted."
+  },
+  "contextPolicy": "Separate consumer/producer state; every report row labels contextId; all authority/readiness/hint/poll/reconnect assertions use consumer records only; producer used only its real mutation ACK.",
+  "preservedUnexecutedV1": "perf/artifacts/compiled-preferences-functional-unexecuted-v1"
 }
