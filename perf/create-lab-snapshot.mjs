@@ -3,8 +3,17 @@ import path from "node:path";
 import os from "node:os";
 import ts from "typescript";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 // Deliberately generates a separate source tree: no auth bypass is added to the real app.
-const source = process.cwd();
+const source = path.resolve(process.env.PERF_SOURCE_ROOT ?? process.cwd());
+const harnessRoot = path.dirname(fileURLToPath(import.meta.url));
+if (
+  !fs.existsSync(path.join(source, "next.config.js")) ||
+  !fs.existsSync(path.join(source, "src/app/layout.tsx"))
+)
+  throw new Error(
+    "PERF_SOURCE_ROOT must contain a complete application source tree",
+  );
 const rawDatabase = process.env.PERF_LAB_DATABASE_URL;
 if (!rawDatabase)
   throw new Error(
@@ -43,8 +52,9 @@ execFileSync(
   ],
   { stdio: "inherit" },
 );
+fs.cpSync(harnessRoot, path.join(target, "perf"), { recursive: true });
 fs.symlinkSync(
-  path.join(source, "node_modules"),
+  path.join(path.dirname(harnessRoot), "node_modules"),
   path.join(target, "node_modules"),
   "dir",
 );
@@ -77,24 +87,28 @@ for (const relative of [
 }
 const configPath = path.join(target, "next.config.js");
 let config = fs.readFileSync(configPath, "utf8");
-if (!config.includes("const config = {"))
+if (!config.includes("export default config;"))
   throw new Error("Unknown Next config; refusing auth alias injection");
 config = config.replace(
-  "const config = {",
-  () => `const config = {
-  webpack(config) {
-    config.resolve.alias = { ...config.resolve.alias,
-      '@clerk/nextjs/server$': ${JSON.stringify(path.join(target, "perf/auth/clerk-server.mjs"))},
-      '@clerk/nextjs$': ${JSON.stringify(path.join(target, "perf/auth/clerk-client.jsx"))}
-    };
-    return config;
-  },`,
+  "export default config;",
+  () => `
+const applicationWebpack = config.webpack;
+config.webpack = (webpackConfig, options) => {
+  const result = applicationWebpack ? applicationWebpack(webpackConfig, options) : webpackConfig;
+  result.resolve.alias = { ...result.resolve.alias,
+    '@clerk/nextjs/server$': ${JSON.stringify(path.join(target, "perf/auth/clerk-server.mjs"))},
+    '@clerk/nextjs$': ${JSON.stringify(path.join(target, "perf/auth/clerk-client.jsx"))}
+  };
+  return result;
+};
+export default config;`,
 );
 fs.writeFileSync(
   configPath,
   `process.env.DATABASE_URL = ${JSON.stringify(rawDatabase)};\nprocess.env.FOREMANHQ_BACKGROUND_MODE = "separate";\nprocess.env.BIM_WORKER_DISABLED = "1";\n` +
     config,
 );
+execFileSync(process.execPath, ["--check", configPath], { stdio: "inherit" });
 if (process.env.PERF_LAB_FIXTURES)
   fs.copyFileSync(
     process.env.PERF_LAB_FIXTURES,
@@ -132,6 +146,6 @@ fs.writeFileSync(
 );
 fs.writeFileSync(
   path.join(target, "PERF_LAB_ONLY"),
-  "Isolated app: Clerk authentication and its bytes/timing are stubbed. Never deploy this snapshot.\n",
+  `Isolated app copied from ${source}. Clerk authentication and its bytes/timing are stubbed. Never deploy this snapshot.\n`,
 );
 console.log(target);

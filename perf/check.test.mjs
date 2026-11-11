@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { budgets, compareReports } from "./check.mjs";
+import { budgets, compareReports, checkRepeatability } from "./check.mjs";
 const report = () => ({
   version: 1,
+  build: "test-build",
   provenance: "isolated-seeded-app",
   cpuSlowdown: 4,
   static: {
@@ -15,6 +16,11 @@ const report = () => ({
     Object.keys(budgets.links).flatMap((link) =>
       Array.from({ length: 5 }, (_, run) => ({
         run,
+        variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
+          journey,
+        )
+          ? "visited"
+          : "operation",
         journey,
         link,
         durationMs: 100,
@@ -45,4 +51,15 @@ test("planted 100ms tap, 30KB script and poll regressions fail", () => {
     mutate(next);
     assert.ok(compareReports(report(), next).length);
   }
+});
+
+test("independent Phase 0 runs require same build and medians within ten percent", () => {
+  const first = report(),
+    second = report();
+  assert.deepEqual(checkRepeatability(first, second), []);
+  second.samples.forEach((sample) => (sample.durationMs = 89));
+  assert.ok(checkRepeatability(first, second).length);
+  const mismatch = report();
+  mismatch.build = "different-build";
+  assert.ok(checkRepeatability(first, mismatch).length);
 });

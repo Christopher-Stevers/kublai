@@ -52,6 +52,8 @@ try {
             : route.abort("blockedbyclient");
         });
         const page = await context.newPage();
+        const pageErrors = [];
+        page.on("pageerror", (error) => pageErrors.push(error.message));
         const cdp = await context.newCDPSession(page);
         await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
         await cdp.send("Network.enable");
@@ -67,10 +69,30 @@ try {
           // Journey must resolve only after its observable painted/sharp state; no fixed-delay completion.
           await adapter[journey]({ page, base: base.href, run, cdp });
           const durationMs = performance.now() - start;
-          samples.push({ journey, link, run, durationMs });
+          if (pageErrors.length)
+            throw new Error(`Browser script error: ${pageErrors.join("; ")}`);
+          samples.push({
+            journey,
+            link,
+            run,
+            durationMs,
+            variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
+              journey,
+            )
+              ? "visited"
+              : "operation",
+          });
           console.log(
             `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
           );
+        } catch (error) {
+          await page
+            .screenshot({
+              path: `${process.env.PERF_OUTPUT ?? "perf-report.json"}.failure.png`,
+              fullPage: true,
+            })
+            .catch(() => undefined);
+          throw error;
         } finally {
           await context.close();
         }

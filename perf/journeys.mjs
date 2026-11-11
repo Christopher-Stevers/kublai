@@ -84,6 +84,26 @@ export async function prepare({ page, base, journey }) {
     await expect(
       page.getByPlaceholder("Message everyone on this job…"),
     ).toBeVisible();
+  // Visited-screen journeys warm the destination through the real client router,
+  // then return through browser history before the timed second navigation.
+  if (["openjob", "switchjobtabs", "openmateriallist"].includes(journey)) {
+    const source = page.url();
+    await { openjob, switchjobtabs, openmateriallist }[journey]({ page });
+    await page.goBack();
+    await expect(page).toHaveURL(source);
+    if (journey === "openjob")
+      await expect(
+        page.getByText(fixture.jobName, { exact: true }).first(),
+      ).toBeVisible();
+    if (journey === "switchjobtabs")
+      await expect(
+        page.locator('[data-job-card="material-lists"]'),
+      ).toBeVisible();
+    if (journey === "openmateriallist")
+      await expect(
+        page.getByText(fixture.materialListName, { exact: true }).first(),
+      ).toBeVisible();
+  }
   await painted(page);
 }
 export async function coldstart({ page, base }) {

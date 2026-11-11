@@ -10,7 +10,7 @@ export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_speed_lab_only
 export STRIPE_SECRET_KEY=sk_test_speed_lab_only
 export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_speed_lab_only
 export NEXT_PUBLIC_BUILD_ID=isolated-speed-pilot
-unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH
+unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
 cd "$snapshot"
 printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-latest-snapshot
 while ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; do
@@ -22,6 +22,7 @@ while ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; d
   done
   if [[ "$attempt" == 300 ]]; then exit 1; fi
 done
+export PERF_BUILD=$(cat .next/BUILD_ID)
 ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3481 > "$snapshot/server.log" 2>&1 &
 server_pid=$!
 cleanup() { kill "$server_pid" 2>/dev/null || true; }

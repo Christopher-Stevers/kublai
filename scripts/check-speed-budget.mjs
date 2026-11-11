@@ -8,7 +8,11 @@ try {
     if (i < 0 || !process.argv[i + 1]) throw new Error(`Missing ${name}`);
     return JSON.parse(fs.readFileSync(process.argv[i + 1]));
   };
-  const errors = compareReports(read("--baseline"), read("--report"));
+  const report = read("--report");
+  const expectedIndex = process.argv.indexOf("--expected-build");
+  if (expectedIndex >= 0 && report.build !== process.argv[expectedIndex + 1])
+    throw new Error("Lab report does not match candidate build ID");
+  const errors = compareReports(read("--baseline"), report);
   if (errors.length) throw new Error(errors.join("\n"));
   console.log("Speed regression budgets pass");
 } catch (error) {
