@@ -156,8 +156,22 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ ctx, input }) => listDrawingWorkspace(ctx, input.jobId)),
   save: hasAppAccess
-    .input(drawingSaveSchema)
-    .mutation(({ ctx, input }) => saveDrawingEntity(ctx, input)),
+    .input(drawingSaveSchema.and(z.object({
+      expectedAccountKey: z.string().min(1).max(512).optional(),
+    })))
+    .mutation(({ ctx, input }) => {
+      const { expectedAccountKey, ...value } = input;
+      if (
+        expectedAccountKey !== undefined &&
+        expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Your signed-in workspace changed. Reopen the drawing before saving.",
+        });
+      }
+      return saveDrawingEntity(ctx, value);
+    }),
   archive: hasAppAccess
     .input(item)
     .mutation(({ ctx, input }) => archiveDrawingEntity(ctx, input)),

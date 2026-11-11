@@ -1,3 +1,4 @@
+import type * as SharedIssueSaveModule from "~/hooks/use-drawing-shared-issue-save";
 import type * as DrawingScaleSaveModule from "~/hooks/use-drawing-scale-save";
 import type * as DocumentWorkspaceAuthorityModule from "~/hooks/use-document-workspace-authority";
 import type * as InstantSavedViewNameModule from "~/hooks/use-instant-saved-view-name";
@@ -30,7 +31,7 @@ import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-so
 
 const mocks = vi.hoisted(() => ({
   instantNames: false,
-  realScale: false,
+  realScale: false, realSharedIssue: false, readWorkspace: vi.fn(),
   dropMetadataPatch: false,
   viewer: vi.fn(),
   loadLink: vi.fn(),
@@ -60,7 +61,7 @@ vi.mock("next/navigation", () => {
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => {const client = useContext(QueryClientContext); return ({
-      client: { drawingsWorkspace: { link: { query: mocks.loadLink }, save: {mutate: mocks.save}, setScale: {mutate: mocks.setScale} } },
+      client: { drawingsWorkspace: { link: { query: mocks.loadLink }, save: {mutate: mocks.save}, get: {query: mocks.readWorkspace}, setScale: {mutate: mocks.setScale} } },
       drawingsWorkspace: {
         get: {
           invalidate: mocks.invalidate,
@@ -142,6 +143,14 @@ vi.mock("~/hooks/use-instant-saved-view-name", async (original) => {
   return {useInstantSavedViewName: (...args: Parameters<typeof actual.useInstantSavedViewName>) => mocks.instantNames ? actual.useInstantSavedViewName(...args) : {tryRename: () => false, canPersist: () => true, isPending: false, pendingEntityId: undefined}};
 });
 
+vi.mock("~/hooks/use-drawing-shared-issue-save", async original => {
+  const actual=await original<typeof SharedIssueSaveModule>();
+  function useFixtureSharedIssue(){return {trySave:()=>null,recover:async()=>undefined,isPending:false,needsRecovery:false,checking:false};}
+  return {useDrawingSharedIssueSave:(options:Parameters<typeof actual.useDrawingSharedIssueSave>[0])=>{
+    const useSelected=mocks.realSharedIssue?actual.useDrawingSharedIssueSave:useFixtureSharedIssue;
+    return useSelected(options);
+  }};
+});
 // Legacy cases retain their old deterministic service; the new parent race
 // cases use the actual controller on a fresh QueryClient-backed mount.
 vi.mock("~/hooks/use-drawing-scale-save", async original => {
@@ -455,6 +464,7 @@ const chooseTool = (id: string) => {
 beforeEach(() => {
   mocks.instantNames = false;
   mocks.realScale = false;
+  mocks.realSharedIssue = false;
   mocks.dropMetadataPatch = false;
   mocks.queryError = null;
   vi.clearAllMocks();
@@ -463,6 +473,7 @@ beforeEach(() => {
   }));
   mocks.account = null;
   mocks.data = fixture();
+  mocks.readWorkspace.mockImplementation(async()=>mocks.data);
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
   mocks.save.mockImplementation(
     async (value) =>
@@ -2738,5 +2749,33 @@ describe("real scale acknowledgement controller", () => {
     expect(screen.getByLabelText("Title")).toHaveValue("Server checked");
     expect(client.getQueryData<Workspace>(["drawing",{sheetId}])?.metadata.revision).toBe(7);
     cleanup();client.clear();
+  });
+});
+
+describe("shared issue real-controller integration",()=>{
+  function issue():DrawingEntity {return {id:entityId,sheetId,kind:"issue",data:{sourceSheetId:sheetId,type:"issue",point:{x:.5,y:.5},title:"Shared issue",body:"",status:"open",assigneeId:null,dueDate:null,links:[]},revision:4,visibility:"published",authorId:"tim",authorName:"Tim",createdAt:"real",updatedAt:"real",comments:[]};}
+  async function mountIssue(){
+    mocks.realSharedIssue=true;mocks.instantNames=true;mocks.account={accountKey:"org:tim",userId:"tim",store:null};mocks.data={...fixture(),entities:[issue()]};
+    const client=new QueryClient({defaultOptions:{queries:{retry:false}}});client.setQueryData(["drawing",{sheetId}],mocks.data);client.setQueryData(["drawing",{sheetId,omitHyperlinks:true}],mocks.data);
+    const view=render(<QueryClientProvider client={client}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}/></QueryClientProvider>);
+    const props=mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;act(()=>props.onSelect?.(entityId));
+    fireEvent.click(await screen.findByRole("button",{name:"Edit",exact:true}));
+    fireEvent.change(screen.getByLabelText("Issue title"),{target:{value:"New shared title"}});
+    return {client,view};
+  }
+  it("keeps a real accepted issue saved when refresh hangs or rejects",async()=>{
+    let finish!:(entity:DrawingEntity)=>void;mocks.save.mockReturnValue(new Promise(resolve=>{finish=resolve;}));mocks.invalidate.mockReturnValueOnce(new Promise(()=>undefined));
+    const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));
+    expect(screen.getByRole("button",{name:"Saving…"})).toBeDisabled();await waitFor(()=>expect(mocks.save).toHaveBeenCalledOnce());
+    await act(async()=>finish({...issue(),revision:5,data:{...(issue().data as Extract<DrawingEntity,{kind:"issue"}>["data"]),title:"New shared title"}}));
+    await waitFor(()=>expect(screen.queryByRole("button",{name:"Saving…"})).toBeNull());
+    expect(screen.queryByText(/unsaved item/)).toBeNull();expect(screen.queryByLabelText("Issue title")).toBeNull();expect(screen.getByRole("heading",{name:"New shared title"})).toBeVisible();view.unmount();client.clear();
+  });
+  it("uncertain ACK retains draft and offers only a read recovery without copy/retry writes",async()=>{
+    mocks.save.mockRejectedValue(Error("ACK lost"));const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));
+    await screen.findByRole("button",{name:"Check latest issue"});expect(screen.getByLabelText("Issue title")).toHaveValue("New shared title");expect(screen.queryByRole("button",{name:"Save as new private copy"})).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));expect(mocks.save).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button",{name:"Check latest issue"}));await waitFor(()=>expect(mocks.readWorkspace).toHaveBeenCalledOnce());
+    expect(screen.getByLabelText("Issue title")).toHaveValue("New shared title");expect(mocks.save).toHaveBeenCalledOnce();view.unmount();client.clear();
   });
 });

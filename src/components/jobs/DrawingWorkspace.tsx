@@ -1,4 +1,5 @@
 "use client";
+import { useDrawingSharedIssueSave } from "~/hooks/use-drawing-shared-issue-save";
 import { useDrawingScaleSave } from "~/hooks/use-drawing-scale-save";
 import { mergeDrawingWorkspaceSnapshot } from "~/lib/drawing-workspace-payload";
 import { DEFAULT_HYPERLINK_COLOR, DEFAULT_HYPERLINK_OPACITY } from "~/lib/drawing-hyperlink-style";
@@ -1062,7 +1063,31 @@ export function DrawingWorkspace({
     onAccepted: next => setMetadata(old => old && old.revision > next.revision ? old : old && metadataDirty ? { ...old, scale: next.scale, revision: next.revision } : next),
     onError: fail,
   });
-  const pending = pendingWrites + (scaleSave.isPending ? 1 : 0);
+  const sharedIssueSave = useDrawingSharedIssueSave({
+    sheetId: sheet.id,
+    jobId,
+    omitHyperlinks: !hyperlinksVisible,
+    viewScope: JSON.stringify([sourceId, form?.id ?? null, panel]),
+    viewEntityId: form?.id ?? null,
+    workspace: data,
+    canStart: () => online && canStartDocumentWrite(),
+    onAccepted: (entity) => {
+      setError(null);
+      setForm((old) => (old?.id === entity.id ? null : old));
+      if (activeTool.current !== "viewing") setSelectedId(entity.id);
+      setFailedDrafts((old) => old.filter((item) => item.id !== entity.id));
+    },
+    onFailure: (draft, message) => {
+      setError(message);
+      setForm((old) => old ?? draft);
+      setPanel("selected");
+    },
+    onMessage: setError,
+  });
+  const pending =
+    pendingWrites +
+    (scaleSave.isPending ? 1 : 0) +
+    (sharedIssueSave.isPending ? 1 : 0);
   const entities = useMemo(() => {
     const queuedIds = new Set(
       queued.records.map((record) => record.preview.id),
@@ -1243,6 +1268,8 @@ export function DrawingWorkspace({
     // Deferred link loading may have outlived the original authority certificate.
     if (!canStartDocumentWrite()) {setError("Checking current document access before saving. Try again after it refreshes."); return false;}
     if (instantViewName.tryRename(parsed.data)) return true;
+    const sharedIssueResult = sharedIssueSave.trySave(parsed.data);
+    if (sharedIssueResult !== null) return sharedIssueResult;
     setPending((n) => n + 1);
     setError(null);
     if (queueable && queued.ready) {
@@ -2179,6 +2206,15 @@ export function DrawingWorkspace({
             </button>
           </div>
         )}
+        {sharedIssueSave.needsRecovery && (
+          <Button
+            variant="outline"
+            disabled={sharedIssueSave.checking || !online}
+            onClick={() => void sharedIssueSave.recover()}
+          >
+            {sharedIssueSave.checking ? "Checking latest issue…" : "Check latest issue"}
+          </Button>
+        )}
         {failedDrafts.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2 text-sm text-amber-950">
             <span>
@@ -2769,7 +2805,7 @@ export function DrawingWorkspace({
                         )
                       }
                     />
-                    {error &&
+                    {error && !sharedIssueSave.needsRecovery &&
                       form.expectedRevision > 0 &&
                       ["markup", "issue", "view"].includes(form.kind) && (
                         <Button
