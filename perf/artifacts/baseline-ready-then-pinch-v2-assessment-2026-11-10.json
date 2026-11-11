@@ -1,0 +1,315 @@
+{
+  "status": "rejected-repeatability",
+  "acceptedBaseline": false,
+  "protocol": "ready-then-pinch-v2",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "raw": [
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-1-2026-11-10.json",
+      "sha256": "0024b4db15ee9fbd8c033cb5af5f497946ac9ab7ecc618a4c3ffc259478f51cf"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-2-2026-11-10.json",
+      "sha256": "cd0d114c6e42749c16135f0f1b27ef27e920fa996d016d87a90c749b6c46551e"
+    }
+  ],
+  "validationErrors": [
+    [],
+    []
+  ],
+  "repeatabilityErrors": [
+    "openmateriallist/Basement: independent-run medians differ by more than 10% (203.8733760000323 vs 229.04222499998286ms)"
+  ],
+  "cells": [
+    {
+      "journey": "coldstart",
+      "link": "Basement",
+      "medianMs": [
+        20326.701694000003,
+        20325.449870999997
+      ],
+      "changeRatio": -0.00006158515133694715,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Site",
+      "medianMs": [
+        3610.4889299999923,
+        3610.497437999933
+      ],
+      "changeRatio": 0.000002356467532715951,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "medianMs": [
+        769.6356019999366,
+        773.651887999964
+      ],
+      "changeRatio": 0.005218425433530883,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "medianMs": [
+        82.31212699998287,
+        82.20321100001456
+      ],
+      "changeRatio": -0.0013232072106255503,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "medianMs": [
+        82.02457999996841,
+        82.34829999995418
+      ],
+      "changeRatio": 0.003946621853911279,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "medianMs": [
+        81.55779699992854,
+        82.57520900003146
+      ],
+      "changeRatio": 0.012474736169048482,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "medianMs": [
+        165.52260999998543,
+        165.76510099996813
+      ],
+      "changeRatio": 0.0014650022736030664,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "medianMs": [
+        165.68990300002042,
+        165.10549400001764
+      ],
+      "changeRatio": -0.003527125005334254,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "medianMs": [
+        165.688983,
+        165.99254200002179
+      ],
+      "changeRatio": 0.0018321012931908577,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "medianMs": [
+        203.8733760000323,
+        229.04222499998286
+      ],
+      "changeRatio": 0.1234533389977639,
+      "withinTenPercent": false
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "medianMs": [
+        217.96632999996655,
+        204.12080100004096
+      ],
+      "changeRatio": -0.06352141177000924,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "medianMs": [
+        230.61497500003316,
+        222.47899900004268
+      ],
+      "changeRatio": -0.03527947827320974,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Basement",
+      "medianMs": [
+        98.93488000001526,
+        98.73943899996812
+      ],
+      "changeRatio": -0.0019754509233458383,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "medianMs": [
+        115.41553200001363,
+        111.19845200004056
+      ],
+      "changeRatio": -0.03653823646519749,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "medianMs": [
+        120.77398299996275,
+        114.69160899997223
+      ],
+      "changeRatio": -0.05036162465547235,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Basement",
+      "medianMs": [
+        432.5902500000084,
+        432.52731199993286
+      ],
+      "changeRatio": -0.00014549102776939115,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Site",
+      "medianMs": [
+        432.3888070000103,
+        432.1511889999965
+      ],
+      "changeRatio": -0.0005495470654349018,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "medianMs": [
+        431.99686299986206,
+        432.3457959999796
+      ],
+      "changeRatio": 0.0008077211433770337,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "medianMs": [
+        1497.8539839999285,
+        1536.9708019999089
+      ],
+      "changeRatio": 0.026115241150223012,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "medianMs": [
+        1482.49564800004,
+        1497.8262110000942
+      ],
+      "changeRatio": 0.010341050930392805,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "medianMs": [
+        1481.898633000208,
+        1465.1917200000025
+      ],
+      "changeRatio": -0.011273991775254701,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Basement",
+      "medianMs": [
+        216.06759500002954,
+        216.05480899999384
+      ],
+      "changeRatio": -0.00005917592610637164,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Site",
+      "medianMs": [
+        231.7246210000012,
+        232.06945800001267
+      ],
+      "changeRatio": 0.0014881327608750935,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "medianMs": [
+        231.58786900015548,
+        232.19012599997222
+      ],
+      "changeRatio": 0.002600555039505723,
+      "withinTenPercent": true
+    }
+  ],
+  "database": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "hostActivity": [
+    {
+      "start": "2026-11-11T03:37:03.264307Z",
+      "end": "2026-11-11T03:37:04.245562Z",
+      "capture": 1,
+      "activity": "Official ADB9,054,187-byte download, home-directory unzip, adb version; no phone workload"
+    },
+    {
+      "start": "2026-11-11T03:38:47.608Z",
+      "end": "2026-11-11T03:38:48.076Z",
+      "capture": 2,
+      "activity": "ADB daemon start and failed pair"
+    },
+    {
+      "start": "2026-11-11T03:39:09.420Z",
+      "approxDurationMs": 30,
+      "capture": 2,
+      "activity": "ADB mdns/devices and TCP check"
+    },
+    {
+      "start": "2026-11-11T03:39:46.030Z",
+      "end": "2026-11-11T03:39:46.295Z",
+      "capture": 2,
+      "activity": "ADB connect attempt"
+    },
+    {
+      "start": "2026-11-11T03:40:40.658Z",
+      "end": "2026-11-11T03:40:40.722Z",
+      "capture": 2,
+      "activity": "Successful ADB pairing"
+    },
+    {
+      "start": "2026-11-11T03:40:54.041Z",
+      "approxEnd": "2026-11-11T03:40:54.180Z",
+      "capture": 2,
+      "activity": "Read-only devices and model/version; ADB daemon idle afterward"
+    }
+  ],
+  "limitations": [
+    "Both240samples retained; no exclusions, replacements or threshold changes.",
+    "Possible brief host contention from recorded ADB setup; no benchmark/build/test or phone workload overlapped.",
+    "Clerk auth/bytes stubbed, stock next start transport, desktop mobile emulation not physical Pixel performance.",
+    "Five samples give descriptive maxima, not statistically established p95.",
+    "V2 charges initial sharp readiness; v1 timing semantics differ and cannot support cross-protocol improvement claims.",
+    "Twenty-run stability and physical/offline/every-frame targets remain unproven."
+  ]
+}

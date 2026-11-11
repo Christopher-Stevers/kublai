@@ -1,0 +1,482 @@
+{
+  "method": "Nearest-rank percentiles. Five samples give a descriptive p95 equal to the maximum; this is not a statistically established p95. Browser custom measures are RAF paint-opportunity proxies; automation wallclock includes Playwright/assertion overhead. No physical Pixel measurements.",
+  "rows": [
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "coldstart",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 20325.774714,
+      "p95Ms": 20356.180850000004
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "coldstart",
+      "link": "Basement",
+      "metric": "app-start-to-last-screen",
+      "count": 10,
+      "medianMs": 10726,
+      "p95Ms": 10838.300000190735
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openjob",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 82.23905400000513,
+      "p95Ms": 98.89189500000793
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 165.52260999998543,
+      "p95Ms": 166.62859800001024
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 49.19999980926514,
+      "p95Ms": 56.80000019073486
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 204.69894099998055,
+      "p95Ms": 233.6476740000071
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 153.69999980926514,
+      "p95Ms": 161.59999990463257
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 98.75951299996814,
+      "p95Ms": 99.83674600004451
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Basement",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 24.09999990463257,
+      "p95Ms": 26
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 432.52731199993286,
+      "p95Ms": 433.29245499998797
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Basement",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 12.599999904632568,
+      "p95Ms": 14.5
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 1515.635064000031,
+      "p95Ms": 2215.02586100006
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "sheet-open-to-ready",
+      "count": 10,
+      "medianMs": 896.4000000953674,
+      "p95Ms": 1594
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "sheet-open-to-sharp",
+      "count": 10,
+      "medianMs": 803.5,
+      "p95Ms": 1529.0999999046326
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "gesture-duration",
+      "count": 10,
+      "medianMs": 295.8999996185303,
+      "p95Ms": 308.80000019073486
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "cached-pinch-to-sharp",
+      "count": 10,
+      "medianMs": 553.3999996185303,
+      "p95Ms": 576.7000002861023
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "metric": "gesture-end-to-sharp",
+      "count": 10,
+      "medianMs": 255.2000002861023,
+      "p95Ms": 289.59999990463257
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "sendchat",
+      "link": "Basement",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 216.05480899999384,
+      "p95Ms": 232.63615999999456
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "coldstart",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 3610.4889299999923,
+      "p95Ms": 3625.307632000069
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "coldstart",
+      "link": "Site",
+      "metric": "app-start-to-last-screen",
+      "count": 10,
+      "medianMs": 2366.0999999046326,
+      "p95Ms": 2392.699999809265
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openjob",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 82.1418850000482,
+      "p95Ms": 82.61707899998873
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 165.46942900004797,
+      "p95Ms": 166.5173819999909
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 48.69999980926514,
+      "p95Ms": 50.90000009536743
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 204.29697799996939,
+      "p95Ms": 228.63824000000022
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Site",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 153.2999997138977,
+      "p95Ms": 165.2000002861023
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 113.78397099999711,
+      "p95Ms": 116.14690100005828
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Site",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 21.899999618530273,
+      "p95Ms": 26.299999713897705
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 432.1511889999965,
+      "p95Ms": 433.06515199993737
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Site",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 13,
+      "p95Ms": 14.5
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 1482.49564800004,
+      "p95Ms": 1512.9625890000025
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "sheet-open-to-ready",
+      "count": 10,
+      "medianMs": 876.9000000953674,
+      "p95Ms": 901.5999999046326
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "sheet-open-to-sharp",
+      "count": 10,
+      "medianMs": 793.8000001907349,
+      "p95Ms": 838.5
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "gesture-duration",
+      "count": 10,
+      "medianMs": 296.30000019073486,
+      "p95Ms": 306.40000009536743
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "cached-pinch-to-sharp",
+      "count": 10,
+      "medianMs": 550.2000002861023,
+      "p95Ms": 591.1999998092651
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "metric": "gesture-end-to-sharp",
+      "count": 10,
+      "medianMs": 252.89999961853027,
+      "p95Ms": 296.8999996185303
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "sendchat",
+      "link": "Site",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 231.84239599993452,
+      "p95Ms": 232.82637399993837
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "coldstart",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 769.6356019999366,
+      "p95Ms": 801.7903789998963
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openjob",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 81.93660600006115,
+      "p95Ms": 94.03319800004829
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 165.91254799999297,
+      "p95Ms": 166.4817579999799
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 49.5,
+      "p95Ms": 57.299999713897705
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 222.47899900004268,
+      "p95Ms": 233.14259099995252
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "openmateriallist",
+      "link": "Office",
+      "metric": "tap-to-paint",
+      "count": 10,
+      "medianMs": 156.90000009536743,
+      "p95Ms": 160.69999980926514
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 114.69160899997223,
+      "p95Ms": 122.33622499997728
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "changeqty",
+      "link": "Office",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 21.09999990463257,
+      "p95Ms": 22.100000381469727
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 432.20828799996525,
+      "p95Ms": 448.21663999999873
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "receiveline",
+      "link": "Office",
+      "metric": "write-to-paint",
+      "count": 10,
+      "medianMs": 12.400000095367432,
+      "p95Ms": 13.899999618530273
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 1465.3113829998765,
+      "p95Ms": 1490.801193999825
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "sheet-open-to-ready",
+      "count": 10,
+      "medianMs": 866.2000002861023,
+      "p95Ms": 896.5
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "sheet-open-to-sharp",
+      "count": 10,
+      "medianMs": 795.0999999046326,
+      "p95Ms": 826
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "gesture-duration",
+      "count": 10,
+      "medianMs": 300,
+      "p95Ms": 306.7999997138977
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "cached-pinch-to-sharp",
+      "count": 10,
+      "medianMs": 542.5,
+      "p95Ms": 556.8000001907349
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "metric": "gesture-end-to-sharp",
+      "count": 10,
+      "medianMs": 242.90000009536743,
+      "p95Ms": 264.59999990463257
+    },
+    {
+      "build": "GcT0nDLwoIP5cQRRILfyc",
+      "journey": "sendchat",
+      "link": "Office",
+      "metric": "automation-wallclock",
+      "count": 10,
+      "medianMs": 231.96611999999732,
+      "p95Ms": 232.67064999998547
+    }
+  ]
+}
