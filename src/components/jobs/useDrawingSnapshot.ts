@@ -7,11 +7,12 @@ export function useDrawingSnapshot<T>(
   key: string,
   live: T | undefined,
   readCached?: (store: DrawingOfflineStore, key: string) => Promise<T | null>,
-  options?: { localFirst?: boolean; accessRevoked?: boolean },
+  options?: { localFirst?: boolean; accessRevoked?: boolean; canPersist?: (value: T) => boolean },
 ) {
   const account = useDrawingAccount();
   const localFirst = options?.localFirst ?? false;
   const accessRevoked = options?.accessRevoked ?? false;
+  const canPersist = options?.canPersist;
   const [online, setOnline] = useState(true);
   const [cached, setCached] = useState<{
     key: string;
@@ -58,9 +59,9 @@ export function useDrawingSnapshot<T>(
     };
   }, [account, key, readCached, online, localFirst]);
   useEffect(() => {
-    if (account?.store && live !== undefined && online && !accessRevoked)
+    if (account?.store && live !== undefined && online && !accessRevoked && (!canPersist || canPersist(live)))
       void account.store.saveSnapshot(key, live).catch(() => undefined);
-  }, [account, key, live, online, accessRevoked]);
+  }, [account, key, live, online, accessRevoked, canPersist]);
   return {
     data: accessRevoked ? undefined :
       live ??

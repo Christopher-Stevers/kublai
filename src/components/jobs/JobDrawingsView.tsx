@@ -1,4 +1,5 @@
 "use client";
+import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
 import { OfflineStorageStatus } from "./OfflineStorageStatus";
 import { verifyDrawingDownload, type DownloadMarker } from "~/lib/drawing-download-check";
 import { drawingMoveTargets } from "~/lib/drawing-folder-move";
@@ -252,8 +253,14 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     { setId: setId ?? "" },
     { enabled: Boolean(setId) },
   );
-  const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(set.error?.data?.code ?? "") });
-  const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(sets.error?.data?.code ?? "") });
+  const instantMetadata = useInstantDrawingMetadata({
+    jobId, setId,
+    onMoveStarted: () => setMoving(null),
+    onMoveConfirmed: () => notify("Drawing folder moved", "success"),
+  });
+  const { moveSet, renameSheet, canPersistSet } = instantMetadata;
+  const setSnapshot = useDrawingSnapshot(`drawing-set:${setId}`, set.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(set.error?.data?.code ?? ""), canPersist: instantMetadata.canPersistSet });
+  const setsSnapshot = useDrawingSnapshot(`drawing-sets:${jobId}`, sets.data, undefined, { localFirst: true, accessRevoked: ["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND"].includes(sets.error?.data?.code ?? ""), canPersist: instantMetadata.canPersistSets });
   const setData = setSnapshot.data;
   const setsData = setsSnapshot.data;
   // Completion markers live with the account's assets, so clearing device data
@@ -275,10 +282,11 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
           let saved = await store.readSnapshot<{ sheets: { id: string; imageUrl: string }[]; downloadVersion?: string }>(`drawing-set:${id}`);
           // Only repair sets with evidence of a previous download, never download new sets implicitly.
           if (!marker && !saved) continue;
-          if (setsSnapshot.online && (!saved || !marker || marker.version !== version)) {
-            saved = await utils.drawings.getSet.fetch({ setId: id });
+          if (setsSnapshot.online && (!saved || marker?.version !== version)) {
+            const fresh = await utils.drawings.getSet.fetch({ setId: id });
+            saved = fresh;
             if (stopped) return;
-            await store.saveSnapshot(`drawing-set:${id}`, saved);
+            if (canPersistSet(fresh)) await store.saveSnapshot(`drawing-set:${id}`, fresh);
             marker = null;
           }
           if (!saved) continue;
@@ -329,7 +337,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     })();
     else { setSavedSets({}); setCheckingDownloads(false); }
     return () => { stopped = true; };
-  }, [account, folderVersions, downloadRevision, setsSnapshot.online, sheetId]);
+  }, [account, folderVersions, downloadRevision, setsSnapshot.online, sheetId, canPersistSet]);
   const refresh = async () => {
     await utils.drawings.listSets.invalidate({ jobId });
     await utils.drawingsWorkspace.list.invalidate({ jobId });
@@ -344,10 +352,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     },
     onError,
   });
-  const moveSet = api.drawings.moveSet.useMutation({
-    onSuccess: async () => { setMoving(null); await refresh(); notify("Drawing folder moved", "success"); },
-    onError,
-  });
   const renameSet = api.drawings.renameSet.useMutation({
     onSuccess: refresh,
     onError,
@@ -355,13 +359,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const deleteSet = api.drawings.deleteSet.useMutation({
     onSuccess: async () => {
       await refresh();
-    },
-    onError,
-  });
-  const renameSheet = api.drawings.renameSheet.useMutation({
-    onSuccess: async () => {
-      await refresh();
-      await utils.drawingsWorkspace.get.invalidate();
     },
     onError,
   });
@@ -453,8 +450,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             `${p.completed}/${p.total} files · ${(p.bytes / 1048576).toFixed(1)} MB`,
           ),
       });
-      await store.saveSnapshot(`drawing-set:${targetId}`, target);
-      if (setsData)
+      if (instantMetadata.canPersistSet(target)) await store.saveSnapshot(`drawing-set:${targetId}`, target);
+      if (setsData && instantMetadata.canPersistSets(setsData))
         await store.saveSnapshot(`drawing-sets:${jobId}`, setsData);
       if (summarySnapshot.data)
         await store.saveSnapshot(
@@ -532,7 +529,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     if (nameDialog.kind === "new-set") createSet.mutate({ jobId, name, ...(setId ? { parentId: setId } : {}) });
     else if (nameDialog.kind === "rename-set")
       renameSet.mutate({ setId: nameDialog.id, name });
-    else renameSheet.mutate({ sheetId: nameDialog.id, name });
+    else renameSheet.mutate({ sheetId: nameDialog.id, name }, setData);
     setNameDialog(null);
   };
   const upload = async (file: File) => {
@@ -560,7 +557,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             {drawingMoveTargets(setsData?.sets ?? [], moving?.id ?? "").map(folder => <option key={folder.id} value={folder.id}>{folder.path}</option>)}
           </select>
         </label>
-        <DialogFooter><Button variant="outline" disabled={moveSet.isPending} onClick={() => setMoving(null)}>Cancel</Button><Button disabled={!moving || moveSet.isPending || moveDestination === (moving.parentId ?? "")} onClick={() => { if (moving) moveSet.mutate({ setId: moving.id, parentId: moveDestination || null }); }}>{moveSet.isPending ? "Moving…" : "Move here"}</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" disabled={moveSet.isPending} onClick={() => setMoving(null)}>Cancel</Button><Button disabled={!moving || moveSet.isPending || moveDestination === (moving.parentId ?? "")} onClick={() => { if (moving) moveSet.mutate({ setId: moving.id, parentId: moveDestination || null }, setsData); }}>{moveSet.isPending ? "Moving…" : "Move here"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -995,8 +992,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     const workspace = await utils.client.drawingsWorkspace.get.query({ sheetId: item.id });
                     signal.throwIfAborted();
                     await account?.store?.saveSnapshot(`workspace:${item.id}`, workspace);
-                    if (setData) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);
-                    if (setsData) await account?.store?.saveSnapshot(`drawing-sets:${jobId}`, setsData);
+                    if (setData && instantMetadata.canPersistSet(setData)) await account?.store?.saveSnapshot(`drawing-set:${setId}`, setData);
+                    if (setsData && instantMetadata.canPersistSets(setsData)) await account?.store?.saveSnapshot(`drawing-sets:${jobId}`, setsData);
                     if (summarySnapshot.data) await account?.store?.saveSnapshot(`drawing-index:${jobId}`, summarySnapshot.data);
                     const current = workspace.jobSheets.find(source => source.id === workspace.metadata.currentSourceSheetId);
                     return current ? [current.imageUrl] : [];

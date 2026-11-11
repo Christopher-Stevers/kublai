@@ -5,7 +5,7 @@ import { useDrawingSnapshot } from "./useDrawingSnapshot";
 const state = vi.hoisted(() => ({
   account: {
     accountKey: "org:alice",
-    store: { saveSnapshot: vi.fn(async () => undefined) },
+    store: { saveSnapshot: vi.fn(async () => undefined), readSnapshot: vi.fn(async () => null) },
   },
 }));
 vi.mock("./DrawingAccountProvider", () => ({
@@ -74,4 +74,17 @@ it("opens locally while the browser still reports online, then applies live upda
   expect(hook.result.current.data).toEqual({ id: "updated" });
   hook.rerender({ live: { id: "updated" }, revoked: true });
   expect(hook.result.current.data).toBeUndefined();
+});
+
+it("does not persist a transient preview and rechecks a settled-value guard", async () => {
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+  state.account.store.saveSnapshot.mockClear();
+  const value = { name: "pending rename" };
+  const hook = renderHook(({ accepted }: { accepted: boolean }) =>
+    useDrawingSnapshot("drawing-set:one", value, undefined, { canPersist: () => accepted }),
+    { initialProps: { accepted: false } });
+  await act(async () => { await Promise.resolve(); });
+  expect(state.account.store.saveSnapshot).not.toHaveBeenCalled();
+  hook.rerender({ accepted: true });
+  await waitFor(() => expect(state.account.store.saveSnapshot).toHaveBeenCalledWith("drawing-set:one", value));
 });

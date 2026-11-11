@@ -53,6 +53,18 @@ const state = vi.hoisted(() => ({
   refreshIdentities: vi.fn(),
   prefetch: vi.fn(async () => undefined),
 }));
+// UI fixtures keep their existing deterministic transport. The real cache,
+// rollback and persistence behavior is exercised by the new hook's tests.
+vi.mock("~/hooks/use-instant-drawing-metadata", async () => {
+  const { api } = await import("~/trpc/react");
+  const canPersist = () => true;
+  return { useInstantDrawingMetadata: (options: { onMoveStarted?: () => void; onMoveConfirmed?: () => void }) => ({
+    moveSet: api.drawings.moveSet.useMutation({ onSuccess: () => { options.onMoveStarted?.(); options.onMoveConfirmed?.(); } }),
+    renameSheet: api.drawings.renameSheet.useMutation(),
+    canPersistSets: canPersist,
+    canPersistSet: canPersist,
+  }) };
+});
 vi.mock("~/lib/background-work", () => ({ canWarmInBackground: () => true, scheduleBackgroundWork: state.warm }));
 vi.mock("~/trpc/react", () => {
   const mutation = (name: string) => ({
