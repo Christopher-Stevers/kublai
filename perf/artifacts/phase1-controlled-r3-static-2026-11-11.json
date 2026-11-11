@@ -1,0 +1,99 @@
+{
+  "sourceBuild": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+  "sourceFingerprint": "986df72dc87d3f7f2b17efd1d93ff4f3566e67c7f61025072eb6669586aeebd7",
+  "rejected": true,
+  "rejectionReason": "Activation remains held pending accepted complete lab/phone evidence; static and HTTP checks pass.",
+  "activated": false,
+  "compile": "Canonical webpack, TypeScript and prerender passed",
+  "controlledSourceChange": {
+    "baseline": "frozen reviewed R2",
+    "runtimePath": "src/components/app/StartupHandoff.tsx",
+    "commit": "3e19cbf6",
+    "otherRuntimeChanges": 0,
+    "matchingTestProvenance": "Root ran the five matching3e19cbf6 tests/lint. Controlled snapshot keeps R2 tests to preserve exactly one source-file change."
+  },
+  "strictTypicalEdit": {
+    "baselineBuild": "b1e2af3f1ed330c3abd58b645ef0210a6fe8c8702066d46af7b7a2c3a25a07ea",
+    "candidateBuild": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 278,
+    "changedScripts": 5,
+    "changedRawBytes": 60882,
+    "changedGzipBytes": 22739,
+    "budgetGzipBytes": 100000,
+    "passes": true
+  },
+  "allChangedJsCss": {
+    "changedCount": 5,
+    "gzipBytes": 22739
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485100,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755290,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1260984,
+      "passes": true
+    }
+  },
+  "source": {
+    "build": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+    "sourceFingerprint": "986df72dc87d3f7f2b17efd1d93ff4f3566e67c7f61025072eb6669586aeebd7",
+    "sourceFileCount": 2280,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "httpProofPasses": true,
+    "activated": false
+  },
+  "publicCorpusFiles": 3263,
+  "ownProofServersStopped": true,
+  "limitations": [
+    "No accepted complete lab baseline/candidate comparison or phone sample evidence.",
+    "Compressed static quantities are not a browser network trace.",
+    "Formal baseline ratchets remain separate from the strict controlled edit target."
+  ],
+  "independentByteTotalsRecheck": {
+    "freshCollectorBuild": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+    "freshMetrics": {
+      "sharedGzipBytes": 485100,
+      "screenGzipBytes": 755290,
+      "deployGzipBytes": 1260984
+    },
+    "sameAsR2Explanation": "Exact sidecar lengths: provider binding chunk increases4480\u21924483 bytes (+3), webpack runtime decreases4500\u21924497 (-3), app/layout stays13002, buildManifest693 and ssgManifest64. The+3/-3 cancel; fresh R3 collector independently confirms totals.",
+    "changedScriptGzipBytes": [
+      693,
+      64,
+      4483,
+      13002,
+      4497
+    ]
+  }
+}
