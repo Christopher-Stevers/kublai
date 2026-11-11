@@ -5,10 +5,10 @@ import { createHash } from "node:crypto";
 import { performance as hostClock } from "node:perf_hooks";
 import { createCdpConnection } from "./cdp-transport.mjs";
 
-const physicalMethod = "phone-visited-reads-page-cdp-v4-diagnostic-v1";
+const physicalMethod = "phone-visited-reads-page-cdp-v5-diagnostic-v1";
 const smoke = process.env.PERF_PHONE_SMOKE === "1";
 const METHOD = smoke
-  ? "local-smoke-visited-reads-page-cdp-v4-diagnostic-v1"
+  ? "local-smoke-visited-reads-page-cdp-v5-diagnostic-v1"
   : physicalMethod;
 let setupPhase = "configuration";
 const setupEvidence = { createdTargetKnown: false };
@@ -259,6 +259,7 @@ async function main() {
           "Destination visible before input",
           "Destination visible before timed input",
           "Read readiness timeout",
+          "Synthetic target did not settle",
         ])
           if (typeof description === "string" && description.includes(label))
             throw Error(label);
@@ -343,11 +344,38 @@ async function main() {
         ready: listReady,
       },
     ];
+    async function settlePoint(targetExpression) {
+      return own(`(async () => {
+        const el=(${targetExpression});
+        if(!el)throw Error('Synthetic target did not settle');
+        el.scrollIntoView({behavior:'instant',block:'center',inline:'nearest'});
+        return await new Promise((resolve,reject)=>{
+          let frame,previous=null,stable=0,finished=false;
+          const finish=(error,value)=>{if(finished)return;finished=true;clearTimeout(timer);cancelAnimationFrame(frame);error?reject(error):resolve(value);};
+          const timer=setTimeout(()=>finish(Error('Synthetic target did not settle')),1500);
+          const tick=()=>{
+            try {
+              if(!el.isConnected||!el.getClientRects().length)return finish(Error('Synthetic target did not settle'));
+              const r=el.getBoundingClientRect(),v=visualViewport;
+              const current=[r.x,r.y,r.width,r.height,scrollX,scrollY,innerWidth,innerHeight,v?.offsetLeft??0,v?.offsetTop??0,v?.width??innerWidth,v?.height??innerHeight];
+              const x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);
+              const interactive=hit?.closest('a,button,input,select,textarea,[role="button"],[role="menuitem"]');
+              const contained=!!hit&&el.contains(hit),nested=!!interactive&&interactive!==el;
+              const valid=r.width>0&&r.height>0&&x>=0&&x<innerWidth&&y>=0&&y<innerHeight&&contained&&!nested;
+              stable=valid&&previous&&current.every((value,index)=>Math.abs(value-previous[index])<=0.5)?stable+1:0;
+              previous=valid?current:null;
+              if(stable>=2)return finish(null,{x,y,timeOrigin:performance.timeOrigin,targetContainsHit:contained,nestedInteractiveHit:nested,stableFrames:3});
+              frame=requestAnimationFrame(tick);
+            }catch {finish(Error('Synthetic target did not settle'));}
+          };
+          frame=requestAnimationFrame(tick);
+        });
+      })()`);
+    }
     async function returnToSource(journey) {
       await until(`Boolean(${appBack})`);
-      const backPoint = await own(
-        `(() => {const el=(${appBack});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
-      );
+      const settledBack = await settlePoint(appBack);
+      const backPoint = { x: settledBack.x, y: settledBack.y };
       await send("Input.dispatchTouchEvent", {
         type: "touchStart",
         touchPoints: [backPoint],
@@ -380,7 +408,7 @@ async function main() {
             destinationPathMatches:location.pathname===${JSON.stringify(destination)},
             timeOriginChanged:${preTouch ? `performance.timeOrigin!==${JSON.stringify(preTouch.timeOrigin)}` : "null"},
             targetVisible:Boolean(${journey.target}),readyVisible:Boolean(${journey.ready}),
-            evidenceExists:!!state,startSeen:state?.start!=null,releaseSeen:state?.release!=null,done:state?.done===true
+            evidenceExists:!!state,startSeen:state?.start!=null,releaseSeen:state?.release!=null,done:state?.done===true,inputMetadata:state?.input??null
           };})()`),
           new Promise((_, reject) => {
             timer = setTimeout(
@@ -401,33 +429,32 @@ async function main() {
       await own(
         `(() => {if(${journey.ready})throw Error('Destination visible before input');return true;})()`,
       );
-      const point = await own(
-        `(() => {const el=(${journey.target});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
-      );
-      const preTouch = await own(`(() => {
-        const el=(${journey.target}),hit=document.elementFromPoint(${point.x},${point.y});
-        const interactive=hit?.closest('a,button,input,select,textarea,[role="button"],[role="menuitem"]');
-        return {x:${point.x},y:${point.y},timeOrigin:performance.timeOrigin,targetContainsHit:!!hit&&el.contains(hit),nestedInteractiveHit:!!interactive&&interactive!==el};
-      })()`);
+      const preTouch = await settlePoint(journey.target);
+      const point = { x: preTouch.x, y: preTouch.y };
       activeReadProbe = { journey, preTouch };
       await own(`(() => {
     if(${journey.ready})throw Error('Destination visible before timed input');
-    const state={start:null,release:null,gaps:[],last:null,done:false};
+    const sourceTarget=(${journey.target});
+    const contained=event=>event.target instanceof Node&&!!sourceTarget?.contains(event.target);
+    const state={start:null,release:null,gaps:[],last:null,done:false,input:{downTrusted:false,upTrusted:false,downTargetContained:false,upTargetContained:false,pointercancelSeen:false,clickSeen:false,clickTargetContained:false,scrollDuringTouch:0}};
     let timeout;
     state.promise=new Promise((resolve,reject)=>{
       timeout=setTimeout(()=>{cleanup();reject(Error('Read readiness timeout'));},20000);
-      const down=()=>{try{if(${journey.ready})throw Error('Destination visible before input');state.start=performance.now();performance.mark('phone-evidence:tap-start');requestAnimationFrame(tick);}catch(error){state.done=true;cleanup();reject(error);}};
-      const up=()=>{state.release=performance.now();};
-      const cleanup=()=>{clearTimeout(timeout);document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointerup',up,true);};
+      const down=event=>{state.input.downTrusted=event.isTrusted;state.input.downTargetContained=contained(event);try{if(${journey.ready})throw Error('Destination visible before input');state.start=performance.now();performance.mark('phone-evidence:tap-start');requestAnimationFrame(tick);}catch(error){state.done=true;cleanup();reject(error);}};
+      const up=event=>{state.input.upTrusted=event.isTrusted;state.input.upTargetContained=contained(event);state.release=performance.now();};
+      const cancel=event=>{if(event.isTrusted)state.input.pointercancelSeen=true;};
+      const click=event=>{if(event.isTrusted){state.input.clickSeen=true;state.input.clickTargetContained=contained(event);}};
+      const scroll=()=>{if(state.start!==null&&state.release===null)state.input.scrollDuringTouch++;};
+      const cleanup=()=>{clearTimeout(timeout);document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointerup',up,true);document.removeEventListener('pointercancel',cancel,true);document.removeEventListener('click',click,true);window.removeEventListener('scroll',scroll,true);};
       const tick=now=>{
         if(state.done)return;
         if(state.last!==null&&state.gaps.length<300)state.gaps.push(now-state.last);state.last=now;
         if(${journey.ready})requestAnimationFrame(()=>{
           state.done=true;cleanup();performance.measure('phone-evidence:read-to-paint-opportunity',{start:'phone-evidence:tap-start'});
-          resolve({browserDurationMs:performance.now()-state.start,gestureHoldMs:state.release===null?null:state.release-state.start,frameGapsMs:state.gaps,appMeasures:performance.getEntriesByType('measure').filter(e=>e.startTime>=state.start&&['foremenhq:tap-to-paint','foremenhq:app-start-to-last-screen'].includes(e.name)).map(e=>({name:e.name,durationMs:e.duration})).slice(-20)});
+          resolve({inputMetadata:{...state.input},browserDurationMs:performance.now()-state.start,gestureHoldMs:state.release===null?null:state.release-state.start,frameGapsMs:state.gaps,appMeasures:performance.getEntriesByType('measure').filter(e=>e.startTime>=state.start&&['foremenhq:tap-to-paint','foremenhq:app-start-to-last-screen'].includes(e.name)).map(e=>({name:e.name,durationMs:e.duration})).slice(-20)});
         });else requestAnimationFrame(tick);
       };
-      document.addEventListener('pointerdown',down,{capture:true,once:true});document.addEventListener('pointerup',up,{capture:true,once:true});
+      document.addEventListener('pointerdown',down,{capture:true,once:true});document.addEventListener('pointerup',up,{capture:true,once:true});document.addEventListener('pointercancel',cancel,true);document.addEventListener('click',click,true);window.addEventListener('scroll',scroll,true);
     });
     window.__phoneReadEvidence=state;return true;
   })()`);
@@ -502,7 +529,7 @@ async function main() {
         physicalPhoneEvidence: !smoke,
         method: METHOD,
         navigationPreparation:
-          "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
+          "instant-stable-hit-then-app-header-normalize-and-back-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         driverSha256: createHash("sha256")
           .update(await fs.readFile(new URL(import.meta.url)))
@@ -546,7 +573,7 @@ async function main() {
         physicalPhoneEvidence: false,
         method: METHOD,
         navigationPreparation:
-          "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
+          "instant-stable-hit-then-app-header-normalize-and-back-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         sourceBuild: source.sourceBuild,
         sourceFingerprint: source.sourceFingerprint,
@@ -571,7 +598,7 @@ async function main() {
     }
     const output = path.resolve(
       process.env.PERF_PHONE_OUTPUT ??
-        `perf/artifacts/phone-v4-diagnostic-v1-visited-reads-${Date.now()}.json`,
+        `perf/artifacts/phone-v5-diagnostic-v1-visited-reads-${Date.now()}.json`,
     );
     await fs.mkdir(path.dirname(output), { recursive: true });
     await fs.writeFile(output, JSON.stringify(report, null, 2));
@@ -604,7 +631,7 @@ await main().catch(async (error) => {
     status: smoke ? "smoke-setup-failed" : "setup-failed",
     method: METHOD,
     navigationPreparation:
-      "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
+      "instant-stable-hit-then-app-header-normalize-and-back-unique-source-destination-absent",
     physicalPhoneEvidence: false,
     accepted: false,
     timestamp: new Date().toISOString(),
