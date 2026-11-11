@@ -11,6 +11,18 @@ import type * as DraftStorage from "~/lib/job-chat-drafts";
 import type { ChatMessage } from "~/server/chat/contracts";
 import { ChatViewProvider } from "~/components/chat/ChatViewProvider";
 import { JobChatThread as JobChatView } from "./JobChatThread";
+// Existing delivery fixtures keep their deterministic transport. Real query,
+// persistence and fresh-authority lifecycles have separate integration coverage.
+vi.mock("@trpc/react-query", () => ({ getQueryKey: () => [] }));
+vi.mock("~/hooks/use-tier-one-read-options", () => ({
+  useTierOneReadOptions: (_key: unknown, enabled = true) => ({
+    enabled: enabled && mock.online,
+  }),
+}));
+vi.mock("~/hooks/use-job-chat-authority", () => ({
+  useJobChatAuthority: (_key: unknown, enabled: boolean) =>
+    enabled && !mock.overviewError,
+}));
 
 const mock = vi.hoisted(() => ({
   online: true,
@@ -67,6 +79,7 @@ const utils = {
   chat: {
     getOverview: { invalidate: mock.invalidate },
     history: {
+      getData: () => mock.history,
       invalidate: mock.invalidate,
       fetch: mock.fetchOlder,
       setData: (
@@ -91,6 +104,8 @@ vi.mock("~/trpc/react", () => ({
           isLoading: false,
           error: null,
           dataUpdatedAt: 1,
+          isSuccess: true,
+          isFetchedAfterMount: true,
         }),
       },
       members: { useQuery: () => ({ data: [], isLoading: false }) },
@@ -681,10 +696,16 @@ it("retains chat and draft during a gateway outage and recovers without leaving 
 });
 
 it("lets the workspace size embedded job chats after the keyboard closes", async () => {
-  const viewport = Object.assign(new EventTarget(), { height: 400, offsetTop: 0, scale: 1 });
+  const viewport = Object.assign(new EventTarget(), {
+    height: 400,
+    offsetTop: 0,
+    scale: 1,
+  });
   vi.stubGlobal("visualViewport", viewport);
   render(<JobChatView jobId="job-one" embedded />);
-  await waitFor(() => expect(screen.getByRole("textbox", { name: "Message" })).not.toBeDisabled());
+  await waitFor(() =>
+    expect(screen.getByRole("textbox", { name: "Message" })).not.toBeDisabled(),
+  );
   const panel = screen.getByRole("region", { name: "Job chat" });
   expect(panel.style.height).toBe("");
   act(() => {

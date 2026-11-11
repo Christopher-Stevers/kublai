@@ -1,6 +1,9 @@
 "use client";
 import { subscribeLiveEvents } from "~/lib/live-client";
-import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
+import {
+  isAppPageActive,
+  subscribeAppPageActivity,
+} from "~/lib/app-page-activity";
 
 import { VirtualChatMessages } from "~/components/chat/VirtualChatMessages";
 import { usePageViewState } from "~/hooks/use-page-view-state";
@@ -8,6 +11,13 @@ import { useReplyFocus } from "~/hooks/use-reply-focus";
 import { useChatScroll } from "~/hooks/use-chat-scroll";
 import { useChatHistoryResume } from "~/hooks/use-chat-history-resume";
 import { useChatViewMemory } from "~/components/chat/ChatViewProvider";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
+import { useJobChatAuthority } from "~/hooks/use-job-chat-authority";
+import {
+  captureDeviceReadAuthority,
+  isDeviceReadDenial,
+} from "~/lib/device-query-cache";
 
 import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
 import { useAuth } from "@clerk/nextjs";
@@ -15,6 +25,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -251,6 +262,11 @@ function ChatLobby({
   const online = inTutorial || browserOnline;
   const memory = useChatViewMemory();
   const viewKey = `job:${userId}:${jobId}:${inTutorial}`;
+  const [readAuthority] = useState(captureDeviceReadAuthority);
+  const ownsReadAuthority = useCallback(
+    () => inTutorial || readAuthority === captureDeviceReadAuthority(),
+    [inTutorial, readAuthority],
+  );
   const [resume] = useState(() =>
     memory?.get<{ messages: ChatMessage[]; cursor?: number | null }>(viewKey),
   );
@@ -297,45 +313,75 @@ function ChatLobby({
     nextBeforeSequence: number | null;
   } | null>(null);
   const draftKey = `${userId}:${jobId}`;
+  const overviewKey = getQueryKey(api.chat.getOverview, { jobId }, "query");
+  const overviewOptions = useTierOneReadOptions(overviewKey, !inTutorial);
   const overview = api.chat.getOverview.useQuery(
     { jobId },
     {
-      enabled: online,
+      ...overviewOptions,
+      enabled: inTutorial || overviewOptions.enabled,
       retry: 1,
       refetchOnWindowFocus: true,
       refetchInterval:
         !inTutorial && visible && online ? (connected ? 30_000 : 5_000) : false,
     },
   );
-  const accessRevoked = ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
-    overview.error?.data?.code ?? "",
+  const freshOverview = useJobChatAuthority(
+    overviewKey,
+    overviewOptions.enabled,
+    userId,
+    overview,
+  );
+  const overviewConfirmed = inTutorial || freshOverview;
+  const accessRevoked = isDeviceReadDenial(overview.error);
+  const historyOptions = useTierOneReadOptions(
+    getQueryKey(api.chat.history, { jobId, limit: 50 }, "query"),
+    !inTutorial &&
+      overviewConfirmed &&
+      overview.data?.joined === true &&
+      !accessRevoked,
   );
   const history = api.chat.history.useQuery(
     { jobId, limit: 50 },
     {
-      enabled: online && !accessRevoked && overview.data?.joined === true,
+      ...historyOptions,
+      enabled: inTutorial || historyOptions.enabled,
+      meta: { deviceJobChatHistory: !inTutorial },
       retry: 1,
       refetchOnWindowFocus: true,
       refetchInterval:
         !inTutorial && online && visible && !connected ? 20_000 : false,
     },
   );
-  const unavailable = [overview.error, history.error].some((failure) =>
-    ["NOT_FOUND", "FORBIDDEN"].includes(failure?.data?.code ?? ""),
-  );
-  useEffect(() => {
-    if (unavailable && !inTutorial) onUnavailable?.(jobId);
-  }, [unavailable, inTutorial, onUnavailable, jobId]);
   const members = api.chat.members.useQuery(
     { jobId },
     {
       enabled:
         online &&
+        overviewConfirmed &&
         !accessRevoked &&
         showMembers &&
         overview.data?.joined === true,
     },
   );
+  const accessError = [overview.error, history.error, members.error].find(
+    isDeviceReadDenial,
+  );
+  const unavailable = [overview.error, history.error, members.error].some(
+    (failure) => ["NOT_FOUND", "FORBIDDEN"].includes(failure?.data?.code ?? ""),
+  );
+  useEffect(() => {
+    if (unavailable && !inTutorial) onUnavailable?.(jobId);
+  }, [unavailable, inTutorial, onUnavailable, jobId]);
+  const canWrite =
+    online &&
+    overviewConfirmed &&
+    overview.data?.joined === true &&
+    !accessError;
+  const writeAllowed = useRef(canWrite);
+  useLayoutEffect(() => {
+    writeAllowed.current = canWrite;
+  }, [canWrite]);
   const join = api.chat.join.useMutation();
   const send = api.chat.send.useMutation();
   const remove = api.chat.delete.useMutation();
@@ -354,7 +400,7 @@ function ChatLobby({
     viewKey,
     Boolean(resume),
     history.data,
-    online && Boolean(overview.data?.joined),
+    canWrite,
     (cursor) =>
       utils.chat.history.fetch({ jobId, beforeSequence: cursor, limit: 50 }),
     (messages, cursor) => {
@@ -373,12 +419,7 @@ function ChatLobby({
     },
   );
   useEffect(() => {
-    if (
-      accessRevoked ||
-      ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
-        history.error?.data?.code ?? "",
-      )
-    ) {
+    if (accessError) {
       memory?.remove(viewKey);
       memory?.remove(`range:${viewKey}`);
       memory?.remove(`scroll:${viewKey}`);
@@ -392,7 +433,7 @@ function ChatLobby({
     history.data,
     history.error,
     overview.data?.joined,
-    accessRevoked,
+    accessError,
     messages,
     nextBefore,
     restoring,
@@ -468,24 +509,36 @@ function ChatLobby({
       await saveChatDraft(draftKey, null).catch(() => setStorageError(true));
   }, [draftKey, inTutorial]);
   const joinLobby = useCallback(async () => {
+    if (!overviewConfirmed || !online || accessError || !ownsReadAuthority())
+      return;
     joinAttempted.current = true;
     setError("");
     try {
       await join.mutateAsync({ jobId });
-      await utils.chat.getOverview.invalidate({ jobId });
+      if (ownsReadAuthority())
+        await utils.chat.getOverview.invalidate({ jobId });
     } catch (reason) {
       setError(errorText(reason));
     }
-  }, [jobId, join, utils]);
+  }, [
+    jobId,
+    join,
+    utils,
+    overviewConfirmed,
+    online,
+    accessError,
+    ownsReadAuthority,
+  ]);
   useEffect(() => {
     if (
       online &&
+      overviewConfirmed &&
       overview.data &&
       !overview.data.joined &&
       !joinAttempted.current
     )
       void joinLobby();
-  }, [online, overview.data, joinLobby]);
+  }, [online, overviewConfirmed, overview.data, joinLobby]);
 
   // Reconnect with a bounded delay. Polling remains a fallback when streaming
   // is unavailable, and neither keeps requesting data in a hidden tab.
@@ -494,8 +547,7 @@ function ChatLobby({
       inTutorial ||
       !online ||
       !visible ||
-      !overview.data?.joined ||
-      accessRevoked ||
+      !canWrite ||
       typeof EventSource === "undefined"
     )
       return;
@@ -503,22 +555,21 @@ function ChatLobby({
       void utils.chat.history.invalidate({ jobId });
       void utils.chat.getOverview.invalidate({ jobId });
     };
-    const unsubscribe = subscribeLiveEvents({ jobIds: [jobId] }, {
-      status: setConnected,
-      catchUp: refresh,
-      hint: hint => { if (hint.topic === "chat" && hint.key === jobId) refresh(); },
-    });
-    return () => { unsubscribe(); setConnected(false); };
-
-  }, [
-    jobId,
-    online,
-    visible,
-    overview.data?.joined,
-    accessRevoked,
-    utils,
-    inTutorial,
-  ]);
+    const unsubscribe = subscribeLiveEvents(
+      { jobIds: [jobId] },
+      {
+        status: setConnected,
+        catchUp: refresh,
+        hint: (hint) => {
+          if (hint.topic === "chat" && hint.key === jobId) refresh();
+        },
+      },
+    );
+    return () => {
+      unsubscribe();
+      setConnected(false);
+    };
+  }, [jobId, online, visible, canWrite, utils, inTutorial]);
 
   useEffect(() => {
     if (restoring || !timeline.current || !atBottomRef.current) return;
@@ -526,8 +577,8 @@ function ChatLobby({
   }, [messages, restoring]);
   useEffect(() => {
     if (
-      !online ||
-      accessRevoked ||
+      !canWrite ||
+      !ownsReadAuthority() ||
       !visible ||
       !atBottom ||
       !atBottomRef.current ||
@@ -541,7 +592,10 @@ function ChatLobby({
     lastRead.current = displayedSequence;
     void markRead
       .mutateAsync({ jobId, sequence: displayedSequence })
-      .then(() => utils.chat.getOverview.invalidate({ jobId }))
+      .then(() => {
+        if (ownsReadAuthority())
+          return utils.chat.getOverview.invalidate({ jobId });
+      })
       .catch(() => {
         lastRead.current = prior;
         readRetryAfter.current = Date.now() + 20_000;
@@ -553,7 +607,8 @@ function ChatLobby({
     restoring,
     displayedSequence,
     history.data,
-    accessRevoked,
+    canWrite,
+    ownsReadAuthority,
     jobId,
     markRead,
     utils,
@@ -584,14 +639,15 @@ function ChatLobby({
 
   const loadedCursors = Object.keys(older).join(",");
   useEffect(() => {
-    if (!online || !visible || !loadedCursors || !history.dataUpdatedAt) return;
+    if (!canWrite || !visible || !loadedCursors || !history.dataUpdatedAt)
+      return;
     let cancelled = false;
     // Refresh previously loaded history as well: edits/deletes of old messages
     // must not linger just because a new latest page arrived.
     void (async () => {
       const pages: Record<string, ChatMessage[]> = {};
       for (const cursor of loadedCursors.split(",")) {
-        if (cancelled) return;
+        if (cancelled || !ownsReadAuthority()) return;
         try {
           const page = await utils.chat.history.fetch({
             jobId,
@@ -603,12 +659,21 @@ function ChatLobby({
           return;
         }
       }
-      if (!cancelled) setOlder((previous) => ({ ...previous, ...pages }));
+      if (!cancelled && ownsReadAuthority())
+        setOlder((previous) => ({ ...previous, ...pages }));
     })();
     return () => {
       cancelled = true;
     };
-  }, [jobId, online, visible, loadedCursors, history.dataUpdatedAt, utils]);
+  }, [
+    jobId,
+    canWrite,
+    visible,
+    loadedCursors,
+    history.dataUpdatedAt,
+    utils,
+    ownsReadAuthority,
+  ]);
 
   // A lost send response is reconciled using its stable idempotency key.
   useEffect(() => {
@@ -630,30 +695,40 @@ function ChatLobby({
   ]);
 
   const storeMessage = (message: ChatMessage) => {
+    if (!ownsReadAuthority()) return;
+    const latest = utils.chat.history.getData({ jobId, limit: 50 });
     setOlder((pages) =>
-      Object.fromEntries(
-        Object.entries(pages).map(([key, page]) => [
-          key,
-          page.map((item) => (item.id === message.id ? message : item)),
-        ]),
-      ),
+      latest
+        ? Object.fromEntries(
+            Object.entries(pages).map(([key, page]) => [
+              key,
+              page.map((item) => (item.id === message.id ? message : item)),
+            ]),
+          )
+        : { ...pages, [message.sequence + 1]: [message] },
     );
-    utils.chat.history.setData({ jobId, limit: 50 }, (data) =>
-      data
-        ? {
-            ...data,
-            messages: mergeChatMessages(data.messages, [message]),
-            latestSequence: Math.max(data.latestSequence, message.sequence),
-          }
-        : {
-            messages: [message],
-            nextBeforeSequence: null,
-            latestSequence: message.sequence,
-          },
-    );
+    // A send response acknowledges this one row, not a complete history page.
+    // Keep that row in memory until an actual history read fills the cache.
+    if (!latest) {
+      void utils.chat.history.invalidate({ jobId });
+      return;
+    }
+    utils.chat.history.setData({ jobId, limit: 50 }, (data) => {
+      if (!data) return data;
+      const merged = mergeChatMessages(data.messages, [message]);
+      const messages = merged.slice(-50);
+      return {
+        ...data,
+        messages,
+        nextBeforeSequence:
+          merged.length > 50 ? messages[0]!.sequence : data.nextBeforeSequence,
+        latestSequence: Math.max(data.latestSequence, message.sequence),
+      };
+    });
   };
   async function loadOlder() {
-    if (loadingOlder || !nextBefore || !online) return;
+    if (loadingOlder || !nextBefore || !canWrite || !ownsReadAuthority())
+      return;
     setLoadingOlder(true);
     setError("");
     atBottomRef.current = false;
@@ -664,6 +739,7 @@ function ChatLobby({
         beforeSequence: nextBefore,
         limit: 50,
       });
+      if (!ownsReadAuthority()) return;
       setOlder((pages) => ({ ...pages, [nextBefore]: page.messages }));
       setOlderCursor(page.nextBeforeSequence);
     } catch (reason) {
@@ -673,7 +749,7 @@ function ChatLobby({
     }
   }
   async function sendDraft() {
-    if (sendingRef.current || !online || !draftLoaded || !overview.data?.joined)
+    if (sendingRef.current || !canWrite || !ownsReadAuthority() || !draftLoaded)
       return;
     let next = draftRef.current;
     // Attachments use raw upload URLs, outside the tutorial's local tRPC transport.
@@ -684,6 +760,7 @@ function ChatLobby({
     setError("");
     try {
       for (let index = 0; index < next.attachments.length; index++) {
+        if (!writeAllowed.current || !ownsReadAuthority()) return;
         const attachment = next.attachments[index]!;
         if (attachment.uploaded) continue;
         if (!attachment.file)
@@ -706,6 +783,7 @@ function ChatLobby({
           attachment?: ChatAttachment;
           error?: string;
         };
+        if (!ownsReadAuthority()) return;
         if (!response.ok || !result.attachment)
           throw new Error(
             result.error ?? `Could not upload ${attachment.name}.`,
@@ -724,6 +802,7 @@ function ChatLobby({
       changeDraft(next);
       if (!inTutorial)
         await saveChatDraft(draftKey, next).catch(() => setStorageError(true));
+      if (!writeAllowed.current || !ownsReadAuthority()) return;
       const message = await send.mutateAsync({
         jobId,
         clientId: next.clientId,
@@ -731,6 +810,7 @@ function ChatLobby({
         replyToId: next.replyToId,
         attachmentIds: next.attachments.map((file) => file.uploaded!.id),
       });
+      if (!ownsReadAuthority()) return;
       storeMessage(message);
       await clearDeliveredDraft();
       atBottomRef.current = true;
@@ -742,6 +822,7 @@ function ChatLobby({
       });
       void utils.chat.getOverview.invalidate({ jobId });
     } catch (reason) {
+      if (!ownsReadAuthority()) return;
       const code =
         reason && typeof reason === "object" && "data" in reason
           ? (reason.data as { code?: string } | null)?.code
@@ -854,7 +935,7 @@ function ChatLobby({
     composer.current?.focus();
   }
   async function deleteMessage(message: ChatMessage) {
-    if (inTutorial) return;
+    if (inTutorial || !canWrite || !ownsReadAuthority()) return;
     if (
       !(await confirmAction({
         title: "Delete this message?",
@@ -864,6 +945,7 @@ function ChatLobby({
       }))
     )
       return;
+    if (!writeAllowed.current || !ownsReadAuthority()) return;
     try {
       await remove.mutateAsync({ jobId, messageId: message.id });
       storeMessage({
@@ -884,18 +966,14 @@ function ChatLobby({
     (connectionError
       ? "Chat is temporarily unavailable. Reconnecting… Your draft is kept here."
       : undefined);
-  const accessError = [overview.error, history.error].find(
-    (failure) =>
-      failure?.data?.code === "FORBIDDEN" ||
-      failure?.data?.code === "UNAUTHORIZED" ||
-      failure?.data?.code === "NOT_FOUND",
-  );
   const memberList = (
     <div
       className="bg-card text-card-foreground max-h-40 overflow-y-auto rounded-md p-2 text-sm shadow-md"
       aria-label="Job members"
     >
-      {members.isLoading ? (
+      {!overviewConfirmed ? (
+        <p>Checking chat access…</p>
+      ) : members.isLoading ? (
         <p>Loading people…</p>
       ) : members.error ? (
         <p role="alert">{members.error.message}</p>
@@ -950,6 +1028,7 @@ function ChatLobby({
                     className={`${ON_METAL} h-11 w-11`}
                     aria-label="People"
                     title="People"
+                    disabled={!overviewConfirmed}
                   >
                     <UsersIcon className="size-5" aria-hidden />
                   </Button>
@@ -994,6 +1073,7 @@ function ChatLobby({
                   }}
                   aria-label="People"
                   aria-expanded={showMembers}
+                  disabled={!overviewConfirmed}
                 >
                   <UsersIcon className="h-4 w-4" />
                   <span className="hidden sm:inline">People</span>
@@ -1005,31 +1085,35 @@ function ChatLobby({
         </header>
       )}
       {!embedded && <AngleTrim edge="top" />}
-      {restoring && (
+      {restoring && canWrite && (
         <p role="status" className="p-3 text-sm">
-          Restoring your place…
+          Restoring earlier messages…
         </p>
       )}
       {!online && (
         <p className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <WifiOffIcon className="h-4 w-4" />
-          Reconnect, then press Send or Retry. Your draft stays here.
+          {history.data || messages.length
+            ? "Showing saved messages. Reconnect, then press Send or Retry. Your draft stays here."
+            : "No saved messages on this device. Reconnect to load job chat. Your draft stays here."}
         </p>
       )}
-      {online && overview.data && !overview.data.joined && (
-        <div className="p-3">
-          <Button onClick={() => void joinLobby()} disabled={join.isPending}>
-            {join.isPending ? "Joining…" : "Join job chat"}
-          </Button>
-        </div>
-      )}
+      {online &&
+        overviewConfirmed &&
+        overview.data &&
+        !overview.data.joined && (
+          <div className="p-3">
+            <Button onClick={() => void joinLobby()} disabled={join.isPending}>
+              {join.isPending ? "Joining…" : "Join job chat"}
+            </Button>
+          </div>
+        )}
       <div
         ref={timeline}
         data-tutorial="chat-timeline"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
         style={{
           ...CHECKER_PLATE,
-          visibility: restoring ? "hidden" : undefined,
         }}
         aria-label="Messages"
         onScroll={(event) => {
@@ -1046,24 +1130,26 @@ function ChatLobby({
                 variant="outline"
                 size="sm"
                 className="shadow-sm"
-                disabled={loadingOlder || !online}
+                disabled={loadingOlder || !canWrite}
                 onClick={() => void loadOlder()}
               >
                 {loadingOlder ? "Loading…" : "Load earlier messages"}
               </Button>
             </div>
           )}
-          {history.isLoading && online && (
+          {history.data === undefined && online && !connectionError && (
             <p role="status" className="text-center">
               <span className="rounded-full bg-black/35 px-3 py-1 text-sm text-white">
                 Loading messages…
               </span>
             </p>
           )}
-          {!history.isLoading && !messages.length && (
+          {history.data !== undefined && !messages.length && (
             <div className="py-12 text-center">
               <p className="bg-card/90 inline-block rounded-xl px-4 py-3 text-sm shadow-sm">
-                No messages yet. Share a job update, a photo or a question.
+                {history.isFetchedAfterMount && history.isSuccess
+                  ? "No messages yet. Share a job update, a photo or a question."
+                  : "No saved messages. Waiting for the latest chat update."}
               </p>
             </div>
           )}
@@ -1126,7 +1212,7 @@ function ChatLobby({
           canReply={!lockedComposer && !actionsFor.deletedAt}
           canDelete={
             !inTutorial &&
-            online &&
+            canWrite &&
             !remove.isPending &&
             !actionsFor.deletedAt &&
             (actionsFor.author.id === userId ||
@@ -1299,10 +1385,9 @@ function ChatLobby({
               className="size-12 shadow-[0_3px_8px_rgba(0,0,0,0.5)]"
               aria-label={draft.attempted ? "Retry message" : "Send message"}
               disabled={
-                !online ||
+                !canWrite ||
                 !draftLoaded ||
                 sending ||
-                !overview.data?.joined ||
                 (!draft.body.trim() && !draft.attachments.length)
               }
             >

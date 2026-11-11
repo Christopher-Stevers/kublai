@@ -15,6 +15,7 @@ const DATABASE = "foremanhq-device-queries";
 const STORE = "cache";
 // Deliberately opt in reviewed reads; new endpoints (including payments,
 // permissions, chat and private document contents) are never persisted by default.
+// The mounted job-chat reader separately opts in its exact latest-history key.
 const READS = new Set([
   "job.getJob",
   "job.previewSupplierDefault",
@@ -33,14 +34,59 @@ const READS = new Set([
   "assets.activity",
 ]);
 // Authority reads may revoke separate drawing snapshots without being persisted.
-const AUTHORITY_READS = new Set([...READS, "rooms.getFloorRooms", "drawingsWorkspace.get", "drawingsWorkspace.list", "drawingsWorkspace.changes"]);
+const AUTHORITY_READS = new Set([
+  ...READS,
+  "rooms.getFloorRooms",
+  "drawingsWorkspace.get",
+  "drawingsWorkspace.list",
+  "drawingsWorkspace.changes",
+  "chat.getOverview",
+  "chat.history",
+  "chat.members",
+]);
 function reviewedAuthorityRead(query: Pick<Query, "queryKey">) {
   const path = query.queryKey[0];
   return Array.isArray(path) && AUTHORITY_READS.has(path.join("."));
 }
-function reviewedDeviceRead(query: Pick<Query, "queryKey">) {
+function reviewedDeviceRead(query: Pick<Query, "queryKey" | "meta">) {
   const path = query.queryKey[0];
-  return Array.isArray(path) && READS.has(path.join("."));
+  return (
+    (Array.isArray(path) && READS.has(path.join("."))) ||
+    isVisitedJobChatHistory(query)
+  );
+}
+/** Only the opened reader's latest 50 acknowledged rows, never permission state,
+ * arbitrary prefetched chats, cursor pages, or direct/group conversations. */
+export function isVisitedJobChatHistory(
+  query: Pick<Query, "queryKey" | "meta">,
+) {
+  if (query.meta?.deviceJobChatHistory !== true || query.queryKey.length !== 2)
+    return false;
+  const [path, options] = query.queryKey;
+  if (
+    !Array.isArray(path) ||
+    path.length !== 2 ||
+    path[0] !== "chat" ||
+    path[1] !== "history" ||
+    !options ||
+    typeof options !== "object"
+  )
+    return false;
+  const key = options as { type?: unknown; input?: unknown };
+  if (
+    key.type !== "query" ||
+    Object.keys(options).some((name) => name !== "type" && name !== "input") ||
+    !key.input ||
+    typeof key.input !== "object"
+  )
+    return false;
+  const input = key.input as { jobId?: unknown; limit?: unknown };
+  return (
+    Object.keys(key.input).length === 2 &&
+    input.limit === 50 &&
+    typeof input.jobId === "string" &&
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(input.jobId)
+  );
 }
 function denialCode(error: unknown, depth = 0): unknown {
   if (depth > 2 || !error || typeof error !== "object") return undefined;

@@ -15,6 +15,7 @@ import {
   startDeviceQueryCache,
   DEVICE_QUERY_VERSION,
   type DeviceQueryStorage,
+  shouldPersistDeviceQuery,
 } from "./device-query-cache";
 function storage() {
   let value: Awaited<ReturnType<DeviceQueryStorage["read"]>>;
@@ -293,4 +294,125 @@ it("treats a selected-floor denial as authority without persisting floor detail"
     await client.fetchQuery({ queryKey: key, staleTime: 0, retry: false, queryFn: async () => { throw Object.assign(new Error("No access"), { data: { code: "FORBIDDEN" } }); } }).catch(() => undefined);
     expect(denied).toHaveBeenCalledOnce(); expect(client.getQueryData(key)).toBeUndefined();
   } finally { window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied); await session.stop(); client.clear(); }
+});
+
+const chatJob = "11111111-1111-4111-8111-111111111111";
+const latestChatKey = [
+  ["chat", "history"],
+  { input: { jobId: chatJob, limit: 50 }, type: "query" },
+];
+it("persists only an opened job's exact latest50 history key, excluding chat authority, other conversations and cursor variants", () => {
+  const client = new QueryClient();
+  const put = (key: unknown[], visited = true) => {
+    client.setQueryDefaults(key, { meta: { deviceJobChatHistory: visited } });
+    client.setQueryData(key, { private: "server-acknowledged rows" });
+  };
+  put(latestChatKey);
+  put([
+    ["chat", "history"],
+    { input: { jobId: chatJob, limit: 50, beforeSequence: 10 }, type: "query" },
+  ]);
+  put([
+    ["chat", "history"],
+    { input: { jobId: chatJob, limit: 100 }, type: "query" },
+  ]);
+  put([
+    ["chat", "history"],
+    { input: { jobId: "not-a-job-id", limit: 50 }, type: "query" },
+  ]);
+  put([
+    ["chat", "history"],
+    { input: { jobId: chatJob, limit: 50 }, type: "infinite" },
+  ]);
+  put(
+    [
+      ["chat", "history"],
+      {
+        input: { jobId: "22222222-2222-4222-8222-222222222222", limit: 50 },
+        type: "query",
+      },
+    ],
+    false,
+  );
+  for (const path of [
+    ["chat", "getOverview"],
+    ["chat", "members"],
+    ["conversations", "history"],
+    ["conversations", "list"],
+  ])
+    put([path, { input: { jobId: chatJob, limit: 50 }, type: "query" }]);
+  expect(
+    decodeDeviceQueries(encodeDeviceQueries(client)).queries.map(
+      (query) => query.queryKey,
+    ),
+  ).toEqual([latestChatKey]);
+  const query = client
+    .getQueryCache()
+    .find({ queryKey: latestChatKey, exact: true })!;
+  const pending = beginInstantQueryUpdate(client, latestChatKey, () => ({
+    private: "unconfirmed optimistic rows",
+  }));
+  expect(shouldPersistDeviceQuery(query)).toBe(false);
+  pending.rollback();
+  pending.finish();
+  expect(shouldPersistDeviceQuery(query)).toBe(true);
+  client.clear();
+});
+
+it("reports raw job-chat authority denials for imperative reads but ignores transient errors, writes and old accounts", async () => {
+  const device = storage(),
+    client = new QueryClient();
+  const first = startDeviceQueryCache(client, "org:chat", device);
+  await first.ready;
+  const authority = captureDeviceReadAuthority();
+  const denied = vi.fn();
+  window.addEventListener(DEVICE_QUERY_DENIED_EVENT, denied);
+  try {
+    expect(
+      reportDeviceReadDenial(
+        "chat.history",
+        "query",
+        new Error("Gateway timeout"),
+        authority,
+      ),
+    ).toBe(false);
+    expect(
+      reportDeviceReadDenial(
+        "chat.send",
+        "mutation",
+        { data: { code: "FORBIDDEN" } },
+        authority,
+      ),
+    ).toBe(false);
+    expect(
+      reportDeviceReadDenial(
+        "chat.history",
+        "query",
+        { data: { httpStatus: 410 } },
+        authority,
+      ),
+    ).toBe(true);
+    await first.stop();
+    const second = startDeviceQueryCache(client, "org:new", device);
+    await second.ready;
+    expect(
+      reportDeviceReadDenial(
+        "chat.getOverview",
+        "query",
+        { data: { code: "UNAUTHORIZED" } },
+        authority,
+      ),
+    ).toBe(false);
+    expect(
+      reportDeviceReadDenial("chat.members", "query", {
+        data: { code: "FORBIDDEN" },
+      }),
+    ).toBe(true);
+    await second.stop();
+    expect(denied).toHaveBeenCalledTimes(2);
+  } finally {
+    window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied);
+    await first.stop();
+    client.clear();
+  }
 });
