@@ -1,0 +1,49 @@
+{
+  "method": "Full TypeScript noEmit incremental=false with retained canonical production tsconfig and generated Next types; no configuration filters changed. Production classification matches installed Next runTypeCheck test/spec exclusion.",
+  "baseSourceFingerprint": "a41fa2a6ebe83463e396ca612bbae2e72aa670f8d5cb5b868fc0e5a1ae0152f6",
+  "correctedRuntimePath": "src/hooks/use-drawing-shared-issue-save.ts",
+  "correctedRuntimeSha256": "a10771f9db9b503be4b31f351f6e6170d29075e80d7cc772a1c64ebbf192958a",
+  "unchangedCanonicalSourceVerifiedFiles": 1712,
+  "results": [
+    {
+      "variant": "unchanged-r16",
+      "logSha256": "7ccb7fe8f8cd53e9bc39db738b20161c196fd638b4086367dce34a60baaa27d3",
+      "totalDiagnosticHeaders": 1977,
+      "productionDiagnostics": [
+        "src/hooks/use-drawing-shared-issue-save.ts(316,23): error TS18048: 'old.revision' is possibly 'undefined'.",
+        "src/hooks/use-drawing-shared-issue-save.ts(316,38): error TS18048: 'workspace.revision' is possibly 'undefined'."
+      ],
+      "ownedTestDiagnostics": []
+    },
+    {
+      "variant": "baseline-r14",
+      "logSha256": "42ab5db9c066711499903888d390d202823a76f28c2d3268040cedbee46cd9b7",
+      "totalDiagnosticHeaders": 1975,
+      "productionDiagnostics": [],
+      "ownedTestDiagnostics": []
+    },
+    {
+      "variant": "corrected-runtime",
+      "logSha256": "42ab5db9c066711499903888d390d202823a76f28c2d3268040cedbee46cd9b7",
+      "totalDiagnosticHeaders": 1975,
+      "productionDiagnostics": [],
+      "ownedTestDiagnostics": []
+    },
+    {
+      "variant": "corrected-with-owned-tests",
+      "logSha256": "42ab5db9c066711499903888d390d202823a76f28c2d3268040cedbee46cd9b7",
+      "totalDiagnosticHeaders": 1975,
+      "productionDiagnostics": [],
+      "ownedTestDiagnostics": []
+    }
+  ],
+  "newCorrectedDiagnosticsVsR14AfterLineNormalization": 0,
+  "fullProductionDiagnosticsClean": true,
+  "allTestDiagnosticsClean": false,
+  "limitations": [
+    "1975 inherited test-only errors remain; raw tsc exits2, while Next production checker explicitly ignores test/spec diagnostics.",
+    "Initial isolated passes omitted two script inputs used by tests; complete-input reruns are the authoritative baseline comparison.",
+    "No canonical compile, prerender, app runtime, database or activation in this diagnostic pass."
+  ],
+  "frozenR16Modified": false
+}
