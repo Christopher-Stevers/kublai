@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { onINP, onLCP } from "web-vitals";
 import { SpeedMetricBuffer } from "~/lib/speed-metric-buffer";
 import {
+  SpeedContextTimeline,
+  type SpeedContext,
+} from "~/lib/speed-context-timeline";
+import {
   SPEED_METRICS,
   speedScreen,
   type SpeedMetric,
@@ -20,6 +24,7 @@ export function SpeedTelemetry() {
   const pathname = usePathname();
   const previousPath = useRef(pathname);
   const pointerStart = useRef<number | null>(null);
+  const recordContext = useRef<(() => void) | null>(null);
   useEffect(() => {
     const start = () => {
       pointerStart.current = performance.now();
@@ -31,6 +36,7 @@ export function SpeedTelemetry() {
     return () => document.removeEventListener("pointerdown", start, true);
   }, []);
   useEffect(() => {
+    recordContext.current?.();
     if (pathname === previousPath.current) return;
     previousPath.current = pathname;
     const start = pointerStart.current;
@@ -76,7 +82,7 @@ export function SpeedTelemetry() {
   }, [pathname]);
   useEffect(() => {
     if (typeof PerformanceObserver === "undefined") return;
-    const linkClass = () =>
+    const linkClass = (): SpeedContext["link"] =>
       !navigator.onLine
         ? "offline"
         : (navigator as Navigator & { connection?: { effectiveType?: string } })
@@ -89,18 +95,41 @@ export function SpeedTelemetry() {
               ).connection?.effectiveType
             ? "slow"
             : "unknown";
+    const context = (): SpeedContext => ({
+      screen: speedScreen(window.location.pathname),
+      link: linkClass(),
+    });
+    const contexts = new SpeedContextTimeline(context());
+    const changedContext = () => contexts.record(performance.now(), context());
+    recordContext.current = changedContext;
+    const connection = (
+      navigator as Navigator & {
+        connection?: {
+          addEventListener?: (type: string, listener: () => void) => void;
+          removeEventListener?: (type: string, listener: () => void) => void;
+        };
+      }
+    ).connection;
+    window.addEventListener("online", changedContext);
+    window.addEventListener("offline", changedContext);
+    connection?.addEventListener?.("change", changedContext);
     const buffer = new SpeedMetricBuffer();
     const observers: PerformanceObserver[] = [];
     let active = true;
     const vital =
       (name: SpeedMetric["name"]) =>
-      ({ value }: { value: number }) => {
+      ({
+        value,
+        entries,
+      }: {
+        value: number;
+        entries?: readonly { startTime: number }[];
+      }) => {
         if (active)
           buffer.push({
             name,
             durationMs: Math.round(value),
-            screen: speedScreen(window.location.pathname),
-            link: linkClass(),
+            ...contexts.forVital(entries),
           });
       };
     onINP(vital("inp"));
@@ -195,6 +224,11 @@ export function SpeedTelemetry() {
       observers.forEach((observer) => observer.disconnect());
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flush);
+      window.removeEventListener("online", changedContext);
+      window.removeEventListener("offline", changedContext);
+      connection?.removeEventListener?.("change", changedContext);
+      if (recordContext.current === changedContext)
+        recordContext.current = null;
     };
   }, []);
   return DevelopmentOverlay ? (

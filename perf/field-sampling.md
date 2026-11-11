@@ -22,3 +22,13 @@ the device was the reference Google Pixel 9 Pro XL.
 The change is prepared source only until a gated release containing it is
 activated. It does not retrospectively repair or replace the live bootstrap's
 field samples or the frozen Phase 0 lab build.
+
+## Vital context attribution
+
+Final INP/LCP callbacks can arrive after a route or network change. The prepared
+collector now looks up their performance-entry start time in a bounded history
+of 256 coarse screen/link transitions. No paths, content or identifiers enter
+that history or the payload. An entry with missing timing or evicted context is
+tagged `other`/`unknown`; it is not guessed to belong to the current screen.
+Previously captured screen/link tags describe callback-time context and cannot
+be retroactively corrected. This does not change the numeric INP values.
