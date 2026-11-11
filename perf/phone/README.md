@@ -185,7 +185,26 @@ passed; the unchanged CDP transport mock suite passed all six tests; a synthetic
 jsdom evaluation of this runner's actual selector expressions passed job-heading
 and hidden-duplicate exclusion, unique app-back selection, destination-marker
 observation, and visible duplicate job/back refusal. No browser target or ADB
-connection was used by those checks. **Local v2 browser smoke has not run.**
+connection was used by those checks. At that source-preparation checkpoint, local v2 browser smoke had not run; the later local execution is recorded below.
 Neither the old v1 smoke nor the earlier zero-timing phone attempts are promoted
 to v2 evidence. A later smoke must stop on nested-card ambiguity and refine the
 fixture selector from the actual owned DOM, without a generic-heading fallback.
+
+
+## Archived local v2 smoke
+
+Root's separate disposable-browser run completed three synthetic visited reads on
+2026-11-11, method `local-smoke-visited-reads-page-cdp-v2`, with
+`physicalPhoneEvidence:false` and owned-target close acknowledged HTTP 200.
+This is a functional **LOCAL** smoke, not Pixel timing or an accepted performance
+matrix. See [raw report](../artifacts/phone-v2-local-smoke-2026-11-11/report.json),
+[provenance](../artifacts/phone-v2-local-smoke-2026-11-11/provenance.json) and
+[bundle notes](../artifacts/phone-v2-local-smoke-2026-11-11/README.md).
+
+The archive includes raw driver/browser logs, the launcher, source/preflight/fixture
+metadata and method/transport source. Archive-time method copies match the exact
+SHA256 values recorded in the report; they were captured directly, not rebuilt
+from git or claimed to be independent execution-start snapshots. The private
+schema inventory was already cleaned and was not reconstructed. Raw browser
+shutdown errors are retained and qualified in provenance. No phone/ADB/browser
+runtime was performed to archive this evidence; prior v1 attempts are unchanged.

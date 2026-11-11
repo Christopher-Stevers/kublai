@@ -1,0 +1,92 @@
+{
+  "status": "local-smoke-functional-pass",
+  "physicalPhoneEvidence": false,
+  "acceptedPerformanceGate": false,
+  "archivedAt": "2026-11-11T07:27:04.057958+00:00",
+  "runTimestamp": "2026-11-11T07:18:52.603Z",
+  "method": "local-smoke-visited-reads-page-cdp-v2",
+  "methodCommit": "d3167bee",
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "samples": 3,
+  "driverExit": {
+    "exitCode": 0,
+    "source": "Root-reported unified session 33928 exit status; not independently encoded in node stdout log"
+  },
+  "files": {
+    "report.json": {
+      "sha256": "7a54c0239b52e78ad3e009b31c8cf268fe433ee54322f6dad30f251a958a33d7",
+      "bytes": 2777,
+      "copiedFrom": "/tmp/foremanhq-phone-v2-local-smoke-20261111.json",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "driver.py": {
+      "sha256": "d3a842e9fd44296505719dbad260061381e9ac93f44130bf3b698762a0a5b5c6",
+      "bytes": 2920,
+      "copiedFrom": "/tmp/foremanhq-phone-v2-local-smoke.py",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "driver.log": {
+      "sha256": "92c6ce1fe13b61eb5b5bb2c9bde857d876e7ada5367d0c798395417ef5e2d453",
+      "bytes": 84,
+      "copiedFrom": "/tmp/foremanhq-phone-v2-local-driver-20261111.log",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "browser.log": {
+      "sha256": "43934950736dbb1ca7c5bc625dae43edf30d4b21f14f9c456020b39ccb740720",
+      "bytes": 557,
+      "copiedFrom": "/tmp/foremanhq-phone-v2-local-browser-20261111.log",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "run.mjs": {
+      "sha256": "8d16388674d22996c59384a7f9f5fdc6d868ce050d00a080831860fb9c72fd1d",
+      "bytes": 23060,
+      "copiedFrom": "/home/tim/.openclaw/workspace/kublai/perf/phone/run.mjs",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "cdp-transport.mjs": {
+      "sha256": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "bytes": 3867,
+      "copiedFrom": "/home/tim/.openclaw/workspace/kublai/perf/phone/cdp-transport.mjs",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "source-evidence.json": {
+      "sha256": "27c9a48f1021cc8fca7d863dea6bb45871fff7a25a67c5fced3816fbaa107deb",
+      "bytes": 1347,
+      "copiedFrom": "/tmp/foremanhq-speed-app-nTtbuM/source-evidence.json",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "preflight.json": {
+      "sha256": "fa73e5b7b0519669e3043c67c8aca7bc586d5486245a39100a0032be6b615976",
+      "bytes": 2479,
+      "copiedFrom": "/tmp/foremanhq-speed-app-nTtbuM/preflight.json",
+      "copyKind": "byte-for-byte capture at archive time"
+    },
+    "fixtures.json": {
+      "sha256": "6aaa9f88e86f8d6dca8aa4d214e2951a041f4b288a20bf576fce56be66048468",
+      "bytes": 699,
+      "copiedFrom": "/tmp/foremanhq-speed-app-nTtbuM/perf/fixtures.json",
+      "copyKind": "byte-for-byte capture at archive time"
+    }
+  },
+  "methodSourceProvenance": "Archive-time direct copies of current method/transport files. Both SHA256 values exactly match values recorded by the completed run. No git reconstruction and no claim of an independently captured execution-start snapshot.",
+  "runtimeBindingProjection": "Derived selected non-secret fields from original candidate config, not a byte-for-byte full runtime config capture.",
+  "databaseHealth": {
+    "before": {
+      "errors": 0,
+      "fatals": 0
+    },
+    "after": {
+      "errors": 0,
+      "fatals": 0
+    }
+  },
+  "privateSchemaInventory": "Original private fixture has been cleaned; schema inventory unavailable at archival time. No replacement reconstructed. Passed preflight/source binding and run before/after error counts are retained.",
+  "browserLogQualification": "Raw disposable Chromium log includes three zygote termination-status errors after the report timestamp; cleanup HTTP200 is the driver acknowledgment, not independent browser-lifecycle/physical presentation proof.",
+  "limitations": [
+    "Host headless Chromium152, not Android/Pixel.",
+    "Three functional local-smoke samples only; no repeatability or8x3matrix.",
+    "No ADB, phone, browser target or server started by archive work.",
+    "Prior v1 artifacts unchanged."
+  ]
+}

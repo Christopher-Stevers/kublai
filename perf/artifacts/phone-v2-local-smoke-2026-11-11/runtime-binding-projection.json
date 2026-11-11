@@ -1,0 +1,6 @@
+{
+  "base": "http://127.0.0.1:3483/",
+  "sourceEvidence": "/tmp/foremanhq-speed-app-nTtbuM/source-evidence.json",
+  "databaseLog": "/tmp/foremanhq-perf-pg.HQfUcg/server.log",
+  "expectedLabBuild": "4qOIJ0ATp9DzIVGHVmxB_"
+}

@@ -1,0 +1,5 @@
+
+DevTools listening on ws://127.0.0.1:49112/devtools/browser/b2e01995-7f60-4e74-8be6-540417e34418
+[3951728:3951728:1111/021852.613415:ERROR:content/common/zygote/zygote_communication_linux.cc:291] Failed to send GetTerminationStatus message to zygote
+[3951728:3951728:1111/021852.613535:ERROR:content/common/zygote/zygote_communication_linux.cc:291] Failed to send GetTerminationStatus message to zygote
+[3951728:3951728:1111/021852.613791:ERROR:content/common/zygote/zygote_communication_linux.cc:291] Failed to send GetTerminationStatus message to zygote
