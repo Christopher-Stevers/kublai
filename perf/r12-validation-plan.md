@@ -132,3 +132,25 @@ Seven node parser/context fixtures pass. The driver and both helper hashes are
 recorded before/after; exact prepared hashes/dependency version are in the plan
 JSON. These source checks are not a compiled-runtime pass, and execution remains
 held for frozen R12 identity/static and corrected-protocol review.
+
+## Real-server header correction after the first functional attempt
+
+The first v2 app attempt is preserved at
+`artifacts/r12-preferences-functional-2026-11-11-attempt1`; it stopped on explicit
+consumer decode errors before any assertion. Installed server primary source
+`resolveResponse.ts:531` streams JSONL while returning Content-Type
+`application/json`. Protocol v3 therefore selects JSONL **only from the actual
+observed request's `trpc-accept: application/jsonl`**, matching the installed
+client. There is no body-sniffing fallback. Response Content-Type and request
+transport are retained as coarse error metadata.
+
+Ten parser/context fixtures now pass, including actual installed
+`fetchRequestHandler`/`initTRPC` HTTP handling with JSONL under application/json,
+streamed success/error, normal mutation JSON/HTTP 403, and a streamed BAD_REQUEST
+under HTTP 200. The fixtures cover the real server response contract instead of
+only a standalone producer with a hypothetical JSONL response header. The prior
+failed app run and frozen v2 bytes remain unchanged. The R12 lab compile succeeded
+and can be reused at `/tmp/foremanhq-speed-app-PEJvAh`, lab BUILD_ID
+`UlJL743lmFp6aZ8T1n7Tg`, with a fresh private DB; no rebuild is necessary for this
+observer-only correction. V3 is frozen separately; its rerun remains held pending
+root review/authorization. Full matrix/idle is still held.

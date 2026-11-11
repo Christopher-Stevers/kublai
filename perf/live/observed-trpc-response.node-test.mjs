@@ -35,6 +35,7 @@ test("real installed JSONL producer envelope: mixed deferred head/result/data wi
   assert.throws(() => JSON.parse(body));
   const rows = await decodeObservedTrpcResponse({
     body,
+    requestAccept: "application/jsonl",
     contentType: "application/jsonl; charset=utf-8",
     count: 2,
   });
@@ -58,6 +59,7 @@ test("JSONL ordinary error and deferred rejection remain errors, never grants", 
   });
   const rows = await decodeObservedTrpcResponse({
     body,
+    requestAccept: "application/jsonl",
     contentType: "application/jsonl",
     count: 2,
   });
@@ -104,6 +106,7 @@ test("malformed/missing/oversized observed bodies fail closed", async () => {
   await assert.rejects(
     decodeObservedTrpcResponse({
       body: "{}",
+      requestAccept: "application/jsonl",
       contentType: "application/jsonl",
       count: 1,
     }),
@@ -131,6 +134,7 @@ test("actual-response wrapper bounds body wait/length without issuing any reques
     decodePlaywrightTrpcResponse(
       {
         headers: () => ({ "content-type": "application/json" }),
+        request: () => ({ headers: () => ({}) }),
         body: () => new Promise(() => {}),
       },
       1,
@@ -166,6 +170,7 @@ test("complete observed JSONL cannot hide trailing corruption or a truncated fin
   await assert.rejects(
     decodeObservedTrpcResponse({
       body: body + "broken\n",
+      requestAccept: "application/jsonl",
       contentType: "application/jsonl",
       count: 1,
     }),
@@ -173,9 +178,135 @@ test("complete observed JSONL cannot hide trailing corruption or a truncated fin
   await assert.rejects(
     decodeObservedTrpcResponse({
       body: body.trimEnd(),
+      requestAccept: "application/jsonl",
       contentType: "application/jsonl",
       count: 1,
     }),
     /truncated/,
   );
+});
+test("real tRPC fetch adapter streams JSONL under application/json; actual request selects decoder", async () => {
+  const { initTRPC, TRPCError } = await import("@trpc/server");
+  const { fetchRequestHandler } = await import("@trpc/server/adapters/fetch");
+  const t = initTRPC.create({ transformer: SuperJSON, isDev: false });
+  const router = t.router({
+    role: t.procedure.query(() => ({
+      canEditExecutive: true,
+      appAccess: true,
+      accountScope: "fixture:actor",
+    })),
+    denied: t.procedure.query(() => {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }),
+  });
+  const request = new Request(
+    "http://fixture.invalid/trpc/role,denied?batch=1",
+    { headers: { "trpc-accept": "application/jsonl" } },
+  );
+  const response = await fetchRequestHandler({
+    endpoint: "/trpc",
+    req: request,
+    router,
+    createContext: () => ({}),
+  });
+  assert.match(
+    response.headers.get("content-type"),
+    /^application\/json(?:;|$)/,
+  );
+  const body = Buffer.from(await response.arrayBuffer());
+  const rows = await decodeObservedTrpcResponse({
+    body,
+    contentType: response.headers.get("content-type"),
+    requestAccept: request.headers.get("trpc-accept"),
+    count: 2,
+  });
+  assert.equal(rows[0].ok, true);
+  assert.equal(rows[0].data.canEditExecutive, true);
+  assert.equal(rows[1].ok, false);
+  assert.equal(rows[1].errorCode, "FORBIDDEN");
+  await assert.rejects(
+    decodeObservedTrpcResponse({
+      body,
+      contentType: "application/json",
+      requestAccept: null,
+      count: 2,
+    }),
+  );
+});
+test("real server normal mutation JSON and nonstream error retain actual request contract", async () => {
+  const { initTRPC, TRPCError } = await import("@trpc/server");
+  const { fetchRequestHandler } = await import("@trpc/server/adapters/fetch");
+  const { decodePlaywrightTrpcResponse } =
+    await import("./observed-trpc-response.mjs");
+  const t = initTRPC.create({ transformer: SuperJSON, isDev: false });
+  const router = t.router({
+    save: t.procedure
+      .input((value) => value)
+      .mutation(({ input }) => ({ saved: input.mode })),
+    denied: t.procedure.query(() => {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }),
+  });
+  for (const request of [
+    new Request("http://fixture.invalid/trpc/save?batch=1", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ 0: SuperJSON.serialize({ mode: "recent" }) }),
+    }),
+    new Request("http://fixture.invalid/trpc/denied?batch=1"),
+  ]) {
+    const response = await fetchRequestHandler({
+      endpoint: "/trpc",
+      req: request,
+      router,
+      createContext: () => ({}),
+    });
+    const headers = Object.fromEntries(response.headers),
+      body = Buffer.from(await response.arrayBuffer());
+    const rows = await decodePlaywrightTrpcResponse(
+      {
+        headers: () => headers,
+        request: () => ({ headers: () => Object.fromEntries(request.headers) }),
+        body: () => Promise.resolve(body),
+      },
+      1,
+    );
+    if (request.method === "POST") {
+      assert.equal(rows[0].ok, true);
+      assert.equal(rows[0].data.saved, "recent");
+    } else {
+      assert.equal(response.status, 403);
+      assert.equal(rows[0].ok, false);
+      assert.equal(rows[0].errorCode, "FORBIDDEN");
+    }
+  }
+});
+test("real streaming parse error is not mistaken for a grant on HTTP 200", async () => {
+  const { initTRPC } = await import("@trpc/server");
+  const { fetchRequestHandler } = await import("@trpc/server/adapters/fetch");
+  const t = initTRPC.create({ transformer: SuperJSON, isDev: false });
+  const router = t.router({
+    role: t.procedure
+      .input((value) => value)
+      .query(() => ({ canEditExecutive: true })),
+  });
+  const request = new Request(
+    "http://fixture.invalid/trpc/role?batch=1&input=%7B",
+    { headers: { "trpc-accept": "application/jsonl" } },
+  );
+  const response = await fetchRequestHandler({
+    endpoint: "/trpc",
+    req: request,
+    router,
+    createContext: () => ({}),
+  });
+  assert.equal(response.status, 200);
+  const rows = await decodeObservedTrpcResponse({
+    body: Buffer.from(await response.arrayBuffer()),
+    contentType: response.headers.get("content-type"),
+    requestAccept: request.headers.get("trpc-accept"),
+    count: 1,
+  });
+  assert.equal(rows[0].ok, false);
+  assert.equal(rows[0].errorCode, "BAD_REQUEST");
 });

@@ -20,7 +20,7 @@ const methodHashes = () =>
     methodFiles.map((file) => [file, sha(new URL(file, import.meta.url))]),
   );
 const report = {
-  protocol: "compiled-preferences-functional-v2",
+  protocol: "compiled-preferences-functional-v3",
   status: "incomplete",
   acceptedGateEvidence: false,
   physicalPhoneEvidence: false,
@@ -424,6 +424,14 @@ try {
             contextId,
             kind: "HTTP_DECODE_FAILED",
             name: error.name,
+            requestTransport:
+              response.request().headers()["trpc-accept"] ===
+              "application/jsonl"
+                ? "jsonl"
+                : "json",
+            responseContentType: (response.headers()["content-type"] ?? "")
+              .split(";")[0]
+              .slice(0, 80),
             at: Date.now() - started,
           });
           write();

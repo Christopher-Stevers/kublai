@@ -18,6 +18,7 @@ const envelope = (value) =>
 export async function decodeObservedTrpcResponse({
   body,
   contentType,
+  requestAccept = null,
   count,
   maxBytes = 512 * 1024,
   timeoutMs = 5000,
@@ -34,7 +35,7 @@ export async function decodeObservedTrpcResponse({
   let timer;
   const abortController = new AbortController();
   const decode = async () => {
-    const streaming = contentType?.toLowerCase().includes("application/jsonl");
+    const streaming = requestAccept === "application/jsonl";
     let head;
     if (streaming) {
       // Playwright provides completed bytes. Validate every non-ping line first
@@ -131,6 +132,7 @@ export async function decodePlaywrightTrpcResponse(
     return await decodeObservedTrpcResponse({
       body,
       contentType: headers["content-type"],
+      requestAccept: response.request().headers()["trpc-accept"] ?? null,
       count,
       maxBytes,
       timeoutMs,
