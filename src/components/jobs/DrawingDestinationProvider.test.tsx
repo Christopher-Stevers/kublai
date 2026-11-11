@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
   capture: vi.fn(),
   online: true,
+  accountKey: "org:current-user:simulation:session-id",
   ready: false,
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
@@ -26,7 +28,7 @@ vi.mock("~/hooks/use-online-status", () => ({
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => ({
     userId: "current-user",
-    accountKey: "org:current-user:simulation:session-id",
+    accountKey: mocks.accountKey,
     store: { readSnapshot: async () => null },
   }),
 }));
@@ -116,11 +118,12 @@ function App({ browsing = false }: { browsing?: boolean }) {
   );
 }
 const check = () =>
-  screen.getByRole("button", { name: "Save current page as destination" });
+  screen.findByRole("button", { name: "Save current page as destination" });
 beforeEach(() => {
   window.sessionStorage.clear();
   vi.clearAllMocks();
   mocks.online = true;
+  mocks.accountKey = "org:current-user:simulation:session-id";
   mocks.ready = false;
   mocks.capture.mockReturnValueOnce(origin).mockReturnValue(destination);
   mocks.save.mockImplementation(async (input: DrawingSave) => ({
@@ -137,8 +140,8 @@ it("keeps the check mark after the source unmounts and appends the view captured
   const view = render(<App />);
   fireEvent.click(screen.getByText("Choose destination"));
   view.rerender(<App browsing />);
-  expect(check().textContent).toBe("");
-  fireEvent.click(check());
+  expect((await check()).textContent).toBe("");
+  fireEvent.click(await check());
   await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
   const input = mocks.save.mock.calls[0]![0] as Extract<
     DrawingSave,
@@ -175,8 +178,8 @@ it("retains the draft and captured view after a failure, and suppresses rapid du
   );
   render(<App />);
   fireEvent.click(screen.getByText("Choose destination"));
-  fireEvent.click(check());
-  fireEvent.click(check());
+  fireEvent.click(await check());
+  fireEvent.click(await check());
   expect(mocks.save).toHaveBeenCalledOnce();
   reject(new Error("The drawing changed. Reload it before saving."));
   expect(await screen.findByRole("alert")).toHaveTextContent("drawing changed");
@@ -184,7 +187,7 @@ it("retains the draft and captured view after a failure, and suppresses rapid du
   mocks.capture.mockReturnValue(
     makeSnapshotSource("/jobs/orders", { version: 1 }, "Different page"),
   );
-  fireEvent.click(check());
+  fireEvent.click(await check());
   await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
   expect(mocks.save.mock.calls[1]![0]).toEqual(mocks.save.mock.calls[0]![0]);
   expect(mocks.capture).toHaveBeenCalledTimes(2);
@@ -192,6 +195,7 @@ it("retains the draft and captured view after a failure, and suppresses rapid du
 it("cancels without saving and returns the original draft", async () => {
   render(<App />);
   fireEvent.click(screen.getByText("Choose destination"));
+  await check();
   fireEvent.keyDown(window, { key: "Escape" });
   expect(mocks.save).not.toHaveBeenCalled();
   expect(mocks.push).toHaveBeenCalledWith(origin.href, { scroll: false });
@@ -205,7 +209,7 @@ it("uses the durable queue for a private destination when offline", async () => 
   mocks.ready = true;
   render(<App />);
   fireEvent.click(screen.getByText("Choose destination"));
-  fireEvent.click(check());
+  fireEvent.click(await check());
   await waitFor(() => expect(mocks.enqueue).toHaveBeenCalledOnce());
   expect(mocks.save).not.toHaveBeenCalled();
   const input = mocks.enqueue.mock.calls[0]![0] as Extract<
@@ -219,7 +223,7 @@ it("recovers an unfinished selection after a full page load", async () => {
   fireEvent.click(screen.getByText("Choose destination"));
   view.unmount();
   render(<App browsing />);
-  fireEvent.click(check());
+  fireEvent.click(await check());
   await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
   const input = mocks.save.mock.calls[0]![0] as Extract<
     DrawingSave,
@@ -235,7 +239,43 @@ it("keeps the check mark inside an open modal so its focus trap can reach it", a
   dialog.setAttribute("role", "dialog");
   dialog.setAttribute("data-state", "open");
   document.body.append(dialog);
-  await waitFor(() => expect(dialog.contains(check())).toBe(true));
+  const button = await check();
+  await waitFor(() => expect(dialog.contains(button)).toBe(true));
   view.unmount();
   dialog.remove();
+});
+
+it("does not patch a newer account or restore an old session when a prior save finishes late", async () => {
+  let resolve!: (value: unknown) => void;
+  mocks.save.mockImplementationOnce(
+    () =>
+      new Promise((accept) => {
+        resolve = accept;
+      }),
+  );
+  const view = render(<App />);
+  fireEvent.click(screen.getByText("Choose destination"));
+  fireEvent.click(await check());
+  expect(mocks.save).toHaveBeenCalledOnce();
+  mocks.accountKey = "org:other-user";
+  view.rerender(<App />);
+  await act(async () => {
+    resolve({
+      id: request.draft.id,
+      sheetId,
+      kind: "markup",
+      data: request.draft.data,
+      revision: 4,
+    });
+  });
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", {
+        name: "Save current page as destination",
+      }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(mocks.patch).not.toHaveBeenCalled();
+  expect(mocks.push).not.toHaveBeenCalled();
+  expect(screen.getByTestId("resume")).toHaveTextContent("null");
 });

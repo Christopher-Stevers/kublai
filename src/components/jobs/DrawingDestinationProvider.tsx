@@ -1,92 +1,155 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import {
+  createContext,
+  lazy,
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon, Loader2Icon } from "lucide-react";
-import { z } from "zod";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
-import { Button } from "~/components/ui/button";
 import { notify } from "~/components/ui/app-dialogs";
-import { useOnlineStatus } from "~/hooks/use-online-status";
-import { drawingMarkupLinks, MAX_DRAWING_LINKS } from "~/lib/drawing-links";
-import {
-  drawingSaveSchema,
-  type DrawingSave,
-  type DrawingEntity,
-  type DrawingWorkspace,
-} from "~/lib/drawing-workspace";
-import {
-  snapshotSourceSchema,
-  type SnapshotSource,
-} from "~/lib/snapshot-source";
-import { api } from "~/trpc/react";
+import { FeatureErrorBoundary } from "~/components/app/FeatureErrorBoundary";
 import { useDrawingAccount } from "./DrawingAccountProvider";
-import { useDrawingQueuedEdits } from "./useDrawingQueuedEdits";
+import type {
+  DestinationRequest,
+  DestinationResume,
+  DestinationSession,
+  DestinationSessionRequest,
+} from "./drawing-destination-session";
+export type { DestinationRequest } from "./drawing-destination-session";
 
-type MarkupSave = Extract<DrawingSave, { kind: "markup" }>;
-export type DestinationRequest = {
-  jobId: string;
-  draft: MarkupSave;
-  baseEntity?: DrawingEntity;
-  authorName: string;
-};
-type Request = DestinationRequest & { returnTo: SnapshotSource };
-type Resume = Request & { saved: boolean };
-type Session =
-  | { phase: "picking"; request: Request }
-  | { phase: "resume"; request: Resume };
-const storedSessionSchema = z.object({
-  phase: z.enum(["picking", "resume"]),
-  request: z.object({
-    jobId: z.uuid(),
-    draft: drawingSaveSchema,
-    authorName: z.string().max(255),
-    returnTo: snapshotSourceSchema,
-    saved: z.boolean().optional(),
-  }),
-});
-function readSession(key: string): Session | null {
-  if (typeof window === "undefined") return null;
+function readRawSession(key: string | null) {
+  if (!key) return null;
   try {
     const raw = window.sessionStorage.getItem(key);
-    if (!raw || raw.length > 1_000_000) return null;
-    const saved = storedSessionSchema.parse(JSON.parse(raw) as unknown);
-    if (saved.request.draft.kind !== "markup") return null;
-    const request = { ...saved.request, draft: saved.request.draft };
-    return saved.phase === "picking"
-      ? { phase: "picking", request }
-      : {
-          phase: "resume",
-          request: { ...request, saved: saved.request.saved ?? false },
-        };
+    return raw && raw.length <= 1_000_000 ? raw : null;
   } catch {
     return null;
   }
 }
+const loadPicker = () =>
+  import("./DrawingDestinationPicker").then(({ DestinationPicker }) => ({
+    default: DestinationPicker,
+  }));
+function DestinationPickerPanel(props: {
+  request: DestinationSessionRequest;
+  onFinish: (saved: boolean) => void;
+  isCurrent: () => boolean;
+}) {
+  const [Picker, setPicker] = useState(() => lazy(loadPicker));
+  return (
+    <FeatureErrorBoundary
+      allowReload={false}
+      onRetry={() => setPicker(() => lazy(loadPicker))}
+    >
+      <Suspense
+        fallback={
+          <p role="status" data-snapshot-ui>
+            Loading destination controls…
+          </p>
+        }
+      >
+        <Picker {...props} />
+      </Suspense>
+    </FeatureErrorBoundary>
+  );
+}
+
 const Context = createContext<{
   start: (request: DestinationRequest) => boolean;
-  resume: Resume | null;
+  resume: DestinationResume | null;
   consumed: () => void;
   active: boolean;
 } | null>(null);
 export const useDrawingDestination = () => useContext(Context);
+type RestoreStatus = "checking" | "unbound" | "loading" | "ready" | "error";
 
-/** Lives above the route tree so browsing never unmounts the source draft. */
+/** Account changes create a new controller; ordinary route changes keep it mounted. */
 export function DrawingDestinationProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const registry = useContext(SnapshotSourceContext);
   const account = useDrawingAccount();
-  const router = useRouter();
-  const storageKey = `foremanhq:destination-picker:${account?.accountKey ?? ""}`;
-  const [session, setSession] = useState<Session | null>(() =>
-    readSession(storageKey),
+  const accountKey = account?.accountKey.length ? account.accountKey : null;
+  return (
+    <DestinationController
+      key={accountKey ?? "unbound"}
+      accountKey={accountKey}
+    >
+      {children}
+    </DestinationController>
   );
+}
+function DestinationController({
+  children,
+  accountKey,
+}: {
+  children: React.ReactNode;
+  accountKey: string | null;
+}) {
+  const registry = useContext(SnapshotSourceContext);
+  const router = useRouter();
+  const storageKey = accountKey
+    ? `foremanhq:destination-picker:${accountKey}`
+    : null;
+  const restoreGeneration = useRef(0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [restoreStatus, setRestoreStatus] = useState<RestoreStatus>(
+    storageKey ? "checking" : "unbound",
+  );
+  const [session, setSession] = useState<DestinationSession | null>(null);
+  useEffect(() => {
+    const generation = ++restoreGeneration.current;
+    let cancelled = false;
+    setSession(null);
+    if (!storageKey) {
+      setRestoreStatus("unbound");
+      return;
+    }
+    const raw = readRawSession(storageKey);
+    if (!raw) {
+      setRestoreStatus("ready");
+      return;
+    }
+    setRestoreStatus("loading");
+    void import("./drawing-destination-session-validation")
+      .then(({ parseStoredDestinationSession }) => {
+        if (
+          cancelled ||
+          !mounted.current ||
+          restoreGeneration.current !== generation
+        )
+          return;
+        setSession(parseStoredDestinationSession(raw));
+        setRestoreStatus("ready");
+      })
+      .catch(() => {
+        if (
+          !cancelled &&
+          mounted.current &&
+          restoreGeneration.current === generation
+        )
+          setRestoreStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storageKey, restoreAttempt]);
   const request = session?.phase === "picking" ? session.request : null;
   const resume = session?.phase === "resume" ? session.request : null;
-  const commit = (next: Session | null) => {
+  const commit = (next: DestinationSession | null) => {
+    if (!storageKey || !mounted.current) return;
     try {
       if (next) {
         // The workspace cache supplies the base record after a full page load.
@@ -106,7 +169,7 @@ export function DrawingDestinationProvider({
     setSession(next);
   };
   const finish = (saved: boolean) => {
-    if (!request) return;
+    if (!mounted.current || !request) return;
     commit({ phase: "resume", request: { ...request, saved } });
     router.push(request.returnTo.href, { scroll: false });
   };
@@ -114,6 +177,23 @@ export function DrawingDestinationProvider({
     <Context.Provider
       value={{
         start: (next) => {
+          if (!mounted.current) return false;
+          if (!storageKey) {
+            notify(
+              "Your workspace is still loading. Try again shortly.",
+              "error",
+            );
+            return false;
+          }
+          if (restoreStatus !== "ready") {
+            notify(
+              restoreStatus === "error"
+                ? "Retry restoring your saved destination before starting another selection."
+                : "Restoring your saved destination. Try again shortly.",
+              "error",
+            );
+            return false;
+          }
           if (!registry || request) return false;
           try {
             const returnTo = registry.captureSource();
@@ -141,237 +221,38 @@ export function DrawingDestinationProvider({
         },
         resume,
         consumed: () => commit(null),
-        active: Boolean(request),
+        active:
+          Boolean(request) || Boolean(storageKey && restoreStatus !== "ready"),
       }}
     >
       {children}
-      {request && <DestinationPicker request={request} onFinish={finish} />}
-    </Context.Provider>
-  );
-}
-
-function DestinationPicker({
-  request,
-  onFinish,
-}: {
-  request: Request;
-  onFinish: (saved: boolean) => void;
-}) {
-  const registry = useContext(SnapshotSourceContext);
-  const account = useDrawingAccount();
-  const online = useOnlineStatus();
-  const utils = api.useUtils();
-  const saveMutation = api.drawingsWorkspace.save.useMutation();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [host, setHost] = useState<Element | null>(null);
-  const saving = useRef(false);
-  const mounted = useRef(true);
-  const frozen = useRef<MarkupSave | null>(null);
-  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const held = useRef(false);
-  const patch = (entity: DrawingEntity) => {
-    utils.drawingsWorkspace.get.setData({ sheetId: entity.sheetId }, (old) =>
-      old
-        ? {
-            ...old,
-            entities: [
-              ...old.entities.filter((item) => item.id !== entity.id),
-              entity,
-            ],
-          }
-        : old,
-    );
-  };
-  const queued = useDrawingQueuedEdits({
-    accountKey: account?.store ? account.accountKey : null,
-    userId: account?.userId ?? null,
-    jobId: request.jobId,
-    sheetId: request.draft.sheetId,
-    online,
-    save: (input) => saveMutation.mutateAsync(input),
-    onSaved: patch,
-    onError: (reason) => {
-      if (mounted.current)
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Could not save destination.",
-        );
-    },
-  });
-  const cancel = () => {
-    if (!saving.current) onFinish(false);
-  };
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      if (hold.current) clearTimeout(hold.current);
-    };
-  }, []);
-  useEffect(() => {
-    const chooseHost = () => {
-      const dialogs = [
-        ...document.querySelectorAll('[role="dialog"][data-state="open"]'),
-      ];
-      // Keep the check mark reachable inside modal focus traps and fullscreen.
-      setHost(document.fullscreenElement ?? dialogs.at(-1) ?? document.body);
-    };
-    chooseHost();
-    const observer = new MutationObserver(chooseHost);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-state"],
-    });
-    document.addEventListener("fullscreenchange", chooseHost);
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("fullscreenchange", chooseHost);
-    };
-  }, []);
-  useEffect(() => {
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving.current) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        onFinish(false);
-      }
-    };
-    window.addEventListener("keydown", escape, true);
-    return () => window.removeEventListener("keydown", escape, true);
-  }, [onFinish]);
-  const capture = async () => {
-    if (held.current || saving.current || !registry || !account) return;
-    saving.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      if (!frozen.current) {
-        const source = registry.captureSource();
-        const links = drawingMarkupLinks(request.draft.data);
-        if (links.length >= MAX_DRAWING_LINKS)
-          throw Error(
-            "This hyperlink already has the maximum number of destinations.",
-          );
-        if (links.some((link) => link.url === source.href))
-          throw Error("This destination is already in the hyperlink.");
-        const parsed = drawingSaveSchema.parse({
-          ...request.draft,
-          expectedUserId: account.userId,
-          data: {
-            ...request.draft.data,
-            href: undefined,
-            targetSheetId: undefined,
-            links: [
-              ...links,
-              { label: source.title.slice(0, 255), url: source.href },
-            ],
-          },
-        });
-        if (parsed.kind !== "markup")
-          throw Error("Choose a drawing hyperlink.");
-        frozen.current = parsed;
-      }
-      if (frozen.current.visibility === "private" && queued.ready) {
-        const cached = request.baseEntity
-          ? null
-          : await account.store?.readSnapshot<DrawingWorkspace>(
-              `workspace:${request.draft.sheetId}`,
-            );
-        await queued.enqueue(
-          frozen.current,
-          request.baseEntity ??
-            cached?.entities.find((entity) => entity.id === request.draft.id),
-          request.authorName,
-        );
-      } else {
-        if (!online)
-          throw Error(
-            "Reconnect to save this destination, or save the hyperlink as a private draft.",
-          );
-        patch(await saveMutation.mutateAsync(frozen.current));
-      }
-      if (!mounted.current) return;
-      notify(
-        online
-          ? "Destination saved."
-          : "Destination saved on this device. It will sync when you reconnect.",
-        "success",
-      );
-      onFinish(true);
-    } catch (reason) {
-      if (mounted.current)
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Could not save destination. Try again.",
-        );
-    } finally {
-      saving.current = false;
-      if (mounted.current) setBusy(false);
-    }
-  };
-  if (!host) return null;
-  return createPortal(
-    <div
-      data-snapshot-ui
-      className="fixed right-5 z-[250] flex max-w-xs flex-col items-end gap-2"
-      style={{
-        bottom: "calc(10rem + env(safe-area-inset-bottom))",
-        pointerEvents: "auto",
-      }}
-    >
-      {error && (
-        <div className="bg-background rounded-md border p-3 text-sm shadow-lg">
-          <p role="alert" className="text-destructive">
-            {error}
+      {storageKey && restoreStatus === "loading" && (
+        <p role="status" data-snapshot-ui>
+          Restoring saved destination…
+        </p>
+      )}
+      {storageKey && restoreStatus === "error" && (
+        <div role="alert" data-snapshot-ui>
+          <p>
+            Your saved destination could not load. Its draft is still on this
+            device.
           </p>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={cancel}
+            onClick={() => setRestoreAttempt((value) => value + 1)}
           >
-            Cancel selection
-          </Button>
+            Retry saved destination
+          </button>
         </div>
       )}
-      <Button
-        type="button"
-        className="size-14 touch-none rounded-full shadow-xl"
-        aria-label="Save current page as destination"
-        title="Save destination · hold to cancel"
-        disabled={busy}
-        onClick={() => void capture()}
-        onPointerDown={() => {
-          held.current = false;
-          hold.current = setTimeout(() => {
-            held.current = true;
-            cancel();
-          }, 700);
-        }}
-        onPointerUp={() => {
-          if (hold.current) clearTimeout(hold.current);
-        }}
-        onPointerCancel={() => {
-          if (hold.current) clearTimeout(hold.current);
-        }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          cancel();
-        }}
-      >
-        {busy ? (
-          <Loader2Icon className="size-6 animate-spin" aria-hidden />
-        ) : (
-          <CheckIcon className="size-7" aria-hidden />
-        )}
-      </Button>
-    </div>,
-    host,
+      {request && (
+        <DestinationPickerPanel
+          key={storageKey}
+          request={request}
+          onFinish={finish}
+          isCurrent={() => Boolean(storageKey && mounted.current)}
+        />
+      )}
+    </Context.Provider>
   );
 }

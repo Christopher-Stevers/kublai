@@ -5,18 +5,27 @@ import type { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   next: vi.fn(() => ({ kind: "next" })),
   redirect: vi.fn((url: URL) => ({ kind: "redirect", url: url.toString() })),
-  json: vi.fn((body: unknown, init: { status: number; headers: Record<string, string> }) => ({
-    kind: "json",
-    body,
-    status: init.status,
-    headers: init.headers,
-  })),
+  json: vi.fn(
+    (
+      body: unknown,
+      init: { status: number; headers: Record<string, string> },
+    ) => ({
+      kind: "json",
+      body,
+      status: init.status,
+      headers: init.headers,
+    }),
+  ),
   auth: vi.fn(async () => ({ userId: null as string | null })),
   clerkGate: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
-  NextResponse: { next: mocks.next, redirect: mocks.redirect, json: mocks.json },
+  NextResponse: {
+    next: mocks.next,
+    redirect: mocks.redirect,
+    json: mocks.json,
+  },
 }));
 vi.mock("@clerk/nextjs/server", () => ({
   clerkMiddleware:
@@ -37,7 +46,12 @@ import middleware from "./middleware";
 import { SIGNED_OUT_MESSAGE } from "~/lib/signed-out";
 
 const SECRET = "unit-test-only-" + "x".repeat(48);
-function request(path: string, header?: string, cookie?: string, fetchMode?: string) {
+function request(
+  path: string,
+  header?: string,
+  cookie?: string,
+  fetchMode?: string,
+) {
   const url = new URL(path, "http://test.invalid");
   return {
     url: url.toString(),
@@ -127,12 +141,21 @@ describe("middleware provider isolation", () => {
   });
 
   it("allows only the exact public release asset manifest", async () => {
-    expect(await run(request("/foremanhq-release-assets.json?check=1"))).toEqual({kind: "next"});
+    expect(
+      await run(request("/foremanhq-release-assets.json?check=1")),
+    ).toEqual({ kind: "next" });
     expect(mocks.auth).not.toHaveBeenCalled();
-    for (const path of ["/foremanhq-release-assets.json/private", "/private.json", "/jobs/private.json"]) {
-      expect(await run(request(path))).toMatchObject({kind: "redirect"});
+    for (const path of [
+      "/foremanhq-release-assets.json/private",
+      "/private.json",
+      "/jobs/private.json",
+    ]) {
+      expect(await run(request(path))).toMatchObject({ kind: "redirect" });
     }
-    expect(await run(request("/api/device-cache-binding"))).toMatchObject({kind: "json", status: 401});
+    expect(await run(request("/api/device-cache-binding"))).toMatchObject({
+      kind: "json",
+      status: 401,
+    });
   });
 
   it.each([
@@ -153,7 +176,11 @@ describe("middleware provider isolation", () => {
     expect(mocks.auth).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["/api/trpc/drawingsWorkspace.save", "/trpc/x", "/api/replicache/push"])(
+  it.each([
+    "/api/trpc/drawingsWorkspace.save",
+    "/trpc/x",
+    "/api/replicache/push",
+  ])(
     "answers the app's signed-out call to %s with a 401 instead of the sign-in page",
     async (path) => {
       const response = await run(request(path, undefined, undefined, "cors"));
