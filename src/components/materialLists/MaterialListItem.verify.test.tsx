@@ -99,6 +99,18 @@ it("starts receiving again from the saved counts when they change", () => {
   expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("3");
 });
 
+it("restores the saved receipt after a failed edit even when saved counts have not changed", () => {
+  vi.useFakeTimers();
+  const card = (revision: number) => <MaterialListItem item={item} materialListId="m" verifyMode
+    verifyOrderedQuantity="10" verifyInitialReceivedQuantity="4" verifyResetVersion={revision} />;
+  const { rerender } = render(card(0));
+  fireEvent.click(screen.getByRole("button", { name: "Verify part" }));
+  act(() => { vi.advanceTimersByTime(300); });
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("0");
+  rerender(card(1));
+  expect(screen.getByText("Back Ordered").nextSibling).toHaveTextContent("6");
+});
+
 it("lets go of the window when a card goes away in the middle of a hold", () => {
   vi.useFakeTimers();
   const added = new Set<unknown>();

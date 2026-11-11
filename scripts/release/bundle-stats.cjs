@@ -4,6 +4,11 @@ const path = require('node:path');
 /** Observe the canonical client compilation. No compiler/chunking options or
  * generated modules are changed; source text and build secrets are not emitted. */
 class ForemanBundleStats {
+  /** @param {{ options: { output: { path: string } }, hooks: { done: {
+   * tap: (name: string, callback: (stats: {
+   * toJson: (options: Record<string, boolean | number>) => unknown
+   * }) => void) => void
+   * } } }} compiler */
   apply(compiler) {
     compiler.hooks.done.tap('ForemanBundleStats', stats => {
       const output = path.join(compiler.options.output.path, 'analysis', 'client-stats.json');

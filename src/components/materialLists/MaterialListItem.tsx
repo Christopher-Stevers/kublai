@@ -96,6 +96,8 @@ interface MaterialListItemProps {
   verifyOrderedQuantity?: string | null;
   verifyInitialReceivedQuantity?: string | number | null;
   verifyInitialStatus?: string | null;
+  /** Reset a locally edited receipt after a refused save, even if saved values did not change. */
+  verifyResetVersion?: number;
   onVerifyStateChange?: (state: {
     receivedQuantity: number;
     verificationStatus: VerifyStatus;
@@ -205,6 +207,7 @@ function MaterialListItemComponent({
   verifyOrderedQuantity,
   verifyInitialReceivedQuantity,
   verifyInitialStatus,
+  verifyResetVersion = 0,
   onVerifyStateChange,
   verifyBadge,
   verifyCaption,
@@ -282,7 +285,7 @@ function MaterialListItemComponent({
 
   // Receiving starts again from the saved counts whenever they change.
   const verifyStart = verifyMode
-    ? JSON.stringify([initialReceivedQuantity, orderedQuantityNumber, verifyInitialStatus ?? null])
+    ? JSON.stringify([initialReceivedQuantity, orderedQuantityNumber, verifyInitialStatus ?? null, verifyResetVersion])
     : null;
   const [verifyStarted, setVerifyStarted] = useState<string | null>(null);
   if (verifyStart !== verifyStarted) {

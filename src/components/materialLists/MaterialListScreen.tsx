@@ -8,7 +8,6 @@ import { PackingSlips } from "~/components/materialLists/PackingSlips";
 import { SlipBadge, slipBadgeKey, SlipPartSheet, SlipVerifyBar, type SlipEntry } from "~/components/materialLists/SlipOnList";
 import { useSlipDrafts } from "~/components/materialLists/use-slip-draft";
 import { ScanSlipButton } from "~/components/materialLists/ScanSlipButton";
-import { notify } from "~/components/ui/app-dialogs";
 import { useJobPricing, jobPriceStatus } from "~/hooks/use-job-pricing";
 import { listedPartsFirst } from "~/lib/job-pricing";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
@@ -53,6 +52,7 @@ import { useReplicacheJob } from "~/hooks/use-replicache-jobs";
 import { useReplicacheSuppliers } from "~/hooks/use-replicache-suppliers";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useInstantOrderNotes } from "~/hooks/use-instant-order-notes";
+import { useInstantReceiptVerification, type ReceiptSnapshot } from "~/hooks/use-instant-receipt-verification";
 import { markUserAction } from "~/lib/performance-marks";
 
 // Each card keeps one receiving handler that calls the latest one, so
@@ -211,10 +211,19 @@ export function MaterialListScreen({
       setShowVerifyNotesDialog(true);
     },
   });
-  const updateOrderItemVerification =
-    api.materialList.updateOrderItemVerification.useMutation({
-      onError: (error) => notify(error.message, "error"),
-    });
+  const receiptSnapshots = useMemo<ReceiptSnapshot[]>(() => [
+    ...items.flatMap(item => item.sentOrderItemId && item.sentOrder ? [{
+      orderItemId: item.sentOrderItemId,
+      receivedQuantity: item.sentOrder.receivedQuantity,
+      verificationStatus: item.sentOrder.verificationStatus ?? null,
+    }] : []),
+    ...(verifyOrder?.items ?? []).map(item => ({
+      orderItemId: item.id,
+      receivedQuantity: item.receivedQuantity,
+      verificationStatus: item.verificationStatus,
+    })),
+  ], [items, verifyOrder]);
+  const updateOrderItemVerification = useInstantReceiptVerification(receiptSnapshots);
   const markAllReceived = api.materialList.markAllOrderItemsReceived.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -494,6 +503,7 @@ export function MaterialListScreen({
                           : listOrder
                             ? { id: item.sentOrderItemId!, quantity: listOrder.quantity, received: listOrder.receivedQuantity, status: listOrder.verificationStatus }
                             : null;
+                        const receiptPreview = orderLine ? updateOrderItemVerification.previews[orderLine.id] : undefined;
                         // While a read slip is being checked, changes stay on the slip until it is confirmed.
                         const slipFound = slipDrafts.find(orderLine?.id);
                         const slipEntry = slipFound?.entry ?? null;
@@ -507,18 +517,19 @@ export function MaterialListScreen({
                             suppliers={suppliers}
                             verifyMode={!!verifyOrderId || !!listOrder}
                             orderHasReceipts={section.hasReceivedItems}
-                            verifyReadOnly={!!listOrder && (!canReceive || !isBrowserOnline)}
+                            verifyReadOnly={!!receiptPreview?.saving || (!!listOrder && (!canReceive || !isBrowserOnline))}
                             isToolRequest={isToolRequest || !!item.partDefinition?.assetTracking}
+                            verifyResetVersion={orderLine ? updateOrderItemVerification.resetVersions[orderLine.id] : undefined}
                             verifyOrderedQuantity={orderLine?.quantity}
                             verifyInitialReceivedQuantity={
-                              slipEntry ? slipEntry.total : orderLine?.received
+                              slipEntry ? slipEntry.total : receiptPreview?.receivedQuantity ?? orderLine?.received
                             }
                             verifyInitialStatus={
                               slipEntry
                                 ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
-                                : orderLine?.status
+                                : receiptPreview?.verificationStatus ?? orderLine?.status
                             }
-                            verifyBadge={slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : undefined}
+                            verifyBadge={slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : receiptPreview?.saving ? <span role="status" className="text-xs">Saving receipt…</span> : undefined}
                             onVerifyStateChange={
                               orderLine
                                 ? verifyHandler(item.id, (state) => {
@@ -527,11 +538,11 @@ export function MaterialListScreen({
                                       queueMicrotask(() => slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem"));
                                       return;
                                     }
-                                    updateOrderItemVerification.mutate({
+                                    queueMicrotask(() => updateOrderItemVerification.mutate({
                                       orderItemId: orderLine.id,
                                       receivedQuantity: state.receivedQuantity,
                                       verificationStatus: state.verificationStatus,
-                                    });
+                                    }));
                                   })
                                 : undefined
                             }
@@ -555,17 +566,20 @@ export function MaterialListScreen({
                     const listOrder = receivableOrder(item);
                     if (!listOrder || !item.sentOrderItemId) return null;
                     const orderItemId = item.sentOrderItemId;
+                    const receiptPreview = updateOrderItemVerification.previews[orderItemId];
                     const slipFound = slipDrafts.find(orderItemId);
                     const slipEntry = slipFound?.entry ?? null;
                     const partName = [item.partDefinition?.displayName, item.descriptionSnapshot].find(Boolean) ?? "Part";
                     return {
                       ordered: listOrder.quantity,
-                      received: slipEntry ? slipEntry.total : listOrder.receivedQuantity,
+                      received: slipEntry ? slipEntry.total : receiptPreview?.receivedQuantity ?? listOrder.receivedQuantity,
                       status: slipEntry
                         ? slipEntry.problem || slipEntry.item.verificationStatus === "problem" ? "problem" : undefined
-                        : listOrder.verificationStatus,
+                        : receiptPreview?.verificationStatus ?? listOrder.verificationStatus,
+                      resetVersion: updateOrderItemVerification.resetVersions[orderItemId],
+                      saving: receiptPreview?.saving,
                       unit: item.partDefinition?.bulkUnit ?? item.uom?.code,
-                      readOnly: !canReceive || !isBrowserOnline,
+                      readOnly: !!receiptPreview?.saving || !canReceive || !isBrowserOnline,
                       badge: slipFound && slipEntry ? slipBadge(item.id, slipEntry, () => setSlipPart({ orderId: slipFound.draft.orderId, id: slipEntry.item.id, name: partName })) : undefined,
                       onChange: verifyHandler(item.id, (state) => {
                         // While a read slip is being checked, changes stay on the slip until it is confirmed.
@@ -573,11 +587,11 @@ export function MaterialListScreen({
                           slipFound.draft.setTotal(slipEntry.item.id, state.receivedQuantity, state.verificationStatus === "problem");
                           return;
                         }
-                        updateOrderItemVerification.mutate({
+                        queueMicrotask(() => updateOrderItemVerification.mutate({
                           orderItemId,
                           receivedQuantity: state.receivedQuantity,
                           verificationStatus: state.verificationStatus,
-                        });
+                        }));
                       }),
                     };
                   }}

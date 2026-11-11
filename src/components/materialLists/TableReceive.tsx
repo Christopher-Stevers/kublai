@@ -17,6 +17,9 @@ export type TableReceive = {
   unit?: string | null;
   /** Shown without controls, for members who cannot receive or offline. */
   readOnly?: boolean;
+  /** Reset local controls after a refused save. */
+  resetVersion?: number;
+  saving?: boolean;
   /** The order was cancelled; nothing is coming. */
   cancelled?: boolean;
   /** What a packing slip says about this part. */
@@ -45,11 +48,13 @@ export function useTableReceive(receive: TableReceive) {
     send: () => void;
   } | null>(null);
   // Saved changes come back as new props; show them.
-  const [shown, setShown] = useState({ initial, initialProblem });
-  if (shown.initial !== initial || shown.initialProblem !== initialProblem) {
-    setShown({ initial, initialProblem });
+  const resetVersion = receive.resetVersion ?? 0;
+  const [shown, setShown] = useState({ initial, initialProblem, resetVersion });
+  if (shown.initial !== initial || shown.initialProblem !== initialProblem || shown.resetVersion !== resetVersion) {
+    setShown({ initial, initialProblem, resetVersion });
     setReceived(initial);
     setProblem(initialProblem);
+    setText(null);
   }
   // A count still waiting to save is sent when the row goes away.
   useEffect(
@@ -146,7 +151,9 @@ export function ReceiveSummary({
             "text-muted-foreground",
         )}
       >
-        {receive.cancelled
+        {receive.saving
+          ? "Saving receipt…"
+          : receive.cancelled
           ? "Cancelled"
           : status === "complete"
             ? "All received"

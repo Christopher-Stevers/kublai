@@ -22,13 +22,14 @@ follows settled network requests, not preparation failures.
 | `catalogue.hideParts` | 117 | Preview the same hide rules as the server; reconcile final rule ids; roll back a refusal. Existing confirmation and release-click behavior remain. |
 | `catalogue.showHiddenParts` | 2 | Preview removing a rule or restoring a selection, preserving hidden siblings. |
 | `materialList.updateOrderNotes` | 1 | Update cached notes and close the editor immediately; retain text for retry if the server refuses. |
+| `materialList.updateOrderItemVerification` | 76 | Keep the existing immediate receipt controls, show a pending save, restore a refused edit and hold accepted values until the existing sync refresh arrives. |
 
 Counts come from `observed-trpc-usage.json`, which is instrumented server journal
 traffic, possibly including QA. The first entry was conservatively marked bulk
 by the inventory script; source review established that it hides catalogue
 choices, does not delete parts, and preserves existing confirmation controls.
 
-This is **3 of the 20 observed tRPC actions**, not completion of the 20-write
+This is **4 of the 20 observed tRPC actions**, not completion of the 20-write
 step. Material quantities already use Replicache. Drawing edits already have an
 independent queued-edits path, so they must be audited before any replacement.
 Super Label results require actual recognition; pending feedback can be instant,
@@ -40,6 +41,15 @@ A read-only aggregate of the two legacy sync-receipt tables found no entries in
 the same seven-day window (`observed-sync-write-usage.json`). This does not prove
 that no Replicache writes occurred and cannot rank those writes. Do not invent
 usage counts to fill the list.
+
+Receipt previews live only in the screen's memory. They neither edit Replicache
+receipt rows nor queue offline writes. A newer saved receipt supersedes the
+preview, even if the write's HTTP response arrives later. Another edit to the
+same pending receipt is refused; other receipts remain editable. A reset version
+also restores the card/table control when the connection dropped before the
+optimistic transaction could start. Without that reset, unchanged saved props
+could leave the refused quantity displayed. This is a tier-one repair, not the
+phase-two receiving sync domain or a convergence claim.
 
 ## Verification and remaining gate
 
