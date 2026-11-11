@@ -48,3 +48,24 @@ No canonical build, activation, physical timing, full first20 acceptance,
 multi-client convergence, schema or worker release is claimed. The mixed
 `drawingsWorkspace.save` procedure remains partial. Rollback is this exact
 source slice; the optional router field is backward compatible.
+
+## Follow-up production type boundaries
+
+The failed R15 compile found the nullable caller boundary; `9cbe46d7` normalizes
+absent data to undefined without changing guards (122 impacted tests passed).
+R16 then found an optional workspace-revision comparison in recovery. Source
+inspection established that this value is an opaque MD5 content token, not an
+ordered counter. Recovery now compares only numeric per-entity revisions. If
+the target is absent it preserves the cached row and uncertain-outcome block,
+explains that a full workspace refresh is needed, and leaves removal to existing
+authoritative query reconciliation. Missing/default/hash ordering never
+supplies deletion authority. Five deferred cases cover absent tokens on either
+side and differing hashes in both lexical directions; 127 impacted hook and
+Workspace tests pass, and scoped hook lint is clean. Failed canonical snapshots
+remain unchanged. Deployment's full no-emit check of isolated exact R16 plus the
+correction reports zero production diagnostics. The complete-input comparison
+has 1,975 inherited test-only diagnostics on R14, the same 1,975 on corrected
+source, and exactly two additional production diagnostics on unchanged R16.
+Neither new owned hook nor router guard test introduces a diagnostic. This
+collects all production errors before the next canonical build; it does not
+claim a globally clean repository typecheck or a successful canonical release.

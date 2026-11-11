@@ -313,13 +313,19 @@ export function useDrawingSharedIssueSave(options: {
                   ? [row]
                   : latest
                     ? [row.revision > latest.revision ? row : latest]
-                    : old.revision > workspace.revision
-                      ? [row]
-                      : [],
+                    : // Workspace revision is an optional content hash, never
+                      // an ordering certificate for deleting a cached entity.
+                      [row],
               ),
             }
           : old,
       );
+      if (!latest) {
+        current.current.options.onMessage(
+          "The latest issue was not returned. Your draft is kept; refresh the workspace to check access before saving.",
+        );
+        return;
+      }
       const checked = {
         ...block,
         checked: true,

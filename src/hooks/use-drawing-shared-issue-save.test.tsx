@@ -79,7 +79,7 @@ let client: QueryClient;
 function workspace(row = entity): DrawingWorkspace {
   return {
     sheetId: sheet,
-    revision: 4,
+    revision: "snapshot-a",
     actor: { id: "actor" },
     entities: [row],
   } as DrawingWorkspace;
@@ -409,3 +409,51 @@ it("two uncertain entities retain independent visible recovery after reopening t
   });
   expect(state.save).toHaveBeenCalledTimes(2);
 });
+
+it.each([
+  [undefined, undefined],
+  [undefined, "hash-new"],
+  ["hash-old", undefined],
+  ["ffff", "0000"],
+  ["0000", "ffff"],
+] as const)(
+  "missing issue is preserved with unorderable workspace tokens %s / %s",
+  async (oldRevision, responseRevision) => {
+    client.setQueryData(key, { ...workspace(), revision: oldRevision });
+    state.save.mockRejectedValue(Error("ACK lost"));
+    const read = deferred<DrawingWorkspace>();
+    state.get.mockReturnValue(read.promise);
+    const { result } = renderHook(() => useDrawingSharedIssueSave(options()), {
+      wrapper: Wrapper,
+    });
+    await act(async () => {
+      await result.current.trySave(draft);
+    });
+    let recovery!: Promise<void>;
+    act(() => {
+      recovery = result.current.recover();
+    });
+    expect(client.getQueryData<DrawingWorkspace>(key)?.entities).toEqual([
+      entity,
+    ]);
+    await act(async () => {
+      read.resolve({
+        ...workspace(),
+        revision: responseRevision,
+        entities: [],
+      });
+      await recovery;
+    });
+    expect(client.getQueryData<DrawingWorkspace>(key)?.entities).toEqual([
+      entity,
+    ]);
+    expect(result.current.needsRecovery).toBe(true);
+    expect(state.message).toHaveBeenLastCalledWith(
+      expect.stringContaining("not returned"),
+    );
+    await act(async () => {
+      await result.current.trySave(draft);
+    });
+    expect(state.save).toHaveBeenCalledOnce();
+  },
+);
