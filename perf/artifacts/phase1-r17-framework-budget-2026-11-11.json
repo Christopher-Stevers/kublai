@@ -1,0 +1,50 @@
+{
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "method": "Read existing canonical build-manifest rootMainFiles and existing gzip sidecar sizes; no compression, build, browser, or benchmark executed. Canonical HTTP proof separately verifies sidecars.",
+  "formalSharedGzipBytes": 478165,
+  "rootMainGzipBytes": 118373,
+  "remainingFormalSharedGzipBytes": 359792,
+  "targetTotalSharedGzipBytes": 120000,
+  "remainingBudgetWithCurrentRootMain": 1627,
+  "files": [
+    {
+      "file": "static/chunks/webpack-4ba182941ab55932.js",
+      "rawBytes": 9364,
+      "gzipSidecarBytes": 4571,
+      "gzipSidecarSha256": "b02b69460bb44b14f33b6f3c7fe873ae6880d3a11b2b627f68831dac93c404ba"
+    },
+    {
+      "file": "static/chunks/fd32823e-889f2aa07511197f.js",
+      "rawBytes": 198536,
+      "gzipSidecarBytes": 62324,
+      "gzipSidecarSha256": "7b8a47d1288336ff88f55f788eb171b78b5b9f68151831f8ebb4790db5aa98a0"
+    },
+    {
+      "file": "static/chunks/8078-9cf96f435bf4c779.js",
+      "rawBytes": 188482,
+      "gzipSidecarBytes": 51249,
+      "gzipSidecarSha256": "71fa3cc7eae038f5674b2fd3ea9bd19f5607e50dbb471c98917c08697930ef1b"
+    },
+    {
+      "file": "static/chunks/main-app-5f52a121e430b1a5.js",
+      "rawBytes": 528,
+      "gzipSidecarBytes": 229,
+      "gzipSidecarSha256": "858dcd26893c23fde230deeefbbf8b43b89084d28b2cbb289f224feeff19a8ad"
+    }
+  ],
+  "recordedModuleAttribution": {
+    "2136": "Next compiled React DOM client",
+    "8078": "Next client router/segment cache and RSC client",
+    "8068": "webpack runtime",
+    "4977": "Next generated app entry"
+  },
+  "moduleAttributionLimit": "Recorded client-stats identifies modules; pre-minification estimates are not additive gzip contributions. Root membership is a canonical-manifest classification.",
+  "conclusion": "The current root graph consumes almost all of the final total shared budget. Application dialog splits alone do not establish the 120KB target; larger package/entry-graph changes remain subject to unchanged gates.",
+  "notClaimed": [
+    "new measured startup transfer",
+    "global impossibility of a smaller framework build",
+    "target waiver or excluding framework bytes",
+    "production change"
+  ]
+}

@@ -680,3 +680,11 @@ but full-sheet fidelity still fails at both widths (minimum tile SSIM about
 hashes match and prior reports are unchanged. No production renderer, worker or
 Rust compiler was changed. Known stroke/hairline and graphics-state style gaps
 are documented as source findings, not another measured pass.
+
+A source-artifact audit also finds 118,373 existing gzip bytes in R17's four
+framework/root-main files, out of 478,165 formal shared bytes. That leaves just
+1,627 bytes for everything else under the final 120,000-byte total target with
+this exact root graph. UI splits alone cannot establish that target. This is
+existing file-size/membership evidence, not a new transfer timing, a claim that
+all smaller framework builds are impossible, or permission to exclude framework
+bytes from the budget. See `artifacts/phase1-r17-framework-budget-2026-11-11.json`.
