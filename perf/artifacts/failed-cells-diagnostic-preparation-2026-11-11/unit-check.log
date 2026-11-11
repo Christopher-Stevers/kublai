@@ -1,0 +1,12 @@
+✔ only one exact proven item increment and identical retry envelope are permitted (0.482311ms)
+✔ visible unique target and negative destination/path guards fail closed (0.211354ms)
+✔ capture CPU/trace/aggregate bounds reject overrun rather than accepting a partial operation (0.104974ms)
+✔ observer drains queued entries, bounds records, restores only the selected input and performs no geometry reads (256.707273ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 296.233567

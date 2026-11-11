@@ -1,0 +1,29 @@
+{
+  "attemptId": "phase0-r19-five-failed-cells-attempt1",
+  "harnessRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "outputDirectory": "/tmp/foremanhq-failed-cells-v1-attempt1/captures",
+  "baseline": {
+    "base": "http://127.0.0.1:3485/",
+    "snapshot": "/tmp/foremanhq-speed-app-5h2kmq",
+    "sourceEvidence": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/source-before.json",
+    "preflight": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/preflight.json",
+    "fixtures": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/fixtures.json",
+    "quantityItemProof": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/quantity-items.json",
+    "serverPid": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/server.pid",
+    "serverLog": "/tmp/foremanhq-failed-cells-v1-attempt1/baseline/server.log",
+    "databaseLog": "/tmp/foremanhq-perf-pg.m5PBS4/server.log",
+    "expectedLabBuild": "cI20Tzl0OAQscfvjfmtFW"
+  },
+  "candidate": {
+    "base": "http://127.0.0.1:3486/",
+    "snapshot": "/tmp/foremanhq-speed-app-PSljsn",
+    "sourceEvidence": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/source-before.json",
+    "preflight": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/preflight.json",
+    "fixtures": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/fixtures.json",
+    "quantityItemProof": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/quantity-items.json",
+    "serverPid": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/server.pid",
+    "serverLog": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/server.log",
+    "databaseLog": "/tmp/foremanhq-perf-pg.EPBZmF/server.log",
+    "expectedLabBuild": "2e5AUhfrGey7tubpAbx-8"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "base": "http://127.0.0.1:3486/",
+  "snapshot": "/tmp/foremanhq-speed-app-PSljsn",
+  "sourceEvidence": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/source-before.json",
+  "preflight": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/preflight.json",
+  "fixtures": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/fixtures.json",
+  "quantityItemProof": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/quantity-items.json",
+  "serverPid": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/server.pid",
+  "serverLog": "/tmp/foremanhq-failed-cells-v1-attempt1/candidate/server.log",
+  "databaseLog": "/tmp/foremanhq-perf-pg.EPBZmF/server.log",
+  "expectedLabBuild": "2e5AUhfrGey7tubpAbx-8"
+}

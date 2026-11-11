@@ -1,0 +1,14 @@
+{
+  "protocol": "failed-cells-cpu-diagnostic-v1",
+  "files": {
+    "perf/failed-cells-diagnostic.mjs": "f3302142ab0e3d4796bb3c1ae91d83ea3902dd74f8cfd8cbeb87e1f159c03f76",
+    "perf/failed-cells-observation.mjs": "c27e98da95e3f9c81d5a08bdaf0e3187f10352f90a0b37d6b1c0ef0090445228",
+    "perf/lab/failed-cells-item-preflight.mjs": "be1d867ebb490edf8967fa0daa776da3a9d9fe502eb5472f976f2234b8cc2eff",
+    "perf/lab/failed-cells-reuse.mjs": "dfabefc4c8fe67b51f9efaf041163b93ca625b84acb87280246f3397c0525e3f",
+    "perf/lab/failed-cells-server.sh": "f6cb112527afa428086507d57584ab08a220f3007c04c828d8d91095c9234717",
+    "perf/lab/failed-cells-setup.sh": "0b4f09272347eab215d3cc3df10a98c16ee6bc555f9dddb7a0a6c5a41257bd23",
+    "perf/lab/failed-cells-finalize.mjs": "cd9ef948e555127c6e53902948235355c9de1a0f5f292600c47a5925df5ad79f",
+    "perf/lab/failed-cells-storage.mjs": "a581ab712e345cbeb4d722ffaf0c9fdaa3ef1d495fbb675a6bd06fa2836daac8",
+    "perf/lab/owned-process-supervisor.py": "90dab4db0710cad855bbef4243e1e3bd2b55f28bfe2538dd4f4c0c344c08de67"
+  }
+}

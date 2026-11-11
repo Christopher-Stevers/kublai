@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "provenance": "isolated-seeded-app",
+  "productionDatabase": false,
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+  "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+  "organizationId": "587721c3-b21a-4d18-8d1b-b3b28a07f695",
+  "privateDatabase": {
+    "socket": "/tmp/foremanhq-perf-pg.m5PBS4",
+    "port": 55463,
+    "database": "foremanhq_perf_lab",
+    "readOnly": true
+  },
+  "quoteId": "f1dd5f5e-ec23-483a-a7d4-45b349a15a05",
+  "totalItems": 25,
+  "eligibleItems": [
+    {
+      "itemId": "8e63b9d1-caa7-48b7-bdfc-bc6a02b577a0",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 2",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "ea44151a-4332-473f-9b6a-f9687106424c",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 3",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "10f211c3-3d18-405b-b39e-07e78d00e8d0",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 4",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "d01be0a2-1dd6-4b73-afab-21f007d3877c",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 5",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "ecef2592-a785-4bac-bb84-6211099ba2f1",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 6",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "18524b22-3f72-40d7-b717-83dcd94a613e",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 7",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "6d4a3241-d2fc-4888-a268-acd035bedb1e",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 8",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "b82f7178-1c25-4e86-ba84-7cc58423cb3e",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 9",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "49fc3f84-94c8-4f64-80ae-99b05ec9f301",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 10",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "db3175f4-ce35-49aa-a5a9-c5fd4f5d676f",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 11",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "67d1405b-f760-4ebd-80f4-fac171366cb7",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 12",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "c73a1293-9932-4c0d-b91d-cc269a9c17af",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 13",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "36e9ad38-a3b0-464d-aeef-75a0bc045e04",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 14",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "3789b23f-fff7-426e-90a5-6f02c5ac2e8b",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 15",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "c14498ee-e546-4168-9be5-dabc4ab63612",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 16",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "77dd173c-7422-422e-a63b-1124e226bf56",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 17",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "e85b2f5a-4baa-4d8b-b8a8-7f025b5c6fc5",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 18",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "a807040a-9890-4aa7-ab74-39160faa6c40",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 19",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "0c598a4d-7301-4417-83a2-a126f22918d2",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 20",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "43b1793e-1333-4a47-b9d7-fbb80b381721",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 21",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "6dc745bf-35c0-4b43-8e81-daa514f872bb",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 22",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "862c8315-c03f-458c-925a-3946471a9caa",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 23",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "fce0d23b-46ba-46bc-bdb0-428f86231dc3",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 24",
+      "quantity": 10,
+      "sentOrderItemId": null
+    },
+    {
+      "itemId": "ed69c107-f4f7-4388-bcd7-a609668163b6",
+      "materialListId": "728ac8d5-64ca-43c1-b031-8ec31468c156",
+      "partName": "Synthetic Copper Elbow 25",
+      "quantity": 10,
+      "sentOrderItemId": null
+    }
+  ],
+  "excludedSentItems": [
+    {
+      "itemId": "4529371b-7e52-4784-a3d1-d9f33af7ef8b",
+      "sentOrderItemId": "be26fad3-856b-4218-aac4-8d9a07f81875"
+    }
+  ],
+  "sourceEvidenceSha256": "31591720dd12e5049e8c853614c1b5ccedf1a2dfda8a86a3de46f25d887dee0d",
+  "fixturesSha256": "750067ba27805dccc7a61695b05f8587988b71ad4e39fa4832397b159a3a080d",
+  "selection": "No order or item selected by SQL. Driver must match original first button/input Card's unique h3 against this exact map before binding item ID."
+}

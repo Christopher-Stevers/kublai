@@ -1,0 +1,26 @@
+{
+  "quota": {
+    "bhardlimit": 52661174,
+    "bsoftlimit": 52661174,
+    "curspace": 41761251328,
+    "ihardlimit": 0,
+    "isoftlimit": 0,
+    "curinodes": 255906,
+    "btime": 0,
+    "itime": 0,
+    "valid": 63
+  },
+  "cacheSHA256": "4ad7c9b01fca2507e1c5fbbf88a17347b3636ac5ecffb725a34f5c2a0e1dfc95",
+  "quotaAvailableBytes": 12163790848,
+  "quotaAvailableInodes": null,
+  "syntheticCache": "/tmp/foremanhq-speed-app-5h2kmq/uploads/job-floor-plans/f4d30bf4-d23d-4aee-9b91-ba313d259a12/321a473a-e0dc-4480-a70b-219f3fc63f46",
+  "assetBytes": 1756721152,
+  "assetFiles": 12041,
+  "requiredBytes": 7563755520,
+  "requiredInodes": 58164,
+  "availableBytes": 25645051904,
+  "availableInodes": 792652,
+  "quotaProbeBytes": 33554432,
+  "quotaProbeFiles": 256,
+  "quotaProbePassed": true
+}
