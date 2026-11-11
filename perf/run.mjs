@@ -42,6 +42,7 @@ const save = (status) =>
     JSON.stringify(
       {
         version: 1,
+        ...sourceEvidence,
         provenance: "isolated-seeded-app",
         cpuSlowdown: 4,
         build: process.env.PERF_BUILD ?? "unknown",
@@ -62,10 +63,21 @@ const save = (status) =>
   );
 try {
   for (const [link, profile] of Object.entries(budgets.links).filter(
-    ([name]) => !process.env.PERF_PILOT || name === "Office",
+    ([name]) =>
+      process.env.PERF_LINKS
+        ? process.env.PERF_LINKS.split(",").includes(name)
+        : !process.env.PERF_PILOT || name === "Office",
   ))
-    for (const journey of budgets.journeys)
-      for (let run = 0; run < (process.env.PERF_PILOT ? 1 : 5); run++) {
+    for (const journey of budgets.journeys.filter(
+      (name) =>
+        !process.env.PERF_JOURNEYS ||
+        process.env.PERF_JOURNEYS.split(",").includes(name),
+    ))
+      for (
+        let run = 0;
+        run < Number(process.env.PERF_RUNS ?? (process.env.PERF_PILOT ? 1 : 5));
+        run++
+      ) {
         const context = await browser.newContext({
           viewport: { width: 390, height: 844 },
           deviceScaleFactor: 3,
@@ -82,6 +94,37 @@ try {
         });
         const page = await context.newPage();
         const pageErrors = [];
+        let rejectApi;
+        const apiFailure = new Promise((_, reject) => {
+          rejectApi = reject;
+        });
+        void apiFailure.catch(() => undefined);
+        page.on("response", async (response) => {
+          const url = new URL(response.url());
+          if (
+            url.origin !== base.origin ||
+            !url.pathname.startsWith("/api/trpc/")
+          )
+            return;
+          const procedure = decodeURIComponent(
+            url.pathname.slice("/api/trpc/".length),
+          );
+          if (!/^[A-Za-z0-9_,.]+$/.test(procedure)) return;
+          try {
+            const text = await response.text();
+            const code = text.match(
+              /"code"\s*:\s*"(INTERNAL_SERVER_ERROR|BAD_REQUEST|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|TIMEOUT)"/,
+            )?.[1];
+            if (response.status() >= 400 || code)
+              rejectApi(
+                new Error(
+                  `Application tRPC error ${procedure}: ${code ?? response.status()}; SQL/parameters omitted`,
+                ),
+              );
+          } catch {
+            /* Cancelled navigations can close a response body. */
+          }
+        });
         page.on("pageerror", (error) => pageErrors.push(error.message));
         const cdp = await context.newCDPSession(page);
         await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
@@ -93,14 +136,20 @@ try {
           uploadThroughput: profile.bytesPerSecond,
         });
         try {
-          await adapter.prepare?.({ page, base: base.href, journey, run });
+          await Promise.race([
+            adapter.prepare?.({ page, base: base.href, journey, run }),
+            apiFailure,
+          ]);
           const browserStart =
             journey === "coldstart"
               ? null
               : await page.evaluate(() => performance.now());
           const start = performance.now();
           // Journey must resolve only after its observable painted/sharp state; no fixed-delay completion.
-          await adapter[journey]({ page, base: base.href, run, cdp });
+          await Promise.race([
+            adapter[journey]({ page, base: base.href, run, cdp }),
+            apiFailure,
+          ]);
           const durationMs = performance.now() - start;
           if (pageErrors.length)
             throw new Error(`Browser script error: ${pageErrors.join("; ")}`);

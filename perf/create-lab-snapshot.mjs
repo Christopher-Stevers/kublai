@@ -73,7 +73,7 @@ if (!sourceBuildDir)
   throw new Error(
     "PERF_SOURCE_BUILD_DIST (actual release build directory) is required for source binding",
   );
-const evidence = await sourceEvidence(
+const preTransformEvidence = await sourceEvidence(
   source,
   target,
   fs.readFileSync(path.join(sourceBuildDir, "BUILD_ID"), "utf8").trim(),
@@ -81,7 +81,7 @@ const evidence = await sourceEvidence(
 );
 fs.writeFileSync(
   path.join(target, "source-evidence.json"),
-  JSON.stringify(evidence, null, 2),
+  JSON.stringify(preTransformEvidence, null, 2),
 );
 const safeHarnessNames = new Set([
   "auth",
@@ -211,5 +211,17 @@ fs.writeFileSync(
 fs.writeFileSync(
   path.join(target, "PERF_LAB_ONLY"),
   `Isolated app copied from ${source}. Clerk authentication and its bytes/timing are stubbed. Never deploy this snapshot.\n`,
+);
+const finalEvidence = await sourceEvidence(
+  source,
+  target,
+  preTransformEvidence.sourceBuild,
+  "after-lab-transforms",
+);
+finalEvidence.sourceVerification.preTransformUnchangedFilesChecked =
+  preTransformEvidence.sourceVerification.unchangedFilesChecked;
+fs.writeFileSync(
+  path.join(target, "source-evidence.json"),
+  JSON.stringify(finalEvidence, null, 2),
 );
 console.log(target);

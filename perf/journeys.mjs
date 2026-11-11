@@ -178,13 +178,28 @@ export async function opensheetpinch({ page, cdp }) {
   await expect(
     page.locator("[data-drawing-image-layer] img").first(),
   ).toBeVisible();
+  const surface = page.locator("[data-drawing-arc-canvas]");
+  await expect(surface).toBeVisible();
+  await expect(surface).toHaveCSS("touch-action", "none");
+  const layer = page.locator("[data-drawing-sheet-layer]");
+  const before = await layer.boundingBox();
+  const frame = await surface.boundingBox();
+  if (!before?.width || !frame?.width)
+    throw new Error("Drawing viewport is not laid out");
+  const nativeBefore = await page.evaluate(() => visualViewport?.scale ?? 1);
   await cdp.send("Input.synthesizePinchGesture", {
-    x: 180,
-    y: 400,
+    x: Math.round(frame.x + frame.width / 2),
+    y: Math.round(frame.y + frame.height / 2),
     scaleFactor: 2,
     relativeSpeed: 800,
     gestureSourceType: "touch",
   });
+  await expect
+    .poll(() => page.evaluate(() => visualViewport?.scale ?? 1))
+    .toBeCloseTo(nativeBefore, 2);
+  await expect
+    .poll(async () => (await layer.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before.width * 1.4);
   // Sharp means physical pixel coverage, not a timeout or a merely mounted canvas.
   await expect
     .poll(

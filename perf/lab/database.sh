@@ -6,11 +6,14 @@ pg_bin=${PERF_PG_BIN:-/home/tim/.local/pgsql-18/bin}
 lab_dir=$(mktemp -d /tmp/foremanhq-perf-pg.XXXXXX)
 cleanup() {
   "$pg_bin/pg_ctl" -D "$lab_dir/data" -m immediate stop >/dev/null 2>&1 || true
+  if [[ -n "${PERF_PG_ERROR_REPORT:-}" && -f "$lab_dir/server.log" ]]; then
+    node "$repo_root/perf/lab/pg-error-report.mjs" "$lab_dir/server.log" "$PERF_PG_ERROR_REPORT" || true
+  fi
   rm -rf -- "$lab_dir"
 }
 trap cleanup EXIT INT TERM
 "$pg_bin/initdb" -D "$lab_dir/data" --auth=trust --no-locale --encoding=UTF8 > "$lab_dir/init.log"
-"$pg_bin/pg_ctl" -D "$lab_dir/data" -l "$lab_dir/server.log" -o "-h '' -k $lab_dir -p 55463" start >/dev/null
+"$pg_bin/pg_ctl" -D "$lab_dir/data" -l "$lab_dir/server.log" -o "-h '' -k $lab_dir -p 55463 -c log_error_verbosity=verbose" start >/dev/null
 "$pg_bin/createdb" -h "$lab_dir" -p 55463 foremanhq_perf_lab
 export PERF_LAB_SOCKET="$lab_dir"
 export PERF_LAB_DATABASE_URL="postgresql://localhost/foremanhq_perf_lab?host=${lab_dir//\//%2F}&port=55463"
