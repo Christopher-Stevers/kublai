@@ -294,7 +294,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T10:08:20.750637+00:00",
+  "updatedAt": "2026-11-11T13:01:39.513926+00:00",
   "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
@@ -651,7 +651,9 @@
       "chatJoin": "d434e254",
       "catalogueCreation": "3a814154",
       "timesheetHints": "18023b1e",
-      "compiledListenResolver": "b2ca4cf4"
+      "compiledListenResolver": "b2ca4cf4",
+      "executiveEditorTargetGuard": "adda6fbd",
+      "sharedIssueSave": "c38c454c"
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
@@ -718,6 +720,31 @@
       "existingAuthorityPollRetained": true,
       "productionWorkerReleased": false,
       "schemaChanged": false
+    },
+    "r14FunctionalV5": {
+      "source": "perf/artifacts/r14-preferences-functional-2026-11-11-attempt2/report.json",
+      "status": "eight-intended-assertions-passed-with-known-denied-editor-defect",
+      "assertionsPassed": 8,
+      "unexpectedDatabaseErrors": 0,
+      "expectedAdministratorTerminations": 1,
+      "cleanupConfirmed": true,
+      "fullMatrixRun": false,
+      "acceptedForActivation": false,
+      "qualification": "V5 proved documented stream/fallback/HTTP authority assertions. Its additional snapshot showed an enabled stale executive editor after permission loss. adda6fbd fixes this separately; V6 adds disabled-editor assertions and awaits next exact candidate."
+    },
+    "drawingImagePrototype": {
+      "commits": [
+        "64c8701c",
+        "bdecabc4",
+        "a4ca7d02"
+      ],
+      "source": "perf/drawings/image-replay-one-sample.json",
+      "syntheticTests": 13,
+      "privateSamples": 1,
+      "imageResourceEligible": true,
+      "fullSheetFidelityPass": false,
+      "historicalCorpusReportChanged": false,
+      "productionRenderChanged": false
     }
   }
 }

@@ -544,3 +544,41 @@ the frozen timing method is unchanged. The full R14 journey matrix remains held
 until the complete functional protocol passes. Production remains the Phase0
 bootstrap. No phone work, production schema change, worker release or candidate
 activation occurred.
+
+## Complete R14 stream check and subsequent fixes — 2026-11-11
+
+The separately frozen V5 supplemental run passed all eight intended checks,
+including fresh HTTP restoration, fallback polling during a stream outage,
+transport reconnection, and an actual private LISTEN termination/resubscription.
+There were zero unexpected database errors and exactly one expected termination;
+all owned processes, ports and private database files were cleaned. The original
+V4 failure remains archived. V5 is functional evidence, not the frozen timing
+matrix or a no-polls claim. See
+`artifacts/r14-preferences-functional-2026-11-11-attempt2/`.
+
+Its denial snapshot also exposed a real additional defect: the open executive
+editor stayed enabled after permission loss. A provider regression reproduced
+an attempted executive edit falling through to a personal save when personal
+sorting was enabled. Later source `adda6fbd` preserves the selected write target,
+makes that editor read-only and retains the separate personal choice. All 33
+focused tests pass, and scoped lint adds no findings. The stronger V6 protocol
+is frozen separately and unexecuted, requiring the denied editor to be disabled.
+R14 has this known UI defect, so its full timing matrix was not started.
+
+Existing-own shared drawing issue saves are hardened in `c38c454c`. Accepted
+responses finish without waiting for refresh; newer cached revisions win; scoped
+duplicate/late-response guards and per-issue read-only recovery preserve drafts
+after uncertain responses. The server's optional account guard runs before the
+existing save service. Private queues and other save kinds retain their prior
+paths. All 131 focused tests pass, with no added lint findings. These changes
+and the receiving-resolution loading boundary will form the next reviewed
+candidate, rather than modifying frozen R14.
+
+The isolated drawing prototype now replays bounded ordinary RGB/RGBA image
+resources, with deduplication and explicit unsupported cases. Thirteen synthetic
+tests and scoped types pass. One existing private sample was rendered at the
+two existing widths and visually inspected: its image replay is eligible, but
+full-sheet fidelity fails both widths because other rendering semantics remain
+incomplete. This is not a sample-wide fidelity or compression result. Historical
+100-sheet evidence is unchanged, no production drawing path changed, and no
+runtime remains. See `drawings/image-replay-one-sample.json`.
