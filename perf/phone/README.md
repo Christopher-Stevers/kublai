@@ -2,7 +2,7 @@
 
 Prepared source only. Do not run during the lab baseline CPU quiet window. Root owns Android pairing/ADB setup and runtime attestation after the lab. This runner is **not** in `HARNESS_FILES`, does not import or modify frozen `perf/run.mjs`/`journeys.mjs`, and cannot be reported as accepted `ready-then-pinch-v2` or an eight-journey/three-link matrix.
 
-The initial scope is two repeats of three **visited read** journeys: open job, open the job's material-list tab, and open a material list. Selectors mirror the existing adapter, but input is separately implemented page-CDP touch start/end. It warms each destination through the actual UI, returns via that new tab's history, then times the second opening. No quantity, receipt, order, chat, recognition, drawing edit or production write journey is executed. Natural device CPU is used: no four-times slowdown or CPU override, viewport emulation or link shaping. Heating/refresh rate are not inferred from the model name.
+The initial scope is two repeats of three **visited read** journeys: open job, open the job's material-list tab, and open a material list. Selectors mirror the existing adapter, but input is separately implemented page-CDP touch start/end. It warms each destination through the actual UI, returns by touching the actual app header's unique visible Go up one level control, then times the second opening. No quantity, receipt, order, chat, recognition, drawing edit or production write journey is executed. Natural device CPU is used: no four-times slowdown or CPU override, viewport emulation or link shaping. Heating/refresh rate are not inferred from the model name.
 
 ## Runtime needs, to arrange after quiet
 
@@ -47,7 +47,7 @@ Source was prepared during the baseline quiet window. After explicit release, fo
 For a separately launched disposable local Chromium smoke check, require both
 `PERF_PHONE_SMOKE=1` and `PERF_PHONE_CONTROL_TRANSPORT=local-smoke`. All lab
 attestation/isolation checks stay enabled. Reports use method
-`local-smoke-visited-reads-page-cdp-v1`, status `smoke-only`/`smoke-failed`, and
+`local-smoke-visited-reads-page-cdp-v2`, status `smoke-only`/`smoke-failed`, and
 `physicalPhoneEvidence:false`; those results must never be presented as phone
 evidence. Root owns launching that disposable browser and the later phone run.
 
@@ -59,10 +59,9 @@ browser command `Target.createTarget` for `about:blank`; it never enables target
 discovery or automatic attachment. The owned page then receives
 `Page.bringToFront` before navigation, recorded as `activate-new-page`.
 
-The exact-text selector includes the app's `div[data-slot="card-title"]` and
-rejects ancestor matches when a visible child has the same text. This matches
-the frozen adapter's generic text locator without accidentally timing a hidden
-retained panel. Reports identify bounded phases (attestation, navigate,
+The historical v1 exact-text selector included the app's `div[data-slot="card-title"]` and
+rejected ancestor matches when a visible child had the same text. Protocol v2
+below replaces that generic job input with a unique interactive source card. Reports identify bounded phases (attestation, navigate,
 source-ready, warmread, back and visitedread) plus journey/run. Failed runs retain
 completed samples only as diagnostics. Early setup failures also produce an
 artifact, with setup phase/error class and known source/creation context rather
@@ -73,7 +72,7 @@ Cleanup records whether the exact created target's HTTP close was acknowledged,
 with status/error class. HTTP acknowledgment is not an independently observed
 compositor or process-lifecycle result. No other target is closed or inspected.
 
-Root reports that the separate local smoke passed all three visited-read cases
+Root reports that the separate historical v1 local smoke passed all three visited-read cases
 using browser-create plus bring-to-front. The physical Pixel attempt created and
 activated its own tab but timed out at attestation navigation; it produced **zero
 journey timings**. The owned tab close returned HTTP 200, forwards were removed,
@@ -156,3 +155,37 @@ After root released the quiet window, all **six mock transport tests passed**
 transport test and visited-read runner. These tests use no HTTP/network,
 browser or Android actions. The new diagnostic remains unexecuted against a
 browser/device; no new phone timing samples or physical evidence were produced.
+
+
+## Visited-read protocol v2
+
+New runs use `phone-visited-reads-page-cdp-v2` or the explicit smoke-only
+`local-smoke-visited-reads-page-cdp-v2`. The return gesture touches the owned page's
+actual app header button (`aria-label="Go up one level"`) through page-scoped CDP
+input. It never assumes `history.back()` invokes Android CloseWatcher. The open-job
+source must be one visible interactive job card with the exact fixture title,
+not a generic heading. Other source cards and the app-back control must likewise
+be unique. Before each read, including after warm-return and immediately before
+timed input, the destination must be absent; duplicates or an already-ready
+destination stop the run. Warm-return additionally requires the expected source
+pathname. No app or frozen lab method changed.
+
+Earlier v1 artifacts remain historical records and are not relabelled or replaced.
+Use a new explicit output path for v2; default names include phone-v2. Earlier local
+v1 smoke reports are not evidence for this changed preparation. Earlier physical
+attempts produced zero journey timings because attestation navigation failed;
+this source finding does not establish that failure's cause. Node syntax and
+source/mock checks plus a later separately authorized disposable local smoke are
+required before another device run. Existing owned-target, loopback, private DB,
+attestation and no-personal-tab rules are unchanged. No browser or ADB action is
+part of this source fix.
+
+V2 preparation checks actually completed: `node --check perf/phone/run.mjs`
+passed; the unchanged CDP transport mock suite passed all six tests; a synthetic
+jsdom evaluation of this runner's actual selector expressions passed job-heading
+and hidden-duplicate exclusion, unique app-back selection, destination-marker
+observation, and visible duplicate job/back refusal. No browser target or ADB
+connection was used by those checks. **Local v2 browser smoke has not run.**
+Neither the old v1 smoke nor the earlier zero-timing phone attempts are promoted
+to v2 evidence. A later smoke must stop on nested-card ambiguity and refine the
+fixture selector from the actual owned DOM, without a generic-heading fallback.

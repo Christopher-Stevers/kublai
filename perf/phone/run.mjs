@@ -5,9 +5,9 @@ import { createHash } from "node:crypto";
 import { performance as hostClock } from "node:perf_hooks";
 import { createCdpConnection } from "./cdp-transport.mjs";
 
-const physicalMethod = "phone-visited-reads-page-cdp-v1";
+const physicalMethod = "phone-visited-reads-page-cdp-v2";
 const smoke = process.env.PERF_PHONE_SMOKE === "1";
-const METHOD = smoke ? "local-smoke-visited-reads-page-cdp-v1" : physicalMethod;
+const METHOD = smoke ? "local-smoke-visited-reads-page-cdp-v2" : physicalMethod;
 let setupPhase = "configuration";
 const setupEvidence = { createdTargetKnown: false };
 async function main() {
@@ -250,8 +250,17 @@ async function main() {
         awaitPromise: true,
         returnByValue: true,
       });
-      if (result.exceptionDetails)
+      if (result.exceptionDetails) {
+        const description = result.exceptionDetails.exception?.description;
+        for (const label of [
+          "Ambiguous synthetic control",
+          "Destination visible before input",
+          "Destination visible before timed input",
+        ])
+          if (typeof description === "string" && description.includes(label))
+            throw Error(label);
         throw Error("Synthetic page evaluation failed; payload omitted");
+      }
       return result.result.value;
     };
     const own = (expression) =>
@@ -290,9 +299,24 @@ async function main() {
         `location.href===${JSON.stringify(target.href)}&&document.readyState==='complete'`,
       );
     }
-    const textTarget = (text) =>
-      `Array.from(document.querySelectorAll('a,button,[role="button"],[data-slot="card-title"],h1,h2,h3,h4,span,p,div')).find(el=>el.textContent.trim()===${JSON.stringify(text)}&&el.getClientRects().length&&!Array.from(el.children).some(child=>child.textContent.trim()===${JSON.stringify(text)}&&child.getClientRects().length))`;
-    const jobCard = `Array.from(document.querySelectorAll('[data-job-card="material-lists"]')).find(el=>el.getClientRects().length)`;
+    // Fail closed on duplicate visible controls; headings are never job inputs.
+    const uniqueVisible = (selector, predicate = "true") =>
+      `(() => {const matches=Array.from(document.querySelectorAll(${JSON.stringify(selector)})).filter(el=>el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'&&(${predicate}));if(matches.length>1)throw Error('Ambiguous synthetic control');return matches[0];})()`;
+    const namedCard = (selector, name) =>
+      uniqueVisible(
+        selector,
+        `Array.from(el.querySelectorAll('[data-slot="card-title"]')).some(title=>title.textContent.trim()===${JSON.stringify(name)})`,
+      );
+    const jobSource = namedCard(
+      '[data-tutorial="job-card"][role="button"]',
+      fixture.jobName,
+    );
+    const listSource = namedCard(
+      '[data-slot="card"]',
+      fixture.materialListName,
+    );
+    const jobCard = uniqueVisible('[data-job-card="material-lists"]');
+    const appBack = uniqueVisible('button[aria-label="Go up one level"]');
     const listReady = `Array.from(document.querySelectorAll('button')).find(el=>el.getAttribute('aria-label')==='Increase quantity'&&el.getClientRects().length)`;
     const jobPath = `/jobs/${encodeURIComponent(fixture.jobId)}`;
     const listPath = `/jobs/material-lists/${encodeURIComponent(fixture.materialListId)}`;
@@ -300,33 +324,37 @@ async function main() {
       {
         name: "openjob",
         source: "/jobs",
-        target: textTarget(fixture.jobName),
+        target: jobSource,
         ready: jobCard,
       },
       {
         name: "switchjobtabs",
         source: jobPath,
         target: jobCard,
-        ready: textTarget(fixture.materialListName),
+        ready: listSource,
       },
       {
         name: "openmateriallist",
         source: `${jobPath}/material-lists`,
-        target: textTarget(fixture.materialListName),
+        target: listSource,
         ready: listReady,
       },
     ];
     async function tapRead(journey) {
       await until(`Boolean(${journey.target})`);
+      await own(
+        `(() => {if(${journey.ready})throw Error('Destination visible before input');return true;})()`,
+      );
       const point = await own(
         `(() => {const el=(${journey.target});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
       );
       await own(`(() => {
+    if(${journey.ready})throw Error('Destination visible before timed input');
     const state={start:null,release:null,gaps:[],last:null,done:false};
     let timeout;
     state.promise=new Promise((resolve,reject)=>{
       timeout=setTimeout(()=>{cleanup();reject(Error('Read readiness timeout'));},20000);
-      const down=()=>{state.start=performance.now();performance.mark('phone-evidence:tap-start');requestAnimationFrame(tick);};
+      const down=()=>{try{if(${journey.ready})throw Error('Destination visible before input');state.start=performance.now();performance.mark('phone-evidence:tap-start');requestAnimationFrame(tick);}catch(error){state.done=true;cleanup();reject(error);}};
       const up=()=>{state.release=performance.now();};
       const cleanup=()=>{clearTimeout(timeout);document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointerup',up,true);};
       const tick=now=>{
@@ -381,9 +409,20 @@ async function main() {
           setPhase("warmread", journey.name, run);
           await tapRead(journey); // Visit through the actual UI first.
           setPhase("back", journey.name, run);
-          await own("(()=>{history.back();return true;})()");
+          await until(`Boolean(${appBack})`);
+          const backPoint = await own(
+            `(() => {const el=(${appBack});el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
+          );
+          await send("Input.dispatchTouchEvent", {
+            type: "touchStart",
+            touchPoints: [backPoint],
+          });
+          await send("Input.dispatchTouchEvent", {
+            type: "touchEnd",
+            touchPoints: [],
+          });
           await until(
-            `location.pathname===${JSON.stringify(journey.source)}&&Boolean(${journey.target})`,
+            `location.pathname===${JSON.stringify(journey.source)}&&Boolean(${journey.target})&&!Boolean(${journey.ready})`,
           );
           setPhase("visitedread", journey.name, run);
           samples.push({
@@ -402,6 +441,8 @@ async function main() {
         status: smoke ? "smoke-only" : "diagnostic-only",
         physicalPhoneEvidence: !smoke,
         method: METHOD,
+        navigationPreparation:
+          "app-header-back-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         driverSha256: createHash("sha256")
           .update(await fs.readFile(new URL(import.meta.url)))
@@ -442,6 +483,8 @@ async function main() {
         status: smoke ? "smoke-failed" : "failed",
         physicalPhoneEvidence: false,
         method: METHOD,
+        navigationPreparation:
+          "app-header-back-unique-source-destination-absent",
         timestamp: new Date().toISOString(),
         sourceBuild: source.sourceBuild,
         sourceFingerprint: source.sourceFingerprint,
@@ -462,7 +505,7 @@ async function main() {
     }
     const output = path.resolve(
       process.env.PERF_PHONE_OUTPUT ??
-        `perf/artifacts/phone-visited-reads-${Date.now()}.json`,
+        `perf/artifacts/phone-v2-visited-reads-${Date.now()}.json`,
     );
     await fs.mkdir(path.dirname(output), { recursive: true });
     await fs.writeFile(output, JSON.stringify(report, null, 2));
@@ -485,7 +528,7 @@ await main().catch(async (error) => {
   // metadata only; never enumerate targets to recover an unknown create result.
   const output = path.resolve(
     process.env.PERF_PHONE_OUTPUT ??
-      `perf/artifacts/phone-setup-failed-${Date.now()}.json`,
+      `perf/artifacts/phone-v2-setup-failed-${Date.now()}.json`,
   );
   const errorClass =
     error instanceof Error && /^[A-Za-z]+Error$/.test(error.name)
@@ -494,6 +537,7 @@ await main().catch(async (error) => {
   const report = {
     status: smoke ? "smoke-setup-failed" : "setup-failed",
     method: METHOD,
+    navigationPreparation: "app-header-back-unique-source-destination-absent",
     physicalPhoneEvidence: false,
     accepted: false,
     timestamp: new Date().toISOString(),
