@@ -4790,7 +4790,7 @@ function PartChoice({
 /** A slip line that is not on the order. The reviewer adds the likely
  * catalogue part, or a new one, to the order's material list. */
 function AddToList({
-  line,
+  line: sourceLine,
   detail,
   jobId,
   run,
@@ -4805,6 +4805,11 @@ function AddToList({
   run: (a: Action) => Promise<boolean>;
 }) {
   const [mode, setMode] = useState<"search" | "new" | null>(null);
+  const [useCustomQuantity, setUseCustomQuantity] = useState(false);
+  const [customQuantity, setCustomQuantity] = useState(String(sourceLine.ordered ?? sourceLine.quantity ?? ""));
+  const line = useCustomQuantity ? { ...sourceLine, ordered: Number(customQuantity) } : sourceLine;
+  const addRun: typeof run = (action) => run(action.action === "part" && useCustomQuantity
+    ? { ...action, orderQuantity: Number(customQuantity) } : action);
   const section = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!cards) return;
@@ -4814,7 +4819,7 @@ function AddToList({
   const likely = (detail.likely?.[line.id] ?? []).slice(0, 3),
     order = detail.document.packingSlip!,
     count = line.ordered ?? line.quantity,
-    counted = count !== null && count > 0;
+    counted = count !== null && Number.isFinite(count) && count > 0;
   const toggle = (next: "search" | "new") =>
     setMode(mode === next ? null : next);
   return (
@@ -4833,6 +4838,15 @@ function AddToList({
             {cards && <Button variant="link" onClick={onReviewQuantity}>Review quantity</Button>}
           </p>
         )}
+      </div>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={useCustomQuantity} onChange={e => setUseCustomQuantity(e.target.checked)} />
+          Use custom quantity
+        </label>
+        {useCustomQuantity && <Label name="Custom order quantity">
+          <input className={field} type="number" min="0.000001" step="any" value={customQuantity} onChange={e => setCustomQuantity(e.target.value)} />
+        </Label>}
       </div>
       {(!cards || !mode) && (likely.length > 0 || cards) ? (
         <ul
@@ -4856,7 +4870,7 @@ function AddToList({
                       ? "Close match"
                       : "Possible match"
               }
-              onAdd={(confirmed) => void addPart(run, line, p, confirmed)}
+              onAdd={(confirmed) => void addPart(addRun, line, p, confirmed)}
             />
           ))}
           {cards && <li className={`${PART_TILE_CARD_CLASS} border bg-card shadow-sm`}>
@@ -4898,7 +4912,7 @@ function AddToList({
           line={line}
           detail={detail}
           jobId={jobId}
-          run={run}
+          run={addRun}
           mode={mode}
         />
       )}

@@ -2534,7 +2534,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     ).toBeUndefined();
     expect(Number((await item()).receivedQuantity)).toBe(2);
   });
-  it.each([{packaged:false, conflict:false}, {packaged:true, conflict:false}, {packaged:false, conflict:true}])("adds a likely part with package and supplier-link confirmation (%j)", async ({packaged, conflict}) => {
+  it.each([{packaged:false, conflict:false, custom:false, noUnit:false}, {packaged:true, conflict:false, custom:false, noUnit:false}, {packaged:false, conflict:true, custom:false, noUnit:false}, {packaged:false, conflict:false, custom:true, noUnit:true}])("adds a likely part with package and supplier-link confirmation (%j)", async ({packaged, conflict, custom, noUnit}) => {
     const { access, doc } = await confirmedHeader();
     if (packaged) await db.insert(schema.units).values({ id: id(90), code: "length", displayName: "Length", kind: "quantity" });
     await db
@@ -2572,7 +2572,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
         organizationId: org,
         catalogId: id(50),
         displayName: displayName as string,
-        bulkUnit: packaged ? "length" : "ea",
+        bulkUnit: noUnit ? null : packaged ? "length" : "ea",
         piecesPerPack: packaged ? 12 : null,
         individualUnit: packaged ? "ft" : null,
       })),
@@ -2606,6 +2606,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       photoUrl: null,
       addToOrder: true,
       packageUnitConfirmed: packaged,
+      ...(custom ? { orderQuantity: 7 } : {}),
     } as const;
     if (packaged) {
       await expect(reviewAction(access, doc.documentId, { ...action, packageUnitConfirmed: false })).rejects.toThrow(/Confirm whether/);
@@ -2627,7 +2628,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     )!;
     expect(added).toMatchObject({
       orderId: order,
-      quantity: "4.000000",
+      quantity: custom ? "7.000000" : "4.000000",
       requestedQuantity: "0.000000",
       uomId: packaged ? id(90) : id(51),
     });
@@ -2639,7 +2640,7 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       orderItemId: added.id,
       partId: id(60),
       unit: packaged ? "length" : "ea",
-      ordered: 4,
+      ordered: custom ? 7 : 4,
       quantity: 4,
     });
     // The supplier's code and words now lead to the part on the next slip.

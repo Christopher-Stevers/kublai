@@ -242,6 +242,8 @@ export const receivingInput = z.discriminatedUnion("action", [
     photoUrl: text.max(2000).nullable(),
     /** Also add it to the linked order and its material list. */
     addToOrder: z.boolean().default(false),
+    /** Optional order-only override; delivered quantity remains the slip count. */
+    orderQuantity: qty.positive().optional(),
     /** Reviewer confirms each means one complete catalogue package/length. */
     packageUnitConfirmed: z.boolean().default(false),
   }),

@@ -996,6 +996,17 @@ it("adds the likely catalogue part to the material list in one tap", async () =>
     addToOrder: true,
   });
 });
+it("can override the added order quantity without editing the delivered count", async () => {
+  notOnOrder(3);
+  render(<ReceivingWorkspace jobId="job" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Review line: Unclear pipe" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Use custom quantity" }));
+  fireEvent.change(screen.getByLabelText("Custom order quantity"), { target: { value: "7" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add Copper pipe to the list" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "part", orderQuantity: 7, addToOrder: true });
+  expect(state.review.lines[1]!.quantity).toBe(3);
+});
 it("confirms EA means one complete pipe length before adding it", async () => {
   notOnOrder(1);
   state.review.lines[1]!.unit = "EA";

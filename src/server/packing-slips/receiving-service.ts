@@ -770,10 +770,9 @@ async function addOrderLine(
   // An unread unit is the part's own, unless the part comes in packs.
   if (
     !receiptUnit(line.unit) &&
-    !(part!.piecesPerPack && part!.piecesPerPack > 1) &&
-    part!.bulkUnit
+    !(part!.piecesPerPack && part!.piecesPerPack > 1)
   )
-    line.unit = part!.bulkUnit;
+    line.unit = part!.bulkUnit?.trim() || "ea";
   const unit = receiptUnit(line.unit);
   if (
     part!.piecesPerPack &&
@@ -1730,7 +1729,10 @@ async function mutateReceivingImpl(
           l.partId = p!.id;
           l.photoUrl = p!.imageUrl;
         }
-        if (input.addToOrder) await addToOrder(l);
+        if (input.addToOrder) {
+          if (input.orderQuantity !== undefined) l.ordered = input.orderQuantity;
+          await addToOrder(l);
+        }
       } else if (input.action === "reconstruct") {
         await requireCreate(fresh, tx);
         if (review.lines.some((line) => line.approved) || doc.packingSlipAnalysis?.applied)
