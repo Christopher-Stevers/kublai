@@ -1,3 +1,4 @@
+import { liveAccountScope } from "~/lib/live-protocol";
 import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
@@ -162,8 +163,11 @@ export const drawingsRouter = createTRPCRouter({
     }),
 
   createSet: hasAppAccess
-    .input(z.object({ jobId: z.string().uuid(), name, parentId: z.string().uuid().nullish() }))
+    .input(z.object({ jobId: z.string().uuid(), name, parentId: z.string().uuid().nullish(), expectedAccountKey: z.string().min(1).max(512).optional() }))
     .mutation(async ({ ctx, input }) => {
+      if (input.expectedAccountKey !== undefined && input.expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Your signed-in workspace changed. Reopen the drawing folders before creating a folder." });
+      }
       assertCanManage(ctx);
       await requireJob(ctx, input.jobId);
       if (input.parentId) {

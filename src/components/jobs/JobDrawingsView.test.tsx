@@ -4,6 +4,7 @@ vi.mock("~/hooks/use-tier-one-read-options", () => ({
   blocksCachedRead: (query: { data?: unknown; error?: unknown; isError?: boolean }) => Boolean(query.error || query.isError),
 }));
 import { useRef, type Ref } from "react";
+import type { useCreateDrawingSet as UseCreateDrawingSet } from "~/hooks/use-create-drawing-set";
 import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 import {
   act,
@@ -18,6 +19,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runHeaderBackOverride } from "~/lib/header-back-events";
 
 const state = vi.hoisted(() => ({
+  actualCreate: false,
+  createReal: vi.fn(),
   warm: vi.fn(),
   cancelWarm: vi.fn(),
   account: null as null | { accountKey: string; store: Record<string, ReturnType<typeof vi.fn>> },
@@ -70,6 +73,23 @@ vi.mock("~/hooks/use-instant-drawing-metadata", async () => {
     canPersistSet: canPersist,
   }) };
 });
+// The legacy fixtures use their old synchronous transport. The new case opts
+// into the actual hook on a fresh mount; hook selection never changes mid-mount.
+vi.mock("~/hooks/use-create-drawing-set", async (importOriginal) => {
+  const actual = await importOriginal<{ useCreateDrawingSet: typeof UseCreateDrawingSet }>();
+  function useFixtureCreate(options: Parameters<typeof actual.useCreateDrawingSet>[0]) {
+    return { isPending: false, pendingName: null, error: null, create: (name: string) => {
+      options.onStart();
+      state.calls.push(["createSet", { jobId: options.jobId, name, ...(options.parentId ? { parentId: options.parentId } : {}) }]);
+      options.onCreated("new-set");
+      return true;
+    } };
+  }
+  return { useCreateDrawingSet: (options: Parameters<typeof actual.useCreateDrawingSet>[0]) => {
+    const useSelectedHook = state.actualCreate ? actual.useCreateDrawingSet : useFixtureCreate;
+    return useSelectedHook(options);
+  } };
+});
 vi.mock("~/lib/background-work", () => ({ canWarmInBackground: () => true, scheduleBackgroundWork: state.warm }));
 vi.mock("~/trpc/react", () => {
   const mutation = (name: string) => ({
@@ -90,7 +110,7 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
-        client: { drawingsWorkspace: { get: { query: state.fetchWorkspace } } },
+        client: { drawings: { createSet: { mutate: state.createReal } }, drawingsWorkspace: { get: { query: state.fetchWorkspace } } },
         drawingsWorkspace: { list: { invalidate: state.refreshIdentities }, get: { invalidate: vi.fn(), getData: () => undefined, setData: vi.fn(), prefetch: state.prefetch, fetch: state.fetchWorkspace } },
         drawings: {
           listSets: { invalidate: vi.fn() },
@@ -170,6 +190,8 @@ import { JobDrawingsView } from "./JobDrawingsView";
 import { recordDrawingSheetOpen } from "./useDrawingFolderOrder";
 
 beforeEach(() => {
+  state.actualCreate = false;
+  state.createReal.mockReset();
   const stored = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => stored.get(key) ?? null,
@@ -892,4 +914,30 @@ it("shows the extracted number when the cached card still has a Sheet placeholde
   expect(screen.queryByText("Sheet 32", {exact:true})).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Table view" }));
   expect(screen.getByRole("button", { name: "Open 3112-L01-U13 BR-02" })).toHaveTextContent("3112-L01-U13 BR-02");
+});
+
+
+it("real create controller keeps pending name outside closed form and restores refused draft without disk preview", async () => {
+  const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
+  let reject!: (error: Error) => void;
+  state.actualCreate = true;
+  state.createReal.mockReturnValue(new Promise((_resolve, refuse) => { reject = refuse; }));
+  const store = { readSnapshot: vi.fn(async () => null), saveSnapshot: vi.fn(async () => undefined), resolveAssetUrl: vi.fn(async (url: string) => url) };
+  state.account = { accountKey: "org:actor", store };
+  const client = new QueryClient();
+  render(<QueryClientProvider client={client}><JobDrawingsView jobId="job" /></QueryClientProvider>);
+  fireEvent.click(screen.getAllByRole("button", { name: "New folder" })[0]!);
+  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Fresh folder" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create folder" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getAllByRole("status").some(node => node.textContent?.includes("Fresh folder"))).toBe(true);
+  expect(screen.getAllByRole("button", { name: "New folder" }).every(button => button.hasAttribute("disabled"))).toBe(true);
+  await waitFor(() => expect(state.createReal).toHaveBeenCalledOnce());
+  expect(JSON.stringify(store.saveSnapshot.mock.calls)).not.toContain("Fresh folder");
+  await act(async () => reject(new Error("permission refused")));
+  expect(screen.getByRole<HTMLInputElement>("textbox", { name: "Name" }).value).toBe("Fresh folder");
+  expect(screen.getByRole("alert").textContent).toContain("check the folders");
+  expect(JSON.stringify(store.saveSnapshot.mock.calls)).not.toContain("Fresh folder");
+  // Drain Radix's deferred unmount focus event while this jsdom realm exists.
+  await act(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); });
 });

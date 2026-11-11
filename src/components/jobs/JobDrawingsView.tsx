@@ -1,4 +1,5 @@
 "use client";
+import { useCreateDrawingSet } from "~/hooks/use-create-drawing-set";
 import { getQueryKey } from "@trpc/react-query";
 import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
@@ -165,6 +166,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const [moveDestination, setMoveDestination] = useState("");
   const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
   const [nameDraft, setNameDraft] = useState("");
+  const [nameDialogGeneration, setNameDialogGeneration] = useState(0);
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const account = useDrawingAccount();
@@ -348,13 +350,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   };
   const onError = (error: { message: string }) =>
     notify(error.message, "error");
-  const createSet = api.drawings.createSet.useMutation({
-    onSuccess: async (result) => {
-      await refresh();
-      setSetId(result.id);
-    },
-    onError,
-  });
   const renameSet = api.drawings.renameSet.useMutation({
     onSuccess: refresh,
     onError,
@@ -488,6 +483,13 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     setSnapshot.online &&
     Boolean(permissions.canDelete ?? flags?.canDelete ?? flags?.canManage);
 
+  const createSet = useCreateDrawingSet({
+    jobId, parentId: setId, viewId: JSON.stringify([sheetId, nameDialogGeneration]), enabled: canUpload,
+    onStart: () => setNameDialog(null),
+    onRefused: name => { setNameDraft(name); setNameDialog({ kind: "new-set" }); },
+    onCreated: id => setSetId(id),
+  });
+
   // Speculation must never race the selected sheet's PDF and tool workspace.
   const neighbours = sheet
     ? [sheets[sheetIndex + 1], sheets[sheetIndex - 1]]
@@ -523,13 +525,14 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
 
   const openNameDialog = (dialog: NameDialog) => {
+    setNameDialogGeneration(value => value + 1);
     setNameDialog(dialog);
     setNameDraft(dialog.kind === "new-set" ? "" : dialog.name);
   };
   const saveName = () => {
     const name = nameDraft.trim();
     if (!nameDialog || !name) return;
-    if (nameDialog.kind === "new-set") createSet.mutate({ jobId, name, ...(setId ? { parentId: setId } : {}) });
+    if (nameDialog.kind === "new-set") { createSet.create(name); return; }
     else if (nameDialog.kind === "rename-set")
       renameSet.mutate({ setId: nameDialog.id, name });
     else renameSheet.mutate({ sheetId: nameDialog.id, name }, setData);
@@ -565,6 +568,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     </Dialog>
   );
   const nameDialogView = (
+    <>
+    {createSet.pendingName && <p role="status" className="my-3 text-sm">Creating folder “{createSet.pendingName}”…</p>}
     <Dialog
       open={nameDialog !== null}
       onOpenChange={(open) => !open && setNameDialog(null)}
@@ -603,13 +608,15 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!nameDraft.trim()}>
+            {nameDialog?.kind === "new-set" && createSet.error && <p role="alert" className="text-destructive text-sm">{createSet.error}</p>}
+            <Button type="submit" disabled={!nameDraft.trim() || (nameDialog?.kind === "new-set" && createSet.isPending)}>
               {nameDialog?.kind === "new-set" ? "Create folder" : "Save"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 
   // Sheet viewer: full screen under the app bar.
@@ -701,7 +708,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     <Button
       size={size}
       className={className}
-      disabled={!canUpload}
+      disabled={!canUpload || createSet.isPending}
       onClick={() => openNameDialog({ kind: "new-set" })}
     >
       <FolderPlusIcon className="mr-2 h-5 w-5" />

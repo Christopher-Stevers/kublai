@@ -1,0 +1,24 @@
+# Drawing folder creation intent — prepared source
+
+`drawings.createSet` (two calls in the exact observed first-twenty inventory) now keeps a visible “Creating folder [name]…” status after its name form closes. This is immediate, ephemeral creation intent, **not accepted folder creation** or a completed first-twenty latency gate. Server-generated identity and permission decisions remain remote. No selectable placeholder, timestamp, revision, folder cache row, dependent upload target or new offline queue is invented.
+
+`JobDrawingsView` uses `useCreateDrawingSet`. The hook captures the validated account binding, read-authority token, job, parent and origin view/form generation at dispatch. A synchronous latch rejects duplicate attempts before TanStack's request microtask; offline submissions leave the draft open and never replay on reconnect. `useInstantMutation` sends with networkMode always and retry false. Failure clears pending intent and restores the captured name only when the originating UI still owns the request. Opening another name form, switching folders/sheets/jobs, Activity hiding/unmount or account replacement fences old UI callbacks; A→B→A is generation-fenced. Uncertain failures explicitly ask the user to check folders before retrying.
+
+A successful response must contain a real UUID before the same origin view may navigate. The existing selected-folder read supplies actual folder data/capabilities. Current-account/read-authority reconciliation invalidates the captured job/parent's existing reads even after a view switch or unmount; it never refreshes an old account through a replacement actor's tRPC context. Refresh completion is not awaited by the pending lock. There are no optimistic query writes, and the existing snapshot contract, cache allowlist, selected-read refresh-behind policy, neighbor behavior and drawing edit queue remain unchanged.
+
+The additive optional `expectedAccountKey` on the existing server procedure compares `liveAccountScope` (including simulation) before the handler's permission/domain-DB work. Legacy callers may omit it. Existing drawing-management, job/org and same-job parent checks remain intact, and explicit insert fields exclude the guard. No schema, worker or deployment change. Existing simulation audit middleware is preserved; router tests mock its separate audit recorder, so no-domain-DB-on-mismatch assertions do not claim that global audit records are absent.
+
+## Focused proof
+
+After focused fixes, **74 unique tests across four files pass**, with one Vitest worker:
+
+- `use-create-drawing-set.test.tsx`: 15 tests, real TanStack mutation lifecycle; surviving pending-name UI/form close, duplicate/offline refusal, draft rollback, real-ID-only acceptance, delayed dispatch identity, account/read-authority replacement, A→B→A, view/form changes, Activity/StrictMode and unmount, and accepted completion independent of paused refresh.
+- `JobDrawingsView.test.tsx`: 42 tests including one new actual-view/actual-hook integration. It proves pending name survives form close, create controls lock, refused draft returns, and mocked disk snapshot writes never contain the pending name. Older deterministic fixtures keep their existing transport through a stable per-mount hook-selection seam.
+- `drawings-create-account.test.ts`: 10 tests, matching/omitted actor key, user/org/simulation mismatches, guard exclusion from inserted fields, and preserved missing-job, management and cross-job parent refusals.
+- Existing `drawings-permissions.test.ts`: seven tests.
+
+Command: `NODE_OPTIONS=--no-experimental-webstorage vitest run src/hooks/use-create-drawing-set.test.tsx src/components/jobs/JobDrawingsView.test.tsx src/server/api/routers/drawings-create-account.test.ts src/server/api/routers/drawings-permissions.test.ts --maxWorkers=1` (repository binary).
+
+New hook and new test files pass scoped ESLint. Changed existing paths retain exactly the HEAD findings: `JobDrawingsView.tsx` three warnings, its test eight errors, and drawings router four errors. Compared by linting committed HEAD through stdin; line shifts do not represent new findings. No global formatting or suppression was introduced. Early failures were incomplete UI/simulation mocks and a nonunique status locator; an intermediate run caught Radix's delayed focus cleanup after jsdom teardown, repaired by draining that test's cleanup while its realm remains active. Final run has no unhandled errors. Node's existing module.register deprecation warning remains unrelated.
+
+Prepared and tested source only: no canonical build/typecheck, activation, production write, browser/phone timing or all-caller/first-twenty acceptance claim. Next release work requires review/canonical verification and actual timing. Roll back the scoped view/hook integration and optional server input guard together; there is no persisted optimistic state or database migration to undo.
