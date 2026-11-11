@@ -211,9 +211,14 @@ function usePreferenceState(userId: string, organizationId: string) {
   );
   const settings = editingExecutive ? state.shared : effective;
   function edit(settings: MaterialSortSettings) {
-    if (editingExecutive && authority.canEditExecutive)
-      update({ ...state, shared: settings }, "executive");
-    else if (state.custom) update({ ...state, personal: settings }, "personal");
+    if (editingExecutive) {
+      // Losing the shared capability must not turn a shared edit into a
+      // personal write. Keep the selected target until the user changes it.
+      if (authority.canEditExecutive)
+        update({ ...state, shared: settings }, "executive");
+      return;
+    }
+    if (state.custom) update({ ...state, personal: settings }, "personal");
   }
   return {
     ...effective,

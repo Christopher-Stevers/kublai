@@ -32,3 +32,29 @@ The initial adapter fixture incorrectly modeled Sql as a plain object; the priva
 No canonical build/typecheck, release, worker rollout or activation. This source depends on preference transport `168502f8`; the runtime slice must be reviewed together. Rollback may restore `refetchInterval:60000` and remove the additive policy/status integration; persisted settings/storage schema is unchanged.
 
 Scoped ESLint reports **zero new findings**: the full owned18-source/test-file batch has17 existing `user.ts` unsafe ORM-typing findings. Repeating the identical batch with an adjacent temporary copy of committed HEAD's user router produced the exact same17 rules/messages/source expressions; the temporary file was removed. All other changed/new files are clean. `git diff --check` passes. Early focused failures included the callable-driver fixture above and missing import/style issues; final78-test run has no unhandled errors. Existing Node module.register deprecation warnings are not functional failures.
+
+## Open executive editor after permission loss — later source slice
+
+The compiled R14 supplemental V5 run observed a concrete UI defect: after a
+fresh role response revoked executive permission, the Edit/Close buttons
+disappeared but the already-open shared select remained enabled and labelled
+“Editing executive sorting.” Separately, a real-QueryClient provider regression
+reproduced a worse target error when personal sorting was enabled: changing that
+shared editor fell through into a **personal** save. No write was injected into
+the compiled denial checkpoint; its observational evidence and this component
+reproduction are distinct.
+
+The later fix preserves the selected target. An executive edit without current
+executive authority returns without writing; it cannot fall through to personal
+settings. The existing shared fieldset becomes disabled and says “Viewing
+executive sorting” with a read-only explanation. The separate personal-mode
+button remains available under valid personal authority. It explicitly exits
+the shared editor, so choosing personal settings still works. No permission,
+mutation queue, polling or persistence contract changes.
+
+The new regression fails on the previous source by observing the unintended
+personal mutation, then passes with the fix. All 33 tests across the provider,
+provider-authority and authority-hook files pass. Scoped lint adds no findings:
+the Settings page's existing set-state-in-effect finding matches HEAD exactly;
+the provider and changed test are clean. This slice is excluded from frozen R14
+and has not yet received a canonical build, compiled UI check or activation.

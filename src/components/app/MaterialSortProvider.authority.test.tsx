@@ -100,7 +100,9 @@ function Controls() {
     <>
       <output data-testid="editable">{String(value.editable)}</output>
       <output data-testid="executive">{String(value.canEditExecutive)}</output>
+      <output data-testid="editing-executive">{String(value.editingExecutive)}</output>
       <button onClick={() => value.setEditingExecutive(true)}>Shared</button>
+      <button onClick={() => value.setEditingExecutive(false)}>Personal</button>
       <button onClick={() => value.setSortMode("recent")}>Recent</button>
     </>
   );
@@ -268,6 +270,31 @@ it("role denial and full simulation transition cannot reuse direct-session execu
       (call) => (call[0] as { target: string }).target !== "executive",
     ),
   ).toBe(true);
+});
+
+it("losing executive authority cannot redirect an open shared editor into a personal save", async () => {
+  state.healthy = true;
+  render(view());
+  await flush();
+  await role();
+  fireEvent.click(screen.getByText("Shared"));
+  expect(screen.getByTestId("editing-executive").textContent).toBe("true");
+
+  // Personal access remains valid when the executive seat expires.
+  await role("org:actor", false, true);
+  expect(screen.getByTestId("editable").textContent).toBe("true");
+  expect(screen.getByTestId("executive").textContent).toBe("false");
+  fireEvent.click(screen.getByText("Recent"));
+  await act(async () => vi.advanceTimersByTimeAsync(400));
+  expect(state.mutate).not.toHaveBeenCalled();
+
+  // A deliberate switch to the personal editor still works.
+  fireEvent.click(screen.getByText("Personal"));
+  fireEvent.click(screen.getByText("Recent"));
+  await act(async () => vi.advanceTimersByTimeAsync(400));
+  expect(state.mutate).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ target: "personal" }),
+  );
 });
 
 it("three existing permission providers retain exactly their shared role observers; sort adds none", async () => {

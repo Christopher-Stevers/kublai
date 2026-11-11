@@ -217,14 +217,18 @@ export default function SettingsPage() {
         <CardContent className="space-y-2">
           <p className="text-sm font-medium">
             {editingExecutive
-              ? "Editing executive sorting"
+              ? canEditExecutive
+                ? "Editing executive sorting"
+                : "Viewing executive sorting"
               : custom
                 ? "Using your own sorting"
                 : "Following executive sorting"}
           </p>
           <p className="text-muted-foreground text-sm">
             {editingExecutive
-              ? "Changes apply to everyone following executive sorting."
+              ? canEditExecutive
+                ? "Changes apply to everyone following executive sorting."
+                : "Executive sorting is read-only. You can still choose your own sorting."
               : custom
                 ? "Your choices apply only to your account."
                 : "Sort order and keyword priorities stay in sync with your executive’s settings."}
@@ -258,7 +262,10 @@ export default function SettingsPage() {
                   : "Sorting is saved to your account and available for offline lists.")}
           </p>
           {(custom || editingExecutive) && (
-            <fieldset disabled={!editable} className="space-y-2">
+            <fieldset
+              disabled={!editable || (editingExecutive && !canEditExecutive)}
+              className="space-y-2"
+            >
               <label
                 htmlFor="settings-list-sort"
                 className="block text-sm font-medium"
