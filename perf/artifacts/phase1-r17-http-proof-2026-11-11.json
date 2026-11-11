@@ -1,0 +1,57 @@
+{
+  "build": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "currentAssets": 293,
+  "currentScripts": 288,
+  "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+  "immutableStaticHeaders": true,
+  "previousReleaseSamples": 10,
+  "allHistoricalBytesExact": true,
+  "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+  "workerMatchesPackaged": true,
+  "releaseManifestStatus": 200,
+  "releaseManifestMatchesBuild": true,
+  "knownRejectedArtifact": false,
+  "healthStatus": 200,
+  "signInStatus": 200,
+  "unauthenticatedBindingStatus": 401,
+  "backgroundMode": "separate",
+  "bimDisabled": true,
+  "databaseReadOnlyVerified": true,
+  "allRequestsCookieFreeGet": true,
+  "cleanup": {
+    "exitCode": 0,
+    "ownServerStopped": true,
+    "forced": false,
+    "appMutationsRequested": false,
+    "databaseReadOnlyConfigured": true,
+    "pidAbsent": true,
+    "portClosed": true
+  },
+  "method": {
+    "supervisor": "phase1-r17-http-supervisor.mjs",
+    "supervisorSha256": "2ed5fed6ea7266cd7e8a754212c05c5853e640426b83bb34d07091039d8f034c",
+    "client": "phase1-r14-http-client.mjs",
+    "clientSha256": "4f9f6e1aab274c102f577ca36893e721edef8fe4821ae873db97a41b53a08512",
+    "historySelection": "Actual retained live Phase0 chain, not never-activated R14 candidate",
+    "attempts": [
+      {
+        "attempt": 1,
+        "status": "failed-client-history-selection",
+        "observedError": "Historical Brotli missing",
+        "historyInput": "Never-activated R14 candidate; its unique scripts are not part of the live retained release chain",
+        "retentionFailureClaim": false,
+        "evidenceType": "Observed tool exception summarized; no separate raw stderr file was captured"
+      },
+      {
+        "attempt": 2,
+        "status": "passed",
+        "historyInput": "Actual Phase0 live retained chain",
+        "candidateMutatedBetweenAttempts": false
+      }
+    ]
+  },
+  "limitations": [
+    "Cookie-free read-only HTTP checks; no authenticated functional journey or performance/activation claim.",
+    "Read-only connection startup setting was verified before server start; no authenticated mutation requests were made."
+  ]
+}
