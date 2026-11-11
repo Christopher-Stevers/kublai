@@ -30,6 +30,7 @@ import { DRAWING_DESTINATION_EVENT, type SnapshotState, readSnapshotState } from
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
+import { useInstantSavedViewName } from "~/hooks/use-instant-saved-view-name";
 import { useDrawingWorkspaceQuery } from "~/hooks/use-drawing-workspace-query";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -720,6 +721,18 @@ export function DrawingWorkspace({
     "resize",
   );
   const [form, setForm] = useState<DrawingSave | null>(null);
+  const instantViewName = useInstantSavedViewName({
+    sheetId: sheet.id,
+    hyperlinksVisible,
+    onStarted: (input) => {
+      setForm(current => current?.id === input.id ? null : current);
+      setSelectedId(input.id);
+    },
+    onRestore: (input) => {
+      setForm(current => current ?? input);
+    },
+  });
+  const {canPersist: canPersistWorkspace, isPending: viewNamePending} = instantViewName;
   const [linkChooser, setLinkChooser] = useState<DrawingMarkup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
@@ -881,11 +894,12 @@ export function DrawingWorkspace({
     entryDrawing?.panel,
   ]);
   useEffect(() => {
-    if (serverData && account?.store)
+    if (serverData && account?.store && canPersistWorkspace(serverData))
       void account.store.readSnapshot<Workspace>(`workspace:${sheet.id}`).then(saved => {
+        if (!canPersistWorkspace(serverData)) return;
         return account.store!.saveSnapshot(`workspace:${sheet.id}`, mergeDrawingWorkspaceSnapshot(serverData, saved));
       }).catch(() => undefined);
-  }, [serverData, account?.store, sheet.id]);
+  }, [serverData, account?.store, sheet.id, viewNamePending, canPersistWorkspace]);
   useEffect(() => {
     if (!metadataDirty) {
       setMetadata(data?.metadata ?? null);
@@ -1187,6 +1201,7 @@ export function DrawingWorkspace({
       setPanel("selected");
       return false;
     }
+    if (instantViewName.tryRename(parsed.data)) return true;
     setPending((n) => n + 1);
     setError(null);
     if (queueable && queued.ready) {
@@ -2745,6 +2760,7 @@ export function DrawingWorkspace({
                 ) : selected ? (
                   <>
                     <h3 className="font-medium">{nameOf(selected)}</h3>
+                    {instantViewName.pendingEntityId === selected.id && <p role="status" className="text-muted-foreground text-xs">Saving view name…</p>}
                     <p className="text-muted-foreground text-xs">
                       {selected.authorName} · {selected.visibility} · revision{" "}
                       {selected.revision}

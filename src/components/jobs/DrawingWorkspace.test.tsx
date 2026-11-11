@@ -1,3 +1,5 @@
+import type * as InstantSavedViewNameModule from "~/hooks/use-instant-saved-view-name";
+import { QueryClient, QueryClientProvider, QueryClientContext, useQuery } from "@tanstack/react-query";
 import type { DrawingOfflineStore } from "~/lib/drawing-offline";
 import { runHeaderBackOverride, useHeaderBackOverride } from "~/lib/header-back-events";
 import { SnapshotSourceContext } from "~/components/chat/SnapshotSourceContext";
@@ -17,13 +19,14 @@ import type {
   DrawingSave,
   DrawingWorkspace as Workspace,
 } from "~/lib/drawing-workspace";
-import { Activity, useEffect, type ComponentProps } from "react";
+import { Activity, useContext, useEffect, type ComponentProps } from "react";
 import type { DrawingSheetViewer } from "./DrawingSheetViewer";
 import { DrawingWorkspace, panels, tools } from "./DrawingWorkspace";
 import type { DrawingCompare } from "./DrawingCompare";
 import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-source";
 
 const mocks = vi.hoisted(() => ({
+  instantNames: false,
   viewer: vi.fn(),
   loadLink: vi.fn(),
   push: vi.fn(),
@@ -51,8 +54,8 @@ vi.mock("next/navigation", () => {
 });
 vi.mock("~/trpc/react", () => ({
   api: {
-    useUtils: () => ({
-      client: { drawingsWorkspace: { link: { query: mocks.loadLink } } },
+    useUtils: () => {const client = useContext(QueryClientContext); return ({
+      client: { drawingsWorkspace: { link: { query: mocks.loadLink }, save: {mutate: mocks.save} } },
       drawingsWorkspace: {
         get: {
           invalidate: mocks.invalidate,
@@ -62,12 +65,13 @@ vi.mock("~/trpc/react", () => ({
             update: (data: Workspace | null) => Workspace | null,
           ) => {
             mocks.data = update(mocks.data);
+            if (client) client.setQueriesData({queryKey: ["drawing"]}, mocks.data);
           },
         },
         list: { invalidate: mocks.invalidate },
         notifications: { invalidate: mocks.invalidate },
       },
-    }),
+    });},
     drawingsWorkspace: {
       addMeasurementLayer: { useMutation: () => ({ mutateAsync: vi.fn(async () => undefined) }) },
       setScale: { useMutation: () => ({ mutateAsync: mocks.setScale }) },
@@ -108,9 +112,25 @@ vi.mock("~/trpc/react", () => ({
     },
   },
 }));
+function useCachedWorkspaceRead(sheetId: string, hyperlinks: boolean) {
+  return useQuery<Workspace>({queryKey: ["drawing", hyperlinks ? {sheetId} : {sheetId, omitHyperlinks: true}], queryFn: async () => mocks.data!, enabled: false});
+}
+function useStaticWorkspaceRead(_sheetId: string, _hyperlinks: boolean) {
+  return {data: mocks.data, error: mocks.queryError, refetch: mocks.invalidate};
+}
 vi.mock("~/hooks/use-drawing-workspace-query", () => ({
-  useDrawingWorkspaceQuery: () => ({ data: mocks.data, error: mocks.queryError, refetch: mocks.invalidate }),
+  useDrawingWorkspaceQuery: (sheetId: string, _online: boolean, hyperlinks = true) => {
+    // Mode is selected before mount; each fixture keeps one hook implementation.
+    const useRead = mocks.instantNames ? useCachedWorkspaceRead : useStaticWorkspaceRead;
+    return useRead(sheetId, hyperlinks);
+  },
 }));
+
+vi.mock("@trpc/react-query", () => ({getQueryKey: (_: unknown, input: unknown) => ["drawing", input]}));
+vi.mock("~/hooks/use-instant-saved-view-name", async (original) => {
+  const actual = await original<typeof InstantSavedViewNameModule>();
+  return {useInstantSavedViewName: (...args: Parameters<typeof actual.useInstantSavedViewName>) => mocks.instantNames ? actual.useInstantSavedViewName(...args) : {tryRename: () => false, canPersist: () => true, isPending: false, pendingEntityId: undefined}};
+});
 
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => mocks.account,
@@ -264,6 +284,7 @@ vi.mock("./DrawingSheetViewer", () => ({
         >
           Select first annotation
         </button>
+        <button onClick={() => props.onSelect?.(mocks.data?.entities.find(entity => entity.kind === "view")?.id ?? null)}>Select saved view</button>
         <button
           onClick={() => {
             const first = props.annotations?.[0];
@@ -405,6 +426,7 @@ const chooseTool = (id: string) => {
   }
 };
 beforeEach(() => {
+  mocks.instantNames = false;
   mocks.queryError = null;
   vi.clearAllMocks();
   mocks.setScale.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => ({
@@ -2475,4 +2497,92 @@ it("keeps both saved and original hyperlinks disabled until their layer is enabl
   enableHyperlinks();
   expect(mocks.viewer.mock.lastCall?.[0].onPdfLink).toBeUndefined();
   expect(mocks.viewer.mock.lastCall?.[0].annotations).toEqual([]);
+});
+
+describe("instant private saved view name integration", () => {
+  const clients: QueryClient[] = [];
+  const privateView = (): DrawingEntity => ({...existingMarkup(), kind: "view", data: {name: "Old saved view", sourceSheetId: sheetId, center: {x: .5, y: .5}, zoom: 1}});
+  function deferred<T>() {
+    let resolve!: (value: T) => void, reject!: (error: Error) => void;
+    const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+    return {promise, resolve, reject};
+  }
+  function mountName(store: DrawingOfflineStore | null = null) {
+    mocks.instantNames = true;
+    mocks.account = {userId: "tim", accountKey: "org:tim", store};
+    mocks.data = {...fixture(), entities: [privateView()]};
+    const client = new QueryClient({defaultOptions: {queries: {retry: false}}}); clients.push(client);
+    const key = ["drawing", {sheetId, omitHyperlinks: true}];
+    client.setQueryData(key, mocks.data);
+    client.setQueryData(["drawing", {sheetId}], mocks.data);
+    const result = render(<QueryClientProvider client={client}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} /></QueryClientProvider>);
+    return {...result, client, key};
+  }
+  async function rename() {
+    fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
+    fireEvent.click(await screen.findByRole("button", {name: "Edit", exact: true}));
+    fireEvent.change(screen.getByLabelText("Saved view name"), {target: {value: "New saved view"}});
+    fireEvent.click(screen.getByRole("button", {name: "Save", exact: true}));
+  }
+  afterEach(() => {for (const client of clients.splice(0)) client.clear();});
+  it("closes form and changes surviving selected/list title before response, restores refused name draft", async () => {
+    const request = deferred<DrawingEntity>(); mocks.save.mockReturnValue(request.promise);
+    mountName(); await rename();
+    expect(screen.queryByLabelText("Saved view name")).toBeNull();
+    expect(screen.getByRole("heading", {name: "New saved view"})).toBeVisible();
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    panel("views");
+    expect(screen.getByRole("button", {name: /New saved view/})).toBeVisible();
+    fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
+    await act(async () => {request.reject(new Error("Refused"));});
+    expect(await screen.findByLabelText("Saved view name")).toHaveValue("New saved view");
+    panel("views");
+    expect(screen.getByRole("button", {name: /Old saved view/})).toBeVisible();
+    expect(screen.queryByRole("button", {name: /New saved view/})).toBeNull();
+  });
+  it("retains a newer server revision and never reopens obsolete refused name", async () => {
+    const request = deferred<DrawingEntity>(); mocks.save.mockReturnValue(request.promise);
+    const {client, key} = mountName(); await rename();
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    const before = client.getQueryData<Workspace>(key)!;
+    await act(async () => {client.setQueryData(key, {...before, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}}]});});
+    await screen.findByRole("heading", {name: "Remote saved view"});
+    await act(async () => {request.reject(new Error("Conflict"));});
+    expect(screen.queryByLabelText("Saved view name")).toBeNull();
+    expect(screen.getByRole("heading", {name: "Remote saved view"})).toBeVisible();
+  });
+  it.each(["refused", "newer", "account"] as const)("never writes preview through delayed snapshot completion (%s)", async (mode) => {
+    const network = deferred<DrawingEntity>(), disk = deferred<Workspace | null>();
+    mocks.save.mockReturnValue(network.promise);
+    let delay = false;
+    const readSnapshot = vi.fn(async () => delay ? disk.promise : null);
+    const saveSnapshot = vi.fn(async () => undefined);
+    const store = {readSnapshot, saveSnapshot, resolveAssetUrl: vi.fn(async (url: string) => url)} as unknown as DrawingOfflineStore;
+    const {client, key, unmount} = mountName(store);
+    await waitFor(() => expect(saveSnapshot).toHaveBeenCalled());
+    saveSnapshot.mockClear(); delay = true;
+    // Start a disk merge before the optimistic edit, then hold its completion.
+    await act(async () => {client.setQueryData<Workspace>(key, previous => previous && ({...previous, revision: "before-edit"}));});
+    const readCount = readSnapshot.mock.calls.length;
+    await rename();
+    expect(readSnapshot).toHaveBeenCalledTimes(readCount);
+    expect(saveSnapshot).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    if (mode === "refused") await act(async () => {network.reject(new Error("Refused"));});
+    else if (mode === "account") {
+      mocks.account = {userId: "other", accountKey: "org:other", store: null}; client.clear(); unmount();
+      await act(async () => {network.resolve({...privateView(), revision: 5});});
+    } else {
+      await act(async () => {network.resolve({...privateView(), revision: 5, data: {name: "Confirmed saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}});});
+      await act(async () => {client.setQueryData<Workspace>(key, previous => previous && ({...previous, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}}]}));});
+    }
+    await act(async () => {disk.resolve(null);});
+    const written = saveSnapshot.mock.calls as unknown as Array<[string, Workspace]>;
+    expect(written.some(([, value]) => value.entities.some(entity => entity.kind === "view" && entity.data.name === "New saved view"))).toBe(false);
+    if (mode === "account") expect(saveSnapshot).not.toHaveBeenCalled();
+    if (mode === "newer") {
+      expect(written.some(([, value]) => value.entities.some(entity => entity.kind === "view" && entity.data.name === "Confirmed saved view"))).toBe(false);
+      await waitFor(() => expect((saveSnapshot.mock.calls as unknown as Array<[string, Workspace]>).some(([, value]) => value.entities.some(entity => entity.kind === "view" && entity.data.name === "Remote saved view"))).toBe(true));
+    }
+  });
 });
