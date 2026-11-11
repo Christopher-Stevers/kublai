@@ -13,3 +13,5 @@ RELEASE_SOURCE_DIR=/home/tim/.openclaw/workspace/releases/speed-phase1-combined-
 ```
 
 The latest completed byte comparator is R14; failed R15 has no completed build suitable for a static delta. No runtime or activation is authorized by this source checkpoint.
+
+After root verification, the pinned canonical attempt passed navigation/provider source laws and webpack, then failed production TypeScript at `use-drawing-shared-issue-save.ts:316` because `old.revision` is possibly undefined. The attempt log is preserved separately as `phase1-r16-build-attempt1.log`; [failure metadata](artifacts/phase1-r16-failed-compile-2026-11-11.json) records its hash. R16 source remains unchanged. No completed build identity, static bytes or native resolver proof is claimed. Any corrected retry requires a separate reviewed source identity.

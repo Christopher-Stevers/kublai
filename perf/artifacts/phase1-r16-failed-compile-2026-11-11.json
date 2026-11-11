@@ -1,0 +1,18 @@
+{
+  "status": "failed-production-typescript",
+  "candidate": "R16",
+  "sourceFingerprint": "a41fa2a6ebe83463e396ca612bbae2e72aa670f8d5cb5b868fc0e5a1ae0152f6",
+  "logSha256": "27b3ea0451cd7413effcaccc7eb6131ee646101023463aaab83e67056a4ff1f4",
+  "webpackPassed": true,
+  "productionTypeScriptPassed": false,
+  "error": {
+    "path": "src/hooks/use-drawing-shared-issue-save.ts",
+    "line": 316,
+    "reason": "old.revision possibly undefined in revision comparison"
+  },
+  "completedBuild": false,
+  "staticProofAvailable": false,
+  "runtimeStarted": false,
+  "activated": false,
+  "retainedSourceUnchanged": true
+}
