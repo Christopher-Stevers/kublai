@@ -1,0 +1,262 @@
+{
+  "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2318,
+  "canonicalExit": 0,
+  "productionTypeScriptPassed": true,
+  "prerenderPassed": true,
+  "sourceLawsPassed": true,
+  "metrics": {
+    "build": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "sharedGzipBytes": 477608,
+    "screenGzipBytes": 627807,
+    "deployGzipBytes": 1322690,
+    "screenGzipByRoute": {
+      "/_global-error/page": 307485,
+      "/_not-found/page": 307485,
+      "/admin/page": 307485,
+      "/jobs/[jobId]/chat/page": 503535,
+      "/jobs/[jobId]/documents/page": 502851,
+      "/jobs/[jobId]/drawings/page": 502861,
+      "/jobs/[jobId]/material-lists/page": 502835,
+      "/jobs/[jobId]/models/page": 502405,
+      "/jobs/[jobId]/page": 499209,
+      "/jobs/[jobId]/pricing/page": 509093,
+      "/jobs/[jobId]/receiving/page": 627807,
+      "/jobs/[jobId]/rooms/page": 504059,
+      "/jobs/[jobId]/systems/page": 503725,
+      "/jobs/[jobId]/tool-requests/page": 499209,
+      "/jobs/account/page": 485743,
+      "/jobs/account/settings/page": 505968,
+      "/jobs/assets/activity/page": 491251,
+      "/jobs/assets/counts/[countId]/page": 497542,
+      "/jobs/assets/counts/page": 497235,
+      "/jobs/assets/labels/page": 501846,
+      "/jobs/assets/page": 489358,
+      "/jobs/assets/requests/[orderId]/page": 499253,
+      "/jobs/assets/requests/page": 491250,
+      "/jobs/assets/scan/[tag]/page": 552507,
+      "/jobs/assets/tools/[id]/page": 557954,
+      "/jobs/assets/tools/page": 500577,
+      "/jobs/assets/types/page": 529109,
+      "/jobs/assets/where/[type]/[id]/page": 507148,
+      "/jobs/assets/where/page": 496630,
+      "/jobs/assist/page": 477608,
+      "/jobs/catalogue/page": 518339,
+      "/jobs/chat/page": 509627,
+      "/jobs/draws/[jobId]/page": 491655,
+      "/jobs/draws/page": 482443,
+      "/jobs/estimating/[id]/page": 518282,
+      "/jobs/estimating/page": 499549,
+      "/jobs/material-lists/[id]/page": 585046,
+      "/jobs/orders/page": 497788,
+      "/jobs/organization/page": 532223,
+      "/jobs/page": 477608,
+      "/jobs/quotes/page": 485304,
+      "/jobs/suppliers/page": 492095,
+      "/jobs/timesheets/page": 495337,
+      "/licenses/page": 307650,
+      "/onboarding/page": 310562,
+      "/page": 307485,
+      "/pending-approval/page": 307485,
+      "/pricing/page": 310765,
+      "/sign-in/[[...sign-in]]/page": 309788,
+      "/sign-up/[[...sign-up]]/page": 309788
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  },
+  "versusR19": {
+    "build": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "sharedGzipBytes": 477608,
+    "screenGzipBytes": 627807,
+    "deployGzipBytes": 27818,
+    "screenGzipByRoute": {
+      "/_global-error/page": 307485,
+      "/_not-found/page": 307485,
+      "/admin/page": 307485,
+      "/jobs/[jobId]/chat/page": 503535,
+      "/jobs/[jobId]/documents/page": 502851,
+      "/jobs/[jobId]/drawings/page": 502861,
+      "/jobs/[jobId]/material-lists/page": 502835,
+      "/jobs/[jobId]/models/page": 502405,
+      "/jobs/[jobId]/page": 499209,
+      "/jobs/[jobId]/pricing/page": 509093,
+      "/jobs/[jobId]/receiving/page": 627807,
+      "/jobs/[jobId]/rooms/page": 504059,
+      "/jobs/[jobId]/systems/page": 503725,
+      "/jobs/[jobId]/tool-requests/page": 499209,
+      "/jobs/account/page": 485743,
+      "/jobs/account/settings/page": 505968,
+      "/jobs/assets/activity/page": 491251,
+      "/jobs/assets/counts/[countId]/page": 497542,
+      "/jobs/assets/counts/page": 497235,
+      "/jobs/assets/labels/page": 501846,
+      "/jobs/assets/page": 489358,
+      "/jobs/assets/requests/[orderId]/page": 499253,
+      "/jobs/assets/requests/page": 491250,
+      "/jobs/assets/scan/[tag]/page": 552507,
+      "/jobs/assets/tools/[id]/page": 557954,
+      "/jobs/assets/tools/page": 500577,
+      "/jobs/assets/types/page": 529109,
+      "/jobs/assets/where/[type]/[id]/page": 507148,
+      "/jobs/assets/where/page": 496630,
+      "/jobs/assist/page": 477608,
+      "/jobs/catalogue/page": 518339,
+      "/jobs/chat/page": 509627,
+      "/jobs/draws/[jobId]/page": 491655,
+      "/jobs/draws/page": 482443,
+      "/jobs/estimating/[id]/page": 518282,
+      "/jobs/estimating/page": 499549,
+      "/jobs/material-lists/[id]/page": 585046,
+      "/jobs/orders/page": 497788,
+      "/jobs/organization/page": 532223,
+      "/jobs/page": 477608,
+      "/jobs/quotes/page": 485304,
+      "/jobs/suppliers/page": 492095,
+      "/jobs/timesheets/page": 495337,
+      "/licenses/page": 307650,
+      "/onboarding/page": 310562,
+      "/page": 307485,
+      "/pending-approval/page": 307485,
+      "/pricing/page": 310765,
+      "/sign-in/[[...sign-in]]/page": 309788,
+      "/sign-up/[[...sign-up]]/page": 309788
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  },
+  "strictR19ToR20": {
+    "baselineBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+    "candidateBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 288,
+    "reusedScripts": 282,
+    "changedScripts": 6,
+    "changedRawBytes": 72530,
+    "changedGzipBytes": 27818,
+    "budgetGzipBytes": 100000,
+    "passes": true
+  },
+  "phase0Ratchets": {
+    "shared": true,
+    "heaviest": true,
+    "deploy": true
+  },
+  "finalTargets": {
+    "shared120000": false,
+    "heaviest180000": false
+  },
+  "sourcePostimagesExact": true,
+  "unaffectedInputFilesExact": 5474,
+  "allCurrentAssetsBrotliGzipDecodedExact": 293,
+  "allActiveHistoricalStaticFilesExact": 1120,
+  "publicSourceAndRuntimeExact": 3263,
+  "developmentOverlayAbsent": true,
+  "inertProbeAbsent": true,
+  "pressAllocation": [
+    {
+      "id": 80007,
+      "layer": "app-pages-browser",
+      "chunks": [
+        3085
+      ],
+      "files": [
+        "static/chunks/app-press-browser-ec929538b30f0594.js"
+      ]
+    }
+  ],
+  "nativeInspection": {
+    "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+    "method": "Exact emitted resolver evaluated alone with the native external objects to which its emitted bindings resolve; no app module, listener or database evaluated.",
+    "emittedFile": "server/chunks/4735.js",
+    "nativeExternalBindingFile": "server/instrumentation.js",
+    "nativeExternalModuleId": 98995,
+    "namespaceBindingRetained": true,
+    "namespaceDefaultFallbackRetained": true,
+    "resolverSha256": "f0f3a960a11021828cf0cf57781805a2ca679a84a18e372043d02af2ed31e7c9",
+    "runtimeCwdRetained": true,
+    "numericDirnameIntroduced": false,
+    "metadataVersion": "3.4.8",
+    "copies": [
+      {
+        "file": "server/app/api/chat/attachments/[id]/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/chat/attachments/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/conversations/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/material-lists/[id]/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/3524.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4589.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4735.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/8439.js",
+        "freeNamedFactoryCall": false
+      }
+    ],
+    "passed": true,
+    "limitations": [
+      "This is metadata binding/resolution evidence, not an actual LISTEN health or private application functional run."
+    ],
+    "appRuntimeStarted": false,
+    "databaseStarted": false
+  },
+  "statsSha256": "c941cb838e9559b60f3e813e81a5b26b7b9fba6187c51a72a55268dcef1aa86e",
+  "buildLogSha256": "0f7e8a3c92609135c961cff7f959459c0dd3cc4ad79d61eda0e87aeeb13b8a27",
+  "builderLockAbsent": true,
+  "httpStarted": false,
+  "applicationRuntimeStarted": false,
+  "databaseStarted": false,
+  "activated": false,
+  "buildAttempt": 1,
+  "buildCommand": "RELEASE_SOURCE_DIR=/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r20-20261111 RELEASE_BUNDLE_STATS=1 node /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r20-20261111/scripts/release/build.mjs /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r20-20261111/.next-web",
+  "sourceBeforeAfterUnchanged": true,
+  "toolchain": {
+    "node": "26.8.2",
+    "pnpm": "10.11.1",
+    "next": "16.1.1",
+    "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+    "installedLockVerified": true
+  },
+  "runtimeChangedPaths": [
+    "src/components/offline/ServiceWorkerRegistration.tsx",
+    "src/lib/device-query-cache.ts"
+  ],
+  "frozenFocusedTests": {
+    "passed": 36,
+    "files": 3,
+    "command": "pnpm exec vitest run --config proof-tests/vitest.config.mts src/lib/device-query-cache-scheduling.test.ts src/lib/device-query-cache.test.ts src/components/offline/ServiceWorkerRegistration.test.tsx --maxWorkers=1",
+    "logSha256": "dfb41d1f25f8b3c93abcc9bcf7b12b294f9e0849145672e97717081b2bc55dff",
+    "configSha256": "5b804cb254976f52b4bf3972441c8a8b517202cd56985cc47e8f0b923c6c6706",
+    "setupSha256": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+  },
+  "methodSha256": "8950bf912c146ab29ccc8ec07e694c39407fd09e07b5ff60676140c19a427fcc",
+  "versusR19Deltas": {
+    "sharedGzipBytes": 70,
+    "screenGzipBytes": 70,
+    "deployVsPhase0GzipBytes": 70
+  },
+  "limitations": [
+    "Static/source/type proof only; no HTTP/browser/DB/idle/journeys/activation in this artifact.",
+    "Final120000/180000 script targets remain unmet.",
+    "R19 full-matrix failure remains unchanged; R20 needs matching evidence before activation.",
+    "Receiving/images/chat and rejected notification sharing are excluded."
+  ]
+}

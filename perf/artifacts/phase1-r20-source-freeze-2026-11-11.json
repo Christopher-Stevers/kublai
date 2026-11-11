@@ -1,0 +1,85 @@
+{
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111",
+  "baseBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r20-20261111",
+  "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2318,
+  "runtimeChangedPaths": [
+    "src/components/offline/ServiceWorkerRegistration.tsx",
+    "src/lib/device-query-cache.ts"
+  ],
+  "testChangedPaths": [
+    "src/components/offline/ServiceWorkerRegistration.test.tsx",
+    "src/lib/device-query-cache-scheduling.test.ts"
+  ],
+  "changes": [
+    {
+      "commit": "fff75a2a",
+      "path": "src/components/offline/ServiceWorkerRegistration.tsx",
+      "kind": "runtime",
+      "preimageSha256": "ebd6aa71da4612b5f9bc600825b20866f5c49d84131b1969127c9da63f7bd51f",
+      "selectedCommitParentSha256": "ebd6aa71da4612b5f9bc600825b20866f5c49d84131b1969127c9da63f7bd51f",
+      "parentExactlyMatchesR19": true,
+      "patchSha256": "7baeb1516239ecff36e5980522428309f66fbebfe1e849e193892cccee9e9407",
+      "postimageSha256": "669387eaf63d473bb70c43fb4666c97c66d3d2d3e3d35fc30fd3c36bc28013b0",
+      "composition": "Only selected commit diff applied; never full current cache blob"
+    },
+    {
+      "commit": "2e32a462",
+      "path": "src/lib/device-query-cache.ts",
+      "kind": "runtime",
+      "preimageSha256": "e9c2ec1f193e20c5bd4c7c37fa1eba601981178dab29c451ed47130aa4582da1",
+      "selectedCommitParentSha256": "3c3a3f68ffda95052c4e35af6e2ba5682b88564fcd0acd919575217f70b246f8",
+      "parentExactlyMatchesR19": false,
+      "patchSha256": "992e3c61d4bbce5dd2d2898afbe61d813f5bcd71bc2b4b3fd072ef15544dff09",
+      "postimageSha256": "19cda562c49c1f24eaf811cda1ce3b91fdee4457a7ff50265c02ec1e1fa8992f",
+      "composition": "Only selected commit diff applied; never full current cache blob"
+    },
+    {
+      "commit": "fff75a2a",
+      "path": "src/components/offline/ServiceWorkerRegistration.test.tsx",
+      "kind": "test",
+      "preimageSha256": "e563f1252c57900c5a86370070f6297d42ee953769e9219bc3eacb19f22b37e4",
+      "selectedCommitParentSha256": "e563f1252c57900c5a86370070f6297d42ee953769e9219bc3eacb19f22b37e4",
+      "parentExactlyMatchesR19": true,
+      "patchSha256": "91e308120dbceec6e1d01c7359f34d24204fc9eca32a4ab3c2cb66deb1c2f413",
+      "postimageSha256": "5ae0be8d1453b465ef1d95e0bd1cedbef044c57d51516d791cb1ee17ff5eff18",
+      "composition": "Only selected commit diff applied; never full current cache blob"
+    },
+    {
+      "commit": "2e32a462",
+      "path": "src/lib/device-query-cache-scheduling.test.ts",
+      "kind": "test",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "f860ec0ebdcdcd2d0e8f1e9ddbd142250a1e1e180f137f5d10cc281d2fcb063d"
+    }
+  ],
+  "fullInputCorpus": {
+    "baseFiles": 5483,
+    "files": 5484,
+    "unchangedFiles": 5480,
+    "changedPaths": [
+      "src/components/offline/ServiceWorkerRegistration.test.tsx",
+      "src/components/offline/ServiceWorkerRegistration.tsx",
+      "src/lib/device-query-cache-scheduling.test.ts",
+      "src/lib/device-query-cache.ts"
+    ],
+    "manifestSha256": "a12d7fe8154af3417b99168176bc6d9d4b7fb0dd20b379f69838e4f0818004cc"
+  },
+  "publicFilesExact": 3263,
+  "links": {
+    "node_modules": "/home/tim/.openclaw/workspace/kublai/node_modules",
+    ".next": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+    ".env": "/home/tim/.openclaw/workspace/kublai/.env"
+  },
+  "exclusions": [
+    "Receiving/images/chat overlays",
+    "Notification rejected experiment",
+    "Unrelated dirty schema/worker/zoom/PackingSlips",
+    "No raw HEAD/current full cache blob"
+  ],
+  "runtimeStarted": false,
+  "activated": false
+}
