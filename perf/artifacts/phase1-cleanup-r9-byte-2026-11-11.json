@@ -1,0 +1,194 @@
+{
+  "status": "isolated-byte-experiment-prepared-not-activated",
+  "sourceBuild": "0ff72e5a13076f438bce3877d90e4fac39a2b12459553ebeea9a4befb3198c2e",
+  "sourceFingerprint": "a3eb23c6dcf19638d860f3f9da376ea4088d46ff93b284240055f80355b74fbf",
+  "sourceCommit": "035e61f8",
+  "baseBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "scope": {
+    "runtimePaths": [
+      "src/lib/drawing-worker-lifecycle.ts",
+      "src/lib/drawing-geometry-client.ts",
+      "src/lib/pdf-client.ts",
+      "src/lib/drawing-pdf-export-client.ts",
+      "src/lib/drawing-pdf-raster-client.ts"
+    ],
+    "modifiedParentsMatchR7": true,
+    "unaffectedBaseFiles": 5445,
+    "publicCorpusFiles": 3263,
+    "r8PressExcluded": true,
+    "unrelatedOriginalSourceChanges": 0
+  },
+  "source": {
+    "build": "0ff72e5a13076f438bce3877d90e4fac39a2b12459553ebeea9a4befb3198c2e",
+    "sourceFingerprint": "a3eb23c6dcf19638d860f3f9da376ea4088d46ff93b284240055f80355b74fbf",
+    "sourceFileCount": 2290,
+    "reviewedInputsChanged": 0,
+    "controlledSourceChanges": [
+      "src/lib/drawing-geometry-client.ts",
+      "src/lib/drawing-pdf-export-client.ts",
+      "src/lib/drawing-pdf-raster-client.ts",
+      "src/lib/drawing-worker-lifecycle.ts",
+      "src/lib/pdf-client.ts"
+    ],
+    "unrelatedOriginalSourceChanges": 0,
+    "r8PressExcluded": true,
+    "publicCorpusFiles": 3263,
+    "unaffectedBaseFiles": 5445,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r7": 485406,
+      "r9": 475572,
+      "deltaFromR7": -9834,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r7": 755594,
+      "r9": 753214,
+      "deltaFromR7": -2380,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r7": 1278937,
+      "r9": 1272217,
+      "deltaFromR7": -6720,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "supplementalInitialDependencyMap": {
+    "method": "Emitted rootMainFiles plus app/layout and app/jobs/layout entry callback O(0,[chunk IDs]) dependency closure; jobs also includes app/jobs/page. Exact gzip9 sidecar lengths per unique emitted JS file. Supplemental rooted dependency map, not browser network timing or a redefinition of the formal reference-union gate.",
+    "common": {
+      "r7": 431270,
+      "r9": 420663,
+      "delta": -10607
+    },
+    "jobs": {
+      "r7": 476529,
+      "r9": 466695,
+      "delta": -9834
+    },
+    "r7ModuleMembership": [
+      {
+        "source": "src/lib/pdf-client.ts",
+        "preMinifyEstimatedBytes": 4966,
+        "chunkIds": [
+          4281
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/lib/pipe-run-sizes.ts",
+        "preMinifyEstimatedBytes": 12040,
+        "chunkIds": [
+          5180
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/lib/drawing-geometry-client.ts",
+        "preMinifyEstimatedBytes": 7597,
+        "chunkIds": [
+          4281
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/lib/pipe-system.ts",
+        "preMinifyEstimatedBytes": 39588,
+        "chunkIds": [
+          5180,
+          6584
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      }
+    ],
+    "r9ModuleMembership": [
+      {
+        "source": "src/lib/pdf-client.ts",
+        "preMinifyEstimatedBytes": 4967,
+        "chunkIds": [
+          4281
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/lib/pipe-run-sizes.ts",
+        "preMinifyEstimatedBytes": 12040,
+        "chunkIds": [
+          3843
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false
+      },
+      {
+        "source": "src/lib/drawing-geometry-client.ts",
+        "preMinifyEstimatedBytes": 7381,
+        "chunkIds": [
+          4268
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false
+      },
+      {
+        "source": "src/lib/drawing-worker-lifecycle.ts",
+        "preMinifyEstimatedBytes": 563,
+        "chunkIds": [
+          4281
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/lib/pipe-system.ts",
+        "preMinifyEstimatedBytes": 39588,
+        "chunkIds": [
+          3843,
+          6584
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false
+      }
+    ]
+  },
+  "r7ToR9ChangedScriptPayload": {
+    "baselineBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "candidateBuild": "0ff72e5a13076f438bce3877d90e4fac39a2b12459553ebeea9a4befb3198c2e",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 284,
+    "reusedScripts": 237,
+    "changedScripts": 47,
+    "changedRawBytes": 1663162,
+    "changedGzipBytes": 549936,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "finalScriptTargets": {
+    "shared120000Passes": false,
+    "heaviest180000Passes": false
+  },
+  "notRun": [
+    "HTTP proof server",
+    "app journeys",
+    "idle observation",
+    "phone work",
+    "activation"
+  ],
+  "limitations": [
+    "Exact emitted gzip dependency-map reduction, not measured browser startup/latency.",
+    "Formal reference-union metric remains unchanged and distinct from supplemental rooted graph.",
+    "Strict100000 changed-payload target fails; shared/heaviest final target budgets remain unmet.",
+    "Final combined candidate requires applicable compile/static/HTTP/retention/measurement gates."
+  ]
+}

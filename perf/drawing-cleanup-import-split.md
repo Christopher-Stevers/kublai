@@ -1,9 +1,9 @@
 # Keep drawing computation out of global account cleanup
 
-Status: implemented on current source; 25 focused tests in five files pass with
-one worker, and scoped ESLint is clean. No production build, deploy or new gzip
-result was produced. The press-feedback experiment is unchanged and is not part
-of this slice.
+Status: 25 focused tests in five files pass with one worker and scoped ESLint is
+clean. Isolated R9 subsequently built from exact frozen R7 plus these five
+production paths. Canonical webpack/TypeScript/prerender passed; no deploy or
+runtime server/journeys ran. R8's press-feedback experiment is excluded.
 
 Plan §9 sets 120 KB gzip shared and 60 KB additional per screen; §2 gives the
 180 KB heaviest-screen target. Existing canonical R8's formal shared union is
@@ -39,9 +39,28 @@ import test ignores type-only and dynamic imports and detects the old pipe
 dependency when the former edge is restored in memory. It does not estimate
 compressed savings.
 
-Next build proof must retain the unchanged formal byte metrics and independently
-compare root/layout entry dependencies and emitted chunks. Other consumers or
-chunk placement may retain some bytes; neither the whole 9,652 bytes nor a
-specific new shared total is promised without that build. Existing saved cache,
-same-account/offline behavior and account fences remain required. No phone work
-or activation is involved.
+## Isolated R9 emitted-byte result
+
+[Canonical R9 proof](artifacts/phase1-cleanup-r9-byte-2026-11-11.json) binds build
+`0ff72e5a…` to source fingerprint `a3eb23c6…`. All four modified parent files
+matched R7; 5,445 unaffected src/public/scripts/vendor files and all 3,263 public
+files remain unchanged. Exactly the reviewed five runtime paths differ, with
+one new registry file. Production overlay is absent and stats match the build.
+
+The unchanged formal shared-reference metric falls 485,406 → 475,572 gzip bytes
+(9,834 fewer); heaviest screen 755,594 → 753,214. Deployment payload against the
+same Phase0 baseline is 1,272,217 bytes. These three ratchets pass against Phase0;
+the final 120 KB shared/180 KB heaviest targets remain unmet.
+
+A separate emitted entry-dependency collector, including rootMainFiles, measures
+common root/layout JS at 431,270 → 420,663 gzip bytes (10,607 fewer), and the jobs
+entry at 476,529 → 466,695 (9,834 fewer). Geometry client, pipe-run-sizes and
+pipe-system are absent from both initial closures; the light registry remains.
+This is metadata-derived emitted-byte evidence, not browser request/startup or
+latency evidence, and it does not redefine the formal gate.
+
+The R7→R9 changed-script target fails: 47/284 current scripts change (237 reused),
+549,936 gzip bytes, above 100,000. No HTTP server, journeys, idle observation,
+phone work, schema/worker change or activation ran. The final combined candidate
+will require its applicable checks; no individual chunk saving was promised
+before measuring this build.
