@@ -206,6 +206,8 @@ export async function opensheetpinch({ page, cdp }) {
   await painted(page);
 }
 export async function staticMetrics() {
+  if (!process.env.PERF_STATIC_REPORT && process.env.PERF_PILOT)
+    return undefined;
   if (!process.env.PERF_STATIC_REPORT)
     throw new Error(
       "PERF_STATIC_REPORT required: measured build bytes/polls, never guessed",

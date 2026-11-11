@@ -32,9 +32,11 @@ const browser = await chromium.launch({
 });
 const samples = [];
 try {
-  for (const [link, profile] of Object.entries(budgets.links))
+  for (const [link, profile] of Object.entries(budgets.links).filter(
+    ([name]) => !process.env.PERF_PILOT || name === "Office",
+  ))
     for (const journey of budgets.journeys)
-      for (let run = 0; run < 5; run++) {
+      for (let run = 0; run < (process.env.PERF_PILOT ? 1 : 5); run++) {
         const context = await browser.newContext({
           viewport: { width: 390, height: 844 },
           deviceScaleFactor: 3,
@@ -83,7 +85,8 @@ try {
     static: await adapter.staticMetrics?.(),
   };
   const errors = validateReport(report);
-  if (errors.length) throw new Error(errors.join("\n"));
+  if (errors.length && !process.env.PERF_PILOT)
+    throw new Error(errors.join("\n"));
   fs.writeFileSync(
     process.env.PERF_OUTPUT ?? "perf-report.json",
     JSON.stringify(report, null, 2),

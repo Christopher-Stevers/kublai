@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import ts from "typescript";
 import { execFileSync } from "node:child_process";
 // Deliberately generates a separate source tree: no auth bypass is added to the real app.
 const source = process.cwd();
@@ -111,9 +112,12 @@ fs.writeFileSync(
   `export async function GET(){return Response.json({provenance:'isolated-seeded-app',productionDatabase:false,authentication:'stubbed-seeded-user',userId:'perf-lab-user'},{headers:{'Cache-Control':'no-store'}});}`,
 );
 // Avoid generated directories in the shared user's tsconfig, which can be dirty.
-const tsconfig = JSON.parse(
+const parsedConfig = ts.parseConfigFileTextToJson(
+  "tsconfig.json",
   fs.readFileSync(path.join(target, "tsconfig.json"), "utf8"),
 );
+if (parsedConfig.error) throw new Error("Cannot parse snapshot tsconfig");
+const tsconfig = parsedConfig.config;
 tsconfig.include = [
   "next-env.d.ts",
   "src/**/*.ts",
