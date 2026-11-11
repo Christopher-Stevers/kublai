@@ -11,7 +11,9 @@ import {
   successful,
   cleanupOwnedDatabase,
 } from "./replicache-isolated/supervisor.mjs";
+import { selectCheckMode } from "./replicache-isolated/selection.mjs";
 import { fingerprintSource } from "./release/source-fingerprint.mjs";
+const selection = selectCheckMode(process.argv); // Reject unknown modes before filesystem/evidence/DB work.
 const argument = (name) => requiredArgument(process.argv, name);
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const source = await fs.realpath(argument("--source"));
@@ -54,6 +56,16 @@ const migrations = [
 const operationalHashes = {};
 for (const file of [...helpers, ...migrations])
   operationalHashes[file] = sha(await fs.readFile(path.join(toolRoot, file)));
+let supplementalSource;
+if (selection.source) {
+  supplementalSource = await fs.readFile(path.join(toolRoot, selection.source));
+  operationalHashes.supplemental = sha(supplementalSource);
+}
+operationalHashes.selection = sha(
+  await fs.readFile(
+    new URL("./replicache-isolated/selection.mjs", import.meta.url),
+  ),
+);
 operationalHashes["connectionGuard"] = sha(
   await fs.readFile(
     new URL("./replicache-isolated/connection-guard.mjs", import.meta.url),
@@ -286,9 +298,42 @@ try {
     path.join(snapshot, "isolated-connection-guard.mjs"),
     guardSource,
   );
+  await fs.mkdir(path.join(snapshot, "isolated-runner"));
+  for (const [name, expectedHash] of [
+    ["selection.mjs", operationalHashes.selection],
+    ["supervisor.mjs", operationalHashes.supervisor],
+  ]) {
+    const content = await fs.readFile(
+      new URL(`./replicache-isolated/${name}`, import.meta.url),
+    );
+    if (sha(content) !== expectedHash)
+      throw Error("Operational selection helper changed before copy");
+    await fs.writeFile(path.join(snapshot, "isolated-runner", name), content);
+  }
+  if (supplementalSource) {
+    if (
+      sha(await fs.readFile(path.join(toolRoot, selection.source))) !==
+      operationalHashes.supplemental
+    )
+      throw Error("Supplemental source changed before copy");
+    await fs.mkdir(path.dirname(path.join(snapshot, selection.source)), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      path.join(snapshot, selection.source),
+      supplementalSource,
+      { flag: "wx", mode: 0o600 },
+    );
+  }
+  const selectedBinding = {
+    sourceBuild: expectedBuild,
+    sourceFingerprint: expectedFingerprint,
+    testSha256: operationalHashes.supplemental,
+  };
   // Import the ACTUAL app DB module; inspect its actual Drizzle client before SQL.
   const entry = `import fs from 'node:fs/promises';
 import { assertPrivateEnvironment, assertPrivateClientOptions } from './isolated-connection-guard.mjs';
+import { supplementalBinding } from './isolated-runner/selection.mjs';
 const socket=${JSON.stringify(lab)};
 assertPrivateEnvironment(process.env,socket);
 let client;
@@ -302,27 +347,39 @@ try {
     if(r.name!=='foremanhq_perf_lab'||r.network!==null||r.readonly!=='on'||await fs.realpath(r.directory)!==await fs.realpath(socket+'/data'))throw Error('Actual application server mismatch');
   });
   await fs.writeFile(${JSON.stringify(path.join(evidence, "actual-client-guard.json"))},JSON.stringify({actualApplicationModule:true,actualClientOptionsVerifiedBeforeSQL:true,sameGlobalCache:true,readOnlyServerCheckPassed:true,unixSocket:true,ownedDatabase:true,ownedDataDirectory:true})+String.fromCharCode(10));
-  await import('./scripts/check-replicache-sync.ts');
+  if (${JSON.stringify(selection.mode)} === 'push-contract-v1') {
+    const binding=supplementalBinding(${JSON.stringify(selectedBinding)},true);
+    await fs.writeFile('ISOLATED_REPLICACHE_BINDING.json',JSON.stringify(binding)+String.fromCharCode(10),{flag:'wx',mode:0o600});
+  }
+  await import(${JSON.stringify(selection.program)});
 } finally { const actual=client??globalThis.conn; if(actual)await actual.end({timeout:1}); }
 `;
   await fs.writeFile(path.join(snapshot, "isolated-check.mts"), entry, {
     mode: 0o600,
   });
-  stage = "existing-check";
+  stage = selection.stage;
   await run(
     process.execPath,
     ["--import", "tsx", "isolated-check.mts"],
-    "sync-check",
+    selection.log,
     env,
     120_000,
   );
   await fs.copyFile(
-    path.join(
-      snapshot,
-      ".tmp/performance-implementation/sync-integration.json",
-    ),
-    path.join(evidence, "sync-integration.json"),
+    path.join(snapshot, selection.output),
+    path.join(evidence, selection.evidence),
   );
+  if (selection.mode === "push-contract-v1") {
+    await fs.copyFile(
+      path.join(snapshot, "ISOLATED_REPLICACHE_BINDING.json"),
+      path.join(evidence, "supplemental-binding.json"),
+    );
+    if (
+      sha(await fs.readFile(path.join(snapshot, selection.source))) !==
+      operationalHashes.supplemental
+    )
+      throw Error("Supplemental source changed during check");
+  }
   const { manifest: _afterManifest, ...after } =
     await fingerprintSource(snapshot);
   if (after.sourceFingerprint !== expectedFingerprint)
@@ -372,6 +429,8 @@ try {
   supervisor.finish();
   const result = {
     stage,
+    mode: selection.mode,
+    selectedProgram: selection.program,
     failed,
     exitCode: process.exitCode ?? 0,
     ...supervisor.state,

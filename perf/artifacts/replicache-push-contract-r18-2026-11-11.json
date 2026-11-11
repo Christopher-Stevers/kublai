@@ -1,0 +1,109 @@
+{
+  "protocol": "existing-replicache-push-contract-v1",
+  "attempts": 1,
+  "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2317,
+  "sourceFingerprintMatchedBeforeAndAfter": true,
+  "mode": "push-contract-v1",
+  "selectedProgram": "./perf/replicache-push-contract.ts",
+  "passed": true,
+  "cases": [
+    {
+      "name": "per-client gap rolls back entire batch and both cursors; next expected ID remains usable",
+      "passed": true
+    },
+    {
+      "name": "duplicate ID ignores changed payload without a second domain update",
+      "passed": true
+    },
+    {
+      "name": "permission refusal ACKs before args parsing; same ID stays consumed, next authorized ID works",
+      "passed": true
+    },
+    {
+      "name": "unknown obsolete name ACKs without domain mutation and does not block the next known write",
+      "passed": true
+    },
+    {
+      "name": "unhandled input-validation failure rolls back earlier domain write and cursor; explicit recovery uses expected ID",
+      "passed": true
+    }
+  ],
+  "caseCount": 5,
+  "actualApplicationClientGuard": {
+    "actualApplicationModule": true,
+    "actualClientOptionsVerifiedBeforeSQL": true,
+    "sameGlobalCache": true,
+    "readOnlyServerCheckPassed": true,
+    "unixSocket": true,
+    "ownedDatabase": true,
+    "ownedDataDirectory": true
+  },
+  "supplementalBinding": {
+    "mode": "push-contract-v1",
+    "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+    "testSha256": "bfc495dbce847021c9d6e5139ff16667fb79a15856ffc5513663096e7acee014",
+    "actualApplicationClientVerified": true
+  },
+  "operationalHashes": {
+    "perf/lab/schema-entry.mjs": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457",
+    "perf/lab/drizzle.config.ts": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211",
+    "perf/lab/order-schema.mjs": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d",
+    "drizzle/0039_reliability_revisions.sql": "804750d306cbb3cfd0e01f119e2de63eaa7a1e72d7bce18b9e9bfde36a591467",
+    "drizzle/0045_material_room.sql": "ecbfada301c398fafe73be1e0da6b921a210644449b31e15a1ea2ba376faec2b",
+    "drizzle/0091_job_pricing_sync.sql": "fa9a068fa32cbe02d879c2f5e3de0a17d1c609064465aab4c6ddccea69be4f5f",
+    "supplemental": "bfc495dbce847021c9d6e5139ff16667fb79a15856ffc5513663096e7acee014",
+    "selection": "f038c6bd506b3c04f6db7de01704b7b15bd68a7d23b5006227efa6fc8e8dbc92",
+    "connectionGuard": "59127ca068aed331fc95428a4b93734f4cc822dbb268ef970e200e1413ccb3f9",
+    "supervisor": "7f21567ed2a170a6eab03e46dc454bbd523807c24b2c31663def7d15479660ad",
+    "runner": "0d8ed302861ec2f999a5f5665fd61049ab7307945141f508e7f0c1bf539dce5e"
+  },
+  "schemaInventory": {
+    "moduleCount": 16,
+    "tableCount": 113,
+    "enumCount": 0
+  },
+  "cleanup": {
+    "timedOut": false,
+    "interrupted": false,
+    "postgresStopped": true,
+    "logPreserved": true,
+    "temporaryDirectoryRemoved": true,
+    "pgErrors": 0,
+    "pgFatals": 0,
+    "errors": []
+  },
+  "privateArtifactHashes": {
+    "result.json": "d26245a392b5bc6eb1464396be08ad7857885baf2a32e60b83dd224bdbae24bf",
+    "push-contract-v1.json": "42f9168c84e10b2ed10ddda8eda46485196cfc88924f655363815bf6b781283d",
+    "actual-client-guard.json": "3821f6bdf0300cf3b49dae860456458bc1fa9b386af1c3483b10809cd719e07c",
+    "supplemental-binding.json": "1e76ae97e2961639220896e63baeb8f24e0417f530617f4101d5e7d9ea4811aa",
+    "private-pg.log": "a1f307e3c83e2baff77291cb730b6b0cb2d1c553bd32dbe55e8d8ff7c94ed2d5",
+    "schema-inventory.json": "e236bd98d735dd861a6edb3b6cac7150db495f17ba7295ed2701be2b80b71094",
+    "schema.sql": "d56da305c634a73d1522d757a0cbacc378619abb0ddd29cc328ed9e9f82d6f45",
+    "push-contract-check.log": "06bd0a45a56ea3169dd525711d2964e7677dc38fda45058e36e634b951fa88ba"
+  },
+  "noDatabaseTests": {
+    "passed": 19,
+    "logSha256": "5004b7f1ff01d000b3efa04aeae4c35c0892fcce4663f57e96380849f15e4e09"
+  },
+  "scopedStrictTypeScriptPassed": true,
+  "originalProgramUnchanged": true,
+  "originalRunnerOutcomesPreserved": true,
+  "frozenR18Unchanged": true,
+  "productionWrites": false,
+  "workerChanges": false,
+  "browserStarted": false,
+  "activated": false,
+  "limitations": [
+    "Direct actual server handlers with constructed request-user contexts, not real auth or live permission fetching.",
+    "Transaction failure is an unhandled Zod validation error, not an injected PostgreSQL error/deadlock/retry test.",
+    "No browser, hint transport, new engine or long-offline convergence evidence.",
+    "Default existing program/output compatibility has no-DB selection evidence; no additional original-check DB rerun was performed with this extension.",
+    "No PostgreSQL constraint/deadlock retry injection, browser durability, authenticated route or Phase2 convergence evidence.",
+    "Private SQL/logs/synthetic IDs are retained outside git in a mode0700 evidence directory."
+  ]
+}

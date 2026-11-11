@@ -105,28 +105,57 @@ test("generated actual-client guard entry parses without importing application o
   const start = source.indexOf("const entry = `") + "const entry = ".length;
   const end = source.indexOf("`;", start) + 1;
   assert(start > 0 && end > start);
-  const entry = new Function(
+  const generate = new Function(
     "lab",
     "evidence",
     "path",
+    "selection",
+    "selectedBinding",
     `return ${source.slice(start, end)}`,
-  )(socket, "/tmp/no-database-guard-evidence", path);
+  );
   const dir = await fs.mkdtemp(
     path.join(os.tmpdir(), "replicache-entry-syntax-"),
   );
   try {
-    const file = path.join(dir, "entry.mjs");
-    await fs.writeFile(file, entry);
-    const result = spawnSync(process.execPath, ["--check", file], {
-      encoding: "utf8",
-      timeout: 5000,
-    });
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(entry, /client=db\.\$client/);
-    assert(
-      entry.indexOf("assertPrivateClientOptions") <
-        entry.indexOf("client.begin('read only'"),
-    );
+    for (const selection of [
+      { mode: "existing", program: "./scripts/check-replicache-sync.ts" },
+      {
+        mode: "push-contract-v1",
+        program: "./perf/replicache-push-contract.ts",
+      },
+    ]) {
+      const entry = generate(
+        socket,
+        "/tmp/no-database-guard-evidence",
+        path,
+        selection,
+        {
+          sourceBuild: "a".repeat(64),
+          sourceFingerprint: "b".repeat(64),
+          testSha256: "c".repeat(64),
+        },
+      );
+      const file = path.join(dir, `${selection.mode}.mjs`);
+      await fs.writeFile(file, entry);
+      const result = spawnSync(process.execPath, ["--check", file], {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(entry, /client=db\.\$client/);
+      assert(
+        entry.indexOf("assertPrivateClientOptions(client") <
+          entry.indexOf("client.begin('read only'"),
+      );
+      assert(
+        entry.indexOf("client.begin('read only'") <
+          entry.indexOf("const binding=supplementalBinding("),
+      );
+      assert(
+        entry.indexOf("const binding=supplementalBinding(") <
+          entry.indexOf(`await import(${JSON.stringify(selection.program)})`),
+      );
+    }
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
