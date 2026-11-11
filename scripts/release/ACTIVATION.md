@@ -29,6 +29,12 @@ and gzip sidecars must decode to the actual script. Static bundle metrics must
 be collected from canonical release artifacts, not substituted with the smaller
 auth-stubbed lab bundle. Incomplete evidence fails closed.
 
+Each capture also carries a matching source-bound schema inventory and a passed
+preflight of the 14 actual read endpoints used by the journeys. Its private
+database log must contain zero ERROR/FATAL entries during the capture window.
+A full matrix with a broken fixture is rejected, rather than treated as a fast
+page load.
+
 Activation requires the existing pinned service wrapper and canonical working
 directory. It uses a lock and atomic symlink, restarts only `foremenhq.service`,
 then checks health and exact served script/service-worker bytes. A failed restart

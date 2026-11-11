@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
-import { budgets } from '../../perf/check.mjs';
+import { budgets, READ_PREFLIGHT_PROCEDURES } from '../../perf/check.mjs';
 import { inspectReleaseAssets, validateActivationReports } from './activation-gate.mjs';
 import { SOURCE_FINGERPRINT_ALGORITHM, LAB_TRANSFORM_PATHS } from './source-fingerprint.mjs';
 
@@ -12,6 +12,12 @@ const oldBuild = 'a'.repeat(64), newBuild = 'b'.repeat(64);
 function report(build, timestamp, sourceBuild = oldBuild) {
   return {
     build, timestamp, sourceBuild, sourceFingerprint: sourceBuild,
+    health: {
+      preflight: { status: 'passed', build, sourceBuild, sourceFingerprint: sourceBuild,
+        results: READ_PREFLIGHT_PROCEDURES.map(procedure => ({ procedure, status: 'ok' })) },
+      fixtureSchema: { status: 'source-declared-schemas-created', sourceBuild, sourceFingerprint: sourceBuild, moduleCount: 16, tableCount: 113 },
+      database: { count: 0, fatalCount: 0, windowStartedAt: timestamp, observedAt: timestamp },
+    },
     sourceBinding: { method: 'frozen-release-inputs-sha256', algorithm: SOURCE_FINGERPRINT_ALGORITHM, sourceBuild },
     sourceFileCount: 20,
     sourceVerification: { stage: 'after-lab-transforms', unchangedFilesChecked: 20 - LAB_TRANSFORM_PATHS.length, allowedLabTransforms: LAB_TRANSFORM_PATHS },
@@ -41,6 +47,9 @@ test('rejects missing, self-repeated, stale source, and unbound reports', () => 
     value => { value.repeat.sourceFingerprint = newBuild; },
     value => { value.candidate.static.build = 'lab-candidate'; },
     value => { value.candidate.sourceVerification.unchangedFilesChecked = 0; },
+    value => { delete value.candidate.health; },
+    value => { value.candidate.health.database.count = 1; },
+    value => { value.candidate.health.preflight.sourceFingerprint = oldBuild; },
   ]) {
     const value = evidence(); change(value);
     assert.ok(validateActivationReports(value).length);
