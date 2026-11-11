@@ -1,0 +1,15 @@
+{
+  "PERF_PHONE_CONTROL_TRANSPORT": "adb-wifi",
+  "PERF_PHONE_DEVICE_MODEL": "Google Pixel 9 Pro XL (user confirmed)",
+  "PERF_PHONE_HOST_BASE": "http://127.0.0.1:3484/",
+  "PERF_PHONE_BASE": "http://127.0.0.1:43991/",
+  "PERF_PHONE_CDP": "http://127.0.0.1:49222/",
+  "PERF_PHONE_LAB_ROOT": "/tmp/foremanhq-speed-app-nTtbuM",
+  "PERF_LAB_SOCKET": "/tmp/foremanhq-perf-pg.ZkCaGQ",
+  "PERF_BUILD": "4qOIJ0ATp9DzIVGHVmxB_",
+  "PERF_PHONE_TARGET_CREATION": "browser-create-target",
+  "PERF_PHONE_RUNS": "2",
+  "PERF_PHONE_DIAGNOSTIC": "owned-target-only",
+  "PERF_PHONE_DIAGNOSTIC_OUTPUT": "/tmp/foremanhq-pixel-session-20261111T094439Z/protocol-diagnostic.json",
+  "PERF_PHONE_OUTPUT": "/tmp/foremanhq-pixel-session-20261111T094439Z/visited-reads.json"
+}

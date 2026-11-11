@@ -1,0 +1,112 @@
+{
+  "method": "phone-owned-target-protocol-diagnostic-v1",
+  "status": "diagnostic-only",
+  "accepted": false,
+  "physicalPhoneEvidence": false,
+  "completedSamples": [],
+  "timestamp": "2026-11-11T09:45:31.854Z",
+  "hardLimitMs": 60000,
+  "phase": "loopback-attestation",
+  "commands": [
+    {
+      "phase": "create-owned-target",
+      "method": "Target.createTarget",
+      "status": "replied"
+    },
+    {
+      "phase": "owned-page-open",
+      "method": "Page.enable",
+      "status": "replied"
+    },
+    {
+      "phase": "owned-page-open",
+      "method": "Runtime.enable",
+      "status": "replied"
+    },
+    {
+      "phase": "owned-page-open",
+      "method": "Page.bringToFront",
+      "status": "replied"
+    },
+    {
+      "phase": "blank-runtime",
+      "method": "Runtime.evaluate",
+      "status": "replied"
+    },
+    {
+      "phase": "network-free-navigation",
+      "method": "Page.navigate",
+      "status": "replied"
+    },
+    {
+      "phase": "network-free-navigation",
+      "method": "Runtime.evaluate",
+      "status": "replied"
+    },
+    {
+      "phase": "loopback-navigation",
+      "method": "Page.navigate",
+      "status": "replied"
+    },
+    {
+      "phase": "loopback-navigation",
+      "method": "Runtime.evaluate",
+      "status": "replied"
+    },
+    {
+      "phase": "loopback-attestation",
+      "method": "Runtime.evaluate",
+      "status": "replied"
+    }
+  ],
+  "events": {
+    "Page.frameStoppedLoading": 3,
+    "Runtime.executionContextCreated": 3,
+    "Page.frameStartedNavigating": 2,
+    "Page.frameStartedLoading": 2,
+    "Runtime.executionContextsCleared": 4,
+    "Page.frameNavigated": 2,
+    "Page.domContentEventFired": 2,
+    "Page.loadEventFired": 2
+  },
+  "sockets": [
+    {
+      "scope": "browser",
+      "kind": "socket-close",
+      "intentional": true,
+      "code": 1000,
+      "elapsedMs": 204
+    },
+    {
+      "scope": "page",
+      "kind": "socket-close",
+      "intentional": true,
+      "code": 1000,
+      "elapsedMs": 693
+    }
+  ],
+  "checks": {
+    "blank": {
+      "blank": true,
+      "complete": true,
+      "visible": true
+    },
+    "networkFree": {
+      "expected": true,
+      "probe": true
+    },
+    "loopbackAttested": true
+  },
+  "browserLifetime": "close-after-create",
+  "controlTransport": "adb-wifi",
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "createdTargetKnown": true,
+  "cleanup": {
+    "method": "http-close-created-id",
+    "attempted": true,
+    "acknowledged": true,
+    "httpStatus": 200
+  },
+  "elapsedMs": 701
+}

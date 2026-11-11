@@ -1,0 +1,11 @@
+{
+  "status": "cancelled-before-setup",
+  "reason": "Explicit user request to move on; no further phone work.",
+  "intendedKind": "Separate local-only six-read smoke; not physical/performance acceptance.",
+  "rootReportedPreparedMethodSha256": "4291731d2fc17963bc791606c289165bf6736d67ef454d81a12b7bdf922a5109",
+  "hashProvenance": "Reported by root; this agent did not independently freeze/copy or execute that method.",
+  "freshFixtureLaunched": false,
+  "browserLaunched": false,
+  "samples": 0,
+  "productionWrites": false
+}

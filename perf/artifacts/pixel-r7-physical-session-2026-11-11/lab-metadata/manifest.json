@@ -1,0 +1,32 @@
+{
+  "copiedAt": "2026-11-11T09:45:07.788Z",
+  "scope": "Synthetic fixture/schema/source/preflight/runtime metadata only; no environment, credentials or device identifiers.",
+  "files": [
+    {
+      "name": "fixtures.json",
+      "sha256": "7f2de5cc6aa8f1db1849508f28bb62019cfa81c82dd3e92370f4c58900880e5f"
+    },
+    {
+      "name": "preflight.json",
+      "sha256": "fa73e5b7b0519669e3043c67c8aca7bc586d5486245a39100a0032be6b615976"
+    },
+    {
+      "name": "runtime.json",
+      "sha256": "949054cb77a72a57e39fd6865040360fd549c48d88ec9fc859cf6e4e1b576e60"
+    },
+    {
+      "name": "schema-inventory.json",
+      "sha256": "e236bd98d735dd861a6edb3b6cac7150db495f17ba7295ed2701be2b80b71094"
+    },
+    {
+      "name": "server-source.json",
+      "sha256": "c39538189a87f922a17699540fee7c197dda33c7075b414c1bb47cde41061641"
+    },
+    {
+      "name": "source-evidence.json",
+      "sha256": "27c9a48f1021cc8fca7d863dea6bb45871fff7a25a67c5fced3816fbaa107deb"
+    }
+  ],
+  "cleanupCommand": "kill -TERM 4000356",
+  "defaultExpiry": "2026-11-11T09:54:10.863Z"
+}

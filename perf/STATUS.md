@@ -228,7 +228,7 @@ See `artifacts/private-cache-contract-r6-2026-11-11.json`. Separate actual-app
 functional assertions must cite their own reports; neither protocol preparation
 nor a partial result supplies the full release gate.
 
-Controlled physical timing remains zero samples. The earlier Pixel CDP attempt
+At that checkpoint no physical readings had completed. The earlier Pixel CDP attempt
 timed out at Page.navigate before attestation; a later bounded check had no
 usable Wi-Fi ADB advertisement, so no new physical run began. Uncontrolled,
 participant-attributed field telemetry remains separate. None of this completes
@@ -251,9 +251,8 @@ Both private runtimes were cleaned after a bounded post-capture candidate hold.
 The separate phone-v2 LOCAL smoke completed three samples and closed its owned
 target with HTTP 200; it has `physicalPhoneEvidence: false` and is not a timing
 gate. Its exact archive is
-`artifacts/phone-v2-local-smoke-2026-11-11/report.json`. Controlled physical
-samples remain zero, and the non-hex timing-lab private SW/reload coverage gap
-is unchanged. The subsequent separately authorized full R7 matrix is now archived and failed
+`artifacts/phone-v2-local-smoke-2026-11-11/report.json`. Those local checks supplied no physical readings; the non-hex timing-lab
+private SW/reload coverage gap is unchanged. The subsequent separately authorized full R7 matrix is now archived and failed
 as recorded below; the focused result did not replace its gate.
 
 
@@ -275,8 +274,8 @@ Canonical static bounds are 485,406 shared, 755,594 heaviest, and 1,278,937 depl
 gzip bytes. Formal byte ratchets pass separately; final script/deploy targets
 remain unmet. Ten-minute idle again records 80 query-procedure reads and three
 stream starts/two closes without overlap; this is not a no-poll or continuous
-heartbeat pass. The non-hex lab private SW/reload gap and controlled physical
-zero remain unchanged. Server and private DB were cleaned with zero errors;
+heartbeat pass. At that checkpoint the non-hex lab private SW/reload gap and controlled
+physical zero remained unchanged. Server and private DB were cleaned with zero errors;
 no further full run or activation is queued. Raw/provenance/assessment:
 `artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json`.
 
@@ -340,3 +339,27 @@ At 08:55 UTC the paired reference Pixel was absent from ADB and did not advertis
 wireless debugging. No valid physical timing samples have been collected. The
 live `.next` target remains the Phase0 bootstrap; no candidate activation,
 production database change or receiving-worker release occurred.
+
+
+## Partial Pixel session and user deferral — 2026-11-11
+
+The root-owned Pixel session used one fresh source-attested synthetic R7 app,
+with 14 real read checks, copied schema/fixture metadata and zero final DB
+errors. Methods and failures are separate: physical v2 completed one openjob
+observation (60 ms), then repeat source readiness timed out; local desktop v3
+completed four observations before material-list warm readiness failed;
+physical v3 completed zero; physical v4 completed two openjob observations
+(46.9/46.2 ms), then tab warm readiness timed out. Each intended six-read
+protocol failed. Raw aggregate flags remain `physicalPhoneEvidence: false` and
+`accepted: false`; do not pool these methods or infer percentiles, improvements
+or an accepted physical gate. Browser DOM/rAF readings are not physical pixels.
+
+All frozen method bytes/before hashes, reports/logs, selected loopback inputs,
+preflight/source/schema/synthetic fixtures and exact copy hashes are archived
+under `artifacts/pixel-r7-physical-session-2026-11-11/`. The root's physical
+launcher was inline and not independently frozen; no helper provenance was
+invented. All owned targets closed with HTTP 200, forwarding was removed, and
+the private app/PG/timer were cleaned. The user cannot keep Pixel open and
+explicitly requested moving on: further phone work is deferred. The proposed
+local-only v5 follow-up was cancelled before setup/runtime, with zero samples.
+No acceptance/full matrix or deployment follows from this session.

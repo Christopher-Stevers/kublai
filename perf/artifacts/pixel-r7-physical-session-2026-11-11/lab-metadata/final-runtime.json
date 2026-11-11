@@ -1,0 +1,28 @@
+{
+  "readyAt": "2026-11-11T09:44:10.863Z",
+  "defaultExpiresAt": "2026-11-11T09:54:10.863Z",
+  "port": 3484,
+  "labRoot": "/tmp/foremanhq-speed-app-nTtbuM",
+  "preflight": "/tmp/foremanhq-pixel-r7-fresh-preflight.json",
+  "sourceMetadata": "/tmp/foremanhq-pixel-r7-fresh-source.json",
+  "pidFile": "/tmp/foremanhq-pixel-r7-fresh-server.pid",
+  "deadlineFile": "/tmp/foremanhq-pixel-r7-fresh-deadline",
+  "productionDatabase": false,
+  "extension": {
+    "authorizedBy": "root explicit request for bounded physical v3 diagnostic",
+    "recordedAt": "2026-11-11T09:53:06.816Z",
+    "expiresAt": "2026-11-11T10:04:00.000Z"
+  },
+  "extensions": [
+    {
+      "authorizedBy": "root explicit request",
+      "recordedAt": "2026-11-11T09:47:42.943Z",
+      "expiresAt": "2026-11-11T09:59:00.000Z"
+    },
+    {
+      "authorizedBy": "root explicit request for bounded physical v3 diagnostic",
+      "recordedAt": "2026-11-11T09:53:06.816Z",
+      "expiresAt": "2026-11-11T10:04:00.000Z"
+    }
+  ]
+}

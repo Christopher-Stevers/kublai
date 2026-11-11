@@ -1,0 +1,27 @@
+{
+  "status": "failed",
+  "failureDiagnostics": null,
+  "physicalPhoneEvidence": false,
+  "method": "phone-visited-reads-page-cdp-v3-diagnostic-v1",
+  "navigationPreparation": "app-header-back-before-and-after-sample-unique-source-destination-absent",
+  "timestamp": "2026-11-11T09:54:47.504Z",
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "controlTransport": "adb-wifi",
+  "targetCreation": "browser-create-target",
+  "phase": {
+    "stage": "source-ready",
+    "journey": "openjob",
+    "run": 0
+  },
+  "completedSamples": [],
+  "completedSamplesDiagnosticOnly": true,
+  "error": "Synthetic readiness timeout [source-ready:openjob:0]",
+  "accepted": false,
+  "cleanup": {
+    "method": "http-close-created-id",
+    "acknowledged": true,
+    "httpStatus": 200
+  },
+  "supplementalDiagnosticOnly": true
+}

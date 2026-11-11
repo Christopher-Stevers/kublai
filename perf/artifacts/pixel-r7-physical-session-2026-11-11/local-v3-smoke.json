@@ -1,0 +1,72 @@
+{
+  "status": "smoke-failed",
+  "physicalPhoneEvidence": false,
+  "method": "local-smoke-visited-reads-page-cdp-v3",
+  "navigationPreparation": "app-header-back-before-and-after-sample-unique-source-destination-absent",
+  "timestamp": "2026-11-11T09:49:29.695Z",
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "controlTransport": "local-smoke",
+  "targetCreation": "browser-create-target",
+  "phase": {
+    "stage": "warmread",
+    "journey": "openmateriallist",
+    "run": 0
+  },
+  "completedSamples": [
+    {
+      "journey": "openjob",
+      "run": 0,
+      "browserDurationMs": 47.59999990463257,
+      "gestureHoldMs": 16,
+      "frameGapsMs": [
+        16.80000000000001
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 59.43451500000003
+    },
+    {
+      "journey": "openjob",
+      "run": 1,
+      "browserDurationMs": 48.799999713897705,
+      "gestureHoldMs": 16.699999809265137,
+      "frameGapsMs": [
+        16.635999999999967
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 58.426481999999965
+    },
+    {
+      "journey": "switchjobtabs",
+      "run": 0,
+      "browserDurationMs": 66.10000038146973,
+      "gestureHoldMs": 17.800000190734863,
+      "frameGapsMs": [
+        16.634000000000015,
+        16.69999999999999
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 75.97367899999995
+    },
+    {
+      "journey": "switchjobtabs",
+      "run": 1,
+      "browserDurationMs": 66.2999997138977,
+      "gestureHoldMs": 17.5,
+      "frameGapsMs": [
+        16.600000000000023,
+        16.69999999999999
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 78.07187700000009
+    }
+  ],
+  "completedSamplesDiagnosticOnly": true,
+  "error": "Synthetic page evaluation failed; payload omitted",
+  "accepted": false,
+  "cleanup": {
+    "method": "http-close-created-id",
+    "acknowledged": true,
+    "httpStatus": 200
+  }
+}

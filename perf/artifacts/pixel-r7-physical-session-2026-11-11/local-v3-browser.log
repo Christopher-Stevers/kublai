@@ -1,0 +1,5 @@
+
+DevTools listening on ws://127.0.0.1:49112/devtools/browser/e94fba02-a4b5-4afe-bb47-a44dbc397e00
+[4001498:4001514:1111/044909.898538:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
+[4001498:4001498:1111/044929.711092:ERROR:content/common/zygote/zygote_communication_linux.cc:291] Failed to send GetTerminationStatus message to zygote
+[4001498:4001514:1111/044929.712291:ERROR:google_apis/gcm/engine/connection_factory_impl.cc:484] ConnectionHandler failed with net error: -2

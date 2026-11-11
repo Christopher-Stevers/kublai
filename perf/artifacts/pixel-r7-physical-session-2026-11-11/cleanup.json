@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-11-11T10:08:20.733Z",
+  "serverSessionExitCode": 0,
+  "ownedPort": 3484,
+  "noListener": true,
+  "privateSocketDirectoryRemoved": true,
+  "finalDatabaseErrors": [],
+  "phoneCommandsPerformedByThisAgent": false,
+  "phoneForwardAndTargetCleanup": "Root recorded owned targets HTTP-close200 and ownADBforward/reverse removal09:59:50UTC",
+  "noRuntimePending": true
+}

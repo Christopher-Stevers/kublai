@@ -16,7 +16,8 @@
     "The 20-sample browser-local phase diagnostic observes real input-to-DOM-ready differences without causal component attribution or a gate waiver.",
     "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate.",
     "R7 focused20-sample diagnostic stays supplemental; subsequent unchanged full R7 matrix fails4/24cells. R6 failure remains preserved; LOCAL phone-v2 smoke 3 samples remains nonphysical/nongate.",
-    "The complete R7 candidate retains all 120 samples and fails openjob on all 3 links plus Basement material-list against predeclared baseline 1; no extra run, metric/threshold change or waiver."
+    "The complete R7 candidate retains all 120 samples and fails openjob on all 3 links plus Basement material-list against predeclared baseline 1; no extra run, metric/threshold change or waiver.",
+    "Physical session methods remain separate: v2 one partial60ms read, physicalv3zero, physicalv4two partial46.9/46.2ms reads; all protocols failed before six intended samples. No accepted physical gate; furtherphone work deferred per user."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -42,7 +43,9 @@
     "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
     "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json",
     "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
-    "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json"
+    "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json",
+    "perf/artifacts/pixel-r7-physical-session-2026-11-11/assessment.json",
+    "perf/artifacts/phone-v5-local-cancelled-2026-11-11.json"
   ],
   "rows": [
     {
@@ -291,7 +294,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T08:52:00.407052+00:00",
+  "updatedAt": "2026-11-11T10:08:20.750637+00:00",
   "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
@@ -395,18 +398,47 @@
     ]
   },
   "controlledPhysicalStatus": {
-    "completedTimingSamples": 0,
+    "completedTimingSamples": 3,
+    "completedTimingSamplesMeaning": "Three partial browser observations in two failed physical methods, kept separate; not a completed six-read protocol or accepted gate.",
+    "completedPhysicalProtocolRuns": 0,
     "acceptedTargetProof": false,
-    "historicalAttempt": "CDP Page.navigate timed out during synthetic app attestation; no physical samples.",
-    "latestAvailability": "No usable Wi-Fi ADB advertisement at the later bounded foreground/connection check; no new physical timing run.",
-    "separateFieldEvidence": "Participant-attributed uncontrolled live telemetry remains separate and does not identify hardware per anonymous row.",
-    "latestLocalSmoke": {
-      "source": "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
-      "samples": 3,
+    "source": "perf/artifacts/pixel-r7-physical-session-2026-11-11/assessment.json",
+    "partialObservationsByMethod": {
+      "physicalV2": {
+        "samples": 1,
+        "openjobBrowserMs": [
+          60.0
+        ],
+        "failedAt": "second openjob source readiness"
+      },
+      "physicalV3Diagnostic": {
+        "samples": 0,
+        "failedAt": "first openjob source readiness"
+      },
+      "physicalV4Diagnostic": {
+        "samples": 2,
+        "openjobBrowserMs": [
+          46.9,
+          46.2
+        ],
+        "failedAt": "switchjobtabs warm readiness"
+      }
+    },
+    "localV3Smoke": {
+      "samples": 4,
       "physicalPhoneEvidence": false,
-      "acceptedPerformanceGate": false,
-      "ownedTargetClosedHttpStatus": 200
-    }
+      "status": "failed during material-list warm readiness"
+    },
+    "rawReportsPhysicalPhoneEvidenceFlag": false,
+    "qualification": "Failed aggregate reports retain their physicalPhoneEvidence:false/accepted:false flags. Partial rows are not pooled across methods or with local smoke; no percentile or comparison claim.",
+    "deviceContext": "Root verified known Pixel9ProXL/Chrome157 foreground and authorized connection; no device identifiers archived.",
+    "physicalChecksDeferredPerUser": true,
+    "deferralReason": "User cannot keep Pixel open and asked to move on to the rest of the plan.",
+    "noFurtherPhoneWork": true,
+    "userReleased": true,
+    "labAndOwnedPhoneResourcesCleaned": true,
+    "cancelledV5LocalSmoke": "perf/artifacts/phone-v5-local-cancelled-2026-11-11.json",
+    "separateFieldEvidence": "Participant-attributed uncontrolled live field telemetry remains separate and does not independently hardware-identify anonymous rows."
   },
   "priorCandidateRegressions": [
     {

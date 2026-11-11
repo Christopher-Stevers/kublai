@@ -1,0 +1,235 @@
+{
+  "status": "incomplete-protocols-partial-observations-only",
+  "acceptedPhysicalGate": false,
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+  "deviceContext": "Root verified known Pixel9ProXL/Chrome157 foreground via authorized connection; device identifiers/addresses/credentials are not archived.",
+  "attempts": [
+    {
+      "path": "visited-reads.json",
+      "context": "physical-attempt-v2",
+      "method": "phone-visited-reads-page-cdp-v2",
+      "status": "failed",
+      "rawPhysicalPhoneEvidenceFlag": false,
+      "completedSamples": [
+        {
+          "journey": "openjob",
+          "run": 0,
+          "browserDurationMs": 60,
+          "driverWallclockMs": 103.72314700000015
+        }
+      ],
+      "completedSampleCount": 1,
+      "phase": {
+        "stage": "source-ready",
+        "journey": "openjob",
+        "run": 1
+      },
+      "error": "Synthetic readiness timeout [source-ready:openjob:1]",
+      "accepted": false,
+      "cleanup": {
+        "method": "http-close-created-id",
+        "acknowledged": true,
+        "httpStatus": 200
+      }
+    },
+    {
+      "path": "local-v3-smoke.json",
+      "context": "desktop-local-smoke-v3",
+      "method": "local-smoke-visited-reads-page-cdp-v3",
+      "status": "smoke-failed",
+      "rawPhysicalPhoneEvidenceFlag": false,
+      "completedSamples": [
+        {
+          "journey": "openjob",
+          "run": 0,
+          "browserDurationMs": 47.59999990463257,
+          "driverWallclockMs": 59.43451500000003
+        },
+        {
+          "journey": "openjob",
+          "run": 1,
+          "browserDurationMs": 48.799999713897705,
+          "driverWallclockMs": 58.426481999999965
+        },
+        {
+          "journey": "switchjobtabs",
+          "run": 0,
+          "browserDurationMs": 66.10000038146973,
+          "driverWallclockMs": 75.97367899999995
+        },
+        {
+          "journey": "switchjobtabs",
+          "run": 1,
+          "browserDurationMs": 66.2999997138977,
+          "driverWallclockMs": 78.07187700000009
+        }
+      ],
+      "completedSampleCount": 4,
+      "phase": {
+        "stage": "warmread",
+        "journey": "openmateriallist",
+        "run": 0
+      },
+      "error": "Synthetic page evaluation failed; payload omitted",
+      "accepted": false,
+      "cleanup": {
+        "method": "http-close-created-id",
+        "acknowledged": true,
+        "httpStatus": 200
+      }
+    },
+    {
+      "path": "physical-v3-diagnostic.json",
+      "context": "physical-diagnostic-v3",
+      "method": "phone-visited-reads-page-cdp-v3-diagnostic-v1",
+      "status": "failed",
+      "rawPhysicalPhoneEvidenceFlag": false,
+      "completedSamples": [],
+      "completedSampleCount": 0,
+      "phase": {
+        "stage": "source-ready",
+        "journey": "openjob",
+        "run": 0
+      },
+      "error": "Synthetic readiness timeout [source-ready:openjob:0]",
+      "accepted": false,
+      "cleanup": {
+        "method": "http-close-created-id",
+        "acknowledged": true,
+        "httpStatus": 200
+      }
+    },
+    {
+      "path": "physical-v4-diagnostic.json",
+      "context": "physical-diagnostic-v4",
+      "method": "phone-visited-reads-page-cdp-v4-diagnostic-v1",
+      "status": "failed",
+      "rawPhysicalPhoneEvidenceFlag": false,
+      "completedSamples": [
+        {
+          "journey": "openjob",
+          "run": 0,
+          "browserDurationMs": 46.8999999910593,
+          "driverWallclockMs": 88.13249300000007
+        },
+        {
+          "journey": "openjob",
+          "run": 1,
+          "browserDurationMs": 46.20000000298023,
+          "driverWallclockMs": 92.15553999999997
+        }
+      ],
+      "completedSampleCount": 2,
+      "phase": {
+        "stage": "warmread",
+        "journey": "switchjobtabs",
+        "run": 0
+      },
+      "error": "Read readiness timeout",
+      "accepted": false,
+      "cleanup": {
+        "method": "http-close-created-id",
+        "acknowledged": true,
+        "httpStatus": 200
+      }
+    }
+  ],
+  "methodChecks": [
+    {
+      "path": "method/diagnose.mjs",
+      "expectedBeforeSha256": "1e31de197ee18af622f292e80e00bba969d505bac416900183d65751b52a1bf4",
+      "sha256ReadAtArchive": "1e31de197ee18af622f292e80e00bba969d505bac416900183d65751b52a1bf4",
+      "matches": true
+    },
+    {
+      "path": "method/run.mjs",
+      "expectedBeforeSha256": "8d16388674d22996c59384a7f9f5fdc6d868ce050d00a080831860fb9c72fd1d",
+      "sha256ReadAtArchive": "8d16388674d22996c59384a7f9f5fdc6d868ce050d00a080831860fb9c72fd1d",
+      "matches": true
+    },
+    {
+      "path": "method/cdp-transport.mjs",
+      "expectedBeforeSha256": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "sha256ReadAtArchive": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "matches": true
+    },
+    {
+      "path": "method-v3/cdp-transport.mjs",
+      "expectedBeforeSha256": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "sha256ReadAtArchive": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "matches": true
+    },
+    {
+      "path": "method-v3/run.mjs",
+      "expectedBeforeSha256": "78f7b3f0e151124a8ca53643926ebde0b03a5839db321faaa1f6dd477eb7b735",
+      "sha256ReadAtArchive": "78f7b3f0e151124a8ca53643926ebde0b03a5839db321faaa1f6dd477eb7b735",
+      "matches": true
+    },
+    {
+      "path": "method-v3-diagnostic/cdp-transport.mjs",
+      "expectedBeforeSha256": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "sha256ReadAtArchive": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "matches": true
+    },
+    {
+      "path": "method-v3-diagnostic/run.mjs",
+      "expectedBeforeSha256": "5efdf7245f56b71923705f83f1358845933c753a0f34b3f4712071b5ec13e877",
+      "sha256ReadAtArchive": "5efdf7245f56b71923705f83f1358845933c753a0f34b3f4712071b5ec13e877",
+      "matches": true
+    },
+    {
+      "path": "method-v4-diagnostic/cdp-transport.mjs",
+      "expectedBeforeSha256": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "sha256ReadAtArchive": "79d3f0b9658a90537e844afce5eb87956357d035f848964bec105666334df44e",
+      "matches": true
+    },
+    {
+      "path": "method-v4-diagnostic/run.mjs",
+      "expectedBeforeSha256": "8f39e11c1766eefcc15a2154e88d97e66b6b459ea6abe21d3ba3e214182831af",
+      "sha256ReadAtArchive": "8f39e11c1766eefcc15a2154e88d97e66b6b459ea6abe21d3ba3e214182831af",
+      "matches": true
+    }
+  ],
+  "launcherProvenance": {
+    "physical": "Root inline Python execution was not independently frozen; selected input configuration is retained in runner-env.json. No standalone root Node helper was used or invented.",
+    "localV3": {
+      "path": "auxiliary/local-v3-launcher.py",
+      "sha256ReadAtArchive": "c938e42cb8a7d34a7061189ce89a8d7646a86864e8e4c0a5b3690305bfec778e",
+      "executionStartHashAvailable": false
+    }
+  },
+  "database": {
+    "privateSocketOnly": true,
+    "productionDatabase": false,
+    "preflightQueriesPassed": 14,
+    "schemaInventoryCopiedBeforeCleanup": true,
+    "finalErrors": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "appPort3484NoListener": true,
+    "privateDatabaseDirectoryRemoved": true,
+    "rootReportedCreatedTargetClosesHttp200": true,
+    "rootReportedOwnedForwardAndReverseRemovedAt": "2026-11-11T09:59:50Z",
+    "userReleased": true
+  },
+  "limitations": [
+    "Do not pool methods or desktop/physical attempts. V2 one 60 ms row, physical V3 zero, physical V4 two 46.9/46.2 ms rows remain separate; local V3 four rows are desktop-only.",
+    "Each read protocol failed before completing its intended six samples; raw failed reports retain physicalPhoneEvidence:false and accepted:false. Partial rows are observations, not accepted phone-gate evidence.",
+    "Method revisions/diagnostic metadata and different preparation prevent before/after or percentile claims.",
+    "Browser DOM readiness plus rAF is not physical display/first-paint/every-frame proof.",
+    "Synthetic seeded R7 app with Clerk stubs/non-hex lab tag/stock server, no production writes or controlled link/offline/sign-in startup proof.",
+    "All reports/logs/methods copied byte-exact. Selected runner-env contains only loopback/synthetic protocol inputs, not general environment or credentials.",
+    "The later local-only v5 check is a new separate session, not part of this physical archive."
+  ],
+  "userDirection": {
+    "furtherPhysicalChecks": "deferred per explicit user request",
+    "reason": "User cannot keep Pixel open and asked to move on to the rest of the plan.",
+    "noFurtherPhoneWork": true
+  },
+  "cancelledFollowup": "Fresh local-only v5 smoke request cancelled before setup/runtime; separate cancellation metadata, no new observations."
+}

@@ -1,0 +1,69 @@
+{
+  "status": "failed",
+  "failureDiagnostics": {
+    "preTouch": {
+      "x": 240.7777862548828,
+      "y": 180.88888931274414,
+      "timeOrigin": 1794391041541,
+      "targetContainsHit": true,
+      "nestedInteractiveHit": false
+    },
+    "after": {
+      "sourcePathMatches": true,
+      "destinationPathMatches": false,
+      "timeOriginChanged": false,
+      "targetVisible": true,
+      "readyVisible": false,
+      "evidenceExists": true,
+      "startSeen": true,
+      "releaseSeen": true,
+      "done": false
+    }
+  },
+  "physicalPhoneEvidence": false,
+  "method": "phone-visited-reads-page-cdp-v4-diagnostic-v1",
+  "navigationPreparation": "app-header-normalize-then-back-before-and-after-sample-unique-source-destination-absent",
+  "timestamp": "2026-11-11T09:57:44.332Z",
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "controlTransport": "adb-wifi",
+  "targetCreation": "browser-create-target",
+  "phase": {
+    "stage": "warmread",
+    "journey": "switchjobtabs",
+    "run": 0
+  },
+  "completedSamples": [
+    {
+      "journey": "openjob",
+      "run": 0,
+      "browserDurationMs": 46.8999999910593,
+      "gestureHoldMs": 17.19999998807907,
+      "frameGapsMs": [
+        16.600000000000023
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 88.13249300000007
+    },
+    {
+      "journey": "openjob",
+      "run": 1,
+      "browserDurationMs": 46.20000000298023,
+      "gestureHoldMs": 17.5,
+      "frameGapsMs": [
+        16.59999999999991
+      ],
+      "appMeasures": [],
+      "driverWallclockMs": 92.15553999999997
+    }
+  ],
+  "completedSamplesDiagnosticOnly": true,
+  "error": "Read readiness timeout",
+  "accepted": false,
+  "cleanup": {
+    "method": "http-close-created-id",
+    "acknowledged": true,
+    "httpStatus": 200
+  },
+  "supplementalDiagnosticOnly": true
+}
