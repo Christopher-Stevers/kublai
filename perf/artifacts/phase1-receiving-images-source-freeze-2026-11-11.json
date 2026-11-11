@@ -1,0 +1,188 @@
+{
+  "status": "source-only-awaiting-root-review-NO-build-authorization",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-receiving-images-20261111",
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111",
+  "baseBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "baseSourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "sourceFingerprint": "d22e346422aa5fc1827c1c6bca58b5eec6ad20badae874c9da0ece8b39eb6c1c",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2322,
+  "runtimeChangedPaths": [
+    "src/components/catalogue/PartImage.tsx",
+    "src/components/materialLists/MaterialListScreen.tsx",
+    "src/components/materialLists/SavedOrderReading.tsx",
+    "src/hooks/use-receiving-order-read.ts",
+    "src/lib/device-query-cache.ts",
+    "src/lib/drawing-offline.ts",
+    "src/lib/part-image-layout-resource.ts",
+    "src/lib/receiving-order-reading.ts",
+    "src/lib/tier-one-cache-budget.ts",
+    "src/server/api/routers/materialList.ts"
+  ],
+  "runtimeChangedCount": 10,
+  "newRuntimeFiles": 5,
+  "changes": [
+    {
+      "path": "src/components/materialLists/MaterialListScreen.tsx",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": false,
+      "preimageSha256": "b8079971ad1557b1b0143ffe5dc9009e94f0e93a9fa135556edfbec755bfebdb",
+      "postimageSha256": "ac889c67343bd239cfbb654ab8ecd6d1de35c56d5cba7796fdc26ec44a57de71",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/components/materialLists/SavedOrderReading.tsx",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "de1180bf03b78f1ea48205d35f0b7507b77d5196e4bddfacc62ccd74ddbad1ff",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/hooks/use-receiving-order-read.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "dcb2e2f6b0a9de9cde81b9cdca04afe59a6e9e95af92832b0d094cfffef92b26",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/lib/receiving-order-reading.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "f4f7bcdee121d210f32452ccb7fcfb9a5e8b8ba6a685650419dace0335b45f14",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/lib/tier-one-cache-budget.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "a46c892384ed70bc4c4034c65669ee872395881618d737f2d9ed75f0bea20573",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/lib/device-query-cache.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": false,
+      "preimageSha256": "e9c2ec1f193e20c5bd4c7c37fa1eba601981178dab29c451ed47130aa4582da1",
+      "postimageSha256": "3c3a3f68ffda95052c4e35af6e2ba5682b88564fcd0acd919575217f70b246f8",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/lib/drawing-offline.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": false,
+      "preimageSha256": "be9f756eff949e8097650a0ed68ce9dd7950b57dc11596d884301efac9d7ccc1",
+      "postimageSha256": "d60d4b3f4745ce0bf6d4aa0d25eedb933aa45907463abd0e4d7578a6fb6ba838",
+      "compatibility": "Exact R19 equals 9ace848a parent; 9ace848a primitive postimage equals 7286af50 parent; full reviewed postimage includes both"
+    },
+    {
+      "path": "src/server/api/routers/materialList.ts",
+      "commit": "7286af50",
+      "group": "receiving",
+      "newFile": false,
+      "preimageSha256": "ef28cb81dadb2da6208380c6de7c74f7a906d7e5aa74760ddf7cc8754242203f",
+      "postimageSha256": "bd05a71b40131a43830b543bd6f2e76a1ad286f7eddfe208641a89325b4e7ab5",
+      "compatibility": "exact selected commit parent equals R19"
+    },
+    {
+      "path": "src/components/catalogue/PartImage.tsx",
+      "commit": "46a30bf2",
+      "group": "image-metadata",
+      "newFile": false,
+      "preimageSha256": "248c38ac43bb3f63a6a3dce1e113dd409929658eab5d4a4eecd2eaf111205642",
+      "postimageSha256": "ce9ede84d8e19b47178c04917c1359ba5df290e9510106372f67623913f2fedb",
+      "compatibility": "Exact R19 equals e206f3a6 parent; e206f3a6 postimage equals 46a30bf2 parent"
+    },
+    {
+      "path": "src/lib/part-image-layout-resource.ts",
+      "commit": "e206f3a6",
+      "group": "image-metadata",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "f1273dbdd44601673b2fea1269976715dc6f6406b527a01f3f3aa7c1aa7cbe47",
+      "compatibility": "exact selected commit parent equals R19"
+    }
+  ],
+  "fullInputCorpus": {
+    "baseFiles": 5483,
+    "files": 5488,
+    "unchangedFiles": 5478,
+    "changedPaths": [
+      "src/components/catalogue/PartImage.tsx",
+      "src/components/materialLists/MaterialListScreen.tsx",
+      "src/components/materialLists/SavedOrderReading.tsx",
+      "src/hooks/use-receiving-order-read.ts",
+      "src/lib/device-query-cache.ts",
+      "src/lib/drawing-offline.ts",
+      "src/lib/part-image-layout-resource.ts",
+      "src/lib/receiving-order-reading.ts",
+      "src/lib/tier-one-cache-budget.ts",
+      "src/server/api/routers/materialList.ts"
+    ],
+    "manifestSha256": "bea196cfdac6eb33dd0c4f684ac7c5cf86b000fe2cf57d563ec3e6f0a33eb495"
+  },
+  "publicFilesExact": 3263,
+  "unchangedR19FourPaths": [
+    {
+      "path": "src/hooks/use-press.ts",
+      "sha256": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+      "unchanged": true
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "sha256": "4a03ed88948ecbfa979f0b5db3259c4715c9665d7b9e91112f912b93833dc84b",
+      "unchanged": true
+    },
+    {
+      "path": "src/components/materialLists/QuantityControls.tsx",
+      "sha256": "f8d315f8bde373ee7890ff4def1676d0678d389b85a6a3b2b5af18b8322e2891",
+      "unchanged": true
+    },
+    {
+      "path": "src/app/jobs/JobsClient.tsx",
+      "sha256": "f7261eb730c86b0eac064515df5abe10424c0dfd1fccdd15d3bbb6cae1d4758b",
+      "unchanged": true
+    }
+  ],
+  "auditedImageJsonUnchanged": true,
+  "configSha256": "047f4d6aa8546b21956b5c3f9bef5a7a3e8520b1e1fd7cf4f25d4a9d6fbe7892",
+  "toolchain": {
+    "node": "26.8.2",
+    "pnpm": "10.11.1",
+    "next": "16.1.1",
+    "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+    "installedLockVerified": true
+  },
+  "originalPrivateBuildFingerprintVerified": true,
+  "links": {
+    "node_modules": "/home/tim/.openclaw/workspace/kublai/node_modules",
+    ".next": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+    ".env": "/home/tim/.openclaw/workspace/kublai/.env"
+  },
+  "exclusions": [
+    "All unrelated dirty schema/worker/PackingSlips/zoom/tsconfig",
+    "Rolled-back notification experiment",
+    "All new tests/docs/diagnostic methods",
+    "No raw HEAD archive; source is exact R19 plus selected git runtime blobs"
+  ],
+  "buildStarted": false,
+  "appStarted": false,
+  "databaseStarted": false,
+  "timingScheduled": false,
+  "activated": false,
+  "pending": [
+    "root review of exact source/proposal",
+    "canonical byte/type build only after separate GO",
+    "no full timing retry or activation scheduled"
+  ]
+}
