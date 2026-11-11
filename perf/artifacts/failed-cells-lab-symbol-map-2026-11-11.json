@@ -1,0 +1,224 @@
+{
+  "purpose": "Supplemental trace attribution only; no causal or performance claim",
+  "coordinates": "CDP lineNumber/columnNumber are zero-based UTF-16 source positions; end-exclusive module ranges",
+  "actualLab": {
+    "root": "/tmp/foremanhq-speed-app-PSljsn/.next",
+    "buildId": "2e5AUhfrGey7tubpAbx-8"
+  },
+  "canonical": {
+    "root": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111/.next-web",
+    "buildId": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+    "warning": "Canonical coordinates differ from lab: Clerk lab transform changes graph/module IDs. Use actualLab entries for this diagnostic."
+  },
+  "sources": {
+    "src/lib/navigation-paint.ts": {
+      "sha256": "2345a88d8b7b5e166b215bddf421a24e709cf0d251e2233cf6becaa61eca524c",
+      "functions": [
+        "NavigationPaintCoordinator.ticket/commit/check",
+        "loading"
+      ]
+    },
+    "src/hooks/use-job-workspace-navigation.ts": {
+      "sha256": "615f52a4aa8f5f8d163f171abd314460df2ce0289a4bda4b3eb2f3c90dd078b2",
+      "functions": [
+        "useJobWorkspaceNavigation layout-effect ticket.commit"
+      ]
+    },
+    "src/hooks/use-press.ts": {
+      "sha256": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+      "functions": [
+        "usePress",
+        "onPointerDown",
+        "pointerup end callback"
+      ]
+    }
+  },
+  "chunks": [
+    {
+      "url": "/_next/static/chunks/app/layout-c8fb0edcf1850133.js",
+      "sha256": "90dedfe14e35153dabfc0aadebb1d0bec7d3ca26fc0aa911570baf641aa64d47",
+      "moduleId": 87512,
+      "moduleRange": {
+        "start": {
+          "offset": 36708,
+          "lineNumber": 1,
+          "columnNumber": 23162
+        },
+        "end": {
+          "offset": 41473,
+          "lineNumber": 1,
+          "columnNumber": 27927
+        }
+      },
+      "sites": [
+        {
+          "match": "loading:function(){",
+          "offset": 38897,
+          "lineNumber": 1,
+          "columnNumber": 25351
+        },
+        {
+          "match": "this.env.loading()",
+          "offset": 37953,
+          "lineNumber": 1,
+          "columnNumber": 24407
+        },
+        {
+          "match": "this.env.loading()",
+          "offset": 38088,
+          "lineNumber": 1,
+          "columnNumber": 24542
+        },
+        {
+          "match": "commit:()=>",
+          "offset": 38315,
+          "lineNumber": 1,
+          "columnNumber": 24769
+        },
+        {
+          "match": "getClientRects().length>0&&\"hidden\"",
+          "offset": 39080,
+          "lineNumber": 1,
+          "columnNumber": 25534
+        }
+      ]
+    },
+    {
+      "url": "/_next/static/chunks/9108-9bc2cb421c399918.js",
+      "sha256": "23a310aeee7e50b3dbf41a2eb5e7bef512fe32085b4bd6acd5383828e61cb68c",
+      "moduleId": 87512,
+      "moduleRange": {
+        "start": {
+          "offset": 3341,
+          "lineNumber": 0,
+          "columnNumber": 3341
+        },
+        "end": {
+          "offset": 8092,
+          "lineNumber": 0,
+          "columnNumber": 8092
+        }
+      },
+      "sites": [
+        {
+          "match": "loading:function(){",
+          "offset": 5517,
+          "lineNumber": 0,
+          "columnNumber": 5517
+        },
+        {
+          "match": "this.env.loading()",
+          "offset": 4573,
+          "lineNumber": 0,
+          "columnNumber": 4573
+        },
+        {
+          "match": "this.env.loading()",
+          "offset": 4708,
+          "lineNumber": 0,
+          "columnNumber": 4708
+        },
+        {
+          "match": "commit:()=>",
+          "offset": 4935,
+          "lineNumber": 0,
+          "columnNumber": 4935
+        },
+        {
+          "match": "getClientRects().length>0&&\"hidden\"",
+          "offset": 5700,
+          "lineNumber": 0,
+          "columnNumber": 5700
+        },
+        {
+          "match": "ticket.commit()",
+          "offset": 1287,
+          "lineNumber": 0,
+          "columnNumber": 1287
+        }
+      ]
+    },
+    {
+      "url": "/_next/static/chunks/app-press-browser-f8327b500a08be0f.js",
+      "sha256": "054b7c569cb847742b0007e9010ec3a048d94c54476eaa3d591c95fdf0bb7b13",
+      "moduleId": 70216,
+      "moduleRange": {
+        "start": {
+          "offset": 77,
+          "lineNumber": 0,
+          "columnNumber": 77
+        },
+        "end": {
+          "offset": 3623,
+          "lineNumber": 0,
+          "columnNumber": 3623
+        }
+      },
+      "sites": [
+        {
+          "match": "function c(",
+          "offset": 475,
+          "lineNumber": 0,
+          "columnNumber": 475
+        },
+        {
+          "match": "onPointerDown:",
+          "offset": 1309,
+          "lineNumber": 0,
+          "columnNumber": 1309
+        },
+        {
+          "match": "getBoundingClientRect()",
+          "offset": 1733,
+          "lineNumber": 0,
+          "columnNumber": 1733
+        },
+        {
+          "match": "pointercancel",
+          "offset": 1921,
+          "lineNumber": 0,
+          "columnNumber": 1921
+        },
+        {
+          "match": "pointercancel",
+          "offset": 2145,
+          "lineNumber": 0,
+          "columnNumber": 2145
+        },
+        {
+          "match": "pointercancel",
+          "offset": 2331,
+          "lineNumber": 0,
+          "columnNumber": 2331
+        },
+        {
+          "match": "pointercancel",
+          "offset": 2737,
+          "lineNumber": 0,
+          "columnNumber": 2737
+        },
+        {
+          "match": "pointercancel",
+          "offset": 3117,
+          "lineNumber": 0,
+          "columnNumber": 3117
+        }
+      ]
+    }
+  ],
+  "baseline": {
+    "root": "/tmp/foremanhq-speed-app-5h2kmq/.next",
+    "buildId": "cI20Tzl0OAQscfvjfmtFW",
+    "note": "No navigation-paint or app-press module in current Jobs manifest; spatial keyboard navigation still contains unrelated geometry reads.",
+    "unrelatedGeometryChunk": {
+      "url": "/_next/static/chunks/app/jobs/layout-97d97c1746902f2b.js",
+      "sha256": "bcf5d4476b2d4f4eed16ea93c9c39d93f90513b9de17731d7d8d9ed4a7e6655a"
+    }
+  },
+  "limitations": [
+    "A module range establishes membership, not sampled CPU or forced-layout cost.",
+    "Root layout also contains startup-cover and background update getClientRects reads; do not attribute every root-chunk geometry read to navigation telemetry.",
+    "Duplicate navigation-paint allocation does not prove both copies execute per action.",
+    "No build, browser, application, database or tests run for this extraction."
+  ]
+}
