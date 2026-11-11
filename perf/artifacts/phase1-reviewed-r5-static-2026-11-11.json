@@ -1,0 +1,95 @@
+{
+  "sourceBuild": "926ba7f209c5aba5c3e6ac637522946b06916a02dfd1d26b57e4af9dbaf52496",
+  "sourceFingerprint": "3cf112c2c0445b9156564ceab78d3aa05eda97bc9f54f7a5968e96b0f5ac893f",
+  "rejected": true,
+  "activated": false,
+  "rejectionReason": "Prepared only. Root is reviewing actual chat ReactActivity hidden/resume lifecycle; no timing or activation clearance, and no source-matched candidate timing report.",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "scope": {
+    "base": "exact final R4",
+    "runtimeFileCount": 7,
+    "approvedCommits": [
+      "1be5dcff drawing press",
+      "65a4f822 selected-floor Rooms",
+      "35651463 chat authority/history"
+    ],
+    "noOtherRuntimeChanges": true,
+    "publicCorpusFiles": 3263,
+    "allPublicBytesMatchR4": true,
+    "newUnreviewedSlicesExcluded": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485346,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755534,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1275357,
+      "passes": true
+    }
+  },
+  "sharedBreakdown": {
+    "frameworkGzipBytes": 118302,
+    "applicationGzipBytes": 367044
+  },
+  "featureBatchR4ToR5": {
+    "baselineBuild": "e561b24ec20a906f18e963dd9efdeb2b995747515fd421b3d9d85ee9b884e2bc",
+    "candidateBuild": "926ba7f209c5aba5c3e6ac637522946b06916a02dfd1d26b57e4af9dbaf52496",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 253,
+    "changedScripts": 30,
+    "changedRawBytes": 871746,
+    "changedGzipBytes": 291321,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "separateControlledSmallEdit": {
+    "revision": "R2\u2192R3",
+    "changedScripts": 5,
+    "gzipBytes": 22739,
+    "passesStrict100KB": true
+  },
+  "source": {
+    "build": "926ba7f209c5aba5c3e6ac637522946b06916a02dfd1d26b57e4af9dbaf52496",
+    "sourceFingerprint": "3cf112c2c0445b9156564ceab78d3aa05eda97bc9f54f7a5968e96b0f5ac893f",
+    "sourceFileCount": 2283,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "926ba7f209c5aba5c3e6ac637522946b06916a02dfd1d26b57e4af9dbaf52496",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "httpProofPasses": true,
+    "activated": false
+  },
+  "ownProofServersStopped": true,
+  "limitations": [
+    "Seven-file feature batch exceeds strict100KB diagnostic; not a new single-edit controlled proof.",
+    "Framework-inclusive reference union remains the unchanged formal metric, not browser transfer trace.",
+    "Accepted same-build baseline repeatability is separate; candidate regression matrix, full Phase0 and physical evidence remain open."
+  ],
+  "chatActivityReviewPending": true
+}
