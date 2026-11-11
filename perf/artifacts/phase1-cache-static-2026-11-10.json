@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-11T01:38:56.343Z",
+  "sourceCommit": "076e8014",
+  "foundation": {
+    "baselineBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "candidateBuild": "84cb1d618e8594d74b065f98781af217bc35e3ad6f270ba76cd603a0d0e37923",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 258,
+    "reusedScripts": 112,
+    "changedScripts": 146,
+    "changedRawBytes": 2895123,
+    "changedGzipBytes": 947890,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "controlledSmallEdit": {
+    "baselineBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "candidateBuild": "3f9c23b7af3c462c72ce169fa2afcb66d52dc247b769c322ec25597610f34f5b",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 255,
+    "reusedScripts": 249,
+    "changedScripts": 6,
+    "changedRawBytes": 111446,
+    "changedGzipBytes": 39423,
+    "budgetGzipBytes": 100000,
+    "passes": true,
+    "scope": "Frozen Phase0 application with one empty-state title string changed; canonical metadata/packaging recipe updated, observer does not modify compiler options."
+  },
+  "sharedBytes": {
+    "definition": "Jobs client-reference dependency intersection plus framework rootMainFiles; exact gzip level 9 per emitted file, not a browser startup trace.",
+    "phase0": {
+      "framework": 117929,
+      "application": 384689,
+      "total": 502618
+    },
+    "phase1": {
+      "framework": 117952,
+      "application": 391707,
+      "total": 509659
+    }
+  },
+  "largestApplicationChunks": [
+    {
+      "emittedRawBytes": 113493,
+      "emittedGzipBytes": 31513,
+      "modules": [
+        {
+          "id": null,
+          "name": "node_modules/@trpc/server/dist/resolveResponse-C7AcnFLN.mjs",
+          "webpackEstimatedBytes": 77064
+        },
+        {
+          "id": null,
+          "name": "node_modules/@trpc/react-query/dist/shared-JtnEvJvB.mjs",
+          "webpackEstimatedBytes": 39094
+        },
+        {
+          "id": null,
+          "name": "node_modules/@trpc/client/dist/index.mjs",
+          "webpackEstimatedBytes": 30119
+        },
+        {
+          "id": null,
+          "name": "node_modules/@trpc/client/dist/wsLink-CatceK3c.mjs",
+          "webpackEstimatedBytes": 22903
+        },
+        {
+          "id": 52472,
+          "name": "node_modules/@tanstack/query-core/build/modern/queryObserver.js",
+          "webpackEstimatedBytes": 16419
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 91630,
+      "emittedGzipBytes": 29600,
+      "modules": [
+        {
+          "id": 45706,
+          "name": "node_modules/replicache/out/chunk-AWTW3LEP.js",
+          "webpackEstimatedBytes": 269042
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 104609,
+      "emittedGzipBytes": 29089,
+      "modules": [
+        {
+          "id": null,
+          "name": "node_modules/@clerk/shared/dist/runtime/react/index.mjs",
+          "webpackEstimatedBytes": 82929
+        },
+        {
+          "id": null,
+          "name": "node_modules/@clerk/clerk-react/dist/index.mjs",
+          "webpackEstimatedBytes": 65081
+        },
+        {
+          "id": null,
+          "name": "node_modules/@clerk/clerk-react/dist/chunk-6WD75OPE.mjs",
+          "webpackEstimatedBytes": 37036
+        },
+        {
+          "id": null,
+          "name": "node_modules/swr/dist/index/index.mjs",
+          "webpackEstimatedBytes": 28762
+        },
+        {
+          "id": null,
+          "name": "node_modules/swr/dist/_internal/config-context-client-BoS53ST9.mjs",
+          "webpackEstimatedBytes": 22521
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 86273,
+      "emittedGzipBytes": 26853,
+      "modules": [
+        {
+          "id": 40094,
+          "name": "node_modules/next/dist/shared/lib/router/router.js",
+          "webpackEstimatedBytes": 82919
+        },
+        {
+          "id": 51008,
+          "name": "node_modules/next/dist/lib/constants.js",
+          "webpackEstimatedBytes": 15040
+        },
+        {
+          "id": 1546,
+          "name": "node_modules/next/dist/client/route-loader.js",
+          "webpackEstimatedBytes": 13696
+        },
+        {
+          "id": 67097,
+          "name": "node_modules/next/dist/shared/lib/router/utils/sorted-routes.js",
+          "webpackEstimatedBytes": 11525
+        },
+        {
+          "id": 72332,
+          "name": "node_modules/next/dist/shared/lib/router/utils/route-regex.js",
+          "webpackEstimatedBytes": 10695
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 88919,
+      "emittedGzipBytes": 24095,
+      "modules": [
+        {
+          "id": null,
+          "name": "node_modules/zod/v4/core/schemas.js",
+          "webpackEstimatedBytes": 77030
+        },
+        {
+          "id": null,
+          "name": "node_modules/zod/v4/core/api.js",
+          "webpackEstimatedBytes": 27841
+        },
+        {
+          "id": 73579,
+          "name": "node_modules/zod/v4/classic/from-json-schema.js",
+          "webpackEstimatedBytes": 23172
+        },
+        {
+          "id": 71031,
+          "name": "node_modules/zod/v4/core/util.js",
+          "webpackEstimatedBytes": 21335
+        },
+        {
+          "id": 2219,
+          "name": "node_modules/zod/v4/core/json-schema-processors.js",
+          "webpackEstimatedBytes": 20882
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 47910,
+      "emittedGzipBytes": 18501,
+      "modules": [
+        {
+          "id": null,
+          "name": "src/lib/pipe-components.ts",
+          "webpackEstimatedBytes": 44971
+        },
+        {
+          "id": 82667,
+          "name": "src/lib/pdf-range-source.ts",
+          "webpackEstimatedBytes": 13540
+        },
+        {
+          "id": 29073,
+          "name": "src/lib/sheet-snap.ts",
+          "webpackEstimatedBytes": 9903
+        },
+        {
+          "id": 68610,
+          "name": "src/lib/pipe-component-marker.ts",
+          "webpackEstimatedBytes": 8661
+        },
+        {
+          "id": 59746,
+          "name": "src/lib/drawing-kept.ts",
+          "webpackEstimatedBytes": 8077
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 58490,
+      "emittedGzipBytes": 18216,
+      "modules": [
+        {
+          "id": null,
+          "name": "src/app/_components/Header.tsx",
+          "webpackEstimatedBytes": 33647
+        },
+        {
+          "id": null,
+          "name": "src/components/notifications/NotificationCenter.tsx",
+          "webpackEstimatedBytes": 28718
+        },
+        {
+          "id": 60699,
+          "name": "src/components/notifications/PushNotifications.tsx",
+          "webpackEstimatedBytes": 24657
+        },
+        {
+          "id": 70778,
+          "name": "src/components/app/AppPagesProvider.tsx",
+          "webpackEstimatedBytes": 15442
+        },
+        {
+          "id": null,
+          "name": "src/components/app/InstallAppButton.tsx",
+          "webpackEstimatedBytes": 8029
+        }
+      ]
+    },
+    {
+      "emittedRawBytes": 53634,
+      "emittedGzipBytes": 17290,
+      "modules": [
+        {
+          "id": 23904,
+          "name": "src/components/jobs/DrawingDestinationProvider.tsx",
+          "webpackEstimatedBytes": 12975
+        },
+        {
+          "id": null,
+          "name": "src/components/app/AppKeyboardNavigation.tsx",
+          "webpackEstimatedBytes": 9270
+        },
+        {
+          "id": null,
+          "name": "src/components/tutorial/TutorialGate.tsx",
+          "webpackEstimatedBytes": 8838
+        },
+        {
+          "id": null,
+          "name": "src/lib/keyboard-navigation.ts",
+          "webpackEstimatedBytes": 8046
+        },
+        {
+          "id": 68654,
+          "name": "src/components/app/MaterialSortProvider.tsx",
+          "webpackEstimatedBytes": 7322
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Full Phase1 foundation changed-script payload fails the 100000-byte target; the passing controlled edit does not override that failure.",
+    "Module byte sizes are webpack pre-minification estimates, not additive gzip attribution.",
+    "No accepted full lab baseline/report or authenticated multi-account browser gate exists for Phase1; no activation."
+  ]
+}

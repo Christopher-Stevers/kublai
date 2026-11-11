@@ -37,18 +37,30 @@ const cleanName = input => {
   return name.replaceAll(process.cwd(), '<checkout>');
 };
 function leaves(modules = []) {
-  return modules.flatMap(module => module.modules?.length ? leaves(module.modules) : [{
-    id: module.id ?? null,
-    name: cleanName(module.name ?? module.identifier),
-    webpackEstimatedBytes: module.size ?? 0,
-  }]);
+  return modules.flatMap(module => {
+    const nested = module.modules ?? module.children;
+    if (nested?.length) return leaves(nested);
+    // Webpack's filtered dependent/runtime groups are aggregates, not modules.
+    if (!module.name && !module.identifier) return [];
+    return [{ id: module.id ?? null, name: cleanName(module.name ?? module.identifier), webpackEstimatedBytes: module.size ?? 0 }];
+  });
+}
+function chunkModules(chunk) {
+  // chunk.modules may hide dependent children. The top-level named module list
+  // retains their actual chunk memberships even when that group is filtered.
+  const named = recorded.stats.modules.filter(module => module.chunks?.includes(chunk.id));
+  const modules = [...leaves(named), ...leaves(chunk.modules)];
+  const unique = new Map();
+  for (const module of modules) unique.set(`${module.id}:${module.name}`, module);
+  return [...unique.values()].sort((a, b) => b.webpackEstimatedBytes - a.webpackEstimatedBytes);
 }
 const chunks = [];
 for (const file of shared) {
   const bytes = await readFile(path.join(build, file));
   const chunk = recorded.stats.chunks.find(chunk => chunk.files?.includes(file));
   chunks.push({ file, rawBytes: bytes.length, gzipBytes: gzipSync(bytes, { level: 9 }).length,
-    modules: leaves(chunk?.modules).sort((a, b) => b.webpackEstimatedBytes - a.webpackEstimatedBytes),
+    modules: chunk ? chunkModules(chunk) : [],
+    category: root.includes(file) ? "framework-root" : "application-shared",
   });
 }
 chunks.sort((a, b) => b.gzipBytes - a.gzipBytes);
@@ -56,6 +68,9 @@ console.log(JSON.stringify({
   sourceBuild,
   method: 'Actual canonical webpack module attribution for the intersection of jobs client-reference chunks plus root main files. Conditional references can overstate startup transfer. Gzip level 9 per emitted chunk; module sizes are compiler estimates, not additive gzip attribution.',
   sharedGzipBytes: chunks.reduce((sum, chunk) => sum + chunk.gzipBytes, 0),
+  frameworkRootGzipBytes: chunks.filter(chunk => chunk.category === 'framework-root').reduce((sum, chunk) => sum + chunk.gzipBytes, 0),
+  applicationSharedGzipBytes: chunks.filter(chunk => chunk.category === 'application-shared').reduce((sum, chunk) => sum + chunk.gzipBytes, 0),
+  moduleAttribution: 'Named stats.modules matched by emitted chunk ID, with concatenated children expanded; pre-minification module estimates are not additive compressed bytes.',
   routeCount: routes.length,
   chunks,
 }, null, 2));
