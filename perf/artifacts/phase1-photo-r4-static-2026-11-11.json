@@ -1,0 +1,99 @@
+{
+  "sourceBuild": "e561b24ec20a906f18e963dd9efdeb2b995747515fd421b3d9d85ee9b884e2bc",
+  "sourceFingerprint": "d5ba0506f71f73747d1223f7c252a2702b63aede85d8849e507eda8fcf6eb0fa",
+  "rejected": true,
+  "activated": false,
+  "rejectionReason": "Complete lab/phone evidence remains unaccepted; no activation. Formal byte ratchets pass; separate photo-feature payload diagnostic exceeds100KB.",
+  "compile": "Canonical webpack, full Next production TypeScript check, prerender passed",
+  "photoScope": {
+    "commit": "357b19b2",
+    "runtimePaths": [
+      "src/hooks/use-instant-part-image.ts",
+      "src/components/catalogue/PartDetailsDialog.tsx",
+      "src/server/api/routers/catalogue.ts"
+    ],
+    "parentBlobsMatchedR3": true,
+    "otherRuntimeChanges": 0,
+    "compileFixes": [
+      {
+        "commit": "3fe60480",
+        "change": "Normalize absent nullable partId to undefined at typed hook boundary."
+      },
+      {
+        "commit": "61d8f92e",
+        "change": "NonNullable result type matches existing runtime identity guard; type-only."
+      }
+    ],
+    "targetedTestProvenance": "Navigation38 tests and lint new errors0 before build; final full production typecheck passed after narrow fixes."
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "baseline": 502618,
+      "candidate": 485120,
+      "passes": true
+    },
+    "screenGzipBytes": {
+      "baseline": 758531,
+      "candidate": 755310,
+      "passes": true
+    },
+    "deployGzipBytes": {
+      "baseline": 2734731,
+      "candidate": 1273448,
+      "passes": true
+    }
+  },
+  "photoFeaturePayload": {
+    "baselineBuild": "1ce8009f539edd3f01b0edb059fcb15a8a7876cdcd5bf816ebd03706018d73bb",
+    "candidateBuild": "e561b24ec20a906f18e963dd9efdeb2b995747515fd421b3d9d85ee9b884e2bc",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 283,
+    "reusedScripts": 255,
+    "changedScripts": 28,
+    "changedRawBytes": 868220,
+    "changedGzipBytes": 283891,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "separateControlledSmallEdit": {
+    "revision": "R2\u2192R3",
+    "changedScripts": 5,
+    "gzipBytes": 22739,
+    "passesStrict100KB": true
+  },
+  "source": {
+    "build": "e561b24ec20a906f18e963dd9efdeb2b995747515fd421b3d9d85ee9b884e2bc",
+    "sourceFingerprint": "d5ba0506f71f73747d1223f7c252a2702b63aede85d8849e507eda8fcf6eb0fa",
+    "sourceFileCount": 2281,
+    "reviewedInputsChanged": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true
+  },
+  "http": {
+    "build": "e561b24ec20a906f18e963dd9efdeb2b995747515fd421b3d9d85ee9b884e2bc",
+    "currentAssets": 288,
+    "currentScripts": 283,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 200,
+    "releaseManifestMatchesBuild": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true,
+    "httpProofPasses": true,
+    "activated": false
+  },
+  "publicCorpusFiles": 3263,
+  "ownProofServersStopped": true,
+  "limitations": [
+    "Photo attachment is seventh partial instant-write slice, not full photo/upload processing coverage.",
+    "Two initial failed production typecheck logs retained; no scope expansion to fix unrelated test diagnostics.",
+    "No accepted complete timing baseline/candidate comparison or phone samples."
+  ]
+}

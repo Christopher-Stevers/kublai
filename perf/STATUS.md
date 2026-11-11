@@ -166,3 +166,9 @@ The startup mark spans document navigation to cover removal, not an OS icon tap.
 Hardware, link and repeat-visit conditions are not established per row, and the
 live bootstrap still has its documented sampling/late-context limits. See
 `artifacts/field-review-2026-11-10-2322.json`.
+
+## R4 photo slice preparation
+
+The seventh partial instant-write slice (owned-part photo attachment) is prepared, not activated. Exact R3 plus three reviewed photo production paths passed canonical webpack, production TypeScript and prerender after two narrow boundary/type fixes. Source verification and production overlay exclusion passed; all 288 current assets and ten historical URL samples matched exact bytes, manifest/health/sign-in returned 200, and unauthenticated cache binding remained 401. The proof server was stopped.
+
+All three unchanged Phase 0 byte ratchets pass: 485,120 shared, 755,310 heaviest, and 1,273,448 deploy gzip bytes. Separately, the R3→R4 photo-feature payload changes 28/283 scripts (255 reused), totaling 283,891 gzip bytes and exceeding the 100,000-byte diagnostic. The distinct controlled R2→R3 edit still passes at 22,739 bytes/five scripts. Complete measured baseline/candidate and phone gates remain unaccepted; no activation. Metadata: `perf/artifacts/phase1-photo-r4-static-2026-11-11.json`.
