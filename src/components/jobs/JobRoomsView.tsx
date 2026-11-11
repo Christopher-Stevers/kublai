@@ -36,6 +36,7 @@ import { notify } from "~/components/ui/app-dialogs";
 import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { PressableCard } from "~/components/ui/pressable-card";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
@@ -836,7 +837,7 @@ export function JobRoomsView({
               }
             >
               {floors.map((floor) => (
-                <Card
+                <PressableCard
                   key={floor.id}
                   data-tutorial="floor-card"
                   data-tutorial-floor-id={floor.id}
@@ -848,15 +849,6 @@ export function JobRoomsView({
                       ? "relative flex cursor-pointer flex-row gap-0 rounded-none border-0 border-b py-0 shadow-none"
                       : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
                   }
-                  onKeyDown={(event) => {
-                    if (
-                      event.target === event.currentTarget &&
-                      (event.key === "Enter" || event.key === " ")
-                    ) {
-                      event.preventDefault();
-                      event.currentTarget.click();
-                    }
-                  }}
                   onClick={() => {
                     setSelectedFloorId(floor.id);
                     setSelectedRoomId(null);
@@ -950,7 +942,7 @@ export function JobRoomsView({
                       </DropdownMenu>
                     ) : null}
                   </div>
-                </Card>
+                </PressableCard>
               ))}
             </div>
           )}

@@ -212,6 +212,53 @@ async function startNewTrace(value = shape) {
   await resolveLatestTrace(value);
 }
 
+describe("scrolling floor navigation press", () => {
+  const originalPointerEvent = globalThis.PointerEvent;
+  beforeEach(() => {
+    class TestPointerEvent extends MouseEvent {
+      readonly pointerId: number;
+      readonly isPrimary: boolean;
+      readonly pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.isPrimary = init.isPrimary ?? true;
+        this.pointerType = init.pointerType ?? "touch";
+      }
+    }
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
+  });
+  afterEach(() => vi.stubGlobal("PointerEvent", originalPointerEvent));
+
+  it("waits for release and preserves keyboard activation", () => {
+    render(<JobRoomsView jobId="job-one" />);
+    const floor = screen.getByRole("button", { name: "Open Floor A" });
+    fireEvent.pointerDown(floor, { pointerId: 1, button: 0 });
+    expect(screen.queryByRole("button", { name: "Rooms (1)" })).toBeNull();
+    fireEvent.pointerUp(floor, { pointerId: 1, button: 0 });
+    fireEvent.click(floor, { detail: 1 });
+    expect(screen.getByRole("button", { name: "Rooms (1)" })).toBeTruthy();
+    leaveFloor();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Open Floor B" }), { key: "Enter" });
+    expect(screen.getByRole("button", { name: "Rooms (1)" })).toBeTruthy();
+    expect(harness.calls).toHaveLength(0);
+  });
+
+  it.each(["move", "scroll", "cancel", "outside"] as const)("does not navigate after %s", (kind) => {
+    render(<JobRoomsView jobId="job-one" />);
+    const floor = screen.getByRole("button", { name: "Open Floor A" });
+    fireEvent.pointerDown(floor, { pointerId: 1, button: 0, clientX: 1, clientY: 1 });
+    if (kind === "move") fireEvent.pointerMove(window, { pointerId: 1, clientY: 40 });
+    if (kind === "scroll") fireEvent.scroll(window);
+    if (kind === "cancel") fireEvent.pointerCancel(floor, { pointerId: 1 });
+    else fireEvent.pointerUp(kind === "outside" ? document.body : floor, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.click(floor, { detail: 1 });
+    expect(screen.getByRole("button", { name: "Open Floor A" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Rooms (1)" })).toBeNull();
+    expect(harness.calls).toHaveLength(0);
+  });
+});
+
 describe("trace saves belong to their original editing session", () => {
   it("does not cancel or focus over a new trace when a cancelled save succeeds", async () => {
     render(<JobRoomsView jobId="job-a" />);
@@ -366,6 +413,9 @@ describe("floor card menu", () => {
       name: "More actions for Floor A",
     });
     fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    await screen.findByRole("menuitem", { name: "Copy floor" });
+    expect(screen.queryByRole("button", { name: /^Rooms \(/ })).toBeNull();
+    expect(screen.getByText("Floor A", { exact: true })).toBeInTheDocument();
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "Copy floor" }),
     );
@@ -381,6 +431,9 @@ describe("floor card menu", () => {
       await screen.findByRole("menuitem", { name: "Delete floor" }),
     );
     expect(await screen.findByText("Delete floor?")).toBeInTheDocument();
+    // Selecting the nested destructive menu entry opens confirmation only.
+    expect(screen.queryByRole("button", { name: /^Rooms \(/ })).toBeNull();
+    expect(harness.calls.filter((call) => call.name === "deleteFloor")).toHaveLength(0);
   });
 });
 
