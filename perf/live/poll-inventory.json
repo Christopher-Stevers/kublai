@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-10",
+  "declarations": 29,
+  "removed": 0,
+  "notes": "Source declarations only; excludes non-TanStack timers and Replicache scheduling. All policies preserved.",
+  "rows": [
+    {
+      "file": "src/hooks/use-drawing-workspace-query.ts",
+      "line": 28,
+      "expression": "refetchInterval: online ? 15_000 : false,"
+    },
+    {
+      "file": "src/components/app/MaterialSortProvider.tsx",
+      "line": 35,
+      "expression": "refetchInterval: 60000,"
+    },
+    {
+      "file": "src/components/jobs/JobChatThread.tsx",
+      "line": 306,
+      "expression": "refetchInterval:"
+    },
+    {
+      "file": "src/components/jobs/JobChatThread.tsx",
+      "line": 319,
+      "expression": "refetchInterval:"
+    },
+    {
+      "file": "src/components/jobs/SuperScaleDialog.tsx",
+      "line": 119,
+      "expression": "refetchInterval: (query) =>"
+    },
+    {
+      "file": "src/components/jobs/JobSystemsView.tsx",
+      "line": 56,
+      "expression": "refetchInterval: (query) =>"
+    },
+    {
+      "file": "src/components/jobs/SuperSpecMaterialDialog.tsx",
+      "line": 114,
+      "expression": "refetchInterval: (q) =>"
+    },
+    {
+      "file": "src/components/jobs/SuperEquipmentDialog.tsx",
+      "line": 45,
+      "expression": "refetchInterval: (q) => (q.state.data?.pending ? 2000 : false),"
+    },
+    {
+      "file": "src/components/jobs/JobRoomsView.tsx",
+      "line": 170,
+      "expression": "refetchInterval: (query) =>"
+    },
+    {
+      "file": "src/components/jobs/JobRoomsView.tsx",
+      "line": 322,
+      "expression": "refetchInterval: (query) =>"
+    },
+    {
+      "file": "src/components/jobs/DrawingWorkspace.tsx",
+      "line": 943,
+      "expression": "refetchInterval: online && panel === \"notifications\" ? 15_000 : false,"
+    },
+    {
+      "file": "src/components/organization/MembersSection.tsx",
+      "line": 87,
+      "expression": "refetchInterval: 60_000,"
+    },
+    {
+      "file": "src/components/permissions/FinancialVisibility.tsx",
+      "line": 15,
+      "expression": "refetchInterval: 30_000,"
+    },
+    {
+      "file": "src/components/permissions/DrawingsAccess.tsx",
+      "line": 29,
+      "expression": "refetchInterval: 30_000,"
+    },
+    {
+      "file": "src/components/permissions/SystemsAccess.tsx",
+      "line": 20,
+      "expression": "refetchInterval: 30_000,"
+    },
+    {
+      "file": "src/components/timesheets/TimesheetsView.tsx",
+      "line": 64,
+      "expression": "refetchInterval: online ? 30000 : false,"
+    },
+    {
+      "file": "src/components/chat/ConversationsView.tsx",
+      "line": 197,
+      "expression": "refetchInterval:"
+    },
+    {
+      "file": "src/components/chat/ConversationsView.tsx",
+      "line": 605,
+      "expression": "refetchInterval: online && visible && !connected ? 15000 : false,"
+    },
+    {
+      "file": "src/components/notifications/PushNotifications.tsx",
+      "line": 216,
+      "expression": "refetchInterval: 60000,"
+    },
+    {
+      "file": "src/components/notifications/NotificationCenter.tsx",
+      "line": 59,
+      "expression": "refetchInterval: NOTIFICATION_POLL_MS,"
+    },
+    {
+      "file": "src/components/notifications/NotificationCenter.tsx",
+      "line": 112,
+      "expression": "refetchInterval: NOTIFICATION_POLL_MS,"
+    },
+    {
+      "file": "src/components/notifications/NotificationCenter.tsx",
+      "line": 122,
+      "expression": "refetchInterval: open ? NOTIFICATION_POLL_MS : false,"
+    },
+    {
+      "file": "src/components/estimating/EstimatingAccess.tsx",
+      "line": 9,
+      "expression": "refetchInterval: 30_000,"
+    },
+    {
+      "file": "src/components/models/ModelDesignEditor.tsx",
+      "line": 159,
+      "expression": "{ enabled: ready, refetchInterval: 15000, staleTime: 0 },"
+    },
+    {
+      "file": "src/components/models/JobModelsView.tsx",
+      "line": 108,
+      "expression": "{ refetchInterval: 15000, refetchIntervalInBackground: false },"
+    },
+    {
+      "file": "src/app/jobs/JobsClient.tsx",
+      "line": 94,
+      "expression": "refetchInterval: 30_000, refetchIntervalInBackground: false,"
+    },
+    {
+      "file": "src/app/jobs/organization/page.tsx",
+      "line": 51,
+      "expression": "{ enabled: isOnline, retry: false, refetchInterval: 30_000 },"
+    },
+    {
+      "file": "src/app/jobs/[jobId]/page.tsx",
+      "line": 33,
+      "expression": "enabled: isBrowserOnline, refetchInterval: 30_000, refetchIntervalInBackground: false,"
+    },
+    {
+      "file": "src/app/jobs/[jobId]/pricing/page.tsx",
+      "line": 58,
+      "expression": "refetchInterval: 30_000,"
+    }
+  ]
+}

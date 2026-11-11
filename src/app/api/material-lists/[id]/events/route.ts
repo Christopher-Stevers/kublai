@@ -18,11 +18,18 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      id,
+    )
+  ) {
     return new Response("Invalid material list id", { status: 400 });
   }
 
-  const { user } = await getRequestIdentity(request.headers, { allowDev: true, request });
+  const { user } = await getRequestIdentity(request.headers, {
+    allowDev: true,
+    request,
+  });
   const organizationId = user?.organizationId;
 
   if (!organizationId) {
@@ -47,10 +54,12 @@ export async function GET(
   let unsubscribe: (() => void) | null = null;
   let keepAlive: ReturnType<typeof setInterval> | null = null;
   let closed = false;
+  let closeStream = () => {};
 
   const cleanup = () => {
     if (closed) return;
     closed = true;
+    request.signal.removeEventListener("abort", closeStream);
     if (keepAlive) clearInterval(keepAlive);
     keepAlive = null;
     unsubscribe?.();
@@ -60,7 +69,7 @@ export async function GET(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const encoder = new TextEncoder();
-      const closeStream = () => {
+      closeStream = () => {
         cleanup();
         try {
           controller.close();
@@ -81,8 +90,17 @@ export async function GET(
       };
 
       request.signal.addEventListener("abort", closeStream, { once: true });
+      if (request.signal.aborted) {
+        closeStream();
+        return;
+      }
 
-      send(encodeSse("connected", { materialListId: id, connectedAt: new Date().toISOString() }));
+      send(
+        encodeSse("connected", {
+          materialListId: id,
+          connectedAt: new Date().toISOString(),
+        }),
+      );
 
       unsubscribe = subscribeToMaterialListEvents(id, (event) => {
         send(encodeSse("material-list-updated", event));

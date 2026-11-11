@@ -14,20 +14,29 @@ function encodeSse(event: string, data: unknown) {
 }
 
 export async function GET(request: Request) {
-  const { user } = await createTRPCContext({ headers: request.headers, request });
+  const { user } = await createTRPCContext({
+    headers: request.headers,
+    request,
+  });
   const organizationId = user?.organizationId;
 
-  if (!organizationId || (user?.organizationAccessStatus && user.organizationAccessStatus !== "approved")) {
+  if (
+    !organizationId ||
+    (user?.organizationAccessStatus &&
+      user.organizationAccessStatus !== "approved")
+  ) {
     return new Response("User must belong to an organization", { status: 401 });
   }
 
   const unsubscribes: Array<() => void> = [];
   let keepAlive: ReturnType<typeof setInterval> | null = null;
   let closed = false;
+  let closeStream = () => {};
 
   const cleanup = () => {
     if (closed) return;
     closed = true;
+    request.signal.removeEventListener("abort", closeStream);
     if (keepAlive) clearInterval(keepAlive);
     keepAlive = null;
     unsubscribes.splice(0).forEach((unsubscribe) => unsubscribe());
@@ -36,7 +45,7 @@ export async function GET(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const encoder = new TextEncoder();
-      const closeStream = () => {
+      closeStream = () => {
         cleanup();
         try {
           controller.close();
@@ -57,6 +66,10 @@ export async function GET(request: Request) {
       };
 
       request.signal.addEventListener("abort", closeStream, { once: true });
+      if (request.signal.aborted) {
+        closeStream();
+        return;
+      }
 
       send(
         encodeSse("connected", {
@@ -66,24 +79,15 @@ export async function GET(request: Request) {
       );
 
       unsubscribes.push(
-        subscribeToOrganizationMaterialListEvents(
-          organizationId,
-          (event) => {
-            send(encodeSse("material-list-updated", event));
-          },
-        ),
-        subscribeToOrganizationReplicachePokes(
-          organizationId,
-          (event) => {
-            send(encodeSse("replicache-poke", event));
-          },
-        ),
-        subscribeToOrganizationCatalogueEvents(
-          organizationId,
-          (event) => {
-            send(encodeSse("catalogue-updated", event));
-          },
-        ),
+        subscribeToOrganizationMaterialListEvents(organizationId, (event) => {
+          send(encodeSse("material-list-updated", event));
+        }),
+        subscribeToOrganizationReplicachePokes(organizationId, (event) => {
+          send(encodeSse("replicache-poke", event));
+        }),
+        subscribeToOrganizationCatalogueEvents(organizationId, (event) => {
+          send(encodeSse("catalogue-updated", event));
+        }),
       );
 
       keepAlive = setInterval(() => {

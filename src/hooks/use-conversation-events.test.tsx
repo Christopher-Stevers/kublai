@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { bindLiveAccount } from "~/lib/live-client";
 import { useConversationEvents } from "./use-conversation-events";
 
 class Stream extends EventTarget {
@@ -17,6 +18,7 @@ class Stream extends EventTarget {
     this.dispatchEvent(new MessageEvent(type, { data: JSON.stringify(data) }));
   }
 }
+let releaseAccount: () => void;
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal("EventSource", Stream);
@@ -25,15 +27,18 @@ beforeEach(() => {
     configurable: true,
     value: "visible",
   });
+  releaseAccount = bindLiveAccount("org:test-user");
 });
 afterEach(() => {
   cleanup();
+  releaseAccount();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 it("resyncs on every connection and delivers validated changes", () => {
   const changed = vi.fn();
   const hook = renderHook(() => useConversationEvents(true, changed));
+  act(() => vi.advanceTimersByTime(0));
   act(() => Stream.all[0]!.emit("connected"));
   expect(hook.result.current.connected).toBe(true);
   expect(changed).toHaveBeenCalledWith(null);
@@ -41,9 +46,11 @@ it("resyncs on every connection and delivers validated changes", () => {
     changes: [{ conversationId: "a", messageIds: null }],
     removed: [],
   };
-  act(() => Stream.all[0]!.emit("conversations-updated", event));
-  expect(changed).toHaveBeenLastCalledWith(event);
-  act(() => Stream.all[0]!.emit("conversations-updated", { wrong: true }));
+  act(() =>
+    Stream.all[0]!.emit("live", { topic: "conversations", version: 1 }),
+  );
+  expect(changed).toHaveBeenLastCalledWith(null);
+  act(() => Stream.all[0]!.emit("live", { wrong: true }));
   expect(changed).toHaveBeenCalledTimes(2);
   act(() => Stream.all[0]!.onerror?.());
   expect(hook.result.current.connected).toBe(false);
@@ -61,6 +68,7 @@ it("sleeps in the background/offline and cancels reconnect on unmount", () => {
     ({ online }) => useConversationEvents(online, changed),
     { initialProps: { online: true } },
   );
+  act(() => vi.advanceTimersByTime(0));
   act(() => {
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -80,10 +88,12 @@ it("sleeps in the background/offline and cancels reconnect on unmount", () => {
     });
     document.dispatchEvent(new Event("visibilitychange"));
   });
+  act(() => vi.advanceTimersByTime(0));
   expect(Stream.all).toHaveLength(2);
   hook.rerender({ online: false });
   expect(Stream.all[1]!.closed).toBe(true);
   hook.rerender({ online: true });
+  act(() => vi.advanceTimersByTime(0));
   act(() => Stream.all[2]!.onerror?.());
   hook.unmount();
   act(() => {

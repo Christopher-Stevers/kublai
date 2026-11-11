@@ -78,6 +78,10 @@ export async function GET(request: Request) {
       };
       streams.closers.add(close);
       request.signal.addEventListener("abort", close, { once: true });
+      if (request.signal.aborted) {
+        close();
+        return;
+      }
       const send = (chunk: string) => {
         if (closed || request.signal.aborted) {
           close();

@@ -1,4 +1,5 @@
 "use client";
+import { subscribeLiveEvents } from "~/lib/live-client";
 import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
 
 import { VirtualChatMessages } from "~/components/chat/VirtualChatMessages";
@@ -291,7 +292,6 @@ function ChatLobby({
   const lastRead = useRef(0);
   const readRetryAfter = useRef(0);
   const joinAttempted = useRef(false);
-  const eventCursor = useRef(0);
   const previousLatest = useRef<{
     messages: ChatMessage[];
     nextBeforeSequence: number | null;
@@ -499,45 +499,17 @@ function ChatLobby({
       typeof EventSource === "undefined"
     )
       return;
-    let stopped = false;
-    let source: EventSource | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let delay = 1_000;
     const refresh = () => {
       void utils.chat.history.invalidate({ jobId });
       void utils.chat.getOverview.invalidate({ jobId });
     };
-    const connect = () => {
-      if (stopped) return;
-      source = new EventSource(
-        `/api/job-chat/events?jobId=${encodeURIComponent(jobId)}&after=${eventCursor.current}`,
-      );
-      source.addEventListener("connected", () => {
-        setConnected(true);
-        delay = 1_000;
-        refresh();
-      });
-      source.addEventListener("chat-updated", (event) => {
-        const cursor = Number(event.lastEventId);
-        if (Number.isSafeInteger(cursor) && cursor > eventCursor.current)
-          eventCursor.current = cursor;
-        refresh();
-      });
-      source.onerror = () => {
-        if (stopped) return;
-        setConnected(false);
-        source?.close();
-        timer = setTimeout(connect, delay);
-        delay = Math.min(delay * 2, 30_000);
-      };
-    };
-    connect();
-    return () => {
-      stopped = true;
-      source?.close();
-      if (timer) clearTimeout(timer);
-      setConnected(false);
-    };
+    const unsubscribe = subscribeLiveEvents({ jobIds: [jobId] }, {
+      status: setConnected,
+      catchUp: refresh,
+      hint: hint => { if (hint.topic === "chat" && hint.key === jobId) refresh(); },
+    });
+    return () => { unsubscribe(); setConnected(false); };
+
   }, [
     jobId,
     online,

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import {
   conversationEventSnapshot,
@@ -89,6 +90,10 @@ export async function GET(request: Request) {
       };
       streams.closers.add(close);
       request.signal.addEventListener("abort", close, { once: true });
+      if (request.signal.aborted) {
+        close();
+        return;
+      }
       let polling = false,
         rerun = false;
       let pending: ConversationEvent[] = [];
@@ -117,7 +122,19 @@ export async function GET(request: Request) {
           previous = next;
           if (changes.length || removed.length)
             send(
-              `event: conversations-updated\ndata: ${JSON.stringify({ changes, removed })}\n\n`,
+              `event: conversations-updated\ndata: ${JSON.stringify({
+                changes,
+                removed,
+                revision: createHash("sha256")
+                  .update(
+                    JSON.stringify(
+                      [...next].sort(([a], [b]) =>
+                        a < b ? -1 : a > b ? 1 : 0,
+                      ),
+                    ),
+                  )
+                  .digest("hex"),
+              })}\n\n`,
             );
         } catch {
           close();
