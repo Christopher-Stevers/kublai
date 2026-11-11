@@ -863,3 +863,29 @@ the reserved namespace. Twenty-six store tests and scoped lint pass. This is an
 unused primitive, not an enabled receiving cache, permission grant, production
 schema change or physical timing result. Missing cross-tab events cannot
 retroactively erase already-painted data; callers must suppress/revalidate it.
+
+## Quota failure preserved; R19 HTTP pass — 2026-11-11
+
+The one supplemental diagnostic stopped with `EDQUOT` while copying synthetic
+tiles into its two new fixtures, before either application or browser started.
+It collected zero timings and will not be retried. Both owned PostgreSQL groups
+and the outer process family are absent, both sockets were removed and ports
+3485/3486 are closed. Because seeding failed before the callback, the missing
+standalone schema/final raw log copies are explicitly recorded rather than
+reconstructed. Existing R17/R18 app snapshots were not refreshed. Evidence:
+`artifacts/quantity-office-diagnostic-2026-11-11-attempt1/`.
+
+The quota-limited `/tmp` filesystem was 48 GiB used. Four inactive owned lab
+snapshots were copied to a private archive on the main disk and checksum-verified
+before duplicate removal, freeing about 11 GiB. Their original paths remain
+symlinks; source, built files and evidence are retained. Readonly generated
+directory permissions initially blocked duplicate removal; only those verified
+duplicate directories were made writable to complete cleanup. Active baseline,
+R17 and R18 paths remain in place. See `artifacts/inactive-lab-storage-archive-2026-11-11.json`.
+
+R19's read-only HTTP check passed all 293 current assets, ten retained samples,
+the dedicated press chunk, service worker and public manifest. Health/sign-in
+returned 200; unauthenticated cache binding returned 401. Server/supervisor exited
+cleanly and port3150 closed. Proof `7a9c17e5`; production remains Phase0.
+The exact private R19 compile/preflight is now cleared after storage recovery;
+its full timing comparison is still pending.

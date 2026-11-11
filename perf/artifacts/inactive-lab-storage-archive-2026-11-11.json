@@ -1,0 +1,44 @@
+{
+  "startedAt": "2026-11-11T16:29:23.584605+00:00",
+  "purpose": "Retain inactive owned lab artifacts off quota-limited tmpfs; no live/source/evidence deletion",
+  "snapshots": [
+    {
+      "originalPath": "/tmp/foremanhq-speed-app-EFjPHx",
+      "archivePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/private-lab-snapshot-archive-20261111/foremanhq-speed-app-EFjPHx",
+      "apparentBytes": 2894113652,
+      "verification": "Full rsync archive/checksum verification passed before first duplicate-removal attempt; remaining files rechecked by checksum after readonly cleanup failure.",
+      "originalNowSymlink": true,
+      "duplicateRemovalComplete": true,
+      "retained": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-speed-app-JCD4pS",
+      "archivePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/private-lab-snapshot-archive-20261111/foremanhq-speed-app-JCD4pS",
+      "apparentBytes": 2896037115,
+      "verification": "rsync archive copy plus itemized checksum dry-run with delete: no differences",
+      "originalNowSymlink": true,
+      "duplicateRemovalComplete": true,
+      "retained": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-speed-app-nTtbuM",
+      "archivePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/private-lab-snapshot-archive-20261111/foremanhq-speed-app-nTtbuM",
+      "apparentBytes": 2915938445,
+      "verification": "rsync archive copy plus itemized checksum dry-run with delete: no differences",
+      "originalNowSymlink": true,
+      "duplicateRemovalComplete": true,
+      "retained": true
+    },
+    {
+      "originalPath": "/tmp/foremanhq-speed-app-nwrHvl",
+      "archivePath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/private-lab-snapshot-archive-20261111/foremanhq-speed-app-nwrHvl",
+      "apparentBytes": 2889229895,
+      "verification": "rsync archive copy plus itemized checksum dry-run with delete: no differences",
+      "originalNowSymlink": true,
+      "duplicateRemovalComplete": true,
+      "retained": true
+    }
+  ],
+  "preparationFailure": "First verified copy completed but duplicate removal hit readonly generated directory; archive and old-path symlink were intact. Only duplicate-directory write permissions are relaxed to finish cleanup.",
+  "finishedAt": "2026-11-11T16:29:34.270393+00:00"
+}

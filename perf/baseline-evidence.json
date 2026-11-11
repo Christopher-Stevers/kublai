@@ -299,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T16:23:27Z",
+  "updatedAt": "2026-11-11T16:30:28Z",
   "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
@@ -1049,7 +1049,10 @@
       "batchPasses100KB": false,
       "currentCompressedAssetChecks": 293,
       "retainedRawAssetsExact": 1120,
-      "httpPassed": false
+      "httpPassed": true,
+      "httpProof": "perf/artifacts/phase1-r19-http-proof-2026-11-11.json",
+      "httpProofCommit": "7a9c17e5",
+      "httpRuntimeCleaned": true
     },
     "protectedSnapshotPrimitive": {
       "commit": "9ace848a",
@@ -1063,7 +1066,7 @@
       "productionActivated": false
     },
     "quantityOfficeDiagnostic": {
-      "status": "one-supplemental-attempt-running",
+      "status": "failed-fixture-copy-disk-quota-before-app-or-driver",
       "preparationCommit": "c1d28c58",
       "preparation": "perf/artifacts/quantity-office-diagnostic-preparation-2026-11-11/",
       "plannedOperations": 2,
@@ -1073,7 +1076,20 @@
       ],
       "acceptanceGate": false,
       "retryAuthorized": false,
-      "cleanupConfirmed": false
+      "cleanupConfirmed": true,
+      "completedOperations": 0,
+      "report": "perf/artifacts/quantity-office-diagnostic-2026-11-11-attempt1/",
+      "proofCommit": "f15ea15d",
+      "capturedTimings": false,
+      "retainedAppSnapshotsChanged": false
+    },
+    "labStorageArchive": {
+      "source": "perf/artifacts/inactive-lab-storage-archive-2026-11-11.json",
+      "snapshotsRetained": 4,
+      "oldPathsRetainedAsSymlinks": true,
+      "liveFilesChanged": false,
+      "approximateTmpfsGiBReleased": 11,
+      "readOnlyDuplicateRemovalFailureRecorded": true
     }
   },
   "historicalCandidateRegressions": [
