@@ -12,6 +12,9 @@ import { PartDetailsDialog } from "./PartDetailsDialog";
 const deleteState = vi.hoisted(() => ({usage: vi.fn(), remove: vi.fn(), confirm: vi.fn()}));
 vi.mock("~/components/ui/app-dialogs", () => ({confirmAction: deleteState.confirm}));
 const editState = vi.hoisted(() => ({ part: undefined as Record<string, unknown> | undefined, save: vi.fn(), create: vi.fn() }));
+const creationContext = vi.hoisted(() => ({ account: { accountKey: "org:actor" }, authority: {}, supplierLookup: vi.fn().mockResolvedValue([]) }));
+vi.mock("~/components/jobs/DrawingAccountProvider", () => ({ useDrawingAccount: () => creationContext.account }));
+vi.mock("~/lib/device-query-cache", () => ({ captureDeviceReadAuthority: () => creationContext.authority }));
 const familyState = vi.hoisted(() => ({
   lastInput: undefined as { mode?: string } | undefined,
   data: undefined as
@@ -136,6 +139,7 @@ vi.mock("~/trpc/react", () => {
   return {
     api: {
       useUtils: () => ({
+        client: { catalogue: { createPart: { mutate: editState.create } } },
         catalogue: {
           invalidate: vi.fn(),
           getPartDeletionUsage: {fetch: deleteState.usage},
@@ -170,12 +174,12 @@ vi.mock("~/trpc/react", () => {
             invalidate: vi.fn(),
           },
           getAvailableSizes: { invalidate: vi.fn() },
-          searchParts: { invalidate: vi.fn() },
-          getPart: { invalidate: vi.fn() },
-          getPartWizardSummary: { invalidate: vi.fn() },
+          searchParts: { invalidate: vi.fn().mockResolvedValue(undefined) },
+          getPart: { invalidate: vi.fn().mockResolvedValue(undefined) },
+          getPartWizardSummary: { invalidate: vi.fn().mockResolvedValue(undefined) },
         },
         supplier: {
-          getSupplierPartsByPart: { fetch: vi.fn().mockResolvedValue([]) },
+          getSupplierPartsByPart: { fetch: creationContext.supplierLookup },
         },
       }),
       catalogue: {
@@ -560,6 +564,7 @@ describe("creating a part from a material list", () => {
   beforeEach(() => {
     editState.part = undefined;
     editState.create.mockReset();
+    creationContext.supplierLookup.mockClear();
     globalThis.__partDialogMockData = { catalogs:[{id:"catalog-existing",name:"Plumbing"}], materials:[], categories:[], units:[{id:"u-in",code:"in",displayName:"Inches",kind:"length"}] };
   });
   it("waits for creation and the pending-list handoff before closing", async () => {
@@ -573,13 +578,14 @@ describe("creating a part from a material list", () => {
     await waitFor(() => expect(editState.create).toHaveBeenCalled());
     expect(close).not.toHaveBeenCalled();
     expect(created).not.toHaveBeenCalled();
-    finish({id:"new-valve",displayName:"Test valve",imageUrl:null,material:null,sizeLabel:null,sizeUnit:null,piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs"});
+    finish({id:"new-valve",displayName:"Test valve",imageUrl:null,material:null,sizeLabel:null,sizeUnit:null,piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs",supplierPartId:"accepted-link"});
     await waitFor(() => expect(close).toHaveBeenCalledWith(false));
-    expect(created).toHaveBeenCalledWith(expect.objectContaining({id:"new-valve",piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs"}));
+    expect(created).toHaveBeenCalledWith(expect.objectContaining({id:"new-valve",piecesPerPack:50,bulkUnit:"box",individualUnit:"pcs",supplierPartId:"accepted-link"}));
+    expect(creationContext.supplierLookup).not.toHaveBeenCalled();
     expect(created.mock.invocationCallOrder[0]).toBeLessThan(close.mock.invocationCallOrder[0]!);
   });
   it("keeps the entered part and error visible when creation fails", async () => {
-    editState.create.mockRejectedValue(new Error("Could not save valve"));
+    editState.create.mockRejectedValue(Object.assign(new Error("Could not save valve"), {data:{code:"FORBIDDEN"}}));
     const close = vi.fn();
     render(<PartDetailsDialog mode="create" open initialContext={{catalogId:"catalog-existing"}} onOpenChange={close} />);
     fireEvent.change(screen.getByPlaceholderText("e.g., 90° Copper Elbow"), {target:{value:"Test valve"}});

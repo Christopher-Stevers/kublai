@@ -2968,6 +2968,7 @@ export const catalogueRouter = createTRPCRouter({
   createPart: hasAppAccess
     .input(
       z.object({
+        expectedAccountKey: z.string().min(1).max(1024).optional(),
         displayName: z.string().min(1).max(255),
         piecesPerPack: z.number().int().min(2).max(999999).nullable().optional(),
         bulkUnit: z.string().trim().min(1).max(32).toLowerCase().nullable().optional(),
@@ -2994,6 +2995,12 @@ export const catalogueRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        input.expectedAccountKey !== undefined &&
+        input.expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "Your workspace changed. Reopen the part form before creating it." });
+      }
       assertCanCreateParts(ctx.user);
 
       const organizationId = ctx.user.organizationId;
@@ -3089,7 +3096,9 @@ export const catalogueRouter = createTRPCRouter({
         await syncPartAliases(ctx.db, newPart.id, input.aliases);
       }
 
-      // If supplier info provided, create supplier part link
+      let supplierPartId: string | undefined;
+      // Return the accepted supplier link with the part, avoiding a second
+      // request that holds the creation UI open after the write has succeeded.
       if (input.supplierId) {
         // Verify supplier exists
         const [supplier] = await ctx.db
@@ -3112,9 +3121,10 @@ export const catalogueRouter = createTRPCRouter({
             )
             .limit(1);
 
+          supplierPartId = existingSupplierPart?.id;
           if (!existingSupplierPart) {
             // Create supplier part
-            await ctx.db.insert(supplierParts).values({
+            const [createdSupplierPart] = await ctx.db.insert(supplierParts).values({
               organizationId: organizationId,
               supplierId: input.supplierId,
               partDefinitionId: newPart.id,
@@ -3124,7 +3134,8 @@ export const catalogueRouter = createTRPCRouter({
               lastKnownUnitCost: userCan(ctx.user, "financial.view") ? input.lastKnownUnitCost ?? null : undefined,
               currency: input.currency ?? "CAD",
               isPreferred: input.supplierIsPreferred ?? false,
-            });
+            }).returning({ id: supplierParts.id });
+            supplierPartId = createdSupplierPart?.id;
           }
         }
       }
@@ -3165,6 +3176,7 @@ export const catalogueRouter = createTRPCRouter({
       publishCatalogueChange(organizationId);
       return {
         id: part.id,
+        supplierPartId,
         displayName: part.displayName,
         piecesPerPack: part.piecesPerPack,
         bulkUnit: part.bulkUnit,

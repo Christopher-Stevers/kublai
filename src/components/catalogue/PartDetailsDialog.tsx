@@ -1,5 +1,6 @@
 "use client";
 import { useInstantPartImage } from "~/hooks/use-instant-part-image";
+import { useCreateCataloguePart } from "~/hooks/use-create-catalogue-part";
 import { SupplierLabel } from "~/components/suppliers/SupplierLabel";
 
 import { isPartSizeInput, normalizePartSize } from "~/lib/part-size-input";
@@ -597,23 +598,10 @@ export function PartDetailsDialog({
     }));
   };
 
-  const createPart = api.catalogue.createPart.useMutation({
-    onSuccess: async (newPart) => {
-      let supplierPartId: string | undefined;
-      if (supplierId) {
-        try {
-          const supplierParts =
-            await utils.supplier.getSupplierPartsByPart.fetch({
-              partDefinitionId: newPart.id,
-            });
-          supplierPartId = supplierParts.find(
-            (sp) => sp.supplierId === supplierId,
-          )?.id;
-        } catch (error) {
-          console.error("Error fetching supplier part", error);
-        }
-      }
-
+  const createPart = useCreateCataloguePart({
+    enabled: open && isOnline && !isEditMode,
+    scope: JSON.stringify([mode, partId ?? null, open]),
+    onCreated: (newPart) => {
       onPartCreated?.({
         id: newPart.id,
         displayName: newPart.displayName,
@@ -627,19 +615,9 @@ export function PartDetailsDialog({
           (newPart.sizeUnit
             ? formatSize(newPart.sizeNominal, newPart.sizeUnit.code)
             : null),
-        supplierPartId,
+        supplierPartId: newPart.supplierPartId,
       });
-
-      void utils.catalogue.searchParts.invalidate();
-      void utils.catalogue.getPartWizardSummary.invalidate();
-      void utils.catalogue.getPart.invalidate();
-    },
-    onError: (error) => {
-      console.error("Could not create part", error);
-      setSubmitError(
-        error.message || "Could not create part. Please try again.",
-      );
-      setIsSubmittingInBackground(false);
+      onOpenChange(false);
     },
   });
 
@@ -1091,7 +1069,7 @@ export function PartDetailsDialog({
 
   const showMoney = useFinancialVisibility();
   const handleSubmit = async () => {
-    if (instantPartImage.hasPending()) return;
+    if (instantPartImage.hasPending() || createPart.hasPending()) return;
     setSubmitError(null);
 
     if (!displayName.trim() || !catalogId) {
@@ -1151,10 +1129,9 @@ export function PartDetailsDialog({
       );
       return;
     }
-    setIsSubmittingInBackground(true);
-
     if (isEditMode) {
       if (!partId) return;
+      setIsSubmittingInBackground(true);
       try {
         await updatePart.mutateAsync({
           partId,
@@ -1170,16 +1147,8 @@ export function PartDetailsDialog({
       return;
     }
 
-    try {
-      // Keep the form (and its pending-list callback) mounted until creation
-      // succeeds. Closing optimistically can hide a failed save.
-      await createPart.mutateAsync({ ...payload, ...supplierPayload });
-      requestCatalogueReplicachePull(0);
-      setIsSubmittingInBackground(false);
-      onOpenChange(false);
-    } catch {
-      // onError keeps the entered values visible with the failure message.
-    }
+    // The form and draft remain visible until the real part ID is confirmed.
+    await createPart.create({ ...payload, ...supplierPayload });
   };
 
   if (isEditMode && open && isLoadingPart) {
@@ -1857,9 +1826,9 @@ export function PartDetailsDialog({
                 </Button>
               </p>
             )}
-            {submitError && (
+            {(submitError ?? (!isEditMode ? createPart.error : null)) && (
               <p className="px-1 text-sm text-red-600" role="alert">
-                {submitError}
+                {submitError ?? createPart.error}
               </p>
             )}
           </div>
