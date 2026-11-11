@@ -1,0 +1,11 @@
+{
+  "coordinatorExitCode": 0,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "ports3483And3484Closed": true,
+  "unexpectedDatabaseErrors": 0,
+  "expectedAdministratorFatal": 1,
+  "copyTrapSucceeded": true,
+  "sourceAndMethodUnchanged": true,
+  "fullMatrixNotStarted": true
+}

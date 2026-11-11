@@ -1,0 +1,30 @@
+{
+  "status": "prepared-not-run-awaiting-root-fullgate-review",
+  "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "lab": "/tmp/foremanhq-speed-app-mIZVko",
+  "labBuild": "kQwDUUMWJAxQExPo56xqn",
+  "timingMethod": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "samples": 120,
+  "idleDurationMs": 600000,
+  "outerBoundMinutes": 45,
+  "noRetryOrSampleExclusion": true,
+  "thisRunEvidenceDirectory": "/tmp/foremanhq-r18-full-v2-evidence",
+  "databaseLogScope": "Copied after Next stop and before database.sh cleanup, excludes subsequent PG shutdown lines. Contains private fixture only; inspect/sanitize before repository archive.",
+  "standaloneSchemaPreserved": "planned-until-actual-execution",
+  "hashes": {
+    "full-command.sh": "fe5d1650d0082b5ab3f1262b586ea3cb0f6e9f4eacdb5bb992e812fff8ef9835",
+    "orchestration.sh": "3b9942aa2b5d05876194cc76fa4509d5a59e5d75d55888b2ae55fa4e5023f22c",
+    "reuse-helper.mjs": "1490335150650a1407f665ff77f3d10b94647629916852686fc73d068d6bf466",
+    "protocol-guard.mjs": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722",
+    "source-after.mjs": "59fcc1156252485bca2244772130860eb533f13a13544cb64d85c04bfff7df00",
+    "check-protocol-config.node-test.mjs": "6ab23da06fc316e619a559bdb0544142e9cd12ba3ec779c9b60a52c174492a88",
+    "functional-evidence-exit.node-test.mjs": "53f3ae4ee4be5fc165a093b2f838f2df82744e3f62b7c2fff586eb041282ac5b",
+    "full-evidence-exit.node-test.mjs": "3dc85600cd5db01ef6bdc227236f521efa339cbe9c4929d7943c996d4fe6795c"
+  },
+  "preflightTests": "16 tests pass:7protocol,4actualfunctionalEXIT,5actualfullEXIT, including copy/source/shutdown failures and original failure preservation; no DB/browser",
+  "methodUnchanged": true,
+  "captureCleanupCaveat": "Normal completion/failure EXIT copies evidence before frozen database helper cleanup; SIGKILL cannot guarantee final copy. Startup schema/fixtures/source copied before any timed work.",
+  "V6Evidence": "perf/artifacts/r18-preferences-functional-2026-11-11-attempt1/report.json"
+}

@@ -1,0 +1,12 @@
+✔ actual EXIT trap missing-copy preserves evidence and exit semantics (6.274508ms)
+✔ actual EXIT trap source-after-failure preserves evidence and exit semantics (4.394747ms)
+✔ actual EXIT trap success preserves evidence and exit semantics (7.410027ms)
+✔ actual EXIT trap original-failure preserves evidence and exit semantics (3.632757ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62.866158

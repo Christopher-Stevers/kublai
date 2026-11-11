@@ -1,0 +1,24 @@
+✔ missing protocol fails before any database or browser action (1.049855ms)
+✔ wrong protocol fails rather than silently using adapter default (0.090906ms)
+✔ correct exported protocol passes with only allowlisted effective environment (0.385744ms)
+✔ invalid baseline cannot make a matching wrong protocol pass (0.080015ms)
+✔ actual CLI missing protocol is checked without starting DB/browser (16.921248ms)
+✔ actual CLI wrong protocol is checked without starting DB/browser (21.743272ms)
+✔ actual CLI correct protocol is checked without starting DB/browser (15.368464ms)
+✔ full-wrapper actual EXIT missing-copy records all outcomes (9.242361ms)
+✔ full-wrapper actual EXIT source-after-failure records all outcomes (4.600816ms)
+✔ full-wrapper actual EXIT shutdown-failure records all outcomes (4.587282ms)
+✔ full-wrapper actual EXIT success records all outcomes (4.293319ms)
+✔ full-wrapper actual EXIT original-failure records all outcomes (4.130866ms)
+✔ actual EXIT trap missing-copy preserves evidence and exit semantics (11.542735ms)
+✔ actual EXIT trap source-after-failure preserves evidence and exit semantics (5.914395ms)
+✔ actual EXIT trap success preserves evidence and exit semantics (6.428977ms)
+✔ actual EXIT trap original-failure preserves evidence and exit semantics (6.541874ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.719186

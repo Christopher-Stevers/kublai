@@ -1,0 +1,19 @@
+{
+  "status": "sealed-before-authorized-new-private-compile",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111",
+  "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "sourceFileCount": 2317,
+  "unchangedFilesChecked": 2312,
+  "methodRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "newSnapshotRequired": true,
+  "R17Unchanged": true,
+  "preflightPort": 3483,
+  "outerCompileBoundSeconds": 360,
+  "functionalV6NotRun": true,
+  "fullMatrixNotRun": true,
+  "scriptHashes": {
+    "foremanhq-r18-compile-only.sh": "74a1215beaf5f0258d7a29ad88b63f6dd5b108d74e6efcac9bc74d572a97bf0f",
+    "foremanhq-r18-compile-command.sh": "839da62aa19d092da9979def38459027989547bfc442fd296fa0e38f66306443"
+  }
+}

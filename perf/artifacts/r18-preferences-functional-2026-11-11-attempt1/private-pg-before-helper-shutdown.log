@@ -1,0 +1,10 @@
+2026-11-11 10:06:06.631 EST [4147441] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-11 10:06:06.631 EST [4147441] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-11 10:06:06.631 EST [4147441] LOG:  00000: listening on Unix socket "/tmp/foremanhq-perf-pg.o2T22U/.s.PGSQL.55463"
+2026-11-11 10:06:06.631 EST [4147441] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-11 10:06:06.632 EST [4147447] LOG:  00000: database system was shut down at 2026-11-11 10:06:06 EST
+2026-11-11 10:06:06.632 EST [4147447] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-11 10:06:06.633 EST [4147441] LOG:  00000: database system is ready to accept connections
+2026-11-11 10:06:06.633 EST [4147441] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-11 10:10:24.367 EST [4147662] FATAL:  57P01: terminating connection due to administrator command
+2026-11-11 10:10:24.367 EST [4147662] LOCATION:  ProcessInterrupts, postgres.c:3353

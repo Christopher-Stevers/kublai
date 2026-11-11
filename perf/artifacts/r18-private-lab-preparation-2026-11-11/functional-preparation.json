@@ -1,0 +1,17 @@
+{
+  "status": "sealed-not-run-authorized-after-actual-EXIT-trap-tests",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v6-method-emaxl6zm",
+  "driverSha256": "0c6be0868d633328cfaae8caf6a6d2cd0fd4ecb265bd7ccdfd402a104538f744",
+  "separateFreshPrivatePg": true,
+  "outerBoundSeconds": 480,
+  "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "scriptHashes": {
+    "foremanhq-r18-pref-v6-command.sh": "f775ec8f2124e927449caeef4453f952e4fa770df12943f8b106227ee35dae35",
+    "foremanhq-r18-pref-v6-server.sh": "cefab9e0a22aae69fb79c4ecfbab9e671742cf6c86cf3884fcdeed59278e2105"
+  },
+  "fullMatrixHeld": true,
+  "sourceAfterSha256": "693bf2380ae71d5b324f65d114d4f96cfa81c4d74cd6101eaf4fddcff5d06b48",
+  "cleanup": "Server explicit EXIT after ownedNext stop+best-effort copies, preserving input/final status. Coordinator waits ownedDB helper normal exit before force fallback, rejects copy/source/shutdown failures.",
+  "exitTrapTests": 4
+}

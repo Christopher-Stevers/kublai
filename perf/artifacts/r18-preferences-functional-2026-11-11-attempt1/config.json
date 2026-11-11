@@ -1,0 +1,14 @@
+{
+  "backend": "http://127.0.0.1:3483/",
+  "proxy": "http://127.0.0.1:3484/",
+  "snapshot": "/tmp/foremanhq-speed-app-mIZVko",
+  "sourceEvidence": "/tmp/foremanhq-speed-app-mIZVko/source-evidence.json",
+  "fixtures": "/tmp/foremanhq-speed-app-mIZVko/perf/fixtures.json",
+  "preflight": "/tmp/foremanhq-r18-pref-v6-preflight.json",
+  "serverPid": "/tmp/foremanhq-r18-pref-v6-server.pid",
+  "serverLog": "/tmp/foremanhq-r18-pref-v6-server.log",
+  "expectedSourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "expectedSourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "expectedLabBuild": "kQwDUUMWJAxQExPo56xqn",
+  "output": "/tmp/foremanhq-r18-pref-v6-functional-report.json"
+}
