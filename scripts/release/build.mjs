@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { assertDisposableWorkspace, assertInputSymlinks } from './canonical-guards.mjs';
 import { fingerprintSource } from './source-fingerprint.mjs';
 import { checkNavigation } from '../check-navigation.mjs';
+import { checkSharedProviders } from '../check-providers.mjs';
 import { files, retainStatic, compressStatic } from './static-assets.mjs';
 
 if (process.env.RELEASE_SOURCE_DIR) process.chdir(process.env.RELEASE_SOURCE_DIR);
@@ -16,6 +17,7 @@ const root = process.cwd();
 // Read-only speed-law preflight: runs on the actual frozen input before copying,
 // building or modifying release outputs. Canonical children repeat the check.
 await checkNavigation(root);
+await checkSharedProviders(root);
 try { await stat('PERF_LAB_ONLY'); throw Error('Refusing release build from disposable authentication-stub lab snapshot'); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 const destination = process.argv[2];

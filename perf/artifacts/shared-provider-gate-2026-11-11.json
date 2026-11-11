@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-11-11T10:48:20.055Z",
+  "kind": "read-only source tooling evidence",
+  "frozenSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-press-r8-20261111",
+  "canonicalBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+  "baselineCommit": "326aed657ce6757c9c6ee39cd4edc2a7bea00795",
+  "result": {
+    "violations": [],
+    "accepted": 35,
+    "retirements": []
+  },
+  "toolingSha256": {
+    "scripts/check-providers.mjs": "269e3e0397a2b02dd449d96d323b75544903fb17038d72a1ee841fe3bb87a2f2",
+    "scripts/layout/shared-providers.mjs": "51ae7abcfb2c3e048e303109bc7b59d167edf4943253904725cef17fbcf0a69b",
+    "scripts/layout/provider-baseline.json": "bf821326a32d6fac260e3014e8d4a05ab26387661fc1d64e0aa64583dfae5be9",
+    "scripts/layout/shared-providers.node-test.mjs": "ce5dd6c4e41a4c8da399a488fe6714fc6d68e33b471345fd3a84c1adcf5dc9b5",
+    "scripts/check-lint.mjs": "44947a91b2839972a52591fe471d3c710d11d9d671cd71304a2e39a5360c5677",
+    "scripts/release/build.mjs": "85e52ce0f4f77fddc6d764b715cfa862697089d59680281b0d68519440c08a06"
+  },
+  "tests": {
+    "command": "node --test scripts/layout/shared-providers.node-test.mjs scripts/navigation/raw-navigation.node-test.mjs",
+    "passed": 22
+  },
+  "runtimeChanged": false,
+  "performanceGateClaim": false,
+  "historyLimitation": "Retired identities fail; an identical restored identity left active in a stale baseline cannot be distinguished by a stateless source snapshot."
+}

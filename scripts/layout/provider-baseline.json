@@ -1,0 +1,465 @@
+{
+  "version": "shared-layout-providers-v1",
+  "entries": [
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/app/AppPagesProvider",
+      "export": "AppPagesProvider",
+      "line": 1,
+      "count": 1,
+      "lines": [
+        1
+      ],
+      "reason": "Existing import preserves shared workspace screen state; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/app/DevFeaturesProvider",
+      "export": "DevFeaturesProvider",
+      "line": 3,
+      "count": 1,
+      "lines": [
+        3
+      ],
+      "reason": "Existing import preserves existing development-feature boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/voice/VoiceProvider",
+      "export": "DevVoiceProvider",
+      "line": 4,
+      "count": 1,
+      "lines": [
+        4
+      ],
+      "reason": "Existing import preserves existing development voice boundary; implementation may split without adding a layout mount; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/permissions/SystemsAccess",
+      "export": "SystemsAccessProvider",
+      "line": 5,
+      "count": 1,
+      "lines": [
+        5
+      ],
+      "reason": "Existing import preserves authoritative systems permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/app/MaterialSortProvider",
+      "export": "MaterialSortProvider",
+      "line": 6,
+      "count": 1,
+      "lines": [
+        6
+      ],
+      "reason": "Existing import preserves material-sort preference context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/suppliers/SupplierLabelProvider",
+      "export": "SupplierLabelProvider",
+      "line": 8,
+      "count": 1,
+      "lines": [
+        8
+      ],
+      "reason": "Existing import preserves supplier-label preference context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/app/LandingPageProvider",
+      "export": "LandingPageProvider",
+      "line": 10,
+      "count": 1,
+      "lines": [
+        10
+      ],
+      "reason": "Existing import preserves account landing-page context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/jobs/DrawingDestinationProvider",
+      "export": "DrawingDestinationProvider",
+      "line": 11,
+      "count": 1,
+      "lines": [
+        11
+      ],
+      "reason": "Existing import preserves drawing navigation destination context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/simulation/SimulationProvider",
+      "export": "SimulationProvider",
+      "line": 12,
+      "count": 1,
+      "lines": [
+        12
+      ],
+      "reason": "Existing import preserves verified employee-simulation account scope; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/permissions/FinancialVisibility",
+      "export": "FinancialVisibilityProvider",
+      "line": 13,
+      "count": 1,
+      "lines": [
+        13
+      ],
+      "reason": "Existing import preserves financial visibility permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/permissions/DrawingsAccess",
+      "export": "DrawingsAccessProvider",
+      "line": 14,
+      "count": 1,
+      "lines": [
+        14
+      ],
+      "reason": "Existing import preserves drawing access permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/chat/SnapshotProvider",
+      "export": "SnapshotProvider",
+      "line": 20,
+      "count": 1,
+      "lines": [
+        20
+      ],
+      "reason": "Existing import preserves chat snapshot context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/chat/ChatViewProvider",
+      "export": "ChatViewProvider",
+      "line": 21,
+      "count": 1,
+      "lines": [
+        21
+      ],
+      "reason": "Existing import preserves account-scoped chat view state; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "import",
+      "module": "src/components/jobs/DrawingAccountProvider",
+      "export": "DrawingAccountProvider",
+      "line": 27,
+      "count": 1,
+      "lines": [
+        27
+      ],
+      "reason": "Existing import preserves drawing account/cache authority boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/app/DevFeaturesProvider",
+      "export": "DevFeaturesProvider",
+      "line": 72,
+      "count": 1,
+      "lines": [
+        72
+      ],
+      "reason": "Existing usage preserves existing development-feature boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/simulation/SimulationProvider",
+      "export": "SimulationProvider",
+      "line": 73,
+      "count": 1,
+      "lines": [
+        73
+      ],
+      "reason": "Existing usage preserves verified employee-simulation account scope; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/components/tutorial/TutorialGate.tsx",
+      "kind": "usage",
+      "module": "src/components/tutorial/TutorialGate",
+      "export": "TutorialContext.Provider",
+      "line": 232,
+      "count": 1,
+      "lines": [
+        232
+      ],
+      "reason": "Existing usage preserves existing tutorial state inside its shared children wrapper; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/permissions/SystemsAccess",
+      "export": "SystemsAccessProvider",
+      "line": 82,
+      "count": 1,
+      "lines": [
+        82
+      ],
+      "reason": "Existing usage preserves authoritative systems permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/permissions/FinancialVisibility",
+      "export": "FinancialVisibilityProvider",
+      "line": 83,
+      "count": 1,
+      "lines": [
+        83
+      ],
+      "reason": "Existing usage preserves financial visibility permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/permissions/DrawingsAccess",
+      "export": "DrawingsAccessProvider",
+      "line": 86,
+      "count": 1,
+      "lines": [
+        86
+      ],
+      "reason": "Existing usage preserves drawing access permission context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/jobs/DrawingAccountProvider",
+      "export": "DrawingAccountProvider",
+      "line": 91,
+      "count": 1,
+      "lines": [
+        91
+      ],
+      "reason": "Existing usage preserves drawing account/cache authority boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/chat/SnapshotProvider",
+      "export": "SnapshotProvider",
+      "line": 97,
+      "count": 1,
+      "lines": [
+        97
+      ],
+      "reason": "Existing usage preserves chat snapshot context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/jobs/DrawingDestinationProvider",
+      "export": "DrawingDestinationProvider",
+      "line": 98,
+      "count": 1,
+      "lines": [
+        98
+      ],
+      "reason": "Existing usage preserves drawing navigation destination context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/app/LandingPageProvider",
+      "export": "LandingPageProvider",
+      "line": 99,
+      "count": 1,
+      "lines": [
+        99
+      ],
+      "reason": "Existing usage preserves account landing-page context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/app/AppPagesProvider",
+      "export": "AppPagesProvider",
+      "line": 107,
+      "count": 1,
+      "lines": [
+        107
+      ],
+      "reason": "Existing usage preserves shared workspace screen state; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/chat/ChatViewProvider",
+      "export": "ChatViewProvider",
+      "line": 123,
+      "count": 1,
+      "lines": [
+        123
+      ],
+      "reason": "Existing usage preserves account-scoped chat view state; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/app/MaterialSortProvider",
+      "export": "MaterialSortProvider",
+      "line": 127,
+      "count": 1,
+      "lines": [
+        127
+      ],
+      "reason": "Existing usage preserves material-sort preference context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/suppliers/SupplierLabelProvider",
+      "export": "SupplierLabelProvider",
+      "line": 132,
+      "count": 1,
+      "lines": [
+        132
+      ],
+      "reason": "Existing usage preserves supplier-label preference context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/jobs/layout.tsx",
+      "owner": "src/app/jobs/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/voice/VoiceProvider",
+      "export": "DevVoiceProvider",
+      "line": 134,
+      "count": 1,
+      "lines": [
+        134
+      ],
+      "reason": "Existing usage preserves existing development voice boundary; implementation may split without adding a layout mount; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "import",
+      "module": "src/app/_components/SessionProviderWrapper",
+      "export": "SessionProviderWrapper",
+      "line": 9,
+      "count": 1,
+      "lines": [
+        9
+      ],
+      "reason": "Existing import preserves existing authenticated Clerk session boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "import",
+      "module": "src/trpc/react",
+      "export": "TRPCReactProvider",
+      "line": 10,
+      "count": 1,
+      "lines": [
+        10
+      ],
+      "reason": "Existing import preserves existing query/TRPC client context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "import",
+      "module": "src/components/app/ThemeProvider",
+      "export": "ThemeProvider",
+      "line": 17,
+      "count": 1,
+      "lines": [
+        17
+      ],
+      "reason": "Existing import preserves existing theme state context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "usage",
+      "module": "src/components/app/ThemeProvider",
+      "export": "ThemeProvider",
+      "line": 121,
+      "count": 1,
+      "lines": [
+        121
+      ],
+      "reason": "Existing usage preserves existing theme state context; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "usage",
+      "module": "src/app/_components/SessionProviderWrapper",
+      "export": "SessionProviderWrapper",
+      "line": 122,
+      "count": 1,
+      "lines": [
+        122
+      ],
+      "reason": "Existing usage preserves existing authenticated Clerk session boundary; this exact boundary/count is retained, not a file-wide exemption."
+    },
+    {
+      "layout": "src/app/layout.tsx",
+      "owner": "src/app/layout.tsx",
+      "kind": "usage",
+      "module": "src/trpc/react",
+      "export": "TRPCReactProvider",
+      "line": 123,
+      "count": 1,
+      "lines": [
+        123
+      ],
+      "reason": "Existing usage preserves existing query/TRPC client context; this exact boundary/count is retained, not a file-wide exemption."
+    }
+  ],
+  "retired": [],
+  "provenance": {
+    "commit": "326aed657ce6757c9c6ee39cd4edc2a7bea00795",
+    "method": "Tracked source bytes; provider identities are canonical module/export boundaries, not implementation hashes."
+  }
+}
