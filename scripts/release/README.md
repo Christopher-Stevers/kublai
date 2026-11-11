@@ -117,3 +117,15 @@ no longer eager there. Net combined-candidate bytes are not isolated CPU/timing
 claims. Strict R11→R12 update target still fails at 541,833 (39/287 scripts changed),
 and final shared/heaviest targets remain unmet. No HTTP server, journey, idle
 observation, full matrix or activation ran. See `perf/phase1-r12-source-proposal.md`.
+
+
+R13 (2026-11-11) is preserved as a failed native-lookup candidate. Canonical
+webpack/production TypeScript/prerender/source laws pass; build
+`c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813`,
+source fingerprint `f680801e…64ebd4e`. Actual emitted createRequire is unbound,
+so isolated exact resolver evaluation returns null and readiness fails closed.
+An explicit-binding diagnostic control returns 3.4.8; it is not a release patch
+or passed functionality claim. R13 runtime remains held. Formal byte ratchets
+pass at 478,143/640,667/1,320,297 gzip bytes; strict update target fails at
+359,750 (32/287 scripts changed). See `perf/phase1-r13-source-freeze.md`.
+No HTTP/app/DB runtime, full journey or activation ran.

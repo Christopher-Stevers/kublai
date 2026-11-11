@@ -1,0 +1,158 @@
+{
+  "status": "canonical-compiled-native-lookup-failed-not-runtime-ready-not-activated",
+  "sourceFreezeCommit": "1305d603",
+  "baseBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "source": {
+    "sourceBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+    "sourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+    "sourceFileCount": 2313,
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "controlledSourceChanges": [
+      "src/app/api/live/route.ts",
+      "src/components/catalogue/PartDetailsDialog.tsx",
+      "src/components/jobs/JobChatThread.tsx",
+      "src/components/timesheets/TimesheetsView.tsx",
+      "src/hooks/use-chat-join.ts",
+      "src/hooks/use-create-catalogue-part.ts",
+      "src/hooks/use-timesheet-live.ts",
+      "src/lib/live-client.ts",
+      "src/lib/live-protocol.ts",
+      "src/server/api/routers/catalogue.ts",
+      "src/server/api/routers/timesheets.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/listen-lifecycle.ts",
+      "src/server/live/timesheet-events.ts",
+      "src/server/timesheets/notify.ts"
+    ],
+    "runtimePathCount": 15,
+    "operationalPathCount": 0,
+    "unaffectedFiles": 5458,
+    "publicCorpusFiles": 3263,
+    "unexpectedSourceChanges": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModulePattern": "SpeedDevelopmentOverlay",
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true,
+    "fingerprintMatchesReviewedFreeze": true,
+    "navigationPreflight": "pass: no changed/new raw navigation",
+    "providerPreflight": "pass: no new shared boundaries",
+    "webpackProductionTypesPrerender": "pass first try",
+    "nativeResolverInspection": "FAIL: emitted free createRequire returns null",
+    "nativeResolverInspectionPassed": false,
+    "r8PressExcluded": true,
+    "workerExecutableAndSchemaUnchanged": true,
+    "proofServerStarted": false,
+    "activated": false,
+    "originalSourceFingerprintRechecked": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r12": 478116,
+      "r13": 478143,
+      "deltaFromR12": 27,
+      "headroomToPhase0Baseline": 24475,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r12": 640641,
+      "r13": 640667,
+      "deltaFromR12": 26,
+      "headroomToPhase0Baseline": 117864,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r12": 1316329,
+      "r13": 1320297,
+      "deltaFromR12": 3968,
+      "headroomToPhase0Baseline": 1414434,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "formalMetricMethod": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.",
+  "heaviestRoute": "/jobs/[jobId]/receiving/page",
+  "strictChangedScriptTarget": {
+    "baselineBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "candidateBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 287,
+    "reusedScripts": 255,
+    "changedScripts": 32,
+    "changedRawBytes": 1111450,
+    "changedGzipBytes": 359750,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "emittedNativeInspection": {
+    "sourceBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+    "method": "Exact emitted function inspected and evaluated alone with native path/fs and runtime cwd; no app module or database code executed. Explicit binding is diagnostic control only, not a patch to the candidate.",
+    "emittedFile": "server/chunks/4735.js",
+    "resolverSha256": "f39857448332f45a1b43828450a3d638b7a39b632264548aee8069a1d3a4707d",
+    "createRequireOccurrencesInWholeChunk": 1,
+    "emittedCopies": [
+      {
+        "file": "server/app/api/chat/attachments/[id]/route.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/app/api/chat/attachments/route.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/app/api/conversations/events/route.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/app/api/material-lists/[id]/events/route.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/chunks/3524.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/chunks/4589.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/chunks/4735.js",
+        "createRequireOccurrences": 1
+      },
+      {
+        "file": "server/chunks/8439.js",
+        "createRequireOccurrences": 1
+      }
+    ],
+    "indirectNativeCallRetained": true,
+    "runtimeCwdRetained": true,
+    "postgresResolveStringRetained": true,
+    "absolutePathGuardRetained": true,
+    "numericDirnameIntroduced": false,
+    "missingBindingResult": null,
+    "explicitNativeBindingControl": "3.4.8",
+    "passed": false,
+    "failure": "createRequire appears only as a free identifier in the emitted CommonJS chunk. It throws inside catch and returns null, so LISTEN readiness fails closed.",
+    "appRuntimeStarted": false,
+    "databaseStarted": false
+  },
+  "finalTargets": {
+    "sharedGzipBytes": {
+      "target": 120000,
+      "measured": 478143,
+      "passes": false
+    },
+    "heaviestGzipBytes": {
+      "target": 180000,
+      "measured": 640667,
+      "passes": false
+    }
+  },
+  "limits": [
+    "R13 native lookup is concretely broken despite successful compile/TypeScript: exact emitted resolver lacks createRequire binding and fails closed. R13 app/lab runtime held.",
+    "Diagnostic explicit binding is not a candidate patch or a passed production check.",
+    "No HTTP server, browser journey, idle observation, full matrix or activation ran.",
+    "Strict changed-script and final byte targets remain failed; existing performance gates unchanged."
+  ]
+}
