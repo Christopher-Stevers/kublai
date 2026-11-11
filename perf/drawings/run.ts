@@ -4,6 +4,7 @@ import path from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { classify, replayPaths } from "./operators";
+import { collectImageResources } from "./image-resources";
 const root = path.resolve("perf/drawings/private");
 const corpus = JSON.parse(
   await readFile(path.join(root, "corpus.json"), "utf8"),
@@ -11,6 +12,7 @@ const corpus = JSON.parse(
 const names = Object.fromEntries(
   Object.entries(OPS).map(([key, value]) => [value, key]),
 );
+const imagePrototype = process.env.DRAWING_IMAGE_PROTOTYPE === "1";
 const glyphPrototype = process.env.DRAWING_GLYPH_PROTOTYPE === "1";
 const shard = Number(process.env.DRAWING_SHARD ?? 0),
   shards = Number(process.env.DRAWING_SHARDS ?? 1);
@@ -24,7 +26,11 @@ for (const suffix of ["0", "1", "2", "3", "eb8da2f0", "7725eb4b"])
       ).sheets.filter((r: any) => !r.error),
     );
   } catch {}
-await mkdir(path.join(root, "previews"), { recursive: true });
+const previewRoot = path.join(
+  root,
+  imagePrototype ? "image-prototype-previews" : "previews",
+);
+await mkdir(previewRoot, { recursive: true });
 function metrics(
   a: Uint8ClampedArray,
   b: Uint8ClampedArray,
@@ -83,7 +89,12 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
   if (sampleIndex % shards !== shard) continue;
   if (glyphPrototype && sampleIndex >= 10) continue;
   const previous = prior.find((r: any) => r.hash === sample.hash);
-  if (previous && !process.env.DRAWING_ONLY_HASH && !glyphPrototype) {
+  if (
+    previous &&
+    !process.env.DRAWING_ONLY_HASH &&
+    !glyphPrototype &&
+    !imagePrototype
+  ) {
     reports.push(previous);
     continue;
   }
@@ -113,6 +124,9 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       list = await page.getOperatorList(),
       operatorListMs = performance.now() - start;
     const classification = classify(list, names);
+    const images = imagePrototype
+      ? collectImageResources(list, names, (id) => page.objs.get(id))
+      : undefined;
     const text = (await page.getTextContent()).items
       .map((item: any) => item.str ?? "")
       .join(" ");
@@ -164,9 +178,12 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
           list,
           names,
           vp.transform,
-          glyphPrototype
+          glyphPrototype || images
             ? {
-                font: (id) => page.commonObjs.get(id),
+                images,
+                font: glyphPrototype
+                  ? (id: string) => page.commonObjs.get(id)
+                  : undefined,
                 commonObjs: page.commonObjs,
               }
             : undefined,
@@ -186,18 +203,13 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
         });
         if (reports.length < 4 && width === 1024) {
           await writeFile(
-            path.join(
-              root,
-              "previews",
-              `${sample.hash.slice(0, 12)}-reference.png`,
-            ),
+            path.join(previewRoot, `${sample.hash.slice(0, 12)}-reference.png`),
             canvas.toBuffer("image/png"),
           );
           await writeFile(
             path.join(
-              root,
-              "previews",
-              `${sample.hash.slice(0, 12)}-prototype.png`,
+              previewRoot,
+              `${sample.hash.slice(0, 12)}-${imagePrototype ? "image-prototype" : "prototype"}.png`,
             ),
             prototype.toBuffer("image/png"),
           );
@@ -222,6 +234,11 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       scanCandidate,
       raster,
       fidelity,
+      prototypeProtocol: imagePrototype
+        ? "decoded-image-replay-v1"
+        : "historical-path-glyph-replay",
+      glyphPrototype,
+      imageReplay: images?.stats ?? null,
       completeEncoding: false,
       firstViewEncodingBytes: null,
       fallbackFeatureFlags: [
@@ -230,7 +247,10 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       ],
       prototypeOmissions: [
         ...(classification.textOperators ? ["all-text-glyphs"] : []),
-        ...(classification.imageOperators ? ["all-image-resources"] : []),
+        ...(classification.imageOperators && !images
+          ? ["all-image-resources"]
+          : []),
+        ...(images?.stats.failures ?? []),
         "layers",
         "nested-form-matrices",
         "opacity-state",
@@ -258,7 +278,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
   await writeFile(
     path.join(
       root,
-      `measurements-${glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
+      `measurements-${imagePrototype ? "image-prototype" : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
     ),
     JSON.stringify(
       {

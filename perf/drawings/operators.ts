@@ -109,13 +109,17 @@ export function classify(list: OperatorList, names: Record<number, string>) {
   };
 }
 // A deliberately small canvas prototype: paths, stroke/fill styles and clipping.
-// Text/images/patterns are omitted and always invalidate its fidelity gate.
+// Optional glyph/image resources remain an incomplete host-only replay.
 export function replayPaths(
   ctx: any,
   list: OperatorList,
   names: Record<number, string>,
   transform: number[],
-  resources?: { font: (id: string) => any; commonObjs: any },
+  resources?: {
+    font?: (id: string) => any;
+    commonObjs?: any;
+    images?: { paint: (ctx: any, index: number, image: any) => void };
+  },
 ) {
   ctx.save();
   ctx.fillStyle = "black";
@@ -153,11 +157,20 @@ export function replayPaths(
       ctx.restore();
       text = textStack.pop() ?? text;
     } else if (name === "transform") ctx.transform(...a);
-    else if (resources && name === "beginText") {
+    else if (
+      resources?.images &&
+      (name === "paintImageXObject" || name === "paintInlineImageXObject")
+    ) {
+      resources.images.paint(
+        ctx,
+        i,
+        name === "paintInlineImageXObject" ? a[0] : undefined,
+      );
+    } else if (resources?.font && name === "beginText") {
       text.x = text.y = text.lineX = text.lineY = 0;
       text.matrix = [1, 0, 0, 1, 0, 0];
     } else if (resources && name === "setFont") {
-      text.font = resources.font(a[0]);
+      text.font = resources.font?.(a[0]);
       text.size = a[1];
     } else if (resources && name === "setCharSpacing") text.charSpacing = a[0];
     else if (resources && name === "setWordSpacing") text.wordSpacing = a[0];
