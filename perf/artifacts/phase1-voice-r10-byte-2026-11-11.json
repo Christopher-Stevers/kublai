@@ -1,0 +1,135 @@
+{
+  "status": "isolated-byte-experiment-prepared-not-activated",
+  "sourceCommit": "77373c58",
+  "source": {
+    "sourceBuild": "945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a",
+    "sourceFingerprint": "d9c6e9cb20203dc4931aae02ed69225be6e9ac8edf86178e6dfe6462e1e3ee7f",
+    "sourceFileCount": 2291,
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "controlledSourceChanges": [
+      "src/components/voice/VoiceEngine.tsx",
+      "src/components/voice/VoiceProvider.tsx"
+    ],
+    "unaffectedFiles": 5449,
+    "publicCorpusFiles": 3263,
+    "unexpectedSourceChanges": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true,
+    "compiled": true,
+    "r8PressExcluded": true,
+    "proofServerStarted": false,
+    "activated": false
+  },
+  "baseBuild": "0ff72e5a13076f438bce3877d90e4fac39a2b12459553ebeea9a4befb3198c2e",
+  "compile": "Canonical webpack, TypeScript and prerender passed first try",
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r9": 475572,
+      "r10": 473958,
+      "deltaFromR9": -1614,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r9": 753214,
+      "r10": 749234,
+      "deltaFromR9": -3980,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r9": 1272217,
+      "r10": 1271639,
+      "deltaFromR9": -578,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "supplementalInitialDependencyMap": {
+    "method": "Emitted rootMainFiles plus app/layout and app/jobs/layout entry callback O(0,[chunk IDs]) dependency closure; jobs also includes app/jobs/page. Exact gzip9 sidecar lengths per unique emitted JS file. Supplemental rooted dependency map, not browser network timing or a redefinition of the formal reference-union gate.",
+    "common": {
+      "r9": 420663,
+      "r10": 417476,
+      "delta": -3187
+    },
+    "jobs": {
+      "r9": 466695,
+      "r10": 465081,
+      "delta": -1614
+    },
+    "beforeModules": [
+      {
+        "source": "src/components/voice/VoiceProvider.tsx",
+        "preMinifyEstimatedBytes": 21699,
+        "chunkIds": [
+          467
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/components/voice/audio.ts",
+        "preMinifyEstimatedBytes": 2121,
+        "chunkIds": [
+          467
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      }
+    ],
+    "afterModules": [
+      {
+        "source": "src/components/voice/VoiceProvider.tsx",
+        "preMinifyEstimatedBytes": 4718,
+        "chunkIds": [
+          2676,
+          4101
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true
+      },
+      {
+        "source": "src/components/voice/VoiceEngine.tsx",
+        "preMinifyEstimatedBytes": 18009,
+        "chunkIds": [
+          5786
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false
+      },
+      {
+        "source": "src/components/voice/audio.ts",
+        "preMinifyEstimatedBytes": 2121,
+        "chunkIds": [
+          5786
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false
+      }
+    ]
+  },
+  "strictChangedScriptTarget": {
+    "baselineBuild": "0ff72e5a13076f438bce3877d90e4fac39a2b12459553ebeea9a4befb3198c2e",
+    "candidateBuild": "945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 284,
+    "reusedScripts": 259,
+    "changedScripts": 25,
+    "changedRawBytes": 462001,
+    "changedGzipBytes": 157682,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "focusedValidation": {
+    "tests": 6,
+    "files": 1,
+    "scopedLint": "3 TSX files clean",
+    "mocksOnly": true
+  },
+  "remainingGaps": [
+    "120000 shared and 180000 heaviest final targets remain unmet",
+    "Strict changed-script payload exceeds unchanged 100000-byte target",
+    "No HTTP, browser startup, full journey, idle, field-phone or activation evidence collected for R10"
+  ]
+}
