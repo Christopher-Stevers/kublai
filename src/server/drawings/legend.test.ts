@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { accessSheet } = vi.hoisted(() => ({ accessSheet: vi.fn() }));
 vi.mock("./service", () => ({ accessSheet }));
-vi.mock("~/server/db/schema", () => ({
+vi.mock("~/server/db/schema", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
   drawingLegendItems: {},
   jobDrawingSheets: {},
 }));
@@ -9,6 +10,7 @@ vi.mock("./equipment-index", () => ({
   drawingPdfLocation: vi.fn(),
   equipmentIndex: vi.fn(),
 }));
+vi.mock("./equipment-register", () => ({ clearEquipmentRegisters: vi.fn() }));
 vi.mock("./domain", () => ({ assertRevision: vi.fn() }));
 import { legendAccess, saveLegendItems } from "./legend";
 import type { DrawingContext } from "./service";
