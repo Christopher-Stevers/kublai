@@ -1,0 +1,50 @@
+{
+  "status": "behavior-verified-hypothesis-only",
+  "canonicalR7Build": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceVariant": [
+    {
+      "path": "src/hooks/use-press.ts",
+      "r7PreimageSha256": "a2df179682c0927a8b589bfd0fee1c9c88e3eee2ee56a1395def2ae8e27f6e80",
+      "controlledPostimageSha256": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+      "r7PreimageGitBlob": "5fbd8564e3d8297983fce9a511b401c1b6cc43d9",
+      "controlledPostimageGitBlob": "f14a04c294ab09d57b17b441b4bd0e0e87084f2c"
+    },
+    {
+      "path": "src/components/ui/pressable-card.tsx",
+      "r7PreimageSha256": "f442ad436bc320ce977369755af0d07936d7bb2c085a19da76d115e3cb576bb7",
+      "controlledPostimageSha256": "65d63234189e3c3f574f9acbe526e80e6dc9566e8fa12a0aef4728a708470fe9",
+      "r7PreimageGitBlob": "cb37b3f429a78b99ceb994dab312cb8c4e8c4b1f",
+      "controlledPostimageGitBlob": "0dc4da60ab5edc5f42520c1da1d1bd004904976b"
+    },
+    {
+      "path": "src/app/jobs/JobsClient.tsx",
+      "r7PreimageSha256": "8121971ac79cb6a13f9f0b245c8953ae1cb85205f07079ee570a4763d51c334b",
+      "controlledPostimageSha256": "d8c2498478bc46852aeb23f8e9982c4c7d2ebe3a8682d3b75ca16867c834eb87",
+      "r7PreimageGitBlob": "1f619a1e1d14c9413b599f81d36b9a917cf0735c",
+      "controlledPostimageGitBlob": "a4715b87dc493a07fa3cd0499844674561ec0dec"
+    }
+  ],
+  "controlledPatchSha256": "a340ba0ccd417204eb3bb2ded9de0feaa66d0c5ddd21ca535c351b6162e01c81",
+  "runtimeReportOriginalSha256": "c6913a9fb394cab027c6b624c2b6fdd54bd87625bae971d3210295a8e65ba780",
+  "runtimeFeedback": "attribute",
+  "mockedHookTests": {
+    "passed": 19,
+    "files": 2,
+    "newCases": 7,
+    "profiler": "Attribute down/up does not commit React; default mode does. Not physical performance evidence."
+  },
+  "scopedLint": {
+    "newFindings": 0,
+    "existingHeadErrors": 1,
+    "rule": "react-hooks/refs",
+    "location": "src/hooks/use-press.ts handlers.current render assignment",
+    "headReproduced": true
+  },
+  "limits": [
+    "No app speed/frame improvement measured",
+    "No canonical build or activation",
+    "Pointer state machine, geometry read, preparation and Activity unchanged",
+    "R7 patch excludes newer JobsClient loading marker, telemetry and write slices",
+    "Historical state-mode browser artifact preserved unchanged"
+  ]
+}

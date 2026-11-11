@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "feedback": "attribute",
+  "fixtureQuery": "?feedback=attribute",
+  "provenance": "isolated-production-react-primitives",
+  "browser": "Chromium desktop touch emulation",
+  "flings": 200,
+  "opens": 0,
+  "fixed": 2,
+  "writes": 1,
+  "prepared": 200,
+  "cancelled": 200,
+  "phoneOrAppLatencyEvidence": false,
+  "startedAt": "2026-11-11T08:23:14.920Z",
+  "finishedAt": "2026-11-11T08:23:31.799Z",
+  "sourceHashes": {
+    "perf/press/run.mjs": "4825f57ebd6f264eae8b5366334e0a99051e7b320e3a25b7b5546a2a9bb20298",
+    "perf/press/fixture.tsx": "8bcc51c2a4725478734d27a2515c2f0fffb1edbfa4e89bda24e42e7cd67acd6a",
+    "src/hooks/use-press.ts": "e28161945ea26619148916a537bdab1e01b5bacb120cd66a84f80daf94a7e266",
+    "src/components/ui/button.tsx": "97924c8dabde09f38b5bcaf232322b46e16c27d2652cc98cee48a4033e65b5fb",
+    "src/components/ui/pressable-card.tsx": "65d63234189e3c3f574f9acbe526e80e6dc9566e8fa12a0aef4728a708470fe9",
+    "src/components/ui/card.tsx": "9e5ad45e9c3be5ead7d698d4e1a82109280cc32d984ef08481b24344a8e16af2",
+    "src/lib/utils.ts": "7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d",
+    "pnpm-lock.yaml": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa"
+  },
+  "sourceUnchanged": true,
+  "toolchain": {
+    "node": "v26.8.2",
+    "esbuild": "0.27.2",
+    "playwright": "1.59.1",
+    "chromium": "152.0.7977.82"
+  },
+  "bundleSha256": "3a6bdc47df8fff14c9b2d5573e891236226be89b0a465a7dcbbe67160258c126"
+}

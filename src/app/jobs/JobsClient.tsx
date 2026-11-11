@@ -367,6 +367,7 @@ export function JobsClient({
               return (
                 <PressableCard
                   key={job.id}
+                  feedback="attribute"
                   prepare={signal => { if (!sandbox) void prepareJourney("openjob", { jobId: job.id }, signal); }}
                   data-tutorial="job-card"
                   role="button"

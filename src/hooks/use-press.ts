@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -84,13 +85,29 @@ export function usePress<T extends HTMLElement>({
   disabled = false,
   onClick,
   prepare,
+  feedback = "state",
 }: {
   press?: PressMode;
   disabled?: boolean;
   onClick?: (event: MouseEvent<T>) => void;
   prepare?: PressPreparation;
+  /** Attribute feedback is visual only; it does not update returned React state. */
+  feedback?: "state" | "attribute";
 }) {
-  const [pressed, setPressed] = useState(false);
+  const [pressed, setPressedState] = useState(false);
+  const feedbackTarget = useRef<T | null>(null);
+  const setPressed = useCallback((value: boolean, element?: T) => {
+    if (feedback === "state") {
+      setPressedState(value);
+      return;
+    }
+    if (element && feedbackTarget.current !== element) {
+      feedbackTarget.current?.removeAttribute("data-pressed");
+      feedbackTarget.current = element;
+    }
+    if (value) feedbackTarget.current?.setAttribute("data-pressed", "true");
+    else feedbackTarget.current?.removeAttribute("data-pressed");
+  }, [feedback]);
   const state = useRef<{
     pointerId: number;
     x: number;
@@ -106,6 +123,7 @@ export function usePress<T extends HTMLElement>({
     () => () => {
       detach.current();
       state.current?.controller.abort();
+      feedbackTarget.current?.removeAttribute("data-pressed");
     },
     [],
   );
@@ -115,7 +133,7 @@ export function usePress<T extends HTMLElement>({
     state.current?.controller.abort();
     state.current = null;
     setPressed(false);
-  }, [disabled]);
+  }, [disabled, setPressed]);
 
   const cancel = () => {
     if (state.current) {
@@ -145,7 +163,7 @@ export function usePress<T extends HTMLElement>({
       controller: new AbortController(),
     };
     state.current = active;
-    setPressed(true);
+    setPressed(true, element);
     const move = (next: globalThis.PointerEvent) => {
       if (
         next.pointerId === active.pointerId &&
@@ -227,11 +245,11 @@ export function usePress<T extends HTMLElement>({
       onClick: click,
       onKeyDown: (event) => {
         if (!disabled && (event.key === " " || event.key === "Enter"))
-          setPressed(true);
+          setPressed(true, event.currentTarget);
       },
       onKeyUp: () => setPressed(false),
       onBlur: cancel,
-      "data-pressed": pressed ? "true" : undefined,
+      ...(feedback === "state" ? { "data-pressed": pressed ? "true" : undefined } : {}),
     } satisfies HTMLAttributes<T> & { "data-pressed"?: string },
   };
 }

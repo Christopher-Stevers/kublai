@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 /** Cards scroll with their list: prepare on down, activate only on release. */
 export function PressableCard({
   prepare,
+  feedback,
   onClick,
   onKeyDown,
   onPointerDown,
@@ -14,11 +15,12 @@ export function PressableCard({
   onBlur,
   className,
   ...props
-}: ComponentProps<typeof Card> & { prepare?: PressPreparation }) {
+}: ComponentProps<typeof Card> & { prepare?: PressPreparation; feedback?: "state" | "attribute" }) {
   const { pressProps } = usePress<HTMLDivElement>({
     press: "scroll",
     onClick,
     prepare,
+    feedback,
   });
   return (
     <Card

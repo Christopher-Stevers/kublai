@@ -1,0 +1,115 @@
+--- a/src/hooks/use-press.ts
++++ b/src/hooks/use-press.ts
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import {
++  useCallback,
+   useEffect,
+   useRef,
+   useState,
+@@ -84,13 +85,29 @@
+   disabled = false,
+   onClick,
+   prepare,
++  feedback = "state",
+ }: {
+   press?: PressMode;
+   disabled?: boolean;
+   onClick?: (event: MouseEvent<T>) => void;
+   prepare?: PressPreparation;
++  /** Attribute feedback is visual only; it does not update returned React state. */
++  feedback?: "state" | "attribute";
+ }) {
+-  const [pressed, setPressed] = useState(false);
++  const [pressed, setPressedState] = useState(false);
++  const feedbackTarget = useRef<T | null>(null);
++  const setPressed = useCallback((value: boolean, element?: T) => {
++    if (feedback === "state") {
++      setPressedState(value);
++      return;
++    }
++    if (element && feedbackTarget.current !== element) {
++      feedbackTarget.current?.removeAttribute("data-pressed");
++      feedbackTarget.current = element;
++    }
++    if (value) feedbackTarget.current?.setAttribute("data-pressed", "true");
++    else feedbackTarget.current?.removeAttribute("data-pressed");
++  }, [feedback]);
+   const state = useRef<{
+     pointerId: number;
+     x: number;
+@@ -106,6 +123,7 @@
+     () => () => {
+       detach.current();
+       state.current?.controller.abort();
++      feedbackTarget.current?.removeAttribute("data-pressed");
+     },
+     [],
+   );
+@@ -115,7 +133,7 @@
+     state.current?.controller.abort();
+     state.current = null;
+     setPressed(false);
+-  }, [disabled]);
++  }, [disabled, setPressed]);
+ 
+   const cancel = () => {
+     if (state.current) {
+@@ -145,7 +163,7 @@
+       controller: new AbortController(),
+     };
+     state.current = active;
+-    setPressed(true);
++    setPressed(true, element);
+     const move = (next: globalThis.PointerEvent) => {
+       if (
+         next.pointerId === active.pointerId &&
+@@ -227,11 +245,11 @@
+       onClick: click,
+       onKeyDown: (event) => {
+         if (!disabled && (event.key === " " || event.key === "Enter"))
+-          setPressed(true);
++          setPressed(true, event.currentTarget);
+       },
+       onKeyUp: () => setPressed(false),
+       onBlur: cancel,
+-      "data-pressed": pressed ? "true" : undefined,
++      ...(feedback === "state" ? { "data-pressed": pressed ? "true" : undefined } : {}),
+     } satisfies HTMLAttributes<T> & { "data-pressed"?: string },
+   };
+ }
+--- a/src/components/ui/pressable-card.tsx
++++ b/src/components/ui/pressable-card.tsx
+@@ -7,6 +7,7 @@
+ /** Cards scroll with their list: prepare on down, activate only on release. */
+ export function PressableCard({
+   prepare,
++  feedback,
+   onClick,
+   onKeyDown,
+   onPointerDown,
+@@ -14,11 +15,12 @@
+   onBlur,
+   className,
+   ...props
+-}: ComponentProps<typeof Card> & { prepare?: PressPreparation }) {
++}: ComponentProps<typeof Card> & { prepare?: PressPreparation; feedback?: "state" | "attribute" }) {
+   const { pressProps } = usePress<HTMLDivElement>({
+     press: "scroll",
+     onClick,
+     prepare,
++    feedback,
+   });
+   return (
+     <Card
+--- a/src/app/jobs/JobsClient.tsx
++++ b/src/app/jobs/JobsClient.tsx
+@@ -366,6 +366,7 @@
+               return (
+                 <PressableCard
+                   key={job.id}
++                  feedback="attribute"
+                   prepare={signal => { if (!sandbox) void prepareJourney("openjob", { jobId: job.id }, signal); }}
+                   data-tutorial="job-card"
+                   role="button"

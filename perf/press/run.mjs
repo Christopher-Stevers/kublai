@@ -5,9 +5,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import http from "node:http";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { chromium } from "@playwright/test";
 const require = createRequire(import.meta.url),
   esbuild = createRequire(require.resolve("tsx"))("esbuild");
+const feedback = process.env.PRESS_FEEDBACK ?? "state";
+if (feedback !== "state" && feedback !== "attribute") throw Error("PRESS_FEEDBACK must be state or attribute");
+const sha = bytes => createHash("sha256").update(bytes).digest("hex");
+const sourceFiles = ["perf/press/run.mjs", "perf/press/fixture.tsx", "src/hooks/use-press.ts", "src/components/ui/button.tsx", "src/components/ui/pressable-card.tsx", "src/components/ui/card.tsx", "src/lib/utils.ts", "pnpm-lock.yaml"];
+const sourceHashes = Object.fromEntries(await Promise.all(sourceFiles.map(async file => [file, sha(await readFile(file))])));
+const startedAt = new Date().toISOString();
 const temp = await mkdtemp(path.join(tmpdir(), "press-fixture-"));
 let browser, server;
 try {
@@ -43,7 +50,7 @@ try {
     isMobile: true,
   });
   const page = await context.newPage();
-  await page.goto(`http://127.0.0.1:${server.address().port}`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/?feedback=${feedback}`);
   await page.locator("#fixed").waitFor();
   const cdp = await context.newCDPSession(page);
   await page.locator("#fixed").tap();
@@ -87,14 +94,24 @@ try {
   assert.equal(result.fixed, 2);
   assert.ok(result.prepared >= 200);
   assert.ok(result.cancelled >= 200);
+  assert.equal(await page.locator('#rows [data-pressed="true"]').count(), 0);
+  for (const file of sourceFiles) assert.equal(sha(await readFile(file)), sourceHashes[file], `Source changed while testing: ${file}`);
   console.log(
     JSON.stringify({
       version: 1,
+      feedback,
+      fixtureQuery: `?feedback=${feedback}`,
       provenance: "isolated-production-react-primitives",
       browser: "Chromium desktop touch emulation",
       flings: 200,
       ...result,
       phoneOrAppLatencyEvidence: false,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      sourceHashes,
+      sourceUnchanged: true,
+      toolchain: { node: process.version, esbuild: esbuild.version, playwright: require("@playwright/test/package.json").version, chromium: browser.version() },
+      bundleSha256: sha(await readFile(path.join(temp, "app.js"))),
     }),
   );
 } finally {

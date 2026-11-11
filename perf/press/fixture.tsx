@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 import { Button } from "../../src/components/ui/button";
 import { PressableCard } from "../../src/components/ui/pressable-card";
 const result = { opens: 0, fixed: 0, writes: 0, prepared: 0, cancelled: 0 };
+const feedback = new URLSearchParams(window.location.search).get("feedback") ?? "state";
+if (feedback !== "state" && feedback !== "attribute") throw Error("Unknown press feedback mode");
 Object.assign(window, { pressResult: result });
 createRoot(document.getElementById("root")!).render(
   <>
@@ -24,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
       {Array.from({ length: 40 }, (_, i) => (
         <PressableCard
           key={i}
+          feedback={feedback}
           role="button"
           tabIndex={0}
           style={{ height: 100, borderBottom: "1px solid #999" }}

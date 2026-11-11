@@ -4,6 +4,29 @@
 
 This verifies primitive behavior with desktop Chromium touch emulation. It is not the eight-journey app lab, a physical phone/Safari check, a screen-reader certification, or evidence of the `<100 ms` p95 gate.
 
+The runner's explicit `PRESS_FEEDBACK=state` (default) or `attribute` selects only
+the fixture's `PressableCard` feedback mode, via the same named URL query. Buttons
+remain on their production default, including the fixed-control guard. The
+report includes that mode/query, source-before/after hashes, emitted bundle hash,
+tool versions and exact run times. Preserve `result.json` as its historical
+default-mode evidence. A new attribute run must redirect stdout to a distinct
+artifact, for example:
+
+```sh
+PRESS_FEEDBACK=attribute node perf/press/run.mjs > /tmp/press-attribute-result.json
+```
+
+The attribute experiment passed 200 actual Chromium CDP touch flings on
+2026-11-11: zero row opens, 200 preparations/aborts, default fixed activation two
+and default release-write activation one, with no stuck pressed rows. The
+[distinct evidence](../artifacts/press-attribute-2026-11-11/index.json) records
+mode/query, source and bundle hashes, tool versions and capture times; historical
+`result.json` remains untouched. Nineteen mocked hook tests also passed,
+including a Profiler check of zero feedback-only React commits versus the
+default state mode's commit. These are separate kinds of evidence. Scoped lint
+has no new findings; the existing handler-ref assignment error reproduces on
+HEAD. No app/phone latency improvement or gate pass follows.
+
 Focused tests:
 
 ```sh
