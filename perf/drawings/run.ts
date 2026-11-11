@@ -278,7 +278,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
   await writeFile(
     path.join(
       root,
-      `measurements-${imagePrototype ? "image-prototype" : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
+      `measurements-${imagePrototype ? `image-prototype-${process.env.DRAWING_ONLY_HASH ?? shard}` : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
     ),
     JSON.stringify(
       {
