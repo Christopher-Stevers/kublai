@@ -1,0 +1,86 @@
+{
+  "scope": "Three canonical builds only; no retry/failure, browser/app/database/activation. Original R17 preserved. Config policy decision pending root review.",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111",
+  "methods": {
+    "press-corners-prepare.mjs": "ecdade3c11d69c29a3d8ef845a1ac348be4cb3b32031d03f52de0f33dfa9dee6",
+    "press-key-check.mjs": "a72f0a80f3adfcf0f45b6bd72529f2076cc300920b61f23fc44a3cbbc8c34e6a",
+    "press-corner-verify.mjs": "8ba81c4b41f8597cdc30f22e34366b507645e67e31ca23ad8f83fe98709f9996",
+    "press-corners-analyze.mjs": "e8896bc1b4c81dd511f7d2c609ab8b6021b541cd62b4fa8f19a7ee4a3993bc38",
+    "press-assets-verify.mjs": "099687d969a053a49b5562015827cadc904b3eb47034d3727446bcfb25d9cb4c",
+    "press-public-full.mjs": "c7ba7df3b1ea8c3c7276b50c9bdcb6348a60e3f7d956341a0a851dcb543b5d71"
+  },
+  "logs": {
+    "B": {
+      "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/B-build.log",
+      "sha256": "b751a2d276c6c3906ac955cddc9f67aaa7e496820198259630ee087213ce820d",
+      "bytes": 36547,
+      "exit": 0
+    },
+    "C": {
+      "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/C-build.log",
+      "sha256": "1de54a94842079615b324ebbab84afc5950395cb8636e355ece46bb7118a56d8",
+      "bytes": 36495,
+      "exit": 0
+    },
+    "D": {
+      "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/D-build.log",
+      "sha256": "192069952e345c50a56b1c2f69f6a90689716880ce54d266bd4236aa4d8fd716",
+      "bytes": 36495,
+      "exit": 0
+    }
+  },
+  "sources": {
+    "B": {
+      "sourceFingerprint": "7f78783ed22e74f2af00d3ae7e8c302ccc1f52bbee8107cb81e874ce163f9f9a",
+      "sourceFileCount": 2316,
+      "changed": [
+        "src/hooks/use-press.ts"
+      ],
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "manifestSha256": "d223d0a3c911f613e72127fb370531ba39fb0adb7893eac6e8f5ec16eb0f1db8"
+    },
+    "C": {
+      "sourceFingerprint": "e7b6194a96ede30dc424f6f59b95754e15edccef7ac8a9fb1ce74b53bbd7c9fc",
+      "sourceFileCount": 2316,
+      "changed": [
+        "next.config.js"
+      ],
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "manifestSha256": "bebcb7c84ef025e53a28d00e6b99e70a5ee8d49f870acb518b57c63a0379d5d4"
+    },
+    "D": {
+      "sourceFingerprint": "e9cf48b17f899ced83eb8adf21842bd0e6d98d8d9e030c43de31c6b2b850e7f8",
+      "sourceFileCount": 2316,
+      "changed": [
+        "next.config.js",
+        "src/hooks/use-press.ts"
+      ],
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "manifestSha256": "ba86a5900b4ea274546e7c6ee0b68dd4ffcac98d54cafad52f02e40f37efcb4c"
+    }
+  },
+  "privateInputs": "Original A salted BUILD_ID reconstructed and matched before B, C, D and after completion; key contents never emitted. Private key fingerprint retained only in local preflight.",
+  "units": {
+    "passed": 4,
+    "failed": 0,
+    "command": "node --test scripts/release/press-chunk-config.node-test.mjs"
+  }
+}

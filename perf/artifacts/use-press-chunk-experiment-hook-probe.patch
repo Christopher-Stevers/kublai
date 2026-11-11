@@ -1,0 +1,13 @@
+--- a/src/hooks/use-press.ts
++++ b/src/hooks/use-press.ts
+@@ -232,6 +232,7 @@
+       onKeyUp: () => setPressed(false),
+       onBlur: cancel,
+       "data-pressed": pressed ? "true" : undefined,
+-    } satisfies HTMLAttributes<T> & { "data-pressed"?: string },
+-  };
+-}
++      "data-press-build-probe": "r17-cache-group-control",
++    } satisfies HTMLAttributes<T> & { "data-pressed"?: string; "data-press-build-probe"?: string },
++  };
++}

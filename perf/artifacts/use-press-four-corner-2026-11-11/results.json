@@ -1,0 +1,3485 @@
+{
+  "method": "Exact four-corner canonical build byte experiment; no application/browser/database execution or activation.",
+  "corners": {
+    "A": {
+      "build": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+      "fingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "canonicalExit": 0,
+      "metrics": {
+        "build": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+        "sharedGzipBytes": 478165,
+        "screenGzipBytes": 627389,
+        "deployGzipBytes": 1324196,
+        "screenGzipByRoute": {
+          "/_global-error/page": 308882,
+          "/_not-found/page": 308882,
+          "/admin/page": 308882,
+          "/jobs/[jobId]/chat/page": 501683,
+          "/jobs/[jobId]/documents/page": 501000,
+          "/jobs/[jobId]/drawings/page": 501009,
+          "/jobs/[jobId]/material-lists/page": 502479,
+          "/jobs/[jobId]/models/page": 500558,
+          "/jobs/[jobId]/page": 497364,
+          "/jobs/[jobId]/pricing/page": 508215,
+          "/jobs/[jobId]/receiving/page": 627389,
+          "/jobs/[jobId]/rooms/page": 503008,
+          "/jobs/[jobId]/systems/page": 501874,
+          "/jobs/[jobId]/tool-requests/page": 497364,
+          "/jobs/account/page": 487270,
+          "/jobs/account/settings/page": 504858,
+          "/jobs/assets/activity/page": 493280,
+          "/jobs/assets/counts/[countId]/page": 496992,
+          "/jobs/assets/counts/page": 496686,
+          "/jobs/assets/labels/page": 504862,
+          "/jobs/assets/page": 491387,
+          "/jobs/assets/requests/[orderId]/page": 498733,
+          "/jobs/assets/requests/page": 493279,
+          "/jobs/assets/scan/[tag]/page": 555556,
+          "/jobs/assets/tools/[id]/page": 561001,
+          "/jobs/assets/tools/page": 503626,
+          "/jobs/assets/types/page": 528726,
+          "/jobs/assets/where/[type]/[id]/page": 511206,
+          "/jobs/assets/where/page": 499668,
+          "/jobs/assist/page": 478165,
+          "/jobs/catalogue/page": 516483,
+          "/jobs/chat/page": 511166,
+          "/jobs/draws/[jobId]/page": 493200,
+          "/jobs/draws/page": 483000,
+          "/jobs/estimating/[id]/page": 518840,
+          "/jobs/estimating/page": 501339,
+          "/jobs/material-lists/[id]/page": 587093,
+          "/jobs/orders/page": 495863,
+          "/jobs/organization/page": 533064,
+          "/jobs/page": 478165,
+          "/jobs/quotes/page": 486841,
+          "/jobs/suppliers/page": 495000,
+          "/jobs/timesheets/page": 496834,
+          "/licenses/page": 309047,
+          "/onboarding/page": 312974,
+          "/page": 308882,
+          "/pending-approval/page": 308882,
+          "/pricing/page": 313187,
+          "/sign-in/[[...sign-in]]/page": 311185,
+          "/sign-up/[[...sign-up]]/page": 311185
+        },
+        "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+      },
+      "currentScripts": 288,
+      "modules": {
+        "./src/hooks/use-press.ts": [
+          {
+            "id": 80007,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 6978,
+            "chunks": [
+              542,
+              1921,
+              2161,
+              2181,
+              2649,
+              2734,
+              3118,
+              3268,
+              4339,
+              5209,
+              5446,
+              5735,
+              6521,
+              6700,
+              6900,
+              6907,
+              7148,
+              7455,
+              8216,
+              8750,
+              8974,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/app/jobs/chat/page-2f8a2ef402196db4.js",
+              "static/chunks/app/jobs/estimating/page-db75532defc92528.js",
+              "static/chunks/app/jobs/timesheets/page-2119a47af4db7668.js",
+              "static/chunks/app/jobs/assets/where/page-d639e4ac198a16e8.js",
+              "static/chunks/app/jobs/quotes/page-84776a03e303c2d1.js",
+              "static/chunks/2734-7a5f92850e128fd6.js",
+              "static/chunks/3118.b9679b1eed49c3d3.js",
+              "static/chunks/3268-f548576c7ce1ab9b.js",
+              "static/chunks/4339-80827fd0c22438c5.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-80ca1c7378d6b764.js",
+              "static/chunks/5446.14a2354fb08e8ff2.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-147af36920f0d180.js",
+              "static/chunks/app/jobs/assets/labels/page-191f650c0fc04a89.js",
+              "static/chunks/6700.fb909944cc0d7dc4.js",
+              "static/chunks/6900-7e59b96c2b2f6225.js",
+              "static/chunks/app/pricing/page-a36adc178864f8c8.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-2711665463f538bf.js",
+              "static/chunks/app/jobs/organization/page-278f8c1e8419ce80.js",
+              "static/chunks/8216.02b27f2cef33cf03.js",
+              "static/chunks/8750.c8993dab771f85ef.js",
+              "static/chunks/app/page-cf1233831380bc36.js",
+              "static/chunks/9292.6b85b8f04408e39a.js",
+              "static/chunks/app/onboarding/page-bc1263db89d8f028.js",
+              "static/chunks/app/jobs/account/page-c8bb090b7ed895d9.js",
+              "static/chunks/9627.c88679d2ab9918fc.js"
+            ]
+          }
+        ],
+        "./src/components/ui/button.tsx": [
+          {
+            "id": 85887,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 3653,
+            "chunks": [
+              542,
+              1921,
+              2161,
+              2181,
+              2649,
+              2734,
+              3118,
+              3268,
+              4339,
+              5209,
+              5446,
+              5735,
+              6521,
+              6700,
+              6900,
+              6907,
+              7148,
+              7455,
+              8216,
+              8750,
+              8974,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/app/jobs/chat/page-2f8a2ef402196db4.js",
+              "static/chunks/app/jobs/estimating/page-db75532defc92528.js",
+              "static/chunks/app/jobs/timesheets/page-2119a47af4db7668.js",
+              "static/chunks/app/jobs/assets/where/page-d639e4ac198a16e8.js",
+              "static/chunks/app/jobs/quotes/page-84776a03e303c2d1.js",
+              "static/chunks/2734-7a5f92850e128fd6.js",
+              "static/chunks/3118.b9679b1eed49c3d3.js",
+              "static/chunks/3268-f548576c7ce1ab9b.js",
+              "static/chunks/4339-80827fd0c22438c5.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-80ca1c7378d6b764.js",
+              "static/chunks/5446.14a2354fb08e8ff2.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-147af36920f0d180.js",
+              "static/chunks/app/jobs/assets/labels/page-191f650c0fc04a89.js",
+              "static/chunks/6700.fb909944cc0d7dc4.js",
+              "static/chunks/6900-7e59b96c2b2f6225.js",
+              "static/chunks/app/pricing/page-a36adc178864f8c8.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-2711665463f538bf.js",
+              "static/chunks/app/jobs/organization/page-278f8c1e8419ce80.js",
+              "static/chunks/8216.02b27f2cef33cf03.js",
+              "static/chunks/8750.c8993dab771f85ef.js",
+              "static/chunks/app/page-cf1233831380bc36.js",
+              "static/chunks/9292.6b85b8f04408e39a.js",
+              "static/chunks/app/onboarding/page-bc1263db89d8f028.js",
+              "static/chunks/app/jobs/account/page-c8bb090b7ed895d9.js",
+              "static/chunks/9627.c88679d2ab9918fc.js"
+            ]
+          }
+        ],
+        "./src/components/ui/pressable-card.tsx": [
+          {
+            "id": 32703,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 1442,
+            "chunks": [
+              2856,
+              5531,
+              6707,
+              6742,
+              7584,
+              7756
+            ],
+            "files": [
+              "static/chunks/app/jobs/[jobId]/material-lists/page-8a13af99428e82c8.js",
+              "static/chunks/app/jobs/page-2c61ff08a0ca8491.js",
+              "static/chunks/6707.7df6e210e4780fc1.js",
+              "static/chunks/6742.2a1bfa455335d3d1.js",
+              "static/chunks/app/jobs/[jobId]/page-186aa17228347eed.js",
+              "static/chunks/7756.065f7aa7619ef99e.js"
+            ]
+          }
+        ],
+        "./src/lib/live-client.ts": [
+          {
+            "id": 75011,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 8641,
+            "chunks": [
+              2161,
+              3578,
+              9995
+            ],
+            "files": [
+              "static/chunks/app/jobs/timesheets/page-2119a47af4db7668.js",
+              "static/chunks/3578-fa571c2fafc4f06c.js",
+              "static/chunks/9995-a7e28de3053013fa.js"
+            ]
+          }
+        ],
+        "./src/lib/device-query-cache.ts": [
+          {
+            "id": 88467,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 15506,
+            "chunks": [
+              4499
+            ],
+            "files": [
+              "static/chunks/4499-b5f7034cf20885e2.js"
+            ]
+          }
+        ]
+      },
+      "stats": {
+        "path": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r17-20261111/.next-web/analysis/client-stats.json",
+        "sha256": "335ed35cf087db80ed7e4e804df330561b4e802bbf08984150a43b04b51f33ef",
+        "bytes": 34626083
+      },
+      "startupStaticClosure": {
+        "method": "rootMainFiles plus app/layout, app/jobs/layout and app/jobs/page emitted entry O(0,[ids]) dependency union; static JS count, not actual HTTP requests",
+        "count": 42,
+        "gzipBytes": 469288,
+        "files": [
+          "static/chunks/125-92cd4aad5b808427.js",
+          "static/chunks/1360-205589bf5791404c.js",
+          "static/chunks/1505-3964f312cd398939.js",
+          "static/chunks/1704-90344d9ecd45c77f.js",
+          "static/chunks/1874-ac0c150c5cda60db.js",
+          "static/chunks/2359-ffb01904d07feef2.js",
+          "static/chunks/282-8bbd9b00f5badf3b.js",
+          "static/chunks/2881-b78a25a5d60ffef8.js",
+          "static/chunks/3120-ba5c4f1a775840d0.js",
+          "static/chunks/3268-f548576c7ce1ab9b.js",
+          "static/chunks/3587-ddac794830848ce1.js",
+          "static/chunks/390-dd7f81326cdea841.js",
+          "static/chunks/4101-387d5b7ccf699a22.js",
+          "static/chunks/4281-b141d9736cb4efa3.js",
+          "static/chunks/4499-b5f7034cf20885e2.js",
+          "static/chunks/5014-713d15b6f145d416.js",
+          "static/chunks/5032-6d83427a6008df46.js",
+          "static/chunks/5717-7ae71766dded214e.js",
+          "static/chunks/5774-4de4eb8b55ac6535.js",
+          "static/chunks/5a989347-45d1cd9b68fb9192.js",
+          "static/chunks/6384-357110ebf4c6c7d0.js",
+          "static/chunks/6608-1e79b3997ef12625.js",
+          "static/chunks/6794-6d74cfdb46f62615.js",
+          "static/chunks/6900-7e59b96c2b2f6225.js",
+          "static/chunks/699-33e17e2ec5c30c3a.js",
+          "static/chunks/7117-a4f19f5d4caaa176.js",
+          "static/chunks/7771-b414e0de9408749b.js",
+          "static/chunks/7788-2e05fdee5b120ab7.js",
+          "static/chunks/7927-90e4b3d206572f61.js",
+          "static/chunks/8078-9cf96f435bf4c779.js",
+          "static/chunks/8140-fff72c4aecce2eaa.js",
+          "static/chunks/8211-c54f681ca747018d.js",
+          "static/chunks/8894-774451f49ebc3848.js",
+          "static/chunks/9228-94d95b68e184b4ba.js",
+          "static/chunks/9448-bad7c01765305b9d.js",
+          "static/chunks/9995-a7e28de3053013fa.js",
+          "static/chunks/app/jobs/layout-7aa9cffe4d400d9c.js",
+          "static/chunks/app/jobs/page-2c61ff08a0ca8491.js",
+          "static/chunks/app/layout-4980e67891bac273.js",
+          "static/chunks/fd32823e-889f2aa07511197f.js",
+          "static/chunks/main-app-5f52a121e430b1a5.js",
+          "static/chunks/webpack-4ba182941ab55932.js"
+        ]
+      },
+      "probeFiles": [],
+      "retainedBuilds": [
+        "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a"
+      ],
+      "retained": 1042,
+      "compression": {
+        "count": 1335,
+        "raw": 41290786,
+        "brotli": 9729690,
+        "gzip": 11564052
+      }
+    },
+    "B": {
+      "build": "ff6b6b4ea6392a887e57197830c610767711c6566a82d0e152d710046d589c4c",
+      "fingerprint": "7f78783ed22e74f2af00d3ae7e8c302ccc1f52bbee8107cb81e874ce163f9f9a",
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "canonicalExit": 0,
+      "metrics": {
+        "build": "ff6b6b4ea6392a887e57197830c610767711c6566a82d0e152d710046d589c4c",
+        "sharedGzipBytes": 478246,
+        "screenGzipBytes": 627470,
+        "deployGzipBytes": 1324881,
+        "screenGzipByRoute": {
+          "/_global-error/page": 308934,
+          "/_not-found/page": 308934,
+          "/admin/page": 308934,
+          "/jobs/[jobId]/chat/page": 501764,
+          "/jobs/[jobId]/documents/page": 501081,
+          "/jobs/[jobId]/drawings/page": 501090,
+          "/jobs/[jobId]/material-lists/page": 502560,
+          "/jobs/[jobId]/models/page": 500639,
+          "/jobs/[jobId]/page": 497445,
+          "/jobs/[jobId]/pricing/page": 508326,
+          "/jobs/[jobId]/receiving/page": 627470,
+          "/jobs/[jobId]/rooms/page": 503115,
+          "/jobs/[jobId]/systems/page": 501955,
+          "/jobs/[jobId]/tool-requests/page": 497445,
+          "/jobs/account/page": 487376,
+          "/jobs/account/settings/page": 504964,
+          "/jobs/assets/activity/page": 493388,
+          "/jobs/assets/counts/[countId]/page": 497100,
+          "/jobs/assets/counts/page": 496794,
+          "/jobs/assets/labels/page": 504998,
+          "/jobs/assets/page": 491495,
+          "/jobs/assets/requests/[orderId]/page": 498841,
+          "/jobs/assets/requests/page": 493387,
+          "/jobs/assets/scan/[tag]/page": 555691,
+          "/jobs/assets/tools/[id]/page": 561136,
+          "/jobs/assets/tools/page": 503761,
+          "/jobs/assets/types/page": 528834,
+          "/jobs/assets/where/[type]/[id]/page": 511369,
+          "/jobs/assets/where/page": 499804,
+          "/jobs/assist/page": 478246,
+          "/jobs/catalogue/page": 516564,
+          "/jobs/chat/page": 511275,
+          "/jobs/draws/[jobId]/page": 493309,
+          "/jobs/draws/page": 483081,
+          "/jobs/estimating/[id]/page": 518950,
+          "/jobs/estimating/page": 501449,
+          "/jobs/material-lists/[id]/page": 587174,
+          "/jobs/orders/page": 495944,
+          "/jobs/organization/page": 533172,
+          "/jobs/page": 478246,
+          "/jobs/quotes/page": 486949,
+          "/jobs/suppliers/page": 495081,
+          "/jobs/timesheets/page": 496943,
+          "/licenses/page": 309099,
+          "/onboarding/page": 313053,
+          "/page": 308934,
+          "/pending-approval/page": 308934,
+          "/pricing/page": 313266,
+          "/sign-in/[[...sign-in]]/page": 311237,
+          "/sign-up/[[...sign-up]]/page": 311237
+        },
+        "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+      },
+      "currentScripts": 288,
+      "modules": {
+        "./src/hooks/use-press.ts": [
+          {
+            "id": 80007,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 7043,
+            "chunks": [
+              542,
+              1921,
+              2161,
+              2181,
+              2649,
+              2734,
+              3118,
+              3268,
+              4339,
+              5209,
+              5446,
+              5735,
+              6521,
+              6700,
+              6900,
+              6907,
+              7148,
+              7455,
+              8216,
+              8750,
+              8974,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/app/jobs/chat/page-6faee950a804581d.js",
+              "static/chunks/app/jobs/estimating/page-3c71dae26c90febf.js",
+              "static/chunks/app/jobs/timesheets/page-0bc6ee6e857b1f65.js",
+              "static/chunks/app/jobs/assets/where/page-eb1e8cada84a778d.js",
+              "static/chunks/app/jobs/quotes/page-e0ce79cebe03d381.js",
+              "static/chunks/2734-767671cf0c2f9813.js",
+              "static/chunks/3118.026342dda0def6f8.js",
+              "static/chunks/3268-cf4efb69d47d193d.js",
+              "static/chunks/4339-a8dc4fdfb427ddf6.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-ad6fad46d1542085.js",
+              "static/chunks/5446.38d564e9e9cbe122.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-025a5d4c5c915671.js",
+              "static/chunks/app/jobs/assets/labels/page-d1d6f8f3daff4bcc.js",
+              "static/chunks/6700.425201506d290f91.js",
+              "static/chunks/6900-8c3d2e24ed104ff0.js",
+              "static/chunks/app/pricing/page-7c8dddfba00e491f.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-e605db7723dfd753.js",
+              "static/chunks/app/jobs/organization/page-822bcb42db5a76c9.js",
+              "static/chunks/8216.9937d40c343c5cfb.js",
+              "static/chunks/8750.611743dd67756c9f.js",
+              "static/chunks/app/page-6d7c69d5a42c6731.js",
+              "static/chunks/9292.e91ebcf802145f2c.js",
+              "static/chunks/app/onboarding/page-3cdef31341dcdf67.js",
+              "static/chunks/app/jobs/account/page-a942accccadb5039.js",
+              "static/chunks/9627.4018c2689c081231.js"
+            ]
+          }
+        ],
+        "./src/components/ui/button.tsx": [
+          {
+            "id": 85887,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 3653,
+            "chunks": [
+              542,
+              1921,
+              2161,
+              2181,
+              2649,
+              2734,
+              3118,
+              3268,
+              4339,
+              5209,
+              5446,
+              5735,
+              6521,
+              6700,
+              6900,
+              6907,
+              7148,
+              7455,
+              8216,
+              8750,
+              8974,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/app/jobs/chat/page-6faee950a804581d.js",
+              "static/chunks/app/jobs/estimating/page-3c71dae26c90febf.js",
+              "static/chunks/app/jobs/timesheets/page-0bc6ee6e857b1f65.js",
+              "static/chunks/app/jobs/assets/where/page-eb1e8cada84a778d.js",
+              "static/chunks/app/jobs/quotes/page-e0ce79cebe03d381.js",
+              "static/chunks/2734-767671cf0c2f9813.js",
+              "static/chunks/3118.026342dda0def6f8.js",
+              "static/chunks/3268-cf4efb69d47d193d.js",
+              "static/chunks/4339-a8dc4fdfb427ddf6.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-ad6fad46d1542085.js",
+              "static/chunks/5446.38d564e9e9cbe122.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-025a5d4c5c915671.js",
+              "static/chunks/app/jobs/assets/labels/page-d1d6f8f3daff4bcc.js",
+              "static/chunks/6700.425201506d290f91.js",
+              "static/chunks/6900-8c3d2e24ed104ff0.js",
+              "static/chunks/app/pricing/page-7c8dddfba00e491f.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-e605db7723dfd753.js",
+              "static/chunks/app/jobs/organization/page-822bcb42db5a76c9.js",
+              "static/chunks/8216.9937d40c343c5cfb.js",
+              "static/chunks/8750.611743dd67756c9f.js",
+              "static/chunks/app/page-6d7c69d5a42c6731.js",
+              "static/chunks/9292.e91ebcf802145f2c.js",
+              "static/chunks/app/onboarding/page-3cdef31341dcdf67.js",
+              "static/chunks/app/jobs/account/page-a942accccadb5039.js",
+              "static/chunks/9627.4018c2689c081231.js"
+            ]
+          }
+        ],
+        "./src/components/ui/pressable-card.tsx": [
+          {
+            "id": 32703,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 1442,
+            "chunks": [
+              2856,
+              5531,
+              6707,
+              6742,
+              7584,
+              7756
+            ],
+            "files": [
+              "static/chunks/app/jobs/[jobId]/material-lists/page-8a13af99428e82c8.js",
+              "static/chunks/app/jobs/page-2c61ff08a0ca8491.js",
+              "static/chunks/6707.7df6e210e4780fc1.js",
+              "static/chunks/6742.2a1bfa455335d3d1.js",
+              "static/chunks/app/jobs/[jobId]/page-186aa17228347eed.js",
+              "static/chunks/7756.065f7aa7619ef99e.js"
+            ]
+          }
+        ],
+        "./src/lib/live-client.ts": [
+          {
+            "id": 75011,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 8641,
+            "chunks": [
+              2161,
+              3578,
+              9995
+            ],
+            "files": [
+              "static/chunks/app/jobs/timesheets/page-0bc6ee6e857b1f65.js",
+              "static/chunks/3578-fa571c2fafc4f06c.js",
+              "static/chunks/9995-a7e28de3053013fa.js"
+            ]
+          }
+        ],
+        "./src/lib/device-query-cache.ts": [
+          {
+            "id": 88467,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 15506,
+            "chunks": [
+              4499
+            ],
+            "files": [
+              "static/chunks/4499-b5f7034cf20885e2.js"
+            ]
+          }
+        ]
+      },
+      "stats": {
+        "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/B/.next-web/analysis/client-stats.json",
+        "sha256": "4c0304be37c68eb7f43e4465fb8ae83ff37e9f1dc74ace5d45a65e6e72b1e113",
+        "bytes": 34628159
+      },
+      "startupStaticClosure": {
+        "method": "rootMainFiles plus app/layout, app/jobs/layout and app/jobs/page emitted entry O(0,[ids]) dependency union; static JS count, not actual HTTP requests",
+        "count": 42,
+        "gzipBytes": 469342,
+        "files": [
+          "static/chunks/125-5cc5003b6b7885bc.js",
+          "static/chunks/1360-205589bf5791404c.js",
+          "static/chunks/1505-3964f312cd398939.js",
+          "static/chunks/1704-90344d9ecd45c77f.js",
+          "static/chunks/1874-ac0c150c5cda60db.js",
+          "static/chunks/2359-ffb01904d07feef2.js",
+          "static/chunks/282-8bbd9b00f5badf3b.js",
+          "static/chunks/2881-b78a25a5d60ffef8.js",
+          "static/chunks/3120-ba5c4f1a775840d0.js",
+          "static/chunks/3268-cf4efb69d47d193d.js",
+          "static/chunks/3587-ddac794830848ce1.js",
+          "static/chunks/390-dd7f81326cdea841.js",
+          "static/chunks/4101-387d5b7ccf699a22.js",
+          "static/chunks/4281-b141d9736cb4efa3.js",
+          "static/chunks/4499-b5f7034cf20885e2.js",
+          "static/chunks/5014-713d15b6f145d416.js",
+          "static/chunks/5032-6d83427a6008df46.js",
+          "static/chunks/5717-7ae71766dded214e.js",
+          "static/chunks/5774-4de4eb8b55ac6535.js",
+          "static/chunks/5a989347-45d1cd9b68fb9192.js",
+          "static/chunks/6384-357110ebf4c6c7d0.js",
+          "static/chunks/6608-1e79b3997ef12625.js",
+          "static/chunks/6794-6d74cfdb46f62615.js",
+          "static/chunks/6900-8c3d2e24ed104ff0.js",
+          "static/chunks/699-33e17e2ec5c30c3a.js",
+          "static/chunks/7117-a4f19f5d4caaa176.js",
+          "static/chunks/7771-b414e0de9408749b.js",
+          "static/chunks/7788-2e05fdee5b120ab7.js",
+          "static/chunks/7927-90e4b3d206572f61.js",
+          "static/chunks/8078-9cf96f435bf4c779.js",
+          "static/chunks/8140-fff72c4aecce2eaa.js",
+          "static/chunks/8211-c54f681ca747018d.js",
+          "static/chunks/8894-774451f49ebc3848.js",
+          "static/chunks/9228-94d95b68e184b4ba.js",
+          "static/chunks/9448-bad7c01765305b9d.js",
+          "static/chunks/9995-a7e28de3053013fa.js",
+          "static/chunks/app/jobs/layout-7aa9cffe4d400d9c.js",
+          "static/chunks/app/jobs/page-2c61ff08a0ca8491.js",
+          "static/chunks/app/layout-003a34f75af40d94.js",
+          "static/chunks/fd32823e-889f2aa07511197f.js",
+          "static/chunks/main-app-5f52a121e430b1a5.js",
+          "static/chunks/webpack-63d16b2a583d2fb6.js"
+        ]
+      },
+      "probeFiles": [
+        "chunks/2734-767671cf0c2f9813.js",
+        "chunks/3118.026342dda0def6f8.js",
+        "chunks/3268-cf4efb69d47d193d.js",
+        "chunks/4339-a8dc4fdfb427ddf6.js",
+        "chunks/5446.38d564e9e9cbe122.js",
+        "chunks/6700.425201506d290f91.js",
+        "chunks/6900-8c3d2e24ed104ff0.js",
+        "chunks/8216.9937d40c343c5cfb.js",
+        "chunks/8750.611743dd67756c9f.js",
+        "chunks/9292.e91ebcf802145f2c.js",
+        "chunks/9627.4018c2689c081231.js",
+        "chunks/app/jobs/[jobId]/pricing/page-ad6fad46d1542085.js",
+        "chunks/app/jobs/[jobId]/rooms/page-025a5d4c5c915671.js",
+        "chunks/app/jobs/account/page-a942accccadb5039.js",
+        "chunks/app/jobs/assets/labels/page-d1d6f8f3daff4bcc.js",
+        "chunks/app/jobs/assets/where/page-eb1e8cada84a778d.js",
+        "chunks/app/jobs/chat/page-6faee950a804581d.js",
+        "chunks/app/jobs/draws/[jobId]/page-e605db7723dfd753.js",
+        "chunks/app/jobs/estimating/page-3c71dae26c90febf.js",
+        "chunks/app/jobs/organization/page-822bcb42db5a76c9.js",
+        "chunks/app/jobs/quotes/page-e0ce79cebe03d381.js",
+        "chunks/app/jobs/timesheets/page-0bc6ee6e857b1f65.js",
+        "chunks/app/onboarding/page-3cdef31341dcdf67.js",
+        "chunks/app/page-6d7c69d5a42c6731.js",
+        "chunks/app/pricing/page-7c8dddfba00e491f.js"
+      ],
+      "retainedBuilds": [
+        "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a"
+      ],
+      "retained": 1042,
+      "compression": {
+        "count": 1335,
+        "raw": 41292061,
+        "brotli": 9730419,
+        "gzip": 11564737
+      }
+    },
+    "C": {
+      "build": "64ca426908d20757d05c14ae179d43372786754922c2ea871eb6bf90969bddfe",
+      "fingerprint": "e7b6194a96ede30dc424f6f59b95754e15edccef7ac8a9fb1ce74b53bbd7c9fc",
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "canonicalExit": 0,
+      "metrics": {
+        "build": "64ca426908d20757d05c14ae179d43372786754922c2ea871eb6bf90969bddfe",
+        "sharedGzipBytes": 477537,
+        "screenGzipBytes": 627716,
+        "deployGzipBytes": 1319602,
+        "screenGzipByRoute": {
+          "/_global-error/page": 307261,
+          "/_not-found/page": 307261,
+          "/admin/page": 307261,
+          "/jobs/[jobId]/chat/page": 503464,
+          "/jobs/[jobId]/documents/page": 502780,
+          "/jobs/[jobId]/drawings/page": 502790,
+          "/jobs/[jobId]/material-lists/page": 502764,
+          "/jobs/[jobId]/models/page": 502334,
+          "/jobs/[jobId]/page": 499138,
+          "/jobs/[jobId]/pricing/page": 509004,
+          "/jobs/[jobId]/receiving/page": 627716,
+          "/jobs/[jobId]/rooms/page": 503972,
+          "/jobs/[jobId]/systems/page": 503654,
+          "/jobs/[jobId]/tool-requests/page": 499138,
+          "/jobs/account/page": 485654,
+          "/jobs/account/settings/page": 505861,
+          "/jobs/assets/activity/page": 491163,
+          "/jobs/assets/counts/[countId]/page": 497432,
+          "/jobs/assets/counts/page": 497125,
+          "/jobs/assets/labels/page": 501740,
+          "/jobs/assets/page": 489270,
+          "/jobs/assets/requests/[orderId]/page": 499151,
+          "/jobs/assets/requests/page": 491162,
+          "/jobs/assets/scan/[tag]/page": 552404,
+          "/jobs/assets/tools/[id]/page": 557851,
+          "/jobs/assets/tools/page": 500474,
+          "/jobs/assets/types/page": 529004,
+          "/jobs/assets/where/[type]/[id]/page": 507030,
+          "/jobs/assets/where/page": 496527,
+          "/jobs/assist/page": 477537,
+          "/jobs/catalogue/page": 518251,
+          "/jobs/chat/page": 509539,
+          "/jobs/draws/[jobId]/page": 491570,
+          "/jobs/draws/page": 482372,
+          "/jobs/estimating/[id]/page": 518195,
+          "/jobs/estimating/page": 499462,
+          "/jobs/material-lists/[id]/page": 584955,
+          "/jobs/orders/page": 497700,
+          "/jobs/organization/page": 532134,
+          "/jobs/page": 477537,
+          "/jobs/quotes/page": 485220,
+          "/jobs/suppliers/page": 492024,
+          "/jobs/timesheets/page": 495251,
+          "/licenses/page": 307426,
+          "/onboarding/page": 310319,
+          "/page": 307261,
+          "/pending-approval/page": 307261,
+          "/pricing/page": 310523,
+          "/sign-in/[[...sign-in]]/page": 309564,
+          "/sign-up/[[...sign-up]]/page": 309564
+        },
+        "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+      },
+      "currentScripts": 287,
+      "modules": {
+        "./src/hooks/use-press.ts": [
+          {
+            "id": 80007,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 6978,
+            "chunks": [
+              3085
+            ],
+            "files": [
+              "static/chunks/app-press-browser-a1a47525bba126ce.js"
+            ]
+          }
+        ],
+        "./src/components/ui/button.tsx": [
+          {
+            "id": 85887,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 3653,
+            "chunks": [
+              114,
+              542,
+              1543,
+              1976,
+              2161,
+              2181,
+              2605,
+              2649,
+              2676,
+              2734,
+              2783,
+              3118,
+              5209,
+              5398,
+              5446,
+              5735,
+              5910,
+              6521,
+              6700,
+              6907,
+              7148,
+              7177,
+              7863,
+              8216,
+              8610,
+              8750,
+              8974,
+              9151,
+              9249,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/114-a7779751b7a1247e.js",
+              "static/chunks/app/jobs/chat/page-3cb5e4d7fde44173.js",
+              "static/chunks/1543-c180ae17f9e91f5a.js",
+              "static/chunks/1976-ebe0af0bca231179.js",
+              "static/chunks/app/jobs/timesheets/page-065036db5d341305.js",
+              "static/chunks/app/jobs/assets/where/page-92d19d00b4402212.js",
+              "static/chunks/app/jobs/account/settings/page-5e5dd9862b60ec40.js",
+              "static/chunks/app/jobs/quotes/page-e9eb3e040640673a.js",
+              "static/chunks/app/jobs/layout-18dec70a6eff2c77.js",
+              "static/chunks/2734-4628a0048f185198.js",
+              "static/chunks/2783.134b287c3bb89123.js",
+              "static/chunks/3118.b82a91340a9afe89.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-7a515398172183a3.js",
+              "static/chunks/5398-f48ef2cddc757d1c.js",
+              "static/chunks/5446.936274d54a1dfa54.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-58506e4e2d8a9bcd.js",
+              "static/chunks/5910-b72eac7f0f1765a2.js",
+              "static/chunks/app/jobs/assets/labels/page-7f8a83ab1844611d.js",
+              "static/chunks/6700.32dabafa51dea0a0.js",
+              "static/chunks/app/pricing/page-24ac86c604050af3.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-0eaacfac59da8dab.js",
+              "static/chunks/app/layout-302720d70101b26a.js",
+              "static/chunks/7863-ea6ceb38b19ee500.js",
+              "static/chunks/8216.b30baa02c7db0c4e.js",
+              "static/chunks/app/jobs/assets/requests/[orderId]/page-40fffab671d3755d.js",
+              "static/chunks/8750.5bd113f69629c601.js",
+              "static/chunks/app/page-ca2e97013c8740fa.js",
+              "static/chunks/9151.aaa249676c54788d.js",
+              "static/chunks/app/jobs/assets/page-498456f2e8fe8262.js",
+              "static/chunks/9292.57d933319b8d5339.js",
+              "static/chunks/app/onboarding/page-b05306b9646a891a.js",
+              "static/chunks/app/jobs/account/page-a112c0e415549c5a.js",
+              "static/chunks/9627.7c9499ef82bcdcb1.js"
+            ]
+          }
+        ],
+        "./src/components/ui/pressable-card.tsx": [
+          {
+            "id": 32703,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 1442,
+            "chunks": [
+              2783,
+              2856,
+              5531,
+              6742,
+              7584,
+              8055
+            ],
+            "files": [
+              "static/chunks/2783.134b287c3bb89123.js",
+              "static/chunks/app/jobs/[jobId]/material-lists/page-72ef8b162f621979.js",
+              "static/chunks/app/jobs/page-1ea9ba991780f4be.js",
+              "static/chunks/6742.c7a1cc24d3738e5b.js",
+              "static/chunks/app/jobs/[jobId]/page-28420ce1eb79627a.js",
+              "static/chunks/8055.a5aa3b500f42220c.js"
+            ]
+          }
+        ],
+        "./src/lib/live-client.ts": [
+          {
+            "id": 75011,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 8641,
+            "chunks": [
+              2161,
+              3578,
+              9995
+            ],
+            "files": [
+              "static/chunks/app/jobs/timesheets/page-065036db5d341305.js",
+              "static/chunks/3578-fa571c2fafc4f06c.js",
+              "static/chunks/9995-a7e28de3053013fa.js"
+            ]
+          }
+        ],
+        "./src/lib/device-query-cache.ts": [
+          {
+            "id": 88467,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 15506,
+            "chunks": [
+              4499
+            ],
+            "files": [
+              "static/chunks/4499-b5f7034cf20885e2.js"
+            ]
+          }
+        ]
+      },
+      "stats": {
+        "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/C/.next-web/analysis/client-stats.json",
+        "sha256": "7d99d6c65c89d03393607df8a559e8b5e7a46978756a5953f194ff826d86a9f1",
+        "bytes": 34515041
+      },
+      "startupStaticClosure": {
+        "method": "rootMainFiles plus app/layout, app/jobs/layout and app/jobs/page emitted entry O(0,[ids]) dependency union; static JS count, not actual HTTP requests",
+        "count": 41,
+        "gzipBytes": 469764,
+        "files": [
+          "static/chunks/125-55a10b1dd17e9c9a.js",
+          "static/chunks/1360-205589bf5791404c.js",
+          "static/chunks/1505-3964f312cd398939.js",
+          "static/chunks/1874-ac0c150c5cda60db.js",
+          "static/chunks/2359-ffb01904d07feef2.js",
+          "static/chunks/282-8bbd9b00f5badf3b.js",
+          "static/chunks/2881-b78a25a5d60ffef8.js",
+          "static/chunks/3120-ba5c4f1a775840d0.js",
+          "static/chunks/3587-ddac794830848ce1.js",
+          "static/chunks/390-dd7f81326cdea841.js",
+          "static/chunks/4281-b141d9736cb4efa3.js",
+          "static/chunks/4499-b5f7034cf20885e2.js",
+          "static/chunks/5014-713d15b6f145d416.js",
+          "static/chunks/5032-6d83427a6008df46.js",
+          "static/chunks/5717-7ae71766dded214e.js",
+          "static/chunks/5774-4de4eb8b55ac6535.js",
+          "static/chunks/5910-b72eac7f0f1765a2.js",
+          "static/chunks/5a989347-45d1cd9b68fb9192.js",
+          "static/chunks/6384-357110ebf4c6c7d0.js",
+          "static/chunks/6608-1e79b3997ef12625.js",
+          "static/chunks/6794-6d74cfdb46f62615.js",
+          "static/chunks/6924-f2f49a65b1d5aeca.js",
+          "static/chunks/699-33e17e2ec5c30c3a.js",
+          "static/chunks/7117-a4f19f5d4caaa176.js",
+          "static/chunks/7771-b414e0de9408749b.js",
+          "static/chunks/7788-2e05fdee5b120ab7.js",
+          "static/chunks/7927-90e4b3d206572f61.js",
+          "static/chunks/8078-9cf96f435bf4c779.js",
+          "static/chunks/8140-fff72c4aecce2eaa.js",
+          "static/chunks/8211-c54f681ca747018d.js",
+          "static/chunks/8894-774451f49ebc3848.js",
+          "static/chunks/9228-94d95b68e184b4ba.js",
+          "static/chunks/9448-bad7c01765305b9d.js",
+          "static/chunks/9995-a7e28de3053013fa.js",
+          "static/chunks/app-press-browser-a1a47525bba126ce.js",
+          "static/chunks/app/jobs/layout-18dec70a6eff2c77.js",
+          "static/chunks/app/jobs/page-1ea9ba991780f4be.js",
+          "static/chunks/app/layout-302720d70101b26a.js",
+          "static/chunks/fd32823e-889f2aa07511197f.js",
+          "static/chunks/main-app-5f52a121e430b1a5.js",
+          "static/chunks/webpack-62db0f97cb34951e.js"
+        ]
+      },
+      "probeFiles": [],
+      "retainedBuilds": [
+        "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a"
+      ],
+      "retained": 1043,
+      "compression": {
+        "count": 1335,
+        "raw": 41296313,
+        "brotli": 9725026,
+        "gzip": 11559458
+      }
+    },
+    "D": {
+      "build": "e6ba0a95c9798b3eb9859f6dc4b357c100b38c577d379701316b596bfd0804f1",
+      "fingerprint": "e9cf48b17f899ced83eb8adf21842bd0e6d98d8d9e030c43de31c6b2b850e7f8",
+      "toolchain": {
+        "node": "26.8.2",
+        "pnpm": "10.11.1",
+        "next": "16.1.1",
+        "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+        "installedLockVerified": true
+      },
+      "canonicalExit": 0,
+      "metrics": {
+        "build": "e6ba0a95c9798b3eb9859f6dc4b357c100b38c577d379701316b596bfd0804f1",
+        "sharedGzipBytes": 477570,
+        "screenGzipBytes": 627749,
+        "deployGzipBytes": 1319635,
+        "screenGzipByRoute": {
+          "/_global-error/page": 307294,
+          "/_not-found/page": 307294,
+          "/admin/page": 307294,
+          "/jobs/[jobId]/chat/page": 503497,
+          "/jobs/[jobId]/documents/page": 502813,
+          "/jobs/[jobId]/drawings/page": 502823,
+          "/jobs/[jobId]/material-lists/page": 502797,
+          "/jobs/[jobId]/models/page": 502367,
+          "/jobs/[jobId]/page": 499171,
+          "/jobs/[jobId]/pricing/page": 509037,
+          "/jobs/[jobId]/receiving/page": 627749,
+          "/jobs/[jobId]/rooms/page": 504005,
+          "/jobs/[jobId]/systems/page": 503687,
+          "/jobs/[jobId]/tool-requests/page": 499171,
+          "/jobs/account/page": 485687,
+          "/jobs/account/settings/page": 505894,
+          "/jobs/assets/activity/page": 491196,
+          "/jobs/assets/counts/[countId]/page": 497465,
+          "/jobs/assets/counts/page": 497158,
+          "/jobs/assets/labels/page": 501773,
+          "/jobs/assets/page": 489303,
+          "/jobs/assets/requests/[orderId]/page": 499184,
+          "/jobs/assets/requests/page": 491195,
+          "/jobs/assets/scan/[tag]/page": 552437,
+          "/jobs/assets/tools/[id]/page": 557884,
+          "/jobs/assets/tools/page": 500507,
+          "/jobs/assets/types/page": 529037,
+          "/jobs/assets/where/[type]/[id]/page": 507063,
+          "/jobs/assets/where/page": 496560,
+          "/jobs/assist/page": 477570,
+          "/jobs/catalogue/page": 518284,
+          "/jobs/chat/page": 509572,
+          "/jobs/draws/[jobId]/page": 491603,
+          "/jobs/draws/page": 482405,
+          "/jobs/estimating/[id]/page": 518228,
+          "/jobs/estimating/page": 499495,
+          "/jobs/material-lists/[id]/page": 584988,
+          "/jobs/orders/page": 497733,
+          "/jobs/organization/page": 532167,
+          "/jobs/page": 477570,
+          "/jobs/quotes/page": 485253,
+          "/jobs/suppliers/page": 492057,
+          "/jobs/timesheets/page": 495284,
+          "/licenses/page": 307459,
+          "/onboarding/page": 310352,
+          "/page": 307294,
+          "/pending-approval/page": 307294,
+          "/pricing/page": 310556,
+          "/sign-in/[[...sign-in]]/page": 309597,
+          "/sign-up/[[...sign-up]]/page": 309597
+        },
+        "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+      },
+      "currentScripts": 287,
+      "modules": {
+        "./src/hooks/use-press.ts": [
+          {
+            "id": 80007,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 7043,
+            "chunks": [
+              3085
+            ],
+            "files": [
+              "static/chunks/app-press-browser-308f317508181f0d.js"
+            ]
+          }
+        ],
+        "./src/components/ui/button.tsx": [
+          {
+            "id": 85887,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 3653,
+            "chunks": [
+              114,
+              542,
+              1543,
+              1976,
+              2161,
+              2181,
+              2605,
+              2649,
+              2676,
+              2734,
+              2783,
+              3118,
+              5209,
+              5398,
+              5446,
+              5735,
+              5910,
+              6521,
+              6700,
+              6907,
+              7148,
+              7177,
+              7863,
+              8216,
+              8610,
+              8750,
+              8974,
+              9151,
+              9249,
+              9292,
+              9566,
+              9607,
+              9627
+            ],
+            "files": [
+              "static/chunks/114-a7779751b7a1247e.js",
+              "static/chunks/app/jobs/chat/page-3cb5e4d7fde44173.js",
+              "static/chunks/1543-c180ae17f9e91f5a.js",
+              "static/chunks/1976-ebe0af0bca231179.js",
+              "static/chunks/app/jobs/timesheets/page-065036db5d341305.js",
+              "static/chunks/app/jobs/assets/where/page-92d19d00b4402212.js",
+              "static/chunks/app/jobs/account/settings/page-5e5dd9862b60ec40.js",
+              "static/chunks/app/jobs/quotes/page-e9eb3e040640673a.js",
+              "static/chunks/app/jobs/layout-18dec70a6eff2c77.js",
+              "static/chunks/2734-4628a0048f185198.js",
+              "static/chunks/2783.134b287c3bb89123.js",
+              "static/chunks/3118.b82a91340a9afe89.js",
+              "static/chunks/app/jobs/[jobId]/pricing/page-7a515398172183a3.js",
+              "static/chunks/5398-f48ef2cddc757d1c.js",
+              "static/chunks/5446.936274d54a1dfa54.js",
+              "static/chunks/app/jobs/[jobId]/rooms/page-58506e4e2d8a9bcd.js",
+              "static/chunks/5910-b72eac7f0f1765a2.js",
+              "static/chunks/app/jobs/assets/labels/page-7f8a83ab1844611d.js",
+              "static/chunks/6700.32dabafa51dea0a0.js",
+              "static/chunks/app/pricing/page-24ac86c604050af3.js",
+              "static/chunks/app/jobs/draws/[jobId]/page-0eaacfac59da8dab.js",
+              "static/chunks/app/layout-001438ec5e120a17.js",
+              "static/chunks/7863-ea6ceb38b19ee500.js",
+              "static/chunks/8216.b30baa02c7db0c4e.js",
+              "static/chunks/app/jobs/assets/requests/[orderId]/page-40fffab671d3755d.js",
+              "static/chunks/8750.5bd113f69629c601.js",
+              "static/chunks/app/page-ca2e97013c8740fa.js",
+              "static/chunks/9151.aaa249676c54788d.js",
+              "static/chunks/app/jobs/assets/page-498456f2e8fe8262.js",
+              "static/chunks/9292.57d933319b8d5339.js",
+              "static/chunks/app/onboarding/page-b05306b9646a891a.js",
+              "static/chunks/app/jobs/account/page-a112c0e415549c5a.js",
+              "static/chunks/9627.7c9499ef82bcdcb1.js"
+            ]
+          }
+        ],
+        "./src/components/ui/pressable-card.tsx": [
+          {
+            "id": 32703,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 1442,
+            "chunks": [
+              2783,
+              2856,
+              5531,
+              6742,
+              7584,
+              8055
+            ],
+            "files": [
+              "static/chunks/2783.134b287c3bb89123.js",
+              "static/chunks/app/jobs/[jobId]/material-lists/page-72ef8b162f621979.js",
+              "static/chunks/app/jobs/page-1ea9ba991780f4be.js",
+              "static/chunks/6742.c7a1cc24d3738e5b.js",
+              "static/chunks/app/jobs/[jobId]/page-28420ce1eb79627a.js",
+              "static/chunks/8055.a5aa3b500f42220c.js"
+            ]
+          }
+        ],
+        "./src/lib/live-client.ts": [
+          {
+            "id": 75011,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 8641,
+            "chunks": [
+              2161,
+              3578,
+              9995
+            ],
+            "files": [
+              "static/chunks/app/jobs/timesheets/page-065036db5d341305.js",
+              "static/chunks/3578-fa571c2fafc4f06c.js",
+              "static/chunks/9995-a7e28de3053013fa.js"
+            ]
+          }
+        ],
+        "./src/lib/device-query-cache.ts": [
+          {
+            "id": 88467,
+            "layer": "app-pages-browser",
+            "sizeEstimate": 15506,
+            "chunks": [
+              4499
+            ],
+            "files": [
+              "static/chunks/4499-b5f7034cf20885e2.js"
+            ]
+          }
+        ]
+      },
+      "stats": {
+        "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/D/.next-web/analysis/client-stats.json",
+        "sha256": "4a23def3bc67dbb04f0155f1d8cec04c6b9f1932ea2e42c92b33bce96fcb3554",
+        "bytes": 34522782
+      },
+      "startupStaticClosure": {
+        "method": "rootMainFiles plus app/layout, app/jobs/layout and app/jobs/page emitted entry O(0,[ids]) dependency union; static JS count, not actual HTTP requests",
+        "count": 41,
+        "gzipBytes": 469797,
+        "files": [
+          "static/chunks/125-b9d93f06b54c3c45.js",
+          "static/chunks/1360-205589bf5791404c.js",
+          "static/chunks/1505-3964f312cd398939.js",
+          "static/chunks/1874-ac0c150c5cda60db.js",
+          "static/chunks/2359-ffb01904d07feef2.js",
+          "static/chunks/282-8bbd9b00f5badf3b.js",
+          "static/chunks/2881-b78a25a5d60ffef8.js",
+          "static/chunks/3120-ba5c4f1a775840d0.js",
+          "static/chunks/3587-ddac794830848ce1.js",
+          "static/chunks/390-dd7f81326cdea841.js",
+          "static/chunks/4281-b141d9736cb4efa3.js",
+          "static/chunks/4499-b5f7034cf20885e2.js",
+          "static/chunks/5014-713d15b6f145d416.js",
+          "static/chunks/5032-6d83427a6008df46.js",
+          "static/chunks/5717-7ae71766dded214e.js",
+          "static/chunks/5774-4de4eb8b55ac6535.js",
+          "static/chunks/5910-b72eac7f0f1765a2.js",
+          "static/chunks/5a989347-45d1cd9b68fb9192.js",
+          "static/chunks/6384-357110ebf4c6c7d0.js",
+          "static/chunks/6608-1e79b3997ef12625.js",
+          "static/chunks/6794-6d74cfdb46f62615.js",
+          "static/chunks/6924-f2f49a65b1d5aeca.js",
+          "static/chunks/699-33e17e2ec5c30c3a.js",
+          "static/chunks/7117-a4f19f5d4caaa176.js",
+          "static/chunks/7771-b414e0de9408749b.js",
+          "static/chunks/7788-2e05fdee5b120ab7.js",
+          "static/chunks/7927-90e4b3d206572f61.js",
+          "static/chunks/8078-9cf96f435bf4c779.js",
+          "static/chunks/8140-fff72c4aecce2eaa.js",
+          "static/chunks/8211-c54f681ca747018d.js",
+          "static/chunks/8894-774451f49ebc3848.js",
+          "static/chunks/9228-94d95b68e184b4ba.js",
+          "static/chunks/9448-bad7c01765305b9d.js",
+          "static/chunks/9995-a7e28de3053013fa.js",
+          "static/chunks/app-press-browser-308f317508181f0d.js",
+          "static/chunks/app/jobs/layout-18dec70a6eff2c77.js",
+          "static/chunks/app/jobs/page-1ea9ba991780f4be.js",
+          "static/chunks/app/layout-001438ec5e120a17.js",
+          "static/chunks/fd32823e-889f2aa07511197f.js",
+          "static/chunks/main-app-5f52a121e430b1a5.js",
+          "static/chunks/webpack-43d1cf4456842a0a.js"
+        ]
+      },
+      "probeFiles": [
+        "chunks/app-press-browser-308f317508181f0d.js"
+      ],
+      "retainedBuilds": [
+        "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a"
+      ],
+      "retained": 1043,
+      "compression": {
+        "count": 1335,
+        "raw": 41296364,
+        "brotli": 9725074,
+        "gzip": 11559491
+      }
+    }
+  },
+  "comparisons": {
+    "A-B": {
+      "baselineBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+      "candidateBuild": "ff6b6b4ea6392a887e57197830c610767711c6566a82d0e152d710046d589c4c",
+      "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+      "currentScripts": 288,
+      "reusedScripts": 258,
+      "changedScripts": 30,
+      "changedRawBytes": 653669,
+      "changedGzipBytes": 216161,
+      "budgetGzipBytes": 100000,
+      "passes": false
+    },
+    "A-C": {
+      "baselineBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+      "candidateBuild": "64ca426908d20757d05c14ae179d43372786754922c2ea871eb6bf90969bddfe",
+      "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+      "currentScripts": 287,
+      "reusedScripts": 215,
+      "changedScripts": 72,
+      "changedRawBytes": 1822919,
+      "changedGzipBytes": 589588,
+      "budgetGzipBytes": 100000,
+      "passes": false
+    },
+    "C-D": {
+      "baselineBuild": "64ca426908d20757d05c14ae179d43372786754922c2ea871eb6bf90969bddfe",
+      "candidateBuild": "e6ba0a95c9798b3eb9859f6dc4b357c100b38c577d379701316b596bfd0804f1",
+      "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+      "currentScripts": 287,
+      "reusedScripts": 281,
+      "changedScripts": 6,
+      "changedRawBytes": 65086,
+      "changedGzipBytes": 24505,
+      "budgetGzipBytes": 100000,
+      "passes": true
+    },
+    "B-D": {
+      "baselineBuild": "ff6b6b4ea6392a887e57197830c610767711c6566a82d0e152d710046d589c4c",
+      "candidateBuild": "e6ba0a95c9798b3eb9859f6dc4b357c100b38c577d379701316b596bfd0804f1",
+      "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+      "currentScripts": 287,
+      "reusedScripts": 215,
+      "changedScripts": 72,
+      "changedRawBytes": 1822970,
+      "changedGzipBytes": 589621,
+      "budgetGzipBytes": 100000,
+      "passes": false
+    }
+  },
+  "allNamedAllocationChangesAtoC": [
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/next@16.1.1_@babel+core@7.28.5_@playwright+test@1.59.1_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/api/navigation.js",
+      "before": {
+        "id": 82028,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          542,
+          1810,
+          2605,
+          2856,
+          3119,
+          3373,
+          3632,
+          5398,
+          5446,
+          5531,
+          5735,
+          5756,
+          5774,
+          5818,
+          5913,
+          6521,
+          6542,
+          6700,
+          6707,
+          7145,
+          7427,
+          7584,
+          7756,
+          8140,
+          8798,
+          8972,
+          9042,
+          9402,
+          9566,
+          9842,
+          9868
+        ],
+        "size": 88
+      },
+      "after": {
+        "id": 82028,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          542,
+          1810,
+          2605,
+          2783,
+          3119,
+          3373,
+          3632,
+          3752,
+          5398,
+          5446,
+          5531,
+          5774,
+          5818,
+          5913,
+          6521,
+          6542,
+          6700,
+          7145,
+          7427,
+          8055,
+          8140,
+          8798,
+          8972,
+          9042,
+          9151,
+          9402,
+          9566,
+          9842,
+          9888
+        ],
+        "size": 88
+      }
+    },
+    {
+      "name": "./src/components/app/DevFeaturesProvider.tsx",
+      "before": {
+        "id": 1589,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1810,
+          2605,
+          2676,
+          3632,
+          4101,
+          4833,
+          6499,
+          6542,
+          7427,
+          8972,
+          9042,
+          9402,
+          9842
+        ],
+        "size": 807
+      },
+      "after": {
+        "id": 1589,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1810,
+          2605,
+          2676,
+          3632,
+          4101,
+          4833,
+          5531,
+          6499,
+          6542,
+          7427,
+          8972,
+          9042,
+          9402,
+          9842
+        ],
+        "size": 807
+      }
+    },
+    {
+      "name": "./src/components/ui/input.tsx",
+      "before": {
+        "id": 61385,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          2161,
+          2181,
+          2605,
+          2734,
+          2856,
+          2947,
+          3118,
+          4339,
+          5209,
+          5398,
+          5446,
+          5531,
+          5703,
+          5756,
+          6700,
+          6707,
+          6742,
+          7145,
+          7148,
+          7311,
+          7455,
+          7554,
+          7725,
+          7756,
+          7863,
+          8750,
+          9292,
+          9566,
+          9607,
+          9627,
+          9868
+        ],
+        "size": 959
+      },
+      "after": {
+        "id": 61385,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          1543,
+          1976,
+          2161,
+          2181,
+          2605,
+          2734,
+          2783,
+          3118,
+          5209,
+          5398,
+          5446,
+          5910,
+          6700,
+          7148,
+          7311,
+          7863,
+          8610,
+          8750,
+          9151,
+          9249,
+          9292,
+          9566,
+          9607,
+          9627
+        ],
+        "size": 959
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/plus.js",
+      "before": {
+        "id": 11964,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          542,
+          1408,
+          2161,
+          2181,
+          2856,
+          2947,
+          4157,
+          5398,
+          5446,
+          5531,
+          5756,
+          6085,
+          6545,
+          6700,
+          6707,
+          7145,
+          7148,
+          7756,
+          8140,
+          8354,
+          9292,
+          9868
+        ],
+        "size": 579
+      },
+      "after": {
+        "id": 11964,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          542,
+          1408,
+          2161,
+          2181,
+          2783,
+          2856,
+          2947,
+          4157,
+          5398,
+          5446,
+          5531,
+          6085,
+          6545,
+          6700,
+          7145,
+          7148,
+          8055,
+          8140,
+          8354,
+          9151,
+          9292,
+          9888
+        ],
+        "size": 579
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/trash.js",
+      "before": {
+        "id": 49890,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          2161,
+          2856,
+          2947,
+          4157,
+          5531,
+          5756,
+          6707,
+          6742,
+          7145,
+          7756
+        ],
+        "size": 746
+      },
+      "after": {
+        "id": 49890,
+        "layer": "app-pages-browser",
+        "chunks": [
+          529,
+          2161,
+          2783,
+          2856,
+          2947,
+          4157,
+          5531,
+          6742,
+          7145,
+          8055,
+          9888
+        ],
+        "size": 746
+      }
+    },
+    {
+      "name": "./src/components/ui/dropdown-menu.tsx",
+      "before": {
+        "id": 70848,
+        "layer": "app-pages-browser",
+        "chunks": [
+          6900
+        ],
+        "size": 11152
+      },
+      "after": {
+        "id": 70848,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          2676,
+          2783,
+          5904,
+          5910,
+          6213,
+          7863,
+          9151
+        ],
+        "size": 11152
+      }
+    },
+    {
+      "name": "./src/components/app/ThemeProvider.tsx + 2 modules",
+      "before": {
+        "id": 8766,
+        "layer": "app-pages-browser",
+        "chunks": [
+          3268
+        ],
+        "size": 5632
+      },
+      "after": {
+        "id": 8766,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          7177
+        ],
+        "size": 5632
+      }
+    },
+    {
+      "name": "./src/hooks/use-job-page-data.ts",
+      "before": {
+        "id": 52308,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          5735,
+          7584
+        ],
+        "size": 949
+      },
+      "after": {
+        "id": 52308,
+        "layer": "app-pages-browser",
+        "chunks": [
+          3752
+        ],
+        "size": 949
+      }
+    },
+    {
+      "name": "./src/components/jobs/JobPageState.tsx",
+      "before": {
+        "id": 84678,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          5735,
+          7584
+        ],
+        "size": 3572
+      },
+      "after": {
+        "id": 84678,
+        "layer": "app-pages-browser",
+        "chunks": [
+          3752
+        ],
+        "size": 3572
+      }
+    },
+    {
+      "name": "./src/components/permissions/FinancialVisibility.tsx",
+      "before": {
+        "id": 55746,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2649,
+          2676,
+          2881,
+          3239,
+          5209,
+          7148,
+          7554,
+          7725,
+          8216,
+          8750
+        ],
+        "size": 1107
+      },
+      "after": {
+        "id": 55746,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2649,
+          2676,
+          2881,
+          3239,
+          4157,
+          5209,
+          7091,
+          7148,
+          7725,
+          8216,
+          8750
+        ],
+        "size": 1107
+      }
+    },
+    {
+      "name": "./src/components/ui/button.tsx",
+      "before": {
+        "id": 85887,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1921,
+          2161,
+          2181,
+          2649,
+          2734,
+          3118,
+          3268,
+          4339,
+          5209,
+          5446,
+          5735,
+          6521,
+          6700,
+          6900,
+          6907,
+          7148,
+          7455,
+          8216,
+          8750,
+          8974,
+          9292,
+          9566,
+          9607,
+          9627
+        ],
+        "size": 3653
+      },
+      "after": {
+        "id": 85887,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          1543,
+          1976,
+          2161,
+          2181,
+          2605,
+          2649,
+          2676,
+          2734,
+          2783,
+          3118,
+          5209,
+          5398,
+          5446,
+          5735,
+          5910,
+          6521,
+          6700,
+          6907,
+          7148,
+          7177,
+          7863,
+          8216,
+          8610,
+          8750,
+          8974,
+          9151,
+          9249,
+          9292,
+          9566,
+          9607,
+          9627
+        ],
+        "size": 3653
+      }
+    },
+    {
+      "name": "./src/hooks/use-online-status.ts",
+      "before": {
+        "id": 82012,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          1850,
+          2161,
+          2649,
+          2676,
+          3239,
+          3268,
+          5209,
+          5446,
+          5531,
+          5756,
+          5818,
+          6521,
+          6700,
+          6707,
+          7145,
+          7148,
+          7324,
+          7455,
+          7554,
+          7725,
+          7756,
+          7863,
+          8216,
+          8750,
+          9607,
+          9868
+        ],
+        "size": 1003
+      },
+      "after": {
+        "id": 82012,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          2161,
+          2605,
+          2649,
+          2676,
+          2783,
+          3239,
+          5209,
+          5446,
+          5735,
+          5818,
+          5910,
+          6521,
+          6700,
+          7148,
+          7177,
+          7455,
+          7863,
+          8216,
+          8750,
+          9151,
+          9607
+        ],
+        "size": 1003
+      }
+    },
+    {
+      "name": "./src/components/ui/skeleton.tsx",
+      "before": {
+        "id": 50310,
+        "layer": "app-pages-browser",
+        "chunks": [
+          445,
+          1921,
+          2181,
+          2649,
+          2734,
+          3239,
+          3630,
+          4339,
+          5531,
+          5703,
+          6742,
+          6880,
+          7148,
+          7455,
+          7573,
+          8359,
+          9090,
+          9607,
+          9941
+        ],
+        "size": 3005
+      },
+      "after": {
+        "id": 50310,
+        "layer": "app-pages-browser",
+        "chunks": [
+          445,
+          1543,
+          1921,
+          1976,
+          2181,
+          2649,
+          2734,
+          3239,
+          3630,
+          5531,
+          6742,
+          6880,
+          7148,
+          7573,
+          8359,
+          8610,
+          9090,
+          9249,
+          9607,
+          9941
+        ],
+        "size": 3005
+      }
+    },
+    {
+      "name": "./src/components/ui/app-dialogs.tsx",
+      "before": {
+        "id": 42832,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          1099,
+          1543,
+          2161,
+          2576,
+          2649,
+          2675,
+          2676,
+          3118,
+          3753,
+          4157,
+          5398,
+          5703,
+          5825,
+          6499,
+          7148,
+          7177,
+          7455,
+          7863,
+          8610,
+          8894,
+          9001
+        ],
+        "size": 6013
+      },
+      "after": {
+        "id": 42832,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          1099,
+          1543,
+          1976,
+          2161,
+          2576,
+          2649,
+          2675,
+          2676,
+          3118,
+          3753,
+          4157,
+          5398,
+          5825,
+          6499,
+          7148,
+          7177,
+          7863,
+          8610,
+          8894,
+          9001
+        ],
+        "size": 6013
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/wifi-off.js",
+      "before": {
+        "id": 56693,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1850,
+          2605,
+          2649,
+          3239,
+          5446,
+          5531,
+          5756,
+          5818,
+          6545,
+          6693,
+          7145,
+          7148,
+          7573,
+          9090,
+          9607,
+          9868
+        ],
+        "size": 1221
+      },
+      "after": {
+        "id": 56693,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          2649,
+          3239,
+          3752,
+          5446,
+          5531,
+          5818,
+          6545,
+          6693,
+          6742,
+          7145,
+          7148,
+          7573,
+          9090,
+          9151,
+          9607,
+          9888
+        ],
+        "size": 1221
+      }
+    },
+    {
+      "name": "./src/lib/dev-preference.ts",
+      "before": {
+        "id": 82468,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1810,
+          1850,
+          2605,
+          2676,
+          3119,
+          3373,
+          3632,
+          5531,
+          5756,
+          5913,
+          6542,
+          6700,
+          7145,
+          7427,
+          8798,
+          8972,
+          9042,
+          9402,
+          9842
+        ],
+        "size": 1145
+      },
+      "after": {
+        "id": 82468,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1810,
+          2605,
+          3119,
+          3373,
+          3632,
+          3752,
+          5531,
+          5913,
+          6542,
+          6700,
+          6924,
+          7145,
+          7427,
+          8798,
+          8972,
+          9042,
+          9402,
+          9842,
+          9888
+        ],
+        "size": 1145
+      }
+    },
+    {
+      "name": "./src/lib/employee-simulation.ts",
+      "before": {
+        "id": 42805,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          1850,
+          2161,
+          2676,
+          3268,
+          5446,
+          5531,
+          5756,
+          6707,
+          7145,
+          7324,
+          7455,
+          7554,
+          7725,
+          7756,
+          7863,
+          9607,
+          9627,
+          9868
+        ],
+        "size": 2362
+      },
+      "after": {
+        "id": 42805,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          2161,
+          2605,
+          2676,
+          2783,
+          5446,
+          5735,
+          5910,
+          7177,
+          7455,
+          7863,
+          9151,
+          9607,
+          9627
+        ],
+        "size": 2362
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/search.js",
+      "before": {
+        "id": 78384,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          529,
+          1099,
+          1408,
+          2856,
+          2947,
+          3118,
+          4157,
+          5209,
+          5398,
+          5531,
+          5756,
+          6085,
+          6545,
+          6700,
+          6707,
+          6742,
+          7145,
+          7573,
+          7756,
+          8354,
+          9001,
+          9868
+        ],
+        "size": 634
+      },
+      "after": {
+        "id": 78384,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          529,
+          1099,
+          1408,
+          2783,
+          2856,
+          2947,
+          3118,
+          4157,
+          5209,
+          5398,
+          5531,
+          6085,
+          6545,
+          6700,
+          6742,
+          7145,
+          7573,
+          8055,
+          8354,
+          9001,
+          9151,
+          9888
+        ],
+        "size": 634
+      }
+    },
+    {
+      "name": "./src/components/assets/TagScanner.tsx + 1 modules",
+      "before": {
+        "id": 47624,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4339
+        ],
+        "size": 8207
+      },
+      "after": {
+        "id": 47624,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1543,
+          8610,
+          9249
+        ],
+        "size": 8207
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/next@16.1.1_@babel+core@7.28.5_@playwright+test@1.59.1_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/build/polyfills/process.js",
+      "before": {
+        "id": 39305,
+        "layer": "pages-dir-browser",
+        "chunks": [
+          8792
+        ],
+        "size": 341
+      },
+      "after": {
+        "id": 63576,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4279,
+          8078,
+          9509
+        ],
+        "size": 341
+      }
+    },
+    {
+      "name": "./src/lib/app-page-activity.ts",
+      "before": {
+        "id": 8148,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          2161,
+          2649,
+          2676,
+          2856,
+          3119,
+          3239,
+          3268,
+          3373,
+          4157,
+          5209,
+          5398,
+          5531,
+          5703,
+          5735,
+          5818,
+          5913,
+          6521,
+          6907,
+          7145,
+          7148,
+          7455,
+          7573,
+          7584,
+          7725,
+          8798,
+          9566,
+          9607
+        ],
+        "size": 2567
+      },
+      "after": {
+        "id": 8148,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          1976,
+          2161,
+          2605,
+          2649,
+          2676,
+          3119,
+          3239,
+          3373,
+          3752,
+          4157,
+          5209,
+          5398,
+          5531,
+          5818,
+          5913,
+          6521,
+          6907,
+          7145,
+          7148,
+          7177,
+          7573,
+          7725,
+          8798,
+          9566,
+          9607
+        ],
+        "size": 2567
+      }
+    },
+    {
+      "name": "./src/hooks/use-press.ts",
+      "before": {
+        "id": 80007,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1921,
+          2161,
+          2181,
+          2649,
+          2734,
+          3118,
+          3268,
+          4339,
+          5209,
+          5446,
+          5735,
+          6521,
+          6700,
+          6900,
+          6907,
+          7148,
+          7455,
+          8216,
+          8750,
+          8974,
+          9292,
+          9566,
+          9607,
+          9627
+        ],
+        "size": 6978
+      },
+      "after": {
+        "id": 80007,
+        "layer": "app-pages-browser",
+        "chunks": [
+          3085
+        ],
+        "size": 6978
+      }
+    },
+    {
+      "name": "./src/lib/offline-test.ts",
+      "before": {
+        "id": 50605,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          1850,
+          2161,
+          2649,
+          2676,
+          3239,
+          3268,
+          5209,
+          5446,
+          5531,
+          5756,
+          5818,
+          6521,
+          6700,
+          6707,
+          7145,
+          7148,
+          7324,
+          7455,
+          7554,
+          7725,
+          7756,
+          7863,
+          8216,
+          8750,
+          9607,
+          9868
+        ],
+        "size": 1519
+      },
+      "after": {
+        "id": 50605,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          2161,
+          2605,
+          2649,
+          2676,
+          2783,
+          3239,
+          5209,
+          5446,
+          5735,
+          5818,
+          5910,
+          6521,
+          6700,
+          7148,
+          7177,
+          7455,
+          7863,
+          8216,
+          8750,
+          9151,
+          9607
+        ],
+        "size": 1519
+      }
+    },
+    {
+      "name": "./src/components/tutorial/tutorial-sandbox-context.tsx",
+      "before": {
+        "id": 57353,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          1850,
+          2161,
+          2649,
+          2676,
+          3239,
+          3268,
+          5209,
+          5446,
+          5531,
+          5756,
+          5818,
+          6521,
+          6700,
+          6707,
+          7145,
+          7148,
+          7324,
+          7455,
+          7554,
+          7725,
+          7756,
+          7863,
+          8216,
+          8750,
+          9607,
+          9868
+        ],
+        "size": 293
+      },
+      "after": {
+        "id": 57353,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1221,
+          2161,
+          2605,
+          2649,
+          2676,
+          2783,
+          3239,
+          5209,
+          5446,
+          5735,
+          5818,
+          5910,
+          6521,
+          6700,
+          7148,
+          7177,
+          7455,
+          7863,
+          8216,
+          8750,
+          9151,
+          9607
+        ],
+        "size": 293
+      }
+    },
+    {
+      "name": "./src/components/ui/save-check.tsx",
+      "before": {
+        "id": 65287,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          1099,
+          1543,
+          2161,
+          2576,
+          2649,
+          2675,
+          2676,
+          3118,
+          3753,
+          4157,
+          5398,
+          5703,
+          5825,
+          6499,
+          7148,
+          7177,
+          7455,
+          7863,
+          8610,
+          8894,
+          9001,
+          9607
+        ],
+        "size": 1004
+      },
+      "after": {
+        "id": 65287,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          1099,
+          1543,
+          1976,
+          2161,
+          2576,
+          2649,
+          2675,
+          2676,
+          3118,
+          3753,
+          4157,
+          5398,
+          5825,
+          6499,
+          7148,
+          7177,
+          7863,
+          8610,
+          8894,
+          9001,
+          9607
+        ],
+        "size": 1004
+      }
+    },
+    {
+      "name": "./src/components/ui/dialog.tsx",
+      "before": {
+        "id": 95587,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1543,
+          1921,
+          2161,
+          2181,
+          2649,
+          2734,
+          3118,
+          5209,
+          5446,
+          6700,
+          6900,
+          7148,
+          7177,
+          7455,
+          8216,
+          8610,
+          8750,
+          9627
+        ],
+        "size": 4983
+      },
+      "after": {
+        "id": 95587,
+        "layer": "app-pages-browser",
+        "chunks": [
+          114,
+          542,
+          1543,
+          1976,
+          2161,
+          2181,
+          2649,
+          2676,
+          2734,
+          2783,
+          3118,
+          5209,
+          5398,
+          5446,
+          5910,
+          6700,
+          7148,
+          7177,
+          7863,
+          8216,
+          8610,
+          8750,
+          9151,
+          9627
+        ],
+        "size": 4983
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/user.js",
+      "before": {
+        "id": 56755,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          5531,
+          5818,
+          7584,
+          7756,
+          8140,
+          9868
+        ],
+        "size": 650
+      },
+      "after": {
+        "id": 56755,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2783,
+          2856,
+          5531,
+          5818,
+          7584,
+          8140,
+          9151
+        ],
+        "size": 650
+      }
+    },
+    {
+      "name": "./src/components/ui/card.tsx",
+      "before": {
+        "id": 8269,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1850,
+          2605,
+          2676,
+          5531,
+          5756,
+          6707,
+          6907,
+          7145,
+          7573,
+          7725,
+          7756,
+          8731,
+          9292,
+          9566,
+          9607
+        ],
+        "size": 1963
+      },
+      "after": {
+        "id": 8269,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          2783,
+          3752,
+          5531,
+          6907,
+          6924,
+          7145,
+          7573,
+          7725,
+          8055,
+          8731,
+          9292,
+          9566,
+          9607,
+          9888
+        ],
+        "size": 1963
+      }
+    },
+    {
+      "name": "./src/lib/asset-tags.ts",
+      "before": {
+        "id": 57521,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4339,
+          6521
+        ],
+        "size": 664
+      },
+      "after": {
+        "id": 57521,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1543,
+          6521,
+          8610,
+          9249
+        ],
+        "size": 664
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/next@16.1.1_@babel+core@7.28.5_@playwright+test@1.59.1_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/process/browser.js",
+      "before": {
+        "id": 50630,
+        "layer": "pages-dir-browser",
+        "chunks": [
+          8792
+        ],
+        "size": 2442
+      },
+      "after": {
+        "id": 19597,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4279,
+          8078,
+          9509
+        ],
+        "size": 2442
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/next@16.1.1_@babel+core@7.28.5_@playwright+test@1.59.1_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/shared/lib/segment.js",
+      "before": {
+        "id": 96186,
+        "layer": "pages-dir-browser",
+        "chunks": [
+          8792
+        ],
+        "size": 3605
+      },
+      "after": {
+        "id": 97680,
+        "layer": "app-pages-browser",
+        "chunks": [
+          8078
+        ],
+        "size": 3605
+      }
+    },
+    {
+      "name": "./src/hooks/use-shared-replicache.ts",
+      "before": {
+        "id": 88662,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1850,
+          2605,
+          4157,
+          5446,
+          5531,
+          5756,
+          7145,
+          7324,
+          7725,
+          8731
+        ],
+        "size": 1635
+      },
+      "after": {
+        "id": 88662,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          2605,
+          3752,
+          4157,
+          5446,
+          5531,
+          6742,
+          7145,
+          7721,
+          7725,
+          8731,
+          9888
+        ],
+        "size": 1635
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/camera.js",
+      "before": {
+        "id": 93927,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1099,
+          1408,
+          2676,
+          4339,
+          6794,
+          8276,
+          8354,
+          9001
+        ],
+        "size": 796
+      },
+      "after": {
+        "id": 93927,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1099,
+          1408,
+          1543,
+          2676,
+          6794,
+          8276,
+          8354,
+          8610,
+          9001,
+          9249
+        ],
+        "size": 796
+      }
+    },
+    {
+      "name": "./src/hooks/use-workspace-mutations.ts",
+      "before": {
+        "id": 62444,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          2947,
+          5531,
+          5756,
+          6707,
+          6742,
+          7145,
+          7554,
+          7725
+        ],
+        "size": 1042
+      },
+      "after": {
+        "id": 62444,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5910
+        ],
+        "size": 1042
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/package.js",
+      "before": {
+        "id": 37168,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          3118,
+          4157,
+          5531,
+          6545,
+          6742,
+          7573,
+          7584,
+          9090,
+          9868
+        ],
+        "size": 937
+      },
+      "after": {
+        "id": 37168,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          3118,
+          4157,
+          5531,
+          6545,
+          6742,
+          7573,
+          7584,
+          9090,
+          9151
+        ],
+        "size": 937
+      }
+    },
+    {
+      "name": "./src/components/ui/pressable-card.tsx",
+      "before": {
+        "id": 32703,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2856,
+          5531,
+          6707,
+          6742,
+          7584,
+          7756
+        ],
+        "size": 1442
+      },
+      "after": {
+        "id": 32703,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2783,
+          2856,
+          5531,
+          6742,
+          7584,
+          8055
+        ],
+        "size": 1442
+      }
+    },
+    {
+      "name": "./src/lib/material-list-part-search.ts",
+      "before": {
+        "id": 19864,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1850,
+          1925,
+          5446,
+          5531,
+          5756,
+          7145,
+          7324
+        ],
+        "size": 689
+      },
+      "after": {
+        "id": 19864,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1925,
+          3752,
+          5446,
+          5531,
+          6742,
+          7145,
+          7721,
+          9888
+        ],
+        "size": 689
+      }
+    },
+    {
+      "name": "./src/hooks/use-replicache-jobs.ts",
+      "before": {
+        "id": 97721,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1850,
+          1925,
+          5446,
+          5531,
+          5756,
+          7145,
+          7324
+        ],
+        "size": 12273
+      },
+      "after": {
+        "id": 97721,
+        "layer": "app-pages-browser",
+        "chunks": [
+          542,
+          1925,
+          3752,
+          5446,
+          5531,
+          6742,
+          7145,
+          7721,
+          9888
+        ],
+        "size": 12273
+      }
+    },
+    {
+      "name": "./src/components/permissions/SystemsAccess.tsx",
+      "before": {
+        "id": 35047,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          2676,
+          3843,
+          4101
+        ],
+        "size": 1173
+      },
+      "after": {
+        "id": 35047,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          2676,
+          3843,
+          4101,
+          5531
+        ],
+        "size": 1173
+      }
+    },
+    {
+      "name": "./src/components/permissions/DrawingsAccess.tsx",
+      "before": {
+        "id": 54438,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          3673,
+          4101,
+          9941
+        ],
+        "size": 1640
+      },
+      "after": {
+        "id": 54438,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          3673,
+          4101,
+          5531,
+          9941
+        ],
+        "size": 1640
+      }
+    },
+    {
+      "name": "./src/app/_components/Header.tsx + 10 modules",
+      "before": {
+        "id": 21704,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704
+        ],
+        "size": 71835
+      },
+      "after": {
+        "id": 21704,
+        "layer": "app-pages-browser",
+        "chunks": [
+          6924
+        ],
+        "size": 71835
+      }
+    },
+    {
+      "name": "./src/components/suppliers/SupplierFormDialog.tsx",
+      "before": {
+        "id": 60706,
+        "layer": "app-pages-browser",
+        "chunks": [
+          7554
+        ],
+        "size": 13665
+      },
+      "after": {
+        "id": 60706,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4157,
+          7091
+        ],
+        "size": 13665
+      }
+    },
+    {
+      "name": "./src/components/jobs/JobOfflineNotice.tsx",
+      "before": {
+        "id": 60507,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1850,
+          5531
+        ],
+        "size": 661
+      },
+      "after": {
+        "id": 60507,
+        "layer": "app-pages-browser",
+        "chunks": [
+          3752,
+          5531,
+          6742
+        ],
+        "size": 661
+      }
+    },
+    {
+      "name": "./src/components/jobs/JobWorkspaceOptions.tsx",
+      "before": {
+        "id": 84101,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4101
+        ],
+        "size": 17062
+      },
+      "after": {
+        "id": 84101,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4101,
+          5531
+        ],
+        "size": 17062
+      }
+    },
+    {
+      "name": "./src/components/app/DevBadge.tsx",
+      "before": {
+        "id": 36660,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101,
+          4833
+        ],
+        "size": 279
+      },
+      "after": {
+        "id": 36660,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101,
+          4833,
+          5531
+        ],
+        "size": 279
+      }
+    },
+    {
+      "name": "./src/hooks/use-landing-page.ts + 1 modules",
+      "before": {
+        "id": 17991,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704,
+          2605
+        ],
+        "size": 3464
+      },
+      "after": {
+        "id": 17991,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          6924
+        ],
+        "size": 3464
+      }
+    },
+    {
+      "name": "./src/lib/dev-only-pages.ts",
+      "before": {
+        "id": 85138,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704,
+          2605
+        ],
+        "size": 405
+      },
+      "after": {
+        "id": 85138,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          6924
+        ],
+        "size": 405
+      }
+    },
+    {
+      "name": "./src/constants/app.ts",
+      "before": {
+        "id": 33996,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704,
+          6907,
+          8974
+        ],
+        "size": 37
+      },
+      "after": {
+        "id": 33996,
+        "layer": "app-pages-browser",
+        "chunks": [
+          6907,
+          6924,
+          8974
+        ],
+        "size": 37
+      }
+    },
+    {
+      "name": "./src/lib/job-workspace-last-option.ts",
+      "before": {
+        "id": 73657,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1850,
+          2605,
+          2676,
+          3119,
+          3373,
+          5531,
+          5913,
+          7427,
+          8798
+        ],
+        "size": 1836
+      },
+      "after": {
+        "id": 73657,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          3119,
+          3373,
+          3752,
+          5531,
+          5913,
+          6924,
+          7427,
+          8798
+        ],
+        "size": 1836
+      }
+    },
+    {
+      "name": "./src/lib/supplier-contacts.ts",
+      "before": {
+        "id": 75775,
+        "layer": "app-pages-browser",
+        "chunks": [
+          7554,
+          7573
+        ],
+        "size": 2477
+      },
+      "after": {
+        "id": 75775,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4157,
+          7091,
+          7573
+        ],
+        "size": 2477
+      }
+    },
+    {
+      "name": "./src/components/voice/VoiceProvider.tsx",
+      "before": {
+        "id": 84692,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101
+        ],
+        "size": 4718
+      },
+      "after": {
+        "id": 84692,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101,
+          5531
+        ],
+        "size": 4718
+      }
+    },
+    {
+      "name": "./src/components/jobs/FrequentJobCards.tsx + 1 modules",
+      "before": {
+        "id": 10993,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          4101
+        ],
+        "size": 5274
+      },
+      "after": {
+        "id": 10993,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          4101,
+          5531
+        ],
+        "size": 5274
+      }
+    },
+    {
+      "name": "./src/lib/page-window-mode.ts",
+      "before": {
+        "id": 94333,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704,
+          2605
+        ],
+        "size": 1371
+      },
+      "after": {
+        "id": 94333,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          6924
+        ],
+        "size": 1371
+      }
+    },
+    {
+      "name": "./src/lib/install-prompt.ts",
+      "before": {
+        "id": 61115,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704,
+          2605,
+          5703
+        ],
+        "size": 2261
+      },
+      "after": {
+        "id": 61115,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2605,
+          5904,
+          6924
+        ],
+        "size": 2261
+      }
+    },
+    {
+      "name": "./src/components/app/AppPagesProvider.tsx",
+      "before": {
+        "id": 70778,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1704
+        ],
+        "size": 15442
+      },
+      "after": {
+        "id": 70778,
+        "layer": "app-pages-browser",
+        "chunks": [
+          6924
+        ],
+        "size": 15442
+      }
+    },
+    {
+      "name": "./src/components/models/JobModelsView.tsx + 28 modules",
+      "before": {
+        "id": 25904,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5703
+        ],
+        "size": 450291
+      },
+      "after": {
+        "id": 25904,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5904
+        ],
+        "size": 450291
+      }
+    },
+    {
+      "name": "../../.openclaw/workspace/kublai/node_modules/.pnpm/lucide-react@0.562.0_react@19.2.3/node_modules/lucide-react/dist/esm/icons/scan-line.js",
+      "before": {
+        "id": 90294,
+        "layer": "app-pages-browser",
+        "chunks": [
+          4339,
+          4449,
+          4963,
+          7295
+        ],
+        "size": 965
+      },
+      "after": {
+        "id": 90294,
+        "layer": "app-pages-browser",
+        "chunks": [
+          1543,
+          4449,
+          4963,
+          7295,
+          8610,
+          9249
+        ],
+        "size": 965
+      }
+    },
+    {
+      "name": "./src/components/voice/voice.module.css",
+      "before": {
+        "id": 87583,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101
+        ],
+        "size": 524
+      },
+      "after": {
+        "id": 87583,
+        "layer": "app-pages-browser",
+        "chunks": [
+          2676,
+          4101,
+          5531
+        ],
+        "size": 524
+      }
+    },
+    {
+      "name": "./src/lib/bim/geometry.ts",
+      "before": {
+        "id": 78830,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5703
+        ],
+        "size": 1425
+      },
+      "after": {
+        "id": 78830,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5904
+        ],
+        "size": 1425
+      }
+    },
+    {
+      "name": "./src/lib/bim/types.ts",
+      "before": {
+        "id": 89795,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5703
+        ],
+        "size": 3093
+      },
+      "after": {
+        "id": 89795,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5904
+        ],
+        "size": 3093
+      }
+    },
+    {
+      "name": "./src/lib/bim/navigation-settings.ts",
+      "before": {
+        "id": 88194,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5703
+        ],
+        "size": 8012
+      },
+      "after": {
+        "id": 88194,
+        "layer": "app-pages-browser",
+        "chunks": [
+          5904
+        ],
+        "size": 8012
+      }
+    }
+  ]
+}

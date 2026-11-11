@@ -1,0 +1,6 @@
+{
+  "method": "Full recursive files() corpus, including source-fingerprint excluded public/artifacts directories; exact byte comparison source+runtime for all three corners",
+  "files": 3263,
+  "sha256": "afb5351a8578246d9151fee8a9d55b77c671aa5ad659c1011e5d3047b169447e",
+  "allThreeSourceAndRuntimeCopiesExact": true
+}

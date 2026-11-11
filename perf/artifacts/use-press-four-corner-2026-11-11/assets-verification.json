@@ -1,0 +1,19 @@
+{
+  "B": {
+    "currentAssetSidecarsDecodedAndMatched": 293,
+    "inheritedHistoricalScriptsExact": 1104,
+    "packagedOriginalPublicFilesExact": 100
+  },
+  "C": {
+    "currentAssetSidecarsDecodedAndMatched": 292,
+    "inheritedHistoricalScriptsExact": 1104,
+    "packagedOriginalPublicFilesExact": 100
+  },
+  "D": {
+    "currentAssetSidecarsDecodedAndMatched": 292,
+    "inheritedHistoricalScriptsExact": 1104,
+    "packagedOriginalPublicFilesExact": 100
+  },
+  "builderLockAbsent": true,
+  "noApplicationOrDatabaseRuntimeStarted": true
+}
