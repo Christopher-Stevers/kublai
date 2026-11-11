@@ -17,7 +17,8 @@
     "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate.",
     "R7 focused20-sample diagnostic stays supplemental; subsequent unchanged full R7 matrix fails4/24cells. R6 failure remains preserved; LOCAL phone-v2 smoke 3 samples remains nonphysical/nongate.",
     "The complete R7 candidate retains all 120 samples and fails openjob on all 3 links plus Basement material-list against predeclared baseline 1; no extra run, metric/threshold change or waiver.",
-    "Physical session methods remain separate: v2 one partial60ms read, physicalv3zero, physicalv4two partial46.9/46.2ms reads; all protocols failed before six intended samples. No accepted physical gate; furtherphone work deferred per user."
+    "Physical session methods remain separate: v2 one partial60ms read, physicalv3zero, physicalv4two partial46.9/46.2ms reads; all protocols failed before six intended samples. No accepted physical gate; furtherphone work deferred per user.",
+    "Corrected R17 v2 attempt2 completed120 with valid method/source/fixture and zeroPGerrors;22/24cells pass, Site andOffice openjob fail unchanged10% regression gate. No activation/retry/threshold waiver. Original protocol-error capture remains separate."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -45,7 +46,8 @@
     "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
     "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json",
     "perf/artifacts/pixel-r7-physical-session-2026-11-11/assessment.json",
-    "perf/artifacts/phone-v5-local-cancelled-2026-11-11.json"
+    "perf/artifacts/phone-v5-local-cancelled-2026-11-11.json",
+    "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json"
   ],
   "rows": [
     {
@@ -68,7 +70,7 @@
       "measuredAt": "2026-11-11T04:22:07.587029+00:00",
       "source": "perf/artifacts/field-review-2026-11-10-2322.json",
       "reportedP95Ms": 880,
-      "labCandidateQualification": "Full R7 matrix fails openjob on all 3 links plus Basement material-list; earlier R6 failure retained. Supplemental 20-sample browser DOM-readiness findings do not replace the original wallclock gate or establish physical p95."
+      "labCandidateQualification": "Corrected full R17 v2 matrix fails openjob on Site and Office; all prior R6/R7 failures remain. Browser-local diagnostics do not waive the end-to-end gate or establish physical p95."
     },
     {
       "measure": "Write feedback",
@@ -103,7 +105,7 @@
       "measure": "First Site visit to working",
       "target": "<3000ms",
       "state": "missing-baseline",
-      "evidence": "Accepted v2 baseline pair passes all 24 same-build repeatability cells. Source-matched full R6 and R7 comparisons exist but fail 2 and 4 regression cells respectively. Stub-auth page navigation is not real sign-in, controlled physical conditions or a final <3000 ms working-screen target pass."
+      "evidence": "Accepted v2 baseline pair passes all24same-buildrepeatability cells. R6/R7/R17 full comparable candidates fail2/4/2regressioncells; all retained. Stub-auth page navigation is not real sign-in, controlled physical conditions or a final <3000ms working-screen target pass."
     },
     {
       "measure": "Shared script",
@@ -113,8 +115,8 @@
       "frameworkGzipBytes": 117929,
       "totalGzipBytes": 502618,
       "evidence": "Actual canonical dependency-map intersection, gzip9 per file. Application-only figure matches the plan's approximate 390 KB definition; framework-inclusive total remains the static gate definition. Conditional references can overstate requests.",
-      "latestTimedCandidateGzipBytes": 485406,
-      "latestTimedCandidateSource": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
+      "latestTimedCandidateGzipBytes": 478165,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/report.json"
     },
     {
       "measure": "Heaviest screen, receiving",
@@ -122,8 +124,8 @@
       "state": "measured-static-bound",
       "gzipBytes": 758531,
       "evidence": "Canonical client-reference dependency union, including shared scripts; not a browser transfer trace.",
-      "latestTimedCandidateGzipBytes": 755594,
-      "latestTimedCandidateSource": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
+      "latestTimedCandidateGzipBytes": 627389,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/report.json"
     },
     {
       "measure": "Cached sheet sharp after pinch",
@@ -260,7 +262,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 9,
+  "completedFullLabCaptures": 10,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -294,28 +296,52 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T14:15:03.747747+00:00",
-  "completedCandidateLabCaptures": 3,
+  "updatedAt": "2026-11-11T14:43:40.937479+00:00",
+  "completedCandidateLabCaptures": 4,
   "candidateRegression": {
     "status": "failed",
-    "source": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
-    "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
-    "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
-    "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
-    "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
-    "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+    "source": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
+    "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+    "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+    "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+    "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+    "protocol": "ready-then-pinch-v2",
     "samples": 120,
-    "cellsPassed": 20,
-    "cellsTotal": 24,
-    "errors": [
-      "openjob/Basement: median 98.5ms exceeds 82.4ms baseline +10%",
-      "openjob/Site: median 99.0ms exceeds 82.5ms baseline +10%",
-      "openjob/Office: median 98.8ms exceeds 82.3ms baseline +10%",
-      "openmateriallist/Basement: median 244.7ms exceeds 215.1ms baseline +10%"
+    "passedCells": 22,
+    "failedCells": [
+      {
+        "journey": "openjob",
+        "link": "Site",
+        "baselineMedianMs": 82.45718499994837,
+        "candidateMedianMs": 98.3338470000308,
+        "changePercent": 19.25443125434414,
+        "passed": false,
+        "candidateSamplesMs": [
+          82.48982500005513,
+          99.71175199991558,
+          82.17784899997059,
+          99.1844089999795,
+          98.3338470000308
+        ]
+      },
+      {
+        "journey": "openjob",
+        "link": "Office",
+        "baselineMedianMs": 82.27076399989892,
+        "candidateMedianMs": 98.51810200000182,
+        "changePercent": 19.748616896426128,
+        "passed": false,
+        "candidateSamplesMs": [
+          128.9710179999238,
+          99.30035599996336,
+          89.04961600003298,
+          98.51810200000182,
+          84.45573800010607
+        ]
+      }
     ],
-    "originalGateUnchanged": true,
-    "acceptedForActivation": false,
-    "artifactReusedWithoutRebuild": true
+    "activation": false,
+    "previousFailedEvidenceRetained": true
   },
   "openjobPhaseDiagnostic": {
     "status": "supplemental-only",
@@ -460,7 +486,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), two full rejected v2 candidate captures (R6/R7), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), three full rejected v2 candidate captures (R6/R7/R17), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -792,7 +818,7 @@
       "activation": false
     },
     "r17FullMatrix": {
-      "status": "running-corrected-attempt2",
+      "status": "complete-failed-no-regression-gate",
       "protocol": "ready-then-pinch-v2",
       "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
       "samplesPlanned": 120,
@@ -802,7 +828,49 @@
       "preDatabaseProtocolGuardPassed": true,
       "preIdleProtocolGuardPassed": true,
       "actualReadPreflightPassed": 14,
-      "resultAvailable": false
+      "resultAvailable": true,
+      "samplesCompleted": 120,
+      "passedCells": 22,
+      "failedCells": [
+        {
+          "journey": "openjob",
+          "link": "Site",
+          "baselineMedianMs": 82.45718499994837,
+          "candidateMedianMs": 98.3338470000308,
+          "changePercent": 19.25443125434414,
+          "passed": false,
+          "candidateSamplesMs": [
+            82.48982500005513,
+            99.71175199991558,
+            82.17784899997059,
+            99.1844089999795,
+            98.3338470000308
+          ]
+        },
+        {
+          "journey": "openjob",
+          "link": "Office",
+          "baselineMedianMs": 82.27076399989892,
+          "candidateMedianMs": 98.51810200000182,
+          "changePercent": 19.748616896426128,
+          "passed": false,
+          "candidateSamplesMs": [
+            128.9710179999238,
+            99.30035599996336,
+            89.04961600003298,
+            98.51810200000182,
+            84.45573800010607
+          ]
+        }
+      ],
+      "assessment": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
+      "report": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/report.json",
+      "actualSchemaModules": 16,
+      "actualSchemaTables": 113,
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "activation": false,
+      "idleQueries": 74
     },
     "r17IncompatibleCapture": {
       "status": "rejected-incompatible-protocol",
@@ -821,7 +889,7 @@
       "cleanupConfirmed": true,
       "idleQueries": 74,
       "schemaEvidence": "Actual source-bound fixture counts embedded in health.fixtureSchema; standalone inventory was not independently copied before DB cleanup.",
-      "correctedCapture": "Preparation only; explicit environment guard required before a separate run."
+      "correctedCapture": "Separate explicitly guarded v2 attempt2 completed120 and failed two openjob cells; original incompatible record unchanged."
     },
     "snapshotControlsSplit": {
       "commit": "13fcfeed",
@@ -849,6 +917,44 @@
       "fullSheetFidelityPass": false,
       "historicalReportsUnchanged": true,
       "productionChanged": false
+    },
+    "replicacheContract": {
+      "commit": "fc81fd26",
+      "source": "perf/replicache-existing-contract.md",
+      "status": "existing-source-contract-documented",
+      "runtimeTestsRun": false,
+      "phase2Rollout": false
+    },
+    "pressChunkExperiment": {
+      "status": "three-controlled-canonical-builds-authorized",
+      "source": "perf/use-press-chunk-experiment.md",
+      "configurationTestsPassed": 4,
+      "base": "exact-frozen-R17",
+      "productionActivated": false,
+      "configSha256": "047f4d6aa8546b21956b5c3f9bef5a7a3e8520b1e1fd7cf4f25d4a9d6fbe7892"
     }
-  }
+  },
+  "historicalCandidateRegressions": [
+    {
+      "status": "failed",
+      "source": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+      "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+      "samples": 120,
+      "cellsPassed": 20,
+      "cellsTotal": 24,
+      "errors": [
+        "openjob/Basement: median 98.5ms exceeds 82.4ms baseline +10%",
+        "openjob/Site: median 99.0ms exceeds 82.5ms baseline +10%",
+        "openjob/Office: median 98.8ms exceeds 82.3ms baseline +10%",
+        "openmateriallist/Basement: median 244.7ms exceeds 215.1ms baseline +10%"
+      ],
+      "originalGateUnchanged": true,
+      "acceptedForActivation": false,
+      "artifactReusedWithoutRebuild": true
+    }
+  ]
 }

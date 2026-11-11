@@ -688,3 +688,27 @@ this exact root graph. UI splits alone cannot establish that target. This is
 existing file-size/membership evidence, not a new transfer timing, a claim that
 all smaller framework builds are impossible, or permission to exclude framework
 bytes from the budget. See `artifacts/phase1-r17-framework-budget-2026-11-11.json`.
+
+## Corrected R17 full comparison fails two cells — 2026-11-11 14:40 UTC
+
+The explicitly guarded v2 attempt2 completed all 120 samples against the original
+baseline-1 comparator. Root independently rechecked report validity and baseline
+repeatability: both pass. The unchanged regression comparison fails opening a
+job on Site (82.46 → 98.33 ms) and Office (82.27 → 98.52 ms); the other 22 cells
+pass. No retries, exclusions, alternate comparator or threshold change follows.
+R17 is not eligible for activation; production remains the Phase0 bootstrap.
+
+This run preserves its actual 16-module/113-table schema, all 14 successful read
+preflights, zero PostgreSQL errors, exact source/method/environment verification
+and all raw samples. The ten-minute idle window counted 74 query reads and at
+most one live request, not a no-polls pass. Owned browser/server/database work
+was cleaned before releasing the quiet window. See
+`artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/`. The earlier
+incompatible-protocol R17 capture remains separate and rejected.
+
+Independent work continues: a narrow usePress chunk-extraction experiment passes
+four configuration tests and has a bounded three-build proof authorized against
+exact R17, excluding Snapshot and unrelated checkout changes. No byte saving is
+yet measured for this experiment. A source-grounded existing Replicache contract
+is now recorded in `replicache-existing-contract.md`; it changes no runtime and
+is not Phase2 implementation or convergence proof. The Pixel remains deferred.
