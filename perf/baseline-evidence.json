@@ -310,7 +310,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T23:02:49.975156+00:00",
+  "updatedAt": "2026-11-11T23:17:25.484261+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed-no-regression-gate",
@@ -1384,6 +1384,47 @@
       "speedImprovementMeasured": false,
       "activated": false,
       "nextCandidateScope": "Exact R19 plus two runtime timer patches and focused test sources; other held features excluded."
+    },
+    "r20Candidate": {
+      "status": "full-v2-in-progress-no-result",
+      "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
+      "sourceFingerprint": "b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f",
+      "sourceFileCount": 2318,
+      "runtimeChangedPaths": [
+        "src/components/offline/ServiceWorkerRegistration.tsx",
+        "src/lib/device-query-cache.ts"
+      ],
+      "source": "perf/artifacts/phase1-r20-source-freeze-2026-11-11.json",
+      "buildProof": "perf/artifacts/phase1-r20-build-proof-2026-11-11.json",
+      "buildProofCommit": "9d435a94",
+      "canonicalTypesPrerenderPassed": true,
+      "frozenTestsPassed": 36,
+      "sharedGzipBytes": 477608,
+      "heaviestGzipBytes": 627807,
+      "phase0RelativeDeployGzipBytes": 1322690,
+      "r19RelativeChangedGzipBytes": 27818,
+      "r19RelativeSmallChangePassed": true,
+      "finalScriptTargetsPassed": false,
+      "httpProof": "perf/artifacts/phase1-r20-http-proof-2026-11-11.json",
+      "httpProofCommit": "de7ee9df",
+      "httpCurrentAssetsPassed": 293,
+      "httpHistoricalSamplesPassed": 10,
+      "httpCleanupConfirmed": true,
+      "labSnapshot": "/tmp/foremanhq-speed-app-l6aTWB",
+      "labBuild": "3c6Lvo7KDnEDe_Bzts7L-",
+      "labCompilePassed": true,
+      "labReadPreflightPassed": 14,
+      "labCompileCleanupConfirmed": true,
+      "labCompileUnexpectedDatabaseErrors": 0,
+      "rootIndependentlyVerifiedSourceFingerprint": true,
+      "fullMatrixStartedUtc": "2026-11-11T23:12:42Z",
+      "fullMatrixPreparation": "perf/artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11-preparation/",
+      "fullMatrixSamplesPlanned": 120,
+      "idleDurationMs": 600000,
+      "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "timingMethodUnchanged": true,
+      "fullResultAvailable": false,
+      "activation": false
     }
   },
   "historicalCandidateRegressions": [

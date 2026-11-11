@@ -1088,3 +1088,30 @@ The next candidate will contain exactly these two runtime patches on R19, plus
 their test sources. The already prepared receiving/photo and chat changes remain
 separate. Production still runs the Phase 0 bootstrap; no worker or schema change
 has been made, and Pixel debugging remains deferred at Tim's request.
+
+## R20 prepared and full run started — 2026-11-11 23:12 UTC
+
+R20 contains exactly the two timer runtime patches on R19. Its frozen-source
+36 tests, canonical build, production TypeScript and prerender pass. Root
+independently verifies source fingerprint `b6f4093d…` (2,318 files), canonical
+build `e9fcb1f8…` and the two intended runtime diffs. All 293 current compressed
+assets, 1,120 retained files and 3,263 public files match offline. Formal Phase 0
+byte ratchets pass at 477,608 shared / 627,807 heaviest / 1,322,690 deployment
+gzip bytes. Final 120 KB/180 KB script targets are still unmet.
+
+The exact two-fix R19-to-R20 update is 27,818 gzip bytes across six changed
+scripts and passes 100 KB. That does not make the full Phase 0-to-R20 batch
+27 KB. Cookie-free read-only HTTP checks pass for 293 current assets and ten
+historical samples, packaged service worker, health/sign-in and denied anonymous
+private binding. Manifest validation is status plus build ID, not full-body
+byte equality. The proof server is stopped. See `phase1-r20-timer-proof.md`
+and the source/build/HTTP artifacts.
+
+The new private lab build `3c6Lvo7KDnEDe_Bzts7L-` passes all fourteen actual
+query preflights with 113 tables from sixteen source schema modules. Its compile
+resources are cleaned and the helper's final error summary is empty. Root checks
+the original harness fingerprint, six orchestration hashes and three protocol
+positive/negative checks. One full run started at 23:12:42 UTC: 600,000 ms idle
+plus all 120 samples, with baseline 1 as the unchanged comparator. No full result
+is available at this checkpoint. R19 remains rejected, production remains Phase
+0, and heavy parallel work is paused for the measurement window.
