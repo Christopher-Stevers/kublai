@@ -58,7 +58,10 @@
     "perf/artifacts/notification-role-identity-rejected-2026-11-11/result.json",
     "perf/artifacts/receiving-saved-order-focused-2026-11-11.json",
     "perf/artifacts/phase1-receiving-images-build-proof-2026-11-11.json",
-    "perf/artifacts/part-image-browser-2026-11-11.json"
+    "perf/artifacts/part-image-browser-2026-11-11.json",
+    "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/README.md",
+    "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/proof-summary.json",
+    "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/final-cleanup.json"
   ],
   "rows": [
     {
@@ -307,7 +310,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T17:55:39.643397+00:00",
+  "updatedAt": "2026-11-11T18:07:24.851242+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
@@ -1270,6 +1273,28 @@
         "not a release gate pass"
       ],
       "cleanup": "browser, loopback server and temporary profile removed"
+    },
+    "chatOverviewHints": {
+      "sourceCommit": "493ce113",
+      "status": "producer-correctness-proof-only",
+      "sourceManifestSHA256": "3539993932ae9e6f752dbc43ee379ccf494393daaa7e404a3496a80e0c6635b6",
+      "evidence": "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/",
+      "unitTestsPassed": 34,
+      "privatePGCasesPassed": 3,
+      "scopedRuntimeTypecheck": "pass-nine-roots-and-import-closure",
+      "matchingActorHints": 3,
+      "foreignActorHints": 0,
+      "expected42501": 1,
+      "unexpectedPGErrors": 0,
+      "sourceHashesUnchanged": 28,
+      "privateProcessesCleaned": true,
+      "pollingIntervalsChanged": false,
+      "limits": [
+        "thin synthetic fixture with injected real Drizzle client",
+        "no production authentication or production DB module proof",
+        "no compiled topology or browser latency proof",
+        "no speed matrix or activation"
+      ]
     }
   },
   "historicalCandidateRegressions": [

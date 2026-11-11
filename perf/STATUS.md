@@ -1038,3 +1038,28 @@ cleaned up. Three earlier harness failures are preserved separately. This proves
 component behavior, not production chunk availability offline, real-photo visual
 fidelity, Safari, phone performance or release acceptance. See
 `part-image-browser.md` and `artifacts/part-image-browser-2026-11-11.json`.
+
+## Chat overview producer correctness — 2026-11-11
+
+The new chat-overview topic invalidates the existing exact overview query after
+join, read-cursor and mute changes. It uses the current web process's own LISTEN,
+scopes personal hints to the effective actor and admitted jobs, and never advances
+durable chat-message cursors. The browser observer is passive: it adds no stream
+subscription, and all existing overview polling intervals remain unchanged.
+
+Thirty-four focused unit checks, scoped runtime TypeScript and lint pass. One
+source-bound disposable PostgreSQL run then passed three integration cases:
+actual writers deliver three matching-actor hints and zero peer hints, repeated
+no-ops do not notify, outer rollback suppresses notification/row, and a deliberate
+pg_notify permission failure rolls back its savepoint while surrounding business
+rows commit. Listener barriers establish absence without a fixed sleep. Exactly
+one expected SQLSTATE 42501 and zero unexpected database errors were observed.
+All 28 source hashes match before/after; listener and supervised processes exit,
+the final PG log is copied after shutdown, and the private socket/data are removed.
+
+This uses an injected real private Drizzle client and a thin synthetic fixture.
+It does not prove production authentication, the production DB module, compiled
+web topology, browser delivery latency or poll removal. Role/session expiry and
+other authority-change coverage remain open. No application build, production
+schema, worker release, speed-matrix rerun or activation occurred. See
+`live/chat-overview-hints.md` and `live/chat-overview-pg-plan.md`.
