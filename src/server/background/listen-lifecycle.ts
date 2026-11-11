@@ -1,4 +1,4 @@
-import { createRequire } from "node:module";
+import * as nodeModule from "node:module";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -15,15 +15,35 @@ const registry = (shared.__foremanListenLifecycle ??= new WeakMap());
  * bundled/unresolvable/changed driver is unsupported and keeps HTTP fallback. */
 export function installedPostgresVersion(): string | null {
   try {
-    // webpack tags a direct createRequire(...).resolve("postgres") as its own
-    // resolve expression and emits a numeric module ID. Indirect invocation
-    // deliberately keeps Node's native runtime resolver and package metadata.
-    // Release start fixes cwd to the runtime root; never bake a temporary
-    // builder/source location into the deployed package lookup.
-    const runtimeRequire = Reflect.apply(createRequire, undefined, [
+    // Next's createRequire parser rewrites direct calls and removes named
+    // imports even when invoked indirectly. Keep the native namespace binding
+    // and get both functions dynamically, outside that special parser pattern.
+    // Release cwd is stable; temporary build/source paths need not survive.
+    // node:module exports a function in CommonJS; webpack's synthetic ESM
+    // namespace may expose it only as default. Native ESM supports both.
+    const nativeDefault: unknown = Reflect.get(nodeModule, "default");
+    const nativeModule = nativeDefault ?? nodeModule;
+    if (
+      !nativeModule ||
+      (typeof nativeModule !== "function" && typeof nativeModule !== "object")
+    )
+      return null;
+    const factory: unknown = Reflect.get(nativeModule, "createRequire");
+    if (typeof factory !== "function") return null;
+    const runtimeRequire: unknown = Reflect.apply(factory, nativeModule, [
       path.join(process.cwd(), "package.json"),
     ]);
-    const resolved: unknown = runtimeRequire.resolve("postgres");
+    if (
+      !runtimeRequire ||
+      (typeof runtimeRequire !== "function" &&
+        typeof runtimeRequire !== "object")
+    )
+      return null;
+    const resolve: unknown = Reflect.get(runtimeRequire, "resolve");
+    if (typeof resolve !== "function") return null;
+    const resolved: unknown = Reflect.apply(resolve, runtimeRequire, [
+      "postgres",
+    ]);
     if (typeof resolved !== "string" || !path.isAbsolute(resolved)) return null;
     let directory = path.dirname(resolved);
     for (

@@ -76,9 +76,15 @@ it("production webpack keeps native version resolution and rejects unsupported p
         supported ? "build-installed" : "build-unsupported",
       );
       await mkdir(staging);
-      const entry = path.join(staging, "entry.mjs"),
-        output = path.join(directory, "bundle.cjs");
+      const entry = path.join(staging, "entry.js"),
+        output = path.join(directory, "fixed.cjs");
       await writeFile(entry, javascript);
+      const failedEntry = path.join(staging, "failed.js");
+      await writeFile(
+        failedEntry,
+        `import {createRequire} from "node:module";
+        export function probe() {try {return typeof Reflect.apply(createRequire, undefined, [process.cwd()+"/package.json"]).resolve("postgres");} catch(error) {return error instanceof ReferenceError ? "unbound-create-require" : "unsupported";}}`,
+      );
       await new Promise<void>((resolve, reject) => {
         const compiler = webpack(
           {
@@ -87,10 +93,20 @@ it("production webpack keeps native version resolution and rejects unsupported p
             // ship standalone Terser. The resolver rewrite precedes minifying.
             optimization: { minimize: false },
             target: "node",
-            entry,
+            module: {
+              rules: [
+                {
+                  test: /\.js$/,
+                  type: "javascript/auto",
+                  parser: { createRequire: true },
+                },
+              ],
+              parser: { javascript: { createRequire: true } },
+            },
+            entry: { fixed: entry, failed: failedEntry },
             output: {
               path: directory,
-              filename: "bundle.cjs",
+              filename: "[name].cjs",
               library: { type: "commonjs2" },
             },
             devtool: false,
@@ -117,14 +133,16 @@ it("production webpack keeps native version resolution and rejects unsupported p
           "-e",
           `
         const adapter = require(process.argv[1]);
+        const failed = require(process.argv[2]);
         const options = {onclose() {}};
         const sql = Object.assign(() => {}, {options});
         const connection = {listen: Object.assign(() => {}, {sql})};
         const version = adapter.installedPostgresVersion();
         const admitted = adapter.observeListenLoss(connection, version, () => {}) !== null;
-        process.stdout.write(JSON.stringify({version, admitted}));
+        process.stdout.write(JSON.stringify({version, admitted, failed: failed.probe()}));
       `,
           output,
+          path.join(directory, "failed.cjs"),
         ],
         { cwd: directory, timeout: 5000, maxBuffer: 8192 },
       );
@@ -132,6 +150,7 @@ it("production webpack keeps native version resolution and rejects unsupported p
       expect(result).toEqual({
         version: supported ? "3.4.8" : "3.4.9",
         admitted: supported,
+        failed: "unbound-create-require",
       });
     }
   } finally {
