@@ -5,6 +5,10 @@ import type { DrawingEntity, DrawingMarkup, DrawingPoint, DrawingStyle, DrawingT
 import type { SheetScale } from "~/lib/sheet-measure";
 import { isPathTool, isStrokeTool, minimumDrawingPoints, resizeDrawingMarkup, simplifyDrawingStroke, translateDrawingPoints, type DrawingResizeHandle } from "~/lib/drawing-annotation-geometry";
 
+export type ScaleSaveAcknowledgement = { accepted: true; scale: SheetScale | null; applyToView: boolean };
+export type ScaleSaveRefusal = { accepted: false; message: string };
+export type ScaleSaveResult = boolean | void | ScaleSaveAcknowledgement | ScaleSaveRefusal;
+
 export type DrawingEditorProps = {
   annotations?: DrawingEntity[];
   pipeReviewAnnotations?: DrawingEntity[];
@@ -36,7 +40,7 @@ export type DrawingEditorProps = {
   onRemoveMeasurement?: (id: string) => Promise<boolean>;
   onActivate?: (data: DrawingMarkup) => void;
   sharedScale?: SheetScale | null;
-  onScaleChange?: (scale: SheetScale) => boolean | void | Promise<boolean | void>;
+  onScaleChange?: (scale: SheetScale) => ScaleSaveResult | Promise<ScaleSaveResult>;
 };
 type Gesture = {
   start: DrawingPoint; points: DrawingPoint[]; moved: boolean; entity?: DrawingEntity; handle?: number | DrawingResizeHandle;

@@ -1,3 +1,5 @@
+import { liveAccountScope } from "~/lib/live-protocol";
+import { TRPCError } from "@trpc/server";
 import { hyperlinkScopeInput } from "~/lib/hyperlink-scope";
 import { compactDrawingWorkspace, omitDrawingHyperlinks } from "~/lib/drawing-workspace-payload";
 import { assertCan } from "~/server/auth/permissions";
@@ -76,7 +78,10 @@ export const drawingsWorkspaceRouter = createTRPCRouter({
   saveLegendItems: sheetTools.input(z.object({sheetId,sourceSheetId:sheetId,items:z.array(legendItemSchema).min(1).max(300)})).mutation(({ctx,input})=>saveLegendItems(ctx,input)),
   updateLegendItem: sheetTools.input(z.object({sheetId,id:sheetId,revision:z.number().int().min(1),data:legendItemSchema.nullable()})).mutation(({ctx,input})=>updateLegendItem(ctx,input)),
   addMeasurementLayer: hasAppAccess.input(z.object({sheetId, name:z.string().trim().min(1).max(80)})).mutation(({ctx,input})=>addDrawingMeasurementLayer(ctx,input)),
-  setScale: hasAppAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale})).mutation(({ctx,input}) => setDrawingScale(ctx,input)),
+  setScale: hasAppAccess.input(z.object({sheetId, scale: drawingMetadataSchema.shape.scale, expectedAccountKey: z.string().min(1).max(512).optional()})).mutation(({ctx,input}) => {
+    if (input.expectedAccountKey !== undefined && input.expectedAccountKey !== liveAccountScope(ctx.user.organizationId, ctx.userId, ctx.simulation?.id)) throw new TRPCError({code:"CONFLICT",message:"Your signed-in workspace changed. Reopen the drawing before saving scale."});
+    return setDrawingScale(ctx,{sheetId:input.sheetId,scale:input.scale});
+  }),
   superScaleLatest: sheetTools.input(z.object({sheetId})).query(({ctx,input})=>superScaleLatest(ctx,input.sheetId)),
   superScaleStart: sheetTools.input(z.object({id:sheetId,sheetId,first:z.string().max(40).default(""),second:z.string().max(40).default("")})).mutation(({ctx,input})=>startSuperScale(ctx,input)),
   superScaleCancel: sheetTools.input(z.object({id:sheetId,sheetId})).mutation(({ctx,input})=>cancelSuperScale(ctx,input)),

@@ -498,6 +498,18 @@ describe("drawing measure", () => {
     expect(screen.getByRole("status")).toHaveTextContent("100'-0\"");
   });
 
+  it("keeps the draft and reports an unknown ACK without claiming it was not saved", async () => {
+    const onScaleChange = vi.fn(async () => ({accepted:false as const,message:"Scale could not be confirmed. Refresh to check the latest scale before retrying."}));
+    const {frame}=openSheet("unknown-scale",undefined,{sharedScale:null,onScaleChange});
+    fireEvent.click(screen.getByRole("button",{name:"Measure"}));fireEvent.click(screen.getByRole("button",{name:"Change scale"}));
+    tap(frame,0,300);tap(frame,800,300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"),{target:{value:"200"}});
+    await act(async()=>fireEvent.click(screen.getByRole("button",{name:"Use this length"})));
+    expect(screen.getByRole("alert")).toHaveTextContent("Refresh to check the latest scale");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Scale was not saved");
+    expect(screen.getByLabelText("How long is this line?")).toHaveValue("200");
+  });
+
   it("keeps calibration editable when its owner blocks a save", () => {
     const { frame } = openSheet("blocked-scale", undefined, { sharedScale: null, onScaleChange: () => { throw new Error("Save your sheet details first."); } });
     fireEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -1236,6 +1248,40 @@ describe("relative measuring angles and drafting arcs", () => {
 describe("Gap branching in Measure", () => {
   const source = "0391aed4-7773-47ec-9141-09df373ec008";
   const savedRun = (): Extract<DrawingEntity, { kind: "markup" }> => ({ id: "existing-run", sheetId: source, kind: "markup", data: drawingMarkupSchema.parse({ sourceSheetId: source, type: "dimension", points: [{ x: .25, y: .5 }, { x: .75, y: .5 }], parents: [null, 0], scale: 100, unit: "ft", stroke: "#00ffff", width: 2 }), revision: 1, visibility: "private", authorId: "tim", authorName: "Tim", createdAt: "", updatedAt: "", comments: [] });
+
+  it("uses only the acknowledged scale when finishing a saved-run calibration", async () => {
+    const entity = savedRun();
+    const onScaleChange = vi.fn(async () => ({ accepted: true as const, scale: { unit: "ft" as const, unitsPerSheetWidth: 300 }, applyToView: true }));
+    const { frame } = openSheet(source, undefined, { annotations: [entity], onUpdate: vi.fn(), sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onScaleChange });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
+    tap(frame, 400, 300);
+    tap(frame, 400, 180);
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
+    tap(frame, 0, 300); tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use this length" })));
+    expect(onScaleChange).toHaveBeenCalledWith({ unit: "ft", unitsPerSheetWidth: 200 });
+    expect(screen.queryByLabelText("How long is this line?")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("195'-0\"");
+  });
+  it("a stale accepted ACK never installs the unsent proposal into a resumed run", async () => {
+    const entity = savedRun();
+    const onScaleChange = vi.fn(async () => ({ accepted: true as const, scale: { unit: "ft" as const, unitsPerSheetWidth: 300 }, applyToView: false }));
+    const { frame } = openSheet(source, undefined, { annotations: [entity], onUpdate: vi.fn(), sharedScale: { unit: "ft", unitsPerSheetWidth: 100 }, onScaleChange });
+    fireEvent.click(screen.getByRole("button", { name: "Measure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Branch" }));
+    tap(frame, 400, 300);
+    tap(frame, 400, 180);
+    fireEvent.click(screen.getByRole("button", { name: "Change scale" }));
+    tap(frame, 0, 300); tap(frame, 800, 300);
+    fireEvent.change(screen.getByLabelText("How long is this line?"), { target: { value: "200" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use this length" })));
+    expect(screen.getByLabelText("How long is this line?")).toHaveValue("200");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("status")).toHaveTextContent("65'-0\"");
+  });
 
   it("gaps into a saved run directly after Measure and updates the same markup using its saved scale", () => {
     const entity = savedRun(), onCreate = vi.fn(), onUpdate = vi.fn();

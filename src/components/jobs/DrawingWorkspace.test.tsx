@@ -1,3 +1,4 @@
+import type * as DrawingScaleSaveModule from "~/hooks/use-drawing-scale-save";
 import type * as DocumentWorkspaceAuthorityModule from "~/hooks/use-document-workspace-authority";
 import type * as InstantSavedViewNameModule from "~/hooks/use-instant-saved-view-name";
 import { QueryClient, QueryClientProvider, QueryClientContext, useQuery } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   DrawingEntity,
   DrawingSave,
+  DrawingMetadata,
   DrawingWorkspace as Workspace,
 } from "~/lib/drawing-workspace";
 import { Activity, useContext, useEffect, type ComponentProps } from "react";
@@ -28,6 +30,8 @@ import { DRAWING_DESTINATION_EVENT, makeSnapshotSource } from "~/lib/snapshot-so
 
 const mocks = vi.hoisted(() => ({
   instantNames: false,
+  realScale: false,
+  dropMetadataPatch: false,
   viewer: vi.fn(),
   loadLink: vi.fn(),
   push: vi.fn(),
@@ -56,7 +60,7 @@ vi.mock("next/navigation", () => {
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => {const client = useContext(QueryClientContext); return ({
-      client: { drawingsWorkspace: { link: { query: mocks.loadLink }, save: {mutate: mocks.save} } },
+      client: { drawingsWorkspace: { link: { query: mocks.loadLink }, save: {mutate: mocks.save}, setScale: {mutate: mocks.setScale} } },
       drawingsWorkspace: {
         get: {
           invalidate: mocks.invalidate,
@@ -65,6 +69,7 @@ vi.mock("~/trpc/react", () => ({
             _: unknown,
             update: (data: Workspace | null) => Workspace | null,
           ) => {
+            if (mocks.dropMetadataPatch) return;
             mocks.data = update(mocks.data);
             if (client) client.setQueriesData({queryKey: ["drawing"]}, mocks.data);
           },
@@ -137,6 +142,23 @@ vi.mock("~/hooks/use-instant-saved-view-name", async (original) => {
   return {useInstantSavedViewName: (...args: Parameters<typeof actual.useInstantSavedViewName>) => mocks.instantNames ? actual.useInstantSavedViewName(...args) : {tryRename: () => false, canPersist: () => true, isPending: false, pendingEntityId: undefined}};
 });
 
+// Legacy cases retain their old deterministic service; the new parent race
+// cases use the actual controller on a fresh QueryClient-backed mount.
+vi.mock("~/hooks/use-drawing-scale-save", async original => {
+  const actual = await original<typeof DrawingScaleSaveModule>();
+  function useFixtureScale(options: Parameters<typeof actual.useDrawingScaleSave>[0]) {
+    return { isPending: false, save: async (scale: DrawingMetadata["scale"]) => {
+      try { if (!options.canStart()) return false; const next = await mocks.setScale({sheetId:options.sheetId,scale}) as DrawingMetadata;
+        await mocks.cancel({sheetId:options.sheetId});mocks.data = mocks.data ? {...mocks.data,metadata:next} : null;
+        options.onAccepted(next);return true;
+      } catch (reason) { options.onError(reason);return false; }
+    } };
+  }
+  return {useDrawingScaleSave: (options: Parameters<typeof actual.useDrawingScaleSave>[0]) => {
+    const useSelectedHook = mocks.realScale ? actual.useDrawingScaleSave : useFixtureScale;
+    return useSelectedHook(options);
+  }};
+});
 vi.mock("./DrawingAccountProvider", () => ({
   useDrawingAccount: () => mocks.account,
 }));
@@ -432,6 +454,8 @@ const chooseTool = (id: string) => {
 };
 beforeEach(() => {
   mocks.instantNames = false;
+  mocks.realScale = false;
+  mocks.dropMetadataPatch = false;
   mocks.queryError = null;
   vi.clearAllMocks();
   mocks.setScale.mockImplementation(async ({scale}: {scale: Workspace["metadata"]["scale"]}) => ({
@@ -1119,6 +1143,7 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Compare files" }));
     fireEvent.click(screen.getByRole("button", { name: "Compare side by side" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await screen.findByRole("region", {name: "Left comparison"});
     const region = screen.getByRole("region", { name: "Compare files" });
     expect(within(region).getByRole("region", { name: "Left comparison" })).toBeVisible();
     expect(within(region).getByRole("region", { name: "Right comparison" })).toBeVisible();
@@ -2666,5 +2691,52 @@ describe("instant private saved view name integration", () => {
       expect(written.some(([, value]) => value.entities.some(entity => entity.kind === "view" && entity.data.name === "Confirmed saved view"))).toBe(false);
       await waitFor(() => expect((saveSnapshot.mock.calls as unknown as Array<[string, Workspace]>).some(([, value]) => value.entities.some(entity => entity.kind === "view" && entity.data.name === "Remote saved view"))).toBe(true));
     }
+  });
+});
+
+
+describe("real scale acknowledgement controller", () => {
+  function mountScale() {
+    mocks.realScale = true;mocks.instantNames = true;
+    mocks.account = {accountKey:"org:tim",userId:"tim",store:null};
+    const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
+    client.setQueryData(["drawing",{sheetId}],mocks.data);
+    client.setQueryData(["drawing",{sheetId,omitHyperlinks:true}],mocks.data);
+    const view=render(<QueryClientProvider client={client}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}/></QueryClientProvider>);
+    return {client,view};
+  }
+  it("acknowledges scale promptly even when authoritative refresh never resolves", async () => {
+    mocks.invalidate.mockReturnValueOnce(new Promise(() => undefined));
+    const {client}=mountScale();
+    fireEvent.click(screen.getByRole("button",{name:"Calibrate sample"}));
+    await waitFor(()=>expect(mocks.scaleResult).toHaveBeenCalledWith(expect.objectContaining({accepted:true,applyToView:true})));
+    expect(mocks.setScale).toHaveBeenCalledWith({sheetId,scale:{unit:"m",unitsPerSheetWidth:120},expectedAccountKey:"org:tim"});
+    expect(screen.getByTestId("shared-scale")).toHaveTextContent("120");
+    cleanup();client.clear();
+  });
+  it("does not finish an older scale after a newer real metadata ACK whose cache patch lags", async () => {
+    let scaleDone!: (value: DrawingMetadata)=>void;
+    mocks.setScale.mockReturnValue(new Promise(resolve=>{scaleDone=resolve;}));
+    const {client}=mountScale();
+    mocks.metadata.mockResolvedValueOnce({...fixture().metadata,revision:10,title:"Server checked",scale:{unit:"m",unitsPerSheetWidth:240}});
+    mocks.dropMetadataPatch = true;
+    openMenu("More");fireEvent.click(screen.getByRole("button",{name:"Super scale"}));
+    fireEvent.click(screen.getByRole("button",{name:"Start new Super scale"}));
+    fireEvent.click(screen.getByRole("button",{name:"Set scale"}));
+    fireEvent.click(screen.getByRole("button",{name:"Calibrate sample"}));
+    await waitFor(()=>expect(mocks.scaleResult).toHaveBeenCalledWith(true));
+    const props = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    act(()=>props.toolControls?.onCalibrationEnd?.(true));
+    mocks.scaleResult.mockClear();
+    panel("details");
+    expect(screen.getByLabelText("Title")).toHaveValue("Server checked");
+    expect(client.getQueryData<Workspace>(["drawing",{sheetId}])?.metadata.revision).toBe(7);
+    fireEvent.click(screen.getByRole("button",{name:"Calibrate sample"}));
+    await waitFor(()=>expect(mocks.setScale).toHaveBeenCalledOnce());
+    await act(async()=>scaleDone({...fixture().metadata,revision:9,scale:{unit:"m",unitsPerSheetWidth:120}}));
+    await waitFor(()=>expect(mocks.scaleResult).toHaveBeenCalledWith(expect.objectContaining({accepted:true,applyToView:false})));
+    expect(screen.getByLabelText("Title")).toHaveValue("Server checked");
+    expect(client.getQueryData<Workspace>(["drawing",{sheetId}])?.metadata.revision).toBe(7);
+    cleanup();client.clear();
   });
 });

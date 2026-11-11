@@ -107,7 +107,7 @@ import { useDrawingUnit } from "./useDrawingUnit";
 import { useDrawingKeyboardControls } from "./useDrawingKeyboardControls";
 import { DrawingAnnotationLayer } from "./DrawingAnnotationLayer";
 import { DrawingDraftToolbar } from "./DrawingDraftToolbar";
-import { useDrawingEditor, type DrawingEditorProps } from "./useDrawingEditor";
+import { useDrawingEditor, type DrawingEditorProps, type ScaleSaveResult } from "./useDrawingEditor";
 import { InlineTextEditor, type InlineTextEditing } from "./InlineTextEditor";
 import {
   DrawingComparisonLayer,
@@ -1228,17 +1228,22 @@ export function DrawingSheetViewer({
   const proposeScale = (next: SheetScale) => {
     if (scaleSavePending.current) return;
     const request = ++scaleSave.current;
-    const finish = (accepted: boolean | void) => {
+    const finish = (accepted: ScaleSaveResult) => {
       if (scaleSave.current !== request) return;
+      if (accepted && typeof accepted === "object") {
+        if (!accepted.accepted) throw new Error(accepted.message);
+        if (!accepted.applyToView) return;
+      }
       if (accepted === false)
         throw new Error("Scale was not saved. Try again.");
-      if (measureSource) setRunScaleOverride(next);
+      const acknowledged = accepted && typeof accepted === "object" ? accepted.scale : next;
+      if (measureSource) setRunScaleOverride(acknowledged);
       if (!controlledScale) {
-        setLocalSheetScale(next);
-        if (!personalUnit) setUnit((current) =>
-          scaleUnitFor(current) === next.unit ? current : next.unit,
+        setLocalSheetScale(acknowledged);
+        if (!personalUnit && acknowledged) setUnit((current) =>
+          scaleUnitFor(current) === acknowledged.unit ? current : acknowledged.unit,
         );
-        if (sheetKey) writeSheetScale(sheetKey, next);
+        if (sheetKey && acknowledged) writeSheetScale(sheetKey, acknowledged);
       }
       setCalNodes([]);
       setCalibrating(false);

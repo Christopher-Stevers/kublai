@@ -1,4 +1,5 @@
 "use client";
+import { useDrawingScaleSave } from "~/hooks/use-drawing-scale-save";
 import { mergeDrawingWorkspaceSnapshot } from "~/lib/drawing-workspace-payload";
 import { DEFAULT_HYPERLINK_COLOR, DEFAULT_HYPERLINK_OPACITY } from "~/lib/drawing-hyperlink-style";
 import { useDrawingLayerVisibility, type DrawingLayers } from "./useDrawingLayerVisibility";
@@ -753,7 +754,7 @@ export function DrawingWorkspace({
   const [linkChooser, setLinkChooser] = useState<DrawingMarkup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedDrafts, setFailedDrafts] = useState<DrawingSave[]>([]);
-  const [pending, setPending] = useState(0);
+  const [pendingWrites, setPending] = useState(0);
   const archiveInFlight = useRef(false);
   const [removing, setRemoving] = useState<{
     id: string;
@@ -839,7 +840,6 @@ export function DrawingWorkspace({
   );
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
-  const scaleMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.setScale.useMutation(), canStartDocumentWrite);
   const source = data?.jobSheets.find((item) => item.id === sourceId) ?? {
     ...sheet,
     id: sheet.id,
@@ -1053,6 +1053,16 @@ export function DrawingWorkspace({
     Boolean(data) &&
     data?.canAnnotate !== false &&
     (online || queued.ready);
+  const scaleSave = useDrawingScaleSave({
+    jobId, sheetId: sheet.id, sourceId, omitHyperlinks: !hyperlinksVisible,
+    canStart: () => online && writable && canStartDocumentWrite(),
+    // Draft edits never fabricate revision numbers; only accepted server data
+    // advances this ceiling. The draft scale itself is not authority.
+    currentAcceptedRevision: () => Math.max(metadata?.revision ?? -1, serverData?.metadata.revision ?? -1),
+    onAccepted: next => setMetadata(old => old && old.revision > next.revision ? old : old && metadataDirty ? { ...old, scale: next.scale, revision: next.revision } : next),
+    onError: fail,
+  });
+  const pending = pendingWrites + (scaleSave.isPending ? 1 : 0);
   const entities = useMemo(() => {
     const queuedIds = new Set(
       queued.records.map((record) => record.preview.id),
@@ -1456,29 +1466,7 @@ export function DrawingWorkspace({
     }
   };
   /** The sheet's scale is shared: setting it changes it for everyone on the job. */
-  const saveScale = async (scale: DrawingMetadata["scale"]) => {
-    if (!online) return false;
-    setPending((n) => n + 1);
-    setError(null);
-    try {
-      const next = await scaleMutation.mutateAsync({ sheetId: sheet.id, scale });
-      await utils.drawingsWorkspace.get.cancel({ sheetId: sheet.id });
-      utils.drawingsWorkspace.get.setData({ sheetId: sheet.id, ...(!hyperlinksVisible ? { omitHyperlinks: true } : {}) }, (old) =>
-        old ? { ...old, metadata: next } : old,
-      );
-      // Unsaved sheet details are kept and now save against the new revision.
-      setMetadata((old) =>
-        old && metadataDirty ? { ...old, scale: next.scale, revision: next.revision } : next,
-      );
-      await refresh().catch(fail);
-      return true;
-    } catch (reason) {
-      fail(reason);
-      return false;
-    } finally {
-      setPending((n) => n - 1);
-    }
-  };
+  const saveScale = (scale: DrawingMetadata["scale"]) => scaleSave.save(scale);
   const openLinkUrl = useCallback((href: string) => {
     const url = new URL(href, window.location.origin);
     if (url.origin === window.location.origin &&
