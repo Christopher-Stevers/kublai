@@ -15,9 +15,9 @@ export function ServiceWorkerRegistration() {
           updateViaCache: "none",
         });
 
-        // Check for a fresh worker after each app open. The worker is network-first
-        // for pages, so updated HTML/JS wins online while cached pages remain
-        // available offline.
+        // Check for a fresh worker after each app open. Documents still pass
+        // the server authentication gate; only an authenticated live tab can
+        // reuse saved route payloads.
         await registration.update();
 
         const readyRegistration = await navigator.serviceWorker.ready;

@@ -3,7 +3,7 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v13";
+const VERSION = "foremenhq-offline-shell-v14";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
@@ -88,7 +88,7 @@ self.addEventListener("install", (event) => {
       .open(PAGE_CACHE)
       .then((cache) =>
         Promise.allSettled(
-          ["/", "/jobs", OFFLINE_PAGE].map(async (url) => { const response = await offlineTestFetch(new Request(new URL(url, self.location.origin))); if(response.ok) await cache.put(url, response); }),
+          [OFFLINE_PAGE].map(async (url) => { const response = await offlineTestFetch(new Request(new URL(url, self.location.origin))); if(response.ok) await cache.put(url, response); }),
         ).catch(() => {
           // Authenticated routes may not precache during install depending on the
           // browser/session. Runtime navigation caching below is the real source
@@ -241,31 +241,15 @@ function isStaticAsset(url, request) {
   );
 }
 
+// Documents always pass the server auth gate. Never replay private server HTML
+// before authentication, including on a cold offline launch.
 async function networkFirstNavigation(request) {
   try {
-    const response = await offlineTestFetch(request);
-    if (response.ok && response.type === "basic") {
-      await safePut(PAGE_CACHE, request, response.clone());
-      // Keep a Jobs shell fallback fresh for deep links.
-      const url = new URL(request.url);
-      if (url.pathname === "/jobs") {
-        await safePut(PAGE_CACHE, OFFLINE_FALLBACK, response.clone());
-      }
-    }
-    return response;
+    return await offlineTestFetch(request);
   } catch {
-    return (
-      (await safeMatch(request, PAGE_CACHE)) ||
-      (await safeMatch(OFFLINE_FALLBACK, PAGE_CACHE)) ||
-      (await safeMatch(OFFLINE_PAGE, PAGE_CACHE)) ||
-      (await safeMatch("/", PAGE_CACHE)) ||
-      new Response(
-        "<!doctype html><title>ForemanHQ offline</title><main style='font-family:sans-serif;padding:2rem'><h1>ForemanHQ is offline</h1><p>Reconnect once to cache the app shell, then it can open offline.</p></main>",
-        {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-          status: 200,
-        },
-      )
+    return (await safeMatch(OFFLINE_PAGE, PAGE_CACHE)) || new Response(
+      "<!doctype html><title>ForemanHQ offline</title><main><h1>Reconnect to open ForemanHQ</h1><p>Sign in while connected before opening saved screens.</p></main>",
+      { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 },
     );
   }
 }
@@ -278,18 +262,65 @@ function isRscRequest(url, request) {
   );
 }
 
-async function networkFirstRsc(request) {
-  try {
+// Bindings deliberately live only for this worker lifetime. A saved account
+// fingerprint must never authorize a new document or another tab on the device.
+const navigationClients = new Map();
+self.addEventListener("message", event => {
+  if (event.data?.type !== "FOREMENHQ_NAVIGATION_ACCOUNT" || !event.source?.id) return;
+  const account = event.data.account;
+  if (typeof account === "string" && account.length > 0 && account.length < 500)
+    navigationClients.set(event.source.id, account);
+  else {
+    const previous = navigationClients.get(event.source.id);
+    navigationClients.delete(event.source.id);
+    if (previous) event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(PAGE_CACHE);
+        await Promise.all((await cache.keys()).filter(key =>
+          new URL(key.url ?? key, self.location.origin).searchParams.get("__device_account") === previous,
+        ).map(key => cache.delete(key)));
+      } catch { /* Revocation in memory applies even when storage is unavailable. */ }
+    })());
+  }
+});
+function navigationKey(request, account) {
+  const url = new URL(request.url);
+  url.searchParams.delete("_rsc");
+  // A partial Flight response is valid only for the same router tree. Preserve
+  // every other query parameter (drawing/document selection, searches, etc.).
+  url.searchParams.set("__device_account", account);
+  url.searchParams.set("__device_tree", request.headers.get("Next-Router-State-Tree") ?? "");
+  url.searchParams.set("__device_next_url", request.headers.get("Next-Url") ?? "");
+  return new Request(url.href, { headers: request.headers });
+}
+async function networkFirstRsc(request, event) {
+  const account = navigationClients.get(event?.clientId);
+  // Prefetch must not create a claim that the user has visited a screen.
+  const path = new URL(request.url).pathname;
+  const reviewedRoute = path === "/jobs" || /^\/jobs\/[0-9a-f-]{36}(?:\/(?:drawings|rooms))?$/.test(path) ||
+    path === "/jobs/assets" || path.startsWith("/jobs/assets/");
+  const eligible = account && reviewedRoute && request.headers.get("Next-Router-Prefetch") !== "1";
+  if (!eligible) return offlineTestFetch(request);
+  const key = navigationKey(request, account);
+  const refresh = async () => {
     const response = await offlineTestFetch(request);
-    if (response.ok && response.type === "basic") {
-      await safePut(PAGE_CACHE, request, response.clone());
+    if (navigationClients.get(event.clientId) !== account) return response;
+    if (response.ok && !response.redirected &&
+        response.headers.get("Content-Type")?.includes("text/x-component"))
+      await safePut(PAGE_CACHE, key, response.clone());
+    // Never reuse a payload after an explicit access denial or redirect.
+    else if (response.status === 401 || response.status === 403 || response.redirected) {
+      navigationClients.delete(event.clientId);
+      try { await (await caches.open(PAGE_CACHE)).delete(key); } catch {}
     }
     return response;
-  } catch {
-    const cached = await safeMatch(request, PAGE_CACHE);
-    if (cached) return cached;
-    throw new Error("Offline RSC payload not cached");
+  };
+  const cached = await safeMatch(key, PAGE_CACHE);
+  if (cached) {
+    event.waitUntil(refresh().catch(() => undefined));
+    return cached;
   }
+  return refresh();
 }
 
 async function cacheFirstStatic(request) {
@@ -392,7 +423,7 @@ self.addEventListener("message", (event) => {
     event.waitUntil(
       (async () => {
         const urls = Array.from(
-          new Set(["/", "/jobs", OFFLINE_PAGE, ...(data.urls ?? [])]),
+          new Set([OFFLINE_PAGE]),
         )
           .slice(0, 20)
           .map((value) => {
@@ -462,19 +493,19 @@ self.addEventListener("message", (event) => {
   );
 });
 
-async function routeAppRequest(request) {
+async function routeAppRequest(request, event) {
   const url = new URL(request.url);
   if (request.method !== "GET" || !isSameOrigin(url) || isPrivateChatRequest(url)) return offlineTestFetch(request);
   if (isPublicPdfRuntime(url)) return networkFirstPdfRuntime(request);
   if (isCacheableImageRequest(url, request)) return cacheFirstImage(request);
   if (isApiOrSyncRequest(url)) return offlineTestFetch(request);
   if (request.mode === "navigate" || request.destination === "document") return networkFirstNavigation(request);
-  if (isRscRequest(url, request)) return networkFirstRsc(request);
+  if (isRscRequest(url, request)) return networkFirstRsc(request, event);
   if (isStaticAsset(url, request)) return cacheFirstStatic(request);
   return offlineTestFetch(request);
 }
 self.addEventListener("fetch", event => {
-  event.respondWith(routeAppRequest(event.request));
+  event.respondWith(routeAppRequest(event.request, event));
 });
 
 // A device opt-in belongs to one signed-in account. Persist only its one-way account

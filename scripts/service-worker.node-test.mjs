@@ -39,7 +39,7 @@ function harness(failure, existingEntries) {
       },
       match: cache.match,
     },
-    self: { location: { origin: "https://test.local" }, registration: {showNotification:async (title,options)=>shown.push({title,...options})}, addEventListener(type,handler) {handlers.set(type,handler);} },
+    self: { location: { origin: "https://test.local" }, registration: {showNotification:async (title,options)=>shown.push({title,...options})}, addEventListener(type,handler) { const previous = handlers.get(type); handlers.set(type, previous ? event => { previous(event); handler(event); } : handler); } },
   });
   vm.runInContext(source, context);
   return { context, entries, handlers, shown, fetched };
@@ -146,12 +146,12 @@ test("offline test blocks reads, writes, private files and third-party requests 
 test("offline test persists across worker restart and still serves cached public assets and pages", async () => {
   const first = harness();
   first.entries.set("https://test.local/_next/static/app.js", new Response("cached code"));
-  first.entries.set("/jobs", new Response("cached shell"));
+  first.entries.set("/offline.html", new Response("offline gate"));
   await first.context.setOfflineTest(true);
   const next = harness(undefined, first.entries);
   assert.equal(await next.context.offlineTestEnabled(), true);
   assert.equal(await (await next.context.routeAppRequest(new Request("https://test.local/_next/static/app.js"))).text(), "cached code");
-  assert.equal(await (await next.context.networkFirstNavigation(new Request("https://test.local/jobs"))).text(), "cached shell");
+  assert.equal(await (await next.context.networkFirstNavigation(new Request("https://test.local/jobs"))).text(), "offline gate");
   assert.equal(next.fetched.length, 0);
   await assert.rejects(next.context.cacheFirstStatic(new Request("https://test.local/_next/static/missing.js")), /offline test/);
 });
@@ -159,4 +159,60 @@ test("cannot enable offline testing when the recovery preference cannot be saved
   const {context} = harness("quota");
   await assert.rejects(context.setOfflineTest(true));
   assert.equal(await context.offlineTestEnabled(), false);
+});
+
+// Synthetic latency verifies ordering, not a device render-time guarantee.
+test("visited authenticated Flight payload returns before a stalled refresh", async () => {
+  const { context, fetched } = harness();
+  const request = new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111?_rsc=one", {
+    headers: { RSC: "1", "Next-Router-State-Tree": "tree-a" },
+  });
+  vm.runInContext('navigationClients.set("tab-a", "org:alice")', context);
+  const key = context.navigationKey(request, "org:alice");
+  await context.safePut(vm.runInContext("PAGE_CACHE", context), key, new Response("saved Flight"));
+  context.fetch = () => new Promise(() => {});
+  const pending = [];
+  const result = await Promise.race([
+    context.networkFirstRsc(new Request(request.url.replace("one", "two"), request), { clientId: "tab-a", waitUntil: p => pending.push(p) }),
+    new Promise((_, reject) => setTimeout(() => reject(Error("waited for network")), 100)),
+  ]);
+  assert.equal(await result.text(), "saved Flight");
+  assert.equal(pending.length, 1);
+  assert.equal(fetched.length, 0);
+});
+test("Flight cache separates accounts, tabs and router trees", async () => {
+  const { context } = harness();
+  const request = new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111?_rsc=one", { headers: { RSC: "1", "Next-Router-State-Tree": "tree-a" } });
+  vm.runInContext('navigationClients.set("tab-a", "org:alice"); navigationClients.set("tab-b", "org:bob")', context);
+  await context.safePut(vm.runInContext("PAGE_CACHE", context), context.navigationKey(request, "org:alice"), new Response("alice private"));
+  for (const event of [{clientId:"tab-b"}, {clientId:"new-tab"}])
+    assert.equal(await (await context.networkFirstRsc(request, event)).text(), "online image");
+  const otherTree = new Request(request, { headers: { RSC: "1", "Next-Router-State-Tree": "tree-b" } });
+  assert.equal(await (await context.networkFirstRsc(otherTree, {clientId:"tab-a"})).text(), "online image");
+});
+test("cold offline document never replays private HTML", async () => {
+  const { context, entries } = harness();
+  entries.set("https://test.local/jobs/11111111-1111-4111-8111-111111111111", new Response("private screen"));
+  entries.set("/jobs", new Response("private fallback"));
+  await context.setOfflineTest(true);
+  const response = await context.networkFirstNavigation(new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111"));
+  assert.match(await response.text(), /Reconnect to open/);
+});
+
+test("authenticated route refresh stores fresh Flight and logout revokes saved access", async () => {
+  const { context, handlers } = harness();
+  const waits = [];
+  const message = account => handlers.get("message")({data:{type:"FOREMENHQ_NAVIGATION_ACCOUNT", account}, source:{id:"tab-a"}, waitUntil:p=>waits.push(p)});
+  message("org:alice:build:one");
+  const request = new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111?_rsc=one", {headers:{RSC:"1"}});
+  context.fetch = async () => new Response("fresh Flight", {headers:{"Content-Type":"text/x-component"}});
+  await context.networkFirstRsc(request, {clientId:"tab-a",waitUntil:p=>waits.push(p)});
+  await context.setOfflineTest(true);
+  assert.equal(await (await context.networkFirstRsc(request, {clientId:"tab-a",waitUntil:p=>waits.push(p)})).text(), "fresh Flight");
+  await Promise.all(waits);
+  message(null);
+  await Promise.all(waits);
+  await assert.rejects(context.networkFirstRsc(request,{clientId:"tab-a"}), /offline test/);
+  message("org:alice:build:two");
+  await assert.rejects(context.networkFirstRsc(request,{clientId:"tab-a"}), /offline test/);
 });

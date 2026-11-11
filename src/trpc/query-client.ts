@@ -25,7 +25,8 @@ export const createQueryClient = () => {
       queries: {
         // With SSR, we usually want to set some default staleTime
         // above 0 to avoid refetching immediately on the client
-        staleTime: 30 * 1000,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 24 * 60 * 60 * 1000,
         retry: (count, error) => {
           const status = (error as { data?: { httpStatus?: number } }).data
             ?.httpStatus;
