@@ -47,7 +47,10 @@
     "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json",
     "perf/artifacts/pixel-r7-physical-session-2026-11-11/assessment.json",
     "perf/artifacts/phone-v5-local-cancelled-2026-11-11.json",
-    "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json"
+    "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
+    "perf/artifacts/phase1-r18-build-proof-2026-11-11.json",
+    "perf/artifacts/phase1-r18-http-proof-2026-11-11.json",
+    "perf/artifacts/replicache-isolated-attempt2-2026-11-11.json"
   ],
   "rows": [
     {
@@ -296,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T14:43:40.937479+00:00",
+  "updatedAt": "2026-11-11T15:07:16.077084+00:00",
   "completedCandidateLabCaptures": 4,
   "candidateRegression": {
     "status": "failed",
@@ -921,17 +924,72 @@
     "replicacheContract": {
       "commit": "fc81fd26",
       "source": "perf/replicache-existing-contract.md",
-      "status": "existing-source-contract-documented",
-      "runtimeTestsRun": false,
-      "phase2Rollout": false
+      "status": "existing-contract-source-and-private-database-assertions-passed",
+      "runtimeTestsRun": true,
+      "phase2Rollout": false,
+      "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+      "proof": "perf/artifacts/replicache-isolated-attempt2-2026-11-11.json",
+      "reportedPullCheckpoints": 16,
+      "noDatabaseTestsPassed": 15,
+      "actualApplicationClientGuarded": true,
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "failedFirstAttemptPreserved": true,
+      "fullConvergenceGate": false
     },
     "pressChunkExperiment": {
-      "status": "three-controlled-canonical-builds-authorized",
-      "source": "perf/use-press-chunk-experiment.md",
+      "status": "controlled-byte-proof-complete-standalone-policy-held",
+      "source": "perf/artifacts/use-press-four-corner-2026-11-11/results.json",
       "configurationTestsPassed": 4,
       "base": "exact-frozen-R17",
       "productionActivated": false,
-      "configSha256": "047f4d6aa8546b21956b5c3f9bef5a7a3e8520b1e1fd7cf4f25d4a9d6fbe7892"
+      "configSha256": "047f4d6aa8546b21956b5c3f9bef5a7a3e8520b1e1fd7cf4f25d4a9d6fbe7892",
+      "oldPolicyChangedGzipBytes": 216161,
+      "newPolicyChangedGzipBytes": 24505,
+      "newPolicyControlledEditPass": true,
+      "standaloneHeaviestGrowthBytes": 327,
+      "physicalAllocationsBefore": 25,
+      "physicalAllocationsAfter": 1,
+      "buttonAllocationsBefore": 25,
+      "buttonAllocationsAfter": 33,
+      "activation": false
+    },
+    "r18Candidate": {
+      "status": "canonical-and-http-passed-functional-running",
+      "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+      "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+      "sourceFileCount": 2317,
+      "runtimeChangedPaths": 5,
+      "source": "perf/artifacts/phase1-r18-build-proof-2026-11-11.json",
+      "sharedGzipBytes": 476958,
+      "heaviestGzipBytes": 627137,
+      "phase0RelativeDeployGzipBytes": 1320776,
+      "r17RelativeBatchGzipBytes": 598793,
+      "batchPasses100KB": false,
+      "phase0StaticRatchetsPass": true,
+      "sharedAndHeaviestImproveVersusR17": true,
+      "httpProof": "perf/artifacts/phase1-r18-http-proof-2026-11-11.json",
+      "currentHttpAssets": 293,
+      "historicalHttpSamples": 10,
+      "newLabSnapshot": "/tmp/foremanhq-speed-app-mIZVko",
+      "labBuild": "kQwDUUMWJAxQExPo56xqn",
+      "labCompilePassed": true,
+      "labReadPreflightPassed": 14,
+      "functionalV6": "running-separate-fresh-private-database",
+      "fullMatrixRun": false,
+      "activation": false
+    },
+    "openJobLaterFixes": {
+      "commits": [
+        "48f5721d",
+        "22dfcfd4"
+      ],
+      "registryTestsPassed": 6,
+      "activityTestsPassed": 11,
+      "redundantQueryRemoved": true,
+      "profilerNestedCommitRemoved": true,
+      "productionLatencyBenefitMeasured": false,
+      "includedInR18": true
     }
   },
   "historicalCandidateRegressions": [

@@ -712,3 +712,42 @@ exact R17, excluding Snapshot and unrelated checkout changes. No byte saving is
 yet measured for this experiment. A source-grounded existing Replicache contract
 is now recorded in `replicache-existing-contract.md`; it changes no runtime and
 is not Phase2 implementation or convergence proof. The Pixel remains deferred.
+
+## R18 build and HTTP pass; isolated existing sync verified — 2026-11-11
+
+The controlled usePress extraction reduces the identical emitted small edit from
+216,161 to 24,505 changed gzip bytes and 25 physical allocations to one. It also
+changes other chunk placement, including Button allocations from 25 to 33. Its
+standalone configuration grows the heaviest screen by 327 bytes, so that corner
+remains held. The migration is distinct from the controlled edit; every outcome
+is preserved in `artifacts/use-press-four-corner-2026-11-11/`.
+
+R18 composes exactly five reviewed runtime paths on frozen R17: that configuration,
+deferred snapshot controls, removal of one discarded open-job preparation read,
+and bounded transactional retained-panel bookkeeping. The latter's Profiler
+regression fails the old nested commit and passes the new single update; eleven
+Activity/integration tests and six registry tests pass. These establish concrete
+work removal, not a production latency amount or the cause of R17's failed cells.
+
+The canonical R18 build passes compilation/types/prerender with source fingerprint
+`ec149c2e…` and build `c58613f1…`. Shared/heaviest gzip are 476,958 / 627,137,
+both lower than R17; Phase0 static ratchets also pass. The full R17→R18 batch is
+598,793 changed gzip bytes, still above 100,000. No waiver, final-target pass or
+browser-download claim follows. All 293 current HTTP assets, ten actual retained
+historical samples, packaged SW and unauthenticated endpoint checks pass; the
+read-only proof server stopped cleanly. A new private lab compiles and passes
+all fourteen read checks. The unchanged V6 compiled behavior check is now running
+on a separate fresh fixture. No full R18 timing or activation has occurred.
+
+Existing Replicache contract assertions also pass on an independent disposable
+R17-bound database, reporting sixteen pull checkpoints and zero PG errors. The
+first runner attempt failed before its first fixture insert because the driver
+ignored URL query host/port; it remains recorded. The corrected guard inspects
+the actual application client's socket options before SQL and verifies the same
+client's database/data-directory identity in a read-only transaction. Fifteen
+database-free guard/cleanup tests pass; actual logs were preserved after shutdown
+and the owned database was removed. This verifies existing server behavior only,
+not Phase2 domains, three-device convergence or live transport. See
+`artifacts/replicache-isolated-attempt2-2026-11-11.json`.
+
+Production remains the Phase0 bootstrap. Pixel work stays deferred as requested.
