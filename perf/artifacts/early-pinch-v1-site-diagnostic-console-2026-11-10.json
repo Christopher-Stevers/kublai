@@ -1,0 +1,42 @@
+{
+  "status": "diagnostic-only",
+  "protocol": "early-pinch-v1",
+  "source": "Preserved console log from five-Site narrow trace; original raw trace JSON was overwritten by a subsequent pilot in the reusable lab directory.",
+  "samples": [
+    {
+      "run": 1,
+      "durationMs": 999.1,
+      "precision": "rounded console output"
+    },
+    {
+      "run": 2,
+      "durationMs": 976.2,
+      "precision": "rounded console output"
+    },
+    {
+      "run": 3,
+      "durationMs": 957.8,
+      "precision": "rounded console output"
+    },
+    {
+      "run": 4,
+      "durationMs": 982.6,
+      "precision": "rounded console output"
+    },
+    {
+      "run": 5,
+      "durationMs": 1415,
+      "precision": "rounded console output"
+    }
+  ],
+  "preflightPassed": true,
+  "database": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "limitations": [
+    "Rounded durations only; no reconstructed raw browser stage or resource measurements.",
+    "Not frozen-harness attested; no target, accepted baseline or improvement claim.",
+    "Original full v1 captures remain separately preserved byte-for-byte."
+  ]
+}
