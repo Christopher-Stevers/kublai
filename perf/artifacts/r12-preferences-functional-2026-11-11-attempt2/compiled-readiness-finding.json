@@ -1,0 +1,13 @@
+{
+  "kind": "Emitted-code evidence, independent of incomplete runtime observation",
+  "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "labBuild": "UlJL743lmFp6aZ8T1n7Tg",
+  "chunk": "8530.js",
+  "chunkSha256": "0051fb8032ec613c4605da290fdd4da09792cd9b91488389394cae00420236ff",
+  "sourceFile": "src/server/background/listen-lifecycle.ts",
+  "sourceSha256": "128480e00a96ba1072ae5643cfbab2a6eea56960e26202f562115d8261215275",
+  "exactSanitizedExcerpt": "function(){try{let a=f().dirname(4636);for(let b=0;b<4;b++,a=f().dirname(a))try{let b=JSON.parse((0,d.readFileSync)(f().join(a,\"package.json\"),\"utf8\"));if(b&&\"object\"==typeof b&&\"name\"in b&&\"postgres\"===b.name&&\"version\"in b&&\"string\"==typeof b.version)return b.version}catch{}}catch{}return null}",
+  "finding": "Webpack replaced the createRequire/import.meta.url resolve operand with numeric module ID4636; path.dirname(number) throws and the catch returns null, so version-pinned LISTEN availability remains unsupported/false. Requires a distinct product source candidate, not an injected readiness frame.",
+  "runtimeQualification": "This attempted run saw only an initial false frame before an HTTP observation Error; it did not establish a completed false-only readiness window."
+}

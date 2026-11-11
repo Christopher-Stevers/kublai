@@ -1,0 +1,25 @@
+{
+  "status": "frozen-source-only-rerun-authorization-pending",
+  "frozenAt": "2026-11-11T12:04:41.887Z",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v3-method-xqyEoY",
+  "files": {
+    "perf/live/compiled-preferences-functional.mjs": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+    "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/observed-trpc-response.node-test.mjs": "4af1559cb8eaa90c44f4bf69d492c6d378c4770d7db8a52e0bd44c739aaa0e0c",
+    "perf/live/preference-observation-context.node-test.mjs": "62815bea6719d4300d2e6e21f179256cc5ef7ef448d370858d9e9078875e2723",
+    "perf/live/compiled-preferences-functional-plan.json": "43ad340c985081c32155104d4e530ca7120ee23442e781833cf20575f819609e"
+  },
+  "driverSha256": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+  "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "labSnapshot": "/tmp/foremanhq-speed-app-PEJvAh",
+  "labBuild": "UlJL743lmFp6aZ8T1n7Tg",
+  "priorAttempt": "perf/artifacts/r12-preferences-functional-2026-11-11-attempt1",
+  "sourceChecks": {
+    "nodeFixturesPassed": 10,
+    "realServerFixture": "Installed fetchRequestHandler plus initTRPC/SuperJSON; streamed response Content-Type application/json selected only by actual request trpc-accept.",
+    "syntaxPassed": true
+  },
+  "executed": false
+}

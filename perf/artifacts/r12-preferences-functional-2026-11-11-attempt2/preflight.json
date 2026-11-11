@@ -1,0 +1,87 @@
+{
+  "status": "passed",
+  "build": "UlJL743lmFp6aZ8T1n7Tg",
+  "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2308,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2303,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+    "preTransformUnchangedFilesChecked": 2308
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "results": [
+    {
+      "procedure": "user.getMe",
+      "status": "ok"
+    },
+    {
+      "procedure": "notifications.identity",
+      "status": "ok"
+    },
+    {
+      "procedure": "push.identity",
+      "status": "ok"
+    },
+    {
+      "procedure": "job.getJob",
+      "status": "ok"
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "status": "ok"
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "status": "ok"
+    },
+    {
+      "procedure": "drawings.listSets",
+      "status": "ok"
+    },
+    {
+      "procedure": "drawings.getSet",
+      "status": "ok"
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "status": "ok"
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "status": "ok"
+    },
+    {
+      "procedure": "chat.getOverview",
+      "status": "ok"
+    },
+    {
+      "procedure": "chat.history",
+      "status": "ok"
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "status": "ok"
+    },
+    {
+      "procedure": "notifications.overview",
+      "status": "ok"
+    }
+  ]
+}

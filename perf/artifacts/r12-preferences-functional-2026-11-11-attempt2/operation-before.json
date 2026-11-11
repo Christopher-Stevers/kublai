@@ -1,0 +1,13 @@
+{
+  "sealedAt": "2026-11-11T12:05:16.309008+00:00",
+  "files": {
+    "/tmp/foremanhq-r12-pref-v3-server.sh": "7cb66df9d0e6f171d4354dfac512811b16cfd453b1e4ef72bbe62d9c370af6ae",
+    "/tmp/foremanhq-r12-pref-v3-command.sh": "bd2453116a67342def38f9226a843acf8a569b005187467ba5dd7138471021aa"
+  },
+  "compiledLab": "/tmp/foremanhq-speed-app-PEJvAh",
+  "labBuild": "UlJL743lmFp6aZ8T1n7Tg",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v3-method-xqyEoY",
+  "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "outerBoundSeconds": 480
+}

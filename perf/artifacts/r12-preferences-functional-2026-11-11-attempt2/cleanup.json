@@ -1,0 +1,12 @@
+{
+  "serverPid": 4064677,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "ownedPorts3483And3484Closed": true,
+  "browserProxyClosedByDriverFinally": true,
+  "coordinatorExitCode": 1,
+  "pgErrors": [],
+  "acceptedEvidence": false,
+  "assertionsPassed": 0,
+  "noAutomaticRetry": true
+}

@@ -1,0 +1,124 @@
+{
+  "protocol": "compiled-preferences-functional-v3",
+  "status": "failed",
+  "acceptedGateEvidence": false,
+  "physicalPhoneEvidence": false,
+  "startedAt": "2026-11-11T12:05:50.831Z",
+  "driverSha256": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+  "protocolDependencyHashesBefore": {
+    "compiled-preferences-functional.mjs": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+    "observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8"
+  },
+  "stage": "compiled-readiness",
+  "assertions": [],
+  "requests": [
+    {
+      "procedure": "push.identity",
+      "method": "GET",
+      "at": 365,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMyRole",
+      "method": "GET",
+      "at": 368,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "notifications.identity",
+      "method": "GET",
+      "at": 432,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMe",
+      "method": "GET",
+      "at": 432,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "pipeSpecs.aiConnection",
+      "method": "GET",
+      "at": 432,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "method": "GET",
+      "at": 432,
+      "contextId": "consumer"
+    },
+    {
+      "procedure": "appDevices.report",
+      "method": "POST",
+      "at": 439,
+      "contextId": "consumer"
+    }
+  ],
+  "httpAuthority": [
+    {
+      "contextId": "consumer",
+      "procedure": "user.getMyRole",
+      "requestAt": 368,
+      "responseAt": 419,
+      "success": true,
+      "accountMatches": true,
+      "appAccess": true,
+      "canEditExecutive": true,
+      "role": "admin"
+    }
+  ],
+  "observationErrors": [
+    {
+      "contextId": "consumer",
+      "kind": "HTTP_DECODE_FAILED",
+      "name": "Error",
+      "requestTransport": "jsonl",
+      "responseContentType": "application/json",
+      "at": 444
+    }
+  ],
+  "frames": [
+    {
+      "contextId": "consumer",
+      "event": "preferences-ready",
+      "ready": false,
+      "at": 441
+    }
+  ],
+  "controlledMutations": [],
+  "limitations": [
+    "Synthetic Clerk identity; actual app HTTP/SQL/SSE/UI, not live Clerk session revocation proof.",
+    "Functional intervals and fault injection are separate from the frozen timing driver and ten-minute idle.",
+    "Suppresses one covered preference interval only; other polls/server work remain."
+  ],
+  "guardRejections": [],
+  "databaseHealthBefore": {
+    "unexpectedErrors": 0,
+    "adminFatal": 0
+  },
+  "source": {
+    "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+    "labBuild": "UlJL743lmFp6aZ8T1n7Tg",
+    "preflightQueries": 14,
+    "privateProcessBinding": true
+  },
+  "failure": {
+    "stage": "compiled-readiness",
+    "name": "Error",
+    "message": "Consumer real HTTP observation decoding failed"
+  },
+  "databaseHealthAfter": {
+    "unexpectedErrors": 0,
+    "adminFatal": 0
+  },
+  "protocolDependencyHashesAfter": {
+    "compiled-preferences-functional.mjs": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+    "observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8"
+  },
+  "driverSha256After": "175555553da1c0171c7dcbbea309cc9524fecdaa821f6b1bb46bb3e75472ee83",
+  "endedAt": "2026-11-11T12:05:51.308Z"
+}
