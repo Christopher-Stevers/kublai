@@ -1,0 +1,212 @@
+{
+  "status": "frozen-source-only-awaiting-root-compile-review",
+  "baseBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+  "baseSourceFingerprint": "71410fbee1832a3dc141c47ef790edf9093c6e5146beac3842534503f7a8b0f3",
+  "groups": [
+    {
+      "group": "ordinary-row-partition",
+      "commit": "49e911d391034173697b6820c0eae91b7eac9f6d",
+      "paths": [
+        {
+          "path": "src/components/materialLists/MaterialListItem.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "53bc702f7d0adddbf4044353bbc7ca19de91ca139bf7061c5447b9f353cc1b90",
+          "postimageSha256": "9661a0f5b719689adcd8915780409df00fe53c8cabc94ef1bcb6b2d026131431"
+        },
+        {
+          "path": "src/components/materialLists/MaterialListItemPresentation.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "95d410f46829c268090d9d56b8f04120efa27e10e002f10a5ca081fb32ea223b"
+        },
+        {
+          "path": "src/components/materialLists/OrdinaryMaterialListItem.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "e06d18696b67510d45b1871820b046f9ab5f48bdb59b7e1008bd526fe353f889"
+        }
+      ],
+      "patchSha256": "abf968c0477892f69786524a3f4d3f3e8f928a71617013b14fd44e568028ee61",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "merge-motion",
+      "commit": "3c322416e15a24d225443f79c1b9bde0a74d22df",
+      "paths": [
+        {
+          "path": "src/components/materialLists/use-card-merge.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "41316c18e73073a748fbd7fad5e58e4f0460bf86497a752c2217262c2a472c21",
+          "postimageSha256": "34382eebf03fd3a41e86ac3453285956392bafa715a3ff8e8754b8cfd0b32aac"
+        }
+      ],
+      "patchSha256": "e1cf3fd543539c9555c7e6717bf90b80a89aebbf376593c958a45869cded98f2",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "merge-unmount-ack",
+      "commit": "1a1d88a4b1eaf29d92b2a05f442746ade7e28048",
+      "paths": [
+        {
+          "path": "src/components/materialLists/use-card-merge.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "34382eebf03fd3a41e86ac3453285956392bafa715a3ff8e8754b8cfd0b32aac",
+          "postimageSha256": "8fd1a49fbf5f6b8d8dc6a96011f0a7f091c35d85b5cb9336725036a5a9e40ac2"
+        }
+      ],
+      "patchSha256": "dc02baa738baa58ac6b3c812f240dcd229df5a70c8d5d4a3dd51a441b65569d7",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "snapshot-idle-observer",
+      "commit": "9970d7239a8fd41cc9af587e512d1c27cf66013b",
+      "paths": [
+        {
+          "path": "src/components/chat/SnapshotProvider.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "00b12d81d7f829e2414da0c8d39499c633c4b1df377c7a0221898d2d54561318",
+          "postimageSha256": "58ba8efa51672ef4ff67cb34168e39e241a0fb5d93313ed53b0598b908fcc6df"
+        }
+      ],
+      "patchSha256": "5801682ba1b898d93eca6d00961ae966cb94c669c055fe25a575b80398442c72",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "comparison-import-boundary",
+      "commit": "5d2130c8593fb9c4043e2c4f241bb219eefe62ff",
+      "paths": [
+        {
+          "path": "src/components/jobs/FileComparison.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "212302bf5b3e1d57154a0023a23344ee9d95965a4aa8f325fe1ff2137bf1e52c",
+          "postimageSha256": "c66b7a5656c6bc86859a8adf3cb96c4b6fc430085b5bf6eb378145156f4c4b73"
+        },
+        {
+          "path": "src/components/jobs/FileComparisonContent.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "212302bf5b3e1d57154a0023a23344ee9d95965a4aa8f325fe1ff2137bf1e52c"
+        }
+      ],
+      "patchSha256": "dd7d29bf75960313e1fe78fd97ed440b5af8e48e11eb1173c6c7ba4db65db968",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "comparison-shared-controls",
+      "commit": "90ca286ff86ad90650be51c41bfe742448d2ca9b",
+      "paths": [
+        {
+          "path": "src/components/jobs/FileComparison.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "c66b7a5656c6bc86859a8adf3cb96c4b6fc430085b5bf6eb378145156f4c4b73",
+          "postimageSha256": "0c087228c5ef6430b118607866d356bcb238ed5051b3b75555a266ecb8c5e25c"
+        }
+      ],
+      "patchSha256": "dce1340c1f6e9b4944030c42c7f1558864c2c77499dc1e427153cf9ec0671cef",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "scale-authoritative-ack",
+      "commit": "0e421442209ba14e466455198eaa8a852d6768c7",
+      "paths": [
+        {
+          "path": "src/components/jobs/DrawingSheetViewer.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "fba8dbea870c034049537f5b19929c603613ccdc901d3e76132e7a3e7e1940df",
+          "postimageSha256": "45cd94165b3a43f9e5811a0f9d1d374670fa038678d378f23e666380af697b77"
+        },
+        {
+          "path": "src/components/jobs/DrawingWorkspace.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "ffa431484b752970e34b619315306eeeb6044f2f24be58ce75c67df7508270a4",
+          "postimageSha256": "92232f966a4db4d096dda0d8364e69dd0d0a1e4080b286d5638dc176f2db3641"
+        },
+        {
+          "path": "src/components/jobs/useDrawingEditor.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "c4f8c04d4ff05d12d82f0c90c74bc8ed5ef39dca420b9ba51d4f8c1a3c3199b4",
+          "postimageSha256": "53f21e1049c4d4498eb500c12ccb3f250372d28eea48cc9284ce989ca19d1256"
+        },
+        {
+          "path": "src/hooks/use-drawing-scale-save.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "d8f71b8db694339dc0d4e7a6e82324b7b26a410dac2f007a088c5e02f39c4cbf"
+        },
+        {
+          "path": "src/server/api/routers/drawingsWorkspace.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "d5689567e012919d1ab01d95074b3b79113fd9850a2588907a3f2c98442e2277",
+          "postimageSha256": "b4b3a105dc0683f0c9d45666021cdd7eb336e8f7c172bc2deb9e958fb987059d"
+        }
+      ],
+      "patchSha256": "ff0b9ccd989f5111f345524b257dbf83e727afe1de37e42cee9d696af92d8fa6",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    }
+  ],
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
+    "runtimePathCount": 12,
+    "operationalPathCount": 0,
+    "changedPaths": [
+      "src/components/chat/SnapshotProvider.tsx",
+      "src/components/jobs/DrawingSheetViewer.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/jobs/FileComparison.tsx",
+      "src/components/jobs/FileComparisonContent.tsx",
+      "src/components/jobs/useDrawingEditor.ts",
+      "src/components/materialLists/MaterialListItem.tsx",
+      "src/components/materialLists/MaterialListItemPresentation.tsx",
+      "src/components/materialLists/OrdinaryMaterialListItem.tsx",
+      "src/components/materialLists/use-card-merge.tsx",
+      "src/hooks/use-drawing-scale-save.ts",
+      "src/server/api/routers/drawingsWorkspace.ts"
+    ],
+    "unaffectedFiles": 5456,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "workerExecutableUnchanged": true,
+    "r8PressExcluded": true,
+    "unrelatedChanges": 0,
+    "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2308
+  },
+  "composition": "Exact R11 copy, then only listed selected runtime git diffs in sequence. Every preimage and intermediate/final postimage checked. No raw HEAD or dirty working files. Tests/docs remain provenance and are not copied into runtime source.",
+  "pending": [
+    "root final review and explicit canonical compile clearance"
+  ],
+  "excluded": [
+    "R8 attribute feedback",
+    "unrelated dirty source",
+    "schema and worker executable/service/bundle",
+    "PackingSlips",
+    "zoom intent",
+    "package/lockfile/tsconfig",
+    "unreviewed later work"
+  ],
+  "buildStarted": false,
+  "activated": false
+}
