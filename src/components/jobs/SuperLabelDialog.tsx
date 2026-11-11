@@ -11,6 +11,12 @@ import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { superLabelSchema, type LabelBox } from "~/lib/super-label";
 import type { DrawingJobSheet } from "~/lib/drawing-workspace";
+
+type LabelProgress =
+  | { stage: "saving" }
+  | { stage: "reading"; index: number; total: number; name: string }
+  | { stage: "refreshing" };
+
 export function SuperLabelDialog({
   source,
   onClose,
@@ -23,19 +29,28 @@ export function SuperLabelDialog({
   const settings = api.drawingsWorkspace.superLabelSettings.useQuery({
     sheetId: source.id,
   });
-  const save = api.drawingsWorkspace.saveSuperLabelBoxes.useMutation();
-  const apply = api.drawingsWorkspace.applySuperLabel.useMutation();
+  const save = api.drawingsWorkspace.saveSuperLabelBoxes.useMutation({
+    networkMode: "always",
+    retry: false,
+  });
+  const apply = api.drawingsWorkspace.applySuperLabel.useMutation({
+    networkMode: "always",
+    retry: false,
+  });
   const [boxes, setBoxes] = useState<
     Partial<Record<"title" | "number", LabelBox>>
   >({});
   const [field, setField] = useState<"title" | "number">("title");
   const [zoom, setZoom] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<LabelProgress | null>(null);
+  const [stopping, setStopping] = useState(false);
   const [results, setResults] = useState<string[]>([]);
   const [error, setError] = useState("");
   const start = useRef<{ x: number; y: number } | null>(null);
   const loaded = useRef(false);
   const stop = useRef(false);
+  const running = useRef(false);
   useEffect(() => {
     if (settings.data && !loaded.current) {
       setBoxes(settings.data.boxes ?? {});
@@ -44,22 +59,43 @@ export function SuperLabelDialog({
   }, [settings.data]);
   useEffect(() => {
     if (!busy) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [busy]);
   const valid = superLabelSchema.safeParse(boxes).success;
   async function run() {
     const parsed = superLabelSchema.safeParse(boxes);
-    if (!parsed.success || !settings.data) return;
+    if (running.current || !parsed.success || !settings.data) return;
+    if (!navigator.onLine) {
+      setError("Reconnect before applying labels.");
+      return;
+    }
+    // Guard repeated activation before React commits the disabled button.
+    running.current = true;
+    start.current = null;
+    const sheets = settings.data.sheets;
+    let refreshing = false;
     setBusy(true);
+    setProgress({ stage: "saving" });
+    setStopping(false);
     setResults([]);
     setError("");
     stop.current = false;
     try {
       await save.mutateAsync({ sheetId: source.id, boxes: parsed.data });
-      for (const sheet of settings.data.sheets) {
+      for (const [index, sheet] of sheets.entries()) {
         if (stop.current) break;
+        if (!navigator.onLine) break;
+        setProgress({
+          stage: "reading",
+          index: index + 1,
+          total: sheets.length,
+          name: sheet.name,
+        });
         try {
           const result = await apply.mutateAsync({
             sheetId: source.id,
@@ -77,11 +113,27 @@ export function SuperLabelDialog({
           ]);
         }
       }
+      if (!navigator.onLine) {
+        setError(
+          "Connection lost. Reconnect and refresh to check saved labels before running again.",
+        );
+        return;
+      }
+      refreshing = true;
+      setProgress({ stage: "refreshing" });
       await onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to save boxes");
+      setError(
+        e instanceof Error
+          ? e.message
+          : refreshing
+            ? "Unable to refresh drawing labels"
+            : "Unable to save boxes",
+      );
     } finally {
+      running.current = false;
       setBusy(false);
+      setProgress(null);
     }
   }
   return (
@@ -205,29 +257,50 @@ export function SuperLabelDialog({
         </div>
         {settings.error && <p role="alert">{settings.error.message}</p>}
         {error && <p role="alert">{error}</p>}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             disabled={!valid || busy || !settings.data}
             onClick={() => void run()}
           >
             Apply to {settings.data?.sheets.length ?? 0} drawings in this set
           </Button>
-          {busy && (
+          {busy && progress?.stage !== "refreshing" && (
             <Button
               variant="outline"
+              disabled={stopping}
               onClick={() => {
                 stop.current = true;
+                setStopping(true);
               }}
             >
-              Stop after current drawing
+              {stopping
+                ? "Stopping…"
+                : progress?.stage === "saving"
+                  ? "Stop before reading"
+                  : "Stop after current drawing"}
             </Button>
           )}
-          <span aria-live="polite">
-            {results.length > 0
-              ? `${results.length} / ${settings.data?.sheets.length ?? 0} processed`
-              : busy
-                ? "Saving boxes…"
-                : ""}
+          <span
+            role="status"
+            aria-live="polite"
+            className="min-w-0 basis-full text-sm"
+          >
+            {progress && (
+              <span className="block">
+                {progress.stage === "saving"
+                  ? stopping
+                    ? "Finishing box save; no drawings will be read."
+                    : "Saving label boxes…"
+                  : progress.stage === "refreshing"
+                    ? "Refreshing drawing labels…"
+                    : `Reading ${progress.index} of ${progress.total}: ${progress.name}${stopping ? " · Stopping after this drawing" : ""}`}
+              </span>
+            )}
+            {results.length > 0 && (
+              <span className="block">
+                {results.length} / {settings.data?.sheets.length ?? 0} processed
+              </span>
+            )}
           </span>
         </div>
         {results.length > 0 && (
