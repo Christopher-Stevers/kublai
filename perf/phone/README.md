@@ -10,7 +10,7 @@ The initial scope is two repeats of three **visited read** journeys: open job, o
 - A source-frozen synthetic lab app on host loopback, backed by the private `/tmp/foremanhq-perf-pg.*` PostgreSQL fixture; existing endpoint preflight passed against the exact lab artifact/source fingerprint. Root must confirm running server PID/cwd/build maps to that lab directory and the private fixture, not production. `/api/perf-lab` must say `isolated-seeded-app`, `productionDatabase:false`, `stubbed-seeded-user`, and `perf-lab-user`.
 - Root establishes a **dedicated phone loopback origin** with `adb -s DEVICE reverse tcp:43991 tcp:HOST_LAB_PORT`. Phone `http://127.0.0.1:43991/` then reaches only the synthetic host app. ADB over Wi-Fi carries that forwarding traffic; this is unshaped lab transport, not a Site/Basement network profile.
 - Root establishes `adb -s DEVICE forward tcp:49222 localabstract:chrome_devtools_remote`. Socket names vary by Chrome channel; if unavailable, stop and resolve the correct channel with root. Do not list or inspect existing browser targets. Do not use `am start --force-stop`, reset Chrome, or change global connectivity.
-- Chrome's forwarded HTTP debugging endpoint must support **PUT `/json/new?about:blank`** and return its new page WebSocket. If Android Chrome lacks that operation, this method must stop; never fall back to an existing tab. Root can then choose a separate explicitly scoped new-target method rather than weakening isolation.
+- Target creation mode is explicit: default `PERF_PHONE_TARGET_CREATION=http-new` uses PUT `/json/new?about:blank`. For Android endpoints rejecting HTTP creation, root approved `PERF_PHONE_TARGET_CREATION=browser-create-target`: read only `/json/version` metadata, connect its browser WebSocket, send **only** `Target.createTarget({url:"about:blank"})`, close that control connection and attach directly to the returned page ID. No auto-attach/discovery/list operation is enabled. Mode is recorded in each report; unsupported creation fails without an automatic fallback or existing-tab attachment.
 - Node with built-in `fetch`/`WebSocket` (current host Node 26 is sufficient), exact lab `source-evidence.json`, `preflight.json`, `perf/fixtures.json`, private database schema inventory and clean error log. No new npm install or phone app is needed.
 
 Example **for root after explicit clearance**, replacing paths/ports/build from the already verified lab:
@@ -32,9 +32,9 @@ Set `PERF_PHONE_CONTROL_TRANSPORT=adb-usb` only for an actual USB control connec
 
 ## Browser isolation and timing meaning
 
-Local Playwright 1.59.1 `connectOverCDP` initializes the browser and calls `Target.setAutoAttach`; it may discover/attach personal targets. This runner therefore uses **only the new target's direct WebSocket**, not browser-wide Playwright connection, target listing, context routing, cookie APIs, context cleanup or `Browser.close`. It closes only its created tab. The validated created target is closed even on WebSocket validation/open failure. If the create request itself times out before returning its ID, a new blank lab tab may remain for the user/root to close; do not inspect other tabs to recover it.
+Local Playwright 1.59.1 `connectOverCDP` initializes the browser and calls `Target.setAutoAttach`; it may discover/attach personal targets. This runner therefore uses **only the new target's direct WebSocket**, not browser-wide Playwright connection, target listing, context routing, cookie APIs, context cleanup or `Browser.close`. It closes only its created tab. The optional, explicitly authorized browser creation connection sends just `Target.createTarget` and is closed before the direct page session; it never lists or attaches existing targets. The validated created target is closed even on WebSocket validation/open failure. If the create request itself times out before returning its ID, a new blank lab tab may remain for the user/root to close; do not inspect other tabs to recover it.
 
-The same private loopback app is attested from the host and a page-local same-origin fetch (with redirect rejection, status check and timeout) before visiting synthetic screens; Chrome JSON-viewer body text is never parsed. Host HTTP/CDP setup and WebSocket open are bounded to ten seconds. Source build and fingerprint must match the passed preflight, and fixture provenance/database flags must be synthetic. Only that new page's DOM/runtime is queried. Existing device cookies are neither read nor cleared. The dedicated loopback origin must not be reused for personal browsing. No network interception, offline toggle or network condition command is sent; later link experiments, if separately approved, must stay page-scoped and belong to another explicit method.
+The same private loopback app is attested from the host and a page-local same-origin fetch (with redirect rejection, status check and timeout) before visiting synthetic screens; Chrome JSON-viewer body text is never parsed. Host HTTP/CDP setup and WebSocket open are bounded to ten seconds. Early setup failures write a `setup-failed`/`smoke-setup-failed` artifact with a bounded phase/error class and no accepted samples; unknown target creation outcomes are not recovered by discovery. Source build and fingerprint must match the passed preflight, and fixture provenance/database flags must be synthetic. Only that new page's DOM/runtime is queried. Existing device cookies are neither read nor cleared. The dedicated loopback origin must not be reused for personal browsing. No network interception, offline toggle or network condition command is sent; later link experiments, if separately approved, must stay page-scoped and belong to another explicit method.
 
 `browserDurationMs` starts at the page's actual pointerdown event and ends after destination DOM readiness plus two rAF opportunities. `gestureHoldMs` records pointerdown-to-pointerup, which can include Wi-Fi ADB command turnaround. `driverWallclockMs` separately includes all host/control/CDP latency. Bounded raw page-local frame gaps and existing allowlisted app measures are retained; they are not a physical pixel/compositor presentation timestamp. The open-job/tab/list readiness checks are not universal screen completeness.
 
@@ -50,3 +50,33 @@ attestation/isolation checks stay enabled. Reports use method
 `local-smoke-visited-reads-page-cdp-v1`, status `smoke-only`/`smoke-failed`, and
 `physicalPhoneEvidence:false`; those results must never be presented as phone
 evidence. Root owns launching that disposable browser and the later phone run.
+
+## Connection diagnostics and the first attempt
+
+The explicit browser-create mode was added after Android Chrome rejected HTTP
+`PUT /json/new`. It reads metadata from `/json/version` and sends only the
+browser command `Target.createTarget` for `about:blank`; it never enables target
+discovery or automatic attachment. The owned page then receives
+`Page.bringToFront` before navigation, recorded as `activate-new-page`.
+
+The exact-text selector includes the app's `div[data-slot="card-title"]` and
+rejects ancestor matches when a visible child has the same text. This matches
+the frozen adapter's generic text locator without accidentally timing a hidden
+retained panel. Reports identify bounded phases (attestation, navigate,
+source-ready, warmread, back and visitedread) plus journey/run. Failed runs retain
+completed samples only as diagnostics. Early setup failures also produce an
+artifact, with setup phase/error class and known source/creation context rather
+than an uncaught setup timeout. No discovery fallback is used to recover an
+unknown target creation outcome.
+
+Cleanup records whether the exact created target's HTTP close was acknowledged,
+with status/error class. HTTP acknowledgment is not an independently observed
+compositor or process-lifecycle result. No other target is closed or inspected.
+
+Root reports that the separate local smoke passed all three visited-read cases
+using browser-create plus bring-to-front. The physical Pixel attempt created and
+activated its own tab but timed out at attestation navigation; it produced **zero
+journey timings**. The owned tab close returned HTTP 200, forwards were removed,
+and the user was released. These diagnostics do not establish physical target
+performance, a completed phone benchmark, or an accepted matrix. No additional
+phone commands are part of this source follow-up.
