@@ -81,3 +81,34 @@ buttons; badge refresh uses the reviewed cached-data policy. Neither source
 change proves a latency improvement or the cause of R18's failed Office quantity
 cell. Full measured gates and all earlier failures remain unchanged. No STATUS
 or baseline ledger was edited.
+
+## Canonical result (prepared only)
+
+The first canonical build exited 0 with production TypeScript, prerender and
+source laws passing. Actual build:
+`47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece`.
+The frozen fingerprint/postimages remain exact. Formal Phase0 ratchets pass:
+shared 477,538; heaviest 627,737; Phase0-relative deployment 1,322,620 gzip bytes.
+Compared with R18 these are **increases** of 580 / 600 / 1,844 bytes, respectively,
+not savings. Final 120,000/180,000 targets remain unmet.
+
+Strict R18→R19 full update: **334,721 gzip bytes, FAIL** against 100,000;
+42/288 scripts changed and 246 reused. This batch failure is not waived or
+substituted with net-size differences or the earlier controlled probe result.
+
+All 293 current asset Brotli/gzip sidecars decode exactly; all 1,120 raw active
+static assets (including inherited history) match. Historical enumeration uses
+the established helper, excluding generated sidecars. Full public source/runtime
+corpus is exact at 3,263 files. One usePress allocation remains in the
+app-pages-browser `app-press-browser` chunk; inert probe and development overlay
+are absent. The exact emitted native metadata resolver resolves 3.4.8 through
+its retained native namespace/default binding, without loading application/DB
+code.
+
+[Metadata proof](artifacts/phase1-r19-build-proof-2026-11-11.json) and
+[the executed read-only inspection method](artifacts/phase1-r19-offline-proof.mjs)
+record the result. The first inspection-tool invocation incorrectly expected
+operational metrics scripts inside the frozen recipe; its method/log hashes and
+failure are retained. The corrected inspection used existing canonical tools,
+with no candidate mutation or rebuild. No HTTP server, browser, application,
+database or activation ran. CPU was released before subsequent diagnostics.
