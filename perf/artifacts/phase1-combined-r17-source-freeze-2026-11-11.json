@@ -1,0 +1,57 @@
+{
+  "status": "frozen-source-only-awaiting-root-compile-review",
+  "baseBuild": null,
+  "baseBuildStatus": "R16 production TypeScript failed; no completed build",
+  "baseSourceFingerprint": "a41fa2a6ebe83463e396ca612bbae2e72aa670f8d5cb5b868fc0e5a1ae0152f6",
+  "groups": [
+    {
+      "group": "opaque-workspace-recovery",
+      "commit": "ecfa51dc3d6eca8044a557e3da9160c8f7206bc4",
+      "paths": [
+        {
+          "path": "src/hooks/use-drawing-shared-issue-save.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "b954905d39345e4bea175d635d0286f245778aa9e629332954bc41044b66e9b2",
+          "postimageSha256": "a10771f9db9b503be4b31f351f6e6170d29075e80d7cc772a1c64ebbf192958a"
+        }
+      ],
+      "patchSha256": "a2eb594772e21bc7f21c7118a3c2fa07a7fce7b9c3721cb44516a5aa4f2b8f68",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    }
+  ],
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r17-20261111",
+    "runtimePathCount": 1,
+    "operationalPathCount": 0,
+    "changedPaths": [
+      "src/hooks/use-drawing-shared-issue-save.ts"
+    ],
+    "unaffectedFiles": 5475,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "workerExecutableUnchanged": true,
+    "r8PressExcluded": true,
+    "unrelatedChanges": 0
+  },
+  "composition": "Exact failed R16 source copy, then only listed selected runtime git diffs in sequence. Every preimage and intermediate/final postimage checked. No raw HEAD or dirty working files. Tests/docs remain provenance and are not copied into runtime source.",
+  "pending": [
+    "Pinned canonical compile conditionally authorized by root after exact correction and full production no-emit check"
+  ],
+  "excluded": [
+    "R8 attribute feedback",
+    "unrelated dirty source",
+    "schema and worker executable/service/bundle",
+    "PackingSlips",
+    "zoom intent",
+    "package/lockfile/tsconfig",
+    "unreviewed later work"
+  ],
+  "buildStarted": false,
+  "activated": false,
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2316
+}
