@@ -1,5 +1,5 @@
 {
-  "status": "prepared-not-run-awaiting-storage-and-HTTP-clearance",
+  "status": "resealed-authorized-before-single-private-compile",
   "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111",
   "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
   "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
@@ -11,7 +11,8 @@
   "noR18V6Relabel": "Existing V6 proof remains bound to R18 only. No separate R19 V6 requested.",
   "outerCompileBoundSeconds": 360,
   "scriptHashes": {
-    "foremanhq-r19-compile-only.sh": "da897a8b60188a953549221590be22185f73c84bcd8805d167b9b3c95df83ca6",
+    "foremanhq-r19-compile-only.sh": "0e98c869ad16c9e02de6584e0ed7c3e30c39009d8769803db49c920ca8614516",
     "foremanhq-r19-compile-command.sh": "8a360f64eb2346e7aaf37978cef5f2c690ef5176953502686f90dce9bfa6e4e8"
-  }
+  },
+  "metadataCorrection": "Post-preflight compiled record explicitly serverStarted:true, serverPreflightCompleted:true"
 }
