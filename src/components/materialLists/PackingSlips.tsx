@@ -2,6 +2,7 @@
 import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
 
 import { receivingReviewHref } from "~/lib/receiving-navigation";
+import { hasCamera } from "~/lib/camera-availability";
 import { PackingSlipTestReview } from "./PackingSlipTestReview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -452,15 +453,7 @@ export function PackingSlips({
   );
 }
 
-/** False only when the browser can tell there is no camera at all. */
-export async function hasCamera() {
-  try {
-    const devices = await navigator.mediaDevices?.enumerateDevices?.();
-    return !devices || devices.some((device) => device.kind === "videoinput");
-  } catch {
-    return true;
-  }
-}
+export { hasCamera } from "~/lib/camera-availability";
 
 const SLIP_STATE = {
   cleared: ["Detection cleared", "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"],

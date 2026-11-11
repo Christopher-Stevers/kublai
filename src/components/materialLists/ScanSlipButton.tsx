@@ -26,7 +26,7 @@ import { uploadPackingSlip } from "~/lib/packing-slip-upload";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { useHeaderBackOverride } from "~/lib/header-back-events";
 import type { PackingSlipLink } from "~/server/documents/types";
-import { hasCamera } from "./PackingSlips";
+import { hasCamera } from "~/lib/camera-availability";
 const PackingSlipScanner = dynamic(() => import("./PackingSlipScanner"), {
   ssr: false,
 });

@@ -121,13 +121,13 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it("opens a keyboard accessible window without marking anything read", () => {
+it("opens a keyboard accessible window without marking anything read", async () => {
   render(<NotificationCenter />);
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 2 unread" }),
   );
   expect(screen.getByRole("dialog", { name: "Notifications" })).toBeVisible();
-  expect(screen.getByText("Check equipment tag")).toBeVisible();
+  expect(await screen.findByText("Check equipment tag")).toBeVisible();
   expect(
     screen.queryByRole("button", { name: "Turn push notifications on" }),
   ).not.toBeInTheDocument();
@@ -143,7 +143,7 @@ it("opens a keyboard accessible window without marking anything read", () => {
   fireEvent.click(
     screen.getByRole("button", { name: "Back to notifications" }),
   );
-  expect(screen.getByText("Check equipment tag")).toBeVisible();
+  expect(await screen.findByText("Check equipment tag")).toBeVisible();
   expect(mocks.read).not.toHaveBeenCalled();
   expect(mocks.listInput.unreadOnly).toBe(true);
   expect(screen.getByRole("button", { name: "Unread" })).toHaveAttribute(
@@ -158,7 +158,9 @@ it("marks a notification read and navigates to its destination", async () => {
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 2 unread" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: /Drawing assignment/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Drawing assignment/ }),
+  );
   await waitFor(() => expect(mocks.push).toHaveBeenCalledWith(item.url));
   expect(mocks.read).toHaveBeenCalledWith({
     accountKey: "user:org",
@@ -186,13 +188,15 @@ it("retains a failed read and provides an actionable error", async () => {
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 2 unread" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: /Drawing assignment/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Drawing assignment/ }),
+  );
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Could not mark notifications as read",
   );
   expect(mocks.push).not.toHaveBeenCalled();
 });
-it("hides cached data when identity has not been revalidated or access is revoked", () => {
+it("hides cached data when identity has not been revalidated or access is revoked", async () => {
   mocks.validated = false;
   const { rerender } = render(<NotificationCenter />);
   expect(
@@ -206,7 +210,7 @@ it("hides cached data when identity has not been revalidated or access is revoke
   mocks.error = true;
   rerender(<NotificationCenter />);
   expect(screen.queryByText("Check equipment tag")).not.toBeInTheDocument();
-  expect(screen.getByRole("alert")).toHaveTextContent(
+  expect(await screen.findByRole("alert")).toHaveTextContent(
     "Could not load notifications",
   );
 });
@@ -234,14 +238,16 @@ it("does not navigate to the previous account after an outstanding read complete
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 2 unread" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: /Drawing assignment/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Drawing assignment/ }),
+  );
   mocks.accountKey = null;
   rerender(<NotificationCenter />);
   finish({ ok: true });
   await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
   expect(mocks.push).not.toHaveBeenCalled();
 });
-it("shows the full accessible count, caps the badge and disables reads offline", () => {
+it("shows the full accessible count, caps the badge and disables reads offline", async () => {
   mocks.count = 125;
   mocks.online = false;
   render(<NotificationCenter />);
@@ -250,15 +256,15 @@ it("shows the full accessible count, caps the badge and disables reads offline",
   );
   expect(screen.getAllByText("99+")).toHaveLength(2);
   expect(screen.getByRole("button", { name: "Mark all read" })).toBeDisabled();
-  expect(screen.getByText(/Connect to refresh/)).toBeInTheDocument();
+  expect(await screen.findByText(/Connect to refresh/)).toBeInTheDocument();
 });
-it("loads older notifications and shows an empty inbox", () => {
+it("loads older notifications and shows an empty inbox", async () => {
   mocks.more = true;
   const { rerender } = render(<NotificationCenter />);
   fireEvent.click(
     screen.getByRole("button", { name: "Notifications, 2 unread" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Load more" }));
   expect(mocks.next).toHaveBeenCalled();
   mocks.items = [];
   mocks.count = 0;
