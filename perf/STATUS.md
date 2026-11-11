@@ -815,3 +815,26 @@ Thirteen focused tests and scoped lint pass. It is excluded from R18 and is
 not activated. Receiving saved-read and the 13-mutator interface boundaries are
 documented in `receiving-saved-read-audit.md` and
 `replicache-interface-preparation.md`; both remain preparation only.
+
+## R19 source frozen; quantity press feedback prepared — 2026-11-11
+
+The quantity step buttons now opt into visual attribute feedback, removing the
+two React commits previously used only for press highlighting. The measured
+Profiler test reports zero feedback commits for this opt-in; 35 focused tests
+across six files cover the default behavior, quantity controls and gesture/save
+regressions. Activation stays on release and the existing local/durable save
+path is unchanged. This proves work removal, not a latency amount or the cause
+of R18's failed Office cell. Source commit: `d5f30d71`.
+
+R19 is an exact R18 copy plus four reviewed runtime files: the hook-only
+attribute feature, Button prop, quantity opt-ins and job-chat badge refresh.
+Root independently recomputed both source fingerprints and the exact four-path
+difference. The R8 job-card opt-in remains excluded. Fingerprint `4541b37e…`;
+manifest `artifacts/phase1-combined-r19-source-freeze-2026-11-11.json`. No build
+or activation has occurred at this checkpoint.
+
+A separate two-operation R17/R18 quantity trace is prepared to inspect input
+and field-update timing. Its instrumentation has three passing fixture tests;
+setup/process cleanup review is still pending. It is supplemental only and
+cannot replace the failed full gate. Production and the original v2 comparator
+remain unchanged; Pixel testing stays deferred.

@@ -299,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T15:48:13.173239+00:00",
+  "updatedAt": "2026-11-11T16:18:00Z",
   "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
@@ -1012,6 +1012,31 @@
       "cleanupConfirmed": true,
       "newDomains": false,
       "convergenceGate": false
+    },
+    "quantityPressFeedback": {
+      "commit": "d5f30d71",
+      "source": "perf/quantity-press-feedback.md",
+      "focusedTestsPassed": 35,
+      "testFiles": 6,
+      "profilerFeedbackCommitsBefore": 2,
+      "profilerFeedbackCommitsAfter": 0,
+      "releaseActivationPreserved": true,
+      "savePathUnchanged": true,
+      "performanceGatePassed": false,
+      "productionActivated": false
+    },
+    "r19Candidate": {
+      "status": "source-frozen-root-reviewed-build-held-for-diagnostic-slot",
+      "sourceFreezeCommit": "231bb1dd",
+      "source": "perf/artifacts/phase1-combined-r19-source-freeze-2026-11-11.json",
+      "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+      "sourceFileCount": 2317,
+      "runtimeChangedPaths": 4,
+      "rootIndependentlyVerifiedFingerprint": true,
+      "r8JobCardOptInExcluded": true,
+      "buildStarted": false,
+      "fullMatrixRun": false,
+      "activation": false
     }
   },
   "historicalCandidateRegressions": [
