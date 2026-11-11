@@ -1,0 +1,268 @@
+{
+  "status": "combined-candidate-compiled-prepared-not-activated",
+  "sourceFreezeCommit": "367b8dc9",
+  "baseBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+  "source": {
+    "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+    "sourceFileCount": 2308,
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "controlledSourceChanges": [
+      "src/components/chat/SnapshotProvider.tsx",
+      "src/components/jobs/DrawingSheetViewer.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/jobs/FileComparison.tsx",
+      "src/components/jobs/FileComparisonContent.tsx",
+      "src/components/jobs/useDrawingEditor.ts",
+      "src/components/materialLists/MaterialListItem.tsx",
+      "src/components/materialLists/MaterialListItemPresentation.tsx",
+      "src/components/materialLists/OrdinaryMaterialListItem.tsx",
+      "src/components/materialLists/use-card-merge.tsx",
+      "src/hooks/use-drawing-scale-save.ts",
+      "src/server/api/routers/drawingsWorkspace.ts"
+    ],
+    "runtimePathCount": 12,
+    "operationalPathCount": 0,
+    "unaffectedFiles": 5456,
+    "publicCorpusFiles": 3263,
+    "unexpectedSourceChanges": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModulePattern": "SpeedDevelopmentOverlay",
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true,
+    "fingerprintMatchesReviewedFreeze": true,
+    "navigationPreflight": "pass: no changed/new raw navigation",
+    "providerPreflight": "pass: no new shared boundaries",
+    "webpackProductionTypesPrerender": "pass first try",
+    "r8PressExcluded": true,
+    "scaleAndMergeReviewedVersionsIncluded": true,
+    "workerExecutableAndSchemaUnchanged": true,
+    "proofServerStarted": false,
+    "activated": false,
+    "originalSourceFingerprintRechecked": true
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r11": 477954,
+      "r12": 478116,
+      "deltaFromR11": 162,
+      "headroomToPhase0Baseline": 24502,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r11": 757796,
+      "r12": 640641,
+      "deltaFromR11": -117155,
+      "headroomToPhase0Baseline": 117890,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r11": 1293940,
+      "r12": 1316329,
+      "deltaFromR11": 22389,
+      "headroomToPhase0Baseline": 1418402,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "formalMetricMethod": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.",
+  "heaviestRoute": "/jobs/[jobId]/receiving/page",
+  "strictChangedScriptTarget": {
+    "baselineBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+    "candidateBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 287,
+    "reusedScripts": 248,
+    "changedScripts": 39,
+    "changedRawBytes": 1671257,
+    "changedGzipBytes": 541833,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "supplementalInitialDependencies": {
+    "method": "Emitted rootMainFiles plus app/layout and app/jobs/layout entry callback O(0,[chunk IDs]) dependency closure; jobs also includes app/jobs/page; receiving includes its emitted receiving entry. Exact gzip9 sidecar lengths per unique emitted JS file. Supplemental rooted dependency map, not browser network timing or a redefinition of the formal reference-union gate.",
+    "attributionLimit": "Net combined R12 versus R11; not an isolated feature or browser transfer/timing experiment.",
+    "graphs": {
+      "common": {
+        "r11": 423469,
+        "r12": 423513,
+        "delta": 44
+      },
+      "jobs": {
+        "r11": 469077,
+        "r12": 469239,
+        "delta": 162
+      },
+      "receiving": {
+        "r11": 691062,
+        "r12": 573783,
+        "delta": -117279
+      }
+    },
+    "beforeModules": [
+      {
+        "source": "src/components/materialLists/MaterialListItem.tsx",
+        "preMinifyEstimatedBytes": 35704,
+        "chunkIds": [
+          504
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/jobs/FileComparison.tsx",
+        "preMinifyEstimatedBytes": 13462,
+        "chunkIds": [
+          4268
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/jobs/DrawingSheetViewer.tsx",
+        "preMinifyEstimatedBytes": 159040,
+        "chunkIds": [
+          4268
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/chat/SnapshotProvider.tsx",
+        "preMinifyEstimatedBytes": 39388,
+        "chunkIds": [
+          7117
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/jobs/documents/PassiveDocumentPdfPreview.tsx",
+        "preMinifyEstimatedBytes": 19336,
+        "chunkIds": [
+          4268
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      }
+    ],
+    "afterModules": [
+      {
+        "source": "src/components/materialLists/MaterialListItem.tsx",
+        "preMinifyEstimatedBytes": 26831,
+        "chunkIds": [
+          2232
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/materialLists/OrdinaryMaterialListItem.tsx",
+        "preMinifyEstimatedBytes": 3618,
+        "chunkIds": [
+          2232
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/materialLists/MaterialListItemPresentation.tsx",
+        "preMinifyEstimatedBytes": 8661,
+        "chunkIds": [
+          2232
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/hooks/use-drawing-scale-save.ts",
+        "preMinifyEstimatedBytes": 9012,
+        "chunkIds": [
+          6582
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": false
+      },
+      {
+        "source": "src/components/jobs/FileComparison.tsx",
+        "preMinifyEstimatedBytes": 3169,
+        "chunkIds": [
+          6582,
+          7725
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/chat/SnapshotProvider.tsx",
+        "preMinifyEstimatedBytes": 39692,
+        "chunkIds": [
+          7117
+        ],
+        "inCommonRoot": true,
+        "inJobsRoot": true,
+        "inReceivingRoot": true
+      },
+      {
+        "source": "src/components/jobs/DrawingSheetViewer.tsx",
+        "preMinifyEstimatedBytes": 159411,
+        "chunkIds": [
+          940
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": false
+      },
+      {
+        "source": "src/components/jobs/documents/PassiveDocumentPdfPreview.tsx",
+        "preMinifyEstimatedBytes": 19336,
+        "chunkIds": [
+          5257
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": false
+      },
+      {
+        "source": "src/components/jobs/FileComparisonContent.tsx",
+        "preMinifyEstimatedBytes": 13462,
+        "chunkIds": [
+          4372
+        ],
+        "inCommonRoot": false,
+        "inJobsRoot": false,
+        "inReceivingRoot": false
+      }
+    ]
+  },
+  "finalTargets": {
+    "sharedGzipBytes": {
+      "target": 120000,
+      "measured": 478116,
+      "passes": false
+    },
+    "heaviestGzipBytes": {
+      "target": 180000,
+      "measured": 640641,
+      "passes": false
+    }
+  },
+  "limits": [
+    "Combined feature batch is not a controlled single-leaf typical-edit experiment. Strict changed-script target still fails and is not waived.",
+    "No HTTP server, browser journey, idle observation, full matrix or activation ran for this candidate.",
+    "No measured CPU/timing gain for ordinary-row, snapshot observer, merge or scale changes is claimed.",
+    "Previous failed performance gates remain unchanged; byte ratchets alone do not establish release readiness."
+  ]
+}

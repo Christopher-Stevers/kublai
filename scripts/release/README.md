@@ -103,3 +103,17 @@ gzip bytes: Phase0 ratchets pass, with only 735 bytes of heaviest headroom.
 Strict R10→R11 changed payload fails the unchanged 100,000-byte target at
 441,018 (43/284 scripts changed). Final shared/heaviest targets remain unmet.
 No HTTP server, journey, idle observation, full matrix or activation ran for R11.
+
+
+R12 combined candidate (2026-11-11): exact frozen R11 plus seven reviewed groups,
+12 runtime paths; canonical webpack/production TypeScript/prerender and source-law
+gates passed first try. Build
+`d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736`,
+source fingerprint `f8aea064…24327c09` rechecked; public/unaffected inputs exact.
+Formal shared/heaviest/Phase0-relative deployment are 478,116/640,641/1,316,329
+gzip bytes; Phase0 ratchets pass. Heaviest drops 117,155 bytes from R11.
+Supplemental receiving initial graph drops 117,279; comparison content/viewers are
+no longer eager there. Net combined-candidate bytes are not isolated CPU/timing
+claims. Strict R11→R12 update target still fails at 541,833 (39/287 scripts changed),
+and final shared/heaviest targets remain unmet. No HTTP server, journey, idle
+observation, full matrix or activation ran. See `perf/phase1-r12-source-proposal.md`.
