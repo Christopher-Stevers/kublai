@@ -1,0 +1,18 @@
+✔ missing protocol fails before any database or browser action (3.829366ms)
+✔ wrong protocol fails rather than silently using adapter default (0.08445ms)
+✔ correct exported protocol passes with only allowlisted effective environment (0.393412ms)
+✔ invalid baseline cannot make a matching wrong protocol pass (0.076022ms)
+✔ actual CLI missing protocol is checked without starting DB/browser (19.061807ms)
+✔ actual CLI wrong protocol is checked without starting DB/browser (15.905445ms)
+✔ actual CLI correct protocol is checked without starting DB/browser (20.949885ms)
+✔ cleanup/evidence missing-copy propagates status and retains remaining evidence (9.512138ms)
+✔ cleanup/evidence source-after-failure propagates status and retains remaining evidence (4.416716ms)
+✔ cleanup/evidence success propagates status and retains remaining evidence (4.184067ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.175161
