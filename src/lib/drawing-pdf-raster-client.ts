@@ -1,6 +1,6 @@
 "use client";
 
-import { registerDrawingWorker } from "./drawing-geometry-client";
+import { registerDrawingWorker } from "./drawing-worker-lifecycle";
 import type {
   RasterByteRequest,
   RasterRequest,

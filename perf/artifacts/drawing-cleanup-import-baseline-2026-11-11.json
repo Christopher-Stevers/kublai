@@ -1,0 +1,95 @@
+{
+  "status": "measured-existing-canonical-inputs-only",
+  "planBudgets": {
+    "sharedGzipBytes": 120000,
+    "additionalScreenGzipBytes": 60000,
+    "heaviestScreenGzipBytes": 180000
+  },
+  "rootCauseEdge": [
+    "DrawingAccountProvider",
+    "pdf-client.clearPdfDocuments",
+    "drawing-geometry-client registry import",
+    "pipe-run-sizes.pipeSizeTags",
+    "pipe-system"
+  ],
+  "canonical": [
+    {
+      "label": "R7",
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "modules": [
+        {
+          "source": "src/lib/pdf-client.ts",
+          "preMinifyEstimatedBytes": 4966,
+          "chunkIds": [
+            4281
+          ]
+        },
+        {
+          "source": "src/lib/pipe-run-sizes.ts",
+          "preMinifyEstimatedBytes": 12040,
+          "chunkIds": [
+            5180
+          ]
+        },
+        {
+          "source": "src/lib/drawing-geometry-client.ts",
+          "preMinifyEstimatedBytes": 7597,
+          "chunkIds": [
+            4281
+          ]
+        }
+      ],
+      "initialCleanupFacadeChunk": {
+        "id": 4281,
+        "gzipBytes": 6093,
+        "notAllRemovable": true
+      },
+      "initialPipeComputationChunk": {
+        "id": 5180,
+        "gzipBytes": 9652,
+        "presentInRootLayoutEntryDependencies": true
+      }
+    },
+    {
+      "label": "R8",
+      "sourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+      "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+      "modules": [
+        {
+          "source": "src/lib/pdf-client.ts",
+          "preMinifyEstimatedBytes": 4966,
+          "chunkIds": [
+            4281
+          ]
+        },
+        {
+          "source": "src/lib/pipe-run-sizes.ts",
+          "preMinifyEstimatedBytes": 12040,
+          "chunkIds": [
+            5180
+          ]
+        },
+        {
+          "source": "src/lib/drawing-geometry-client.ts",
+          "preMinifyEstimatedBytes": 7597,
+          "chunkIds": [
+            4281
+          ]
+        }
+      ],
+      "initialCleanupFacadeChunk": {
+        "id": 4281,
+        "gzipBytes": 6093,
+        "notAllRemovable": true
+      },
+      "initialPipeComputationChunk": {
+        "id": 5180,
+        "gzipBytes": 9652,
+        "presentInRootLayoutEntryDependencies": true
+      }
+    }
+  ],
+  "newSourceSavingsMeasured": false,
+  "method": "Existing webpack module estimates plus exact emitted gzip9 sidecar lengths. Root/layout entry dependency IDs parsed from their emitted webpack O(0,[...]) scheduling callbacks; no browser request trace and no changed metric. Full module source sizes are not compressed-byte savings."
+}

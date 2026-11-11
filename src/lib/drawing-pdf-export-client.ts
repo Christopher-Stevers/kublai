@@ -8,7 +8,7 @@ import type {
   DrawingExportResponse,
   PreparedDrawingExport,
 } from "./drawing-pdf-export-protocol";
-import { registerDrawingWorker } from "./drawing-geometry-client";
+import { registerDrawingWorker } from "./drawing-worker-lifecycle";
 
 type ExportJob =
   | { kind: "sheet"; options: DrawingPdfExportOptions }

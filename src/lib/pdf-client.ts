@@ -1,6 +1,6 @@
 "use client";
 
-import { clearDrawingGeometryWorkers } from "./drawing-geometry-client";
+import { clearDrawingGeometryWorkers } from "./drawing-worker-lifecycle";
 import { clearSheetPdfSources } from "./drawing-page-pdf";
 import {
   clearPdfRangeSources,

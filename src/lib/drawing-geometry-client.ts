@@ -9,6 +9,8 @@ import type { SnapIndex, SnapSegment } from "./sheet-snap";
 import type { PipeLinework, PipeSystemSelection } from "./pipe-system";
 import type { SheetPoint } from "./sheet-measure";
 import { pipeSizeTags, type PipeSizeTag } from "./pipe-run-sizes";
+import { registerDrawingWorker } from "./drawing-worker-lifecycle";
+export { clearDrawingGeometryWorkers, registerDrawingWorker } from "./drawing-worker-lifecycle";
 import type {
   GeometryRequest,
   GeometryResponse,
@@ -21,23 +23,11 @@ type Command = GeometryRequest extends infer R
     ? Omit<R, "id">
     : never
   : never;
-const clients = new Set<{ dispose: () => void }>();
 // Copying a whole CAD page into a worker is itself a long UI task. Send small
 // acknowledged batches, allowing touch input and painting between them.
 const INPUT_BATCH = 2_000;
 const aborted = () =>
   new DOMException("The drawing geometry request was cancelled.", "AbortError");
-
-/** Register other drawing workers with the same account lifecycle. */
-export function registerDrawingWorker(client: { dispose: () => void }) {
-  clients.add(client);
-  return () => clients.delete(client);
-}
-
-/** Private drawing work must not survive logout or an account switch. */
-export function clearDrawingGeometryWorkers() {
-  for (const client of [...clients]) client.dispose();
-}
 
 // Loading fallback code is asynchronous, unlike the original inline fallback.
 // Keep it in the same synchronous account-clear registry during that new gap.
@@ -64,6 +54,7 @@ function beginFallbackLoad(signal?: AbortSignal) {
 }
 
 class GeometryClient {
+  private unregister: () => boolean;
   private worker: Worker;
   private sequence = 0;
   private closed = false;
@@ -80,7 +71,7 @@ class GeometryClient {
       new URL("./drawing-geometry.worker.ts", import.meta.url),
       { type: "module", name: "drawing-geometry" },
     );
-    clients.add(this);
+    this.unregister = registerDrawingWorker(this);
     this.worker.onmessage = ({ data }: MessageEvent<GeometryResponse>) => {
       const pending = this.pending.get(data.id);
       if (!pending) return;
@@ -130,7 +121,7 @@ class GeometryClient {
     if (this.closed) return;
     this.closed = true;
     this.worker.terminate();
-    clients.delete(this);
+    this.unregister();
     for (const pending of this.pending.values()) {
       pending.cleanup();
       pending.reject(error);
