@@ -20,6 +20,7 @@ import { clearPrivateBackgroundWork } from "~/lib/private-background-work";
 type DrawingAccount = {
   userId: string;
   accountKey: string;
+  organizationId: string;
   store: DrawingOfflineStore | null;
 };
 const Context = createContext<DrawingAccount | null>(null);
@@ -112,11 +113,11 @@ export function DrawingAccountProvider({
       .then(() => {
         if (disposed) return;
         store = new DrawingOfflineStore(accountKey);
-        setValue({ userId, accountKey, store });
+        setValue({ userId, accountKey, organizationId, store });
       })
       .catch(() => {
         // Disabled/quota-limited storage must not prevent authenticated online use.
-        if (!disposed) setValue({ userId, accountKey, store: null });
+        if (!disposed) setValue({ userId, accountKey, organizationId, store: null });
       });
     return () => {
       bindNavigation(null);
@@ -138,7 +139,7 @@ export function DrawingAccountProvider({
         invalidate,
       );
     };
-  }, [accountKey, userId, queryClient, preserveAccountKey]);
+  }, [accountKey, userId, organizationId, queryClient, preserveAccountKey]);
   if (locked)
     return (
       <main className="mx-auto max-w-lg space-y-3 p-6" role="alert">

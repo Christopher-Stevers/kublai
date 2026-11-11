@@ -416,3 +416,20 @@ it("reports raw job-chat authority denials for imperative reads but ignores tran
     client.clear();
   }
 });
+
+it("treats only the exact document materialization mutation as a read denial and fences old request authority", async () => {
+  const old = startDeviceQueryCache(new QueryClient(), "org:old-materializer", storage()); await old.ready;
+  const captured = captureDeviceReadAuthority(); await old.stop();
+  const fresh = startDeviceQueryCache(new QueryClient(), "org:new-materializer", storage()); await fresh.ready;
+  const denied = vi.fn(); window.addEventListener(DEVICE_QUERY_DENIED_EVENT, denied);
+  try {
+    const error = {data: {code: "FORBIDDEN"}};
+    expect(reportDeviceReadDenial("drawingsWorkspace.openDocument", "mutation", error, captured)).toBe(false);
+    expect(reportDeviceReadDenial("drawingsWorkspace.save", "mutation", error, captureDeviceReadAuthority())).toBe(false);
+    expect(reportDeviceReadDenial("drawingsWorkspace.openDocumentOther", "mutation", error, captureDeviceReadAuthority())).toBe(false);
+    expect(reportDeviceReadDenial("drawingsWorkspace.openDocument", "mutation", new Error("Network failed"), captureDeviceReadAuthority())).toBe(false);
+    expect(denied).not.toHaveBeenCalled();
+    expect(reportDeviceReadDenial("drawingsWorkspace.openDocument", "mutation", error, captureDeviceReadAuthority())).toBe(true);
+    expect(denied).toHaveBeenCalledOnce();
+  } finally {window.removeEventListener(DEVICE_QUERY_DENIED_EVENT, denied); await fresh.stop();}
+});

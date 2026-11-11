@@ -1,13 +1,13 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { ComponentProps } from "react";
+import { useEffect, type ComponentProps } from "react";
 import type { DrawingWorkspace } from "../DrawingWorkspace";
 const fixture = vi.hoisted(() => ({
   fullscreen: false,
   props: null as ComponentProps<typeof DrawingWorkspace> | null,
   mutate: vi.fn(),
   offline: false,
-  saveSnapshot: vi.fn(async () => undefined),
+  saveSnapshot: vi.fn<(key: string, value: unknown) => Promise<void>>(async () => undefined),
   error: null as Error | null,
   snapshot: null as (() => unknown) | null,
   sheets: [1, 2].map((page) => ({
@@ -21,12 +21,28 @@ const fixture = vi.hoisted(() => ({
   })),
 }));
 vi.mock("../DrawingAccountProvider", () => {
-  const account = { accountKey: "fixture:person", store: {
+  const account = { accountKey: "fixture:person", userId: "person", organizationId: "fixture-org", store: {
     readSnapshot: async () => fixture.offline ? fixture.sheets : null,
     saveSnapshot: fixture.saveSnapshot,
   } };
   return { useDrawingAccount: () => account };
 });
+// This suite checks viewer/navigation wiring. Real saved-read/denial/controller
+// behavior is covered with the actual provider and IDB in the dedicated suite.
+vi.mock("./use-document-drawing-pages", () => ({
+  useDocumentDrawingPages: (jobId: string, versionId: string) => {
+    useEffect(() => {if (navigator.onLine) fixture.mutate({jobId, versionId});}, [jobId, versionId]);
+    return {
+      data: fixture.offline || !fixture.error ? fixture.sheets : undefined,
+      error: fixture.error,
+      denied: false,
+      isPending: false,
+      online: navigator.onLine,
+      retry: () => {fixture.mutate({jobId, versionId});},
+      persist: () => fixture.saveSnapshot(`document-sheets:${versionId}`, fixture.sheets),
+    };
+  },
+}));
 vi.mock("~/trpc/react", () => ({
   api: {
     drawingsWorkspace: {

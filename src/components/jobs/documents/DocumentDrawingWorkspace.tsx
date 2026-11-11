@@ -3,13 +3,12 @@ import { useDrawingPageMode } from "../DrawingPageMode";
 import { scrollNeighbors } from "../drawing-scroll-pages";
 import { useEffect, useRef, useState } from "react";
 import { MinimizeIcon } from "lucide-react";
-import { api } from "~/trpc/react";
 import { useRootFlag } from "~/hooks/use-root-flag";
 import { Button } from "~/components/ui/button";
 import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import type { SnapshotState } from "~/lib/snapshot-source";
 import { useDrawingAccount } from "../DrawingAccountProvider";
-import { useDrawingSnapshot } from "../useDrawingSnapshot";
+import { useDocumentDrawingPages } from "./use-document-drawing-pages";
 import { DrawingWorkspace } from "../DrawingWorkspace";
 import { DrawingPageNavigation, DrawingZoomReadout, showZoomReadout } from "../DrawingPageNavigation";
 import { useDrawingFullscreen } from "../useDrawingFullscreen";
@@ -24,7 +23,12 @@ type Props = {
   onDocumentDetails?: () => void;
   onClose?: () => void;
 };
-export function DocumentDrawingWorkspace({
+export function DocumentDrawingWorkspace(props: Props) {
+  const account = useDrawingAccount();
+  if (!account?.organizationId) return <p role="status">Opening your workspace…</p>;
+  return <DocumentDrawingWorkspaceContent key={`${account.accountKey}|${props.jobId}|${props.versionId}`} {...props} />;
+}
+function DocumentDrawingWorkspaceContent({
   jobId,
   versionId,
   folderId,
@@ -33,18 +37,10 @@ export function DocumentDrawingWorkspace({
   onDocumentDetails,
   onClose,
 }: Props) {
-  const account = useDrawingAccount();
   const pageModeScope = `document-folder:${jobId}:${folderId ?? "root"}`;
   const { scroll } = useDrawingPageMode(pageModeScope);
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null);
-  const {
-    mutate,
-    data: liveSheets,
-    error,
-    isPending,
-  } = api.drawingsWorkspace.openDocument.useMutation();
-  const savedSheets = useDrawingSnapshot(`document-sheets:${versionId}`, liveSheets);
-  const sheets = savedSheets.data;
+  const {data: sheets, error, isPending, denied, retry, persist, online} = useDocumentDrawingPages(jobId, versionId);
   const [index, setIndex] = useState(Math.max(0, (initialView?.page ?? 1) - 1));
   const [camera, setCamera] = useState<DrawingViewport>(
     initialView?.viewport ?? {
@@ -61,9 +57,6 @@ export function DocumentDrawingWorkspace({
   useEffect(() => {
     ready.current = onReady;
   }, [onReady]);
-  useEffect(() => {
-    if (navigator.onLine) mutate({ jobId, versionId });
-  }, [jobId, versionId, mutate]);
   const actualIndex = Math.min(index, Math.max(0, (sheets?.length ?? 1) - 1));
   const sheet = sheets?.[actualIndex];
   useRootFlag("data-drawing-quick-wheel-page", quickWheel && Boolean(sheet));
@@ -102,8 +95,11 @@ export function DocumentDrawingWorkspace({
       )}
       {sheet ? (
         <>
+          {error && <p role="status" className="text-muted-foreground px-3 text-sm">Saved pages shown. Could not refresh: {error.message}</p>}
+          {isPending && <p role="status" className="text-muted-foreground px-3 text-sm">Checking this document…</p>}
           <div className="relative min-h-0 flex-1">
             <DrawingWorkspace
+              requireFreshDocumentRead
               pageModeScope={pageModeScope}
               scrollPages={scroll}
               scrollStack={scroll ? { ...scrollNeighbors(sheets, actualIndex), onPage: (offset, view) => openPage(actualIndex + offset, view) } : undefined}
@@ -119,9 +115,7 @@ export function DocumentDrawingWorkspace({
               jobId={jobId}
               sheet={sheet}
               initialViewport={camera}
-              onPrepareOffline={async () => {
-                await account?.store?.saveSnapshot(`document-sheets:${versionId}`, sheets);
-              }}
+              onPrepareOffline={persist}
               onReady={() => ready.current?.()}
               onDocumentDetails={onDocumentDetails}
               onClose={onClose}
@@ -150,12 +144,12 @@ export function DocumentDrawingWorkspace({
       ) : (
         <div className="grid min-h-64 flex-1 place-content-center gap-3 p-6 text-center">
           <p role={error ? "alert" : "status"}>
-            {error?.message ?? "Opening drawing workspace…"}
+            {error?.message ?? (online ? "Opening drawing workspace…" : "These document pages are not saved on this device. Connect to open them.")}
           </p>
-          {error && (
+          {(Boolean(error) || !online) && !denied && (
             <Button
-              disabled={isPending}
-              onClick={() => mutate({ jobId, versionId })}
+              disabled={isPending || !online}
+              onClick={retry}
             >
               Try again
             </Button>

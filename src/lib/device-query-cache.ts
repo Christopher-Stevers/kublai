@@ -98,7 +98,10 @@ let currentReadAuthority: object | null = null;
 export const captureDeviceReadAuthority = () => currentReadAuthority;
 export function reportDeviceReadDenial(path: string, type: string, error: unknown, expectedAuthority = currentReadAuthority) {
   if (expectedAuthority !== currentReadAuthority) return false;
-  if (type !== "query" || !AUTHORITY_READS.has(path) || !isDeviceReadDenial(error)) return false;
+  // This mutation materializes already-authorized page identities for a read.
+  // Its ACL denial revokes saved reads; ordinary mutation refusals never do.
+  const materializationRead = type === "mutation" && path === "drawingsWorkspace.openDocument";
+  if ((!materializationRead && (type !== "query" || !AUTHORITY_READS.has(path))) || !isDeviceReadDenial(error)) return false;
   for (const session of [...activeCaches]) void session.stop(true);
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DEVICE_QUERY_DENIED_EVENT, {detail: {drawings: denialRevokesDrawings({queryKey: [path.split(".")]}, error)}}));
   return true;

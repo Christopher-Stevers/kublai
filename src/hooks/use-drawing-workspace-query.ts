@@ -7,7 +7,7 @@ import type { DrawingWorkspace } from "~/lib/drawing-workspace";
 import { api } from "~/trpc/react";
 
 /** Keep the existing workspace cache/invalidation API; poll only its validator. */
-export function useDrawingWorkspaceQuery(sheetId: string, online: boolean, hyperlinksVisible = true) {
+export function useDrawingWorkspaceQuery(sheetId: string, online: boolean, hyperlinksVisible = true, requireFreshDocumentRead = false) {
   const utils = api.useUtils();
   // Separate validator caches: a hidden response cannot satisfy an enabled layer.
   const input = hyperlinksVisible ? { sheetId } : { sheetId, omitHyperlinks: true as const };
@@ -26,6 +26,8 @@ export function useDrawingWorkspaceQuery(sheetId: string, online: boolean, hyper
       return utils.client.drawingsWorkspace.get.query({ ...input, deferLinks: true }, { signal });
     },
     refetchInterval: online ? 15_000 : false,
+    refetchOnMount: requireFreshDocumentRead ? "always" : undefined,
+    refetchOnReconnect: requireFreshDocumentRead ? "always" : undefined,
     retry: 1,
   });
 }

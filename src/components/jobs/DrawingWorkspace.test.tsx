@@ -1,3 +1,4 @@
+import type * as DocumentWorkspaceAuthorityModule from "~/hooks/use-document-workspace-authority";
 import type * as InstantSavedViewNameModule from "~/hooks/use-instant-saved-view-name";
 import { QueryClient, QueryClientProvider, QueryClientContext, useQuery } from "@tanstack/react-query";
 import type { DrawingOfflineStore } from "~/lib/drawing-offline";
@@ -127,6 +128,10 @@ vi.mock("~/hooks/use-drawing-workspace-query", () => ({
 }));
 
 vi.mock("@trpc/react-query", () => ({getQueryKey: (_: unknown, input: unknown) => ["drawing", input]}));
+vi.mock("~/hooks/use-document-workspace-authority", async (original) => {
+  const actual = await original<typeof DocumentWorkspaceAuthorityModule>();
+  return {useDocumentWorkspaceAuthority: (...args: Parameters<typeof actual.useDocumentWorkspaceAuthority>) => mocks.instantNames ? actual.useDocumentWorkspaceAuthority(...args) : {confirmed: false, isCurrent: () => false}};
+});
 vi.mock("~/hooks/use-instant-saved-view-name", async (original) => {
   const actual = await original<typeof InstantSavedViewNameModule>();
   return {useInstantSavedViewName: (...args: Parameters<typeof actual.useInstantSavedViewName>) => mocks.instantNames ? actual.useInstantSavedViewName(...args) : {tryRename: () => false, canPersist: () => true, isPending: false, pendingEntityId: undefined}};
@@ -2507,7 +2512,7 @@ describe("instant private saved view name integration", () => {
     const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
     return {promise, resolve, reject};
   }
-  function mountName(store: DrawingOfflineStore | null = null) {
+  function mountName(store: DrawingOfflineStore | null = null, requireFreshDocumentRead = false) {
     mocks.instantNames = true;
     mocks.account = {userId: "tim", accountKey: "org:tim", store};
     mocks.data = {...fixture(), entities: [privateView()]};
@@ -2515,8 +2520,9 @@ describe("instant private saved view name integration", () => {
     const key = ["drawing", {sheetId, omitHyperlinks: true}];
     client.setQueryData(key, mocks.data);
     client.setQueryData(["drawing", {sheetId}], mocks.data);
-    const result = render(<QueryClientProvider client={client}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} /></QueryClientProvider>);
-    return {...result, client, key};
+    const tree = (hidden = false) => <QueryClientProvider client={client}><Activity mode={hidden ? "hidden" : "visible"}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()} requireFreshDocumentRead={requireFreshDocumentRead} /></Activity></QueryClientProvider>;
+    const result = render(tree());
+    return {...result, client, key, tree};
   }
   async function rename() {
     fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
@@ -2525,6 +2531,41 @@ describe("instant private saved view name integration", () => {
     fireEvent.click(screen.getByRole("button", {name: "Save", exact: true}));
   }
   afterEach(() => {for (const client of clients.splice(0)) client.clear();});
+  it("online document cached capabilities/manual writes cannot unlock editing; fresh response does", async () => {
+    const {client, key} = mountName(null, true);
+    fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
+    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    act(() => {client.setQueryData(key, client.getQueryData(key));});
+    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
+    expect(await screen.findByRole("button", {name: "Edit", exact: true})).toBeVisible();
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("manual authority loss disables an open document form and blocks the saved-view fast path", async () => {
+    const {client, key} = mountName(null, true);
+    await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
+    fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
+    fireEvent.click(await screen.findByRole("button", {name: "Edit", exact: true}));
+    fireEvent.change(screen.getByLabelText("Saved view name"), {target: {value: "Unconfirmed draft"}});
+    act(() => {client.setQueryData(key, client.getQueryData(key));});
+    expect(screen.getByRole("button", {name: "Checking access…"})).toBeDisabled();
+    fireEvent.submit(screen.getByLabelText("Saved view name").closest("form")!);
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Saved view name")).toHaveValue("Unconfirmed draft");
+  });
+  it("Activity resume revokes document authority and a retained write callback cannot dispatch", async () => {
+    const {client, key, tree, rerender} = mountName(null, true);
+    await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
+    const previousViewer = mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;
+    expect(previousViewer.onScaleChange).toBeDefined();
+    rerender(tree(true)); rerender(tree());
+    fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
+    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    await act(async () => {await previousViewer.onScaleChange?.({unit: "m", unitsPerSheetWidth: 120});});
+    expect(mocks.setScale).not.toHaveBeenCalled(); expect(mocks.save).not.toHaveBeenCalled();
+    await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
+    expect(await screen.findByRole("button", {name: "Edit", exact: true})).toBeEnabled();
+  });
   it("closes form and changes surviving selected/list title before response, restores refused name draft", async () => {
     const request = deferred<DrawingEntity>(); mocks.save.mockReturnValue(request.promise);
     mountName(); await rename();

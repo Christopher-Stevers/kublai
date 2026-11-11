@@ -30,6 +30,7 @@ export function DrawingEntityForm({
   pending,
   workspace,
   responseOnly = false,
+  readOnly = false,
   offline = false,
   onNavigate,
 }: {
@@ -39,6 +40,7 @@ export function DrawingEntityForm({
   pending: boolean;
   workspace: DrawingWorkspace;
   responseOnly?: boolean;
+  readOnly?: boolean;
   offline?: boolean;
   onNavigate?: () => void;
 }) {
@@ -50,10 +52,10 @@ export function DrawingEntityForm({
       className="grid gap-3"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!pending && !uploading) onSubmit();
+        if (!pending && !uploading && !readOnly) onSubmit();
       }}
     >
-      <fieldset disabled={pending || uploading} className="grid min-w-0 gap-3">
+      <fieldset disabled={pending || uploading || readOnly} className="grid min-w-0 gap-3">
         {!responseOnly && ["markup", "view", "issue"].includes(value.kind) && (
           <DrawingField label="Visibility">
             <select
@@ -565,7 +567,7 @@ export function DrawingEntityForm({
               value.kind !== "markup")
           }
         >
-          {pending ? "Saving…" : "Save"}
+          {readOnly ? "Checking access…" : pending ? "Saving…" : "Save"}
         </Button>
       </fieldset>
     </form>

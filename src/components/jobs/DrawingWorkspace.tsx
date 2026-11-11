@@ -31,6 +31,8 @@ import { useSnapshotSource } from "~/components/chat/SnapshotSourceContext";
 import { currentSnapshotState } from "~/lib/snapshot-source";
 import { api } from "~/trpc/react";
 import { useInstantSavedViewName } from "~/hooks/use-instant-saved-view-name";
+import { getQueryKey } from "@trpc/react-query";
+import { useDocumentWorkspaceAuthority } from "~/hooks/use-document-workspace-authority";
 import { useDrawingWorkspaceQuery } from "~/hooks/use-drawing-workspace-query";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -470,6 +472,10 @@ function PeopleLayers({
     </details>
   );
 }
+/** Guard only initiation; sent requests and the existing durable queue continue. */
+function guardDocumentOpeningMutation<T extends object, Args extends unknown[], Result>(mutation: T & {mutateAsync: (...args: Args) => Promise<Result>}, allowed: () => boolean) {
+  return {...mutation, mutateAsync: (...args: Args): Promise<Result> => allowed() ? mutation.mutateAsync(...args) : Promise.reject(new Error("Checking current document access before saving. Try again after it refreshes."))};
+}
 const nameOf = (entity: DrawingEntity) =>
   entity.kind === "issue"
     ? entity.data.title
@@ -524,8 +530,11 @@ export function DrawingWorkspace({
   fullscreenRef,
   fullscreen = false,
   pageNavigation,
+  requireFreshDocumentRead = false,
 }: {
   jobId: string;
+  /** Only online document openings require a new capability response. */
+  requireFreshDocumentRead?: boolean;
   sheet: {
     id: string;
     name: string;
@@ -590,7 +599,14 @@ export function DrawingWorkspace({
   const [snapshot, setSnapshot] = useState<Workspace | null>(null);
   const [layers, setLayers] = useDrawingLayerVisibility(account?.accountKey, sheet.id, entryDrawing?.layers);
   const hyperlinksVisible = layers.issues && !layers.hidden?.includes("link");
-  const query = useDrawingWorkspaceQuery(sheet.id, online, hyperlinksVisible);
+  const query = useDrawingWorkspaceQuery(sheet.id, online, hyperlinksVisible, requireFreshDocumentRead);
+  const documentAuthority = useDocumentWorkspaceAuthority(
+    getQueryKey(api.drawingsWorkspace.get, hyperlinksVisible ? {sheetId: sheet.id} : {sheetId: sheet.id, omitHyperlinks: true}, "query"),
+    requireFreshDocumentRead && online,
+    account?.accountKey ?? "", account?.userId ?? "", sheet.id, query,
+  );
+  const documentReadOnly = requireFreshDocumentRead && online && !documentAuthority.confirmed;
+  const canStartDocumentWrite = () => !requireFreshDocumentRead || navigator.onLine === false || documentAuthority.isCurrent();
   // Cache keys also include the simulation session; identity comes from the
   // server-validated account, never from parsing a storage namespace.
   const boundUser = account?.userId;
@@ -605,13 +621,14 @@ export function DrawingWorkspace({
       : null;
   const visibleServerData = useMemo(() => serverData && hyperlinksVisible && serverData.omittedHyperlinks
     ? mergeDrawingWorkspaceSnapshot(serverData, snapshot) : serverData, [serverData, snapshot, hyperlinksVisible]);
-  const data =
+  const rawData =
     visibleServerData ??
     (!accessRevoked &&
     snapshot?.sheetId === sheet.id &&
     (!boundUser || snapshot.actor.id === boundUser)
       ? snapshot
       : null);
+  const data = useMemo(() => rawData && documentReadOnly ? {...rawData, canAnnotate: false, canManage: false, canUseSheetTools: false} : rawData, [rawData, documentReadOnly]);
   // Snapshots saved before Find text was removed may still name it.
   const entryPanel = entryDrawing?.panel === "search" ? "" : (entryDrawing?.panel ?? "");
   const [panel, setPanel] = useState<Panel>(entryPanel);
@@ -813,7 +830,7 @@ export function DrawingWorkspace({
   );
   const sourceId =
     sourceOverride ?? data?.metadata.currentSourceSheetId ?? sheet.id;
-  const scaleMutation = api.drawingsWorkspace.setScale.useMutation();
+  const scaleMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.setScale.useMutation(), canStartDocumentWrite);
   const source = data?.jobSheets.find((item) => item.id === sourceId) ?? {
     ...sheet,
     id: sheet.id,
@@ -941,15 +958,16 @@ export function DrawingWorkspace({
     };
   }, [source.id, source.imageUrl, resolveAssetUrl, selectTool]);
 
-  const autoHyperlinkSave = api.drawingsWorkspace.autoHyperlinkSave.useMutation();
-  const saveMutation = api.drawingsWorkspace.save.useMutation();
-  const archiveMutation = api.drawingsWorkspace.archive.useMutation();
-  const commentMutation = api.drawingsWorkspace.comment.useMutation();
-  const addMeasurementLayer = api.drawingsWorkspace.addMeasurementLayer.useMutation();
-  const metadataMutation = api.drawingsWorkspace.metadata.useMutation();
-  const versionMutation = api.drawingsWorkspace.setCurrentVersion.useMutation();
-  const favoriteMutation = api.drawingsWorkspace.favorite.useMutation();
-  const watchMutation = api.drawingsWorkspace.watch.useMutation();
+  const autoHyperlinkSave = guardDocumentOpeningMutation(api.drawingsWorkspace.autoHyperlinkSave.useMutation(), canStartDocumentWrite);
+  const rawSaveMutation = api.drawingsWorkspace.save.useMutation();
+  const saveMutation = guardDocumentOpeningMutation(rawSaveMutation, canStartDocumentWrite);
+  const archiveMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.archive.useMutation(), canStartDocumentWrite);
+  const commentMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.comment.useMutation(), canStartDocumentWrite);
+  const addMeasurementLayer = guardDocumentOpeningMutation(api.drawingsWorkspace.addMeasurementLayer.useMutation(), canStartDocumentWrite);
+  const metadataMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.metadata.useMutation(), canStartDocumentWrite);
+  const versionMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.setCurrentVersion.useMutation(), canStartDocumentWrite);
+  const favoriteMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.favorite.useMutation(), canStartDocumentWrite);
+  const watchMutation = guardDocumentOpeningMutation(api.drawingsWorkspace.watch.useMutation(), canStartDocumentWrite);
   const notifications = api.drawingsWorkspace.notifications.useQuery(
     { jobId },
     {
@@ -957,7 +975,7 @@ export function DrawingWorkspace({
       refetchInterval: online && panel === "notifications" ? 15_000 : false,
     },
   );
-  const readNotification = api.drawingsWorkspace.readNotification.useMutation();
+  const readNotification = guardDocumentOpeningMutation(api.drawingsWorkspace.readNotification.useMutation(), canStartDocumentWrite);
   const refresh = () =>
     Promise.all([
       utils.drawingsWorkspace.get.invalidate({ sheetId: sheet.id }),
@@ -1013,7 +1031,7 @@ export function DrawingWorkspace({
     jobId,
     sheetId: sheet.id,
     online,
-    save: (input) => saveMutation.mutateAsync(input),
+    save: (input) => rawSaveMutation.mutateAsync(input),
     onSaved: patchEntity,
     onError: fail,
   });
@@ -1021,6 +1039,7 @@ export function DrawingWorkspace({
     record.state === "blocked" || record.state === "conflict",
   );
   const writable =
+    !documentReadOnly &&
     current &&
     Boolean(data) &&
     data?.canAnnotate !== false &&
@@ -1178,6 +1197,7 @@ export function DrawingWorkspace({
   });
   const save = async (value: DrawingSave, selectAfterSave = true) => {
     if (!data) return false;
+    if (!canStartDocumentWrite()) {setError("Checking current document access before saving. Try again after it refreshes."); return false;}
     if (value.kind === "markup" && value.data.deferredLinks) {
       try {
         const full = await resolveMarkup(value.data);
@@ -1201,6 +1221,8 @@ export function DrawingWorkspace({
       setPanel("selected");
       return false;
     }
+    // Deferred link loading may have outlived the original authority certificate.
+    if (!canStartDocumentWrite()) {setError("Checking current document access before saving. Try again after it refreshes."); return false;}
     if (instantViewName.tryRename(parsed.data)) return true;
     setPending((n) => n + 1);
     setError(null);
@@ -2727,6 +2749,7 @@ export function DrawingWorkspace({
                           : undefined
                       }
                       pending={pending > 0 || equipmentBusy}
+                      readOnly={documentReadOnly}
                       workspace={viewData}
                       offline={!online}
                       responseOnly={
