@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-11T12:01:15.967553+00:00",
+  "files": {
+    "compiled-preferences-functional-plan.json": "0c28aeeb14f91cb7419edd66fb5fd8ed95e1a5b90b6e304133e72e28fd4b68a4",
+    "preference-observation-context.node-test.mjs": "62815bea6719d4300d2e6e21f179256cc5ef7ef448d370858d9e9078875e2723",
+    "observed-trpc-response.node-test.mjs": "b5dcefcf29fb03639fdb39601cd383556580b86eb06351ce8f3fa8214eb47534",
+    "preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "observed-trpc-response.mjs": "f31aa7ffa7bba57bd15fe08bebef3cb9d438507b62a3851536c9f332c683e22a",
+    "compiled-preferences-functional.mjs": "4e9e63a6adff7286011717e1a57c32973df21b51adad7cbd174c9d688becee8e"
+  },
+  "frozenRuntimeMethod": "/tmp/foremanhq-preference-functional-v2-method-BnX6OY",
+  "allMatchBefore": true
+}

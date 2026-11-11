@@ -1,0 +1,61 @@
+{
+  "status": "source-prepared-not-executed",
+  "protocol": "compiled-preferences-functional-v2",
+  "driver": "perf/live/compiled-preferences-functional.mjs",
+  "driverSha256": "4e9e63a6adff7286011717e1a57c32973df21b51adad7cbd174c9d688becee8e",
+  "expectedR12SourceBuild": null,
+  "expectedR12SourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "expectedCompiledLabBuild": null,
+  "rootRuntimeAuthorizationPending": true,
+  "internalDeadlineSeconds": 420,
+  "outerSetupRunCleanupSeconds": 480,
+  "healthyObservationSeconds": 75,
+  "outageObservationSeconds": 75,
+  "controlledSubscriptionExpirySeconds": 35,
+  "syntheticSqlAllowlist": [
+    "Exact seeded user role/subscription fields, restored in finally",
+    "Terminate exactly one private foremanhq_change LISTEN PID; expected administrator-FATAL separated"
+  ],
+  "httpMutationAllowlist": [
+    "appDevices.report",
+    "user.setMaterialSortPreferences"
+  ],
+  "fixedPostAllowlist": [
+    "/api/replicache/material-lists/pull",
+    "/api/replicache/catalogue/pull",
+    "/api/perf",
+    "/api/debug/client-console-error"
+  ],
+  "syncPushPolicy": "Only same-origin material-lists/catalogue push with empty mutations array",
+  "readinessPolicy": "Must observe real compiled preferences-ready true; false-only fails. No injected frames or QueryCache certificate grants.",
+  "timingMethodUnchanged": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "timingCapture": {
+    "samples": 120,
+    "idleMilliseconds": 600000,
+    "outerMinutes": 45,
+    "authorized": false
+  },
+  "validation": "Seven node parser/context fixtures pass, including real installed JSONL producer wire and normal JSON; syntax checks passed. No app/browser/DB/build run.",
+  "dependencies": {
+    "perf/live/observed-trpc-response.mjs": "f31aa7ffa7bba57bd15fe08bebef3cb9d438507b62a3851536c9f332c683e22a",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8"
+  },
+  "observationDecoder": {
+    "method": "Same installed jsonlStreamConsumer+SuperJSON and nested promises as httpBatchStreamLink; normal JSON also supported",
+    "trpcVersion": "11.8.1",
+    "bodyWaitMs": 5000,
+    "decodeWaitMs": 5000,
+    "maxObservedBodyBytes": 524288,
+    "maxJsonlLines": 4096,
+    "maxBatchEntries": 128,
+    "memoryLimit": "Playwright buffers an observed body; content-length is rejected early if present, otherwise size is rejected after receipt before parsing. No streaming memory guarantee asserted."
+  },
+  "contextPolicy": "Separate consumer/producer state; every report row labels contextId; all authority/readiness/hint/poll/reconnect assertions use consumer records only; producer used only its real mutation ACK.",
+  "preservedUnexecutedV1": "perf/artifacts/compiled-preferences-functional-unexecuted-v1",
+  "listenCatchUpAssertion": "Actual consumer request and successful decoded consumer preference HTTP response both start at or after LISTEN termination.",
+  "preparedR12Source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
+  "preparedR12CanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111/.next-web",
+  "expectedR12SourceFileCount": 2308
+}

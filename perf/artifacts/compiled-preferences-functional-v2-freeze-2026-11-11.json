@@ -1,0 +1,33 @@
+{
+  "status": "frozen-source-only-runtime-held",
+  "frozenAt": "2026-11-11T11:52:27.902Z",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v2-method-BnX6OY",
+  "files": {
+    "perf/live/compiled-preferences-functional.mjs": "4e9e63a6adff7286011717e1a57c32973df21b51adad7cbd174c9d688becee8e",
+    "perf/live/observed-trpc-response.mjs": "f31aa7ffa7bba57bd15fe08bebef3cb9d438507b62a3851536c9f332c683e22a",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/observed-trpc-response.node-test.mjs": "b5dcefcf29fb03639fdb39601cd383556580b86eb06351ce8f3fa8214eb47534",
+    "perf/live/preference-observation-context.node-test.mjs": "62815bea6719d4300d2e6e21f179256cc5ef7ef448d370858d9e9078875e2723",
+    "perf/live/compiled-preferences-functional-plan.json": "0c28aeeb14f91cb7419edd66fb5fd8ed95e1a5b90b6e304133e72e28fd4b68a4"
+  },
+  "expectedR12Source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
+  "expectedR12Fingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "expectedR12FileCount": 2308,
+  "expectedR12Build": null,
+  "driverSha256": "4e9e63a6adff7286011717e1a57c32973df21b51adad7cbd174c9d688becee8e",
+  "captureMethodRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "captureMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "predeclaredBaseline": {
+    "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+    "sha256": "c262451ec3ef1ca979585aeb29ccc6bd67444d0a323d248584ccf74bb6d9acd4"
+  },
+  "stabilityReference": {
+    "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+    "sha256": "fa25762b3122cdebc609a045b084bc5322e2c061071a0eb0310842bf3f61a718"
+  },
+  "notes": [
+    "Source only; no R12 app compile/server/DB/browser/capture started.",
+    "Role/SSE observations are consumer-only; actual catch-up requires request plus successful decoded response after loss.",
+    "Runtime config, actual canonical build identity, source/static approval and outer orchestration remain required."
+  ]
+}

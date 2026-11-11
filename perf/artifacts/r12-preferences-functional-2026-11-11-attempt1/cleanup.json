@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-11T12:01:15.967665+00:00",
+  "serverPid": 4061782,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "ownedPorts3483And3484Closed": true,
+  "browserProxyClosedByDriverFinally": true,
+  "coordinatorExitCode": 1,
+  "pgErrors": [],
+  "captures": 0,
+  "acceptedEvidence": false,
+  "noAutomaticRetry": true
+}

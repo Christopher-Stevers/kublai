@@ -690,8 +690,13 @@ try {
     10000,
     "No authoritative catch-up after LISTEN restart",
   );
+  await wait(
+    () => consumer.latestPreference?.requestAt >= lossAt,
+    10000,
+    "No successful consumer preference HTTP response after LISTEN restart",
+  );
   pass(
-    "compiled private LISTEN loss/resubscribe emits false/true and actual HTTP catch-up",
+    "compiled private LISTEN loss/resubscribe emits false/true and successful consumer HTTP catch-up",
   );
   if (violations.length) throw Error("Request/frame guard rejected work");
   report.status = "complete";
