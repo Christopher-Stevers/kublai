@@ -1,0 +1,142 @@
+{
+  "status": "source-only-proposal-incomplete-pending-reviewed-scale-commit",
+  "baseBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+  "baseSourceFingerprint": "71410fbee1832a3dc141c47ef790edf9093c6e5146beac3842534503f7a8b0f3",
+  "groups": [
+    {
+      "group": "ordinary-row-partition",
+      "commit": "49e911d391034173697b6820c0eae91b7eac9f6d",
+      "paths": [
+        {
+          "path": "src/components/materialLists/MaterialListItem.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "53bc702f7d0adddbf4044353bbc7ca19de91ca139bf7061c5447b9f353cc1b90",
+          "postimageSha256": "9661a0f5b719689adcd8915780409df00fe53c8cabc94ef1bcb6b2d026131431"
+        },
+        {
+          "path": "src/components/materialLists/MaterialListItemPresentation.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "95d410f46829c268090d9d56b8f04120efa27e10e002f10a5ca081fb32ea223b"
+        },
+        {
+          "path": "src/components/materialLists/OrdinaryMaterialListItem.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "e06d18696b67510d45b1871820b046f9ab5f48bdb59b7e1008bd526fe353f889"
+        }
+      ],
+      "patchSha256": "abf968c0477892f69786524a3f4d3f3e8f928a71617013b14fd44e568028ee61",
+      "appliesWithoutConflict": true,
+      "error": ""
+    },
+    {
+      "group": "merge-motion",
+      "commit": "3c322416e15a24d225443f79c1b9bde0a74d22df",
+      "paths": [
+        {
+          "path": "src/components/materialLists/use-card-merge.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "41316c18e73073a748fbd7fad5e58e4f0460bf86497a752c2217262c2a472c21",
+          "postimageSha256": "34382eebf03fd3a41e86ac3453285956392bafa715a3ff8e8754b8cfd0b32aac"
+        }
+      ],
+      "patchSha256": "e1cf3fd543539c9555c7e6717bf90b80a89aebbf376593c958a45869cded98f2",
+      "appliesWithoutConflict": true,
+      "error": ""
+    },
+    {
+      "group": "merge-unmount-ack",
+      "commit": "1a1d88a4b1eaf29d92b2a05f442746ade7e28048",
+      "paths": [
+        {
+          "path": "src/components/materialLists/use-card-merge.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "34382eebf03fd3a41e86ac3453285956392bafa715a3ff8e8754b8cfd0b32aac",
+          "postimageSha256": "8fd1a49fbf5f6b8d8dc6a96011f0a7f091c35d85b5cb9336725036a5a9e40ac2"
+        }
+      ],
+      "patchSha256": "dc02baa738baa58ac6b3c812f240dcd229df5a70c8d5d4a3dd51a441b65569d7",
+      "appliesWithoutConflict": true,
+      "error": ""
+    },
+    {
+      "group": "snapshot-idle-observer",
+      "commit": "9970d7239a8fd41cc9af587e512d1c27cf66013b",
+      "paths": [
+        {
+          "path": "src/components/chat/SnapshotProvider.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "00b12d81d7f829e2414da0c8d39499c633c4b1df377c7a0221898d2d54561318",
+          "postimageSha256": "58ba8efa51672ef4ff67cb34168e39e241a0fb5d93313ed53b0598b908fcc6df"
+        }
+      ],
+      "patchSha256": "5801682ba1b898d93eca6d00961ae966cb94c669c055fe25a575b80398442c72",
+      "appliesWithoutConflict": true,
+      "error": ""
+    },
+    {
+      "group": "comparison-import-boundary",
+      "commit": "5d2130c8593fb9c4043e2c4f241bb219eefe62ff",
+      "paths": [
+        {
+          "path": "src/components/jobs/FileComparison.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "212302bf5b3e1d57154a0023a23344ee9d95965a4aa8f325fe1ff2137bf1e52c",
+          "postimageSha256": "c66b7a5656c6bc86859a8adf3cb96c4b6fc430085b5bf6eb378145156f4c4b73"
+        },
+        {
+          "path": "src/components/jobs/FileComparisonContent.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "212302bf5b3e1d57154a0023a23344ee9d95965a4aa8f325fe1ff2137bf1e52c"
+        }
+      ],
+      "patchSha256": "dd7d29bf75960313e1fe78fd97ed440b5af8e48e11eb1173c6c7ba4db65db968",
+      "appliesWithoutConflict": true,
+      "error": ""
+    },
+    {
+      "group": "comparison-shared-controls",
+      "commit": "90ca286ff86ad90650be51c41bfe742448d2ca9b",
+      "paths": [
+        {
+          "path": "src/components/jobs/FileComparison.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "c66b7a5656c6bc86859a8adf3cb96c4b6fc430085b5bf6eb378145156f4c4b73",
+          "postimageSha256": "0c087228c5ef6430b118607866d356bcb238ed5051b3b75555a266ecb8c5e25c"
+        }
+      ],
+      "patchSha256": "dce1340c1f6e9b4944030c42c7f1558864c2c77499dc1e427153cf9ec0671cef",
+      "appliesWithoutConflict": true,
+      "error": ""
+    }
+  ],
+  "runtimePathCount": 7,
+  "pending": [
+    "final scale commit/runtime allowlist and root review",
+    "full immutable candidate freeze/unaffected/public comparison",
+    "explicit root canonical build clearance"
+  ],
+  "sourceComposition": "Apply only exact selected runtime commit diffs to immutable R11. No current HEAD file-body copy. All current public files will remain unchanged.",
+  "excluded": [
+    "R8 press attribute experiment",
+    "dirty working files",
+    "schema and worker executable",
+    "package/lock/tsconfig",
+    "PackingSlips",
+    "zoom intent",
+    "unreviewed scale source"
+  ],
+  "buildStarted": false,
+  "activated": false
+}
