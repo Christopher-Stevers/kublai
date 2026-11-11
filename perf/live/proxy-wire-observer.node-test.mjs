@@ -74,6 +74,9 @@ test("valid compressed response decodes and context labels never reach the upstr
   assert.equal((await p).rows[0].ok, true);
   const stripped = stripObservationHeaders({
     host: "127.0.0.1:3484",
+    cookie: "fixture-cookie=1",
+    authorization: "Bearer synthetic-fixture",
+    "x-csrf-token": "synthetic-fixture",
     [CONTEXT_HEADER]: "producer",
     [REQUEST_HEADER]: "producer-2",
     "trpc-accept": "application/jsonl",
@@ -83,6 +86,9 @@ test("valid compressed response decodes and context labels never reach the upstr
   assert.equal(stripped.headers[CONTEXT_HEADER], undefined);
   assert.equal(stripped.headers[REQUEST_HEADER], undefined);
   assert.equal(stripped.headers["trpc-accept"], "application/jsonl");
+  assert.equal(stripped.headers.cookie, "fixture-cookie=1");
+  assert.equal(stripped.headers.authorization, "Bearer synthetic-fixture");
+  assert.equal(stripped.headers["x-csrf-token"], "synthetic-fixture");
   assert.equal(
     stripObservationHeaders({
       [CONTEXT_HEADER]: "consumer",

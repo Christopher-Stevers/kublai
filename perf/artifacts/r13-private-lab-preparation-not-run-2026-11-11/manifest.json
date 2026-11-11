@@ -1,0 +1,16 @@
+{
+  "status": "prepared-not-run",
+  "source": {
+    "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111",
+    "sourceBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+    "sourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+    "sourceFileCount": 2313,
+    "reason": "Compiled native resolver has free createRequire and returns null; no R13 lab/runtime allowed."
+  },
+  "scripts": {
+    "foremanhq-r13-compile-only.sh": "447261335f39563ddd319f04583b261aa4a4ab25e4fd87804ab32f2705a80a4f",
+    "foremanhq-r13-compile-command.sh": "f61a28ada980b965af033fd6e97709c7dc6194f15d55916a9daa4ebd424633a7"
+  },
+  "privateCompileStarted": false,
+  "reason": "Root held runtime after canonical native-resolver failure; corrected R14 identity required."
+}

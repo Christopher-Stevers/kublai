@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PERF_HARNESS_DIR=/tmp/foremanhq-perf-method-f9bHR6
+export PERF_SOURCE_ROOT=/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111
+export PERF_SOURCE_BUILD_DIST="$PERF_SOURCE_ROOT/.next-web"
+export PERF_SYNTHETIC_CACHE_ROOT=/tmp/foremanhq-speed-app-5h2kmq
+export PERF_PG_ERROR_REPORT=/tmp/foremanhq-r13-compile-pg-errors.json
+timeout --signal=TERM --kill-after=20s 6m bash "$PERF_HARNESS_DIR/perf/lab/database.sh" bash /tmp/foremanhq-r13-compile-only.sh

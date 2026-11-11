@@ -502,7 +502,7 @@ try {
         });
         return route.continue({
           headers: {
-            ...request.headers(),
+            ...(await request.allHeaders()),
             [CONTEXT_HEADER]: contextId,
             [REQUEST_HEADER]: requestId,
           },

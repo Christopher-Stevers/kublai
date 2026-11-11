@@ -187,3 +187,29 @@ Fourteen fixtures pass, including split/partial/abort/size/time/compression boun
 stripped context tags, real server header/error contracts and the installed client
 abort behavior. Syntax checks pass. This source preparation has not started an
 app/browser/DB run; next candidate identity and root authorization remain required.
+
+## Next source: R13, runtime held during canonical compile
+
+The later R13 frozen source is
+`/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111`,
+fingerprint `f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e`
+and 2,313 files. Its canonical build identity is mandatory before any private
+compile/setup. The native version fix is included in R13; neither old R12 lab is
+relabelled as R13 nor its known readiness failure retried.
+
+Before freezing v4, instrumented route continuation now preserves
+`await request.allHeaders()`, including cookies/security headers. The private
+proxy removes only its context/request tags. Synthetic header-preservation
+fixture assertions are prepared; rerunning checks/runtime is held until the
+canonical compile window ends. Subsequent private compilation will use exact
+R13 identity, the same sealed auth/schema source transforms, and fresh PG; one
+separate fresh functional DB will follow only after root static/protocol clearance.
+The full matrix remains separately unauthorized.
+
+R13 canonical compile/static completed, but its emitted native resolver still had
+an unbound createRequire and returned null. Root therefore held all R13 private
+compile/runtime. The exact prepared commands are preserved as **not run** under
+`artifacts/r13-private-lab-preparation-not-run-2026-11-11`. No R13 lab was created.
+The header-preserving v4 source and helpers are frozen separately with all 14
+fixtures passing; corrected R14 identity/static review and runtime authorization
+are still required. No full matrix or acceptance-method change occurred.

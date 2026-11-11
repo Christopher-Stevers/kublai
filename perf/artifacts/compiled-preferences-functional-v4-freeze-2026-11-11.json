@@ -1,0 +1,20 @@
+{
+  "status": "source-frozen-runtime-held-for-R14",
+  "frozenAt": "2026-11-11T12:23:15.221Z",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v4-method-wAQrlg",
+  "driverSha256": "fcee54c3a647592c69f469e0ff9388a3c3fb47a4264ae4c7e8897dd88bef71c3",
+  "files": {
+    "perf/live/compiled-preferences-functional.mjs": "fcee54c3a647592c69f469e0ff9388a3c3fb47a4264ae4c7e8897dd88bef71c3",
+    "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
+    "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
+    "perf/live/proxy-wire-observer.mjs": "568ed16005987bc6f20154f4c2d0b6ec9f65625c5fc25ff89a56828e024ece1b",
+    "perf/live/observed-trpc-response.node-test.mjs": "4af1559cb8eaa90c44f4bf69d492c6d378c4770d7db8a52e0bd44c739aaa0e0c",
+    "perf/live/preference-observation-context.node-test.mjs": "62815bea6719d4300d2e6e21f179256cc5ef7ef448d370858d9e9078875e2723",
+    "perf/live/proxy-wire-observer.node-test.mjs": "349a56e91208204bc280bc4aec62f2cc53a6ee7361bc0d17e7f0b261aaa6143f",
+    "perf/live/compiled-preferences-functional-plan.json": "5e28e6adc578e97d26e171b9c5792b3e82fce7d5b0e3dda1820eed669e557173"
+  },
+  "headerPolicy": "await request.allHeaders; proxy strips only context/request tags",
+  "fixturesPassed": 14,
+  "applicationRuntimeStarted": false,
+  "expectedNewCandidateIdentity": null
+}

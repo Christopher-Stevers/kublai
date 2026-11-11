@@ -1,10 +1,8 @@
 {
-  "status": "source-prepared-next-candidate-required",
+  "status": "source-cleared-awaiting-corrected-R14-identity",
   "protocol": "compiled-preferences-functional-v4",
   "driver": "perf/live/compiled-preferences-functional.mjs",
-  "driverSha256": "76f42afa6798e0d15f33dcc41a5d681d05abfddf7101dadbe9b4f794bbcdda35",
-  "expectedR12SourceBuild": null,
-  "expectedR12SourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "driverSha256": "fcee54c3a647592c69f469e0ff9388a3c3fb47a4264ae4c7e8897dd88bef71c3",
   "expectedCompiledLabBuild": null,
   "rootRuntimeAuthorizationPending": true,
   "internalDeadlineSeconds": 420,
@@ -37,7 +35,7 @@
     "outerMinutes": 45,
     "authorized": false
   },
-  "validation": "14 node fixtures pass: real installed framework header/deferred/error cases, context isolation, split-wire completion after downstream close, abort/partial/size/time/decompression bounds, header stripping, and installed streaming-client successful-result fetch-signal abort. Syntax passed. No new app runtime.",
+  "validation": "14 node fixtures pass including cookie/security-header preservation, source syntax checked; no R13 private app/runtime was started.",
   "dependencies": {
     "perf/live/observed-trpc-response.mjs": "864f13bc8d0a13bbe74cea0f631d6787885cbea64b6f3f6e81ec6b9a08f37eec",
     "perf/live/preference-observation-context.mjs": "432f3ea4db3b84a5a8a96ed74a9fa2bbf42d8922e415abf496a207997adb4da8",
@@ -56,9 +54,6 @@
   "contextPolicy": "Separate consumer/producer state; every report row labels contextId; all authority/readiness/hint/poll/reconnect assertions use consumer records only; producer used only its real mutation ACK.",
   "preservedUnexecutedV1": "perf/artifacts/compiled-preferences-functional-unexecuted-v1",
   "listenCatchUpAssertion": "Actual consumer request and successful decoded consumer preference HTTP response both start at or after LISTEN termination.",
-  "preparedR12Source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
-  "preparedR12CanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111/.next-web",
-  "expectedR12SourceFileCount": 2308,
   "priorFailedAttempt": "perf/artifacts/r12-preferences-functional-2026-11-11-attempt2",
   "blockedR12Build": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
   "blockedR12Reason": "Known emitted version lookup path.dirname(4636) returns null; no additional R12 functional/full run authorized.",
@@ -84,5 +79,36 @@
     "sseCollected": false,
     "immediateForwarding": true,
     "cancellationCaveat": "Tracked finite upstream may finish after browser cancellation within bounds; public producer saved UI and consumer select/hint assertions remain required to prove client consumption."
-  }
+  },
+  "preparedCandidateSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111",
+  "preparedCandidateCanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111/.next-web",
+  "expectedCandidateSourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+  "expectedCandidateSourceFileCount": 2313,
+  "expectedCandidateSourceBuild": null,
+  "headerPreservation": "Instrumented route.continue spreads await request.allHeaders(); proxy removes only context/request tags and preserves cookie/security headers.",
+  "priorKnownBadR12": {
+    "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
+    "canonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111/.next-web",
+    "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+    "sourceFileCount": 2308,
+    "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+    "reason": "Known emitted version lookup path.dirname(4636) returns null; no additional R12 functional/full run authorized."
+  },
+  "blockedCandidates": [
+    {
+      "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111",
+      "canonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r12-20261111/.next-web",
+      "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+      "sourceFileCount": 2308,
+      "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+      "reason": "Known emitted version lookup path.dirname(4636) returns null; no additional R12 functional/full run authorized."
+    },
+    {
+      "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111",
+      "sourceBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+      "sourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+      "sourceFileCount": 2313,
+      "reason": "Compiled native resolver has free createRequire and returns null; no R13 lab/runtime allowed."
+    }
+  ]
 }
