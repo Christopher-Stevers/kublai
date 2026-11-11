@@ -1,0 +1,56 @@
+--- executed-R18
++++ prepared-R19-identities-only
+@@ -1,14 +1,14 @@
+ #!/usr/bin/env bash
+-# R18 attempt2 operational guards/evidence copying; immutable timing harness unchanged.
++# R19 attempt2 operational guards/evidence copying; immutable timing harness unchanged.
+ set -euo pipefail
+ # Freeze a copy before execution; run under perf/lab/database.sh.
+ harness_root=${PERF_HARNESS_DIR:?Freeze the timing harness first}
+-[[ "${PERF_REUSE_SNAPSHOT:-}" == /tmp/foremanhq-speed-app-mIZVko ]] || { printf "%s\n" "Explicit R18 compiled reuse required; rebuild needs separate authorization"; exit 1; }
++[[ "${PERF_REUSE_SNAPSHOT:-}" == /tmp/foremanhq-speed-app-PSljsn ]] || { printf "%s\n" "Explicit R19 compiled reuse required; rebuild needs separate authorization"; exit 1; }
+ unset PERF_PILOT PERF_LINKS PERF_JOURNEYS PERF_RUNS
+ : "${PERF_BASELINE_DIST:?Set actual previous canonical release build directory}"
+ : "${PERF_SOURCE_BUILD_DIST:?Set actual canonical source release build directory}"
+ if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+-  snapshot=$(node /tmp/foremanhq-r18-reuse-frozen-app.mjs)
++  snapshot=$(node /tmp/foremanhq-r19-reuse-frozen-app.mjs)
+ else
+   snapshot=$(node "$harness_root/perf/create-lab-snapshot.mjs")
+ fi
+@@ -40,7 +40,7 @@
+ preserve_evidence() {
+   local destination=${PERF_RUN_EVIDENCE_DIR:?}
+   local failed=0
+-  [[ "$destination" == /tmp/foremanhq-r18-full-v2-evidence ]] || return 1
++  [[ "$destination" == /tmp/foremanhq-r19-full-v2-evidence ]] || return 1
+   [[ "${PERF_LAB_SOCKET:-}" == /tmp/foremanhq-perf-pg.* ]] || return 1
+   # Explicit status handling: callers may invoke this function in an OR-list,
+   # where bash disables errexit even inside the function. Try all safe copies.
+@@ -52,7 +52,7 @@
+       cp "$snapshot/$name" "$destination/$name" || failed=1
+     fi
+   done
+-  node /tmp/foremanhq-r18-source-after.mjs || failed=1
++  node /tmp/foremanhq-r19-source-after.mjs || failed=1
+   return "$failed"
+ }
+ final_cleanup() {
+@@ -84,7 +84,7 @@
+ node "$harness_root/scripts/release/static-metrics.mjs" "$snapshot/.next" "$PERF_BASELINE_DIST" > "$snapshot/lab-static-bytes.json"
+ start_server
+ node "$harness_root/perf/preflight.mjs"
+-node /tmp/foremanhq-r18-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-idle.json"
++node /tmp/foremanhq-r19-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-idle.json"
+ PERF_IDLE_OUTPUT="$snapshot/idle.json" node "$harness_root/perf/idle.mjs"
+ node --input-type=module -e 'import fs from "node:fs";const bytes=JSON.parse(fs.readFileSync("static-bytes.json"));const idle=JSON.parse(fs.readFileSync("idle.json"));if(bytes.build!==idle.sourceBuild)throw Error("Canonical static and idle source build mismatch");fs.writeFileSync("static.json",JSON.stringify({...bytes,idlePolls:idle.idlePolls,idleEvidence:idle},null,2));'
+ export PERF_STATIC_REPORT="$snapshot/static.json"
+@@ -93,7 +93,7 @@
+ cleanup; server_pid=
+ node "$harness_root/perf/lab/reset-writes.mjs"
+ start_server
+-node /tmp/foremanhq-r18-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-matrix.json"
++node /tmp/foremanhq-r19-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-matrix.json"
+ PERF_OUTPUT="$snapshot/candidate.json" node "$harness_root/perf/run.mjs"
+ printf '%s\n' "Independent complete candidate capture finished."
+ node "$harness_root/perf/check.mjs" --baseline "$PERF_COMPARISON_BASELINE" --report "$snapshot/candidate.json" > "$snapshot/candidate-regression.txt" 2>&1 || { cat "$snapshot/candidate-regression.txt"; exit 1; }

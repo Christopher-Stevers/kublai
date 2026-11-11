@@ -1,0 +1,22 @@
+▲ Next.js 16.1.1
+- Local:         http://127.0.0.1:3483
+- Network:       http://127.0.0.1:3483
+
+✓ Starting...
+✓ Ready in 112ms
+[TRPC] user.getMe took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] notifications.identity took 1ms to execute (0 queries) [database 0.0ms]
+[TRPC] push.identity took 0ms to execute (0 queries) [database 0.0ms]
+[TRPC] job.getJob took 10ms to execute (5 queries) [database 7.7ms]
+[TRPC] materialList.getMaterialList took 11ms to execute (5 queries) [database 10.1ms]
+[TRPC] materialList.getOrderById took 3ms to execute (2 queries) [database 2.0ms]
+[TRPC] drawings.listSets took 4ms to execute (4 queries) [database 2.1ms]
+[TRPC] drawings.getSet took 2ms to execute (2 queries) [database 0.5ms]
+[TRPC] sign-in check took 0ms
+[TRPC] drawingsWorkspace.get took 7ms to execute (11 queries) [database 27.8ms] 16 KB
+[TRPC] sign-in check took 1ms
+[TRPC] drawingsWorkspace.changes took 3ms to execute (12 queries) [database 5.6ms] 16 KB
+[TRPC] chat.getOverview took 2ms to execute (5 queries) [database 1.8ms]
+[TRPC] chat.history took 2ms to execute (5 queries) [database 1.4ms]
+[TRPC] rooms.getJobRoomCount took 1ms to execute (2 queries) [database 0.4ms]
+[TRPC] notifications.overview took 4ms to execute (1 queries) [database 3.7ms]

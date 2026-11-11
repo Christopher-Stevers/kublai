@@ -1,0 +1,1 @@
+bash perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-preparation/full-command.sh

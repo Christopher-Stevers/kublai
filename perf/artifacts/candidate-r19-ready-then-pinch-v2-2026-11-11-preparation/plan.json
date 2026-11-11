@@ -1,0 +1,29 @@
+{
+  "status": "prepared-not-run-awaiting-root-full-gate-GO",
+  "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "lab": "/tmp/foremanhq-speed-app-PSljsn",
+  "labBuild": "2e5AUhfrGey7tubpAbx-8",
+  "timingMethod": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "samples": 120,
+  "idleDurationMs": 600000,
+  "outerBoundMinutes": 45,
+  "noRetryOrSampleExclusion": true,
+  "thisRunEvidenceDirectory": "/tmp/foremanhq-r19-full-v2-evidence",
+  "databaseLogScope": "Copied after Next stop and before database.sh cleanup, excludes subsequent PG shutdown lines. Contains private fixture only; inspect/sanitize before repository archive.",
+  "standaloneSchemaPreserved": "planned-until-actual-execution",
+  "hashes": {
+    "full-command.sh": "dd840bb93b7bb3609cb8182d8d74aeef3bf3630ed01c4d702895ec5d5399f2d6",
+    "orchestration.sh": "dc158dbfa764c04b329894b5ecd41cfac69ed226fecef227049dda2019cbf9ad",
+    "reuse-helper.mjs": "f88ce056547c746b437243ccddc1837fce9f940b37a37506a0fd5c931002a21a",
+    "protocol-guard.mjs": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722",
+    "source-after.mjs": "f9e8bcb78118f9aba73363475c4a3973e5b0fb22161debf16bc0adc8c13d4270"
+  },
+  "preflightTests": "Exact R18 wrapper/protocol guards previously passed; R19 diffs are identity/path-only, syntax checked. No diagnostic ownership monitor in acceptance path.",
+  "methodUnchanged": true,
+  "captureCleanupCaveat": "Normal completion/failure EXIT copies evidence before frozen database helper cleanup; SIGKILL cannot guarantee final copy. Startup schema/fixtures/source copied before any timed work.",
+  "V6Evidence": "R18-only retained functional proof; not relabelled as R19",
+  "comparisonBaseline": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json"
+}

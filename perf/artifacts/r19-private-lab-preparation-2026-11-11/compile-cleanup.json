@@ -1,0 +1,11 @@
+{
+  "compileAndPreflightExitCode": 0,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "port3483Closed": true,
+  "actualSchemaAndFixtureAndPgLogPreserved": true,
+  "unexpectedDatabaseErrors": 0,
+  "preflightQueries": 14,
+  "noV6Rerun": true,
+  "noTimingRun": true
+}
