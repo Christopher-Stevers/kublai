@@ -1,0 +1,7 @@
+{
+  "preservedDirectory": "/tmp/foremanhq-r18-full-v2-evidence/prior-outputs",
+  "scope": "Only prior generated R18 compile/functional preflight outputs; R17 snapshot untouched.",
+  "files": {
+    "preflight.json": "29ccc18d7500fa28b38bca7c4d42d75d614ae78d1591631114d1980e2bc59b96"
+  }
+}
