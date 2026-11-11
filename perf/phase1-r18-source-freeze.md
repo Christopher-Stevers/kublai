@@ -70,3 +70,19 @@ are archived beside the four-corner evidence. No failure/retry, app/browser/DB,
 HTTP proof, full timing or activation occurred. Runtime behavior, request count,
 old-client loading and full performance acceptance remain separate gates. This
 result does not prove the job-opening regression is fixed.
+
+
+## Subsequent bounded read-only HTTP proof
+
+The [matching HTTP proof](artifacts/phase1-r18-http-proof-2026-11-11.json) passed
+on localhost:3150, first attempt, using the same supervisor/client method as R17.
+The supervisor required `SHOW default_transaction_read_only = on` before starting
+the pinned wrapper, retained canonical WorkingDirectory, separate worker mode and
+BIM disabled. All requests were cookie-free GETs. All 293 current asset responses
+matched exact Brotli sidecars/decoded bytes and immutable headers; ten actual
+retained historical release samples matched. Packaged SW matched, release manifest
+matched build, manifest/health/sign-in returned 200 and private binding returned
+401. Exact historical sample inventory and executed method hashes are preserved.
+Server exit was 0, no forced kill; PID absent and localhost proof port closed.
+No authenticated writes, browser/journey timing or activation occurred. The
+ordinary performance gate remains open; this proof is not acceptance of latency.

@@ -1,0 +1,101 @@
+{
+  "build": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "currentAssets": 293,
+  "currentScripts": 288,
+  "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+  "immutableStaticHeaders": true,
+  "previousReleaseSamples": 10,
+  "allHistoricalBytesExact": true,
+  "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+  "workerMatchesPackaged": true,
+  "releaseManifestStatus": 200,
+  "releaseManifestMatchesBuild": true,
+  "knownRejectedArtifact": false,
+  "healthStatus": 200,
+  "signInStatus": 200,
+  "unauthenticatedBindingStatus": 401,
+  "backgroundMode": "separate",
+  "bimDisabled": true,
+  "databaseReadOnlyVerified": true,
+  "allRequestsCookieFreeGet": true,
+  "cleanup": {
+    "exitCode": 0,
+    "ownServerStopped": true,
+    "forced": false,
+    "appMutationsRequested": false,
+    "databaseReadOnlyConfigured": true,
+    "pidAbsent": true,
+    "portClosed": true
+  },
+  "method": {
+    "client": "phase1-r14-http-client.mjs unchanged; cookie-free GET only, localhost host fixture preserved",
+    "clientSha256": "4f9f6e1aab274c102f577ca36893e721edef8fe4821ae873db97a41b53a08512",
+    "supervisorSha256": "6df7cfe8eaecc52b995f7270a546c1d4cc67b2eb023bf18fd79ad06d0d351897",
+    "supervisorChangesFromR17": "Only candidate/proof directory and report/stop filenames; port3150 and read-only guard unchanged",
+    "rawDirectory": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111",
+    "clientStderrEmpty": true
+  },
+  "historicalSampleInventory": [
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+      "script": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0",
+      "bytes": 4001
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-job-numbering-20261110/.next",
+      "script": "UzwdBuKm2iDE8zDCyDcEI/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-scroll-reset-20261110/.next",
+      "script": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "sha256": "a958b8772473f93d27fd1546fcb26cacb14bc622e9fbecaeb59bec609ef6d2eb",
+      "bytes": 91630
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-hyperlink-layer-20261110/.next",
+      "script": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "sha256": "a958b8772473f93d27fd1546fcb26cacb14bc622e9fbecaeb59bec609ef6d2eb",
+      "bytes": 91630
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-zoom-intent-20261109/.next",
+      "script": "ZRfPvd8bwvzuDDJvHXz1_/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-local-pdf-20261109/.next",
+      "script": "_Nnpqrzp9ZPDOicKBkHnX/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-persistent-drawings-20261109/.next",
+      "script": "_jYy29uYB_rXlSwfUp7w-/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-switcher-freeze-20261109/.next",
+      "script": "6C0P1mprL-QSjWOWNS84l/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-move-drawings-20261109/.next",
+      "script": "28koM8o3VXq3Bje-aNjrf/_buildManifest.js",
+      "sha256": "b16fb5bc1d649b16214268d865d2743619c4ab37cfc9873bce4e5ea424e18b28",
+      "bytes": 3963
+    },
+    {
+      "release": "/home/tim/.openclaw/workspace/releases/foremanhq-page-switcher-20261109/.next",
+      "script": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "sha256": "a958b8772473f93d27fd1546fcb26cacb14bc622e9fbecaeb59bec609ef6d2eb",
+      "bytes": 91630
+    }
+  ],
+  "wrapperLogSha256": "01f77e8835be47946399c1252983a65a0142d3bb4cce24554ca89a5f6d997187"
+}
