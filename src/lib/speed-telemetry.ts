@@ -49,7 +49,10 @@ export function startSpeedPaint(
     | "app-start-to-last-screen"
     | "sheet-open-to-sharp",
 ) {
-  if (typeof performance === "undefined")
+  if (
+    typeof performance === "undefined" ||
+    typeof requestAnimationFrame === "undefined"
+  )
     return () => {
       /* Browser timings are unavailable during server rendering. */
     };

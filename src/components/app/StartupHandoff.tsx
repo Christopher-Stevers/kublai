@@ -30,7 +30,12 @@ export function StartupHandoff({ children }: { children: React.ReactNode }) {
         secondFrame = requestAnimationFrame(() => {
           setPhase("fading");
           const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          removal = setTimeout(() => setPhase("done"), reduced ? 0 : 220);
+          removal = setTimeout(() => {
+            setPhase("done");
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              performance.measure("foremenhq:app-start-to-last-screen", { start: 0, end: performance.now() });
+            }));
+          }, reduced ? 0 : 220);
         });
       });
     }

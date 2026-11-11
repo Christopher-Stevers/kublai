@@ -1,4 +1,5 @@
 "use client";
+import { startSpeedPaint } from "~/lib/speed-telemetry";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { SentMaterialStatus, type SentMaterialOrder } from "./SentMaterialStatus";
 import { firstText } from "~/lib/first-text";
@@ -336,6 +337,7 @@ function MaterialListItemComponent({
 
   const toggleVerifyComplete = () => {
     if (!verifyMode) return;
+    const painted = startSpeedPaint("write-to-paint");
     setVerifyHasProblem(false);
     setVerifyReceivedQuantity((currentValue) => {
       const nextQuantity =
@@ -343,6 +345,7 @@ function MaterialListItemComponent({
       notifyVerifyStateChange(nextQuantity, false);
       return nextQuantity;
     });
+    painted();
   };
 
   const toggleVerifyProblem = () => {

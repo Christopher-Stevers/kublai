@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { onINP, onLCP } from "web-vitals";
 import {
   SPEED_METRICS,
@@ -10,6 +11,63 @@ import {
 
 /** Small, bounded, numeric-only field sample sent to existing application logs. */
 export function SpeedTelemetry() {
+  const pathname = usePathname();
+  const previousPath = useRef(pathname);
+  const pointerStart = useRef<number | null>(null);
+  useEffect(() => {
+    const start = () => {
+      pointerStart.current = performance.now();
+    };
+    document.addEventListener("pointerdown", start, {
+      capture: true,
+      passive: true,
+    });
+    return () => document.removeEventListener("pointerdown", start, true);
+  }, []);
+  useEffect(() => {
+    if (pathname === previousPath.current) return;
+    previousPath.current = pathname;
+    const start = pointerStart.current;
+    pointerStart.current = null;
+    if (start === null || performance.now() - start > 5000) return;
+    let first = 0;
+    let second = 0;
+    let finished = false;
+    const observer = new MutationObserver(check);
+    function check() {
+      if (
+        finished ||
+        [
+          ...document.querySelectorAll(
+            "[data-route-loading], [data-app-startup-loading]",
+          ),
+        ].some((element) => element.getClientRects().length > 0)
+      )
+        return;
+      finished = true;
+      observer.disconnect();
+      first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => {
+          performance.measure("foremenhq:tap-to-paint", {
+            start: start!,
+            end: performance.now(),
+          });
+        });
+      });
+    }
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden", "style", "class"],
+    });
+    check();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [pathname]);
   useEffect(() => {
     if (typeof PerformanceObserver === "undefined") return;
     let queue: SpeedMetric[] = [];

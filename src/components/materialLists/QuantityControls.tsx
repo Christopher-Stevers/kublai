@@ -10,6 +10,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { useWorkspaceMutations } from "~/hooks/use-workspace-mutations";
+import { startSpeedPaint } from "~/lib/speed-telemetry";
 import { markUserAction } from "~/lib/performance-marks";
 
 interface QuantityControlsProps {
@@ -105,6 +106,7 @@ export function QuantityControls({
 
   const setQuantityImmediately = (nextQuantity: number) => {
     if (nextQuantity < packsFromPieces(1, piecesPerPack)) return;
+    const painted = startSpeedPaint("write-to-paint");
     markUserAction("quantity-change", {
       itemId,
       materialListId,
@@ -114,6 +116,7 @@ export function QuantityControls({
     setDisplayedQuantity(nextQuantity);
     setInputValue(nextQuantity.toString());
     commitQuantity(nextQuantity);
+    painted();
   };
 
   const commitInputQuantity = (rawValue: string) => {
