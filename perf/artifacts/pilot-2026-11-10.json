@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "provenance": "isolated-seeded-app",
+  "cpuSlowdown": 4,
+  "build": "G7UvsCYJK8id5tBsRzc8U",
+  "timestamp": "2026-11-11T00:32:57.872Z",
+  "samples": [
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 855.881945,
+      "variant": "operation"
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 79.30451300000004,
+      "variant": "visited"
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 166.50092399999994,
+      "variant": "visited"
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 219.27620600000046,
+      "variant": "visited"
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 112.68218100000013,
+      "variant": "operation"
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 432.5552179999995,
+      "variant": "operation"
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 49564.072851000004,
+      "variant": "operation"
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 324.3998500000016,
+      "variant": "operation"
+    }
+  ],
+  "mode": "pilot-functional-proof",
+  "acceptedPerformanceBaseline": false,
+  "source": "live-e1b-plus-phase0-bootstrap-source",
+  "authentication": "Clerk-stub-seeded-user",
+  "limitations": [
+    "One Office sample per journey, CPU slowdown 4; not the full 120-sample matrix.",
+    "Wallclock journey timings include Playwright and assertion overhead; not interaction p95 or field INP.",
+    "Clerk authentication and its script bytes/timing are excluded.",
+    "Synthetic 40-page drawings, jobs, lists, order, slip and chat; no live-data writes.",
+    "No physical phone, Safari, offline matrix, independent repeatability or week-long field soak evidence."
+  ]
+}
