@@ -1,0 +1,53 @@
+{
+  "protocol": "next-cache-functional-v1",
+  "syntheticAuthentication": true,
+  "comparableTimingEvidence": false,
+  "attempts": 1,
+  "status": "failed-update-capability",
+  "passedAssertions": 2,
+  "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+  "focusedMethod": "23bf052c54ffae241e75d3c655d4679a1509576bbec45a1ba31130abb5c0162a",
+  "sealedHelperFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "exactExecutedMethodHashes": {
+    "next-cache-prepare.mjs": "8c474092874eb55f799ca38bc54a485e4403df648a229086cd72e38f8a3d6626",
+    "next-cache-functional.mjs": "0899feead07877423520c2e23e34bc5d6057b99377c7b1936825f570f6338f6a",
+    "next-cache-functional-supervisor.mjs": "5434bbc3bfd179adc711161f2d41138cf2930424afb818a90bcc74e13ef43f60",
+    "next-cache-functional.md": "11333e1b5460929d2554a3e2fe19cb134a40c104538eb0d7fe71758caaff892f"
+  },
+  "originalEvidenceHashes": {
+    "reportSha256": "4f003eaa397a51a96587f2cbdc714c245de967cebd68817a2ac039017aaf1295",
+    "driverSha256": "0899feead07877423520c2e23e34bc5d6057b99377c7b1936825f570f6338f6a",
+    "supervisorSha256": "5434bbc3bfd179adc711161f2d41138cf2930424afb818a90bcc74e13ef43f60"
+  },
+  "additionalPackagingLauncherSha256": "6412d6480361ba71330aae4d037d880c1aa930bb151798f88e79f4a068bfbcf8",
+  "preflights": [
+    {
+      "label": "A",
+      "sha256": "836056f75499b5e80f1c41811fc5ce493ac508e2eb96d714d8a16bf916d59d66",
+      "status": "passed"
+    },
+    {
+      "label": "B",
+      "sha256": "3676cb5aea74dab2f66c242f3ac735ad6aefc58dd4bb6cf9fe34d6a377d8212b",
+      "status": "passed"
+    }
+  ],
+  "builds": [
+    {
+      "label": "A",
+      "logSha256": "fcb4ef1e7e9d87d179151cd169de8644aae081581a8138774d3a4037e4beacee",
+      "compile": "\u2713 Compiled successfully in 20.1s",
+      "exitCode": 0,
+      "typeScriptPassed": true
+    },
+    {
+      "label": "B",
+      "logSha256": "670a03998faea965446e4e0a334b90e07265f0ceff9688e874ed6095367b6a62",
+      "compile": "\u2713 Compiled successfully in 19.5s",
+      "exitCode": 0,
+      "typeScriptPassed": true
+    }
+  ],
+  "limits": "Natural Next RSC and offline replay passed for one synthetic empty Rooms route. Update guard unavailable, real Clerk/quiet reload/performance unproved. Original rejected connection values were not captured; reporting-order fix is source-only after the attempt."
+}
