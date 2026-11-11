@@ -41,11 +41,43 @@ try {
   let measuring = false;
   const reads = {};
   const streamPaths = new Set();
+  const activeStreams = new Map();
+  const closedPaths = new Set();
+  const streams = {
+    starts: 0,
+    closes: 0,
+    startsAfterPriorClose: 0,
+    overlappingStarts: 0,
+    peakActive: 0,
+    activeAtWindowStart: 0,
+    activeAtWindowEnd: 0,
+    startsDuringWindow: 0,
+    closesDuringWindow: 0,
+  };
+  const closeStream = (request) => {
+    const streamPath = activeStreams.get(request);
+    if (!streamPath) return;
+    activeStreams.delete(request);
+    closedPaths.add(streamPath);
+    streams.closes++;
+    if (measuring) streams.closesDuringWindow++;
+  };
+  page.on("requestfinished", closeStream);
+  page.on("requestfailed", closeStream);
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.origin !== base.origin) return;
-    if (/\/events$/.test(url.pathname))
-      streamPaths.add(url.pathname.replace(/\/[0-9a-f-]{36}/gi, "/:fixture"));
+    if (/\/events$/.test(url.pathname) || url.pathname === "/api/live") {
+      const streamPath = url.pathname.replace(/\/[0-9a-f-]{36}/gi, "/:fixture");
+      streamPaths.add(streamPath);
+      if ([...activeStreams.values()].includes(streamPath))
+        streams.overlappingStarts++;
+      else if (closedPaths.has(streamPath)) streams.startsAfterPriorClose++;
+      activeStreams.set(request, streamPath);
+      streams.starts++;
+      if (measuring) streams.startsDuringWindow++;
+      streams.peakActive = Math.max(streams.peakActive, activeStreams.size);
+    }
     if (
       !measuring ||
       request.method() !== "GET" ||
@@ -65,26 +97,36 @@ try {
   ).toBeVisible({ timeout: 60000 });
   // Settle first-load prefetch/bootstrap traffic before the measured idle window.
   await page.waitForTimeout(15000);
+  const durationMs = Number(process.env.PERF_IDLE_DURATION_MS ?? 600000);
+  if (
+    !Number.isInteger(durationMs) ||
+    durationMs < 1000 ||
+    durationMs > 3600000
+  )
+    throw new Error("Idle duration must be 1000–3600000 ms");
+  streams.activeAtWindowStart = activeStreams.size;
   measuring = true;
   const startedAt = new Date().toISOString();
-  await page.waitForTimeout(65000);
+  await page.waitForTimeout(durationMs);
   measuring = false;
+  streams.activeAtWindowEnd = activeStreams.size;
   const report = {
     version: 1,
     ...sourceEvidence,
     provenance: "isolated-seeded-app",
     build: process.env.PERF_BUILD ?? "unknown",
     startedAt,
-    durationMs: 65000,
+    durationMs,
     cpuSlowdown: 4,
     screen: "jobs",
     idlePolls: Object.values(reads).reduce((sum, count) => sum + count, 0),
     readRequestsByProcedure: reads,
     observedEventStreamPaths: [...streamPaths],
+    eventStreamConnections: streams,
     method:
-      "Counts actual GET tRPC request procedures during 65 idle seconds after 15-second startup settling; includes every observed background read, not a source-code polling count. Event paths observed during load/window do not prove those streams remained connected.",
+      "Counts actual GET tRPC request procedures after 15-second startup settling. Tracks /events and /api/live request starts, completion/failure, active and overlapping requests. startsAfterPriorClose is an observed repeat connection, not proof of why it reconnected; an open request does not establish healthy SSE message delivery.",
     limitations:
-      "One isolated seeded jobs screen, Clerk stub; not every screen, not a complete no-poll or single-stream proof.",
+      "One isolated seeded jobs screen, Clerk stub; not every screen. Connection liveness is HTTP request lifetime, not server heartbeat receipt. Earlier archived 65-second observations retain their original narrower definition.",
   };
   fs.writeFileSync(
     process.env.PERF_IDLE_OUTPUT ?? "perf-idle.json",
