@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { onINP, onLCP } from "web-vitals";
 import { SpeedMetricBuffer } from "~/lib/speed-metric-buffer";
@@ -9,6 +9,11 @@ import {
   speedScreen,
   type SpeedMetric,
 } from "~/lib/speed-telemetry";
+
+const DevelopmentOverlay =
+  process.env.NODE_ENV === "development"
+    ? lazy(() => import("./SpeedDevelopmentOverlay"))
+    : null;
 
 /** Small, bounded, numeric-only field sample sent to existing application logs. */
 export function SpeedTelemetry() {
@@ -149,10 +154,7 @@ export function SpeedTelemetry() {
           if (name === "action" && !entry.name.startsWith("foremenhq:"))
             continue;
           const durationMs = entry.duration;
-          if (
-            Number.isFinite(durationMs) &&
-            durationMs >= 0
-          ) {
+          if (Number.isFinite(durationMs) && durationMs >= 0) {
             const custom = entry.name.replace(
               "foremenhq:",
               "",
@@ -195,5 +197,9 @@ export function SpeedTelemetry() {
       window.removeEventListener("pagehide", flush);
     };
   }, []);
-  return null;
+  return DevelopmentOverlay ? (
+    <Suspense fallback={null}>
+      <DevelopmentOverlay />
+    </Suspense>
+  ) : null;
 }
