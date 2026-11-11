@@ -6,11 +6,10 @@ import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import { DrawingThumbnail } from "./DrawingThumbnail";
 import { ViewToggle } from "~/components/ui/view-toggle";
 import { useDrawingSnapshot } from "./useDrawingSnapshot";
+import { useRoomFloorSnapshot } from "./useRoomFloorSnapshot";
 import {
   roomOverviewKey,
-  roomFloorKey,
   readRoomOverviewSnapshot,
-  readRoomFloorSnapshot,
 } from "~/lib/room-snapshots";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import { usePageViewState } from "~/hooks/use-page-view-state";
@@ -357,10 +356,12 @@ export function JobRoomsView({
     roomsQuery.data,
     readRoomOverviewSnapshot,
   );
-  const floorSnapshot = useDrawingSnapshot(
-    roomFloorKey(jobId, selectedFloorId ?? ""),
+  const floorSnapshot = useRoomFloorSnapshot(
+    jobId,
+    selectedFloorId,
     floorQuery.data,
-    readRoomFloorSnapshot,
+    floorQuery.error,
+    online,
   );
   const data = roomSnapshot.data;
   const canManage =
@@ -649,7 +650,7 @@ export function JobRoomsView({
 
   if (
     !data ||
-    (selectedFloorId && (!selectedFloor || (online && blocksCachedRead(floorQuery))))
+    (selectedFloorId && (!selectedFloor || (online && blocksCachedRead({ ...floorQuery, data: detail }))))
   ) {
     const loading =
       Boolean(selectedFloorId) &&

@@ -13,6 +13,17 @@ export const roomOverviewKey = (jobId: string) => `room-overview:${jobId}`;
 export const roomFloorKey = (jobId: string, floorId: string) =>
   `room-floor:${jobId}:${floorId}`;
 
+/** Exact selected-floor read; never expands to a legacy all-floor payload. */
+export async function readCurrentRoomFloorSnapshot(
+  store: DrawingOfflineStore,
+  key: string,
+): Promise<Floor | null> {
+  const floorId = key.split(":")[2];
+  if (!floorId) return null;
+  const current = await store.readSnapshot<Floor>(key);
+  return current?.id === floorId ? current : null;
+}
+
 /** Old explicit downloads stored all floors together. Read them only offline. */
 export async function readRoomOverviewSnapshot(
   store: DrawingOfflineStore,
