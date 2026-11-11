@@ -6,6 +6,7 @@ import {
   type DehydratedState,
 } from "@tanstack/react-query";
 import SuperJSON from "superjson";
+import { isInstantQueryPending } from "./instant-query-update";
 
 export const DEVICE_QUERY_VERSION = 1;
 export const DEVICE_QUERY_BUDGET = 20 * 1024 * 1024;
@@ -35,6 +36,7 @@ export function shouldPersistDeviceQuery(
 ) {
   const path = query.queryKey[0];
   return (
+    !isInstantQueryPending(query) &&
     query.meta?.persist !== false &&
     query.state.status === "success" &&
     Array.isArray(path) &&
@@ -76,7 +78,7 @@ async function openStorage() {
     const request = indexedDB.open(DATABASE, 1);
     request.onupgradeneeded = () => request.result.createObjectStore(STORE);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => reject(new Error("Device query storage request failed", {cause: request.error}));
     request.onblocked = () => reject(new Error("Device query storage blocked"));
   });
 }
@@ -87,7 +89,7 @@ export const deviceQueryStorage: DeviceQueryStorage = {
       return await new Promise<Saved | undefined>((resolve, reject) => {
         const request = db.transaction(STORE).objectStore(STORE).get("current");
         request.onsuccess = () => resolve(request.result as Saved | undefined);
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(new Error("Device query storage request failed", {cause: request.error}));
       });
     } finally {
       db.close();
@@ -108,7 +110,7 @@ async function changeStorage(value?: Saved) {
       if (value) tx.objectStore(STORE).put(value, "current");
       else tx.objectStore(STORE).clear();
       tx.oncomplete = () => resolve();
-      tx.onerror = tx.onabort = () => reject(tx.error);
+      tx.onerror = tx.onabort = () => reject(new Error("Device query storage transaction failed", {cause: tx.error}));
     });
   } finally {
     db.close();
@@ -124,8 +126,16 @@ function enqueue(work: () => Promise<void>) {
   return storageWork;
 }
 const clientAccounts = new WeakMap<QueryClient, string>();
-const activeCaches = new Set<{ stop(wipe?: boolean): Promise<void> }>();
+const knownClients = new Set<QueryClient>();
+export function clearAccountQueryMemory(client: QueryClient) {
+  // Cancel before clearing so an old in-flight response cannot repopulate data.
+  const cancelled = client.cancelQueries();
+  client.clear();
+  return cancelled.catch(() => undefined);
+}
+const activeCaches = new Set<{ client: QueryClient; stop(wipe?: boolean): Promise<void> }>();
 export async function wipeDeviceQueryCaches() {
+  for (const client of knownClients) { void clearAccountQueryMemory(client); clientAccounts.delete(client); }
   await Promise.all(Array.from(activeCaches, (cache) => cache.stop(true)));
   await enqueue(() => deviceQueryStorage.clear());
 }
@@ -134,8 +144,12 @@ export function startDeviceQueryCache(
   account: string,
   storage = deviceQueryStorage,
 ) {
-  if (clientAccounts.has(client) && clientAccounts.get(client) !== account)
-    client.removeQueries({ predicate: shouldPersistDeviceQuery });
+  const previouslyUsed = knownClients.has(client);
+  knownClients.add(client);
+  if (previouslyUsed && clientAccounts.get(client) !== account) {
+    for (const old of activeCaches) if (old.client === client) void old.stop(true);
+    void clearAccountQueryMemory(client);
+  }
   clientAccounts.set(client, account);
   let stopped = false;
   let restored = false;
@@ -180,6 +194,7 @@ export function startDeviceQueryCache(
     timer = setTimeout(save, 300);
   });
   const session = {
+    client,
     ready,
     flush: save,
     stop(wipe = false) {
@@ -188,8 +203,14 @@ export function startDeviceQueryCache(
       unsubscribe();
       clearTimeout(timer);
       if (wipe) {
-        client.removeQueries({ predicate: shouldPersistDeviceQuery });
-        return enqueue(() => storage.clear());
+        if (clientAccounts.get(client) === account) {
+          void clearAccountQueryMemory(client);
+          clientAccounts.delete(client);
+        }
+        return enqueue(async () => {
+          // An old effect cleanup must not erase a newer account's record.
+          if ((await storage.read())?.account === account) await storage.clear();
+        });
       }
       return storageWork;
     },

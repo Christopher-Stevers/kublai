@@ -25,7 +25,7 @@ function harness(failure, existingEntries) {
   };
   const context = vm.createContext({
     URL,
-    AbortController, setTimeout, clearTimeout,
+    AbortController, AbortSignal, setTimeout, clearTimeout,
     Request,
     Response,
     Promise,
@@ -202,17 +202,92 @@ test("cold offline document never replays private HTML", async () => {
 test("authenticated route refresh stores fresh Flight and logout revokes saved access", async () => {
   const { context, handlers } = harness();
   const waits = [];
-  const message = account => handlers.get("message")({data:{type:"FOREMENHQ_NAVIGATION_ACCOUNT", account}, source:{id:"tab-a"}, waitUntil:p=>waits.push(p)});
-  message("org:alice:build:one");
+  const build = "a".repeat(64);
+  context.fetch = async request => new URL(request.url).pathname === "/api/device-cache-binding"
+    ? Response.json({account: "org:alice", build})
+    : new Response("fresh Flight", {headers:{"Content-Type":"text/x-component"}});
+  const message = async account => {
+    handlers.get("message")({data:{type:"FOREMENHQ_NAVIGATION_ACCOUNT", account, build}, source:{id:"tab-a"}, waitUntil:p=>waits.push(p)});
+    await Promise.all(waits.splice(0));
+  };
+  await message("org:alice");
   const request = new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111?_rsc=one", {headers:{RSC:"1"}});
-  context.fetch = async () => new Response("fresh Flight", {headers:{"Content-Type":"text/x-component"}});
   await context.networkFirstRsc(request, {clientId:"tab-a",waitUntil:p=>waits.push(p)});
   await context.setOfflineTest(true);
   assert.equal(await (await context.networkFirstRsc(request, {clientId:"tab-a",waitUntil:p=>waits.push(p)})).text(), "fresh Flight");
-  await Promise.all(waits);
-  message(null);
-  await Promise.all(waits);
+  await Promise.all(waits.splice(0));
+  await message(null);
   await assert.rejects(context.networkFirstRsc(request,{clientId:"tab-a"}), /offline test/);
-  message("org:alice:build:two");
+  await message("org:alice"); // Offline means there is no fresh identity validation.
   await assert.rejects(context.networkFirstRsc(request,{clientId:"tab-a"}), /offline test/);
+});
+
+for (const status of [401, 403, 404, 410]) test(`known ${status} revokes every cached route and tab for that identity`, async () => {
+  const {context, entries} = harness();
+  const scope = "org:alice:build:" + "a".repeat(64);
+  vm.runInContext(`navigationClients.set("tab-a", "${scope}"); navigationClients.set("tab-b", "org:alice:build:${"b".repeat(64)}");`, context);
+  const request = new Request("https://test.local/jobs/11111111-1111-4111-8111-111111111111", {headers:{RSC:"1"}});
+  const other = new Request("https://test.local/jobs/assets", {headers:{RSC:"1"}});
+  await context.safePut(vm.runInContext("PAGE_CACHE",context), context.navigationKey(request,scope),new Response("old page"));
+  await context.safePut(vm.runInContext("PAGE_CACHE",context), context.navigationKey(other,scope),new Response("other private page"));
+  context.fetch=async()=>new Response("denied",{status});
+  const waits=[];
+  await context.networkFirstRsc(request,{clientId:"tab-a",waitUntil:p=>waits.push(p)});
+  await Promise.all(waits);
+  assert.equal(vm.runInContext("navigationClients.size",context),0);
+  assert.equal([...entries.keys()].some(key=>key.includes("__device_account")),false);
+  assert.equal((await context.networkFirstRsc(other,{clientId:"tab-a"})).status,status);
+});
+
+test("binding requires explicit build and fresh server identity, with logout winning an in-flight bind",async()=>{
+  const {context}=harness();const build="a".repeat(64);
+  let resolve; context.fetch=()=>new Promise(done=>resolve=done);
+  const binding=context.bindNavigationClient({source:{id:"tab"},data:{account:"org:alice",build}});
+  await new Promise(done=>setTimeout(done,0));
+  await context.bindNavigationClient({source:{id:"tab"},data:{account:null}});
+  resolve(Response.json({account:"org:alice",build}));await binding;
+  assert.equal(vm.runInContext("navigationClients.size",context),0);
+  await context.bindNavigationClient({source:{id:"tab"},data:{account:"org:alice",build:"unknown"}});
+  assert.equal(vm.runInContext("navigationClients.size",context),0);
+  context.fetch=async()=>Response.json({account:"org:bob",build});
+  await context.bindNavigationClient({source:{id:"tab"},data:{account:"org:alice",build}});
+  assert.equal(vm.runInContext("navigationClients.size",context),0);
+});
+
+test("release warming only accepts immutable same-origin JS/CSS and fetches missing changes",async()=>{
+  const {context,entries}=harness();const build="a".repeat(64);
+  const manifest={build,changedAssets:["/_next/static/shared.js","/_next/static/new.js"]};
+  entries.set("https://test.local/_next/static/shared.js",new Response("already cached",{headers:{"Content-Type":"application/javascript"}}));
+  let downloaded=0;
+  context.fetch=async request=>{
+    if(new URL(request.url).pathname==="/foremanhq-release-assets.json")return Response.json(manifest);
+    downloaded++;return new Response("new bundle",{headers:{"Content-Type":"application/javascript"}});
+  };
+  assert.equal(await context.warmRelease(build),build);
+  assert.equal(downloaded,1);
+  assert.ok(entries.has("https://test.local/_next/static/new.js"));
+  for(const url of ["https://other.local/_next/static/app.js","/api/private.js","/_next/static/app.js?token=1"])
+    assert.throws(()=>context.releaseAssets({build,changedAssets:[url]}));
+});
+test("failed background assets do not report a release ready or silently activate",async()=>{
+  const {context,handlers}=harness();const build="a".repeat(64);
+  let skipped=0;context.self.skipWaiting=async()=>{skipped++;};
+  context.fetch=async request=>new URL(request.url).pathname==="/foremanhq-release-assets.json"
+    ?Response.json({build,changedAssets:["/_next/static/missing.js"]}):new Response("missing",{status:404});
+  let ready;const waits=[];
+  handlers.get("message")({data:{type:"FOREMENHQ_WARM_RELEASE",goodLink:true,build},ports:[{postMessage:value=>ready=value}],waitUntil:value=>waits.push(value)});
+  await Promise.all(waits);
+  assert.equal(ready.ready,false);assert.equal(skipped,0);
+  handlers.get("message")({data:{type:"FOREMENHQ_ACTIVATE_RELEASE"},waitUntil:value=>waits.push(value)});
+  await Promise.all(waits);assert.equal(skipped,1);
+});
+
+test("identity revocation fences another tab's already-running verification",async()=>{
+  const {context}=harness();const build="a".repeat(64);let resolve;
+  context.fetch=()=>new Promise(done=>resolve=done);
+  const binding=context.bindNavigationClient({source:{id:"tab-new"},data:{account:"org:alice",build}});
+  await new Promise(done=>setTimeout(done,0));
+  await context.revokeNavigationAccount("org:alice:build:"+build);
+  resolve(Response.json({account:"org:alice",build}));await binding;
+  assert.equal(vm.runInContext("navigationClients.size",context),0);
 });

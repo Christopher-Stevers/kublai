@@ -1,5 +1,6 @@
 import "~/styles/globals.css";
 import { SpeedTelemetry } from "~/components/performance/SpeedTelemetry";
+import { releaseRecoveryBootScript } from "~/lib/release-recovery-document";
 import { OFFLINE_TEST_BOOT_SCRIPT } from "~/lib/offline-test-document";
 
 import { type Metadata, type Viewport } from "next";
@@ -106,6 +107,7 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable} ${actionFont.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: OFFLINE_TEST_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: releaseRecoveryBootScript(process.env.NEXT_PUBLIC_BUILD_ID) }} />
         <link rel="preload" as="image" href="/foremanhq/icon-dark-v2-512.png" fetchPriority="high" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: installCaptureScript }} />

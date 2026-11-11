@@ -1,3 +1,4 @@
+import { notifyReleaseWorkChange, registerReleaseCheck } from "./release-safety";
 
 import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { simulationCacheName } from "./employee-simulation";
@@ -478,6 +479,7 @@ const materialListReplicacheSyncingListeners = new Set<
 
 function notifyMaterialListReplicacheSyncing(syncing: boolean) {
   materialListReplicacheIsSyncing = syncing;
+  notifyReleaseWorkChange();
   for (const listener of materialListReplicacheSyncingListeners) {
     listener(syncing);
   }
@@ -732,3 +734,6 @@ export async function flushMaterialListChangesBeforeAccountSwitch() {
     if (timeout) clearTimeout(timeout);
   }
 }
+
+registerReleaseCheck(async () => materialListReplicacheIsSyncing ||
+  !!quantityJournal?.hasPending() || !!(await materialListReplicache?.experimentalPendingMutations())?.length);

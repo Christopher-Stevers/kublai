@@ -1,4 +1,5 @@
 "use client";
+import { holdReleaseWork } from "~/lib/release-safety";
 import { isDefaultDocumentFolder } from "~/lib/default-document-folders";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
 import dynamic from "next/dynamic";
@@ -516,6 +517,7 @@ export function JobDocumentsView({
     )
       return false;
     uploadMutex.current = true;
+    const release = holdReleaseWork();
     const asSubmittal = uploadAsSubmittal.current;
     let uploaded = 0;
     const failures: string[] = [];
@@ -577,6 +579,7 @@ export function JobDocumentsView({
       );
       await refresh().catch(() => undefined);
     } finally {
+      release();
       uploadMutex.current = false;
       uploadAsSubmittal.current = false;
       setUploading(null);

@@ -116,7 +116,7 @@ describe("drawing account boundary", () => {
       ]),
     ).toBeUndefined();
     expect(client.getQueryData([["rooms", "getFloorRooms"], {input: {jobId: "job", floorId: "one"}}])).toBeUndefined();
-    expect(client.getQueryData(["unrelated"])).toBe("keep");
+    expect(client.getQueryData(["unrelated"])).toBeUndefined();
     expect(clearPdfDocuments).toHaveBeenCalled();
     expect(clearDrawingTextIndexes).toHaveBeenCalled();
     expect(dispose).toHaveBeenCalled();

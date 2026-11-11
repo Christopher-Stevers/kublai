@@ -1,3 +1,4 @@
+import { notifyReleaseWorkChange } from "./release-safety";
 /** Write-ahead recovery for Replicache's deferred on-disk persistence. */
 export type QuantityIntent = {
   materialListId: string;
@@ -21,6 +22,11 @@ export class QuantityJournal {
   ) {
     this.prefix = `foremanhq.quantity-intent.v1:${scope}:`;
   }
+  hasPending() {
+    for (let index = 0; index < this.storage.length; index++)
+      if (this.storage.key(index)?.startsWith(this.prefix)) return true;
+    return false;
+  }
   private read(itemId: string) {
     const raw = this.storage.getItem(this.prefix + itemId);
     if (!raw) return null;
@@ -42,6 +48,7 @@ export class QuantityJournal {
     this.watchers.get(intent.itemId)?.();
     const finish = () => {
       stop();
+      notifyReleaseWorkChange();
       if (this.watchers.get(intent.itemId) === stop)
         this.watchers.delete(intent.itemId);
     };
@@ -72,6 +79,7 @@ export class QuantityJournal {
     const intent = { ...input, token: crypto.randomUUID() };
     // This synchronous write survives navigation before Replicache's idle flush.
     this.storage.setItem(this.prefix + intent.itemId, JSON.stringify(intent));
+    notifyReleaseWorkChange();
     this.watchers.get(intent.itemId)?.();
     await this.store.apply(intent);
     this.watch(intent, false);

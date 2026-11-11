@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { assertDisposableWorkspace, assertInputSymlinks } from './canonical-guards.mjs';
+import { fingerprintSource } from './source-fingerprint.mjs';
 import { files, retainStatic, compressStatic } from './static-assets.mjs';
 
 if (process.env.RELEASE_SOURCE_DIR) process.chdir(process.env.RELEASE_SOURCE_DIR);
@@ -20,6 +21,22 @@ const staging = '.next-release-build';
 for (const dir of [staging, destination]) {
   try { await stat(dir); throw Error(`Refusing to replace existing directory: ${dir}`); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
+if (process.versions.node !== '26.8.2') throw Error('Canonical releases require Node 26.8.2');
+const dependencyRoot = await realpath('node_modules');
+const pnpmVersion = JSON.parse(await readFile(path.join(dependencyRoot, 'pnpm/package.json'), 'utf8')).version;
+if (pnpmVersion !== '10.11.1') throw Error('Canonical releases require installed pnpm 10.11.1');
+const sourceLock = await readFile('pnpm-lock.yaml');
+const installedLock = await readFile(path.join(dependencyRoot, '.pnpm/lock.yaml'));
+if (!sourceLock.equals(installedLock)) throw Error('Installed dependency lock differs from frozen source; install its frozen lockfile before building');
+const toolchain = { node: process.versions.node, pnpm: pnpmVersion, next: JSON.parse(await readFile(path.join(dependencyRoot, 'next/package.json'), 'utf8')).version,
+  lockfileSha256: createHash('sha256').update(sourceLock).digest('hex'), installedLockVerified: true };
+const sourceEvidence = await fingerprintSource(root);
+const fingerprintMetadata = { sourceFingerprint: sourceEvidence.sourceFingerprint, sourceFingerprintAlgorithm: sourceEvidence.sourceFingerprintAlgorithm, sourceFileCount: sourceEvidence.sourceFileCount };
+if (process.env.FOREMANHQ_CANONICAL_BUILD === '1') {
+  const original = JSON.parse(process.env.FOREMANHQ_SOURCE_EVIDENCE ?? '{}');
+  if (original.sourceFingerprint !== fingerprintMetadata.sourceFingerprint || original.sourceFingerprintAlgorithm !== fingerprintMetadata.sourceFingerprintAlgorithm)
+    throw Error('Canonical snapshot does not match original frozen release inputs');
 }
 const keyFile = process.env.RELEASE_KEY_FILE ?? path.join(homedir(), '.local/share/foremanhq-release/server-actions.key');
 let encryptionKey = process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY;
@@ -35,12 +52,12 @@ const canonical = path.join(homedir(), '.cache/foremanhq-release-builder');
 if (process.env.FOREMANHQ_CANONICAL_BUILD !== '1') {
   await assertDisposableWorkspace(canonical, { source: root, destination, active: await realpath('.next'), dependencies: await realpath('node_modules'), key: keyFile });
   const protectedInputs = { source: root, destination, active: await realpath('.next'), dependencies: await realpath('node_modules'), key: keyFile };
-  for (const name of ['src', 'public', 'scripts', '.env', '.env.local', '.env.production', '.env.production.local']) {
+  for (const name of ['src', 'public', 'scripts', 'vendor', '.env', '.env.local', '.env.production', '.env.production.local']) {
     try { protectedInputs[name] = await realpath(path.join(root, name)); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
   await assertDisposableWorkspace(canonical, protectedInputs);
-  const inputs = ['src', 'public', 'scripts', '.env', '.env.local', '.env.production', '.env.production.local'].map(name => path.join(root, name));
+  const inputs = ['src', 'public', 'scripts', 'vendor', '.env', '.env.local', '.env.production', '.env.production.local'].map(name => path.join(root, name));
   await assertInputSymlinks(canonical, inputs);
   const lock = canonical + '.lock';
   await mkdir(path.dirname(canonical), { recursive: true });
@@ -54,7 +71,7 @@ if (process.env.FOREMANHQ_CANONICAL_BUILD !== '1') {
     await assertInputSymlinks(canonical, inputs);
     await rm(canonical, { recursive: true, force: true });
     await mkdir(canonical);
-    for (const dir of ['src', 'public', 'scripts']) await cp(path.join(root, dir), path.join(canonical, dir), { recursive: true });
+    for (const dir of ['src', 'public', 'scripts', 'vendor']) await cp(path.join(root, dir), path.join(canonical, dir), { recursive: true });
     for (const name of ['next.config.js', 'postcss.config.js', 'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'next-env.d.ts']) {
       try { await cp(path.join(root, name), path.join(canonical, name)); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -66,7 +83,7 @@ if (process.env.FOREMANHQ_CANONICAL_BUILD !== '1') {
     await symlink(await realpath('node_modules'), path.join(canonical, 'node_modules'), 'dir');
     await symlink(await realpath('.next'), path.join(canonical, '.next'), 'dir');
     const child = spawnSync(process.execPath, [path.join(canonical, 'scripts/release/build.mjs'), destination], {
-      cwd: canonical, stdio: 'inherit', env: { ...process.env, FOREMANHQ_CANONICAL_BUILD: '1', RELEASE_SOURCE_DIR: canonical, NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: encryptionKey },
+      cwd: canonical, stdio: 'inherit', env: { ...process.env, FOREMANHQ_CANONICAL_BUILD: '1', FOREMANHQ_SOURCE_EVIDENCE: JSON.stringify(fingerprintMetadata), RELEASE_SOURCE_DIR: canonical, NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: encryptionKey },
     });
     if (child.status !== 0) throw Error(`Canonical build failed (${child.status}); workspace retained at ${canonical}`);
   } finally { await rm(lock, { recursive: true }); }
@@ -75,7 +92,7 @@ if (process.env.FOREMANHQ_CANONICAL_BUILD !== '1') {
 if (root !== canonical) throw Error('Canonical child must run in the fixed release workspace');
 const fingerprint = createHash('sha256');
 fingerprint.update(encryptionKey); // Stable private salt prevents Server Action IDs churning. 
-for (const dir of ['src', 'public', 'scripts']) {
+for (const dir of ['src', 'public', 'scripts', 'vendor']) {
   for (const name of await files(dir)) {
     fingerprint.update(dir + '/' + name + '\0');
     fingerprint.update(await readFile(path.join(dir, name)));
@@ -105,7 +122,12 @@ const result = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', '
   stdio: 'inherit', env: { ...process.env, NEXT_DIST_DIR: staging, RELEASE_BUILD_ID: sourceHash, NEXT_PUBLIC_BUILD_ID: sourceHash, NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: encryptionKey, NEXT_TSCONFIG_PATH: '.tmp/release-tsconfig.json', NEXT_TELEMETRY_DISABLED: '1' },
 });
 if (result.status !== 0) throw Error(`Build failed (${result.status}); staging kept for inspection`);
-const currentNames = (await files(path.join(staging, 'static'))).filter(name => name.endsWith('.js'));
+const currentAssets = (await files(path.join(staging, 'static'))).filter(name => /\.(js|css)$/.test(name));
+const currentNames = currentAssets.filter(name => name.endsWith('.js'));
+let previousAssets;
+try { const prior = JSON.parse(await readFile(path.join(active, 'release-assets.json'), 'utf8')); previousAssets = new Set(prior.currentAssets ?? prior.currentScripts); }
+catch (error) { if (error.code !== 'ENOENT') throw error; previousAssets = previousNames; }
+const changedAssets = currentAssets.filter(name => !previousAssets.has(name));
 const delta = { previous: previousNames.size, current: currentNames.length,
   reused: currentNames.filter(name => previousNames.has(name)).length,
   added: currentNames.filter(name => !previousNames.has(name)).length };
@@ -117,12 +139,13 @@ for (const retainedBuild of [...new Set(retainedBuilds)]) {
   retained += await retainStatic(path.join(retainedBuild, 'static'), path.join(staging, 'static'));
 }
 const compression = await compressStatic(path.join(staging, 'static'));
-const report = { builder: 'webpack', sourceHash, source: root, previousBuild: active, delta, currentScripts: currentNames, retainedBuilds, retained, compression };
+const report = { builder: 'webpack', ...fingerprintMetadata, toolchain, sourceHash, source: root, previousBuild: active, delta, currentScripts: currentNames, currentAssets, retainedBuilds, retained, compression };
 await writeFile(path.join(staging, 'release-assets.json'), JSON.stringify(report, null, 2) + '\n');
 await mkdir(path.dirname(destination), { recursive: true });
 // Next gets an immutable public directory as well as immutable server output.
 await mkdir(path.join(staging, 'runtime'), { recursive: true });
 await cp('public', path.join(staging, 'runtime/public'), { recursive: true });
+await writeFile(path.join(staging, 'runtime/public/foremanhq-release-assets.json'), JSON.stringify({ build: sourceHash, changedAssets: changedAssets.map(name => '/_next/static/' + name.split('/').map(encodeURIComponent).join('/')) }) + '\n');
 await mkdir(path.join(staging, 'runtime/release'), { recursive: true });
 for (const name of ['start.mjs', 'static-handler.mjs']) await cp(path.join('scripts/release', name), path.join(staging, 'runtime/release', name));
 const builtConfig = JSON.parse(await readFile(path.join(staging, 'required-server-files.json'), 'utf8')).config;

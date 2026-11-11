@@ -1,6 +1,10 @@
+import { holdReleaseWork } from "./release-safety";
 /** Bound the entire upload, including reading the server response. Never retry a
  * POST automatically: a lost response can still mean the document was saved. */
 export async function uploadPackingSlip<T>(url: string, form: FormData): Promise<T> {
+  const release = holdReleaseWork();
+  try {
+
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -24,4 +28,5 @@ export async function uploadPackingSlip<T>(url: string, form: FormData): Promise
   } finally {
     clearTimeout(timer);
   }
+  } finally { release(); }
 }

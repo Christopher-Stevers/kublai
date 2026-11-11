@@ -67,3 +67,9 @@ production drawing compiler/offline receiving release without the plan's proof.
 The first 20 instant writes must be selected from the recorded usage inventory,
 with background calls excluded and external/destructive actions separately
 reviewed. Server execution times are not tap-to-paint times.
+
+## Live measurement bootstrap — 2026-11-11 00:38 UTC
+
+Root activated the isolated Phase 0 telemetry/server-timing release. Root recorded health/sign-in 200 at origin and public edge, exact Brotli JavaScript bytes, successful byte checks for all ten retained historical samples, and service `NRestarts=0`. The web process uses the pinned release wrapper, canonical WorkingDirectory, separate worker mode, and a private numeric field-log directory. This starts collection from real usage; field phone baselines and the full speed gates are still open.
+
+Phase 1 router/device-cache/update changes remain preparation only. Their small-change payload collector is ready, but no Phase 1 build or activation was performed during the lab matrix. Cold private HTML caching remains disabled.

@@ -1,3 +1,4 @@
+import { holdReleaseWork } from "./release-safety";
 import { DRAWING_POLL_MS, MAX_DRAWING_UPLOAD_BYTES, MAX_DRAWING_UPLOAD_MB } from "./drawing-upload-limits";
 export type UploadedSheet = { id: string; name: string; imageUrl: string };
 type UploadReply = {
@@ -78,6 +79,9 @@ export async function uploadDrawings(
   file: File,
   options: { drawingSetId?: string } = {},
 ): Promise<UploadedSheet[]> {
+  const release = holdReleaseWork();
+  try {
+
   if (
     !file.name.toLowerCase().endsWith(".pdf") ||
     file.size < 5 ||
@@ -198,4 +202,5 @@ export async function uploadDrawings(
   throw new Error(
     "PDF is still processing. Select the same file to resume checking; do not delete existing drawings.",
   );
+  } finally { release(); }
 }

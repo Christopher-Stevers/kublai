@@ -1,0 +1,25 @@
+import vm from "node:vm";
+import { expect, it, vi } from "vitest";
+import { releaseRecoveryBootScript } from "./release-recovery-document";
+it("recovers initial same-origin script failure once and yields to hydrated draft-safe recovery", () => {
+  const handlers = new Map<string,(event: unknown)=>void>();
+  const values = new Map<string,string>();
+  const reload = vi.fn();
+  const window = {__foremenhqReleaseRecoveryReady:false,addEventListener:(name:string,handler:(event:unknown)=>void)=>handlers.set(name,handler),dispatchEvent:()=>true};
+  const document: {activeElement: {tagName:string} | null} = {activeElement:null};
+  const navigator = {onLine:true};
+  vm.runInNewContext(releaseRecoveryBootScript("a".repeat(64)), {window,document,navigator,location:{origin:"https://app.local",reload},Event,localStorage:{getItem:()=>null},sessionStorage:{getItem:(key:string)=>values.get(key),setItem:(key:string,value:string)=>values.set(key,value)}});
+  handlers.get("error")!({target:{src:"https://other.local/_next/static/app.js"}});
+  expect(reload).not.toHaveBeenCalled();
+  document.activeElement={tagName:"TEXTAREA"};
+  handlers.get("error")!({target:{src:"https://app.local/_next/static/app.js"}});
+  expect(reload).not.toHaveBeenCalled();
+  document.activeElement=null;
+  handlers.get("error")!({target:{src:"https://app.local/_next/static/app.js"}});
+  handlers.get("error")!({target:{src:"https://app.local/_next/static/app.js"}});
+  expect(reload).toHaveBeenCalledTimes(1);
+  values.clear();window.__foremenhqReleaseRecoveryReady=true;
+  handlers.get("unhandledrejection")!({reason:{message:"ChunkLoadError"}});
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(releaseRecoveryBootScript("unknown")).toBe("");
+});

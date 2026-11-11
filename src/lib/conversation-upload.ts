@@ -1,8 +1,12 @@
+import { holdReleaseWork } from "./release-safety";
 import type { ConversationMessage } from "~/server/conversations/contracts";
 export async function uploadConversationFile(
   conversationId: string,
   file: File,
 ) {
+  const release = holdReleaseWork();
+  try {
+
   if (file.size > 10 * 1024 * 1024)
     throw new Error("Files must be 10 MB or smaller.");
   const response = await fetch(
@@ -27,6 +31,7 @@ export async function uploadConversationFile(
       value.error ?? "Could not upload the image. Please try again.",
     );
   return value.attachment;
+  } finally { release(); }
 }
 export async function removePendingConversationFile(id: string) {
   await fetch(`/api/chat/attachments/${encodeURIComponent(id)}`, {

@@ -1,3 +1,4 @@
+import { notifyReleaseWorkChange, registerReleaseCheck } from "./release-safety";
 import {
   drawingSaveSchema,
   isQueuedDrawingEdit,
@@ -172,6 +173,7 @@ export class DrawingOfflineQueue {
       tx.oncomplete = () => {
         try {
           this.assertActive();
+          notifyReleaseWorkChange();
           resolve(value);
         } catch (error) {
           reject(
@@ -394,6 +396,7 @@ export class DrawingOfflineQueue {
     this.assertActive();
     if (this.flushing) return;
     this.flushing = true;
+    notifyReleaseWorkChange();
     try {
       for (let count = 0; count < DRAWING_QUEUE_LIMIT; count++) {
         this.assertActive();
@@ -473,9 +476,22 @@ export class DrawingOfflineQueue {
       }
     } finally {
       this.flushing = false;
+      notifyReleaseWorkChange();
     }
   }
   dispose() {
     this.disposed = true;
   }
 }
+
+// Read the durable queue even after a view/queue instance has been disposed.
+registerReleaseCheck(async () => {
+  const db = await openDatabase();
+  try {
+    return await new Promise<boolean>((resolve, reject) => {
+      const request = db.transaction("edits", "readonly").objectStore("edits").getAll();
+      request.onsuccess = () => resolve((request.result as DrawingQueuedMutation[]).some(row => isDrawingOfflineAccountActive(row.accountKey)));
+      request.onerror = () => reject(new Error("Cannot verify drawing edits", {cause: request.error}));
+    });
+  } finally { db.close(); }
+});

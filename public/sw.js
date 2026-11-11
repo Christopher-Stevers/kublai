@@ -3,7 +3,7 @@
 // Keep API/sync traffic network-only. Cache navigations and static assets so the
 // installed app can open while offline and Replicache can read its IndexedDB cache.
 
-const VERSION = "foremenhq-offline-shell-v14";
+const VERSION = "foremenhq-offline-shell-v15";
 const PAGE_CACHE = `${VERSION}:pages`;
 const STATIC_CACHE = `${VERSION}:static`;
 const IMAGE_CACHE = `${VERSION}:images`;
@@ -12,7 +12,7 @@ const OFFLINE_FALLBACK = "/jobs";
 const OFFLINE_PAGE = "/offline.html";
 const CACHE_LIMITS = {
   [PAGE_CACHE]: 60,
-  [STATIC_CACHE]: 200,
+  [STATIC_CACHE]: 600,
   [IMAGE_CACHE]: 1200,
   [PDF_RUNTIME_CACHE]: 31,
 };
@@ -82,7 +82,6 @@ async function safePut(name, request, response) {
 }
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches
       .open(PAGE_CACHE)
@@ -265,23 +264,70 @@ function isRscRequest(url, request) {
 // Bindings deliberately live only for this worker lifetime. A saved account
 // fingerprint must never authorize a new document or another tab on the device.
 const navigationClients = new Map();
-self.addEventListener("message", event => {
-  if (event.data?.type !== "FOREMENHQ_NAVIGATION_ACCOUNT" || !event.source?.id) return;
-  const account = event.data.account;
-  if (typeof account === "string" && account.length > 0 && account.length < 500)
-    navigationClients.set(event.source.id, account);
-  else {
-    const previous = navigationClients.get(event.source.id);
-    navigationClients.delete(event.source.id);
-    if (previous) event.waitUntil((async () => {
-      try {
-        const cache = await caches.open(PAGE_CACHE);
-        await Promise.all((await cache.keys()).filter(key =>
-          new URL(key.url ?? key, self.location.origin).searchParams.get("__device_account") === previous,
-        ).map(key => cache.delete(key)));
-      } catch { /* Revocation in memory applies even when storage is unavailable. */ }
-    })());
+const navigationBindingEpoch = new Map();
+const navigationIdentityEpoch = new Map();
+const accountIdentity = scope => { const index = scope.lastIndexOf(":build:"); return index < 0 ? scope : scope.slice(0, index); };
+async function revokeNavigationAccount(scope, sourceId) {
+  const identity = accountIdentity(scope);
+  navigationIdentityEpoch.set(identity, (navigationIdentityEpoch.get(identity) ?? 0) + 1);
+  const clients = sourceId ? [sourceId] : [];
+  for (const [id, current] of navigationClients) if (accountIdentity(current) === identity) {
+    navigationClients.delete(id);
+    navigationBindingEpoch.set(id, (navigationBindingEpoch.get(id) ?? 0) + 1);
+    if (!clients.includes(id)) clients.push(id);
   }
+  try {
+    const cache = await caches.open(PAGE_CACHE);
+    await Promise.all((await cache.keys()).filter(key => {
+      const saved = new URL(key.url ?? key, self.location.origin).searchParams.get("__device_account");
+      return saved && accountIdentity(saved) === identity;
+    }).map(key => cache.delete(key)));
+  } catch { /* In-memory revocation remains effective without storage. */ }
+  await Promise.all(clients.map(async id => {
+    try { (await self.clients?.get(id))?.postMessage({type: "FOREMENHQ_NAVIGATION_REVOKED"}); } catch {}
+  }));
+}
+async function bindNavigationClient(event) {
+  const id = event.source?.id;
+  if (!id) return;
+  const previous = navigationClients.get(id);
+  const epoch = (navigationBindingEpoch.get(id) ?? 0) + 1;
+  navigationBindingEpoch.set(id, epoch);
+  const {account, build, view} = event.data;
+  if (typeof account !== "string" || !account || account.length >= 500 ||
+      typeof build !== "string" || !/^[a-f0-9]{64}$/.test(build)) {
+    navigationClients.delete(id);
+    if (previous) await revokeNavigationAccount(previous);
+    return;
+  }
+  const scope = `${account}:build:${build}`;
+  const identityEpoch = navigationIdentityEpoch.get(account) ?? 0;
+  if (previous === scope) return; // Already verified within this worker lifetime.
+  navigationClients.delete(id);
+  if (previous && accountIdentity(previous) !== account) await revokeNavigationAccount(previous);
+  try {
+    const headers = {};
+    if (typeof view === "string" && view.length < 500) headers["x-foremanhq-session-view"] = view;
+    const response = await offlineTestFetch(new Request(new URL("/api/device-cache-binding", self.location.origin), {
+      credentials: "same-origin", cache: "no-store", headers, signal: AbortSignal.timeout(10000),
+    }));
+    if (navigationBindingEpoch.get(id) !== epoch || (navigationIdentityEpoch.get(account) ?? 0) !== identityEpoch) return;
+    if (!response.ok || response.redirected) {
+      if ([401, 403, 404, 410].includes(response.status) || response.redirected) await revokeNavigationAccount(scope, id);
+      return;
+    }
+    const verified = await response.json();
+    if (verified.account !== account) {
+      await revokeNavigationAccount(scope, id); return;
+    }
+    // An authorized old document may finish its work until the quiet update.
+    // It cannot bind private Flight payloads from the new build.
+    if (verified.build !== build) return;
+    navigationClients.set(id, scope);
+  } catch { /* No fresh identity verification means no private replay binding. */ }
+}
+self.addEventListener("message", event => {
+  if (event.data?.type === "FOREMENHQ_NAVIGATION_ACCOUNT") event.waitUntil(bindNavigationClient(event));
 });
 function navigationKey(request, account) {
   const url = new URL(request.url);
@@ -302,16 +348,16 @@ async function networkFirstRsc(request, event) {
   const eligible = account && reviewedRoute && request.headers.get("Next-Router-Prefetch") !== "1";
   if (!eligible) return offlineTestFetch(request);
   const key = navigationKey(request, account);
+  const identityEpoch = navigationIdentityEpoch.get(accountIdentity(account)) ?? 0;
   const refresh = async () => {
     const response = await offlineTestFetch(request);
-    if (navigationClients.get(event.clientId) !== account) return response;
+    if (navigationClients.get(event.clientId) !== account || (navigationIdentityEpoch.get(accountIdentity(account)) ?? 0) !== identityEpoch) return response;
     if (response.ok && !response.redirected &&
         response.headers.get("Content-Type")?.includes("text/x-component"))
       await safePut(PAGE_CACHE, key, response.clone());
     // Never reuse a payload after an explicit access denial or redirect.
-    else if (response.status === 401 || response.status === 403 || response.redirected) {
-      navigationClients.delete(event.clientId);
-      try { await (await caches.open(PAGE_CACHE)).delete(key); } catch {}
+    else if ([401, 403, 404, 410].includes(response.status) || response.redirected) {
+      await revokeNavigationAccount(account);
     }
     return response;
   };
@@ -827,4 +873,57 @@ self.addEventListener("notificationclick", (event) => {
       await self.clients.openWindow(url);
     })(),
   );
+});
+
+function releaseAssets(manifest) {
+  if (!manifest || typeof manifest.build !== "string" || !/^[a-f0-9]{64}$/.test(manifest.build) ||
+      !Array.isArray(manifest.changedAssets) || manifest.changedAssets.length > 600) throw Error("Invalid release asset manifest");
+  return Array.from(new Set(manifest.changedAssets.map(value => {
+    if (typeof value !== "string") throw Error("Invalid release asset URL");
+    const url = new URL(value, self.location.origin);
+    if (!isSameOrigin(url) || !/^\/_next\/static\/.+\.(?:js|css)$/.test(url.pathname) || url.search || url.hash)
+      throw Error("Only same-origin immutable scripts and styles can be warmed");
+    return url.href;
+  })));
+}
+async function warmRelease(build) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  const connection = self.navigator?.connection;
+  const guardLink = () => {
+    if (connection && (connection.saveData || (connection.effectiveType && connection.effectiveType !== "4g") || connection.downlink < 1.5)) controller.abort();
+  };
+  connection?.addEventListener?.("change", guardLink);
+  try {
+  guardLink();
+  const response = await offlineTestFetch(new Request(new URL("/foremanhq-release-assets.json", self.location.origin), {credentials: "same-origin", cache: "no-store", signal: controller.signal}));
+  if (!response.ok || response.redirected) throw Error("Release manifest unavailable");
+  const manifest = await response.json();
+  if (manifest.build !== build) throw Error("Release changed during update");
+  const assets = releaseAssets(manifest);
+  let index = 0;
+  await Promise.all(Array.from({length: Math.min(3, assets.length)}, async () => {
+    while (index < assets.length) {
+      const url = assets[index++];
+      guardLink();
+      const cached = await safeMatch(url);
+      if (cached) { await safePut(STATIC_CACHE, url, cached); continue; }
+      const result = await offlineTestFetch(new Request(url, {credentials: "same-origin", signal: controller.signal}));
+      if (!result.ok || result.redirected || !/(?:javascript|text\/css)/i.test(result.headers.get("Content-Type") ?? "")) throw Error("Release asset unavailable");
+      await safePut(STATIC_CACHE, url, result.clone());
+      if (!(await safeMatch(url, STATIC_CACHE))) throw Error("Release asset storage unavailable");
+    }
+  }));
+  return manifest.build;
+  } finally { clearTimeout(timer); connection?.removeEventListener?.("change", guardLink); }
+}
+self.addEventListener("message", event => {
+  if (event.data?.type === "FOREMENHQ_ACTIVATE_RELEASE") {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+  if (event.data?.type !== "FOREMENHQ_WARM_RELEASE" || event.data.goodLink !== true) return;
+  event.waitUntil(warmRelease(event.data.build)
+    .then(build => event.ports?.[0]?.postMessage({ready: true, build}))
+    .catch(() => event.ports?.[0]?.postMessage({ready: false})));
 });

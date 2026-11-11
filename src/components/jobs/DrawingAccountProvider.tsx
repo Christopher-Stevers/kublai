@@ -3,6 +3,7 @@ import {
   startDeviceQueryCache,
   wipeDeviceQueryCaches,
 } from "~/lib/device-query-cache";
+import { simulationViewHeaders } from "~/lib/employee-simulation";
 import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient, type Query } from "@tanstack/react-query";
@@ -63,34 +64,22 @@ export function DrawingAccountProvider({
     };
     clearQueries();
     const deviceCache = startDeviceQueryCache(queryClient, accountKey);
+    const build = process.env.NEXT_PUBLIC_BUILD_ID;
     const bindNavigation = (account: string | null) => {
       if ("serviceWorker" in navigator)
         navigator.serviceWorker.controller?.postMessage({
           type: "FOREMENHQ_NAVIGATION_ACCOUNT",
           account,
+          view: simulationViewHeaders()["x-foremanhq-session-view"] ?? null,
+          build: build && /^[a-f0-9]{64}$/.test(build) ? build : null,
         });
     };
-    // Scope Flight payloads to the JS build that authenticated this document.
-    const scripts = Array.from(document.scripts, (script) => script.src).filter(
-      (src) => src.includes("/_next/static/"),
-    );
-    const buildFiles = scripts.filter((src) =>
-      /(?:webpack|main-app)[-./]/.test(src),
-    );
-    const build = (buildFiles.length ? buildFiles : scripts).sort().join("|");
-    let fingerprint = 2166136261;
-    for (const character of build)
-      fingerprint = Math.imul(fingerprint ^ character.charCodeAt(0), 16777619);
     const bindController = () => {
-      if (!disposed && build)
-        bindNavigation(`${accountKey}:build:${fingerprint >>> 0}`);
+      if (!disposed) bindNavigation(accountKey);
     };
     bindController();
     if ("serviceWorker" in navigator)
-      navigator.serviceWorker.addEventListener(
-        "controllerchange",
-        bindController,
-      );
+      navigator.serviceWorker.addEventListener("controllerchange", bindController);
     const flushDeviceCache = () => deviceCache.flush();
     window.addEventListener("pagehide", flushDeviceCache);
     const invalidate = () => {
@@ -98,16 +87,22 @@ export function DrawingAccountProvider({
       bindNavigation(null);
       void deviceCache.stop(true);
       clearPrivateMemory();
-      clearQueries();
+      void queryClient.cancelQueries();
+      queryClient.clear();
       store?.dispose();
       setValue(null);
       setLocked(true);
     };
+    const workerMessage = (event: MessageEvent) => {
+      const data = event.data as {type?: unknown} | null;
+      if (data?.type === "FOREMENHQ_NAVIGATION_REVOKED") invalidate();
+    };
+    navigator.serviceWorker?.addEventListener("message", workerMessage);
     window.addEventListener(
       "foremanhq-drawing-account-invalidated",
       invalidate,
     );
-    void setDrawingOfflineAccount(accountKey, preserveAccountKey)
+    void Promise.all([setDrawingOfflineAccount(accountKey, preserveAccountKey), deviceCache.ready])
       .then(() => {
         if (disposed) return;
         store = new DrawingOfflineStore(accountKey);
@@ -121,6 +116,7 @@ export function DrawingAccountProvider({
       bindNavigation(null);
       void deviceCache.stop();
       window.removeEventListener("pagehide", flushDeviceCache);
+      navigator.serviceWorker?.removeEventListener("message", workerMessage);
       if ("serviceWorker" in navigator)
         navigator.serviceWorker.removeEventListener(
           "controllerchange",
