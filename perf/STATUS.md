@@ -987,3 +987,22 @@ gzip-byte definition and identifies a 17,273-byte dropdown-engine opportunity
 ceiling. First-open/focus/keyboard risks keep that proposal source-only. Framework
 root files account for 118,402 bytes; this classification does not redefine the
 120 KB target or establish that all remaining code is removable.
+
+## Receiving/photo canonical proof passed — 2026-11-11
+
+Build `95b57fd0…` passed canonical compilation, production TypeScript, prerender
+and source laws on the first attempt. Source fingerprint `d22e3464…` and all
+2,322 inputs remained unchanged. The combined receiving/photo change measures
+478,853 shared and 575,264 heaviest gzip bytes: +1,315 / −52,473 relative to R19.
+All Phase 0 byte ratchets pass; final 120 KB/180 KB targets remain unmet. The
+strict R19 update payload is 445,298 bytes (42 of 288 scripts changed), failing
+100 KB. This full-batch result is not replaced by a net-code-growth figure.
+
+The 52,638-byte framing-map chunk is now async and absent from root files and
+all forty formal jobs-route dependency lists. It remains counted in deployment
+bytes. This is emitted-code evidence, not a browser transfer or isolated
+photo-only performance claim. All 293 compressed assets, 1,120 retained files
+and 3,263 public files match; native metadata resolution and production-overlay
+exclusion pass. Proof `ab3ee49c`, detailed in `receiving-images-byte-proof.md`.
+No HTTP/application/private database/browser matrix/worker/activation ran. The
+R19 timing rejection still stands; no new full matrix is scheduled.

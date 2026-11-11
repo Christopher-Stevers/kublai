@@ -56,7 +56,8 @@
     "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
     "perf/r18-r19-failed-cell-source-evidence-2026-11-11.json",
     "perf/artifacts/notification-role-identity-rejected-2026-11-11/result.json",
-    "perf/artifacts/receiving-saved-order-focused-2026-11-11.json"
+    "perf/artifacts/receiving-saved-order-focused-2026-11-11.json",
+    "perf/artifacts/phase1-receiving-images-build-proof-2026-11-11.json"
   ],
   "rows": [
     {
@@ -305,7 +306,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T17:34:34.009945+00:00",
+  "updatedAt": "2026-11-11T17:45:29.287969+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
@@ -1186,7 +1187,7 @@
       "focusedTestsPassed": 103,
       "focusedTestFiles": 11,
       "scopedRuntimeTypecheckPassed": true,
-      "productionBuildPassed": false,
+      "productionBuildPassed": true,
       "newLintFindings": 0,
       "source": "perf/receiving-saved-order.md",
       "proof": "perf/artifacts/receiving-saved-order-focused-2026-11-11.json",
@@ -1199,7 +1200,8 @@
         "Durable denial deletion cannot be guaranteed while IndexedDB is unavailable; saved paint is suppressed for the affected hook.",
         "Persisted epochs fence revocation and lifecycle, not server-version ordering across independent contexts.",
         "No new canonical build, browser/offline performance or receiving-worker proof."
-      ]
+      ],
+      "canonicalSourceBuild": "95b57fd012552df60906ffc348a0259308835286a58c08a1ab45284573f7246b"
     },
     "partImageMetadata": {
       "status": "prepared-focused-tests-passed",
@@ -1210,12 +1212,19 @@
       "focusedTestsPassed": 11,
       "auditedEntriesUnchanged": 1467,
       "oldEmittedChunkGzipBytes": 53313,
-      "measuredSavings": null,
+      "measuredSavings": {
+        "combinedFormalHeaviestDeltaBytes": -52473,
+        "isolatedPhotoOnlyMeasurement": false,
+        "browserTransferMeasured": false
+      },
       "source": "perf/part-image-metadata-boundary.md",
-      "activated": false
+      "activated": false,
+      "asyncMetadataGzipBytes": 52638,
+      "absentFormalRouteUnions": 40,
+      "canonicalSourceBuild": "95b57fd012552df60906ffc348a0259308835286a58c08a1ab45284573f7246b"
     },
     "receivingImagesBuild": {
-      "status": "source-reviewed-canonical-byte-proof-authorized",
+      "status": "canonical-compile-and-offline-byte-proof-passed",
       "sourceFreezeCommit": "d49f0f95",
       "sourceFingerprint": "d22e346422aa5fc1827c1c6bca58b5eec6ad20badae874c9da0ece8b39eb6c1c",
       "sourceFileCount": 2322,
@@ -1223,7 +1232,25 @@
       "rootIndependentSourceReview": true,
       "rootReview": "perf/artifacts/phase1-receiving-images-root-source-review-2026-11-11.json",
       "fullMatrixScheduled": false,
-      "activationAuthorized": false
+      "activationAuthorized": false,
+      "sourceBuild": "95b57fd012552df60906ffc348a0259308835286a58c08a1ab45284573f7246b",
+      "proofCommit": "ab3ee49c",
+      "proof": "perf/artifacts/phase1-receiving-images-build-proof-2026-11-11.json",
+      "canonicalAttempt": 1,
+      "productionTypeScriptPassed": true,
+      "prerenderPassed": true,
+      "formalSharedGzipBytes": 478853,
+      "formalHeaviestGzipBytes": 575264,
+      "phase0RelativeDeployGzipBytes": 1379610,
+      "strictR19UpdateGzipBytes": 445298,
+      "strictR19UpdatePasses100KB": false,
+      "phase0ByteRatchetsPass": true,
+      "final120KB180KBTargetsPass": false,
+      "currentSidecarsExact": 293,
+      "retainedAssetsExact": 1120,
+      "publicFilesExact": 3263,
+      "nativeMetadataResolutionPass": true,
+      "httpStarted": false
     }
   },
   "historicalCandidateRegressions": [
