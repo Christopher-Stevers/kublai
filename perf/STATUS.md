@@ -48,8 +48,11 @@ Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
   fallback. Constraints and indexes are retained. Clerk is stubbed only in the
   generated lab source tree, so authentication start-up cost needs separate
   field evidence. Lab snapshots carry a marker that the release builder rejects.
-- Drawing spike: separate `perf/drawings/` experiment; no production rendering
-  path or worker switch. Private source sheets and derived artifacts stay local.
+- Drawing spike: `perf/drawings/spike-report.json` covers 100 unique sheets
+  across 50 active uploads. Median standalone PDF size is 348,236 bytes.
+  Geometry/glyph/image components are not a complete format; quality comparisons
+  expose missing images, state, forms and clipping. All four go gates remain
+  unproven. No production renderer or worker switch. Private PDFs stay local.
 
 ## Gates still required
 

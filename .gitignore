@@ -75,3 +75,7 @@ yarn-error.log*
 
 # Private voice action audit
 .private/
+
+# Anonymous field performance logs and local benchmark fixtures
+/data/perf/
+/perf/fixtures.json
