@@ -222,6 +222,56 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("scrolling drawing cards", () => {
+  beforeEach(() => {
+    class TestPointerEvent extends MouseEvent {
+      readonly pointerId: number;
+      readonly isPrimary: boolean;
+      readonly pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.isPrimary = init.isPrimary ?? true;
+        this.pointerType = init.pointerType ?? "touch";
+      }
+    }
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
+  });
+
+  it.each(["folder", "sheet"] as const)("does not open a %s after a scroll, but opens on the next tap", (kind) => {
+    render(<JobDrawingsView jobId="job" />);
+    if (kind === "sheet") fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    const name = kind === "folder" ? "Open Mechanical" : "Open M-101";
+    const card = screen.getByRole("button", { name });
+    fireEvent.pointerDown(card, { pointerId: 1, button: 0 });
+    expect(card).toHaveAttribute("data-pressed", "true");
+    expect(screen.queryByText("Viewing M-101")).toBeNull();
+    fireEvent.scroll(window);
+    fireEvent.pointerUp(card, { pointerId: 1, button: 0 });
+    fireEvent.click(card, { detail: 1 });
+    expect(screen.getByRole("button", { name })).toBeVisible();
+    expect(card).not.toHaveAttribute("data-pressed");
+    fireEvent.pointerDown(card, { pointerId: 2, button: 0 });
+    fireEvent.pointerUp(card, { pointerId: 2, button: 0 });
+    fireEvent.click(card, { detail: 1 });
+    if (kind === "folder") expect(screen.getByRole("button", { name: "Open M-101" })).toBeVisible();
+    else expect(screen.getByText("Viewing M-101")).toBeVisible();
+    expect(state.calls).toHaveLength(0);
+  });
+
+  it("keeps a sheet's nested favorite control separate from navigation", () => {
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Mechanical" }));
+    const favorite = screen.getByRole("button", { name: "Favorite M-101" });
+    fireEvent.pointerDown(favorite, { pointerId: 1, button: 0 });
+    fireEvent.pointerUp(favorite, { pointerId: 1, button: 0 });
+    fireEvent.click(favorite, { detail: 1 });
+    expect(state.calls).toEqual([["favorite", { sheetId: "s1", favorite: true }]]);
+    expect(screen.getByRole("button", { name: "Open M-101" })).toBeVisible();
+    expect(screen.queryByText("Viewing M-101")).toBeNull();
+  });
+});
+
 describe("Drawings", () => {
   const openDrawing = () => {
     const view = render(<JobDrawingsView jobId="job" />);
@@ -455,6 +505,7 @@ describe("Drawings", () => {
     state.sets.push({ ...source, id: "child", name: "Child", parentId: source.id });
     render(<JobDrawingsView jobId="job" />);
     fireEvent.keyDown(screen.getByRole("button", { name: "More actions for Mechanical" }), { key: "Enter" });
+    expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: "Move", exact: true }));
     expect(screen.queryByRole("option", { name: "Mechanical" })).toBeNull();
     expect(screen.queryByRole("option", { name: /Child/ })).toBeNull();

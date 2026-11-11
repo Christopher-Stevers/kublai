@@ -39,6 +39,7 @@ import { useTutorialSandbox } from "~/components/tutorial/tutorial-sandbox-conte
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { PressableCard } from "~/components/ui/pressable-card";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Input } from "~/components/ui/input";
@@ -712,7 +713,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       <OfflineStorageStatus />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orderedFolders.map((folder) => (
-            <Card
+            <PressableCard
               key={folder.id}
               data-tutorial="drawing-folder"
               role="button"
@@ -720,13 +721,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               aria-label={`Open ${folder.name}`}
               className="card-lift cursor-pointer gap-0 overflow-hidden py-0"
               onClick={() => openFolder(folder.id)}
-              onKeyDown={(event) => {
-                if (event.target !== event.currentTarget) return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  openFolder(folder.id);
-                }
-              }}
             >
               {folder.coverImageUrl ? (
                 <DrawingThumbnail
@@ -821,7 +815,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
                 </div>
               </CardContent>
-            </Card>
+            </PressableCard>
           ))}
         </div>
     </div>
@@ -930,7 +924,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               <p className="p-4 text-sm">No drawings match these filters.</p>
             )}
             {visibleSheets.map((item) => (
-              <Card
+              <PressableCard
                 key={item.id}
                 data-tutorial="drawing-sheet"
                 role="button"
@@ -942,13 +936,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     : "card-lift relative cursor-pointer gap-0 overflow-hidden py-0"
                 }
                 onClick={() => openSheetFromList(item.id)}
-                onKeyDown={(event) => {
-                  if (event.target !== event.currentTarget) return;
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    openSheetFromList(item.id);
-                  }
-                }}
               >
                 <DrawingThumbnail
                   src={item.imageUrl}
@@ -1055,7 +1042,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     </DropdownMenu>
                   )}
                 </div>
-              </Card>
+              </PressableCard>
             ))}
           </div>
         )}

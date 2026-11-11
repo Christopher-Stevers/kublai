@@ -18,3 +18,12 @@ Only explicitly reviewed view controls use `press="fixed"`. The shared Button de
 The route registry uses the existing local job reader and material-list IndexedDB records, and imports real screen modules. It never sends a write or fetches private remote chat/drawing contents as preparation. Dynamic imports and an IndexedDB transaction already in progress cannot be cancelled; abort prevents later preparation stages. No private preparation result is retained by the registry.
 
 Existing job workspace choices are cards inside a scroll area, so they remain release controls. A stateful job tab host, hidden-panel retention, route payload policy, prediction and transitions are separate work. The measured eight-journey baseline must finish before its harness adopts the new shared registry or produces after evidence. No app release is activated by these tests.
+
+On 2026-11-11, drawing folder and sheet cards adopted the existing
+`PressableCard` primitive. This supplies press feedback and scroll cancellation;
+it does not fetch unopened drawings or change rendering. All 41 tests in
+`JobDrawingsView.test.tsx` passed, including scroll-then-tap and nested favorite
+and folder-menu checks. Scoped lint found the same eight existing test errors
+and three production warnings as committed HEAD; no new diagnostics. The
+primitive itself was unchanged, so its earlier Chromium verification was not
+rerun. Physical-phone timing remains unverified.
