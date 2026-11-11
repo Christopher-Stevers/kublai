@@ -940,3 +940,28 @@ five (sample p75 = 104 ms), and tap-to-paint remains three (median 593 ms). Thes
 uncontrolled, sampled observations with no per-row hardware or repeat-visit
 verification; they do not establish field targets or complete Phase 0. See
 `artifacts/field-review-2026-11-11-after-phone-deferred.json`.
+
+## Receiving summary pass; notification experiment rolled back — 2026-11-11
+
+Receiving saved summaries (`7286af50`) pass 103 tests across eleven files, scoped
+runtime TypeScript and lint with no new findings. The original unrelated router
+and Activity-fixture lint findings were reproduced against HEAD. Two initial
+legacy fixture failures were corrected without weakening their assertions.
+Saved details are a separate, dated, read-only projection: at most 32 lines and
+16 KiB per order, with 256 KiB reserved within the existing 20 MiB payload cap.
+No received/credited quantities, contacts, notes or receipt capabilities persist.
+Key/account epochs fence stale callbacks, denied reads and view changes; same-order
+notes/verification share one active read. Known actor mismatch hides cached paint.
+Unusable IndexedDB falls back to live reads; durable deletion cannot be guaranteed
+while that storage is unavailable. This is tested source, not a new canonical
+build, browser timing, offline-write or production rollout proof.
+
+The subsequent notification two-cycle diagnostic disproved the optimization:
+with ordinary 30-second role polling and 250 ms replies, identity requests still
+ran each cycle and the first lease expiry closed an open inbox. The 37 earlier
+focused tests and passing typecheck did not cover that behavior. Rollback
+`aeb21094` restores all four existing notification/router files byte-for-byte and
+removes the new runtime hook; the original 18 tests pass with no new lint findings.
+The experiment commit, diagnostic source, raw logs and failure are preserved in
+`artifacts/notification-role-identity-rejected-2026-11-11/`. No polling reduction
+is claimed, and the experiment never reached production.

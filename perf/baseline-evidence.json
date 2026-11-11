@@ -54,7 +54,9 @@
     "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11/assessment.json",
     "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-root-review.json",
     "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
-    "perf/r18-r19-failed-cell-source-evidence-2026-11-11.json"
+    "perf/r18-r19-failed-cell-source-evidence-2026-11-11.json",
+    "perf/artifacts/notification-role-identity-rejected-2026-11-11/result.json",
+    "perf/artifacts/receiving-saved-order-focused-2026-11-11.json"
   ],
   "rows": [
     {
@@ -303,7 +305,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T17:13:08.478945+00:00",
+  "updatedAt": "2026-11-11T17:22:23.573536+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
@@ -1163,7 +1165,7 @@
       "newRuntime": false
     },
     "notificationIdentitySharing": {
-      "status": "prepared-source-focused-tests-passed",
+      "status": "rejected-and-rolled-back",
       "commit": "1ad6447c",
       "focusedTestsPassed": 37,
       "newLintFindings": 0,
@@ -1171,7 +1173,33 @@
       "measuredPollingReduction": false,
       "productionTypecheck": false,
       "activated": false,
-      "source": "perf/notification-role-identity.md"
+      "source": "perf/notification-role-identity.md",
+      "rollbackCommit": "aeb21094",
+      "runtimePresent": false,
+      "restoredTestsPassed": 18,
+      "reason": "Normal30-second role polling plus response latency triggered redundant identity requests; lease expiry cleared accountKey and closed the open inbox.",
+      "rejectionProof": "perf/artifacts/notification-role-identity-rejected-2026-11-11/result.json"
+    },
+    "receivingSavedOrder": {
+      "status": "prepared-tested-unactivated",
+      "commit": "7286af50",
+      "focusedTestsPassed": 103,
+      "focusedTestFiles": 11,
+      "scopedRuntimeTypecheckPassed": true,
+      "productionBuildPassed": false,
+      "newLintFindings": 0,
+      "source": "perf/receiving-saved-order.md",
+      "proof": "perf/artifacts/receiving-saved-order-focused-2026-11-11.json",
+      "rawReceiptAuthorityPersisted": false,
+      "maxNamespaceBytes": 262144,
+      "maxEntryBytes": 16384,
+      "maxSavedLines": 32,
+      "activated": false,
+      "limitations": [
+        "Durable denial deletion cannot be guaranteed while IndexedDB is unavailable; saved paint is suppressed for the affected hook.",
+        "Persisted epochs fence revocation and lifecycle, not server-version ordering across independent contexts.",
+        "No new canonical build, browser/offline performance or receiving-worker proof."
+      ]
     }
   },
   "historicalCandidateRegressions": [
