@@ -1,5 +1,7 @@
 "use client";
 
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
+import { liveAccountScope } from "~/lib/live-protocol";
 import { bindLiveAccount, subscribeLiveEvents } from "~/lib/live-client";
 import { useEffect } from "react";
 import { warmDeferredFeatures } from "~/components/app/DeferredFeatures";
@@ -26,8 +28,9 @@ export function ReplicacheSyncBootstrap({
   userId: string;
   organizationId: string;
 }) {
+  const simulation = useEmployeeSimulation();
   useEffect(() => {
-    const releaseAccount = bindLiveAccount(`${organizationId}:${userId}`);
+    const releaseAccount = bindLiveAccount(liveAccountScope(organizationId, userId, simulation?.id));
     const replicache = tryGetMaterialListReplicache();
     if (!replicache) return releaseAccount;
     try {
@@ -81,7 +84,7 @@ export function ReplicacheSyncBootstrap({
       void closeMaterialListReplicache();
       void closeCatalogueReplicache();
     };
-  }, [userId, organizationId]);
+  }, [userId, organizationId, simulation?.id]);
 
   return null;
 }

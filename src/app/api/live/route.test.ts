@@ -159,6 +159,17 @@ describe("authorized compatibility live multiplexing", () => {
       stop();
     }
   });
+  it("isolates an employee direct session from an actor simulation of that employee", async () => {
+    const baseline = liveHub.publish("org:user", { topic: "catalogue", version: 7123 });
+    const direct = await open(); await direct.reader.read();
+    sources[0]!.send('event: material-list-updated\ndata: {"materialListId":"direct-only","type":"updated","version":7124}\n\n');
+    expect(text(await direct.reader.read())).toContain("direct-only");
+    mocks.identity.mockResolvedValue({ user: { id: "user", organizationId: "org", organizationAccessStatus: "approved" }, simulation: { id: "sim-session" } });
+    const simulated = await open(`?after=${encodeURIComponent(baseline.id)}`); await simulated.reader.read();
+    sources[1]!.send('event: material-list-updated\ndata: {"materialListId":"simulation-only","type":"updated","version":7125}\n\n');
+    const frame = text(await simulated.reader.read());
+    expect(frame).toContain("simulation-only"); expect(frame).not.toContain("direct-only");
+  });
   it("keeps one 25-second browser heartbeat and closes on request abort", async () => {
     const controller = new AbortController(),
       response = await GET(

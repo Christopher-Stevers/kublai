@@ -44,10 +44,15 @@ export function liveHint(value: unknown): LiveHint | null {
   return {
     topic: row.topic as LiveTopic,
     version: row.version as number,
-    ...(row.key === undefined ? {} : { key: row.key as string }),
-    ...(row.kind === undefined ? {} : { kind: row.kind as string }),
+    ...(row.key === undefined ? {} : { key: row.key }),
+    ...(row.kind === undefined ? {} : { kind: row.kind }),
     ...(row.sourceClientGroupId === undefined
       ? {}
-      : { sourceClientGroupId: row.sourceClientGroupId as string | null }),
+      : { sourceClientGroupId: row.sourceClientGroupId }),
   };
+}
+
+/** Match the account boundary used by drawing/device stores, including simulation. */
+export function liveAccountScope(organizationId: string, userId: string, simulationId?: string | null) {
+  return `${organizationId}:${userId}${simulationId ? `:simulation:${simulationId}` : ""}`;
 }

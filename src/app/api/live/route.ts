@@ -4,7 +4,7 @@ import { GET as conversationSource } from "~/app/api/conversations/events/route"
 import { GET as chatSource } from "~/app/api/job-chat/events/route";
 import { liveHub } from "~/server/live/hub";
 import { frameParser, sourceHint } from "~/server/live/frames";
-import { liveHint } from "~/lib/live-protocol";
+import { liveHint, liveAccountScope } from "~/lib/live-protocol";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       user.organizationAccessStatus !== "approved")
   )
     return new Response("Sign in required", { status: 401 });
-  const scope = `${user.organizationId}:${user.id}`;
+  const scope = liveAccountScope(user.organizationId, user.id, identity.simulation?.id);
   if ((connections.get(scope) ?? 0) >= 5)
     return new Response("Too many connections", { status: 429 });
   if (request.signal.aborted) return new Response(null, { status: 499 });
@@ -106,8 +106,8 @@ export async function GET(request: Request) {
   const jobIds = new Set(jobs.map((value) => value.split(":")[0]));
   let closed = false,
     heartbeat: ReturnType<typeof setInterval>,
-    expiry: ReturnType<typeof setTimeout>,
-    unsubscribe = () => {};
+    expiry: ReturnType<typeof setTimeout>;
+  let unsubscribe: () => void = () => undefined;
   const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
   const cleanup = () => {
     if (closed) return;
