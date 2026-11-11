@@ -207,3 +207,10 @@ source changed sets and executed diagnostic methods are archived in the proof
 directory. No failed build or automatic retry occurred. The builder lock is absent;
 no app/database runtime was started. Rollback remains removing only this group.
 Acceptance, activation and any further build require root review.
+
+
+Root approved a separate exact five-path R18 composition after reviewing this
+experiment. Its canonical proof improves shared/heaviest versus R17 by 1,207/252
+bytes and preserves Phase0 ratchets. See [R18](phase1-r18-source-freeze.md). The
+prepared inline configuration is retained on that combined byte evidence; C stays
+ineligible standalone, migration/speed/final-target failures remain unchanged.

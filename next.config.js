@@ -8,6 +8,37 @@ import { ForemanBundleStats } from "./scripts/release/bundle-stats.cjs";
 /** @type {import("next").NextConfig} */
 const config = {
   webpack(config, { dev, isServer }) {
+    // Exploratory source: isolate only the duplicated client press primitive.
+    // Existing Next framework/lib groups and identifier policies stay intact.
+    if (!dev && !isServer) {
+      const splitChunks = config.optimization?.splitChunks;
+      if (
+        !config.context ||
+        !splitChunks || typeof splitChunks !== "object" ||
+        !splitChunks.cacheGroups || typeof splitChunks.cacheGroups !== "object" ||
+        !splitChunks.cacheGroups.framework || typeof splitChunks.cacheGroups.framework !== "object" ||
+        !splitChunks.cacheGroups.lib || typeof splitChunks.cacheGroups.lib !== "object" ||
+        typeof splitChunks.cacheGroups.framework.test !== "function" ||
+        typeof splitChunks.cacheGroups.lib.test !== "function"
+      ) {
+        throw new Error("Review the pinned Next client chunk configuration before isolating usePress.");
+      }
+      const resource = `${config.context.replaceAll("\\", "/").replace(/\/$/, "")}/src/hooks/use-press.ts`;
+      splitChunks.cacheGroups.foremanPress = {
+        name: "app-press-browser",
+        chunks: "all",
+        layer: "app-pages-browser",
+        test(module) {
+          return module.layer === "app-pages-browser" &&
+            typeof module.nameForCondition === "function" &&
+            module.nameForCondition()?.replaceAll("\\", "/") === resource;
+        },
+        minChunks: 2,
+        enforce: true,
+        reuseExistingChunk: true,
+        priority: 20,
+      };
+    }
     if (!dev && !isServer && process.env.RELEASE_BUNDLE_STATS === "1")
       config.plugins.push(new ForemanBundleStats());
     return config;

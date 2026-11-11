@@ -1,0 +1,164 @@
+{
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111",
+  "build": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "canonicalExit": 0,
+  "metrics": {
+    "build": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "sharedGzipBytes": 476958,
+    "screenGzipBytes": 627137,
+    "deployGzipBytes": 1320776,
+    "screenGzipByRoute": {
+      "/_global-error/page": 307272,
+      "/_not-found/page": 307272,
+      "/admin/page": 307272,
+      "/jobs/[jobId]/chat/page": 502885,
+      "/jobs/[jobId]/documents/page": 502201,
+      "/jobs/[jobId]/drawings/page": 502211,
+      "/jobs/[jobId]/material-lists/page": 502185,
+      "/jobs/[jobId]/models/page": 501755,
+      "/jobs/[jobId]/page": 498559,
+      "/jobs/[jobId]/pricing/page": 508425,
+      "/jobs/[jobId]/receiving/page": 627137,
+      "/jobs/[jobId]/rooms/page": 503393,
+      "/jobs/[jobId]/systems/page": 503075,
+      "/jobs/[jobId]/tool-requests/page": 498559,
+      "/jobs/account/page": 485075,
+      "/jobs/account/settings/page": 505282,
+      "/jobs/assets/activity/page": 490584,
+      "/jobs/assets/counts/[countId]/page": 496853,
+      "/jobs/assets/counts/page": 496546,
+      "/jobs/assets/labels/page": 501161,
+      "/jobs/assets/page": 488691,
+      "/jobs/assets/requests/[orderId]/page": 498572,
+      "/jobs/assets/requests/page": 490583,
+      "/jobs/assets/scan/[tag]/page": 551825,
+      "/jobs/assets/tools/[id]/page": 557272,
+      "/jobs/assets/tools/page": 499895,
+      "/jobs/assets/types/page": 528425,
+      "/jobs/assets/where/[type]/[id]/page": 506451,
+      "/jobs/assets/where/page": 495948,
+      "/jobs/assist/page": 476958,
+      "/jobs/catalogue/page": 517672,
+      "/jobs/chat/page": 508960,
+      "/jobs/draws/[jobId]/page": 490991,
+      "/jobs/draws/page": 481793,
+      "/jobs/estimating/[id]/page": 517616,
+      "/jobs/estimating/page": 498883,
+      "/jobs/material-lists/[id]/page": 584376,
+      "/jobs/orders/page": 497121,
+      "/jobs/organization/page": 531555,
+      "/jobs/page": 476958,
+      "/jobs/quotes/page": 484641,
+      "/jobs/suppliers/page": 491445,
+      "/jobs/timesheets/page": 494672,
+      "/licenses/page": 307437,
+      "/onboarding/page": 310330,
+      "/page": 307272,
+      "/pending-approval/page": 307272,
+      "/pricing/page": 310534,
+      "/sign-in/[[...sign-in]]/page": 309575,
+      "/sign-up/[[...sign-up]]/page": 309575
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  },
+  "versusR17": {
+    "shared": -1207,
+    "heaviest": -252,
+    "deploy": -3420,
+    "bothSharedAndHeaviestImprove": true
+  },
+  "phase0Ratchets": {
+    "shared": true,
+    "heaviest": true,
+    "deploy": true
+  },
+  "strictBatchUpdate": {
+    "baselineBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+    "candidateBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 288,
+    "reusedScripts": 214,
+    "changedScripts": 74,
+    "changedRawBytes": 1848221,
+    "changedGzipBytes": 598793,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "press": [
+    {
+      "id": 80007,
+      "layer": "app-pages-browser",
+      "chunks": [
+        3085
+      ]
+    }
+  ],
+  "probeAbsent": true,
+  "sidecars": 293,
+  "retained": 1104,
+  "pub": 3263,
+  "nativeInspection": {
+    "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "method": "Exact emitted resolver evaluated alone with the native external objects to which its emitted bindings resolve; no app module, listener or database evaluated.",
+    "emittedFile": "server/chunks/4735.js",
+    "nativeExternalBindingFile": "server/instrumentation.js",
+    "nativeExternalModuleId": 98995,
+    "namespaceBindingRetained": true,
+    "namespaceDefaultFallbackRetained": true,
+    "resolverSha256": "f0f3a960a11021828cf0cf57781805a2ca679a84a18e372043d02af2ed31e7c9",
+    "runtimeCwdRetained": true,
+    "numericDirnameIntroduced": false,
+    "metadataVersion": "3.4.8",
+    "copies": [
+      {
+        "file": "server/app/api/chat/attachments/[id]/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/chat/attachments/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/conversations/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/app/api/material-lists/[id]/events/route.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/3524.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4589.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/4735.js",
+        "freeNamedFactoryCall": false
+      },
+      {
+        "file": "server/chunks/8439.js",
+        "freeNamedFactoryCall": false
+      }
+    ],
+    "passed": true,
+    "limitations": [
+      "This is metadata binding/resolution evidence, not an actual LISTEN health or private application functional run."
+    ],
+    "appRuntimeStarted": false,
+    "databaseStarted": false
+  },
+  "stats": {
+    "path": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111/.next-web/analysis/client-stats.json",
+    "sha256": "54c6d936098f6b6485f00cf76845893440ec274857f3f814e65dd0108b6baee0"
+  },
+  "buildLog": {
+    "path": "/home/tim/.openclaw/workspace/releases/press-chunk-four-corner-20261111/R18-build.log",
+    "sha256": "e5e2a8ba2e0805cbf38973d2110c6ab33ff16d87ef13bec31c77134435f614e3"
+  },
+  "builderLockAbsent": true,
+  "noAppBrowserDatabaseOrActivation": true
+}

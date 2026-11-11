@@ -1,0 +1,95 @@
+{
+  "status": "source-frozen-awaiting-root-review-NO-build-authorization",
+  "base": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r17-20261111",
+  "baseBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "baseFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r18-20261111",
+  "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+  "sourceFileCount": 2317,
+  "changes": [
+    {
+      "path": "src/components/chat/SnapshotProvider.tsx",
+      "commit": "13fcfeed",
+      "newFile": false,
+      "preimageSha256": "58ba8efa51672ef4ff67cb34168e39e241a0fb5d93313ed53b0598b908fcc6df",
+      "postimageSha256": "e43bee91bc38c6c2752c48cfbe99d398cfdaef36c0a7281272685b3b2d93dc18",
+      "parentExactlyMatchesR17": true
+    },
+    {
+      "path": "src/components/chat/SnapshotControls.tsx",
+      "commit": "13fcfeed",
+      "newFile": true,
+      "preimageSha256": null,
+      "postimageSha256": "16591c1319635c1c46ef08dfd15aa5ec9b1b8bd590c71b795de356049aa34596",
+      "parentExactlyMatchesR17": true
+    },
+    {
+      "path": "src/routes/registry.ts",
+      "commit": "48f5721d",
+      "newFile": false,
+      "preimageSha256": "9afdf27543030f12f2fcb783f38798205361b5d726a9f0e2874143bc3ad102f4",
+      "postimageSha256": "6c6e0bec3c7841bdbfebc1a7e31452f540edede4cb7270b082a57c264c66c834",
+      "parentExactlyMatchesR17": true
+    },
+    {
+      "path": "src/components/jobs/JobActivityPanels.tsx",
+      "commit": "22dfcfd4",
+      "newFile": false,
+      "preimageSha256": "2ded6b27d0749a2eb420bfd8fbda507a93da911db991e771d6bc58af36f84a84",
+      "postimageSha256": "f0ff54f5acfcc15ff00f5929422759da3ded8fcdc2aab1e645b3b2a97a6affb6",
+      "parentExactlyMatchesR17": true
+    },
+    {
+      "path": "next.config.js",
+      "commit": null,
+      "newFile": false,
+      "preimageSha256": "654a9ea44ff8d7d05497628a4b9072f398f3a62785ebfe8c522273cfc5b27f03",
+      "postimageSha256": "047f4d6aa8546b21956b5c3f9bef5a7a3e8520b1e1fd7cf4f25d4a9d6fbe7892",
+      "provenance": "Reviewed C config postimage; pending working source, identical four-corner C/D"
+    }
+  ],
+  "changedPaths": [
+    "next.config.js",
+    "src/components/chat/SnapshotControls.tsx",
+    "src/components/chat/SnapshotProvider.tsx",
+    "src/components/jobs/JobActivityPanels.tsx",
+    "src/routes/registry.ts"
+  ],
+  "unchangedSourceFiles": 2312,
+  "publicFiles": 3263,
+  "publicChanged": 0,
+  "configPackageLockTsconfig": "Only next.config.js intentionally changed; package/lock/tsconfig/postcss identical R17",
+  "excluded": "All R8 feedback, probe, tests/docs/methods and unrelated dirty current sources excluded; base tests/docs that existed in R17 remain unchanged",
+  "runtimePaths": 5,
+  "newFiles": 1,
+  "workerExecutableUnchanged": true,
+  "unaffectedInputAndPublicChecksPassed": true,
+  "toolchain": {
+    "node": "26.8.2",
+    "pnpm": "10.11.1",
+    "next": "16.1.1",
+    "lockfileSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa",
+    "installedLockVerified": true
+  },
+  "dependencies": "/home/tim/.openclaw/workspace/kublai/node_modules",
+  "activeRetention": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "pending": [
+    "root full-postimage/source review",
+    "new canonical byte build only after explicit root GO",
+    "shared AND heaviest must improve versus R17; Phase0 ratchets unchanged",
+    "later runtime/behavior/full timing and no activation from bytes alone"
+  ],
+  "fullInputCorpus": {
+    "files": 5483,
+    "unchanged": 5478,
+    "changed": [
+      "next.config.js",
+      "src/components/chat/SnapshotControls.tsx",
+      "src/components/chat/SnapshotProvider.tsx",
+      "src/components/jobs/JobActivityPanels.tsx",
+      "src/routes/registry.ts"
+    ],
+    "sha256": "e07655973a7606b899fbf72a5802ad6ae5ef99b34a951db2f7eecccdc9717086",
+    "method": "All recursive files in src/public/scripts/vendor plus six named build inputs; no source-fingerprint exclusions"
+  }
+}
