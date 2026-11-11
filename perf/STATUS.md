@@ -497,3 +497,50 @@ Two later slices are committed and explicitly excluded from R12:
 
 These are prepared improvements, not completed first-twenty latency, no-poll,
 offline-convergence or deployment gates. No production schema or worker release.
+
+## R14 compiled runtime and delivery checks — 2026-11-11
+
+R13 includes the reviewed chat-join, catalogue-creation and timesheet-hint slices.
+The timesheet hints use the existing shared stream and transactional notifications;
+the existing authority/context poll remains. No poll-removal claim follows.
+Canonical compilation passed, but inspecting the actual server output found a
+native module resolver defect that the earlier minimal webpack fixture missed.
+R12 had compiled the package path into a numeric module ID; the first R13 fix
+instead left an unbound named import. Both failures are preserved. The corrected
+fixture now reproduces the R13 failure and checks the namespace-based fix.
+
+R14 (`a5c2aa0b…`, fingerprint `6f5dfb96…`) changes only that resolver from exact
+R13. Canonical production compilation, TypeScript, prerender and source laws
+pass. The actual emitted resolver finds the pinned Postgres 3.4.8 package, and
+the private compiled app subsequently establishes its shared LISTEN stream.
+Shared/heaviest gzip metrics are 478,139 / 640,663. All Phase0 byte ratchets pass;
+the eventual 120,000 / 180,000 targets remain unmet. This single server edit
+changes 20,570 gzip bytes, passing the strict 100,000-byte update target. It does
+not waive earlier combined-batch failures. See
+`artifacts/phase1-native-r14-proof-2026-11-11.json`.
+
+Matching HTTP checks pass for all 292 current JS/CSS assets and ten retained
+build samples: exact Brotli sidecars, decoded bytes and immutable headers.
+Packaged service-worker bytes match; release manifest, health and sign-in return
+200, and unauthenticated private binding returns 401. Database read-only mode
+was enforced and verified. The first host-binding fixture failure is preserved;
+the corrected localhost attempt passed and all owned runtime resources closed.
+See `artifacts/phase1-r14-http-proof-2026-11-11.json`.
+
+The first R14 supplemental preference protocol passed four actual checks:
+compiled stream readiness with authoritative controls, a 75-second healthy
+interval without preference polling, a second-session update delivered through
+the shared stream and HTTP catch-up, and permission expiry revoking executive
+controls. It then failed an assertion requiring the restored control's label
+to be “Edit executive sorting.” Source retains the earlier open-editor state,
+which can instead label that control “Close executive settings.” Restored role
+HTTP granted access, but the failed run captured no alternative-label UI proof:
+it remains failed, with no retrospective restoration pass. Outage and LISTEN
+recovery stages were not reached. Database errors were zero and cleanup passed.
+See `artifacts/r14-preferences-functional-2026-11-11-attempt1/`.
+
+The supplemental UI observer is being corrected against the two real labels;
+the frozen timing method is unchanged. The full R14 journey matrix remains held
+until the complete functional protocol passes. Production remains the Phase0
+bootstrap. No phone work, production schema change, worker release or candidate
+activation occurred.

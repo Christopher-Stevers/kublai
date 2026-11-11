@@ -591,6 +591,38 @@
         "strictChangedScriptPass": false,
         "fullMatrixRun": false,
         "activated": false
+      },
+      {
+        "name": "R13",
+        "sourceFreezeCommit": "1305d603",
+        "proofCommit": "e2431cce",
+        "artifact": "perf/artifacts/phase1-combined-r13-proof-2026-11-11.json",
+        "sourceBuild": "c7d07b32a3dd4c6da6fd4fb3a3d1f9ab04c163ee0a5e61948871c2b68e912813",
+        "sourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+        "sharedGzipBytes": 478143,
+        "heaviestGzipBytes": 640667,
+        "phase0RelativeDeployGzipBytes": 1320297,
+        "phase0ByteRatchetsPass": true,
+        "strictChangedScriptGzipBytes": 359750,
+        "strictChangedScriptPass": false,
+        "fullMatrixRun": false,
+        "activated": false
+      },
+      {
+        "name": "R14",
+        "sourceFreezeCommit": "714138c1",
+        "proofCommit": "ee58f79a",
+        "artifact": "perf/artifacts/phase1-native-r14-proof-2026-11-11.json",
+        "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+        "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+        "sharedGzipBytes": 478139,
+        "heaviestGzipBytes": 640663,
+        "phase0RelativeDeployGzipBytes": 1320293,
+        "phase0ByteRatchetsPass": true,
+        "strictChangedScriptGzipBytes": 20570,
+        "strictChangedScriptPass": true,
+        "fullMatrixRun": false,
+        "activated": false
       }
     ],
     "otherPreparedCommits": {
@@ -617,7 +649,9 @@
       ],
       "scaleAcknowledgement": "0e421442",
       "chatJoin": "d434e254",
-      "catalogueCreation": "3a814154"
+      "catalogueCreation": "3a814154",
+      "timesheetHints": "18023b1e",
+      "compiledListenResolver": "b2ca4cf4"
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
@@ -631,9 +665,10 @@
       "otherPollingSitesUnchanged": 28,
       "focusedTests": 78,
       "privatePostgresProofs": 1,
-      "browserIdleSavingsMeasured": false,
+      "browserIdleSavingsMeasured": true,
       "newRoleObservers": 0,
-      "newRolePolls": 0
+      "newRolePolls": 0,
+      "browserIdleSavingsScope": "One supplemental 75-second healthy private-browser interval observed no preference reads while existing role refreshes continued; complete functional protocol failed later and original 10-minute all-poll gate remains unproven."
     },
     "materialCpuDiagnostics": {
       "v4": "perf/artifacts/material-list-cpu-diagnostic-2026-11-11-attempt4",
@@ -650,6 +685,39 @@
       "cleanupConfirmed": true,
       "appStreamResult": "not-established",
       "timingMethodChanged": false
+    },
+    "r14HttpProof": {
+      "source": "perf/artifacts/phase1-r14-http-proof-2026-11-11.json",
+      "status": "passed",
+      "currentAssets": 292,
+      "historicalSamples": 10,
+      "databaseReadOnly": true,
+      "cleanupConfirmed": true,
+      "activation": false
+    },
+    "r14FunctionalCheck": {
+      "source": "perf/artifacts/r14-preferences-functional-2026-11-11-attempt1/report.json",
+      "status": "failed-restoration-label-specific-assertion",
+      "assertionsPassed": 4,
+      "databaseErrors": 0,
+      "cleanupConfirmed": true,
+      "compiledStreamReadyObserved": true,
+      "healthyIdlePreferencePollSuppressionObserved": true,
+      "crossContextUpdateObserved": true,
+      "expiryRevocationObserved": true,
+      "restorationUiAccepted": false,
+      "outageAndListenerRecoveryReached": false,
+      "timingMethodChanged": false,
+      "fullMatrixHeld": true,
+      "qualification": "Actual restored role HTTP granted executive access, but assertion demanded Edit while source retains editing state and may show Close. Failed run remains failed; revised supplemental observer requires a separate run."
+    },
+    "timesheetHints": {
+      "status": "source-prepared-and-canonical-compiled",
+      "source": "perf/artifacts/timesheet-hints-source-2026-11-11.json",
+      "pollsRemoved": 0,
+      "existingAuthorityPollRetained": true,
+      "productionWorkerReleased": false,
+      "schemaChanged": false
     }
   }
 }
