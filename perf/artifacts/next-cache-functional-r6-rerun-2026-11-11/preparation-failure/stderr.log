@@ -1,0 +1,29 @@
+(node:3953842) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Prepared 113 unique declared tables and 0 enums from 16 schema modules.
+(node:3953909) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:3953923) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Fontconfig error: No writable cache directories
+	/var/cache/fontconfig
+Seeded isolated lab: 2 jobs, 25 parts, 1 list/order/slip, chat, 40 synthetic sheets.
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(url.startsWith("/_next/static/") && !url.includes(".."))
+
+    at file://<repository>/perf/next-cache-reuse.mjs:61:7 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v26.8.2

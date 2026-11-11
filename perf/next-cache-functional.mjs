@@ -92,6 +92,14 @@ async function validateVariant(input) {
 let browser, context, proxy, active = 0, offline = false;
 const observations = { originRsc: 0, manifests: 0, staticFetches: 0, documents: 0, observationErrors: 0, nonprefetchRsc: [] };
 const record = name => report.assertions.push({ name, passed: true });
+async function until(check, milliseconds, failure) {
+  const deadline = Date.now() + milliseconds;
+  do {
+    if (await check()) return;
+    if (Date.now() >= deadline) throw Error(failure);
+    await new Promise(resolve => setTimeout(resolve, Math.min(100, deadline - Date.now())));
+  } while (true);
+}
 try {
   assert.equal(config.variants.length, 2);
   for (const input of config.variants) variants.push(await validateVariant(input));
@@ -150,8 +158,21 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium", headless: true });
   context = await browser.newContext();
   const startPath = `/jobs/${fixture.jobId}`, destination = startPath + "/rooms";
+  const pageRequests = new WeakMap(), completedManifests = new WeakMap();
   const open = async () => {
     const page = await context.newPage(); page.setDefaultTimeout(15_000);
+    const requests = { documents: 0 };
+    const manifests = [];
+    pageRequests.set(page, requests); completedManifests.set(page, manifests);
+    page.on("request", request => { if (request.resourceType() === "document" && request.isNavigationRequest() && request.frame() === page.mainFrame()) requests.documents++; });
+    page.on("response", async response => {
+      if (new URL(response.url()).pathname !== "/foremanhq-release-assets.json") return;
+      try {
+        await response.finished();
+        manifests.push({ status: response.status(), build: (await response.json()).build,
+          fromWorker: response.fromServiceWorker() });
+      } catch { if (!page.isClosed()) observations.observationErrors++; }
+    });
     await page.goto(origin + startPath, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.locator('[data-job-card="rooms"]').waitFor();
     await page.waitForFunction(() => !!navigator.serviceWorker.controller && window.__foremenhqReleaseRecoveryReady === true);
@@ -224,20 +245,34 @@ try {
   const link = linkObservations.at(-1);
   report.link = link;
   assert(link.permitted, "Good-link update branch unavailable; no simulated pass");
+  // Establish the actual page's completed initial coordinator check before
+  // switching releases; worker control/ready flag precedes register() settling.
+  await update.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await until(() => completedManifests.get(update).some(item => item.build === variants[0].build && item.status === 200), 10_000, "Initial coordinator A manifest not completed");
+  await update.evaluate(() => Promise.resolve());
   await update.getByRole("button", { name: "Edit job", exact: true }).click();
   const dialog = update.getByRole("dialog");
   await dialog.getByLabel("Job Name", { exact: false }).fill("Unsaved functional fixture draft");
-  const beforeDocuments = observations.documents;
+  const beforeDocuments = pageRequests.get(update).documents;
+  report.updateDocumentRequests = { before: beforeDocuments, observed: pageRequests.get(update) };
+  report.updateManifestResponses = completedManifests.get(update);
   const beforeManifests = observations.manifests;
   active = 1;
   // Visibility/focus is a normal coordinator trigger; no warm/activate/reload
   // messages or direct reload calls are injected by this protocol.
   await update.bringToFront();
   await update.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await update.waitForFunction(async assets => (await Promise.all(assets.map(url => caches.match(url)))).every(Boolean), variants[1].manifest.changedAssets, { timeout: 70_000 });
+  await until(async () => {
+    const progress = await update.evaluate(async assets => {
+      const results = await Promise.all(assets.map(url => caches.match(url)));
+      return { total: results.length, cached: results.filter(Boolean).length };
+    }, variants[1].manifest.changedAssets);
+    report.warmProgress = progress;
+    return progress.total > 0 && progress.cached === progress.total;
+  }, 70_000, "B emitted assets were not all warmed");
   assert(observations.manifests > beforeManifests, "Coordinator did not request the B manifest");
   await new Promise(resolve => setTimeout(resolve, 6500));
-  assert.equal(observations.documents, beforeDocuments);
+  assert.equal(pageRequests.get(update).documents, beforeDocuments);
   assert.equal(await dialog.getByLabel("Job Name", { exact: false }).inputValue(), "Unsaved functional fixture draft");
   record("actual coordinator warms B while a real unsaved job dialog prevents reload");
   const navigation = settle(update.waitForEvent("domcontentloaded", { timeout: 20_000 }));
@@ -247,7 +282,9 @@ try {
   assert.equal(new URL(update.url()).pathname, startPath);
   await update.locator('[data-job-card="rooms"]').waitFor();
   await new Promise(resolve => setTimeout(resolve, 6500));
-  assert.equal(observations.documents, beforeDocuments + 1);
+  assert.equal(pageRequests.get(update).documents, beforeDocuments + 1);
+  report.updateDocumentRequests = { before: beforeDocuments, after: pageRequests.get(update).documents };
+  report.updateManifestResponses = completedManifests.get(update);
   record("normal draft cancellation reschedules exactly one quiet reload without another interaction");
   for (const url of variants[1].manifest.changedAssets) {
     const bytes = await update.evaluate(async url => { const r = await caches.match(url); return r ? Array.from(new Uint8Array(await r.arrayBuffer())) : null; }, url);

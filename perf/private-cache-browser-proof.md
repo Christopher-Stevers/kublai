@@ -1,7 +1,10 @@
 # Proposed isolated browser proof for private cache and updates
 
 Status: first contract slice executed; 12 prepared assertions passed on attempt 3.
-The actual-app scenarios remain proposals, unexecuted and unaccepted. This is a separate
+The first slice remains a synthetic contract. A later separate actual-app smoke
+has executed the Next/RSC and coordinator scenarios described in
+[its protocol/evidence](next-cache-functional.md); real Clerk and release gates
+remain unproved by either smoke. This is a separate
 functional protocol, not a modification of the frozen `25dfa8bf…` timing method.
 It cannot be used to retrofit a successful full-matrix result.
 

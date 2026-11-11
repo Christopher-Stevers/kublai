@@ -1,0 +1,23 @@
+{
+  "protocol": "next-cache-functional-v1",
+  "status": "failed-reuse",
+  "syntheticAuthentication": true,
+  "comparableTimingEvidence": false,
+  "productionDatabase": false,
+  "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+  "focusedMethod": "be4114005869fefbaedd97c0b3bda37903795a43d207514ddf25199b92e32865",
+  "helperFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "ownHashes": {
+    "next-cache-reuse.mjs": "cb0ae4deaf69a9c8353c666ae32ef0a2fe52104c44d745358df6f511610a3977",
+    "next-cache-functional.mjs": "a6d525568b590a4075cdfdea5417315226ae634a99e88041668ce6619de582cd",
+    "next-cache-functional-supervisor.mjs": "5434bbc3bfd179adc711161f2d41138cf2930424afb818a90bcc74e13ef43f60",
+    "next-cache-functional.md": "d0a984a5373fca46d0b50c0a767b8994bee2906332895b97499fa08af61bc0f4"
+  },
+  "startedAt": "2026-11-11T07:27:47.454Z",
+  "variants": [],
+  "preparedAt": "2026-11-11T06:59:24.308Z",
+  "reusedFixtureMethod": "23bf052c54ffae241e75d3c655d4679a1509576bbec45a1ba31130abb5c0162a",
+  "reusedCompiledBytes": true,
+  "error": "The expression evaluated to a falsy value:\n\n  assert(url.startsWith(\"/_next/static/\") && !url.includes(\"..\"))\n"
+}

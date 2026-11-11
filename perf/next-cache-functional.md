@@ -1,9 +1,10 @@
 # Separate actual-app Next/RSC and update smoke
 
-Status: both fixtures compiled with TypeScript enabled; one actual-app attempt
-ran. Real router navigation and fresh-tab offline Flight replay passed. The
-attempt as a whole failed at the production good-link guard before the update
-scenario, which remains unproved. No result clears a release gate. This protocol is supplementary to the
+Status: both fixtures compiled with TypeScript enabled. Latest bounded retry
+passed five supplemental functional assertions: natural Next RSC, fresh-tab
+offline replay, actual coordinator warming/draft preservation, one quiet reload
+after Cancel, and byte-exact warmed assets. Earlier failed attempts remain
+unchanged. No result clears a release gate. This protocol is supplementary to the
 12-assertion contract smoke and never edits/replaces the sealed `25dfa8bf…`
 timing method, baseline pair, candidate report, metric or gate.
 
@@ -12,18 +13,53 @@ from timing evidence. Both Next backends exited zero, the owned browser/proxy
 closed, the private database owner exited zero and removed its socket directory,
 and its PostgreSQL error summary was empty. The original driver assigned the
 rejected NetworkInformation values to its report only after the guard; those
-values were not captured. A subsequent source-only reporting fix records them
-before the guard. It has not been rerun and does not turn the unavailable branch
-into a pass. No NetworkInformation override or production code change occurred.
+values were not captured. A subsequent reporting fix records them before the
+guard and ran in later separately hashed attempts. The earlier unavailable
+branch remains failed. No NetworkInformation override or production code change
+occurred.
 
-A further source-only improvement observes natural connection capability for at
+A further improvement observes natural connection capability for at
 most five seconds after the offline/online scenario and new update-page load.
 Every poll, elapsed time, online state, connection availability, effective type,
 SaveData, downlink and individual guard criterion is retained, including a final
 failure. This allows a bounded NQE settling interval; it never overwrites values
-or treats simulated connectivity as a real network measurement. This improvement
-has not run. Its driver hash differs from the archived first attempt; a future
-attempt must record that new supplemental method identity.
+or treats simulated connectivity as a real network measurement. It ran in the
+later attempts: both immediately observed eligible 4g/downlink 1.7/SaveData off.
+The first attempt's rejected values remain unknown; this does not diagnose NQE
+transience as their cause. Each attempt records its own supplemental method hash.
+
+## Retained rerun and fixture observation repairs
+
+[Rerun evidence](artifacts/next-cache-functional-r6-rerun-2026-11-11/index.json)
+retains one failed source-reuse preparation, failed browser attempt 2 and passing
+browser retry 3 with exact executed method variants. Preparation originally
+rejected legitimate Next `[...path]` filenames using a dot-dot substring test;
+the fix rejects an actual dot-dot path segment. No app/browser ran in that failed
+preparation and its private DB was removed.
+
+Browser attempt 2 repeated the two RSC assertions but failed before coordinator
+proof. Local Playwright implementation calls `predicate()` without awaiting an
+async wait predicate; the fixture's async cache check therefore returned early.
+The repair uses bounded **Node-side awaited polling**, never a cache insertion.
+It also waits for the actual update page's completed initial A-manifest response
+before switching B. No production defect was inferred from the failed fixture.
+
+Proxy Sec-Fetch-Dest counts were insufficient for controlled-document reloads:
+worker-forwarded requests can have a different destination. Retry 3 instead
+counts actual main-frame Playwright document navigation requests independently
+of proxy observation. The changed real Job Name/dialog held the document count
+at one while all 283 B assets warmed. Normal Cancel then led to exactly one
+route-preserving reload (count one to two), with a further 6.5-second observation
+and no extra interaction. Every warmed B asset matched its emitted hash.
+
+Retry 3 ran 07:34:03.454–07:34:46.948 UTC on 2026-11-11. Original R6 public input
+verification checked 2,278 unchanged files per fixture outside the five existing
+lab transforms. Both existing compiled static maps were verified before reuse;
+only generated synthetic fixtures/uploads changed for the fresh private DB.
+PostgreSQL errors were zero with unchanged before/after log hash. Both owned
+backends exited zero, browser/proxy ended, and the private socket was removed.
+Waiting-worker activation, chunk failure, all pending-work signals, real Clerk,
+physical performance and the full regression gate remain separate requirements.
 
 ## Frozen inputs and explicit differences
 

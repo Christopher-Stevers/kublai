@@ -1,0 +1,93 @@
+{
+  "protocol": "next-cache-functional-v1",
+  "syntheticAuthentication": true,
+  "comparableTimingEvidence": false,
+  "canonicalSourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "compiledBuildsReused": true,
+  "preparationFailures": [
+    {
+      "reason": "Naive dot-dot substring guard rejected legitimate [...path] Next chunk names; corrected to reject a dot-dot path segment. No browser/backend ran.",
+      "originalLogSha256": "86fb495f13259866b9f9460b709f33e9515c16468d7b892522a26991d1438a8f",
+      "privateDatabaseCleaned": true,
+      "executedReuseSha256": "cb0ae4deaf69a9c8353c666ae32ef0a2fe52104c44d745358df6f511610a3977"
+    }
+  ],
+  "attempts": [
+    {
+      "ordinal": 2,
+      "status": "failed",
+      "passedAssertions": 2,
+      "originalReportSha256": "345bdb92aa7e6c61ee5c17265d6dd634e844f7e547692b56488381b2a79c8377",
+      "originalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "executedDriverSha256": "a6d525568b590a4075cdfdea5417315226ae634a99e88041668ce6619de582cd",
+      "executedSupervisorSha256": "5434bbc3bfd179adc711161f2d41138cf2930424afb818a90bcc74e13ef43f60",
+      "qualification": "Async Playwright wait returned early; proxy Sec-Fetch-Dest was not a reliable controlled-document counter. Failed overall; no coordinator result inferred."
+    },
+    {
+      "ordinal": 3,
+      "status": "passed-supplemental-functional-smoke",
+      "passedAssertions": 5,
+      "originalReportSha256": "0aa67567b52251115b018fd2bb1350888432eff4494634cf789e123cdbf0b994",
+      "originalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "executedDriverSha256": "e588fd115447c63047a447f057aa3c9d17fd95e9cfd7a988d8f84f170cd28e18",
+      "executedSupervisorSha256": "5434bbc3bfd179adc711161f2d41138cf2930424afb818a90bcc74e13ef43f60",
+      "qualification": "Node-side await polls and page request.resourceType/document+main-frame counts independently verify cache warmth and exactly one reload. Natural good-link observations retained; no overrides."
+    }
+  ],
+  "finalStartedAt": "2026-11-11T07:34:03.454Z",
+  "finalFinishedAt": "2026-11-11T07:34:46.948Z",
+  "naturalLink": {
+    "elapsedMs": 0,
+    "online": true,
+    "connectionPresent": true,
+    "effectiveType": "4g",
+    "downlink": 1.7,
+    "saveData": false,
+    "criteria": {
+      "online": true,
+      "connection": true,
+      "noSaveData": true,
+      "effective4g": true,
+      "sufficientDownlink": true
+    },
+    "permitted": true
+  },
+  "warmedAssets": {
+    "total": 283,
+    "cached": 283
+  },
+  "documentRequests": {
+    "before": 1,
+    "after": 2
+  },
+  "cleanup": {
+    "backends": {
+      "A": {
+        "exitCode": 0,
+        "cleaned": true
+      },
+      "B": {
+        "exitCode": 0,
+        "cleaned": true
+      }
+    },
+    "privateSocketRemoved": true,
+    "postgres": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "reuseFocusedMethod": "48644f00132ebfc95c7525908d532aae712693eaf6ff6ba08f0b7ea9bcbdf25d",
+  "reusedFixtureMethod": "23bf052c54ffae241e75d3c655d4679a1509576bbec45a1ba31130abb5c0162a",
+  "helperFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "verifiedCompiledAssetCounts": {
+    "A": 283,
+    "B": 283
+  },
+  "limits": [
+    "Synthetic Clerk, isolated private fixture; no real authentication/physical speed/full gate claim",
+    "One empty Rooms route, one Job Name dialog draft, one normal Cancel; not every queue/upload/role hint",
+    "Waiting-worker activation and chunk failure remain untested here",
+    "First failed capability attempt remains unchanged in earlier committed artifact"
+  ]
+}
