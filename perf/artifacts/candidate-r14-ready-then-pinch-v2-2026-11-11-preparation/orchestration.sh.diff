@@ -1,0 +1,20 @@
+--- reviewed-R7
++++ prepared-R14
+@@ -1,14 +1,14 @@
+ #!/usr/bin/env bash
+-# R7 reuse-only orchestration; all previous plans and reports remain intact.
++# R14 reuse-only orchestration; all previous plans and reports remain intact.
+ set -euo pipefail
+ # Freeze a copy before execution; run under perf/lab/database.sh.
+ harness_root=${PERF_HARNESS_DIR:?Freeze the timing harness first}
+-[[ "${PERF_REUSE_SNAPSHOT:-}" == /tmp/foremanhq-speed-app-nTtbuM ]] || { printf "%s\n" "Explicit R7 compiled reuse required; rebuild needs separate authorization"; exit 1; }
++[[ "${PERF_REUSE_SNAPSHOT:-}" == /tmp/foremanhq-speed-app-EFjPHx ]] || { printf "%s\n" "Explicit R14 compiled reuse required; rebuild needs separate authorization"; exit 1; }
+ unset PERF_PILOT PERF_LINKS PERF_JOURNEYS PERF_RUNS
+ : "${PERF_BASELINE_DIST:?Set actual previous canonical release build directory}"
+ : "${PERF_SOURCE_BUILD_DIST:?Set actual canonical source release build directory}"
+ if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+-  snapshot=$(node /tmp/foremanhq-r7-reuse-frozen-app.mjs)
++  snapshot=$(node /tmp/foremanhq-r14-reuse-frozen-app.mjs)
+ else
+   snapshot=$(node "$harness_root/perf/create-lab-snapshot.mjs")
+ fi

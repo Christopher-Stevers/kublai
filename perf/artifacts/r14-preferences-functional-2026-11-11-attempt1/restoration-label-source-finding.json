@@ -1,0 +1,17 @@
+{
+  "kind": "source-derived-protocol-label-assumption",
+  "notRetroactivePass": true,
+  "files": [
+    {
+      "path": "src/components/app/MaterialSortProvider.tsx",
+      "sha256": "aa73126c03f8d7b8e6ec5caf2c2ae1c39c23a8a29b50d91b361ea1af2cd7e80c",
+      "observation": "editingExecutive remains true when authority changes; no authority-loss reset effect"
+    },
+    {
+      "path": "src/app/jobs/account/settings/page.tsx",
+      "sha256": "58424957cbb44a01eaaccda6fd0039aee57fb90755ff38f0083be5d729c86854",
+      "observation": "canEditExecutive gates visibility; editingExecutive selects Close executive settings vs Edit executive sorting"
+    }
+  ],
+  "protocolObservation": "Earlier consumer Edit click enters editing mode; restoration assertion only accepts Edit label. Alternate label was not captured in failed runtime."
+}

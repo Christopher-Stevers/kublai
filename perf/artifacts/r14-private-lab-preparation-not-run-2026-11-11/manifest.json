@@ -1,0 +1,18 @@
+{
+  "status": "prepared-not-run-awaiting-canonical-native-proof-and-root-clearance",
+  "source": {
+    "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-native-r14-20261111",
+    "sourceBuild": null,
+    "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+    "sourceFileCount": 2313
+  },
+  "scripts": {
+    "foremanhq-r14-compile-only.sh": "55db2ba137f55998d59817e50fbf0c0b813de2e08e1a412048a50e5558782b3a",
+    "foremanhq-r14-compile-command.sh": "e6430d5b580ae74c18772f8c2cb79d72a5e682afae893524067597a851b4fd9f"
+  },
+  "privateCompileStarted": false,
+  "functionalMethodManifest": "perf/artifacts/compiled-preferences-functional-v4-freeze-2026-11-11.json",
+  "fullMatrixMethod": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "requiredBuildBinding": "PERF_EXPECTED_SOURCE_BUILD must be supplied only after canonical native proof and root clearance; wrapper verifies actual BUILD_ID",
+  "runtimePlan": "fresh private lab compile; separate fresh private PG for one v4 functional run with 8min bound; full matrix remains separately held"
+}

@@ -1,0 +1,13 @@
+{
+  "serverPid": 4078040,
+  "serverPidAbsent": true,
+  "privatePgDirectoryAbsent": true,
+  "ownedPorts3483And3484Closed": true,
+  "browserProxyClosedByDriverFinally": true,
+  "coordinatorExitCode": 1,
+  "pgErrors": [],
+  "acceptedEvidence": false,
+  "assertionsPassed": 4,
+  "noAutomaticRetry": true,
+  "fullMatrixNotStarted": true
+}

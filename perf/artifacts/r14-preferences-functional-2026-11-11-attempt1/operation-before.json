@@ -1,0 +1,10 @@
+{
+  "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+  "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+  "methodRoot": "/tmp/foremanhq-preference-functional-v4-method-wAQrlg",
+  "scripts": {
+    "/tmp/foremanhq-r14-pref-v4-command.sh": "68c73990f71ed93e1629f177a216f48fc156515bd2f76e4d616b22be1bb73967",
+    "/tmp/foremanhq-r14-pref-v4-server.sh": "85b2a84462d55fe0614db21c58ecb7900e13ecb105b325c5eda691add39f116f"
+  },
+  "status": "sealed-before-execution"
+}
