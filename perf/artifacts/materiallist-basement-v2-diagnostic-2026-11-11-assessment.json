@@ -1,0 +1,70 @@
+{
+  "status": "diagnostic-only",
+  "acceptedBaseline": false,
+  "protocol": "ready-then-pinch-v2",
+  "raw": [
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-1.json",
+      "sha256": "a129d39849795f4ff3acc5a6613920ceb39ed688743da8358ce25c94052f2a1d"
+    },
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-1-preflight.json",
+      "sha256": "527e02045add4e9ce5c8cb1646cb90267d731b8130000033024d12827236d810"
+    },
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-1-pg-errors.json",
+      "sha256": "470dfefd48ef342e60336095df57aab1b7a53b893d368919ab12a94c037eec07"
+    },
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-2.json",
+      "sha256": "95f68ea50feceee11879a9fb537a99ebcde0069e11b679b79edff500cdcacdad"
+    },
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-2-preflight.json",
+      "sha256": "527e02045add4e9ce5c8cb1646cb90267d731b8130000033024d12827236d810"
+    },
+    {
+      "path": "perf/artifacts/materiallist-basement-v2-diagnostic-2026-11-11-2-pg-errors.json",
+      "sha256": "470dfefd48ef342e60336095df57aab1b7a53b893d368919ab12a94c037eec07"
+    }
+  ],
+  "summaries": [
+    {
+      "capture": 1,
+      "samples": 5,
+      "wallMedianMs": 208.0281729999988,
+      "browserPaintOpportunityMedianMs": 156,
+      "methodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "methodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "labBuild": "GcT0nDLwoIP5cQRRILfyc",
+      "databaseErrors": 0
+    },
+    {
+      "capture": 2,
+      "samples": 5,
+      "wallMedianMs": 215.630508000002,
+      "browserPaintOpportunityMedianMs": 157.7000002861023,
+      "methodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "methodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "labBuild": "GcT0nDLwoIP5cQRRILfyc",
+      "databaseErrors": 0
+    }
+  ],
+  "medianDifferenceRatio": 0.03654473762072249,
+  "quietContext": "Other agents held tests/builds; ADB daemon remained idle with no new ADB commands or phone workload.",
+  "cleanup": {
+    "port3482NoListener": true,
+    "privateDatabaseDirectoriesRemoved": true
+  },
+  "limitations": [
+    "Two separate five-sample runs of one cell, not full matrix or accepted baseline.",
+    "Original rejected full pair unchanged; no replacements, exclusions or threshold relaxation.",
+    "Quiet diagnostics reproduce wallclock spread around 202–230 ms while browser marks remain around 149–160 ms; causality is unproven.",
+    "A full new independent pair remains required for acceptance; no new pair started.",
+    "Desktop mobile emulation, stub auth and stock server transport; not physical target proof."
+  ]
+}
