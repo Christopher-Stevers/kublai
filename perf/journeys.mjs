@@ -1,5 +1,6 @@
 import fs from "node:fs";
-import { expect } from "@playwright/test";
+import { expect as playwrightExpect } from "@playwright/test";
+const expect = playwrightExpect.configure({ timeout: 60000 });
 // Generated exclusively by the disposable seed script. Never infer a real ID.
 const fixture = JSON.parse(
   fs.readFileSync(

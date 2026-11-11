@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Freeze a copy before execution; run under perf/lab/database.sh.
+harness_root=$PWD
+: "${PERF_BASELINE_DIST:?Set actual active release build directory}"
+snapshot=$(node perf/create-lab-snapshot.mjs)
+export FOREMANHQ_BACKGROUND_MODE=separate BIM_WORKER_DISABLED=1 SKIP_ENV_VALIDATION=1
+export CLERK_SECRET_KEY=sk_test_speed_lab_only NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_speed_lab_only
+export STRIPE_SECRET_KEY=sk_test_speed_lab_only NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_speed_lab_only
+export NEXT_PUBLIC_BUILD_ID=isolated-speed-baseline
+unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
+cd "$snapshot"
+printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-full-snapshot
+./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1 || { tail -80 "$snapshot/build.log"; exit 1; }
+export PERF_BUILD=$(cat .next/BUILD_ID)
+export PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER=./perf/journeys.mjs
+server_pid=
+cleanup() { if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; fi; }
+trap cleanup EXIT INT TERM
+start_server() {
+  ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3481 >> "$snapshot/server.log" 2>&1 &
+  server_pid=$!
+  for attempt in $(seq 1 120); do
+    if curl -fsS http://127.0.0.1:3481/api/perf-lab > /dev/null 2>&1; then return; fi
+    sleep 1
+  done
+  tail -50 "$snapshot/server.log"; exit 1
+}
+node "$harness_root/scripts/release/static-metrics.mjs" "$snapshot/.next" "$PERF_BASELINE_DIST" > "$snapshot/static-bytes.json"
+start_server
+PERF_IDLE_OUTPUT="$snapshot/idle.json" node perf/idle.mjs
+node --input-type=module -e 'import fs from "node:fs";const bytes=JSON.parse(fs.readFileSync("static-bytes.json"));const idle=JSON.parse(fs.readFileSync("idle.json"));if(bytes.build!==idle.build)throw Error("Static and idle evidence build mismatch");fs.writeFileSync("static.json",JSON.stringify({...bytes,idlePolls:idle.idlePolls,idleEvidence:idle},null,2));'
+export PERF_STATIC_REPORT="$snapshot/static.json"
+for capture in 1 2; do
+  cleanup; server_pid=
+  node perf/lab/reset-writes.mjs
+  start_server
+  PERF_OUTPUT="$snapshot/baseline-$capture.json" node perf/run.mjs
+  printf '%s\n' "Independent complete capture $capture finished."
+done
+node perf/check.mjs --repeatability --baseline "$snapshot/baseline-1.json" --report "$snapshot/baseline-2.json" > "$snapshot/repeatability.txt" 2>&1 || { cat "$snapshot/repeatability.txt"; exit 1; }
+cat "$snapshot/repeatability.txt"

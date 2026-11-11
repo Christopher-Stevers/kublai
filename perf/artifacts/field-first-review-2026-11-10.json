@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-11-11T00:45:27.433070+00:00",
+  "sinceActivation": "2026-11-11T00:38:47Z",
+  "dailyFiles": 0,
+  "ignoredBeforeActivation": 0,
+  "invalidOrUnexpectedSchemaRecords": 0,
+  "sampleCount": 0,
+  "groups": [],
+  "limitation": "No physical device identity is collected; phone means viewport class. Empty evidence is unknown, not zero latency."
+}

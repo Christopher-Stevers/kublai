@@ -31,6 +31,32 @@ const browser = await chromium.launch({
   args: ["--no-sandbox"],
 });
 const samples = [];
+const timestamp = new Date().toISOString();
+const staticMetrics = await adapter.staticMetrics?.();
+const save = (status) =>
+  fs.writeFileSync(
+    process.env.PERF_OUTPUT ?? "perf-report.json",
+    JSON.stringify(
+      {
+        version: 1,
+        provenance: "isolated-seeded-app",
+        cpuSlowdown: 4,
+        build: process.env.PERF_BUILD ?? "unknown",
+        timestamp,
+        status,
+        device: {
+          kind: "desktop-chromium-mobile-emulation",
+          viewport: { width: 390, height: 844 },
+          deviceScaleFactor: 3,
+          physicalPixelMeasured: false,
+        },
+        samples,
+        static: staticMetrics,
+      },
+      null,
+      2,
+    ),
+  );
 try {
   for (const [link, profile] of Object.entries(budgets.links).filter(
     ([name]) => !process.env.PERF_PILOT || name === "Office",
@@ -65,13 +91,38 @@ try {
         });
         try {
           await adapter.prepare?.({ page, base: base.href, journey, run });
+          const browserStart =
+            journey === "coldstart"
+              ? null
+              : await page.evaluate(() => performance.now());
           const start = performance.now();
           // Journey must resolve only after its observable painted/sharp state; no fixed-delay completion.
           await adapter[journey]({ page, base: base.href, run, cdp });
           const durationMs = performance.now() - start;
           if (pageErrors.length)
             throw new Error(`Browser script error: ${pageErrors.join("; ")}`);
+          const browserMeasures = await page.evaluate(
+            (since) =>
+              performance
+                .getEntriesByType("measure")
+                .filter(
+                  (entry) =>
+                    [
+                      "foremenhq:tap-to-paint",
+                      "foremenhq:write-to-paint",
+                      "foremenhq:app-start-to-last-screen",
+                      "foremenhq:sheet-open-to-sharp",
+                    ].includes(entry.name) &&
+                    (since === null || entry.startTime >= since),
+                )
+                .map((entry) => ({
+                  name: entry.name.replace("foremenhq:", ""),
+                  durationMs: entry.duration,
+                })),
+            browserStart,
+          );
           samples.push({
+            browserMeasures,
             journey,
             link,
             run,
@@ -82,6 +133,7 @@ try {
               ? "visited"
               : "operation",
           });
+          save("incomplete");
           console.log(
             `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
           );
@@ -102,9 +154,16 @@ try {
     provenance: "isolated-seeded-app",
     cpuSlowdown: 4,
     build: process.env.PERF_BUILD ?? "unknown",
-    timestamp: new Date().toISOString(),
+    timestamp,
+    status: "complete",
+    device: {
+      kind: "desktop-chromium-mobile-emulation",
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      physicalPixelMeasured: false,
+    },
     samples,
-    static: await adapter.staticMetrics?.(),
+    static: staticMetrics,
   };
   const errors = validateReport(report);
   if (errors.length && !process.env.PERF_PILOT)
