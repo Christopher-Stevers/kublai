@@ -1,0 +1,9 @@
+{
+  "observedSQLSTATE": "42501",
+  "expectedMessage": "permission denied for function pg_notify",
+  "businessRowsCommitted": [
+    2,
+    3
+  ],
+  "hintDelivered": false
+}

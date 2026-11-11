@@ -1,0 +1,118 @@
+{
+  "status": "prepared-unexecuted",
+  "schemaScope": "thin synthetic fixture",
+  "files": [
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/scripts/test-chat-overview-pg.sh",
+      "sha256": "594fee830a611624059c502eb96254594af3a13e0cbd372fa8d8c522bbe5a5dd"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-pg-proof.ts",
+      "sha256": "a33cc326fe9e9716f0d1411a7b9f13756af3122493fe145149418a3d1badf16c"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-pg-proof.vitest.mts",
+      "sha256": "aad2334aad7a2ce2fa65f2b17da145863cdb186552e2b40391693954b73c3194"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-pg-guard.mjs",
+      "sha256": "75df6b3cb0a69f4cc923f16cb9e55eaadf59dbc211db08b86c5e88eb47ed2aad"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-pg-listener.mjs",
+      "sha256": "3c36814e9f9300e76d979b257f77eeb8f6f081552c3d52e63f60ea28c9edb72a"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-source-guard.mjs",
+      "sha256": "469a2ee7c7dfaa3cb77b854781c5e6d636e753f55aad7a29f54e443dfa99cfdc"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/live/chat-overview-fixture.sql",
+      "sha256": "2e65c51e29a98094460fbb3ce43d31a7663f1dccecb6cc9657d7453cb50f076a"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/perf/lab/owned-process-supervisor.py",
+      "sha256": "90dab4db0710cad855bbef4243e1e3bd2b55f28bfe2538dd4f4c0c344c08de67"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/service.ts",
+      "sha256": "b53879cc005ebdaddefc349029748530f250801419689ae2b7480658be9fa433"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/overview-hints.ts",
+      "sha256": "71475aeb7081d8c7771dc86a94915e9a83be8b4c6d9eeeab7444950f10b3fb44"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/tables.ts",
+      "sha256": "0c80b3c77fe6652d1a1392de3f9fb33d3de892aa37119aaaca19108806769874"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/access.ts",
+      "sha256": "32ef1b9a59c2b00d5e41f3caf59a5908d3e376be074cdd693aaaff8119c9564a"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/contracts.ts",
+      "sha256": "4a8141ac45bf647fbd00e6d748f0f2f74e0f5e905b2f957ce0a4d17a0e7940b3"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/chat/events.ts",
+      "sha256": "35a6475372a05b06da378b6f4b73168e8441d7b28b42657a2baee5cd867cb128"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/auth/permissions.ts",
+      "sha256": "2083b099b559406c91bf8e88611c44eefe0188fd76dc133e1e418ba9bca5ef42"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/background/hints.ts",
+      "sha256": "f80adea19cb0993faf1a80b1bc39ab17e646f21502d8abb9449160c917b71d77"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/background/listen-lifecycle.ts",
+      "sha256": "2852294de448d8bff026ef89c7241f2066b7ee4483366a7da0b7e7aa648098a3"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/live/chat-overview-events.ts",
+      "sha256": "a807fb92bf55719fcf7322935f06d1d4c69686d167bc8ce0dd794b65061c67c7"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/server/live/hub.ts",
+      "sha256": "3929e71f69a450179b71e5ee201bed63ea6d19322436b82ebaacdf1211c99935"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/app/api/live/route.ts",
+      "sha256": "37140325980d7a5a38da205e8b29d81569e156f68f508964c491205593a2845b"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/lib/live-client.ts",
+      "sha256": "6d8dc3aed75cf07d0156c4ced799b3d69ae93f8c6d093174a510ba49b8435e5b"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/lib/live-protocol.ts",
+      "sha256": "197307f4bc76619df3a76d958b410819ca0fe745764ee1e9276f83013a16336a"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/lib/chat-overview-invalidation.ts",
+      "sha256": "7cbc0185fb9f7de477079dd2cb46fa470fe5e463fac0bc525e0e9f8df6a1e868"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/src/trpc/react.tsx",
+      "sha256": "eaabedd68d6016265c46e1bb165b5ba0dbd5910d45ba756d968068a5a20bbc13"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/pnpm-lock.yaml",
+      "sha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/kublai/package.json",
+      "sha256": "9388449b423f1941a202ffb7f72f35093be459b8f424d4bcb3c84112baae07a2"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111/src/server/db/schema.ts",
+      "sha256": "79ff3b200d148f3aa63ac80f30ab844de38f0fc7583100bfaa6f8215245ff3e4"
+    },
+    {
+      "path": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r19-20261111/src/server/db/chat-push-schema.ts",
+      "sha256": "251e2d24e2fb1cd3c29bcd7badad3b49d808d3c4e15f73d935d92cf80bb272de"
+    }
+  ]
+}

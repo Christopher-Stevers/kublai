@@ -1,0 +1,14 @@
+(node:23581) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+ ✓ perf/live/chat-overview-pg-proof.ts > committed real join/mute/read changes traverse independent LISTEN and exact actor/job scope; repeats do not 56ms
+ ✓ perf/live/chat-overview-pg-proof.ts > outer rollback suppresses a real helper notification and business row 2ms
+ ✓ perf/live/chat-overview-pg-proof.ts > ordinary pg_notify permission error rolls back nested savepoint while outer business write commits 5ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  13:05:40
+   Duration  514ms (transform 104ms, setup 0ms, import 323ms, tests 126ms, environment 0ms)
+

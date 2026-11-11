@@ -5,6 +5,7 @@ export type LiveTopic =
   | "replicache"
   | "catalogue"
   | "conversations"
+  | "chat-overview"
   | "chat"
   | "preferences"
   | "timesheets";
@@ -25,6 +26,7 @@ export function liveHint(value: unknown): LiveHint | null {
       "catalogue",
       "conversations",
       "chat",
+      "chat-overview",
       "preferences",
       "timesheets",
     ].includes(String(row.topic)) ||

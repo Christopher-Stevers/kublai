@@ -32,6 +32,7 @@ export class LiveClient {
   private preferencesReady = false;
   private cursor = "";
   private chatVersions = new Map<string, number>();
+  private observers = new Set<(hint: LiveHint) => void>();
   private signature = "";
   private delay = 1000;
   private unsubscribeActivity: () => void;
@@ -185,9 +186,14 @@ export class LiveClient {
           Math.max(this.chatVersions.get(hint.key) ?? 0, hint.version),
         );
       if (!this.available()) return;
+      if (
+        hint.topic !== "chat-overview" ||
+        this.topics().jobs.includes(hint.key ?? "")
+      )
+        for (const observer of this.observers) observer(hint);
       for (const sub of this.active())
         if (
-          hint.topic === "chat"
+          hint.topic === "chat" || hint.topic === "chat-overview"
             ? (sub.options.jobIds ?? []).includes(hint.key ?? "")
             : hint.topic === "conversations"
               ? sub.options.conversations
@@ -256,10 +262,18 @@ export class LiveClient {
       this.reconcile();
     };
   }
+  /** Passive cache observation only: never adds topics or opens a transport. */
+  observe(listener: (hint: LiveHint) => void) {
+    this.observers.add(listener);
+    return () => {
+      this.observers.delete(listener);
+    };
+  }
   dispose() {
     this.stop();
     clearTimeout(this.hiddenTimer);
     this.subscribers.clear();
+    this.observers.clear();
     window.removeEventListener("online", this.resume);
     window.removeEventListener("offline", this.offline);
     this.unsubscribeActivity();
@@ -283,4 +297,9 @@ export function subscribeLiveEvents(
   callbacks: LiveCallbacks,
 ) {
   return client().subscribe(options, callbacks);
+}
+
+/** Observe only frames admitted by existing active subscriptions. */
+export function observeLiveHints(listener: (hint: LiveHint) => void) {
+  return client().observe(listener);
 }

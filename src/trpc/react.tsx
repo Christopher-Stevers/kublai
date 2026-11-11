@@ -1,6 +1,10 @@
 "use client";
 
-import { focusManager, QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import {
+  focusManager,
+  QueryClientProvider,
+  type QueryClient,
+} from "@tanstack/react-query";
 import {
   httpBatchLink,
   httpBatchStreamLink,
@@ -8,15 +12,22 @@ import {
   splitLink,
 } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
-import { captureDeviceReadAuthority, reportDeviceReadDenial } from "~/lib/device-query-cache";
-import { createTRPCReact } from "@trpc/react-query";
+import {
+  captureDeviceReadAuthority,
+  reportDeviceReadDenial,
+} from "~/lib/device-query-cache";
+import { createTRPCReact, getQueryKey } from "@trpc/react-query";
+import { bindChatOverviewInvalidation } from "~/lib/chat-overview-invalidation";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useEffect, useState } from "react";
 import SuperJSON from "superjson";
 
 import type { AppRouter } from "~/server/api/root";
 import { TEMPORARILY_DISCONNECT_BROWSER_FROM_SERVER } from "~/lib/server-connection-mode";
-import { isAppPageActive, subscribeAppPageActivity } from "~/lib/app-page-activity";
+import {
+  isAppPageActive,
+  subscribeAppPageActivity,
+} from "~/lib/app-page-activity";
 import { createQueryClient } from "./query-client";
 import { SIGNED_OUT_HEADER, SignedOutError } from "~/lib/signed-out";
 
@@ -52,9 +63,12 @@ async function blockedServerFetch(
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.includes("json")) {
     const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
-    throw Object.assign(new Error(
-      `ForemenHQ API returned HTTP ${status} with ${contentType || "no content type"}`,
-    ), {data: {httpStatus: response.status}});
+    throw Object.assign(
+      new Error(
+        `ForemenHQ API returned HTTP ${status} with ${contentType || "no content type"}`,
+      ),
+      { data: { httpStatus: response.status } },
+    );
   }
   return response;
 }
@@ -105,11 +119,22 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
+  useEffect(
+    () =>
+      bindChatOverviewInvalidation(queryClient, (jobId) =>
+        getQueryKey(api.chat.getOverview, { jobId }, "query"),
+      ),
+    [queryClient],
+  );
+
   useEffect(() => {
     const update = () => focusManager.setFocused(isAppPageActive());
     update();
     const unsubscribe = subscribeAppPageActivity(update);
-    return () => { unsubscribe(); focusManager.setFocused(undefined); };
+    return () => {
+      unsubscribe();
+      focusManager.setFocused(undefined);
+    };
   }, []);
 
   useEffect(() => {
@@ -147,18 +172,20 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [
-        () => ({op, next}) => observable(observer => {
-          const authority = captureDeviceReadAuthority();
-          const subscription = next(op).subscribe({
-            next: result => observer.next(result),
-            error: error => {
-              reportDeviceReadDenial(op.path, op.type, error, authority);
-              observer.error(error);
-            },
-            complete: () => observer.complete(),
-          });
-          return () => subscription.unsubscribe();
-        }),
+        () =>
+          ({ op, next }) =>
+            observable((observer) => {
+              const authority = captureDeviceReadAuthority();
+              const subscription = next(op).subscribe({
+                next: (result) => observer.next(result),
+                error: (error) => {
+                  reportDeviceReadDenial(op.path, op.type, error, authority);
+                  observer.error(error);
+                },
+                complete: () => observer.complete(),
+              });
+              return () => subscription.unsubscribe();
+            }),
         loggerLink({
           enabled: (op) => {
             const path = "path" in op ? op.path : undefined;
@@ -182,7 +209,10 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
         splitLink({
           condition: (op) => COMPRESSED_PATHS.has(op.path),
           true: httpBatchLink({ ...linkOptions, fetch: blockedServerFetch }),
-          false: httpBatchStreamLink({ ...linkOptions, fetch: blockedServerFetch }),
+          false: httpBatchStreamLink({
+            ...linkOptions,
+            fetch: blockedServerFetch,
+          }),
         }),
       ],
     }),

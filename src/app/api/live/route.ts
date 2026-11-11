@@ -1,3 +1,4 @@
+import { subscribeChatOverviewEvents } from "~/server/live/chat-overview-events";
 import { subscribeTimesheetEvents } from "~/server/live/timesheet-events";
 import { userCan } from "~/server/auth/permissions";
 import { devFeaturesEnabled } from "~/server/dev-features";
@@ -125,6 +126,7 @@ export async function GET(request: Request) {
   let unsubscribe: () => void = () => undefined;
   let unsubscribePreferences: () => void = () => undefined;
   let unsubscribeTimesheets: () => void = () => undefined;
+  let unsubscribeChatOverview: () => void = () => undefined;
   const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
   const cleanup = () => {
     if (closed) return;
@@ -135,6 +137,7 @@ export async function GET(request: Request) {
     unsubscribe();
     unsubscribePreferences();
     unsubscribeTimesheets();
+    unsubscribeChatOverview();
     request.signal.removeEventListener("abort", abort);
     releaseConnection();
     for (const reader of readers) void reader.cancel().catch(() => undefined);
@@ -164,7 +167,7 @@ export async function GET(request: Request) {
       const allowed = (topic: string, key?: string) =>
         topic === "conversations"
           ? includeConversations
-          : topic === "chat"
+          : topic === "chat" || topic === "chat-overview"
             ? jobIds.has(key)
             : topic === "preferences"
               ? includePreferences
@@ -200,6 +203,22 @@ export async function GET(request: Request) {
           (kind, revision) => {
             if (!closed)
               liveHub.publish(scope, { topic: "timesheets", kind }, revision);
+          },
+        );
+      if (jobIds.size)
+        unsubscribeChatOverview = subscribeChatOverviewEvents(
+          {
+            organizationId: user.organizationId!,
+            userId: user.id,
+            jobIds: jobIds as Set<string>,
+          },
+          (jobId, kind, revision) => {
+            if (!closed)
+              liveHub.publish(
+                scope,
+                { topic: "chat-overview", key: jobId, kind },
+                revision,
+              );
           },
         );
       const resume = liveHub.resume(

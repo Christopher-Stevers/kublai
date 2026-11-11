@@ -32,6 +32,13 @@ const hintSchema = z
     z.object({ topic: z.literal("poke"), organizationId: identifier }),
     z.object({ topic: z.literal("catalogue"), organizationId: identifier }),
     z.object({ topic: z.literal("conversation"), conversationId: identifier }),
+    z.object({
+      topic: z.literal("chat-overview"),
+      organizationId: identifier,
+      userId: identifier,
+      jobId: identifier,
+      eventId: z.string().uuid(),
+    }),
     z.object({ topic: z.literal("work"), feature: z.literal("packing-slips") }),
   ])
   .superRefine((hint, context) => {
@@ -78,7 +85,8 @@ export function acceptBackgroundHint(payload: string) {
     if (
       parsed.origin !== origin ||
       parsed.hint.topic === "preferences" ||
-      parsed.hint.topic === "timesheets"
+      parsed.hint.topic === "timesheets" ||
+      parsed.hint.topic === "chat-overview"
     )
       emitter.emit("hint", parsed.hint);
   } catch {

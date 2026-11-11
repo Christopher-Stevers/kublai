@@ -1,0 +1,1 @@
+bash scripts/test-chat-overview-pg.sh 3539993932ae9e6f752dbc43ee379ccf494393daaa7e404a3496a80e0c6635b6 /tmp/foremanhq-chat-overview-proof-20261111-attempt1

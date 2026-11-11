@@ -24,6 +24,7 @@ import { userCan } from "~/server/auth/permissions";
 import { assertMessageOwner, type ChatAccess } from "./access";
 import { requestHash, type ChatMessage } from "./contracts";
 import { publishChatEvent } from "./events";
+import { notifyChatOverviewChange } from "./overview-hints";
 import { enqueueChatPush } from "./push";
 import type { ChatTransaction } from "./types";
 import type { RequestUser } from "~/server/utils/get-request-identity";
@@ -65,10 +66,12 @@ export async function lockChatJob(tx: ChatTransaction, jobId: string) {
   );
 }
 async function joinTx(tx: ChatTransaction, access: ChatAccess) {
-  await tx
+  const changed = await tx
     .insert(jobChatMembers)
     .values({ jobId: access.job.id, userId: access.user.id })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ userId: jobChatMembers.userId });
+  return changed.length > 0;
 }
 async function hydrate(rows: MessageRow[]): Promise<ChatMessage[]> {
   if (!rows.length) return [];
@@ -174,7 +177,7 @@ export async function chatOverview(access: ChatAccess) {
 export async function joinChat(access: ChatAccess) {
   await db.transaction(async (tx) => {
     await lockChatJob(tx, access.job.id);
-    await joinTx(tx, access);
+    if (await joinTx(tx, access)) await notifyChatOverviewChange(tx, access);
   });
   return chatOverview(access);
 }
@@ -362,7 +365,17 @@ export async function markChatRead(access: ChatAccess, sequence: number) {
       .from(jobChatMessages)
       .where(eq(jobChatMessages.jobId, access.job.id));
     const bounded = Math.min(sequence, Number(last?.sequence ?? 0));
-    await joinTx(tx, access);
+    const joined = await joinTx(tx, access);
+    const [previous] = await tx
+      .select({ lastReadSequence: jobChatMembers.lastReadSequence })
+      .from(jobChatMembers)
+      .where(
+        and(
+          eq(jobChatMembers.jobId, access.job.id),
+          eq(jobChatMembers.userId, access.user.id),
+        ),
+      )
+      .limit(1);
     const [member] = await tx
       .update(jobChatMembers)
       .set({
@@ -375,17 +388,25 @@ export async function markChatRead(access: ChatAccess, sequence: number) {
         ),
       )
       .returning({ lastReadSequence: jobChatMembers.lastReadSequence });
+    if (joined || member!.lastReadSequence !== previous!.lastReadSequence)
+      await notifyChatOverviewChange(tx, access);
     return { lastReadSequence: member!.lastReadSequence };
   });
 }
 export async function setChatNotifications(access: ChatAccess, muted: boolean) {
-  await db
-    .insert(jobChatMembers)
-    .values({ jobId: access.job.id, userId: access.user.id, muted })
-    .onConflictDoUpdate({
-      target: [jobChatMembers.jobId, jobChatMembers.userId],
-      set: { muted },
-    });
+  await db.transaction(async (tx) => {
+    await lockChatJob(tx, access.job.id);
+    const changed = await tx
+      .insert(jobChatMembers)
+      .values({ jobId: access.job.id, userId: access.user.id, muted })
+      .onConflictDoUpdate({
+        target: [jobChatMembers.jobId, jobChatMembers.userId],
+        set: { muted },
+        setWhere: sql`${jobChatMembers.muted} is distinct from ${muted}`,
+      })
+      .returning({ userId: jobChatMembers.userId });
+    if (changed.length) await notifyChatOverviewChange(tx, access);
+  });
   return { muted };
 }
 export async function chatMembers(access: ChatAccess) {

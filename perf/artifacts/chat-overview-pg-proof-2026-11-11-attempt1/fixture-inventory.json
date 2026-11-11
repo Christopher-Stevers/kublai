@@ -1,0 +1,29 @@
+{
+  "scope": "thin synthetic fixture: base columns/PK plus committed chat migration; not full application schema",
+  "tables": [
+    {
+      "tablename": "kublai_job"
+    },
+    {
+      "tablename": "kublai_job_chat_attachment"
+    },
+    {
+      "tablename": "kublai_job_chat_event"
+    },
+    {
+      "tablename": "kublai_job_chat_member"
+    },
+    {
+      "tablename": "kublai_job_chat_message"
+    },
+    {
+      "tablename": "kublai_organization"
+    },
+    {
+      "tablename": "kublai_user"
+    },
+    {
+      "tablename": "overview_business_probe"
+    }
+  ]
+}

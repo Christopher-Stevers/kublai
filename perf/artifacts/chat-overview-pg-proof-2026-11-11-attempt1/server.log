@@ -1,0 +1,25 @@
+2026-11-11 13:05:39.932 EST [23567] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-11 13:05:39.932 EST [23567] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-11 13:05:39.932 EST [23567] LOG:  00000: listening on Unix socket "/tmp/foremanhq-chat-overview-pg.JODoV4/.s.PGSQL.55471"
+2026-11-11 13:05:39.932 EST [23567] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-11 13:05:39.934 EST [23573] LOG:  00000: database system was shut down at 2026-11-11 13:05:39 EST
+2026-11-11 13:05:39.934 EST [23573] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-11 13:05:39.935 EST [23567] LOG:  00000: database system is ready to accept connections
+2026-11-11 13:05:39.935 EST [23567] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-11 13:05:40.795 EST [23667] ERROR:  42501: permission denied for function pg_notify
+2026-11-11 13:05:40.795 EST [23667] LOCATION:  aclcheck_error, aclchk.c:2791
+2026-11-11 13:05:40.795 EST [23667] STATEMENT:  select pg_notify('foremanhq_change', $1)
+2026-11-11 13:05:40.976 EST [23567] LOG:  00000: received fast shutdown request
+2026-11-11 13:05:40.976 EST [23567] LOCATION:  process_pm_shutdown_request, postmaster.c:2152
+2026-11-11 13:05:40.976 EST [23567] LOG:  00000: aborting any active transactions
+2026-11-11 13:05:40.976 EST [23567] LOCATION:  process_pm_shutdown_request, postmaster.c:2170
+2026-11-11 13:05:40.977 EST [23567] LOG:  00000: background worker "logical replication launcher" (PID 23576) exited with exit code 1
+2026-11-11 13:05:40.977 EST [23567] LOCATION:  LogChildExit, postmaster.c:2832
+2026-11-11 13:05:40.977 EST [23571] LOG:  00000: shutting down
+2026-11-11 13:05:40.977 EST [23571] LOCATION:  ShutdownXLOG, xlog.c:6653
+2026-11-11 13:05:40.977 EST [23571] LOG:  00000: checkpoint starting: shutdown immediate
+2026-11-11 13:05:40.977 EST [23571] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-11 13:05:40.983 EST [23571] LOG:  00000: checkpoint complete: wrote 1002 buffers (6.1%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.007 s, sync=0.001 s, total=0.007 s; sync files=344, longest=0.001 s, average=0.000 s; distance=4586 kB, estimate=4586 kB; lsn=0/1BDE8F0, redo lsn=0/1BDE8F0
+2026-11-11 13:05:40.983 EST [23571] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-11 13:05:40.987 EST [23567] LOG:  00000: database system is shut down
+2026-11-11 13:05:40.987 EST [23567] LOCATION:  UnlinkLockFiles, miscinit.c:1197

@@ -255,13 +255,80 @@ it("distinguishes preference topic readiness from transport and drops it on hide
 
 it("shares one transport and filters timesheet hints to opted-in full accounts", () => {
   manager.setAccount("org:user");
-  const timesheets = vi.fn(), ordinary = vi.fn();
-  manager.subscribe({ timesheets: true, expectedAccount: "org:user" }, { hint: timesheets });
+  const timesheets = vi.fn(),
+    ordinary = vi.fn();
+  manager.subscribe(
+    { timesheets: true, expectedAccount: "org:user" },
+    { hint: timesheets },
+  );
   manager.subscribe({}, { hint: ordinary });
   vi.advanceTimersByTime(0);
-  expect(Source.all).toHaveLength(1); expect(Source.all[0]!.url).toContain("timesheets=1");
+  expect(Source.all).toHaveLength(1);
+  expect(Source.all[0]!.url).toContain("timesheets=1");
   Source.all[0]!.emit("live", { topic: "timesheets", version: 1 });
-  expect(timesheets).toHaveBeenCalledOnce(); expect(ordinary).not.toHaveBeenCalled();
-  manager.setAccount("org:other"); Source.all[0]!.emit("live", { topic: "timesheets", version: 2 });
-  expect(timesheets).toHaveBeenCalledOnce(); expect(Source.all[0]!.closed).toBe(true);
+  expect(timesheets).toHaveBeenCalledOnce();
+  expect(ordinary).not.toHaveBeenCalled();
+  manager.setAccount("org:other");
+  Source.all[0]!.emit("live", { topic: "timesheets", version: 2 });
+  expect(timesheets).toHaveBeenCalledOnce();
+  expect(Source.all[0]!.closed).toBe(true);
+});
+
+it("passive overview observation opens no source, fences lifecycle and preserves durable cursor", () => {
+  manager.setAccount("org:user");
+  const seen = vi.fn(),
+    catchUp = vi.fn();
+  const stop = manager.observe(seen);
+  vi.advanceTimersByTime(0);
+  expect(Source.all).toHaveLength(0);
+  manager.subscribe({ jobIds: [job] }, { hint: vi.fn(), catchUp });
+  vi.advanceTimersByTime(0);
+  const source = Source.all[0]!;
+  source.emit("connected");
+  expect(catchUp).toHaveBeenCalledOnce();
+  expect(seen).not.toHaveBeenCalled(); // Existing subscriber catches up; observer has no replay.
+  source.emit("live", { topic: "chat", key: job, version: 7 });
+  source.emit("live", {
+    topic: "chat-overview",
+    key: job,
+    kind: "changed",
+    version: 999,
+  });
+  expect(seen).toHaveBeenCalledTimes(2);
+  source.emit("live", {
+    topic: "chat-overview",
+    key: "foreign-job",
+    version: 1000,
+  });
+  expect(seen).toHaveBeenCalledTimes(2);
+  setAppPageActive(false);
+  source.emit("live", { topic: "chat-overview", key: job, version: 1001 });
+  expect(seen).toHaveBeenCalledTimes(2);
+  setAppPageActive(true);
+  expect(catchUp).toHaveBeenCalledTimes(2);
+  expect(seen).toHaveBeenCalledTimes(2);
+  Object.defineProperty(navigator, "onLine", {
+    configurable: true,
+    value: false,
+  });
+  window.dispatchEvent(new Event("offline"));
+  source.emit("live", { topic: "chat-overview", key: job, version: 1002 });
+  expect(seen).toHaveBeenCalledTimes(2);
+  Object.defineProperty(navigator, "onLine", {
+    configurable: true,
+    value: true,
+  });
+  window.dispatchEvent(new Event("online"));
+  vi.advanceTimersByTime(0);
+  const resumed = Source.all.at(-1)!;
+  expect(resumed.url).toContain(`${job}%3A7`);
+  resumed.emit("connected");
+  expect(catchUp).toHaveBeenCalledTimes(3);
+  expect(seen).toHaveBeenCalledTimes(2);
+  stop();
+  resumed.emit("live", { topic: "chat-overview", key: job, version: 1003 });
+  expect(seen).toHaveBeenCalledTimes(2);
+  manager.setAccount("other:actor");
+  resumed.emit("live", { topic: "chat-overview", key: job, version: 1004 });
+  expect(seen).toHaveBeenCalledTimes(2);
 });

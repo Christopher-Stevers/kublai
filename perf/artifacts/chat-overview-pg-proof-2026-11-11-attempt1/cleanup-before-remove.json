@@ -1,0 +1,10 @@
+{
+  "originalExitCode": 0,
+  "pgStopFailed": 0,
+  "copyFailed": 0,
+  "socket": "/tmp/foremanhq-chat-overview-pg.JODoV4",
+  "expected42501Count": 1,
+  "unexpectedErrorCount": 0,
+  "expectedErrorProofPresent": true,
+  "finalPGLogAvailable": true
+}
