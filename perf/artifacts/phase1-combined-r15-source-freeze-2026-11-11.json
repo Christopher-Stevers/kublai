@@ -1,0 +1,135 @@
+{
+  "status": "frozen-source-only-awaiting-root-compile-review",
+  "baseBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+  "baseSourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+  "groups": [
+    {
+      "group": "executive-sort-target",
+      "commit": "adda6fbdae435b1b71f7eff5eac296f3ce805477",
+      "paths": [
+        {
+          "path": "src/app/jobs/account/settings/page.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "58424957cbb44a01eaaccda6fd0039aee57fb90755ff38f0083be5d729c86854",
+          "postimageSha256": "5b14e1713bde2adc517f8b79e665dd39e9a73d64ce43b98d6e17a21088dcaaf5"
+        },
+        {
+          "path": "src/components/app/MaterialSortProvider.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "aa73126c03f8d7b8e6ec5caf2c2ae1c39c23a8a29b50d91b361ea1af2cd7e80c",
+          "postimageSha256": "7bab446e164bda2ce070279a21d0e4a0b27af1201aeaf3df74a70b713fc22dd1"
+        }
+      ],
+      "patchSha256": "8783ac62e005c1c5eae120b0d13ac2806605dfe54ea48fdcaab094cbd05646b9",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "drawing-shared-issue",
+      "commit": "c38c454c49233349ff919795bc3540292bbfd79f",
+      "paths": [
+        {
+          "path": "src/components/jobs/DrawingWorkspace.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "92232f966a4db4d096dda0d8364e69dd0d0a1e4080b286d5638dc176f2db3641",
+          "postimageSha256": "31c65381567595ef6b9030ac006f6ebd93a4fd6d8fac243b8fd42cc8a8959dc7"
+        },
+        {
+          "path": "src/hooks/use-drawing-shared-issue-save.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "b954905d39345e4bea175d635d0286f245778aa9e629332954bc41044b66e9b2"
+        },
+        {
+          "path": "src/server/api/routers/drawingsWorkspace.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "b4b3a105dc0683f0c9d45666021cdd7eb336e8f7c172bc2deb9e958fb987059d",
+          "postimageSha256": "3cc5a18eab76f2eae33f95cb09f50300dae1a1c0d868e0224d6e77750530d3f5"
+        }
+      ],
+      "patchSha256": "1dd021883c58cfafa266a854a3c7601488ce00cc481418bd90b1bf3a85dd06a8",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "receiving-resolve-boundary",
+      "commit": "0bab2c39c9442457a905ea29e6352308a86db0e7",
+      "paths": [
+        {
+          "path": "src/components/materialLists/ReceivingResolve.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "8f5bce3507feeb64fd281ea5baf43cea6024757c89f2e95cb1703d84ba4b51b4",
+          "postimageSha256": "1bcaec4754d76ff21c570143f5d2f8b465c0595c21147472973f437c5217e5ef"
+        },
+        {
+          "path": "src/components/materialLists/ReceivingResolveContent.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "982192fe0533e02fb036312da6373d915628a5a0b8a34cd9336918f222f45752"
+        },
+        {
+          "path": "src/components/materialLists/receiving-link-action.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "3a40bd97e9fd4d0d3a5d7d17ab63be624059a93d5cfdf2b1a21b686b5430f245"
+        }
+      ],
+      "patchSha256": "970a8e79862dc312e9845694761ef2ebb3e6a0057876bceb4f0c545edc36cab6",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    }
+  ],
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r15-20261111",
+    "runtimePathCount": 8,
+    "operationalPathCount": 0,
+    "changedPaths": [
+      "src/app/jobs/account/settings/page.tsx",
+      "src/components/app/MaterialSortProvider.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/materialLists/ReceivingResolve.tsx",
+      "src/components/materialLists/ReceivingResolveContent.tsx",
+      "src/components/materialLists/receiving-link-action.ts",
+      "src/hooks/use-drawing-shared-issue-save.ts",
+      "src/server/api/routers/drawingsWorkspace.ts"
+    ],
+    "unaffectedFiles": 5468,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "workerExecutableUnchanged": true,
+    "r8PressExcluded": true,
+    "unrelatedChanges": 0,
+    "sourceFingerprint": "f4ffd52ab0633a4e0fd6f33c1b4b4b44678c83ace4b59e0e849f18bf84690d5a",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2316,
+    "curatedBasePerfInputsUnchanged": true,
+    "curatedBasePerfFileCount": 4,
+    "noCurrentPerfImagePrivateInputsImported": true,
+    "serverOnlySymlinkTargetsUnchanged": true,
+    "nativeResolverMatchesR14": true
+  },
+  "composition": "Exact R14 copy, then only listed selected runtime git diffs in sequence. Every preimage and intermediate/final postimage checked. No raw HEAD or dirty working files. Tests/docs remain provenance and are not copied into runtime source.",
+  "pending": [
+    "root final review and explicit canonical compile clearance"
+  ],
+  "excluded": [
+    "R8 attribute feedback",
+    "unrelated dirty source",
+    "schema and worker executable/service/bundle",
+    "PackingSlips",
+    "zoom intent",
+    "package/lockfile/tsconfig",
+    "unreviewed later work"
+  ],
+  "buildStarted": false,
+  "activated": false
+}
