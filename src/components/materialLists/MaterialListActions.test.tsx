@@ -114,3 +114,19 @@ it("hides Get Quote with Dev off even when quote permission is granted", () => {
   render(<MaterialListActions {...base} canQuote canOrder canAdd />);
   expect(screen.queryByText("Get Quote")).not.toBeInTheDocument();
 });
+
+it("shows bulk receipt intent without implying received totals or allowing a second write", () => {
+  const all = vi.fn(), none = vi.fn();
+  const view = render(<OrderReceiveActions label="Order 142" onNotes={vi.fn()}
+    onMarkAllReceived={all} onMarkNoneReceived={none} receivingAll />);
+  expect(screen.getByRole("status")).toHaveTextContent("Updating received quantities…");
+  fireEvent.click(screen.getByRole("button", { name: "Mark all received" }));
+  fireEvent.click(screen.getByRole("button", { name: "Mark none received" }));
+  expect(all).not.toHaveBeenCalled();
+  expect(none).not.toHaveBeenCalled();
+  view.rerender(<OrderReceiveActions label="Order 142" onNotes={vi.fn()}
+    onMarkAllReceived={all} onMarkNoneReceived={none} />);
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByText("Order 142")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Mark all received" })).toBeEnabled();
+});

@@ -60,7 +60,7 @@ export function OrderReceiveActions({
       search={search}
       role={label ? "group" : undefined}
       aria-label={label ? "Receive order" : undefined}
-      label={label}
+      label={receivingAll ? <span role="status">Updating received quantities…</span> : label}
     >
       {onMarkNoneReceived && (
         <Button
@@ -110,10 +110,10 @@ function FooterLayer({
     <div
       aria-hidden={!shown || undefined}
       inert={!shown}
-      // The bar going away drops out first; the new one rises in just after.
-      className={`col-start-1 row-start-1 self-end transition-[opacity,translate,scale] duration-500 ease-in-out motion-reduce:transition-none ${
+      // Incoming controls are ready immediately; motion never delays their use.
+      className={`col-start-1 row-start-1 self-end transition-[opacity,translate,scale] duration-150 ease-in-out motion-reduce:transition-none ${
         shown
-          ? "translate-y-0 scale-100 opacity-100 delay-150"
+          ? "translate-y-0 scale-100 opacity-100"
           : "pointer-events-none translate-y-8 scale-95 opacity-0"
       }`}
     >
