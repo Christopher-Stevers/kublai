@@ -1,0 +1,195 @@
+{
+  "status": "frozen-source-only-awaiting-root-compile-review",
+  "baseBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+  "baseSourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+  "groups": [
+    {
+      "group": "chat-join",
+      "commit": "d434e254fa1af06f1afe66b8640c05d054b1b881",
+      "paths": [
+        {
+          "path": "src/components/jobs/JobChatThread.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "c3a4fc4fd6168b17f2cb3448033a8b26eb634d7209aebde1929f98cb08c57699",
+          "postimageSha256": "e63f32d695950d35dd2af736442030900e8afa98c4dd97d3e989e1a22fd7cbf3"
+        },
+        {
+          "path": "src/hooks/use-chat-join.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "2f7dc1e44c580112accfb23dbd71f32658eb544c4bc2cfc93aba4171a4d8e8fd"
+        }
+      ],
+      "patchSha256": "2117536e47a1a2ed642217f54e1fdfd504997f75d751119bdcb9c3bf7eb9eb2f",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "catalogue-create",
+      "commit": "3a8141540d31621859774c48aeb4163fcd5625b4",
+      "paths": [
+        {
+          "path": "src/components/catalogue/PartDetailsDialog.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "fb25fc09b499b3af86753c064f43a7a6a3a9ba36aef5f1e7ce3f62cccfdb5806",
+          "postimageSha256": "b3336e3d3876d44878849d351b7c996b6deccfc176b93c3324fdc12bada62d66"
+        },
+        {
+          "path": "src/hooks/use-create-catalogue-part.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "2c83bf8a687065f1848ffd9e2131c32a91ebb5300702492711d61891eefc910a"
+        },
+        {
+          "path": "src/server/api/routers/catalogue.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "adf47ed154592c0740f126de6d93ce7b1ccefecfdd4971e4de00ffb64b351a60",
+          "postimageSha256": "297e4b27e617aa4b813b0a190d55bc58c6cc96408f9d39e18634838cf55c5582"
+        }
+      ],
+      "patchSha256": "afb9f135335e1ba50558ec4939d1657355778b9fce5840cbefe067cb248bb069",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "runtime-native-version",
+      "commit": "da025bf33f114471c36298cc1c97ec459a0e72c5",
+      "paths": [
+        {
+          "path": "src/server/background/listen-lifecycle.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "128480e00a96ba1072ae5643cfbab2a6eea56960e26202f562115d8261215275",
+          "postimageSha256": "7a9d1cb71955000d772024724800adf0848eb3f58e86f9d5a911cf28f6dfc5c2"
+        }
+      ],
+      "patchSha256": "d3526d75a4ad7717925eb969fb8392561445d9515521b3a9e69730ef4376f552",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "timesheet-hints",
+      "commit": "18023b1efcf46cff4f970a41daee6e9c471d71f3",
+      "paths": [
+        {
+          "path": "src/app/api/live/route.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "69384f377f48d10d515c7a10b215e53086939550e11745dd81b400b031eea587",
+          "postimageSha256": "3829dd3376f6f0f87ba735564db1359009997e76999150fefb83e5bec41d792d"
+        },
+        {
+          "path": "src/components/timesheets/TimesheetsView.tsx",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "a8f09e452e221650319754b76029eae4a08a2c7bffc04353a46df74e27c3cb79",
+          "postimageSha256": "cecd11ebf13e1a1a64f9cca6609e6ab82d979421b96328f7d1feea33b47172f2"
+        },
+        {
+          "path": "src/hooks/use-timesheet-live.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "bc41b354168f3a38f3a14e5616c27924b237557abd39b6bd7eca1aa1d0065dcf"
+        },
+        {
+          "path": "src/lib/live-client.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "821337ccd93d84b47a41df0b78425a3cde661bdf38418974c618fda96004eede",
+          "postimageSha256": "40a8853afa3ce09ed74270798cfec2c59f0c653bc4efdfe4af2ba0decc8ce545"
+        },
+        {
+          "path": "src/lib/live-protocol.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "03d94436eb328eeb5f7548fedf78ee0085b97e0701f57a801abda319ddd85679",
+          "postimageSha256": "7f77f2392713281fc196031b2419329832c3508e07152867c297c3548d68b9e2"
+        },
+        {
+          "path": "src/server/api/routers/timesheets.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "b94e253860c90a844f366c0a56df4bb4250b8b6683d07d810cb7d7f966133287",
+          "postimageSha256": "485d92f530231cab4e05478e7e1798f4eb2b0082311b6af7125c8b5e38440b6b"
+        },
+        {
+          "path": "src/server/background/hints.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": false,
+          "preimageSha256": "87635dd004974a662f34685d196c27465222b5d39943ff67c5272013195e1108",
+          "postimageSha256": "7fcc52d0a4f65ad0a032b54a58baa1c0dc639a7a3df176860505aa6b88851aed"
+        },
+        {
+          "path": "src/server/live/timesheet-events.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "154208d8401305361bf516b7c7e9997fcdb1a182c1762b07cc169b37ae100906"
+        },
+        {
+          "path": "src/server/timesheets/notify.ts",
+          "parentExactlyMatchesComposition": true,
+          "newFile": true,
+          "preimageSha256": null,
+          "postimageSha256": "76d24724a0e27b7bcb0ce2929d695d31f36e37a8c0f4d9ecd57a25662127f140"
+        }
+      ],
+      "patchSha256": "9912d0b0d73712075aed7169c84192f1b1a3647efd4bffc4c502e0bccddb867b",
+      "appliesWithoutConflict": true,
+      "approvedForSourceFreeze": true
+    }
+  ],
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r13-20261111",
+    "runtimePathCount": 15,
+    "operationalPathCount": 0,
+    "changedPaths": [
+      "src/app/api/live/route.ts",
+      "src/components/catalogue/PartDetailsDialog.tsx",
+      "src/components/jobs/JobChatThread.tsx",
+      "src/components/timesheets/TimesheetsView.tsx",
+      "src/hooks/use-chat-join.ts",
+      "src/hooks/use-create-catalogue-part.ts",
+      "src/hooks/use-timesheet-live.ts",
+      "src/lib/live-client.ts",
+      "src/lib/live-protocol.ts",
+      "src/server/api/routers/catalogue.ts",
+      "src/server/api/routers/timesheets.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/listen-lifecycle.ts",
+      "src/server/live/timesheet-events.ts",
+      "src/server/timesheets/notify.ts"
+    ],
+    "unaffectedFiles": 5458,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "workerExecutableUnchanged": true,
+    "r8PressExcluded": true,
+    "unrelatedChanges": 0,
+    "sourceFingerprint": "f680801e77896905e0ee8859a7967221c9fe12bb2b3ef79e0a9fa4aad64ebd4e",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2313
+  },
+  "composition": "Exact R12 copy, then only listed selected runtime git diffs in sequence. Every preimage and intermediate/final postimage checked. No raw HEAD or dirty working files. Tests/docs remain provenance and are not copied into runtime source.",
+  "pending": [
+    "root final review and explicit canonical compile clearance"
+  ],
+  "excluded": [
+    "R8 attribute feedback",
+    "unrelated dirty source",
+    "schema and worker executable/service/bundle",
+    "PackingSlips",
+    "zoom intent",
+    "package/lockfile/tsconfig",
+    "unreviewed later work"
+  ],
+  "buildStarted": false,
+  "activated": false
+}
