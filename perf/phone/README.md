@@ -1,0 +1,52 @@
+# Separate physical-phone visited-read evidence
+
+Prepared source only. Do not run during the lab baseline CPU quiet window. Root owns Android pairing/ADB setup and runtime attestation after the lab. This runner is **not** in `HARNESS_FILES`, does not import or modify frozen `perf/run.mjs`/`journeys.mjs`, and cannot be reported as accepted `ready-then-pinch-v2` or an eight-journey/three-link matrix.
+
+The initial scope is two repeats of three **visited read** journeys: open job, open the job's material-list tab, and open a material list. Selectors mirror the existing adapter, but input is separately implemented page-CDP touch start/end. It warms each destination through the actual UI, returns via that new tab's history, then times the second opening. No quantity, receipt, order, chat, recognition, drawing edit or production write journey is executed. Natural device CPU is used: no four-times slowdown or CPU override, viewport emulation or link shaping. Heating/refresh rate are not inferred from the model name.
+
+## Runtime needs, to arrange after quiet
+
+- Android developer options and **Wireless debugging** paired by root on the trusted LAN, with an authorized `adb` device shown as connected. USB is an explicit alternative, not assumed. Phone unlocked, Chrome open and screen awake; user supplies battery/thermal/refresh-setting observations if available. Do not change personal account/session settings.
+- A source-frozen synthetic lab app on host loopback, backed by the private `/tmp/foremanhq-perf-pg.*` PostgreSQL fixture; existing endpoint preflight passed against the exact lab artifact/source fingerprint. Root must confirm running server PID/cwd/build maps to that lab directory and the private fixture, not production. `/api/perf-lab` must say `isolated-seeded-app`, `productionDatabase:false`, `stubbed-seeded-user`, and `perf-lab-user`.
+- Root establishes a **dedicated phone loopback origin** with `adb -s DEVICE reverse tcp:43991 tcp:HOST_LAB_PORT`. Phone `http://127.0.0.1:43991/` then reaches only the synthetic host app. ADB over Wi-Fi carries that forwarding traffic; this is unshaped lab transport, not a Site/Basement network profile.
+- Root establishes `adb -s DEVICE forward tcp:49222 localabstract:chrome_devtools_remote`. Socket names vary by Chrome channel; if unavailable, stop and resolve the correct channel with root. Do not list or inspect existing browser targets. Do not use `am start --force-stop`, reset Chrome, or change global connectivity.
+- Chrome's forwarded HTTP debugging endpoint must support **PUT `/json/new?about:blank`** and return its new page WebSocket. If Android Chrome lacks that operation, this method must stop; never fall back to an existing tab. Root can then choose a separate explicitly scoped new-target method rather than weakening isolation.
+- Node with built-in `fetch`/`WebSocket` (current host Node 26 is sufficient), exact lab `source-evidence.json`, `preflight.json`, `perf/fixtures.json`, private database schema inventory and clean error log. No new npm install or phone app is needed.
+
+Example **for root after explicit clearance**, replacing paths/ports/build from the already verified lab:
+
+```sh
+PERF_PHONE_CONTROL_TRANSPORT=adb-wifi \
+PERF_PHONE_DEVICE_MODEL='Google Pixel 9 Pro XL (user confirmed)' \
+PERF_PHONE_HOST_BASE=http://127.0.0.1:HOST_LAB_PORT/ \
+PERF_PHONE_BASE=http://127.0.0.1:43991/ \
+PERF_PHONE_CDP=http://127.0.0.1:49222/ \
+PERF_PHONE_LAB_ROOT=/absolute/verified/synthetic/lab \
+PERF_LAB_SOCKET=/tmp/foremanhq-perf-pg.EXACT \
+PERF_BUILD=EXACT_PREFLIGHT_BUILD \
+PERF_PHONE_OUTPUT=/absolute/evidence/phone-reads.json \
+node perf/phone/run.mjs
+```
+
+Set `PERF_PHONE_CONTROL_TRANSPORT=adb-usb` only for an actual USB control connection. Optional `PERF_PHONE_RUNS` is bounded 1–5; `PERF_PHONE_THERMAL_NOTE` is a non-sensitive human observation. Output contains no ADB serial, cookies, unrelated page URLs or account data. Root removes only the specific forward/reverse mappings they created after the session; do not use `--remove-all`.
+
+## Browser isolation and timing meaning
+
+Local Playwright 1.59.1 `connectOverCDP` initializes the browser and calls `Target.setAutoAttach`; it may discover/attach personal targets. This runner therefore uses **only the new target's direct WebSocket**, not browser-wide Playwright connection, target listing, context routing, cookie APIs, context cleanup or `Browser.close`. It closes only its created tab. The validated created target is closed even on WebSocket validation/open failure. If the create request itself times out before returning its ID, a new blank lab tab may remain for the user/root to close; do not inspect other tabs to recover it.
+
+The same private loopback app is attested from the host and a page-local same-origin fetch (with redirect rejection, status check and timeout) before visiting synthetic screens; Chrome JSON-viewer body text is never parsed. Host HTTP/CDP setup and WebSocket open are bounded to ten seconds. Source build and fingerprint must match the passed preflight, and fixture provenance/database flags must be synthetic. Only that new page's DOM/runtime is queried. Existing device cookies are neither read nor cleared. The dedicated loopback origin must not be reused for personal browsing. No network interception, offline toggle or network condition command is sent; later link experiments, if separately approved, must stay page-scoped and belong to another explicit method.
+
+`browserDurationMs` starts at the page's actual pointerdown event and ends after destination DOM readiness plus two rAF opportunities. `gestureHoldMs` records pointerdown-to-pointerup, which can include Wi-Fi ADB command turnaround. `driverWallclockMs` separately includes all host/control/CDP latency. Bounded raw page-local frame gaps and existing allowlisted app measures are retained; they are not a physical pixel/compositor presentation timestamp. The open-job/tab/list readiness checks are not universal screen completeness.
+
+Chrome `Tracing.start` may collect browser-wide activity including personal tabs, so it is deliberately not used. The JSON raw rAF/mark samples are page-local diagnostics, **not a Chrome trace or physical frame proof**. A browser-wide Perfetto/DevTools trace would require a separately approved isolated browser/device setup. No screenshot or screen recording is taken. Physical CPU throttling, thermal state, refresh rate, link calibration, repeatability, production bytes/auth startup and full matrix gates remain open.
+
+## Verification status
+
+Source was prepared during the baseline quiet window. After explicit release, formatting and `node --check perf/phone/run.mjs` passed. This agent has not executed phone commands, created a target/browser session, run this method, or built an app. Root owns the separate local smoke and physical session. Before hardware use, root should review and run a separate local synthetic smoke check of this new runner after clearance, especially Android `/json/new` support and page-only CDP touch behavior. Unsupported connection/input capabilities must fail explicitly, not be worked around by inspecting personal tabs.
+
+For a separately launched disposable local Chromium smoke check, require both
+`PERF_PHONE_SMOKE=1` and `PERF_PHONE_CONTROL_TRANSPORT=local-smoke`. All lab
+attestation/isolation checks stay enabled. Reports use method
+`local-smoke-visited-reads-page-cdp-v1`, status `smoke-only`/`smoke-failed`, and
+`physicalPhoneEvidence:false`; those results must never be presented as phone
+evidence. Root owns launching that disposable browser and the later phone run.
