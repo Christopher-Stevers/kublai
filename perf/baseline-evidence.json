@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-11T01:48:54.441871+00:00",
+  "referenceDevice": "Google Pixel 9 Pro XL / Chrome",
+  "liveBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "phase0Complete": false,
+  "acceptedFullLabCaptures": 0,
+  "notes": [
+    "Ledger of verified evidence and missing measurements, not an accepted baseline or speed pass.",
+    "Earlier pilot/full captures with incomplete schema are invalid baselines.",
+    "Keep canonical production static bytes separate from auth-stubbed lab bytes."
+  ],
+  "sources": [
+    "perf/SPEED_PLAN.md",
+    "perf/artifacts/field-review-2026-11-10-2034.json",
+    "perf/artifacts/phase1-cache-static-2026-11-10.json",
+    "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/bootstrap-static-metrics.json"
+  ],
+  "rows": [
+    {
+      "measure": "Press feedback",
+      "target": "Same frame as finger down",
+      "state": "missing-baseline",
+      "evidence": "Prepared press behavior tests cover 200 flings and long holds; they do not measure physical frame latency."
+    },
+    {
+      "measure": "Visited screen paint",
+      "target": "p95 <100ms on every link and offline",
+      "state": "partial-field-observation",
+      "evidence": "Two materials tap-to-paint marks, 880ms reported p95; repeat-visit status and physical device unverified. Full repeated lab pending.",
+      "fieldSamples": 2
+    },
+    {
+      "measure": "Write feedback",
+      "target": "Same frame",
+      "state": "missing-baseline",
+      "evidence": "Prepared immediate-write and rollback behavior tests pass; no accepted gesture-to-frame result."
+    },
+    {
+      "measure": "Repeat launch to visible last screen",
+      "target": "<300ms; no network",
+      "state": "missing-comparable-baseline",
+      "evidence": "Field app-start marks exist (materials 2530ms, n=1; job 766ms reported p75, n=3; jobs 641ms, n=2). They do not establish repeat/icon launches. Tim requires sign-in confirmation, so cold offline private-screen painting is intentionally unavailable."
+    },
+    {
+      "measure": "Repeat launch to working",
+      "target": "<1000ms",
+      "state": "missing-baseline",
+      "evidence": "No accepted working-screen repeat-launch result."
+    },
+    {
+      "measure": "First Site visit to working",
+      "target": "<3000ms",
+      "state": "missing-baseline",
+      "evidence": "Full lab capture pending. Isolated auth stubs exclude real sign-in cost."
+    },
+    {
+      "measure": "Shared script",
+      "targetGzipBytes": 120000,
+      "state": "measured-static-bound",
+      "applicationGzipBytes": 384689,
+      "frameworkGzipBytes": 117929,
+      "totalGzipBytes": 502618,
+      "evidence": "Actual canonical dependency-map intersection, gzip9 per file. Application-only figure matches the plan's approximate 390 KB definition; framework-inclusive total remains the static gate definition. Conditional references can overstate requests."
+    },
+    {
+      "measure": "Heaviest screen, receiving",
+      "targetGzipBytes": 180000,
+      "state": "measured-static-bound",
+      "gzipBytes": 758531,
+      "evidence": "Canonical client-reference dependency union, including shared scripts; not a browser transfer trace."
+    },
+    {
+      "measure": "Cached sheet sharp after pinch",
+      "target": "Sharp in every frame",
+      "state": "missing-accepted-baseline",
+      "evidence": "Strict pilot now verifies viewer zoom rather than browser zoom, but does not establish every-frame physical sharpness."
+    },
+    {
+      "measure": "New Basement sheet readable",
+      "conditionalTargetMs": 3000,
+      "state": "spike-unproven",
+      "evidence": "Drawing corpus contains 100 unique sheets; current prototype components are incomplete and all go gates remain unproven."
+    },
+    {
+      "measure": "New Basement sheet fully sharp",
+      "conditionalTargetMs": 8000,
+      "state": "spike-unproven",
+      "evidence": "No complete compiled vector format or accepted device rendering result."
+    },
+    {
+      "measure": "Pan/zoom frame p99",
+      "targetMs": 16.7,
+      "target120HzMs": 8.3,
+      "state": "missing-baseline",
+      "evidence": "No accepted reference-device frame distribution."
+    },
+    {
+      "measure": "Script after deploy",
+      "targetGzipBytes": 100000,
+      "state": "controlled-proof-only",
+      "controlledSmallEditGzipBytes": 39423,
+      "phase1FoundationGzipBytes": 947890,
+      "evidence": "One string edit reuses 249/255 scripts and passes 100 KB. Full cache foundation fails 100 KB. These are changed-script upper bounds, not phone download traces; neither candidate is activated."
+    },
+    {
+      "measure": "Idle requests",
+      "target": "One stream, no polls",
+      "state": "partial-source-audit",
+      "refetchIntervalDeclarations": 29,
+      "evidence": "Single browser transport prepared, all 29 polling declarations retained until producer coverage is proven. Ten-minute measured idle capture pending."
+    },
+    {
+      "measure": "Server read p95",
+      "targetMs": 20,
+      "state": "missing-aggregate-baseline",
+      "evidence": "Server timing and query counts are live. Historical per-procedure journal durations are not a complete aggregate read-p95 baseline."
+    },
+    {
+      "measure": "Field INP p75",
+      "targetMs": 50,
+      "state": "early-field-signal",
+      "reportedP75Ms": 104,
+      "samples": 3,
+      "evidence": "web-vitals INP on phone viewport/fast tags. Too few samples for stable percentile; Pixel identity is not collected."
+    }
+  ]
+}
