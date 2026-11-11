@@ -3,6 +3,20 @@
   "source": "user-confirmed",
   "device": "Google Pixel 9 Pro XL",
   "browser": "Chrome",
-  "physicalMeasurementsCollected": false,
-  "note": "Do not infer physical-device results from the desktop CDP emulation profile. Browser version, frame rate, thermal state and actual connection are recorded when measuring."
+  "physicalMeasurementsCollected": true,
+  "note": "Desktop CDP emulation is not Pixel hardware evidence. Live field device attribution comes from participant confirmation, not viewport inference. Browser version, active refresh rate, thermal state and controlled link conditions remain unrecorded.",
+  "physicalEvidenceType": "participant-attributed uncontrolled live field telemetry",
+  "controlledPhysicalBenchmarksCompleted": false,
+  "physicalTargetProofAccepted": false,
+  "participantAttribution": {
+    "basis": "participant confirmation in task conversation",
+    "device": "Google Pixel 9 Pro XL",
+    "browser": "Chrome",
+    "usageStartApproxLocal": "2026-11-10T19:40:00-05:00",
+    "usageStartApproxUTC": "2026-11-11T00:40:00Z",
+    "timeApproximate": true,
+    "scope": "Participant confirms live app use during this window. Anonymous telemetry has no per-device or participant identifier, so individual rows are not independently model-verified.",
+    "controlledReferenceLink": false,
+    "controlledPhysicalTargetProof": false
+  }
 }

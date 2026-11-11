@@ -19,8 +19,13 @@ Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 ## Verified foundations
 
 - Server timing: 4 unit tests and 2 real PostgreSQL integration tests pass.
-- Disposable full schema plus seed successfully created and cleaned up: 2 jobs,
-  25 parts, list/order/slip, chat, and 40 rendered synthetic drawing sheets.
+- Initial disposable main-schema seed created and cleaned up: 2 jobs, 25 parts,
+  list/order/slip, chat, and 40 rendered synthetic drawing sheets. This was NOT
+  a complete service schema: narrowed diagnostics found missing standalone
+  `kublai_drawing_notification` (PostgreSQL 42P01). Pilot and partial full-run
+  artifacts are fixture-schema-incomplete and are not accepted baselines.
+  Lab export now includes standalone service schema modules from the exact
+  selected release source; read-endpoint preflight is required before timings.
 - Press audit: 1,408 JSX controls, including 246 raw buttons and 7 raw navigation
   handlers. The AST inventory uses conservative classifications, not automatic
   conversion of Accept, Delete, or money actions.

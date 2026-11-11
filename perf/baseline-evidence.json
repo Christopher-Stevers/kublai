@@ -27,14 +27,14 @@
       "measure": "Visited screen paint",
       "target": "p95 <100ms on every link and offline",
       "state": "partial-field-observation",
-      "evidence": "Two materials tap-to-paint marks, 880ms reported p95; repeat-visit status and physical device unverified. Full repeated lab pending.",
+      "evidence": "Two materials tap-to-paint marks have a descriptive nearest-rank p95 of 880ms (n=2), not statistically sufficient p95 proof. Participant confirms Pixel 9 Pro XL/Chrome use during the field window; anonymous rows are not independently device-linked and repeat-visit status is unknown. Controlled reference links and complete lab repeatability remain unproven.",
       "fieldSamples": 2
     },
     {
       "measure": "Write feedback",
       "target": "Same frame",
       "state": "missing-baseline",
-      "evidence": "Prepared immediate-write and rollback behavior tests pass; no accepted gesture-to-frame result."
+      "evidence": "Double-rAF write-to-paint marks indicate paint opportunities, not same-frame feedback or physical display proof. They start at the local write boundary and can exclude earlier gesture-validation delay. No accepted gesture-to-frame result."
     },
     {
       "measure": "Repeat launch to visible last screen",

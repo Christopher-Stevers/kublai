@@ -1,0 +1,11 @@
+{
+  "basis": "participant confirmation in task conversation",
+  "device": "Google Pixel 9 Pro XL",
+  "browser": "Chrome",
+  "usageStartApproxLocal": "2026-11-10T19:40:00-05:00",
+  "usageStartApproxUTC": "2026-11-11T00:40:00Z",
+  "timeApproximate": true,
+  "scope": "Participant confirms live app use during this window. Anonymous telemetry has no per-device or participant identifier, so individual rows are not independently model-verified.",
+  "controlledReferenceLink": false,
+  "controlledPhysicalTargetProof": false
+}

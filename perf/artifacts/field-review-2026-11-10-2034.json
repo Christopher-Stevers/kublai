@@ -187,5 +187,18 @@
       "p95Ms": 1836
     }
   ],
-  "physicalDeviceEvidence": "Unknown: device tag is viewport class, not verified Pixel identity; field data is separate from lab emulation."
+  "physicalDeviceEvidence": "Participant-attributed Pixel 9 Pro XL/Chrome usage window; anonymous rows are not independently device-identified. Uncontrolled field telemetry, not controlled target proof.",
+  "participantAttribution": {
+    "basis": "participant confirmation in task conversation",
+    "device": "Google Pixel 9 Pro XL",
+    "browser": "Chrome",
+    "usageStartApproxLocal": "2026-11-10T19:40:00-05:00",
+    "usageStartApproxUTC": "2026-11-11T00:40:00Z",
+    "timeApproximate": true,
+    "scope": "Participant confirms live app use during this window. Anonymous telemetry has no per-device or participant identifier, so individual rows are not independently model-verified.",
+    "controlledReferenceLink": false,
+    "controlledPhysicalTargetProof": false
+  },
+  "statisticalStatus": "Three INP callbacks are an early flag only, not a statistically sufficient p75 or proof of a target. Raw EventTiming interactions are not independent INP observations; current collector sampling bias remains a limitation.",
+  "originContextLimitation": "Original collector tags final INP/LCP at callback-time pathname/link. Originating earlier SPA screen/network may differ; old context tags are reported, not verified origin context. Prepared timeline attribution changes do not retroactively validate these rows."
 }
