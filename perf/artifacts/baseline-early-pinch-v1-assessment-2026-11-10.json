@@ -1,0 +1,34 @@
+{
+  "protocol": "early-pinch-v1: open preview, assert viewer pinch, await physical PDF coverage at50ms polling",
+  "acceptedPerformanceBaseline": false,
+  "completeCaptures": 2,
+  "samplesPerCapture": 120,
+  "repeatabilityPassed": false,
+  "thresholdRatio": 0.1,
+  "failures": [
+    "opensheetpinch/Site: independent-run medians differ by more than 10% (972.6559320000233 vs 1431.8644429999404ms)"
+  ],
+  "rawFiles": [
+    {
+      "path": "perf/artifacts/baseline-early-pinch-v1-1-2026-11-10.json",
+      "sha256": "8c115e9d818b9f65220e56773cb32060f5f0cbeca3f1cdec228114732016ce6b"
+    },
+    {
+      "path": "perf/artifacts/baseline-early-pinch-v1-2-2026-11-10.json",
+      "sha256": "b1e09992ef59c4f6d93492d2229b579774f3b238460cf1fe1818f8cba7844b7a"
+    }
+  ],
+  "limitations": [
+    "Clerk is stubbed; this is not sign-in startup evidence.",
+    "Desktop Chromium mobile emulation, not a controlled Pixel hardware benchmark.",
+    "Stock next start transport, not the live Brotli static handler; original captures retained no Content-Encoding headers.",
+    "Wallclock durations include automation/assertion overhead; double-rAF browser marks are paint-opportunity proxies, not same-frame proof.",
+    "Synthetic dataset: 2 jobs, 25 parts, one list/order/slip, chat and 40 pages; not production-volume or drawing-quality proof.",
+    "Normal production traffic and desktop activity are uncontrolled; other agents held tests/builds during this pair.",
+    "No twenty-run unchanged-build false-alarm proof."
+  ],
+  "databaseLogSummary": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  }
+}

@@ -6,11 +6,28 @@ import {
   checkRepeatability,
   READ_PREFLIGHT_PROCEDURES,
 } from "./check.mjs";
+import {
+  HARNESS_FILES,
+  HARNESS_FINGERPRINT_ALGORITHM,
+} from "./harness-fingerprint.mjs";
 let reportSequence = 0;
 const report = () => {
   const timestamp = new Date(++reportSequence).toISOString();
   return {
     timestamp,
+    harnessFingerprint: "c".repeat(64),
+    harnessFingerprintAlgorithm: HARNESS_FINGERPRINT_ALGORITHM,
+    harnessFileCount: HARNESS_FILES.length,
+    harnessVerification: {
+      before: "c".repeat(64),
+      after: "c".repeat(64),
+      immutable: true,
+    },
+    harnessToolchain: {
+      node: "test-node",
+      playwright: "test-playwright",
+      browser: "test-browser",
+    },
     sourceBuild: "a".repeat(64),
     sourceFingerprint: "b".repeat(64),
     health: {
@@ -113,4 +130,28 @@ test("fixture and database failures cannot become accepted timing evidence", () 
     mutate(next);
     assert.ok(compareReports(report(), next).length);
   }
+});
+
+test("different journey protocols cannot be compared", () => {
+  const first = report(),
+    next = report();
+  first.protocol = { id: "early-pinch-v1" };
+  next.protocol = { id: "ready-then-pinch-v2" };
+  assert.ok(compareReports(first, next).length);
+  assert.ok(checkRepeatability(first, next).length);
+});
+
+test("changed frozen harness or mismatched method blocks comparison", () => {
+  const first = report(),
+    next = report();
+  next.harnessFingerprint = "d".repeat(64);
+  next.harnessVerification = {
+    before: next.harnessFingerprint,
+    after: next.harnessFingerprint,
+    immutable: true,
+  };
+  assert.ok(compareReports(first, next).length);
+  assert.ok(checkRepeatability(first, next).length);
+  next.harnessVerification.after = "e".repeat(64);
+  assert.ok(compareReports(report(), next).length);
 });

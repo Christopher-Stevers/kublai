@@ -171,35 +171,7 @@ export async function sendchat({ page, run }) {
   ).toBeVisible();
   await painted(page);
 }
-export async function opensheetpinch({ page, cdp }) {
-  await page
-    .getByRole("button", { name: `Open ${fixture.sheetName}`, exact: true })
-    .click();
-  await expect(
-    page.locator("[data-drawing-image-layer] img").first(),
-  ).toBeVisible();
-  const surface = page.locator("[data-drawing-arc-canvas]");
-  await expect(surface).toBeVisible();
-  await expect(surface).toHaveCSS("touch-action", "none");
-  const layer = page.locator("[data-drawing-sheet-layer]");
-  const before = await layer.boundingBox();
-  const frame = await surface.boundingBox();
-  if (!before?.width || !frame?.width)
-    throw new Error("Drawing viewport is not laid out");
-  const nativeBefore = await page.evaluate(() => visualViewport?.scale ?? 1);
-  await cdp.send("Input.synthesizePinchGesture", {
-    x: Math.round(frame.x + frame.width / 2),
-    y: Math.round(frame.y + frame.height / 2),
-    scaleFactor: 2,
-    relativeSpeed: 800,
-    gestureSourceType: "touch",
-  });
-  await expect
-    .poll(() => page.evaluate(() => visualViewport?.scale ?? 1))
-    .toBeCloseTo(nativeBefore, 2);
-  await expect
-    .poll(async () => (await layer.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(before.width * 1.4);
+async function waitForPdfSharp(page) {
   // Sharp means physical pixel coverage, not a timeout or a merely mounted canvas.
   await expect
     .poll(
@@ -246,6 +218,83 @@ export async function opensheetpinch({ page, cdp }) {
       { timeout: 120000, intervals: [50] },
     )
     .toBe(true);
+}
+export async function opensheetpinch({ page, cdp }) {
+  const readyProtocol =
+    process.env.PERF_SHEET_PROTOCOL === "ready-then-pinch-v2";
+  const openedAt = readyProtocol
+    ? await page.evaluate(() => performance.now())
+    : null;
+  await page
+    .getByRole("button", { name: `Open ${fixture.sheetName}`, exact: true })
+    .click();
+  await expect(
+    page.locator("[data-drawing-image-layer] img").first(),
+  ).toBeVisible();
+  const surface = page.locator("[data-drawing-arc-canvas]");
+  await expect(surface).toBeVisible();
+  await expect(surface).toHaveCSS("touch-action", "none");
+  const layer = page.locator("[data-drawing-sheet-layer]");
+  if (readyProtocol) {
+    await waitForPdfSharp(page);
+    await page.evaluate(
+      (start) =>
+        performance.measure("lab:sheet-open-to-ready", {
+          start,
+          end: performance.now(),
+        }),
+      openedAt,
+    );
+  }
+  const before = await layer.boundingBox();
+  const frame = await surface.boundingBox();
+  if (!before?.width || !frame?.width)
+    throw new Error("Drawing viewport is not laid out");
+  const nativeBefore = await page.evaluate(() => visualViewport?.scale ?? 1);
+  const pinchStart = readyProtocol
+    ? await page.evaluate(() => performance.now())
+    : null;
+  await cdp.send("Input.synthesizePinchGesture", {
+    x: Math.round(frame.x + frame.width / 2),
+    y: Math.round(frame.y + frame.height / 2),
+    scaleFactor: 2,
+    relativeSpeed: 800,
+    gestureSourceType: "touch",
+  });
+  const gestureEnd = readyProtocol
+    ? await page.evaluate(() => performance.now())
+    : null;
+  if (readyProtocol)
+    await page.evaluate(
+      ([start, end]) =>
+        performance.measure("lab:gesture-duration", { start, end }),
+      [pinchStart, gestureEnd],
+    );
+  await expect
+    .poll(() => page.evaluate(() => visualViewport?.scale ?? 1))
+    .toBeCloseTo(nativeBefore, 2);
+  await expect
+    .poll(async () => (await layer.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before.width * 1.4);
+  await waitForPdfSharp(page);
+  if (readyProtocol)
+    await page.evaluate(
+      (start) =>
+        performance.measure("lab:cached-pinch-to-sharp", {
+          start,
+          end: performance.now(),
+        }),
+      pinchStart,
+    );
+  if (readyProtocol)
+    await page.evaluate(
+      (start) =>
+        performance.measure("lab:gesture-end-to-sharp", {
+          start,
+          end: performance.now(),
+        }),
+      gestureEnd,
+    );
   await painted(page);
 }
 export async function staticMetrics() {

@@ -1,0 +1,32 @@
+{
+  "status": "diagnostic-only",
+  "raw": "perf/artifacts/sheet-ready-then-pinch-v2-calibration-2026-11-10.json",
+  "protocol": {
+    "id": "ready-then-pinch-v2",
+    "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+    "coveragePollMs": 50
+  },
+  "harnessFingerprint": "c7545ab50e8929a2f2c31044e2310df3e73e52cef1dee1aec3526d4dd29bcb7b",
+  "samples": 5,
+  "link": "Site",
+  "outerMedianMs": 1482.4205819999988,
+  "componentMedianMs": {
+    "sheet-open-to-ready": 884.1000003814697,
+    "gesture-duration": 296.5,
+    "cached-pinch-to-sharp": 539,
+    "gesture-end-to-sharp": 241.40000009536743
+  },
+  "database": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "limitations": [
+    "Separate calibration; not an independent full baseline pair or target proof.",
+    "Other agents could run focused tests; no dedicated quiet host window.",
+    "Initial opening readiness stays inside the outer stopwatch.",
+    "Gesture-end-to-sharp includes 50ms coverage polling and a paint opportunity, not physical every-frame sharpness.",
+    "Immediate early-pinch-v1 bimodality remains unresolved; protocols cannot be compared for improvement.",
+    "Clerk is stubbed; stock next start transport differs from canonical production Brotli wrapper.",
+    "Old v1 raw captures have no in-run frozen harness attestation and remain unchanged."
+  ]
+}

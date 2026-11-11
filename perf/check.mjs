@@ -1,4 +1,8 @@
 import fs from "node:fs";
+import {
+  HARNESS_FINGERPRINT_ALGORITHM,
+  HARNESS_FILES,
+} from "./harness-fingerprint.mjs";
 import { pathToFileURL } from "node:url";
 export const budgets = JSON.parse(
   fs.readFileSync(new URL("./budgets.json", import.meta.url)),
@@ -21,6 +25,15 @@ export const READ_PREFLIGHT_PROCEDURES = [
 ];
 export function validateReport(report) {
   const errors = [];
+  if (
+    !/^[a-f0-9]{64}$/.test(report?.harnessFingerprint ?? "") ||
+    report.harnessFingerprintAlgorithm !== HARNESS_FINGERPRINT_ALGORITHM ||
+    report.harnessFileCount !== HARNESS_FILES.length ||
+    report.harnessVerification?.before !== report.harnessFingerprint ||
+    report.harnessVerification?.after !== report.harnessFingerprint ||
+    report.harnessVerification?.immutable !== true
+  )
+    errors.push("Frozen harness method binding is missing or changed");
   if (
     !/^[a-f0-9]{64}$/.test(report?.sourceBuild ?? "") ||
     !/^[a-f0-9]{64}$/.test(report?.sourceFingerprint ?? "")
@@ -108,8 +121,22 @@ export function validateReport(report) {
   return errors;
 }
 const median = (rows) => [...rows].sort((a, b) => a - b)[2];
+const protocolId = (report) =>
+  typeof report?.protocol === "string"
+    ? report.protocol
+    : (report?.protocol?.id ?? "legacy-unlabeled");
 export function compareReports(before, after) {
   const errors = [...validateReport(before), ...validateReport(after)];
+  if (
+    before?.harnessFingerprint !== after?.harnessFingerprint ||
+    JSON.stringify(before?.harnessToolchain) !==
+      JSON.stringify(after?.harnessToolchain)
+  )
+    errors.push(
+      "Timing harness or toolchain differs; timings cannot be compared",
+    );
+  if (protocolId(before) !== protocolId(after))
+    errors.push("Journey protocol differs; timings cannot be compared");
   if (errors.length) return errors;
   for (const journey of budgets.journeys)
     for (const link of Object.keys(budgets.links)) {
@@ -149,6 +176,16 @@ export function compareReports(before, after) {
 /** Phase 0 uses two independent full runs, separate from a deploy regression check. */
 export function checkRepeatability(first, second) {
   const errors = [...validateReport(first), ...validateReport(second)];
+  if (
+    first?.harnessFingerprint !== second?.harnessFingerprint ||
+    JSON.stringify(first?.harnessToolchain) !==
+      JSON.stringify(second?.harnessToolchain)
+  )
+    errors.push(
+      "Timing harness or toolchain differs; repeatability cannot be inferred",
+    );
+  if (protocolId(first) !== protocolId(second))
+    errors.push("Journey protocol differs; repeatability cannot be inferred");
   if (errors.length) return errors;
   if (
     !first.timestamp ||

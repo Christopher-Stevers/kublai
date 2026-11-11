@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Run only under perf/lab/database.sh, with its disposable database alive.
+harness_root=${PERF_HARNESS_DIR:?Freeze the timing harness first}
 if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
-  snapshot=$(node perf/refresh-lab.mjs)
+  snapshot=$(node "$harness_root/perf/refresh-lab.mjs")
 else
-  snapshot=$(node perf/create-lab-snapshot.mjs)
+  snapshot=$(node "$harness_root/perf/create-lab-snapshot.mjs")
 fi
 export FOREMANHQ_BACKGROUND_MODE=separate
 export BIM_WORKER_DISABLED=1
@@ -15,6 +16,8 @@ export STRIPE_SECRET_KEY=sk_test_speed_lab_only
 export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_speed_lab_only
 export NEXT_PUBLIC_BUILD_ID=isolated-speed-pilot
 unset NEXT_DIST_DIR NEXT_TSCONFIG_PATH FOREMANHQ_RUNTIME_DIR FOREMANHQ_PUBLIC_DIR
+export PERF_LOG_DIR="$snapshot/data/perf"
+export PERF_FIXTURES="$snapshot/perf/fixtures.json"
 cd "$snapshot"
 printf '%s\n' "$snapshot" > /tmp/foremanhq-speed-latest-snapshot
 while [[ -z "${PERF_REUSE_SNAPSHOT:-}" ]] && ! ./node_modules/.bin/next build --webpack > "$snapshot/build.log" 2>&1; do
@@ -35,5 +38,5 @@ for attempt in $(seq 1 120); do
   if curl -fsS http://127.0.0.1:3481/api/perf-lab > /dev/null; then break; fi
   sleep 1
 done
-PERF_BASE_URL=http://127.0.0.1:3481 node perf/preflight.mjs
-PERF_PILOT=1 PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER=./perf/journeys.mjs PERF_OUTPUT="$snapshot/pilot.json" node perf/run.mjs
+PERF_BASE_URL=http://127.0.0.1:3481 node "$harness_root/perf/preflight.mjs"
+PERF_PILOT=1 PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER="$harness_root/perf/journeys.mjs" PERF_OUTPUT="$snapshot/pilot.json" node "$harness_root/perf/run.mjs"

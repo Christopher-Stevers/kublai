@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2200,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2195,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash"
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "provenance": "isolated-seeded-app",
+  "cpuSlowdown": 4,
+  "build": "55w1LEudb4gQYyD5CYmSE",
+  "timestamp": "2026-11-11T01:33:44.348Z",
+  "status": "narrowed-diagnostic-complete",
+  "device": {
+    "kind": "desktop-chromium-mobile-emulation",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "physicalPixelMeasured": false
+  },
+  "samples": [
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 2344.5
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 0,
+      "durationMs": 2631.7550899999987,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 2092.5
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 1,
+      "durationMs": 2708.483070000002,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 1737.6000003814697
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 2,
+      "durationMs": 1958.350695999994,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 1212.9000000953674
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 3,
+      "durationMs": 1608.407619000005,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 1445.0999999046326
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "run": 4,
+      "durationMs": 2508.4363929999963,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 927.5
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 1480.0845030000055,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 905.0999999046326
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 1476.4055910000025,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 993.1999998092651
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 1498.061898999993,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 1024.6999998092651
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 1545.8237260000024,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 941.9000000953674
+        }
+      ],
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 1464.2442569999985,
+      "variant": "operation"
+    }
+  ],
+  "acceptedPerformanceBaseline": false,
+  "fixtureSchemaCompleteForSelectedEndpoints": true,
+  "readPreflight": {
+    "status": "passed",
+    "build": "55w1LEudb4gQYyD5CYmSE",
+    "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2200,
+    "sourceVerification": {
+      "stage": "after-lab-transforms",
+      "unchangedFilesChecked": 2195,
+      "allowedLabTransforms": [
+        "next.config.js",
+        "tsconfig.json",
+        "src/server/db/index.ts",
+        "src/server/background/hints.ts",
+        "src/server/background/worker.ts"
+      ],
+      "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+      "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash"
+    },
+    "sourceBinding": {
+      "method": "frozen-release-inputs-sha256",
+      "algorithm": "foremanhq-lab-source-v1",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+    },
+    "authentication": "stubbed-seeded-user",
+    "results": [
+      {
+        "procedure": "user.getMe",
+        "status": "ok"
+      },
+      {
+        "procedure": "notifications.identity",
+        "status": "ok"
+      },
+      {
+        "procedure": "push.identity",
+        "status": "ok"
+      },
+      {
+        "procedure": "job.getJob",
+        "status": "ok"
+      },
+      {
+        "procedure": "materialList.getMaterialList",
+        "status": "ok"
+      },
+      {
+        "procedure": "materialList.getOrderById",
+        "status": "ok"
+      },
+      {
+        "procedure": "drawings.listSets",
+        "status": "ok"
+      },
+      {
+        "procedure": "drawings.getSet",
+        "status": "ok"
+      },
+      {
+        "procedure": "drawingsWorkspace.get",
+        "status": "ok"
+      },
+      {
+        "procedure": "drawingsWorkspace.changes",
+        "status": "ok"
+      },
+      {
+        "procedure": "chat.getOverview",
+        "status": "ok"
+      },
+      {
+        "procedure": "chat.history",
+        "status": "ok"
+      },
+      {
+        "procedure": "rooms.getJobRoomCount",
+        "status": "ok"
+      },
+      {
+        "procedure": "notifications.overview",
+        "status": "ok"
+      }
+    ]
+  },
+  "databaseErrorSummary": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "method": "Five Basement and five Office samples. Viewer rectangle enlargement and unchanged native visualViewport scale asserted; physical PDF canvas coverage predicate unchanged. Old coarse completion polling still included; full baseline uses 50ms completion polling.",
+  "limitations": [
+    "Desktop mobile emulation, not a physical Pixel result.",
+    "This is a narrowed fixture/gesture diagnostic, not a full baseline or repeatability proof."
+  ]
+}

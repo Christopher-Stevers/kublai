@@ -1,0 +1,2267 @@
+{
+  "version": 1,
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2200,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2195,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash"
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "harnessFingerprint": "c7545ab50e8929a2f2c31044e2310df3e73e52cef1dee1aec3526d4dd29bcb7b",
+  "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+  "harnessFileCount": 29,
+  "harnessToolchain": {
+    "node": "v26.8.2",
+    "playwright": "1.59.1",
+    "browser": "152.0.7977.82"
+  },
+  "harnessVerification": {
+    "before": "c7545ab50e8929a2f2c31044e2310df3e73e52cef1dee1aec3526d4dd29bcb7b",
+    "after": "c7545ab50e8929a2f2c31044e2310df3e73e52cef1dee1aec3526d4dd29bcb7b",
+    "immutable": true
+  },
+  "provenance": "isolated-seeded-app",
+  "cpuSlowdown": 4,
+  "build": "55w1LEudb4gQYyD5CYmSE",
+  "timestamp": "2026-11-11T02:56:06.059Z",
+  "status": "complete",
+  "protocol": {
+    "id": "ready-then-pinch-v2",
+    "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+    "coveragePollMs": 50
+  },
+  "device": {
+    "kind": "desktop-chromium-mobile-emulation",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "physicalPixelMeasured": false
+  },
+  "samples": [
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 921.3999996185303
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 858
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 299
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 539
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 241.40000009536743
+        }
+      ],
+      "diagnostics": {
+        "drawing": [
+          {
+            "startMs": 4293.599999904633,
+            "loadMs": 0,
+            "renderMs": 617,
+            "viewToSharpMs": 619.5999999046326,
+            "pixels": 1169883,
+            "outcome": "sharp"
+          },
+          {
+            "startMs": 5020.799999713898,
+            "loadMs": 0,
+            "renderMs": 83.5,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5105.099999904633,
+            "loadMs": 0,
+            "renderMs": 51,
+            "viewToSharpMs": null,
+            "pixels": 920700,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5156.900000095367,
+            "loadMs": 0,
+            "renderMs": 44.39999961853027,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5202,
+            "loadMs": 0,
+            "renderMs": 42.90000009536743,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5247.699999809265,
+            "loadMs": 0,
+            "renderMs": 78.5,
+            "viewToSharpMs": null,
+            "pixels": 1400976,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5341,
+            "loadMs": 0,
+            "renderMs": 73.19999980926514,
+            "viewToSharpMs": null,
+            "pixels": 1414017,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5415.400000095367,
+            "loadMs": 0,
+            "renderMs": 33.19999980926514,
+            "viewToSharpMs": null,
+            "pixels": 452396,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5450.900000095367,
+            "loadMs": 0,
+            "renderMs": 34.19999980926514,
+            "viewToSharpMs": 249.80000019073486,
+            "pixels": 452396,
+            "outcome": "sharp"
+          }
+        ],
+        "resources": [
+          {
+            "kind": "rpc",
+            "startMs": 4122.699999809265,
+            "durationMs": 16.59999990463257,
+            "encodedBytes": 16002,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4212.799999713898,
+            "durationMs": 53.200000286102295,
+            "encodedBytes": 119,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4248.799999713898,
+            "durationMs": 17.300000190734863,
+            "encodedBytes": 1217,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4278.199999809265,
+            "durationMs": -7.5,
+            "encodedBytes": 0,
+            "transferBytes": 300
+          },
+          {
+            "kind": "pdf",
+            "startMs": 4413.299999713898,
+            "durationMs": 6.5,
+            "encodedBytes": 613386,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4436.799999713898,
+            "durationMs": 5.800000190734863,
+            "encodedBytes": 708370,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5070.799999713898,
+            "durationMs": 14.700000286102295,
+            "encodedBytes": 108394,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5073.199999809265,
+            "durationMs": 12.300000190734863,
+            "encodedBytes": 115620,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5073.199999809265,
+            "durationMs": 12.599999904632568,
+            "encodedBytes": 111106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5073.299999713898,
+            "durationMs": 11.600000381469727,
+            "encodedBytes": 106100,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5133.599999904633,
+            "durationMs": 14.199999809265137,
+            "encodedBytes": 121510,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5134.099999904633,
+            "durationMs": 13.400000095367432,
+            "encodedBytes": 120958,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5134.699999809265,
+            "durationMs": 13,
+            "encodedBytes": 115208,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5134.699999809265,
+            "durationMs": 13.099999904632568,
+            "encodedBytes": 108486,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5175,
+            "durationMs": 11.5,
+            "encodedBytes": 107646,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5175.5,
+            "durationMs": 11,
+            "encodedBytes": 103774,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5176.199999809265,
+            "durationMs": 10.5,
+            "encodedBytes": 103538,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5184.799999713898,
+            "durationMs": 6.200000286102295,
+            "encodedBytes": 63722,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5208.299999713898,
+            "durationMs": 6.700000286102295,
+            "encodedBytes": 102614,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5242.099999904633,
+            "durationMs": 11.099999904632568,
+            "encodedBytes": 70834,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5245.5,
+            "durationMs": 8.400000095367432,
+            "encodedBytes": 105582,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5245.599999904633,
+            "durationMs": 8.199999809265137,
+            "encodedBytes": 114290,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5251.5,
+            "durationMs": 7.5,
+            "encodedBytes": 107112,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5271.299999713898,
+            "durationMs": 10.800000190734863,
+            "encodedBytes": 106138,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5273,
+            "durationMs": 9.699999809265137,
+            "encodedBytes": 102784,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5273.400000095367,
+            "durationMs": 9.399999618530273,
+            "encodedBytes": 90246,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5280.099999904633,
+            "durationMs": 8.599999904632568,
+            "encodedBytes": 81320,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5296.299999713898,
+            "durationMs": 9,
+            "encodedBytes": 76556,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5298.799999713898,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 54562,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5302.799999713898,
+            "durationMs": 6.5,
+            "encodedBytes": 74118,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5308.400000095367,
+            "durationMs": 5.299999713897705,
+            "encodedBytes": 50846,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5315.199999809265,
+            "durationMs": 7.5,
+            "encodedBytes": 59622,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5316.599999904633,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 80986,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5320.299999713898,
+            "durationMs": 7.700000286102295,
+            "encodedBytes": 55108,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5322.799999713898,
+            "durationMs": 5.300000190734863,
+            "encodedBytes": 57068,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5342.299999713898,
+            "durationMs": 9.100000381469727,
+            "encodedBytes": 44594,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5345.400000095367,
+            "durationMs": 6.799999713897705,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5354.799999713898,
+            "durationMs": 7.400000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5355.599999904633,
+            "durationMs": 6.699999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5380.400000095367,
+            "durationMs": 10.299999713897705,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5382.900000095367,
+            "durationMs": 8,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5383.299999713898,
+            "durationMs": 7.800000190734863,
+            "encodedBytes": 103694,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5383.900000095367,
+            "durationMs": 6.199999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5399.900000095367,
+            "durationMs": 6.599999904632568,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          }
+        ],
+        "browserScale": 1,
+        "staticResponseEncodings": [
+          "gzip",
+          "identity"
+        ]
+      },
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 0,
+      "durationMs": 1531.8629740000006,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 897.0999999046326
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 808.8000001907349
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 293.59999990463257
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 542.4000000953674
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 249.90000009536743
+        }
+      ],
+      "diagnostics": {
+        "drawing": [
+          {
+            "startMs": 4191.5,
+            "loadMs": 0,
+            "renderMs": 607.4000000953674,
+            "viewToSharpMs": 610.9000000953674,
+            "pixels": 1169883,
+            "outcome": "sharp"
+          },
+          {
+            "startMs": 4924.699999809265,
+            "loadMs": 0,
+            "renderMs": 122.2000002861023,
+            "viewToSharpMs": null,
+            "pixels": 893700,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5072.799999713898,
+            "loadMs": 0,
+            "renderMs": 68.2000002861023,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5144.5,
+            "loadMs": 0,
+            "renderMs": 84,
+            "viewToSharpMs": null,
+            "pixels": 1540701,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5229.299999713898,
+            "loadMs": 0,
+            "renderMs": 92.2000002861023,
+            "viewToSharpMs": null,
+            "pixels": 1555605,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5322.799999713898,
+            "loadMs": 0,
+            "renderMs": 30.600000381469727,
+            "viewToSharpMs": null,
+            "pixels": 400660,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5354.699999809265,
+            "loadMs": 0,
+            "renderMs": 32.5,
+            "viewToSharpMs": 252.09999990463257,
+            "pixels": 401258,
+            "outcome": "sharp"
+          }
+        ],
+        "resources": [
+          {
+            "kind": "rpc",
+            "startMs": 4055.2999997138977,
+            "durationMs": 12.900000095367432,
+            "encodedBytes": 16002,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4126.199999809265,
+            "durationMs": 4.5,
+            "encodedBytes": 119,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4133.599999904633,
+            "durationMs": -18.90000009536743,
+            "encodedBytes": 0,
+            "transferBytes": 300
+          },
+          {
+            "kind": "script",
+            "startMs": 4169.799999713898,
+            "durationMs": 6.700000286102295,
+            "encodedBytes": 1217,
+            "transferBytes": 0
+          },
+          {
+            "kind": "pdf",
+            "startMs": 4313,
+            "durationMs": 7.5,
+            "encodedBytes": 613386,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4336.5,
+            "durationMs": 7.900000095367432,
+            "encodedBytes": 708370,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4975.400000095367,
+            "durationMs": 12.099999904632568,
+            "encodedBytes": 108394,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4977.099999904633,
+            "durationMs": 11.099999904632568,
+            "encodedBytes": 111106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4977.5,
+            "durationMs": 10.900000095367432,
+            "encodedBytes": 115620,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4977.599999904633,
+            "durationMs": 10.800000190734863,
+            "encodedBytes": 106100,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5004.799999713898,
+            "durationMs": 9.400000095367432,
+            "encodedBytes": 121510,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5005.5,
+            "durationMs": 8.900000095367432,
+            "encodedBytes": 120958,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5008.299999713898,
+            "durationMs": 6.100000381469727,
+            "encodedBytes": 115208,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5025.5,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 108486,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5039,
+            "durationMs": 6.599999904632568,
+            "encodedBytes": 107646,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5044.799999713898,
+            "durationMs": 5.800000190734863,
+            "encodedBytes": 103774,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5071.5,
+            "durationMs": 7.199999809265137,
+            "encodedBytes": 103538,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5073.5,
+            "durationMs": 5.099999904632568,
+            "encodedBytes": 63722,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5091.5,
+            "durationMs": 8.199999809265137,
+            "encodedBytes": 102614,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5092,
+            "durationMs": 8.099999904632568,
+            "encodedBytes": 70834,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5107.699999809265,
+            "durationMs": 9.400000095367432,
+            "encodedBytes": 105582,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5108.299999713898,
+            "durationMs": 8.5,
+            "encodedBytes": 114290,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5142,
+            "durationMs": 9.5,
+            "encodedBytes": 107112,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5142.099999904633,
+            "durationMs": 9.400000095367432,
+            "encodedBytes": 106138,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5161.299999713898,
+            "durationMs": 8.700000286102295,
+            "encodedBytes": 102784,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5162.400000095367,
+            "durationMs": 6.899999618530273,
+            "encodedBytes": 90246,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5168.099999904633,
+            "durationMs": 6.300000190734863,
+            "encodedBytes": 81320,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5176.599999904633,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 76556,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5185.599999904633,
+            "durationMs": 6.199999809265137,
+            "encodedBytes": 54562,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5188.5,
+            "durationMs": 5.099999904632568,
+            "encodedBytes": 74118,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5191,
+            "durationMs": 5.900000095367432,
+            "encodedBytes": 50846,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5196.299999713898,
+            "durationMs": 5.200000286102295,
+            "encodedBytes": 59622,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5203,
+            "durationMs": 11.199999809265137,
+            "encodedBytes": 80986,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5203.799999713898,
+            "durationMs": 9.800000190734863,
+            "encodedBytes": 55108,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5206.5,
+            "durationMs": 8.599999904632568,
+            "encodedBytes": 57068,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5209.199999809265,
+            "durationMs": 5.900000095367432,
+            "encodedBytes": 44594,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5224.299999713898,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5228.599999904633,
+            "durationMs": 5.199999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5248.599999904633,
+            "durationMs": 12,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5251.799999713898,
+            "durationMs": 9.800000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5252.299999713898,
+            "durationMs": 9.400000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5252.799999713898,
+            "durationMs": 9.100000381469727,
+            "encodedBytes": 103694,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5285,
+            "durationMs": 4.699999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5289.799999713898,
+            "durationMs": 4.400000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          }
+        ],
+        "browserScale": 1,
+        "staticResponseEncodings": [
+          "gzip",
+          "identity"
+        ]
+      },
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 1,
+      "durationMs": 1512.8400180000008,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 850.6999998092651
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 788.1000003814697
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 296.5
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 547.5
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 252.7000002861023
+        }
+      ],
+      "diagnostics": {
+        "drawing": [
+          {
+            "startMs": 4269.900000095367,
+            "loadMs": 0,
+            "renderMs": 593.8000001907349,
+            "viewToSharpMs": 596.4000000953674,
+            "pixels": 1169883,
+            "outcome": "sharp"
+          },
+          {
+            "startMs": 4976.599999904633,
+            "loadMs": 0,
+            "renderMs": 98.90000009536743,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5078.299999713898,
+            "loadMs": 0,
+            "renderMs": 49.80000019073486,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5128.900000095367,
+            "loadMs": 0,
+            "renderMs": 64.59999990463257,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5197.200000286102,
+            "loadMs": 0,
+            "renderMs": 95.19999980926514,
+            "viewToSharpMs": null,
+            "pixels": 1440099,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5297.900000095367,
+            "loadMs": 0,
+            "renderMs": 85.90000009536743,
+            "viewToSharpMs": null,
+            "pixels": 1455003,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5385.400000095367,
+            "loadMs": 0,
+            "renderMs": 30.800000190734863,
+            "viewToSharpMs": null,
+            "pixels": 439838,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5423.300000190735,
+            "loadMs": 0,
+            "renderMs": 34.09999990463257,
+            "viewToSharpMs": 271.40000009536743,
+            "pixels": 439838,
+            "outcome": "sharp"
+          }
+        ],
+        "resources": [
+          {
+            "kind": "rpc",
+            "startMs": 4136.400000095367,
+            "durationMs": 9.300000190734863,
+            "encodedBytes": 16002,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4205.300000190735,
+            "durationMs": 6.699999809265137,
+            "encodedBytes": 119,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4212.599999904633,
+            "durationMs": -17.299999713897705,
+            "encodedBytes": 0,
+            "transferBytes": 300
+          },
+          {
+            "kind": "script",
+            "startMs": 4248.5,
+            "durationMs": 6.900000095367432,
+            "encodedBytes": 1217,
+            "transferBytes": 0
+          },
+          {
+            "kind": "pdf",
+            "startMs": 4384.300000190735,
+            "durationMs": 7,
+            "encodedBytes": 613386,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4406.800000190735,
+            "durationMs": 5.5,
+            "encodedBytes": 708370,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5028.400000095367,
+            "durationMs": 15.699999809265137,
+            "encodedBytes": 108394,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5029,
+            "durationMs": 14.700000286102295,
+            "encodedBytes": 111106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5029.5,
+            "durationMs": 14.300000190734863,
+            "encodedBytes": 115620,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5029.599999904633,
+            "durationMs": 13.900000095367432,
+            "encodedBytes": 106100,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5057.400000095367,
+            "durationMs": 6,
+            "encodedBytes": 121510,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5072.900000095367,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 120958,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5076.400000095367,
+            "durationMs": 8.699999809265137,
+            "encodedBytes": 115208,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5078.099999904633,
+            "durationMs": 7.400000095367432,
+            "encodedBytes": 108486,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5106.599999904633,
+            "durationMs": 6.600000381469727,
+            "encodedBytes": 107646,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5111.5,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 103538,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5125.700000286102,
+            "durationMs": 8.099999904632568,
+            "encodedBytes": 103774,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5126.5,
+            "durationMs": 7.700000286102295,
+            "encodedBytes": 63722,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5156.900000095367,
+            "durationMs": 8.300000190734863,
+            "encodedBytes": 102614,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5157.700000286102,
+            "durationMs": 7.399999618530273,
+            "encodedBytes": 70834,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5164.5,
+            "durationMs": 6.599999904632568,
+            "encodedBytes": 105582,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5195.099999904633,
+            "durationMs": 5.700000286102295,
+            "encodedBytes": 114290,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5210,
+            "durationMs": 11.400000095367432,
+            "encodedBytes": 107112,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5210.099999904633,
+            "durationMs": 11.700000286102295,
+            "encodedBytes": 106138,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5210.099999904633,
+            "durationMs": 11.900000095367432,
+            "encodedBytes": 102784,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5218.300000190735,
+            "durationMs": 7.299999713897705,
+            "encodedBytes": 90246,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5234.099999904633,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 81320,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5235.800000190735,
+            "durationMs": 4.900000095367432,
+            "encodedBytes": 76556,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5241.099999904633,
+            "durationMs": 5.200000286102295,
+            "encodedBytes": 54562,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5244.900000095367,
+            "durationMs": 3.8000001907348633,
+            "encodedBytes": 74118,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5253.300000190735,
+            "durationMs": 10.299999713897705,
+            "encodedBytes": 50846,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5254.099999904633,
+            "durationMs": 9.600000381469727,
+            "encodedBytes": 59622,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5256.700000286102,
+            "durationMs": 7.099999904632568,
+            "encodedBytes": 80986,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5260,
+            "durationMs": 6.800000190734863,
+            "encodedBytes": 55108,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5274.800000190735,
+            "durationMs": 7.699999809265137,
+            "encodedBytes": 57068,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5277.800000190735,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 44594,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5281.200000286102,
+            "durationMs": 5.699999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5293,
+            "durationMs": 6.300000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5312.599999904633,
+            "durationMs": 8.200000286102295,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5313.099999904633,
+            "durationMs": 8,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5313.099999904633,
+            "durationMs": 8.100000381469727,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5339.599999904633,
+            "durationMs": 5.900000095367432,
+            "encodedBytes": 103694,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5342.599999904633,
+            "durationMs": 5.100000381469727,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5350.5,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          }
+        ],
+        "browserScale": 1,
+        "staticResponseEncodings": [
+          "gzip",
+          "identity"
+        ]
+      },
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 2,
+      "durationMs": 1465.3791170000022,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 884.1000003814697
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 790.7999997138977
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 297.90000009536743
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 537.5
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 241.30000019073486
+        }
+      ],
+      "diagnostics": {
+        "drawing": [
+          {
+            "startMs": 4281,
+            "loadMs": 0,
+            "renderMs": 589.0999999046326,
+            "viewToSharpMs": 592.8000001907349,
+            "pixels": 1169883,
+            "outcome": "sharp"
+          },
+          {
+            "startMs": 5012.699999809265,
+            "loadMs": 0,
+            "renderMs": 87.09999990463257,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5102.099999904633,
+            "loadMs": 0,
+            "renderMs": 66.80000019073486,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5233.099999904633,
+            "loadMs": 0,
+            "renderMs": 80.5,
+            "viewToSharpMs": null,
+            "pixels": 1399113,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5316.5,
+            "loadMs": 0,
+            "renderMs": 89.09999990463257,
+            "viewToSharpMs": null,
+            "pixels": 1415880,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5410.299999713898,
+            "loadMs": 0,
+            "renderMs": 35.60000038146973,
+            "viewToSharpMs": null,
+            "pixels": 453145,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5447.5,
+            "loadMs": 0,
+            "renderMs": 33.59999990463257,
+            "viewToSharpMs": 257.59999990463257,
+            "pixels": 452396,
+            "outcome": "sharp"
+          }
+        ],
+        "resources": [
+          {
+            "kind": "rpc",
+            "startMs": 4141.799999713898,
+            "durationMs": 7.400000095367432,
+            "encodedBytes": 16002,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4217.199999809265,
+            "durationMs": 4.300000190734863,
+            "encodedBytes": 119,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4223.099999904633,
+            "durationMs": -22,
+            "encodedBytes": 0,
+            "transferBytes": 300
+          },
+          {
+            "kind": "script",
+            "startMs": 4258,
+            "durationMs": 4.699999809265137,
+            "encodedBytes": 1217,
+            "transferBytes": 0
+          },
+          {
+            "kind": "pdf",
+            "startMs": 4389.5,
+            "durationMs": 7.099999904632568,
+            "encodedBytes": 613386,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4411.5,
+            "durationMs": 5.299999713897705,
+            "encodedBytes": 708370,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5130.199999809265,
+            "durationMs": 13.900000095367432,
+            "encodedBytes": 108394,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5132.5,
+            "durationMs": 11.099999904632568,
+            "encodedBytes": 111106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5132.799999713898,
+            "durationMs": 11.600000381469727,
+            "encodedBytes": 115620,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5133.199999809265,
+            "durationMs": 10.900000095367432,
+            "encodedBytes": 106100,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5160.299999713898,
+            "durationMs": 10.5,
+            "encodedBytes": 121510,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5161,
+            "durationMs": 9.699999809265137,
+            "encodedBytes": 120958,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5164.5,
+            "durationMs": 6.299999713897705,
+            "encodedBytes": 115208,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5208.5,
+            "durationMs": 6.900000095367432,
+            "encodedBytes": 108486,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5230.900000095367,
+            "durationMs": 7.899999618530273,
+            "encodedBytes": 107646,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5231.299999713898,
+            "durationMs": 7.600000381469727,
+            "encodedBytes": 103774,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5238.099999904633,
+            "durationMs": 5.699999809265137,
+            "encodedBytes": 103538,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5242.599999904633,
+            "durationMs": 4,
+            "encodedBytes": 63722,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5249.799999713898,
+            "durationMs": 4.300000190734863,
+            "encodedBytes": 102614,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5256.299999713898,
+            "durationMs": 6.400000095367432,
+            "encodedBytes": 70834,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5258.900000095367,
+            "durationMs": 5.5,
+            "encodedBytes": 105582,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5266.900000095367,
+            "durationMs": 6,
+            "encodedBytes": 114290,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5270.900000095367,
+            "durationMs": 5.099999904632568,
+            "encodedBytes": 107112,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5278.900000095367,
+            "durationMs": 6.899999618530273,
+            "encodedBytes": 106138,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5280.5,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 102784,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5291.799999713898,
+            "durationMs": 7.100000381469727,
+            "encodedBytes": 90246,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5292.400000095367,
+            "durationMs": 6.699999809265137,
+            "encodedBytes": 81320,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5297.299999713898,
+            "durationMs": 7.200000286102295,
+            "encodedBytes": 76556,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5306.599999904633,
+            "durationMs": 6,
+            "encodedBytes": 54562,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5311.599999904633,
+            "durationMs": 5.300000190734863,
+            "encodedBytes": 74118,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5331.099999904633,
+            "durationMs": 6.5,
+            "encodedBytes": 50846,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5337.799999713898,
+            "durationMs": 8.5,
+            "encodedBytes": 59622,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5339.400000095367,
+            "durationMs": 6.899999618530273,
+            "encodedBytes": 80986,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5342.900000095367,
+            "durationMs": 7.799999713897705,
+            "encodedBytes": 55108,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5365.900000095367,
+            "durationMs": 6,
+            "encodedBytes": 57068,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5378.099999904633,
+            "durationMs": 5.800000190734863,
+            "encodedBytes": 44594,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5381.099999904633,
+            "durationMs": 8.099999904632568,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5381.799999713898,
+            "durationMs": 8,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5392.099999904633,
+            "durationMs": 5.300000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5396.699999809265,
+            "durationMs": 7.700000286102295,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5396.799999713898,
+            "durationMs": 8.800000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5397.400000095367,
+            "durationMs": 8.699999809265137,
+            "encodedBytes": 103694,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5400.099999904633,
+            "durationMs": 5.900000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5412.5,
+            "durationMs": 5.599999904632568,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          }
+        ],
+        "browserScale": 1,
+        "staticResponseEncodings": [
+          "gzip",
+          "identity"
+        ]
+      },
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 3,
+      "durationMs": 1482.4205819999988,
+      "variant": "operation"
+    },
+    {
+      "browserMeasures": [
+        {
+          "name": "sheet-open-to-ready",
+          "durationMs": 855.4000000953674
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "durationMs": 792.4000000953674
+        },
+        {
+          "name": "gesture-duration",
+          "durationMs": 286.2999997138977
+        },
+        {
+          "name": "cached-pinch-to-sharp",
+          "durationMs": 525.7999997138977
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "durationMs": 240.59999990463257
+        }
+      ],
+      "diagnostics": {
+        "drawing": [
+          {
+            "startMs": 4261.900000095367,
+            "loadMs": 0,
+            "renderMs": 596.5999999046326,
+            "viewToSharpMs": 599.5999999046326,
+            "pixels": 1169883,
+            "outcome": "sharp"
+          },
+          {
+            "startMs": 4967,
+            "loadMs": 0,
+            "renderMs": 135.59999990463257,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5104.5,
+            "loadMs": 0,
+            "renderMs": 76,
+            "viewToSharpMs": null,
+            "pixels": 921600,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5184.200000286102,
+            "loadMs": 0,
+            "renderMs": 86.39999961853027,
+            "viewToSharpMs": null,
+            "pixels": 1509030,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5286.5,
+            "loadMs": 0,
+            "renderMs": 78.09999990463257,
+            "viewToSharpMs": null,
+            "pixels": 1525797,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5365.599999904633,
+            "loadMs": 0,
+            "renderMs": 31.300000190734863,
+            "viewToSharpMs": null,
+            "pixels": 413936,
+            "outcome": "partial"
+          },
+          {
+            "startMs": 5397.900000095367,
+            "loadMs": 0,
+            "renderMs": 32.69999980926514,
+            "viewToSharpMs": 254.59999990463257,
+            "pixels": 413936,
+            "outcome": "sharp"
+          }
+        ],
+        "resources": [
+          {
+            "kind": "rpc",
+            "startMs": 4126.599999904633,
+            "durationMs": 13.900000095367432,
+            "encodedBytes": 16002,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4196.900000095367,
+            "durationMs": 4.599999904632568,
+            "encodedBytes": 119,
+            "transferBytes": 0
+          },
+          {
+            "kind": "script",
+            "startMs": 4204.099999904633,
+            "durationMs": -17.799999713897705,
+            "encodedBytes": 0,
+            "transferBytes": 300
+          },
+          {
+            "kind": "script",
+            "startMs": 4240.200000286102,
+            "durationMs": 7.099999904632568,
+            "encodedBytes": 1217,
+            "transferBytes": 0
+          },
+          {
+            "kind": "pdf",
+            "startMs": 4377.400000095367,
+            "durationMs": 6.900000095367432,
+            "encodedBytes": 613386,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 4399.599999904633,
+            "durationMs": 7.300000190734863,
+            "encodedBytes": 708370,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5018.5,
+            "durationMs": 10.200000286102295,
+            "encodedBytes": 108394,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5020.300000190735,
+            "durationMs": 8.400000095367432,
+            "encodedBytes": 111106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5020.700000286102,
+            "durationMs": 7.5,
+            "encodedBytes": 115620,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5020.800000190735,
+            "durationMs": 7.799999713897705,
+            "encodedBytes": 106100,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5046.599999904633,
+            "durationMs": 9.400000095367432,
+            "encodedBytes": 121510,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5047.300000190735,
+            "durationMs": 8.599999904632568,
+            "encodedBytes": 120958,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5048.099999904633,
+            "durationMs": 7.100000381469727,
+            "encodedBytes": 115208,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5053.5,
+            "durationMs": 7.200000286102295,
+            "encodedBytes": 108486,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5080.599999904633,
+            "durationMs": 6.100000381469727,
+            "encodedBytes": 107646,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5086.900000095367,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 103774,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5100.800000190735,
+            "durationMs": 7.699999809265137,
+            "encodedBytes": 103538,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5103.5,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 63722,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5129.599999904633,
+            "durationMs": 7.600000381469727,
+            "encodedBytes": 102614,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5130.800000190735,
+            "durationMs": 6.599999904632568,
+            "encodedBytes": 70834,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5136.200000286102,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 105582,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5150.300000190735,
+            "durationMs": 5.400000095367432,
+            "encodedBytes": 114290,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5181.5,
+            "durationMs": 11.200000286102295,
+            "encodedBytes": 107112,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5181.599999904633,
+            "durationMs": 11.700000286102295,
+            "encodedBytes": 106138,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5182.300000190735,
+            "durationMs": 10.900000095367432,
+            "encodedBytes": 102784,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5187.400000095367,
+            "durationMs": 5.800000190734863,
+            "encodedBytes": 90246,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5209.800000190735,
+            "durationMs": 6.699999809265137,
+            "encodedBytes": 81320,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5213.400000095367,
+            "durationMs": 4.5,
+            "encodedBytes": 76556,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5219.700000286102,
+            "durationMs": 5.5,
+            "encodedBytes": 54562,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5225.200000286102,
+            "durationMs": 7.699999809265137,
+            "encodedBytes": 74118,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5227.099999904633,
+            "durationMs": 6.200000286102295,
+            "encodedBytes": 50846,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5229.300000190735,
+            "durationMs": 5.599999904632568,
+            "encodedBytes": 59622,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5232,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 80986,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5243.800000190735,
+            "durationMs": 11.699999809265137,
+            "encodedBytes": 55108,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5245.099999904633,
+            "durationMs": 10.800000190734863,
+            "encodedBytes": 57068,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5245.599999904633,
+            "durationMs": 10.5,
+            "encodedBytes": 44594,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5249.900000095367,
+            "durationMs": 6.199999809265137,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5266,
+            "durationMs": 5.800000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5285,
+            "durationMs": 9.300000190734863,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5287.099999904633,
+            "durationMs": 7.400000095367432,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5287.700000286102,
+            "durationMs": 6.799999713897705,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5291.800000190735,
+            "durationMs": 6.599999904632568,
+            "encodedBytes": 103694,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5321.900000095367,
+            "durationMs": 6.099999904632568,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          },
+          {
+            "kind": "image",
+            "startMs": 5329.800000190735,
+            "durationMs": 3.799999713897705,
+            "encodedBytes": 106,
+            "transferBytes": 0
+          }
+        ],
+        "browserScale": 1,
+        "staticResponseEncodings": [
+          "gzip",
+          "identity"
+        ]
+      },
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "run": 4,
+      "durationMs": 1449.2660859999996,
+      "variant": "operation"
+    }
+  ],
+  "health": {
+    "preflight": {
+      "status": "passed",
+      "build": "55w1LEudb4gQYyD5CYmSE",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2200,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2195,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash"
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "results": [
+        {
+          "procedure": "user.getMe",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "push.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "job.getJob",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getMaterialList",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getOrderById",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.listSets",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.getSet",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.get",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.changes",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.getOverview",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.history",
+          "status": "ok"
+        },
+        {
+          "procedure": "rooms.getJobRoomCount",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.overview",
+          "status": "ok"
+        }
+      ]
+    },
+    "fixtureSchema": {
+      "status": "source-declared-schemas-created",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "moduleCount": 16,
+      "tableCount": 113,
+      "coverage": "Source-declared tables only; migration-only functions/settings require endpoint preflight. Not a claim that unexercised features are complete."
+    },
+    "database": {
+      "count": 0,
+      "fatalCount": 0,
+      "windowStartedAt": "2026-11-11T02:56:06.059Z",
+      "observedAt": "2026-11-11T02:56:33.883Z",
+      "source": "private PostgreSQL ERROR/FATAL headers; no SQL or parameters"
+    }
+  },
+  "labStatic": {
+    "build": "55w1LEudb4gQYyD5CYmSE",
+    "sharedGzipBytes": 444179,
+    "screenGzipBytes": 700623,
+    "deployGzipBytes": 2673890,
+    "screenGzipByRoute": {
+      "/_global-error/page": 239740,
+      "/_not-found/page": 239740,
+      "/admin/page": 239740,
+      "/jobs/[jobId]/chat/page": 463552,
+      "/jobs/[jobId]/documents/page": 462880,
+      "/jobs/[jobId]/drawings/page": 462905,
+      "/jobs/[jobId]/material-lists/page": 462232,
+      "/jobs/[jobId]/models/page": 462516,
+      "/jobs/[jobId]/page": 459410,
+      "/jobs/[jobId]/pricing/page": 470366,
+      "/jobs/[jobId]/receiving/page": 700623,
+      "/jobs/[jobId]/rooms/page": 468957,
+      "/jobs/[jobId]/systems/page": 463728,
+      "/jobs/[jobId]/tool-requests/page": 459410,
+      "/jobs/account/page": 454637,
+      "/jobs/account/settings/page": 476047,
+      "/jobs/assets/activity/page": 459709,
+      "/jobs/assets/counts/[countId]/page": 462533,
+      "/jobs/assets/counts/page": 462231,
+      "/jobs/assets/labels/page": 470588,
+      "/jobs/assets/page": 456926,
+      "/jobs/assets/requests/[orderId]/page": 465763,
+      "/jobs/assets/requests/page": 460290,
+      "/jobs/assets/scan/[tag]/page": 520696,
+      "/jobs/assets/tools/[id]/page": 526054,
+      "/jobs/assets/tools/page": 468736,
+      "/jobs/assets/types/page": 492663,
+      "/jobs/assets/where/[type]/[id]/page": 475986,
+      "/jobs/assets/where/page": 464863,
+      "/jobs/assist/page": 444179,
+      "/jobs/catalogue/page": 480899,
+      "/jobs/chat/page": 475150,
+      "/jobs/draws/[jobId]/page": 457651,
+      "/jobs/draws/page": 450717,
+      "/jobs/estimating/[id]/page": 484956,
+      "/jobs/estimating/page": 467473,
+      "/jobs/material-lists/[id]/page": 537013,
+      "/jobs/orders/page": 461605,
+      "/jobs/organization/page": 488490,
+      "/jobs/page": 444179,
+      "/jobs/quotes/page": 453043,
+      "/jobs/suppliers/page": 460928,
+      "/jobs/timesheets/page": 460261,
+      "/licenses/page": 239906,
+      "/onboarding/page": 244003,
+      "/page": 239740,
+      "/pending-approval/page": 239740,
+      "/pricing/page": 244271,
+      "/sign-in/[[...sign-in]]/page": 240339,
+      "/sign-up/[[...sign-up]]/page": 240338
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  }
+}
