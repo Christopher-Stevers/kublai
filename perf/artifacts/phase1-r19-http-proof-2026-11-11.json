@@ -1,0 +1,89 @@
+{
+  "build": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "currentAssets": 293,
+  "currentScripts": 288,
+  "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+  "immutableStaticHeaders": true,
+  "previousReleaseSamples": 10,
+  "historicalSamples": [
+    {
+      "asset": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "UzwdBuKm2iDE8zDCyDcEI/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "ZRfPvd8bwvzuDDJvHXz1_/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_Nnpqrzp9ZPDOicKBkHnX/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_jYy29uYB_rXlSwfUp7w-/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "6C0P1mprL-QSjWOWNS84l/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "28koM8o3VXq3Bje-aNjrf/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    }
+  ],
+  "currentPressChunk": "chunks/app-press-browser-ec929538b30f0594.js",
+  "currentPressChunkBrotliDecodedExact": true,
+  "allHistoricalBytesExact": true,
+  "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+  "workerMatchesPackaged": true,
+  "releaseManifestStatus": 200,
+  "releaseManifestMatchesBuild": true,
+  "knownRejectedArtifact": false,
+  "healthStatus": 200,
+  "signInStatus": 200,
+  "unauthenticatedBindingStatus": 401,
+  "backgroundMode": "separate",
+  "bimDisabled": true,
+  "databaseReadOnlyVerified": true,
+  "allRequestsCookieFreeGet": true,
+  "cleanup": {
+    "exitCode": 0,
+    "ownServerStopped": true,
+    "forced": false,
+    "appMutationsRequested": false,
+    "databaseReadOnlyConfigured": true,
+    "pidAbsent": true,
+    "portClosed": true
+  },
+  "supervisorExitCode": 0,
+  "httpClientAttempts": 1,
+  "methodHashes": {
+    "phase1-r19-http-supervisor.mjs": "3898d3c033d45f6f670348b021f8ffdf84396fff3ceb2ef15b5fff1962f27642",
+    "phase1-r19-http-client.mjs": "e0e5e9adce603edb7ab5c3f55eadb854545643e225083b6c145aaab4fc7d2419"
+  },
+  "wrapperLogSha256": "23df4186c9c038354b3c108e8f7442ef0a6c30d57ac5e17d18ea6eefca418638",
+  "executionNotes": [
+    "Reused R18 supervisor disk proof directory; no large /tmp copies.",
+    "Initial STOP/cleanup metadata lookup assumed speed-proof directory; corrected to the actual configured press-chunk-four-corner directory. No second server, HTTP retry or forced shutdown."
+  ],
+  "activated": false,
+  "limitations": [
+    "Read-only cookie-free HTTP/static/runtime packaging evidence, not authenticated behavior, latency acceptance or activation."
+  ]
+}

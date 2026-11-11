@@ -112,3 +112,25 @@ operational metrics scripts inside the frozen recipe; its method/log hashes and
 failure are retained. The corrected inspection used existing canonical tools,
 with no candidate mutation or rebuild. No HTTP server, browser, application,
 database or activation ran. CPU was released before subsequent diagnostics.
+
+## Subsequent read-only HTTP proof
+
+After the failed diagnostic's explicit cleanup/release, root authorized one R19
+HTTP proof on localhost:3150. All 293 current assets and ten actual retained
+release samples passed exact Brotli sidecar/decoded-byte and immutable/Vary
+checks. The current `app-press-browser` chunk was also explicitly rechecked.
+Packaged SW bytes match; release manifest, health and sign-in return 200;
+unauthenticated device-cache binding returns 401. All requests were cookie-free
+GETs. The supervisor verified database read-only mode before startup, retained
+canonical WorkingDirectory, separate background mode and BIM-disabled behavior.
+
+The existing R18 supervisor writes logs to its on-disk four-corner proof
+directory. An initial cleanup lookup used the other proof directory; the STOP
+request was corrected to the configured path, with no second server or HTTP
+retry. The server and supervisor exited 0, no force was needed, PID absence and
+closed port were verified. No app runtime remains.
+
+[HTTP metadata](artifacts/phase1-r19-http-proof-2026-11-11.json),
+[executed supervisor](artifacts/phase1-r19-http-supervisor.mjs) and
+[client](artifacts/phase1-r19-http-client.mjs) preserve exact methods/sample URLs.
+No production switch, authenticated mutation, worker release or activation ran.
