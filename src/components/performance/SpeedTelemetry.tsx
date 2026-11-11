@@ -157,7 +157,7 @@ export function SpeedTelemetry() {
         for (const entry of list.getEntries()) {
           if (name === "action" && !entry.name.startsWith("foremenhq:"))
             continue;
-          const durationMs = name === "lcp" ? entry.startTime : entry.duration;
+          const durationMs = entry.duration;
           if (
             Number.isFinite(durationMs) &&
             durationMs >= 0 &&
