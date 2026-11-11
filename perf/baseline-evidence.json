@@ -265,7 +265,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 10,
+  "completedFullLabCaptures": 11,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -299,47 +299,32 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T15:07:16.077084+00:00",
-  "completedCandidateLabCaptures": 4,
+  "updatedAt": "2026-11-11T15:48:13.173239+00:00",
+  "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
-    "source": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
-    "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
-    "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
-    "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+    "source": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/assessment.json",
+    "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+    "labBuild": "kQwDUUMWJAxQExPo56xqn",
     "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
     "protocol": "ready-then-pinch-v2",
     "samples": 120,
-    "passedCells": 22,
+    "passedCells": 23,
     "failedCells": [
       {
-        "journey": "openjob",
-        "link": "Site",
-        "baselineMedianMs": 82.45718499994837,
-        "candidateMedianMs": 98.3338470000308,
-        "changePercent": 19.25443125434414,
-        "passed": false,
-        "candidateSamplesMs": [
-          82.48982500005513,
-          99.71175199991558,
-          82.17784899997059,
-          99.1844089999795,
-          98.3338470000308
-        ]
-      },
-      {
-        "journey": "openjob",
+        "journey": "changeqty",
         "link": "Office",
-        "baselineMedianMs": 82.27076399989892,
-        "candidateMedianMs": 98.51810200000182,
-        "changePercent": 19.748616896426128,
+        "baselineMedianMs": 114.14365500002168,
+        "candidateMedianMs": 132.0944390000077,
+        "changePercent": 15.726484314859723,
         "passed": false,
         "candidateSamplesMs": [
-          128.9710179999238,
-          99.30035599996336,
-          89.04961600003298,
-          98.51810200000182,
-          84.45573800010607
+          121.40256099996623,
+          115.97635099990293,
+          141.18210599990562,
+          132.0944390000077,
+          136.1096729999408
         ]
       }
     ],
@@ -489,7 +474,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), three full rejected v2 candidate captures (R6/R7/R17), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), four full rejected v2 candidate captures (R6/R7/R17/R18), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -955,7 +940,7 @@
       "activation": false
     },
     "r18Candidate": {
-      "status": "canonical-http-functional-passed-full-matrix-running",
+      "status": "full-matrix-rejected-one-timing-cell",
       "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
       "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
       "sourceFileCount": 2317,
@@ -979,11 +964,17 @@
       "functionalV6Proof": "perf/artifacts/r18-preferences-functional-2026-11-11-attempt1/report.json",
       "functionalV6UnexpectedDatabaseErrors": 0,
       "functionalV6CleanupConfirmed": true,
-      "fullMatrixRun": false,
-      "fullMatrixStatus": "running-not-yet-completed-or-accepted",
+      "fullMatrixRun": true,
+      "fullMatrixStatus": "complete-rejected-no-activation",
       "fullMatrixStartedUtc": "2026-11-11T15:15:07Z",
       "fullMatrixPreparation": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11-preparation/",
-      "activation": false
+      "activation": false,
+      "fullMatrixReport": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/report.json",
+      "fullMatrixAssessment": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/assessment.json",
+      "fullMatrixSamples": 120,
+      "fullMatrixPassedCells": 23,
+      "fullMatrixUnexpectedDatabaseErrors": 0,
+      "fullMatrixCleanupConfirmed": true
     },
     "openJobLaterFixes": {
       "commits": [
@@ -996,6 +987,31 @@
       "profilerNestedCommitRemoved": true,
       "productionLatencyBenefitMeasured": false,
       "includedInR18": true
+    },
+    "jobBadgeRefresh": {
+      "commit": "51b43717",
+      "testsPassed": 13,
+      "scopedLint": "passed",
+      "includedInR18": false,
+      "productionActivated": false,
+      "source": "perf/job-chat-badge-refresh.md"
+    },
+    "quantityOfficeEvidenceAudit": {
+      "source": "perf/quantity-office-evidence-audit-2026-11-11.json",
+      "newRuntime": false,
+      "causalAttribution": false,
+      "gateChanged": false
+    },
+    "replicacheSupplementalPushContract": {
+      "status": "five-cases-passed-private-actual-database",
+      "source": "perf/artifacts/replicache-push-contract-r18-2026-11-11.json",
+      "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+      "casesPassed": 5,
+      "noDatabaseTestsPassed": 19,
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "newDomains": false,
+      "convergenceGate": false
     }
   },
   "historicalCandidateRegressions": [
@@ -1019,6 +1035,51 @@
       "originalGateUnchanged": true,
       "acceptedForActivation": false,
       "artifactReusedWithoutRebuild": true
+    },
+    {
+      "status": "failed",
+      "source": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
+      "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+      "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+      "labBuild": "zNd84I0aO-5wNGl7s3g4z",
+      "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "protocol": "ready-then-pinch-v2",
+      "samples": 120,
+      "passedCells": 22,
+      "failedCells": [
+        {
+          "journey": "openjob",
+          "link": "Site",
+          "baselineMedianMs": 82.45718499994837,
+          "candidateMedianMs": 98.3338470000308,
+          "changePercent": 19.25443125434414,
+          "passed": false,
+          "candidateSamplesMs": [
+            82.48982500005513,
+            99.71175199991558,
+            82.17784899997059,
+            99.1844089999795,
+            98.3338470000308
+          ]
+        },
+        {
+          "journey": "openjob",
+          "link": "Office",
+          "baselineMedianMs": 82.27076399989892,
+          "candidateMedianMs": 98.51810200000182,
+          "changePercent": 19.748616896426128,
+          "passed": false,
+          "candidateSamplesMs": [
+            128.9710179999238,
+            99.30035599996336,
+            89.04961600003298,
+            98.51810200000182,
+            84.45573800010607
+          ]
+        }
+      ],
+      "activation": false,
+      "previousFailedEvidenceRetained": true
     }
   ]
 }

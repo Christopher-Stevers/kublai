@@ -773,3 +773,45 @@ propagate a failing exit status. Preparation and exact command hashes are in
 No full timing result, acceptance or activation is claimed while this run is in
 progress. Other builds, tests and browser/database work are stopped to preserve
 the measurement window. Source-only reviews continue; the Pixel remains deferred.
+
+## R18 full comparison rejected; existing sync checks expanded — 2026-11-11
+
+R18 completed all 120 samples under the unchanged v2 method. Root independently
+validated the report, baseline repeatability and comparison: 23 of 24 cells
+pass. Office quantity editing fails at 132.09 ms versus the original 114.14 ms
+baseline (+15.73%, above the 10% allowance). All three opening-a-job cells now
+pass. The failed result is preserved, with no retries, exclusions, alternate
+comparator or threshold changes. R18 is not eligible for activation.
+
+Its actual source-bound schema, fourteen successful preflights, zero PostgreSQL
+errors, unchanged method/environment/source and clean teardown are archived in
+`artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/`. The ten-minute idle count
+is 74 reads, with at most one live request. Production remains the Phase0 build.
+
+The retained Office quantity write-to-paint marks have medians near 21 ms across
+both baselines, R17 and R18, while the outer scripted interaction rises. Those
+marks measure two animation-frame opportunities from the application handler;
+the outer timer also includes automation, actionability and assertions. They
+are not disjoint phases and cannot be subtracted or used to waive the failure.
+Source inspection finds no introduced wait in the unchanged quantity handler.
+See `quantity-office-evidence-audit-2026-11-11.md`; a narrow supplemental trace
+is being prepared, not run or accepted as another gate capture.
+
+The existing Replicache contract now has a separate actual-database check against
+frozen R18. All five added cases pass: a gap in one client's sequence rolls back
+the whole batch and both cursors; a changed duplicate payload is skipped;
+permission denial acknowledges without applying; an obsolete name does not block
+the next write; and a hard input-validation failure rolls back earlier writes
+and cursors. Nineteen no-database guard/selection/cleanup tests, syntax and scoped
+types also pass. The actual application client was bound to the private socket
+before SQL, source hashes stayed exact, PostgreSQL logged zero errors, and the
+final log was copied after shutdown before removal. This is existing-handler
+evidence, not real authentication, browser replay, new domains or convergence.
+
+A separate small JobsClient badge follow-up (`51b43717`) now refreshes cached
+job-chat counts behind the visible badge on active revisit/resume. It preserves
+the 30-second fallback and adds no persisted history or permission grant.
+Thirteen focused tests and scoped lint pass. It is excluded from R18 and is
+not activated. Receiving saved-read and the 13-mutator interface boundaries are
+documented in `receiving-saved-read-audit.md` and
+`replicache-interface-preparation.md`; both remain preparation only.
