@@ -630,3 +630,26 @@ ten-minute idle check and 120 samples, unchanged frozen v2 timing method and
 predeclared baseline-1 comparator. No result, timing improvement or activation
 is yet claimed. Builds, other heavy checks and phone work are stopped during
 this measurement window. Production remains the Phase0 bootstrap.
+
+## R17 full capture rejected for launcher protocol error — 2026-11-11
+
+The capture completed all 120 samples and the original ten-minute idle window,
+with 14 source-bound read checks and zero database errors. The launcher omitted
+`PERF_SHEET_PROTOCOL=ready-then-pinch-v2`, so the unchanged adapter used its
+`early-pinch-v1` default. The report correctly records that older protocol; the
+formal comparator rejected it before comparing timing cells. All raw results
+remain preserved. They cannot support a v2 improvement, regression or release.
+This was an orchestration/review error, not an application benchmark pass.
+See `artifacts/candidate-r17-incompatible-early-pinch-v1-2026-11-11/`.
+
+The independent idle count is 74 query reads versus the earlier baseline's 80;
+there was at most one `/api/live` request at a time. This is one Jobs screen,
+not the no-poll gate or a general delivery claim. The full report embeds its
+actual source-bound schema counts; a standalone inventory was not copied before
+the private database was removed. All owned runtime was cleaned.
+
+A corrected launch is being prepared with an explicit protocol export, a
+pre-database guard against the declared baseline, and complete per-run schema
+archiving. The frozen timing code, baseline, thresholds and failed records stay
+unchanged. No second capture has started at this checkpoint. Independent source
+validation has resumed; production remains the Phase0 bootstrap.

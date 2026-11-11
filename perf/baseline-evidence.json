@@ -260,7 +260,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 8,
+  "completedFullLabCaptures": 9,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -294,8 +294,8 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T13:31:14.494491+00:00",
-  "completedCandidateLabCaptures": 2,
+  "updatedAt": "2026-11-11T14:02:02.815027+00:00",
+  "completedCandidateLabCaptures": 3,
   "candidateRegression": {
     "status": "failed",
     "source": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
@@ -460,7 +460,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only) plus two full rejected candidate captures (R6/R7). Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), two full rejected v2 candidate captures (R6/R7), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -792,12 +792,23 @@
       "activation": false
     },
     "r17FullMatrix": {
-      "status": "running",
-      "samplesPlanned": 120,
+      "status": "rejected-incompatible-protocol",
+      "source": "perf/artifacts/candidate-r17-incompatible-early-pinch-v1-2026-11-11/assessment.json",
+      "samplesCompleted": 120,
+      "completeCells": 24,
       "idleDurationMs": 600000,
+      "requiredProtocol": "ready-then-pinch-v2",
+      "recordedProtocol": "early-pinch-v1",
+      "cause": "Launcher omitted PERF_SHEET_PROTOCOL; identical source hashes did not bind the semantic environment.",
       "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
       "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
-      "resultAvailable": false
+      "baselineTimingComparisonPerformed": false,
+      "acceptedForActivation": false,
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "idleQueries": 74,
+      "schemaEvidence": "Actual source-bound fixture counts embedded in health.fixtureSchema; standalone inventory was not independently copied before DB cleanup.",
+      "correctedCapture": "Preparation only; explicit environment guard required before a separate run."
     }
   }
 }
