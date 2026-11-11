@@ -1,0 +1,629 @@
+{
+  "scope": "Descriptive source/raw evidence only; original baseline1 gate unchanged. No new capture or causal attribution.",
+  "reports": {
+    "R18": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+    "R19": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece"
+  },
+  "cells": [
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "R18": {
+        "samples": [
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 81.92537599999923,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 99.008198000025,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 82.70454299997073,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 82.91190299997106,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 98.74885799991898,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 82.91190299997106
+      },
+      "R19": {
+        "samples": [
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 98.80413500010036,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 98.78848099999595,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 98.62032200000249,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 98.95154699997511,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 98.19167400000151,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 98.78848099999595
+      }
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "R18": {
+        "samples": [
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 0,
+            "durationMs": 84.1449160000775,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 1,
+            "durationMs": 91.44363100000191,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 2,
+            "durationMs": 86.19393599999603,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 3,
+            "durationMs": 124.77347699995153,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 4,
+            "durationMs": 81.48034100001678,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 86.19393599999603
+      },
+      "R19": {
+        "samples": [
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 0,
+            "durationMs": 99.18357499991544,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 1,
+            "durationMs": 122.72213899996132,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 2,
+            "durationMs": 95.67875500000082,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 3,
+            "durationMs": 99.60614400007762,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [],
+            "journey": "openjob",
+            "link": "Office",
+            "run": 4,
+            "durationMs": 99.26195100008044,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 99.26195100008044
+      }
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "R18": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 167
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 0,
+            "durationMs": 217.05202300002566,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 169.89999961853027
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 1,
+            "durationMs": 222.01694000000134,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 170
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 2,
+            "durationMs": 218.99221300001955,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 168.39999961853027
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 3,
+            "durationMs": 221.07380600000033,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 173.90000009536743
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 4,
+            "durationMs": 243.47721199999796,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 221.07380600000033
+      },
+      "R19": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 186.7999997138977
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 0,
+            "durationMs": 256.54810800001724,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 187.59999990463257
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 1,
+            "durationMs": 258.35586500004865,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 171.69999980926514
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 2,
+            "durationMs": 224.5498110000044,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 172.19999980926514
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 3,
+            "durationMs": 242.86362000001827,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 174.69999980926514
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Basement",
+            "run": 4,
+            "durationMs": 243.24347200000193,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 243.24347200000193
+      }
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "R18": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 169.59999990463257
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 222.20415100001264,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 179.7000002861023
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 246.33119199995417,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 170.09999990463257
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 222.73931500001345,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 168
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 220.10160199995153,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 172.5
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 242.6786050000228,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 222.73931500001345
+      },
+      "R19": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 176.80000019073486
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 245.06805399991572,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 170.30000019073486
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 221.8630000000121,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 182
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 250.5676050001057,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 172.2999997138977
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 242.85099700000137,
+            "variant": "visited"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "tap-to-paint",
+                "durationMs": 172.80000019073486
+              }
+            ],
+            "journey": "openmateriallist",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 242.1076700000558,
+            "variant": "visited"
+          }
+        ],
+        "medianMs": 242.85099700000137
+      }
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "R18": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 23.200000286102295
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 132.08912799996324,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 20.5
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 115.21168800001033,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 19.300000190734863
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 115.8888530000113,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 20.600000381469727
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 131.91480299993418,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 20.5
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 114.14292100002058,
+            "variant": "operation"
+          }
+        ],
+        "medianMs": 115.8888530000113
+      },
+      "R19": {
+        "samples": [
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 25.700000286102295
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 0,
+            "durationMs": 131.13235600001644,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 21.90000009536743
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 1,
+            "durationMs": 115.55458700004965,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 19.800000190734863
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 2,
+            "durationMs": 114.66995700006373,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 22.40000009536743
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 3,
+            "durationMs": 130.7447229999816,
+            "variant": "operation"
+          },
+          {
+            "browserMeasures": [
+              {
+                "name": "write-to-paint",
+                "durationMs": 22
+              }
+            ],
+            "journey": "changeqty",
+            "link": "Site",
+            "run": 4,
+            "durationMs": 131.86369000002742,
+            "variant": "operation"
+          }
+        ],
+        "medianMs": 130.7447229999816
+      }
+    }
+  ]
+}
