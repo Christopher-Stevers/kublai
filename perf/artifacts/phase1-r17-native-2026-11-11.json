@@ -1,0 +1,53 @@
+{
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "method": "Exact emitted resolver evaluated alone with the native external objects to which its emitted bindings resolve; no app module, listener or database evaluated.",
+  "emittedFile": "server/chunks/4735.js",
+  "nativeExternalBindingFile": "server/instrumentation.js",
+  "nativeExternalModuleId": 98995,
+  "namespaceBindingRetained": true,
+  "namespaceDefaultFallbackRetained": true,
+  "resolverSha256": "f0f3a960a11021828cf0cf57781805a2ca679a84a18e372043d02af2ed31e7c9",
+  "runtimeCwdRetained": true,
+  "numericDirnameIntroduced": false,
+  "metadataVersion": "3.4.8",
+  "copies": [
+    {
+      "file": "server/app/api/chat/attachments/[id]/route.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/app/api/chat/attachments/route.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/app/api/conversations/events/route.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/app/api/material-lists/[id]/events/route.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/chunks/3524.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/chunks/4589.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/chunks/4735.js",
+      "freeNamedFactoryCall": false
+    },
+    {
+      "file": "server/chunks/8439.js",
+      "freeNamedFactoryCall": false
+    }
+  ],
+  "passed": true,
+  "limitations": [
+    "This is metadata binding/resolution evidence, not an actual LISTEN health or private application functional run."
+  ],
+  "appRuntimeStarted": false,
+  "databaseStarted": false
+}

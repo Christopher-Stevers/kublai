@@ -11,3 +11,11 @@ RELEASE_SOURCE_DIR=/home/tim/.openclaw/workspace/releases/speed-phase1-combined-
 ```
 
 The strict byte comparator remains completed R14; failed candidates supply no completed byte baseline.
+
+## Canonical result
+
+Build `b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b` exited 0 with production TypeScript, prerender and source-law checks passing. Source fingerprint remains unchanged and matches release manifest and stats; current scripts contain no development overlay module/string.
+
+Formal Phase0 ratchets pass: shared 478,165 vs 502,618 gzip bytes; heaviest 627,389 vs 758,531; relative deployment 1,324,196 vs 2,734,731. Final shared 120,000/heaviest 180,000 targets still fail. The strict completed R14→R17 batch is 370,555 gzip bytes (28/288 changed, 260 reused), exceeding 100,000. This does not replace the separate earlier controlled single-edit passing proof.
+
+The unchanged emitted-native inspection method resolves PostgreSQL metadata version 3.4.8 through the actual native namespace/default binding, with no numeric dirname or free named factory. It evaluates only the exact small metadata resolver, not application/LISTEN/database code. [Build proof](artifacts/phase1-r17-build-proof-2026-11-11.json), [static metrics](artifacts/phase1-r17-static-2026-11-11.json), [strict delta](artifacts/phase1-r17-update-delta-2026-11-11.json), [native proof](artifacts/phase1-r17-native-2026-11-11.json), and [source proof](artifacts/phase1-r17-source-proof-2026-11-11.json) preserve the checkpoint. No HTTP/runtime/activation occurred.

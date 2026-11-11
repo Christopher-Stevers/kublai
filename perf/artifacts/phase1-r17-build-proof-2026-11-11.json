@@ -1,0 +1,45 @@
+{
+  "candidate": "R17",
+  "sourceBuild": "b1c2adf31950c6f3db7ab189bbeabce29df5d6d9766418f3a9935bdde94f234b",
+  "sourceFingerprint": "be7f23501ec71b78974bc9f818fc75b46abfd0a4de0ad83288de7a49826c37cc",
+  "canonicalExit": 0,
+  "productionTypeScriptPassed": true,
+  "prerenderPassed": true,
+  "navigationProviderSourceLawsPassed": true,
+  "buildLogSha256": "7afe25d7973ec23224a741db90654b557c11155b9d139bba183b33b8bbe0344e",
+  "formalRatchets": {
+    "shared": {
+      "baseline": 502618,
+      "candidate": 478165,
+      "passes": true
+    },
+    "heaviest": {
+      "baseline": 758531,
+      "candidate": 627389,
+      "passes": true
+    },
+    "deploy": {
+      "baseline": 2734731,
+      "candidate": 1324196,
+      "passes": true
+    }
+  },
+  "finalTargets": {
+    "shared120000": false,
+    "heaviest180000": false
+  },
+  "strictR14ToR17": {
+    "changedGzipBytes": 370555,
+    "budget": 100000,
+    "passes": false,
+    "changedScripts": 28,
+    "currentScripts": 288,
+    "reusedScripts": 260
+  },
+  "nativeInspectionMethod": "Existing exact emitted resolver metadata inspection, phase1-r14-native-inspection.mjs, unchanged method; real native external objects only, no app module evaluated.",
+  "httpProofPerformed": false,
+  "appRuntimeStarted": false,
+  "databaseStarted": false,
+  "activated": false,
+  "earlierFailedR15R16Preserved": true
+}
