@@ -299,7 +299,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T16:12:13Z",
+  "updatedAt": "2026-11-11T16:23:27Z",
   "completedCandidateLabCaptures": 5,
   "candidateRegression": {
     "status": "failed",
@@ -1026,7 +1026,7 @@
       "productionActivated": false
     },
     "r19Candidate": {
-      "status": "source-frozen-root-reviewed-build-held-for-diagnostic-slot",
+      "status": "canonical-and-offline-proofs-passed-http-and-full-matrix-pending",
       "sourceFreezeCommit": "231bb1dd",
       "source": "perf/artifacts/phase1-combined-r19-source-freeze-2026-11-11.json",
       "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
@@ -1034,9 +1034,46 @@
       "runtimeChangedPaths": 4,
       "rootIndependentlyVerifiedFingerprint": true,
       "r8JobCardOptInExcluded": true,
-      "buildStarted": false,
+      "buildStarted": true,
       "fullMatrixRun": false,
-      "activation": false
+      "activation": false,
+      "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+      "buildPassed": true,
+      "buildProofCommit": "ba062b84",
+      "buildProof": "perf/artifacts/phase1-r19-build-proof-2026-11-11.json",
+      "sharedGzipBytes": 477538,
+      "heaviestGzipBytes": 627737,
+      "phase0RelativeDeployGzipBytes": 1322620,
+      "phase0StaticRatchetsPass": true,
+      "r18RelativeBatchGzipBytes": 334721,
+      "batchPasses100KB": false,
+      "currentCompressedAssetChecks": 293,
+      "retainedRawAssetsExact": 1120,
+      "httpPassed": false
+    },
+    "protectedSnapshotPrimitive": {
+      "commit": "9ace848a",
+      "source": "perf/snapshot-key-authority.md",
+      "testsPassed": 26,
+      "testFiles": 2,
+      "scopedLintPassed": true,
+      "existingIndexedDbVersion": 2,
+      "noNewStores": true,
+      "receivingPersistenceEnabled": false,
+      "productionActivated": false
+    },
+    "quantityOfficeDiagnostic": {
+      "status": "one-supplemental-attempt-running",
+      "preparationCommit": "c1d28c58",
+      "preparation": "perf/artifacts/quantity-office-diagnostic-preparation-2026-11-11/",
+      "plannedOperations": 2,
+      "sourceOrder": [
+        "R17",
+        "R18"
+      ],
+      "acceptanceGate": false,
+      "retryAuthorized": false,
+      "cleanupConfirmed": false
     }
   },
   "historicalCandidateRegressions": [

@@ -838,3 +838,28 @@ and field-update timing. Its instrumentation has three passing fixture tests;
 setup/process cleanup review is still pending. It is supplemental only and
 cannot replace the failed full gate. Production and the original v2 comparator
 remain unchanged; Pixel testing stays deferred.
+
+## R19 canonical pass; bounded diagnostic running — 2026-11-11
+
+R19 build `47b6e705…` passes production compilation, TypeScript, prerender and
+source laws. Formal shared/heaviest gzip are 477,538 / 627,737; both remain below
+Phase0, but rise 580 / 600 bytes versus R18. Its complete R18→R19 batch changes
+42 of 288 scripts, 334,721 gzip bytes, so the strict 100 KB diagnostic fails.
+Every one of 293 current assets has exact Brotli/gzip sidecars; all 1,120 active
+raw historical assets and 3,263 public snapshot files match. Native PostgreSQL
+metadata resolution passes. Build proof: `ba062b84`; HTTP/full timing pending.
+
+The separate one-attempt quantity diagnostic is now running from the frozen
+method in `artifacts/quantity-office-diagnostic-preparation-2026-11-11/`.
+It allows exactly one operation on R17 then R18, with two fresh private fixtures,
+short instrumented captures and bounded process ownership cleanup. Its added
+profiling, geometry and process-monitor work mean it cannot replace acceptance
+timings or establish a causal performance delta by itself. No retry is queued.
+
+A receiving-cache prerequisite is prepared in `9ace848a`: protected snapshots
+compare account and per-key epochs atomically in the existing IndexedDB stores.
+Old responses cannot overwrite a revoked key; blind snapshot APIs cannot bypass
+the reserved namespace. Twenty-six store tests and scoped lint pass. This is an
+unused primitive, not an enabled receiving cache, permission grant, production
+schema change or physical timing result. Missing cross-tab events cannot
+retroactively erase already-painted data; callers must suppress/revalidate it.
