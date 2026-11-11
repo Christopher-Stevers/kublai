@@ -28,6 +28,9 @@ remaining evidence are recorded in `perf/README.md` and `perf/STATUS.md`.
   Do not switch between webpack/Turbopack or invent per-session build recipes.
 - Preserve scripts from at least the last ten builds; serve precompressed Brotli
   where supported. A failed speed gate blocks activation, not just the report.
+- After the measurement bootstrap, activate web candidates with
+  `scripts/release/activate.mjs` and the complete matching evidence described in
+  `scripts/release/ACTIVATION.md`. Do not manually switch around a failed preflight.
 - Run write journeys only against the disposable `perf/lab/database.sh` database.
   Never point the lab at the production database or deploy a `PERF_LAB_ONLY` build.
 - Record measurements and missing evidence separately. Do not equate simulated
