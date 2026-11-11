@@ -1,3 +1,4 @@
+import { withServerTiming } from "~/server/server-timing";
 import { NextResponse } from "next/server";
 import type { PushRequest } from "replicache";
 
@@ -7,19 +8,25 @@ import {
   handleMaterialListReplicachePush,
 } from "~/server/replicache/material-list-sync";
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const ctx = await createTRPCContext({ headers: request.headers, request });
   if (!ctx.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (ctx.user.organizationAccessStatus && ctx.user.organizationAccessStatus !== "approved") {
+  if (
+    ctx.user.organizationAccessStatus &&
+    ctx.user.organizationAccessStatus !== "approved"
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = (await request.json()) as PushRequest;
   if (body.pushVersion !== 1) {
-    return NextResponse.json({ error: "VersionNotSupported", versionType: "push" });
+    return NextResponse.json({
+      error: "VersionNotSupported",
+      versionType: "push",
+    });
   }
 
   try {
@@ -32,8 +39,14 @@ export async function POST(request: Request) {
 
     console.error("[replicache/material-lists/push] failed", error);
     return NextResponse.json(
-      { error: "PushFailed", message: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: "PushFailed",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }
 }
+
+export const POST = (request: Request) =>
+  withServerTiming(() => handlePost(request));

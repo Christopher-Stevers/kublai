@@ -154,7 +154,7 @@ const timingMiddleware = t.middleware(async ({ next, path, type, ctx }) => {
     result.ok && (path === "drawingsWorkspace.get" || path === "drawingsWorkspace.changes")
       ? drawingDataSize(result.data)
       : "";
-  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries)${size}`;
+  const message = `[TRPC] ${path} took ${duration}ms to execute (${stats.count} queries) [database ${stats.databaseMs.toFixed(1)}ms]${size}`;
   if (duration >= SLOW_REQUEST_MS) console.warn(`${message} [slow]`);
   else console.log(message);
 

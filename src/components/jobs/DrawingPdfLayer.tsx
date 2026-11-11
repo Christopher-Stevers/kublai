@@ -603,6 +603,14 @@ export function DrawingPdfLayer(props: Props) {
           (raster
             ? sharpness(shownPatches(), nowView) >= 0.9999
             : patchCoversView(patch, now.fit, now.frameSize, nowView, now.dpr));
+        if (sharp && performance.getEntriesByName("foremenhq:sheet-open").length) {
+          // Existing coverage test proves physical pixel sharpness; do not count
+          // merely mounting a preview/canvas as the sharp outcome.
+          try {
+            performance.measure("foremenhq:sheet-open-to-sharp", { start: "foremenhq:sheet-open", end: performance.now() });
+            performance.clearMarks("foremenhq:sheet-open");
+          } catch { /* A superseded sheet may have cleared the best-effort mark. */ }
+        }
         recordDrawingPerformance({
           loadMs: renderingAt - loadingAt,
           renderMs: performance.now() - renderingAt,

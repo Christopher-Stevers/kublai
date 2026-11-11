@@ -3,6 +3,7 @@ import postgres from "postgres";
 
 import { env } from "~/env";
 import { recordQuery } from "./query-stats";
+import { timedPostgresClient } from "./timed-client";
 import * as schema from "./schema";
 
 /**
@@ -16,7 +17,7 @@ const globalForDb = globalThis as unknown as {
 const conn = globalForDb.conn ?? postgres(env.DATABASE_URL);
 if (env.NODE_ENV !== "production") globalForDb.conn = conn;
 
-export const db = drizzle(conn, {
+export const db = drizzle(timedPostgresClient(conn), {
   schema,
   logger: { logQuery: recordQuery },
 });

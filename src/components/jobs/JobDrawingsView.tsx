@@ -147,6 +147,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
   const [destination, setDestination] = useState<{request:number;snapshot:SnapshotState|null}>({request:0,snapshot:null});
   const openSheet = (id: string | null, preserveViewport = false) => {
+    if (id) performance.mark("foremenhq:sheet-open");
     setReadySheet(null);
     setDestination(previous=>({...previous,snapshot:null}));
     setEntryViewport(preserveViewport ? lastViewport.current : null);
@@ -223,6 +224,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       if (!id || !folder || !/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/i.test(folder)) return;
       const matches = saved?.jobId === jobId && saved.sheetId === id && saved.setId === folder;
       setSetId(folder);
+      performance.mark("foremenhq:sheet-open");
       setSheetId(id);
       setEntryViewport(matches ? saved.viewport : null);
       lastViewport.current = matches ? saved.viewport : null;
