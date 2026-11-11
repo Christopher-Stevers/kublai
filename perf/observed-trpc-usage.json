@@ -1,0 +1,957 @@
+{
+  "capturedAt": "2026-11-11T00:12:56.014355+00:00",
+  "source": "journalctl --user -u foremenhq --since=-7days; structured TRPC durations only",
+  "limitations": "Observed instrumented journal counts, not complete usage analytics. May include testing. Server procedure duration is not phone paint latency. Unknown source kinds remain unknown.",
+  "totalObserved": 38197,
+  "topProcedures": [
+    {
+      "procedure": "notifications.identity",
+      "kind": "query",
+      "observedCount": 5224,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "notifications.overview",
+      "kind": "query",
+      "observedCount": 5076,
+      "p50Ms": 5.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "push.identity",
+      "kind": "query",
+      "observedCount": 4918,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "user.getMyRole",
+      "kind": "query",
+      "observedCount": 4792,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "kind": "query",
+      "observedCount": 4185,
+      "p50Ms": 3.0,
+      "p95Ms": 30.0
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "kind": "query",
+      "observedCount": 2862,
+      "p50Ms": 1.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "user.getMe",
+      "kind": "query",
+      "observedCount": 1390,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "push.device",
+      "kind": "query",
+      "observedCount": 1298,
+      "p50Ms": 1.0,
+      "p95Ms": 11.0
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "kind": "query",
+      "observedCount": 947,
+      "p50Ms": 5.0,
+      "p95Ms": 12.0
+    },
+    {
+      "procedure": "push.reportDevice",
+      "kind": "mutation",
+      "observedCount": 861,
+      "p50Ms": 2.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "appDevices.report",
+      "kind": "mutation",
+      "observedCount": 845,
+      "p50Ms": 3.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "drawings.getSet",
+      "kind": "query",
+      "observedCount": 774,
+      "p50Ms": 2.0,
+      "p95Ms": 16.0
+    },
+    {
+      "procedure": "supplierPriceBooks.labelContext",
+      "kind": "query",
+      "observedCount": 638,
+      "p50Ms": 16.0,
+      "p95Ms": 101.0
+    },
+    {
+      "procedure": "drawingsWorkspace.list",
+      "kind": "query",
+      "observedCount": 566,
+      "p50Ms": 49.0,
+      "p95Ms": 70.0
+    },
+    {
+      "procedure": "drawings.listSets",
+      "kind": "query",
+      "observedCount": 529,
+      "p50Ms": 10.0,
+      "p95Ms": 31.0
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "kind": "query",
+      "observedCount": 493,
+      "p50Ms": 4.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "chat.getOverview",
+      "kind": "query",
+      "observedCount": 439,
+      "p50Ms": 3.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "jobPricing.get",
+      "kind": "query",
+      "observedCount": 416,
+      "p50Ms": 17.0,
+      "p95Ms": 33.0
+    },
+    {
+      "procedure": "push.subscribe",
+      "kind": "mutation",
+      "observedCount": 394,
+      "p50Ms": 4.0,
+      "p95Ms": 14.0
+    },
+    {
+      "procedure": "supplier.getSupplierPartsByPart",
+      "kind": "query",
+      "observedCount": 201,
+      "p50Ms": 1.0,
+      "p95Ms": 3.0
+    }
+  ],
+  "topMutations": [
+    {
+      "procedure": "push.reportDevice",
+      "kind": "mutation",
+      "observedCount": 861,
+      "p50Ms": 2.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "appDevices.report",
+      "kind": "mutation",
+      "observedCount": 845,
+      "p50Ms": 3.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "push.subscribe",
+      "kind": "mutation",
+      "observedCount": 394,
+      "p50Ms": 4.0,
+      "p95Ms": 14.0
+    },
+    {
+      "procedure": "catalogue.hideParts",
+      "kind": "mutation",
+      "observedCount": 117,
+      "p50Ms": 3.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "drawingsWorkspace.applySuperLabel",
+      "kind": "mutation",
+      "observedCount": 87,
+      "p50Ms": 6.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "materialList.updateOrderItemVerification",
+      "kind": "mutation",
+      "observedCount": 76,
+      "p50Ms": 27.0,
+      "p95Ms": 36.0
+    },
+    {
+      "procedure": "drawingsWorkspace.save",
+      "kind": "mutation",
+      "observedCount": 67,
+      "p50Ms": 13.0,
+      "p95Ms": 20.0
+    },
+    {
+      "procedure": "drawingsWorkspace.openDocument",
+      "kind": "mutation",
+      "observedCount": 48,
+      "p50Ms": 53.0,
+      "p95Ms": 121.0
+    },
+    {
+      "procedure": "drawingsWorkspace.archive",
+      "kind": "mutation",
+      "observedCount": 36,
+      "p50Ms": 6.0,
+      "p95Ms": 16.0
+    },
+    {
+      "procedure": "chat.markRead",
+      "kind": "mutation",
+      "observedCount": 10,
+      "p50Ms": 5.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "materialList.sendGeneratedOrder",
+      "kind": "mutation",
+      "observedCount": 10,
+      "p50Ms": 43.0,
+      "p95Ms": 69.0
+    },
+    {
+      "procedure": "notifications.read",
+      "kind": "mutation",
+      "observedCount": 9,
+      "p50Ms": 7.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "catalogue.createPart",
+      "kind": "mutation",
+      "observedCount": 8,
+      "p50Ms": 10.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "materialList.merge",
+      "kind": "mutation",
+      "observedCount": 7,
+      "p50Ms": 25.0,
+      "p95Ms": 29.0
+    },
+    {
+      "procedure": "catalogue.updatePart",
+      "kind": "mutation",
+      "observedCount": 5,
+      "p50Ms": 12.0,
+      "p95Ms": 58.0
+    },
+    {
+      "procedure": "user.finishTutorial",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "drawingsWorkspace.setScale",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 6.0
+    },
+    {
+      "procedure": "catalogue.showHiddenParts",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 4.0,
+      "p95Ms": 5.0
+    },
+    {
+      "procedure": "drawings.createSet",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 3.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "organization.updateOrganizationMember",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 7.0
+    }
+  ],
+  "allProcedures": [
+    {
+      "procedure": "notifications.identity",
+      "kind": "query",
+      "observedCount": 5224,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "notifications.overview",
+      "kind": "query",
+      "observedCount": 5076,
+      "p50Ms": 5.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "push.identity",
+      "kind": "query",
+      "observedCount": 4918,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "user.getMyRole",
+      "kind": "query",
+      "observedCount": 4792,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "kind": "query",
+      "observedCount": 4185,
+      "p50Ms": 3.0,
+      "p95Ms": 30.0
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "kind": "query",
+      "observedCount": 2862,
+      "p50Ms": 1.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "user.getMe",
+      "kind": "query",
+      "observedCount": 1390,
+      "p50Ms": 0.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "push.device",
+      "kind": "query",
+      "observedCount": 1298,
+      "p50Ms": 1.0,
+      "p95Ms": 11.0
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "kind": "query",
+      "observedCount": 947,
+      "p50Ms": 5.0,
+      "p95Ms": 12.0
+    },
+    {
+      "procedure": "push.reportDevice",
+      "kind": "mutation",
+      "observedCount": 861,
+      "p50Ms": 2.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "appDevices.report",
+      "kind": "mutation",
+      "observedCount": 845,
+      "p50Ms": 3.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "drawings.getSet",
+      "kind": "query",
+      "observedCount": 774,
+      "p50Ms": 2.0,
+      "p95Ms": 16.0
+    },
+    {
+      "procedure": "supplierPriceBooks.labelContext",
+      "kind": "query",
+      "observedCount": 638,
+      "p50Ms": 16.0,
+      "p95Ms": 101.0
+    },
+    {
+      "procedure": "drawingsWorkspace.list",
+      "kind": "query",
+      "observedCount": 566,
+      "p50Ms": 49.0,
+      "p95Ms": 70.0
+    },
+    {
+      "procedure": "drawings.listSets",
+      "kind": "query",
+      "observedCount": 529,
+      "p50Ms": 10.0,
+      "p95Ms": 31.0
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "kind": "query",
+      "observedCount": 493,
+      "p50Ms": 4.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "chat.getOverview",
+      "kind": "query",
+      "observedCount": 439,
+      "p50Ms": 3.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "jobPricing.get",
+      "kind": "query",
+      "observedCount": 416,
+      "p50Ms": 17.0,
+      "p95Ms": 33.0
+    },
+    {
+      "procedure": "push.subscribe",
+      "kind": "mutation",
+      "observedCount": 394,
+      "p50Ms": 4.0,
+      "p95Ms": 14.0
+    },
+    {
+      "procedure": "supplier.getSupplierPartsByPart",
+      "kind": "query",
+      "observedCount": 201,
+      "p50Ms": 1.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "catalogue.recentOrderWheelUsage",
+      "kind": "query",
+      "observedCount": 172,
+      "p50Ms": 6.0,
+      "p95Ms": 15.0
+    },
+    {
+      "procedure": "job.getJob",
+      "kind": "query",
+      "observedCount": 167,
+      "p50Ms": 4.0,
+      "p95Ms": 28.0
+    },
+    {
+      "procedure": "catalogue.hideParts",
+      "kind": "mutation",
+      "observedCount": 117,
+      "p50Ms": 3.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "drawingsWorkspace.applySuperLabel",
+      "kind": "mutation",
+      "observedCount": 87,
+      "p50Ms": 6.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "materialList.updateOrderItemVerification",
+      "kind": "mutation",
+      "observedCount": 76,
+      "p50Ms": 27.0,
+      "p95Ms": 36.0
+    },
+    {
+      "procedure": "drawingsWorkspace.save",
+      "kind": "mutation",
+      "observedCount": 67,
+      "p50Ms": 13.0,
+      "p95Ms": 20.0
+    },
+    {
+      "procedure": "catalogue.getHiddenParts",
+      "kind": "query",
+      "observedCount": 56,
+      "p50Ms": 2.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "drawingsWorkspace.openDocument",
+      "kind": "mutation",
+      "observedCount": 48,
+      "p50Ms": 53.0,
+      "p95Ms": 121.0
+    },
+    {
+      "procedure": "drawingsWorkspace.archive",
+      "kind": "mutation",
+      "observedCount": 36,
+      "p50Ms": 6.0,
+      "p95Ms": 16.0
+    },
+    {
+      "procedure": "materialList.previewOrders",
+      "kind": "query",
+      "observedCount": 26,
+      "p50Ms": 28.0,
+      "p95Ms": 47.0
+    },
+    {
+      "procedure": "notifications.list",
+      "kind": "query",
+      "observedCount": 25,
+      "p50Ms": 4.0,
+      "p95Ms": 6.0
+    },
+    {
+      "procedure": "chat.history",
+      "kind": "query",
+      "observedCount": 24,
+      "p50Ms": 6.0,
+      "p95Ms": 9.0
+    },
+    {
+      "procedure": "supplier.list",
+      "kind": "query",
+      "observedCount": 23,
+      "p50Ms": 3.0,
+      "p95Ms": 17.0
+    },
+    {
+      "procedure": "catalogue.getMaterials",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 2.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "catalogue.getAllUnits",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 2.0,
+      "p95Ms": 16.0
+    },
+    {
+      "procedure": "catalogue.getCatalogs",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 5.0,
+      "p95Ms": 20.0
+    },
+    {
+      "procedure": "catalogue.getCategoryTree",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 5.0,
+      "p95Ms": 19.0
+    },
+    {
+      "procedure": "catalogue.getQuantityUnits",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 7.0,
+      "p95Ms": 19.0
+    },
+    {
+      "procedure": "drawingsWorkspace.pipeLegendReferences",
+      "kind": "query",
+      "observedCount": 22,
+      "p50Ms": 65.0,
+      "p95Ms": 76.0
+    },
+    {
+      "procedure": "drawingsWorkspace.linkTargets",
+      "kind": "query",
+      "observedCount": 20,
+      "p50Ms": 23.0,
+      "p95Ms": 51.0
+    },
+    {
+      "procedure": "catalogue.getPart",
+      "kind": "query",
+      "observedCount": 19,
+      "p50Ms": 4.0,
+      "p95Ms": 39.0
+    },
+    {
+      "procedure": "pipeSpecs.aiConnection",
+      "kind": "query",
+      "observedCount": 19,
+      "p50Ms": 1.0,
+      "p95Ms": 5.0
+    },
+    {
+      "procedure": "catalogue.getPartWizardSummary",
+      "kind": "query",
+      "observedCount": 17,
+      "p50Ms": 17.0,
+      "p95Ms": 26.0
+    },
+    {
+      "procedure": "conversations.list",
+      "kind": "query",
+      "observedCount": 16,
+      "p50Ms": 5.0,
+      "p95Ms": 12.0
+    },
+    {
+      "procedure": "organization.getOrganizationSettings",
+      "kind": "query",
+      "observedCount": 14,
+      "p50Ms": 4.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "user.getSupplierEmailPreference",
+      "kind": "query",
+      "observedCount": 12,
+      "p50Ms": 1.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "drawingsWorkspace.equipmentTag",
+      "kind": "query",
+      "observedCount": 12,
+      "p50Ms": 2471.0,
+      "p95Ms": 2779.0
+    },
+    {
+      "procedure": "chat.markRead",
+      "kind": "mutation",
+      "observedCount": 10,
+      "p50Ms": 5.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "materialList.listOrders",
+      "kind": "query",
+      "observedCount": 10,
+      "p50Ms": 9.0,
+      "p95Ms": 46.0
+    },
+    {
+      "procedure": "materialList.sendGeneratedOrder",
+      "kind": "mutation",
+      "observedCount": 10,
+      "p50Ms": 43.0,
+      "p95Ms": 69.0
+    },
+    {
+      "procedure": "payment.getSubscriptionStatus",
+      "kind": "query",
+      "observedCount": 9,
+      "p50Ms": 1.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "notifications.read",
+      "kind": "mutation",
+      "observedCount": 9,
+      "p50Ms": 7.0,
+      "p95Ms": 8.0
+    },
+    {
+      "procedure": "catalogue.createPart",
+      "kind": "mutation",
+      "observedCount": 8,
+      "p50Ms": 10.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "rooms.getJobRooms",
+      "kind": "query",
+      "observedCount": 8,
+      "p50Ms": 4.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "drawingsWorkspace.textSearch",
+      "kind": "query",
+      "observedCount": 8,
+      "p50Ms": 78.0,
+      "p95Ms": 153.0
+    },
+    {
+      "procedure": "supplier.getById",
+      "kind": "query",
+      "observedCount": 7,
+      "p50Ms": 25.0,
+      "p95Ms": 32.0
+    },
+    {
+      "procedure": "drawingsWorkspace.link",
+      "kind": "query",
+      "observedCount": 7,
+      "p50Ms": 1.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "materialList.merge",
+      "kind": "mutation",
+      "observedCount": 7,
+      "p50Ms": 25.0,
+      "p95Ms": 29.0
+    },
+    {
+      "procedure": "appDevices.organization",
+      "kind": "query",
+      "observedCount": 7,
+      "p50Ms": 1.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "catalogue.updatePart",
+      "kind": "mutation",
+      "observedCount": 5,
+      "p50Ms": 12.0,
+      "p95Ms": 58.0
+    },
+    {
+      "procedure": "catalogue.getPartImageFamilySuggestions",
+      "kind": "query",
+      "observedCount": 4,
+      "p50Ms": 2.0,
+      "p95Ms": 10.0
+    },
+    {
+      "procedure": "prefabs.list",
+      "kind": "query",
+      "observedCount": 3,
+      "p50Ms": 2.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "kind": "query",
+      "observedCount": 3,
+      "p50Ms": 2.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "materialList.getOrderEmailContent",
+      "kind": "query",
+      "observedCount": 3,
+      "p50Ms": 6.0,
+      "p95Ms": 22.0
+    },
+    {
+      "procedure": "drawingsWorkspace.autoHyperlinkPreview",
+      "kind": "query",
+      "observedCount": 3,
+      "p50Ms": 4925.0,
+      "p95Ms": 7259.0
+    },
+    {
+      "procedure": "supplierPriceBooks.preferences",
+      "kind": "query",
+      "observedCount": 3,
+      "p50Ms": 1.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "user.finishTutorial",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "drawingsWorkspace.setScale",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 6.0
+    },
+    {
+      "procedure": "drawingsWorkspace.autoHyperlinkReaders",
+      "kind": "query",
+      "observedCount": 2,
+      "p50Ms": 1.0,
+      "p95Ms": 13.0
+    },
+    {
+      "procedure": "drawingsWorkspace.autoHyperlinkSources",
+      "kind": "query",
+      "observedCount": 2,
+      "p50Ms": 4037.0,
+      "p95Ms": 5370.0
+    },
+    {
+      "procedure": "catalogue.showHiddenParts",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 4.0,
+      "p95Ms": 5.0
+    },
+    {
+      "procedure": "drawings.createSet",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 3.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "drawingsWorkspace.superLabelSettings",
+      "kind": "query",
+      "observedCount": 2,
+      "p50Ms": 2.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "organization.updateOrganizationMember",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "orderDelivery.get",
+      "kind": "query",
+      "observedCount": 2,
+      "p50Ms": 5.0,
+      "p95Ms": 27.0
+    },
+    {
+      "procedure": "orderDelivery.preview",
+      "kind": "query",
+      "observedCount": 2,
+      "p50Ms": 11.0,
+      "p95Ms": 18.0
+    },
+    {
+      "procedure": "drawings.moveSet",
+      "kind": "mutation",
+      "observedCount": 2,
+      "p50Ms": 4.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "materialList.markAllOrderItemsReceived",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 26.0,
+      "p95Ms": 26.0
+    },
+    {
+      "procedure": "materialList.updateOrderNotes",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 3.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "drawings.renameSheet",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 3.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "job.supplierDefaultOptions",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 1.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "location.searchLocations",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 1.0,
+      "p95Ms": 1.0
+    },
+    {
+      "procedure": "drawingsWorkspace.notifications",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 2.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "chat.join",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 9.0,
+      "p95Ms": 9.0
+    },
+    {
+      "procedure": "rooms.detectRoomsStatus",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 2.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "rooms.getFloorRooms",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 4.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "push.revokeDevice",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 2.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "drawings.renameSet",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 4.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "drawingsWorkspace.saveSuperLabelBoxes",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 4.0,
+      "p95Ms": 4.0
+    },
+    {
+      "procedure": "organization.savePermissionPreset",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 7.0,
+      "p95Ms": 7.0
+    },
+    {
+      "procedure": "materialList.listQuotes",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 2.0,
+      "p95Ms": 2.0
+    },
+    {
+      "procedure": "materialList.getQuotesForMaterialList",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 3.0,
+      "p95Ms": 3.0
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 22.0,
+      "p95Ms": 22.0
+    },
+    {
+      "procedure": "materialList.generateQuote",
+      "kind": "mutation",
+      "observedCount": 1,
+      "p50Ms": 26.0,
+      "p95Ms": 26.0
+    },
+    {
+      "procedure": "materialList.getQuoteEmailContent",
+      "kind": "query",
+      "observedCount": 1,
+      "p50Ms": 4.0,
+      "p95Ms": 4.0
+    }
+  ]
+}
