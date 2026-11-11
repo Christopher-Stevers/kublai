@@ -399,9 +399,22 @@ try {
   delete report.active;
 } catch (error) {
   report.status = controller.signal.aborted ? "interrupted" : "failed";
+  const safeReasons = [
+    "Frozen first target must be the unique visible match",
+    "Enabled target required",
+    "One visible job-card ancestor required",
+    "Interactive enabled job-card ancestor required",
+    "Destination already visible before timed input",
+    "Missing browser input/readiness observation",
+    "Sample90second time bound reached",
+    "Diagnostic interrupted or total time bound reached",
+  ];
   report.failure = {
     ...report.active,
     kind: error.name,
+    reason:
+      safeReasons.find((reason) => String(error.message).includes(reason)) ??
+      "Other diagnostic failure",
     message: "Instrumented diagnostic stopped; no timing/gate waiver.",
   };
   process.exitCode = controller.signal.aborted ? 143 : 1;
