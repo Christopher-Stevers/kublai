@@ -1,0 +1,91 @@
+{
+  "status": "rejected; not activated",
+  "candidateBuild": "ec687e6e6e1d5cbfb8c716401bd3eee32157e85795026109acb274104da4193b",
+  "sourceFingerprint": "30146a8267047169deaa5bebd2c397a9312328b414a1eba2a7699edfa2842b27",
+  "compile": "webpack, TypeScript and prerender passed with pinned canonical toolchain",
+  "delta": {
+    "baselineBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "candidateBuild": "ec687e6e6e1d5cbfb8c716401bd3eee32157e85795026109acb274104da4193b",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 277,
+    "reusedScripts": 72,
+    "changedScripts": 205,
+    "changedRawBytes": 3767783,
+    "changedGzipBytes": 1236327,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "sharedGzipBytes": 508465,
+  "frameworkRootGzipBytes": 118196,
+  "applicationSharedGzipBytes": 390269,
+  "sharedDeltaVersusPhase0": 5847,
+  "frameworkDeltaVersusPhase0": 267,
+  "applicationDeltaVersusPhase0": 5580,
+  "http": {
+    "build": "ec687e6e6e1d5cbfb8c716401bd3eee32157e85795026109acb274104da4193b",
+    "currentAssets": 282,
+    "currentScripts": 277,
+    "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+    "immutableStaticHeaders": true,
+    "previousReleaseSamples": 10,
+    "allHistoricalBytesExact": true,
+    "workerMatchesPackaged": true,
+    "releaseManifestStatus": 307,
+    "releaseManifestMatchesBuild": false,
+    "knownRejectedArtifact": true,
+    "healthStatus": 200,
+    "signInStatus": 200,
+    "unauthenticatedBindingStatus": 401,
+    "backgroundMode": "separate",
+    "bimDisabled": true
+  },
+  "source": {
+    "build": "ec687e6e6e1d5cbfb8c716401bd3eee32157e85795026109acb274104da4193b",
+    "productionOverlayStringHits": 0,
+    "productionOverlayModules": 0,
+    "frozenReviewedInputsChanged": 0,
+    "sourceFingerprint": "30146a8267047169deaa5bebd2c397a9312328b414a1eba2a7699edfa2842b27",
+    "sourceFileCount": 2270,
+    "statsBuildMatches": true
+  },
+  "lazyModuleEvidence": {
+    "SavedSnapshotPicker": "async and absent from all-jobs shared union",
+    "drawing-geometry-fallback": "async and absent from all-jobs shared union",
+    "RecipientChooser": "root async copy plus a different route initial copy; neither in all-jobs shared union",
+    "sharedChunkFlags": "all44 shared-union chunks initial:true; flags do not replace a route network trace"
+  },
+  "wholeChunkGzipComparisons": {
+    "geometryContainingChunk": {
+      "before": 19055,
+      "after": 6083
+    },
+    "snapshotContainingChunk": {
+      "before": 11653,
+      "after": 8013
+    },
+    "updateAndTelemetryRootGroup": {
+      "before": 10304,
+      "after": 13237
+    },
+    "drawingStoreAndAccountGroups": {
+      "before": 7738,
+      "after": 9336
+    },
+    "newQueryCacheGroup": 4265
+  },
+  "attributionLimit": "Whole emitted chunk gzip totals are exact; module sizes are compiler estimates and cannot additively allocate compressed delta after chunk regrouping. Shared gate definition unchanged.",
+  "followup": {
+    "publicManifestFixCommit": "a7133c59",
+    "focusedTestStatus": "queued during baseline quiet window",
+    "rebuildStatus": "held until quiet window clears",
+    "activation": "blocked"
+  },
+  "controlledEditProof": {
+    "build": "3f9c23b7af3c462c72ce169fa2afcb66d52dc247b769c322ec25597610f34f5b",
+    "changedScripts": 6,
+    "reusedScripts": 249,
+    "changedGzipBytes": 39423,
+    "sourceRuntimeDifference": "app/jobs/JobsClient.tsx only, reverified by byte comparison",
+    "note": "Separate Phase0 controlled-edit proof, not this large batch and not a candidate-specific typical edit."
+  }
+}
