@@ -12,10 +12,11 @@
     "The first complete v1 and v2 baseline pairs each failed one cell and remain rejected. The separately archived v2 rerun passes all 24 cells without exclusions or threshold changes.",
     "Physical phone CDP attempt failed attestation Page.navigate with zero completed samples; local smoke is separate functionality evidence.",
     "Earlier source-only reconciliation retained four archived captures/zero accepted while the rerun was pending. Reviewed 7fd11c0d assessment now adds two complete v2 captures accepted only for same-build repeatability; all older raw artifacts stay unchanged.",
-    "The full R6 candidate retains all 120 samples and fails two openjob regression cells against predeclared accepted baseline1; baseline2 remains stability evidence.",
+    "The full R6 candidate retains all 120 samples and fails two openjob regression cells against predeclared accepted baseline 1; baseline2 remains stability evidence.",
     "The 20-sample browser-local phase diagnostic observes real input-to-DOM-ready differences without causal component attribution or a gate waiver.",
     "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate.",
-    "Separate R7 focused20-sample diagnostic is complete; original R6 full-gate failure remains unchanged, full R7matrix has not run. LOCAL phone-v2 smoke3samples is nonphysical and not gate evidence."
+    "R7 focused20-sample diagnostic stays supplemental; subsequent unchanged full R7 matrix fails4/24cells. R6 failure remains preserved; LOCAL phone-v2 smoke 3 samples remains nonphysical/nongate.",
+    "The complete R7 candidate retains all 120 samples and fails openjob on all 3 links plus Basement material-list against predeclared baseline 1; no extra run, metric/threshold change or waiver."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -37,7 +38,9 @@
     "perf/artifacts/openjob-phase-diagnostic-2026-11-11-assessment.json",
     "perf/artifacts/private-cache-contract-r6-2026-11-11.json",
     "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-assessment.json",
-    "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json"
+    "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
+    "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
+    "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
   ],
   "rows": [
     {
@@ -60,7 +63,7 @@
       "measuredAt": "2026-11-11T04:22:07.587029+00:00",
       "source": "perf/artifacts/field-review-2026-11-10-2322.json",
       "reportedP95Ms": 880,
-      "labCandidateQualification": "R6 full matrix fails predeclared openjob Basement/Office regression cells; supplemental 20-sample browser-local DOM readiness is not p95/physical paint or replacement gate evidence."
+      "labCandidateQualification": "Full R7 matrix fails openjob on all 3 links plus Basement material-list; earlier R6 failure retained. Supplemental 20-sample browser DOM-readiness findings do not replace the original wallclock gate or establish physical p95."
     },
     {
       "measure": "Write feedback",
@@ -95,7 +98,7 @@
       "measure": "First Site visit to working",
       "target": "<3000ms",
       "state": "missing-baseline",
-      "evidence": "Accepted v2 baseline pair passes all 24 same-build repeatability cells. A separately source-bound full R6 candidate comparison now exists but fails two openjob cells. Auth-stubbed page navigation does not establish real sign-in, controlled physical conditions or the final <3000 ms working-screen target."
+      "evidence": "Accepted v2 baseline pair passes all 24 same-build repeatability cells. Source-matched full R6 and R7 comparisons exist but fail 2 and 4 regression cells respectively. Stub-auth page navigation is not real sign-in, controlled physical conditions or a final <3000 ms working-screen target pass."
     },
     {
       "measure": "Shared script",
@@ -105,8 +108,8 @@
       "frameworkGzipBytes": 117929,
       "totalGzipBytes": 502618,
       "evidence": "Actual canonical dependency-map intersection, gzip9 per file. Application-only figure matches the plan's approximate 390 KB definition; framework-inclusive total remains the static gate definition. Conditional references can overstate requests.",
-      "latestTimedCandidateGzipBytes": 485351,
-      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
+      "latestTimedCandidateGzipBytes": 485406,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Heaviest screen, receiving",
@@ -114,8 +117,8 @@
       "state": "measured-static-bound",
       "gzipBytes": 758531,
       "evidence": "Canonical client-reference dependency union, including shared scripts; not a browser transfer trace.",
-      "latestTimedCandidateGzipBytes": 755539,
-      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
+      "latestTimedCandidateGzipBytes": 755594,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Cached sheet sharp after pinch",
@@ -148,7 +151,7 @@
       "state": "controlled-proof-only",
       "controlledSmallEditGzipBytes": 39423,
       "phase1FoundationGzipBytes": 947890,
-      "evidence": "The separate R2\u2192R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3\u2192R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison. The later full R6 payload is 1,275,529 gzip bytes: its formal byte ratchets pass separately, while the unchanged full timing gate fails two openjob cells. No activation.",
+      "evidence": "The separate R2\u2192R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3\u2192R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison. The later full R6 payload is 1,275,529 gzip bytes: its formal byte ratchets pass separately, while the unchanged full timing gate fails two openjob cells. No activation. R7 full payload is 1,278,937 gzip bytes with formal byte ratchets passing, while full timing fails 4 cells. R6\u2192R7 broad feature delta 252,295 bytes is separate from the controlled 22,739-byte edit proof and exceeds 100 KB. No activation.",
       "reviewedCandidateGzipBytes": 1236327,
       "historicalEvidence": {
         "source": "Earlier Phase0 controlled title edit and reviewed foundation artifacts",
@@ -158,8 +161,8 @@
       "latestControlledEditSource": "perf/artifacts/phase1-controlled-r3-static-2026-11-11.json",
       "latestPreparedPhotoFeatureGzipBytes": 283891,
       "latestPreparedSource": "perf/artifacts/phase1-photo-r4-static-2026-11-11.json",
-      "latestTimedCandidateGzipBytes": 1275529,
-      "latestTimedCandidateSource": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-static.json"
+      "latestTimedCandidateGzipBytes": 1278937,
+      "latestTimedCandidateSource": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
     },
     {
       "measure": "Idle requests",
@@ -181,6 +184,17 @@
         "activeAtWindowStart": 1,
         "activeAtWindowEnd": 1,
         "qualification": "Request lifetime only; not uninterrupted heartbeat health or no-poll proof."
+      },
+      "candidateR7Observation": {
+        "source": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-idle.json",
+        "durationMs": 600000,
+        "queryProcedureReads": 80,
+        "streamStarts": 3,
+        "streamCloses": 2,
+        "overlappingStarts": 0,
+        "activeAtWindowStart": 1,
+        "activeAtWindowEnd": 1,
+        "qualification": "Request lifetime only; no no-poll or continuous heartbeat pass."
       }
     },
     {
@@ -241,7 +255,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 6,
+  "completedFullLabCaptures": 8,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -275,24 +289,28 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T07:29:10.176719+00:00",
-  "completedCandidateLabCaptures": 1,
+  "updatedAt": "2026-11-11T08:11:01.005305+00:00",
+  "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
-    "source": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json",
-    "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
-    "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+    "source": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
+    "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+    "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
     "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
     "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
     "samples": 120,
-    "cellsPassed": 22,
+    "cellsPassed": 20,
     "cellsTotal": 24,
     "errors": [
-      "openjob/Basement: median 98.7ms exceeds 82.4ms baseline +10%",
-      "openjob/Office: median 98.7ms exceeds 82.3ms baseline +10%"
+      "openjob/Basement: median 98.5ms exceeds 82.4ms baseline +10%",
+      "openjob/Site: median 99.0ms exceeds 82.5ms baseline +10%",
+      "openjob/Office: median 98.8ms exceeds 82.3ms baseline +10%",
+      "openmateriallist/Basement: median 244.7ms exceeds 215.1ms baseline +10%"
     ],
     "originalGateUnchanged": true,
-    "acceptedForActivation": false
+    "acceptedForActivation": false,
+    "artifactReusedWithoutRebuild": true
   },
   "openjobPhaseDiagnostic": {
     "status": "supplemental-only",
@@ -340,7 +358,7 @@
         }
       },
       "interpretation": "Click-to-DOM-ready is close to contemporaneous baseline in this run; pointerdown/click and Office driver/rAF timing still differ. No causal component or actual first-paint claim.",
-      "fullR7RegressionMatrix": "not yet run",
+      "fullR7RegressionMatrix": "Completed 120 samples; failed 4/24 cells; focused result did not replace full gate.",
       "gateReplacement": false,
       "finalDatabaseErrors": 0,
       "privateRuntimesCleaned": true
@@ -387,5 +405,26 @@
       "acceptedPerformanceGate": false,
       "ownedTargetClosedHttpStatus": 200
     }
-  }
+  },
+  "priorCandidateRegressions": [
+    {
+      "status": "failed",
+      "source": "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json",
+      "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+      "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+      "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "stabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+      "samples": 120,
+      "cellsPassed": 22,
+      "cellsTotal": 24,
+      "errors": [
+        "openjob/Basement: median 98.7ms exceeds 82.4ms baseline +10%",
+        "openjob/Office: median 98.7ms exceeds 82.3ms baseline +10%"
+      ],
+      "originalGateUnchanged": true,
+      "acceptedForActivation": false
+    }
+  ],
+  "completedBaselineLabCaptures": 6,
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only) plus two full rejected candidate captures (R6/R7). Invalid/partial pilot runs and supplemental diagnostics excluded."
 }

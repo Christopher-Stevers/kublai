@@ -1,0 +1,384 @@
+{
+  "status": "rejected-lab-regression",
+  "acceptedForActivation": false,
+  "protocol": {
+    "id": "ready-then-pinch-v2",
+    "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+    "coveragePollMs": 50
+  },
+  "predeclaredBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "baselineStabilityReference": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "raw": [
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-report.json",
+      "sha256": "74c5f89168e2b2c92d15c4058d62d548daaa6100e28510b3d75cfa1d077e8227"
+    },
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-preflight.json",
+      "sha256": "fa73e5b7b0519669e3043c67c8aca7bc586d5486245a39100a0032be6b615976"
+    },
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-idle.json",
+      "sha256": "cbcdb39797a6394f801b9c799f88b50bca1c768f45d8f982e68c92fe7be5be80"
+    },
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json",
+      "sha256": "0d514b54e9c9b8e54862bed455f1d0fba4bd17bd2755e12b3e46a3ab81144a8c"
+    },
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-lab-static.json",
+      "sha256": "f961957eb3a2fa847f02336879b8548b1a4bdf4e0d6525aa9b84414fb2279137"
+    },
+    {
+      "path": "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-source-evidence.json",
+      "sha256": "27c9a48f1021cc8fca7d863dea6bb45871fff7a25a67c5fced3816fbaa107deb"
+    }
+  ],
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+  "artifactReusedWithoutRebuild": true,
+  "captureWindow": {
+    "start": "2026-11-11T07:47:32.579Z",
+    "end": "2026-11-11T08:05:14.934Z",
+    "samples": 120
+  },
+  "validationErrors": [],
+  "sourceErrors": [],
+  "regressionErrors": [
+    "openjob/Basement: median 98.5ms exceeds 82.4ms baseline +10%",
+    "openjob/Site: median 99.0ms exceeds 82.5ms baseline +10%",
+    "openjob/Office: median 98.8ms exceeds 82.3ms baseline +10%",
+    "openmateriallist/Basement: median 244.7ms exceeds 215.1ms baseline +10%"
+  ],
+  "cellsPassed": 20,
+  "cells": [
+    {
+      "journey": "coldstart",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 20324.651497,
+      "candidateMedianMs": 19906.372124,
+      "changeRatio": -0.020579903820822577,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 3610.493581999908,
+      "candidateMedianMs": 3536.1460419999203,
+      "changeRatio": -0.0205920709485947,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 743.211593999993,
+      "candidateMedianMs": 745.6126820000354,
+      "changeRatio": 0.0032306923350315583,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 82.4440299999842,
+      "candidateMedianMs": 98.54139100000612,
+      "changeRatio": 0.19525199095707724,
+      "withinRegressionBudget": false
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 82.45718499994837,
+      "candidateMedianMs": 98.9553780000424,
+      "changeRatio": 0.20008193343132397,
+      "withinRegressionBudget": false
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 82.27076399989892,
+      "candidateMedianMs": 98.8383319999557,
+      "changeRatio": 0.20137856019031422,
+      "withinRegressionBudget": false
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 165.57363499997882,
+      "candidateMedianMs": 165.65377299999818,
+      "changeRatio": 0.00048400217836233763,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 165.39708299993072,
+      "candidateMedianMs": 165.34447100001853,
+      "changeRatio": -0.0003180950894533581,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 165.55675099999644,
+      "candidateMedianMs": 165.71074799995404,
+      "changeRatio": 0.0009301765045969164,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 215.1409510000376,
+      "candidateMedianMs": 244.71437900001183,
+      "changeRatio": 0.13746071058303103,
+      "withinRegressionBudget": false
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 215.63234400004148,
+      "candidateMedianMs": 221.55804699996952,
+      "changeRatio": 0.027480585194245698,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 228.89309700008016,
+      "candidateMedianMs": 245.9574980000034,
+      "changeRatio": 0.07455183762015008,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 98.41997200000333,
+      "candidateMedianMs": 98.9891480000224,
+      "changeRatio": 0.005783135154916022,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 115.20544599997811,
+      "candidateMedianMs": 115.09835799993016,
+      "changeRatio": -0.0009295393904205908,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 114.14365500002168,
+      "candidateMedianMs": 114.9671260000905,
+      "changeRatio": 0.0072143388090092665,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 432.41626800002996,
+      "candidateMedianMs": 448.82976600003894,
+      "changeRatio": 0.03795763299082876,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 432.52204100007657,
+      "candidateMedianMs": 448.71191800001543,
+      "changeRatio": 0.037431334048328865,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 432.24044399987906,
+      "candidateMedianMs": 447.6573169999756,
+      "changeRatio": 0.03566735416388024,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 1504.493460000027,
+      "candidateMedianMs": 1499.1752570000244,
+      "changeRatio": -0.003534879440421393,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 1491.1436209999956,
+      "candidateMedianMs": 1481.6515580000123,
+      "changeRatio": -0.00636562626584401,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 1481.33909699996,
+      "candidateMedianMs": 1515.5370360000525,
+      "changeRatio": 0.023085827592987218,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 231.5141809999477,
+      "candidateMedianMs": 231.48743199999444,
+      "changeRatio": -0.00011553935848653694,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 231.81477699999232,
+      "candidateMedianMs": 231.56151799997315,
+      "changeRatio": -0.00109250585013042,
+      "withinRegressionBudget": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "baselineMedianMs": 232.0708399999421,
+      "candidateMedianMs": 216.1916360000614,
+      "changeRatio": -0.06842395192728506,
+      "withinRegressionBudget": true
+    }
+  ],
+  "methodVerification": {
+    "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "immutable": true
+  },
+  "orchestrationVerification": {
+    "before": "a532b3b52005cf35a3874dc8ab286c82f883e64997a867caaf646d79cc1ec1f8",
+    "after": "a532b3b52005cf35a3874dc8ab286c82f883e64997a867caaf646d79cc1ec1f8",
+    "unchanged": true
+  },
+  "reuseHelperVerification": {
+    "before": "53ba8d0126f7f1341acfaa9ac455a0213c4ca3469d5d95ed4aaf4673d81f044a",
+    "after": "53ba8d0126f7f1341acfaa9ac455a0213c4ca3469d5d95ed4aaf4673d81f044a",
+    "unchanged": true
+  },
+  "database": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "cleanup": {
+    "port3481NoListener": true,
+    "privateDatabaseDirectoriesRemoved": true
+  },
+  "hostContext": "No declared agent-driven heavy work/tests/builds/compression/ADB/phone during timing. Production web/worker and ordinary OS/background activity remained running and uncontrolled.",
+  "limitations": [
+    "All 120 samples retained; predeclared baseline 1 fixed before capture, baseline 2 preserved as stability evidence. No exclusions, metric swaps or threshold changes.",
+    "R6 failure and both focused diagnostics remain intact; focused R7 results did not replace full gate.",
+    "Same sealed 25dfa8 method and ready-then-pinch-v2 protocol; separately hashed reuse orchestration refreshes only generated fixtures/uploads/source attestation.",
+    "Openjob browser-stage arrays remain empty; no action/DOM/first-paint attribution can be recovered from the original full method. Supplemental instrumented diagnostics are separate.",
+    "Non-hex isolated-speed-baseline public build tag disables production private SW binding/reloadReleaseOnce branches; private Flight/background-update gates are not established by this matrix.",
+    "Stubbed Clerk auth/bytes, stock next start transport, desktop mobile emulation; no controlled physical/Safari/offline/every-frame proof.",
+    "Five samples per cell are descriptive, not statistically established p95.",
+    "Ten-minute Jobs idle retains 80 query-procedure reads and 3 stream starts/2 closes; request lifetime does not prove no-poll/continuous heartbeat targets.",
+    "Canonical static ratchets pass separately from the typical 100 KB edit target; broad R7 payload remains above 100 KB.",
+    "No activation, extra run or selective retry."
+  ],
+  "availableBrowserStageSummary": [
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "browserStageCounts": [
+        0,
+        0
+      ],
+      "tapPaintMedianMs": [
+        null,
+        null
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "browserStageCounts": [
+        0,
+        0
+      ],
+      "tapPaintMedianMs": [
+        null,
+        null
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "browserStageCounts": [
+        0,
+        0
+      ],
+      "tapPaintMedianMs": [
+        null,
+        null
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "browserStageCounts": [
+        5,
+        5
+      ],
+      "tapPaintMedianMs": [
+        159.19999980926514,
+        176.19999980926514
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "browserStageCounts": [
+        5,
+        5
+      ],
+      "tapPaintMedianMs": [
+        157.30000019073486,
+        170.09999990463257
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "browserStageCounts": [
+        5,
+        5
+      ],
+      "tapPaintMedianMs": [
+        158.5,
+        178
+      ]
+    }
+  ],
+  "browserStageQualification": "No openjob browser-stage marks exist in the frozen full method; cannot attribute failed openjob wallclock to render/action/assert/paint phases. Material-list marks are browser paint-opportunity proxies and do not replace the original failed wallclock gate."
+}

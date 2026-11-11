@@ -253,4 +253,29 @@ target with HTTP 200; it has `physicalPhoneEvidence: false` and is not a timing
 gate. Its exact archive is
 `artifacts/phone-v2-local-smoke-2026-11-11/report.json`. Controlled physical
 samples remain zero, and the non-hex timing-lab private SW/reload coverage gap
-is unchanged. A full R7 matrix requires separate authorization and has not run.
+is unchanged. The subsequent separately authorized full R7 matrix is now archived and failed
+as recorded below; the focused result did not replace its gate.
+
+
+## Full R7 candidate result — 2026-11-11 08:05 UTC
+
+The unchanged sealed v2 driver completed all 120 R7 samples against the
+predeclared accepted baseline 1, retaining baseline 2 as stability evidence.
+Exact source (`754be902…` / `42fcc8c7…`), compiled-artifact reuse, preflight,
+method/wrapper/reuse-helper hashes and private DB health pass. The full gate
+fails four cells: openjob Basement 82.4 → 98.5 ms, Site 82.5 → 99.0 ms, Office
+82.3 → 98.8 ms, and Basement material-list 215.1 → 244.7 ms. The other 20 cells
+pass. All samples and earlier R6/diagnostic failures remain intact, with no
+waiver, selected retry, metric swap or threshold change. Original openjob
+browser-stage arrays are empty, so the full report cannot attribute its delay
+to action, rendering or frame scheduling. Separate instrumented diagnostics do
+not replace this result.
+
+Canonical static bounds are 485,406 shared, 755,594 heaviest, and 1,278,937 deploy
+gzip bytes. Formal byte ratchets pass separately; final script/deploy targets
+remain unmet. Ten-minute idle again records 80 query-procedure reads and three
+stream starts/two closes without overlap; this is not a no-poll or continuous
+heartbeat pass. The non-hex lab private SW/reload gap and controlled physical
+zero remain unchanged. Server and private DB were cleaned with zero errors;
+no further full run or activation is queued. Raw/provenance/assessment:
+`artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json`.
