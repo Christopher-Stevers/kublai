@@ -20,7 +20,7 @@ it("keeps the cover while a route is pending, then waits for page paint before f
  expect(cover.style.opacity).toBe("1");
  await act(()=>vi.advanceTimersByTimeAsync(32));
  expect(cover.style.opacity).toBe("0");expect(cover.style.pointerEvents).toBe("none");
- await act(()=>vi.advanceTimersByTimeAsync(220));
+ await act(()=>vi.advanceTimersByTimeAsync(120));
  expect(document.getElementById("app-startup-cover")).toBeNull();
 });
 it("does not mistake script-only streaming content for a ready page",async()=>{

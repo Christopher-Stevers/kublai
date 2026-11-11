@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+const FADE_MS = 120;
+
 /** Keep the first HTML frame painted until real route content is ready. */
 export function StartupHandoff({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<"loading" | "fading" | "done">("loading");
@@ -35,7 +37,7 @@ export function StartupHandoff({ children }: { children: React.ReactNode }) {
             requestAnimationFrame(() => requestAnimationFrame(() => {
               performance.measure("foremenhq:app-start-to-last-screen", { start: 0, end: performance.now() });
             }));
-          }, reduced ? 0 : 220);
+          }, reduced ? 0 : FADE_MS);
         });
       });
     }
@@ -51,5 +53,5 @@ export function StartupHandoff({ children }: { children: React.ReactNode }) {
   // React owns this subtree, including its removal. Do not remove the DOM node
   // manually: streamed routes may still use it as an insertion anchor.
   if (phase === "done") return null;
-  return <div ref={coverRef} id="app-startup-cover" aria-hidden="true" style={{position:"fixed",inset:0,zIndex:10000,background:"#111827",opacity:phase === "loading" ? 1 : 0,pointerEvents:phase === "loading" ? "auto" : "none",transition:"opacity 200ms ease-out"}}>{children}</div>;
+  return <div ref={coverRef} id="app-startup-cover" aria-hidden="true" style={{position:"fixed",inset:0,zIndex:10000,background:"#111827",opacity:phase === "loading" ? 1 : 0,pointerEvents:phase === "loading" ? "auto" : "none",transition:`opacity ${FADE_MS}ms ease-out`}}>{children}</div>;
 }
