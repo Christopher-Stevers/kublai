@@ -537,5 +537,49 @@
     "originalR7FailureUnchanged": true,
     "databaseErrors": 0,
     "privateRuntimesCleaned": true
+  },
+  "phase1AfterPhoneDeferral": {
+    "status": "prepared-partial-not-activated",
+    "phoneWork": "deferred-by-user",
+    "byteSnapshots": [
+      {
+        "name": "R9",
+        "sourceCommit": "035e61f8",
+        "proofCommit": "09d5c2b8",
+        "artifact": "perf/artifacts/phase1-cleanup-r9-byte-2026-11-11.json",
+        "commonInitialGzipBytes": 420663,
+        "strictChangedScriptGzipBytes": 549936,
+        "strictChangedScriptPass": false
+      },
+      {
+        "name": "R10",
+        "sourceCommit": "77373c58",
+        "proofCommit": "c1f39353",
+        "artifact": "perf/artifacts/phase1-voice-r10-byte-2026-11-11.json",
+        "commonInitialGzipBytes": 417476,
+        "sharedGzipBytes": 473958,
+        "heaviestGzipBytes": 749234,
+        "strictChangedScriptGzipBytes": 157682,
+        "strictChangedScriptPass": false
+      }
+    ],
+    "otherPreparedCommits": {
+      "folderCreation": "f7112319",
+      "preferenceHintsPollRetained": "168502f8",
+      "memberSaveFeedback": [
+        "326aed65",
+        "7f8ca0f6",
+        "88f9a2c4"
+      ],
+      "bulkReceiptFeedback": "9530aaab",
+      "navigationSourceGate": "27d2ddd5",
+      "sharedProviderSourceGate": "60b1d800"
+    },
+    "fullR7GateUnchanged": "failed4cells",
+    "first20LatencyAccepted": false,
+    "noPollIdleAccepted": false,
+    "activated": false,
+    "productionSchemaChanged": false,
+    "workerReleased": false
   }
 }

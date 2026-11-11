@@ -363,3 +363,49 @@ the private app/PG/timer were cleaned. The user cannot keep Pixel open and
 explicitly requested moving on: further phone work is deferred. The proposed
 local-only v5 follow-up was cancelled before setup/runtime, with zero samples.
 No acceptance/full matrix or deployment follows from this session.
+
+## Independent Phase 1 work after phone deferral — 2026-11-11
+
+Phone work remains deferred at Tim's request. Independent source preparation
+continues; the live build remains the Phase 0 bootstrap and the R7 four-cell
+journey failure is unchanged.
+
+The global drawing-cleanup split (`035e61f8`) and optional voice-engine split
+(`77373c58`) have separate exact canonical snapshots R9 and R10. Together their
+supplemental common initial dependency union falls from R7 431,270 to R10 417,476
+gzip bytes (13,794 fewer). R10 canonical compile, production TypeScript and
+prerender pass; formal shared/heaviest metrics are 473,958/749,234 bytes, still
+above the eventual 120,000/180,000 targets. The strict changed-script payload
+also fails separately: R7→R9 549,936 bytes and R9→R10 157,682 bytes, both above
+100,000. Neither byte experiment ran HTTP/journey/idle checks or activation.
+See `artifacts/phase1-cleanup-r9-byte-2026-11-11.json` and
+`artifacts/phase1-voice-r10-byte-2026-11-11.json`. R8's unproven press variant is
+excluded from both frozen snapshots.
+
+Additional source slices, not part of those byte builds:
+
+- Drawing folder creation (`f7112319`): visible pending name, duplicate/offline
+  guards, actor/read-authority fencing and refused-draft recovery; real server
+  IDs only. 74 focused tests pass.
+- Material-sort realtime (`168502f8`): transactionally committed identifiers-only
+  hints, account-scoped delivery, coalesced reconnect/visibility catch-up. 38
+  focused tests and a private PostgreSQL cross-process rollback/reconnect proof
+  pass. Its 60-second authority poll is retained; a subsequent authority reuse
+  slice is in preparation and has not yet been accepted or measured.
+- Member save feedback (`326aed65`, `7f8ca0f6`, `88f9a2c4`): visible pending
+  and authoritative-refresh phases, duplicate/offline guard, retained draft,
+  bounded read-only recovery after uncertain outcomes, and an actor guard. 40 focused
+  tests pass; no local permission grant. See `instant-writes-member-save.md`.
+- Bulk receiving feedback (`9530aaab`): pending quantities message with existing
+  receipt locks preserved; footer motion is 150 ms without delayed entrance.
+  Action-bar and existing receipt-hook checks pass 22 tests. No invented totals.
+- Source laws (`27d2ddd5`, `60b1d800`): lint and canonical build preflight reject
+  new/changed recognized raw navigation and new shared-layout providers, against
+  precise reviewed baseline entries. The 22 tooling tests and unchanged frozen
+  R8 source checks pass. Coverage limits and provider retirement requirements
+  are documented in `scripts/navigation/README.md` and
+  `scripts/layout/README.md`; no blanket polling ban was introduced.
+
+These focused checks do not complete the first-twenty latency target, all-screen
+cache coverage, no-poll idle gate, physical-phone measurements or Phase 0. No
+production database change, worker release or phase-two sync rollout occurred.
