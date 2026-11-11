@@ -1,0 +1,1048 @@
+{
+  "version": 1,
+  "protocol": "synthetic-nonstream-server-reads-v1",
+  "status": "complete",
+  "methodSha256": "045a4a6df14b2e924756b20f864926070313b6e1d1156d470544b64da17974aa",
+  "methodAfter": "045a4a6df14b2e924756b20f864926070313b6e1d1156d470544b64da17974aa",
+  "timestamp": "2026-11-11T05:48:11.191Z",
+  "completedAt": "2026-11-11T05:48:11.903Z",
+  "build": "cI20Tzl0OAQscfvjfmtFW",
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "provenance": "isolated-seeded-app",
+  "acceptedPhase0Gate": false,
+  "limits": [
+    "Server-Timing app spans the route wrapper through non-streaming Response creation, including synthetic identity/context and serialization; excludes Next middleware, transport, and client parsing.",
+    "Identity is stubbed; this is not live authentication or production workload timing.",
+    "Complete captures have ten measured rounds per fixed endpoint with equal endpoint weights, not production traffic frequency. Partial failed-capture summaries are descriptive only and may have unequal weights.",
+    "Database wait sums may exceed app elapsed time because work can overlap.",
+    "Warm-ups retained separately; no measured samples discarded. Independent repeated captures remain required."
+  ],
+  "preflight": {
+    "status": "passed",
+    "count": 14
+  },
+  "processBinding": {
+    "before": true,
+    "after": true,
+    "method": "Co-started Linux server cwd and private database environment; matching manifest at origin. Caller supplies that server's loopback port."
+  },
+  "database": {
+    "before": {
+      "errors": 0,
+      "fatal": 0
+    },
+    "after": {
+      "errors": 0,
+      "fatal": 0
+    }
+  },
+  "warmup": [
+    {
+      "procedure": "user.getMe",
+      "appMs": 0.9,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.identity",
+      "appMs": 1.3,
+      "databaseMs": 0.5
+    },
+    {
+      "procedure": "push.identity",
+      "appMs": 0.8,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "job.getJob",
+      "appMs": 4.6,
+      "databaseMs": 3.5
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "appMs": 6.1,
+      "databaseMs": 4.7
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "appMs": 2.8,
+      "databaseMs": 1.6
+    },
+    {
+      "procedure": "drawings.listSets",
+      "appMs": 3.1,
+      "databaseMs": 1.8
+    },
+    {
+      "procedure": "drawings.getSet",
+      "appMs": 3.7,
+      "databaseMs": 2.1
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "appMs": 5.5,
+      "databaseMs": 7.2
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "appMs": 6.4,
+      "databaseMs": 10.4
+    },
+    {
+      "procedure": "chat.getOverview",
+      "appMs": 2.9,
+      "databaseMs": 2.1
+    },
+    {
+      "procedure": "chat.history",
+      "appMs": 3.2,
+      "databaseMs": 2.1
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "appMs": 1.9,
+      "databaseMs": 1.1
+    },
+    {
+      "procedure": "notifications.overview",
+      "appMs": 4.8,
+      "databaseMs": 4.1
+    }
+  ],
+  "samples": [
+    {
+      "procedure": "user.getMe",
+      "run": 0,
+      "appMs": 1,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 0,
+      "appMs": 0.9,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "push.identity",
+      "run": 0,
+      "appMs": 1,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 0,
+      "appMs": 5.1,
+      "databaseMs": 3.5
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 0,
+      "appMs": 5.3,
+      "databaseMs": 4.1
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 0,
+      "appMs": 2.7,
+      "databaseMs": 1.4
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 0,
+      "appMs": 2.8,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 0,
+      "appMs": 1.6,
+      "databaseMs": 0.6
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 0,
+      "appMs": 5.5,
+      "databaseMs": 6.4
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 0,
+      "appMs": 5.7,
+      "databaseMs": 8.5
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 0,
+      "appMs": 2.3,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "chat.history",
+      "run": 0,
+      "appMs": 3.5,
+      "databaseMs": 2.5
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 0,
+      "appMs": 1,
+      "databaseMs": 0.5
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 0,
+      "appMs": 3.8,
+      "databaseMs": 3.4
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 1,
+      "appMs": 1,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "push.identity",
+      "run": 1,
+      "appMs": 1,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 1,
+      "appMs": 4.2,
+      "databaseMs": 2.7
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 1,
+      "appMs": 6.5,
+      "databaseMs": 5.6
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 1,
+      "appMs": 2.9,
+      "databaseMs": 1.8
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 1,
+      "appMs": 2.5,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 1,
+      "appMs": 2.6,
+      "databaseMs": 1.1
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 1,
+      "appMs": 3.7,
+      "databaseMs": 5.6
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 1,
+      "appMs": 5.5,
+      "databaseMs": 10.4
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 1,
+      "appMs": 2.1,
+      "databaseMs": 1.3
+    },
+    {
+      "procedure": "chat.history",
+      "run": 1,
+      "appMs": 2.4,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 1,
+      "appMs": 0.8,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 1,
+      "appMs": 2.8,
+      "databaseMs": 2.4
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 1,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "push.identity",
+      "run": 2,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 2,
+      "appMs": 2.3,
+      "databaseMs": 1.5
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 2,
+      "appMs": 3.8,
+      "databaseMs": 3
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 2,
+      "appMs": 1.4,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 2,
+      "appMs": 3,
+      "databaseMs": 2.2
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 2,
+      "appMs": 1.4,
+      "databaseMs": 0.5
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 2,
+      "appMs": 3.1,
+      "databaseMs": 3.7
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 2,
+      "appMs": 3.5,
+      "databaseMs": 6.3
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 2,
+      "appMs": 1.9,
+      "databaseMs": 1.3
+    },
+    {
+      "procedure": "chat.history",
+      "run": 2,
+      "appMs": 1.7,
+      "databaseMs": 1.1
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 2,
+      "appMs": 1.1,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 2,
+      "appMs": 4.1,
+      "databaseMs": 3.8
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 2,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 2,
+      "appMs": 0.7,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 3,
+      "appMs": 2.9,
+      "databaseMs": 2
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 3,
+      "appMs": 5.3,
+      "databaseMs": 3.7
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 3,
+      "appMs": 2.2,
+      "databaseMs": 1.2
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 3,
+      "appMs": 2.3,
+      "databaseMs": 1.3
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 3,
+      "appMs": 2.4,
+      "databaseMs": 1.1
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 3,
+      "appMs": 7.3,
+      "databaseMs": 11.4
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 3,
+      "appMs": 4.1,
+      "databaseMs": 6.3
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 3,
+      "appMs": 1.4,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "chat.history",
+      "run": 3,
+      "appMs": 1.6,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 3,
+      "appMs": 0.8,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 3,
+      "appMs": 2.9,
+      "databaseMs": 2.5
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 3,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 3,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "push.identity",
+      "run": 3,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 4,
+      "appMs": 3.4,
+      "databaseMs": 2.6
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 4,
+      "appMs": 1.3,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 4,
+      "appMs": 1.5,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 4,
+      "appMs": 1.4,
+      "databaseMs": 0.5
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 4,
+      "appMs": 4.7,
+      "databaseMs": 5.1
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 4,
+      "appMs": 6.2,
+      "databaseMs": 12.4
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 4,
+      "appMs": 3,
+      "databaseMs": 2.1
+    },
+    {
+      "procedure": "chat.history",
+      "run": 4,
+      "appMs": 1.6,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 4,
+      "appMs": 1,
+      "databaseMs": 0.5
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 4,
+      "appMs": 2.9,
+      "databaseMs": 2.4
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 4,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 4,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "push.identity",
+      "run": 4,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 4,
+      "appMs": 3.3,
+      "databaseMs": 2.2
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 5,
+      "appMs": 1.3,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 5,
+      "appMs": 1.3,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 5,
+      "appMs": 1.1,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 5,
+      "appMs": 2.5,
+      "databaseMs": 3
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 5,
+      "appMs": 3,
+      "databaseMs": 4.5
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 5,
+      "appMs": 1.4,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "chat.history",
+      "run": 5,
+      "appMs": 1.5,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 5,
+      "appMs": 0.8,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 5,
+      "appMs": 2.9,
+      "databaseMs": 2.5
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 5,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 5,
+      "appMs": 0.7,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "push.identity",
+      "run": 5,
+      "appMs": 0.6,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 5,
+      "appMs": 2.7,
+      "databaseMs": 1.6
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 5,
+      "appMs": 6.5,
+      "databaseMs": 5.4
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 6,
+      "appMs": 3.6,
+      "databaseMs": 2.2
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 6,
+      "appMs": 2.4,
+      "databaseMs": 1
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 6,
+      "appMs": 5.9,
+      "databaseMs": 5.6
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 6,
+      "appMs": 8.8,
+      "databaseMs": 15
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 6,
+      "appMs": 5.2,
+      "databaseMs": 4.1
+    },
+    {
+      "procedure": "chat.history",
+      "run": 6,
+      "appMs": 3.1,
+      "databaseMs": 2
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 6,
+      "appMs": 1.7,
+      "databaseMs": 1
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 6,
+      "appMs": 4.8,
+      "databaseMs": 4.1
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 6,
+      "appMs": 0.9,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 6,
+      "appMs": 0.6,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "push.identity",
+      "run": 6,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 6,
+      "appMs": 2.5,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 6,
+      "appMs": 4,
+      "databaseMs": 3.2
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 6,
+      "appMs": 2.1,
+      "databaseMs": 1.4
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 7,
+      "appMs": 2.3,
+      "databaseMs": 1.2
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 7,
+      "appMs": 3.6,
+      "databaseMs": 4.8
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 7,
+      "appMs": 4.1,
+      "databaseMs": 6.4
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 7,
+      "appMs": 1.3,
+      "databaseMs": 0.8
+    },
+    {
+      "procedure": "chat.history",
+      "run": 7,
+      "appMs": 1.5,
+      "databaseMs": 1
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 7,
+      "appMs": 0.8,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 7,
+      "appMs": 3,
+      "databaseMs": 2.6
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 7,
+      "appMs": 0.6,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 7,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "push.identity",
+      "run": 7,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 7,
+      "appMs": 2.9,
+      "databaseMs": 1.9
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 7,
+      "appMs": 5.2,
+      "databaseMs": 4.4
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 7,
+      "appMs": 2.9,
+      "databaseMs": 1.7
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 7,
+      "appMs": 5,
+      "databaseMs": 3.6
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 8,
+      "appMs": 5,
+      "databaseMs": 6.7
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 8,
+      "appMs": 6.4,
+      "databaseMs": 10.1
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 8,
+      "appMs": 2.8,
+      "databaseMs": 1.8
+    },
+    {
+      "procedure": "chat.history",
+      "run": 8,
+      "appMs": 3,
+      "databaseMs": 1.9
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 8,
+      "appMs": 1.4,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 8,
+      "appMs": 3.6,
+      "databaseMs": 3.1
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 8,
+      "appMs": 0.7,
+      "databaseMs": 0.4
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 8,
+      "appMs": 0.6,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "push.identity",
+      "run": 8,
+      "appMs": 0.5,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 8,
+      "appMs": 2.2,
+      "databaseMs": 1.5
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 8,
+      "appMs": 5.2,
+      "databaseMs": 4
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 8,
+      "appMs": 1.3,
+      "databaseMs": 0.7
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 8,
+      "appMs": 1.4,
+      "databaseMs": 0.8
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 8,
+      "appMs": 2.1,
+      "databaseMs": 1
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "run": 9,
+      "appMs": 2.9,
+      "databaseMs": 4.3
+    },
+    {
+      "procedure": "chat.getOverview",
+      "run": 9,
+      "appMs": 1.3,
+      "databaseMs": 0.8
+    },
+    {
+      "procedure": "chat.history",
+      "run": 9,
+      "appMs": 1.7,
+      "databaseMs": 1.1
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "run": 9,
+      "appMs": 0.7,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "notifications.overview",
+      "run": 9,
+      "appMs": 2.9,
+      "databaseMs": 2.6
+    },
+    {
+      "procedure": "user.getMe",
+      "run": 9,
+      "appMs": 0.4,
+      "databaseMs": 0.2
+    },
+    {
+      "procedure": "notifications.identity",
+      "run": 9,
+      "appMs": 0.6,
+      "databaseMs": 0.3
+    },
+    {
+      "procedure": "push.identity",
+      "run": 9,
+      "appMs": 0.4,
+      "databaseMs": 0.1
+    },
+    {
+      "procedure": "job.getJob",
+      "run": 9,
+      "appMs": 3.3,
+      "databaseMs": 2.6
+    },
+    {
+      "procedure": "materialList.getMaterialList",
+      "run": 9,
+      "appMs": 4.6,
+      "databaseMs": 3.7
+    },
+    {
+      "procedure": "materialList.getOrderById",
+      "run": 9,
+      "appMs": 2.1,
+      "databaseMs": 1.2
+    },
+    {
+      "procedure": "drawings.listSets",
+      "run": 9,
+      "appMs": 2.3,
+      "databaseMs": 1.5
+    },
+    {
+      "procedure": "drawings.getSet",
+      "run": 9,
+      "appMs": 2,
+      "databaseMs": 0.9
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "run": 9,
+      "appMs": 4.1,
+      "databaseMs": 7
+    }
+  ],
+  "summary": {
+    "aggregate": {
+      "count": 140,
+      "appMedianMs": 2.3,
+      "appP95Ms": 5.7,
+      "databaseP95Ms": 6.7
+    },
+    "byProcedure": {
+      "user.getMe": {
+        "count": 10,
+        "appMedianMs": 0.5,
+        "appP95Ms": 1,
+        "databaseP95Ms": 0.4
+      },
+      "notifications.identity": {
+        "count": 10,
+        "appMedianMs": 0.6,
+        "appP95Ms": 1,
+        "databaseP95Ms": 0.4
+      },
+      "push.identity": {
+        "count": 10,
+        "appMedianMs": 0.5,
+        "appP95Ms": 1,
+        "databaseP95Ms": 0.4
+      },
+      "job.getJob": {
+        "count": 10,
+        "appMedianMs": 2.9,
+        "appP95Ms": 5.1,
+        "databaseP95Ms": 3.5
+      },
+      "materialList.getMaterialList": {
+        "count": 10,
+        "appMedianMs": 5.2,
+        "appP95Ms": 6.5,
+        "databaseP95Ms": 5.6
+      },
+      "materialList.getOrderById": {
+        "count": 10,
+        "appMedianMs": 2.1,
+        "appP95Ms": 2.9,
+        "databaseP95Ms": 1.8
+      },
+      "drawings.listSets": {
+        "count": 10,
+        "appMedianMs": 2.3,
+        "appP95Ms": 5,
+        "databaseP95Ms": 3.6
+      },
+      "drawings.getSet": {
+        "count": 10,
+        "appMedianMs": 2,
+        "appP95Ms": 2.6,
+        "databaseP95Ms": 1.2
+      },
+      "drawingsWorkspace.get": {
+        "count": 10,
+        "appMedianMs": 4.1,
+        "appP95Ms": 7.3,
+        "databaseP95Ms": 11.4
+      },
+      "drawingsWorkspace.changes": {
+        "count": 10,
+        "appMedianMs": 4.1,
+        "appP95Ms": 8.8,
+        "databaseP95Ms": 15
+      },
+      "chat.getOverview": {
+        "count": 10,
+        "appMedianMs": 1.9,
+        "appP95Ms": 5.2,
+        "databaseP95Ms": 4.1
+      },
+      "chat.history": {
+        "count": 10,
+        "appMedianMs": 1.7,
+        "appP95Ms": 3.5,
+        "databaseP95Ms": 2.5
+      },
+      "rooms.getJobRoomCount": {
+        "count": 10,
+        "appMedianMs": 0.8,
+        "appP95Ms": 1.7,
+        "databaseP95Ms": 1
+      },
+      "notifications.overview": {
+        "count": 10,
+        "appMedianMs": 2.9,
+        "appP95Ms": 4.8,
+        "databaseP95Ms": 4.1
+      }
+    }
+  }
+}

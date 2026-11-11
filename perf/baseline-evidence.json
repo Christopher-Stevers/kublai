@@ -26,7 +26,9 @@
     "perf/artifacts/phase1-photo-r4-static-2026-11-11.json",
     "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-assessment.json",
     "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-pair-summary.json",
-    "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-idle.json"
+    "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-idle.json",
+    "perf/artifacts/server-reads-nonstream-2026-11-11-1.json",
+    "perf/artifacts/server-reads-nonstream-2026-11-11-2.json"
   ],
   "rows": [
     {
@@ -161,7 +163,38 @@
       "evidence": "Bounded single-build service window, inventory-classified tRPC query completions only. Procedure timer excludes identity/context setup and final serialization; returned-error completions and QA may be included. No controlled repeatability/full-request read gate.",
       "observedQueries": 713,
       "procedureP95Ms": 16,
-      "databaseP95Ms": 10.6
+      "databaseP95Ms": 10.6,
+      "supplementalSyntheticObservations": {
+        "captures": [
+          {
+            "source": "perf/artifacts/server-reads-nonstream-2026-11-11-1.json",
+            "sha256": "1431a5b8cf0d1ff034ae2218c7375131d4e4a663eed99b9df0e8c9b84de00034",
+            "timestamp": "2026-11-11T05:48:10.244Z",
+            "completedAt": "2026-11-11T05:48:11.110Z",
+            "samples": 140,
+            "warmups": 14,
+            "appP95Ms": 7.3,
+            "databaseP95Ms": 8.8,
+            "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+            "methodSha256": "045a4a6df14b2e924756b20f864926070313b6e1d1156d470544b64da17974aa"
+          },
+          {
+            "source": "perf/artifacts/server-reads-nonstream-2026-11-11-2.json",
+            "sha256": "d7751b7448cbcccd6c826388e22a3c297be1471c3d53b538ef61c31aa6891163",
+            "timestamp": "2026-11-11T05:48:11.191Z",
+            "completedAt": "2026-11-11T05:48:11.903Z",
+            "samples": 140,
+            "warmups": 14,
+            "appP95Ms": 5.7,
+            "databaseP95Ms": 6.7,
+            "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+            "methodSha256": "045a4a6df14b2e924756b20f864926070313b6e1d1156d470544b64da17974aa"
+          }
+        ],
+        "acceptedRepeatability": false,
+        "acceptedPhase0Gate": false,
+        "evidence": "Fresh private database, source-bound compiled Phase 0 app; fourteen read endpoints, ten measured rounds each, zero database errors. Route wrapper includes stubbed identity/context and non-streaming serialization; excludes real auth, middleware and transport. Other agent test/build activity paused, live services and OS still running. App p95 7.3 versus 5.7 ms changes 21.9%, so no 10% repeatability pass. All samples retained; equal endpoint weights are not production traffic weights."
+      }
     },
     {
       "measure": "Field INP p75",
@@ -214,5 +247,6 @@
     "databaseErrors": 0,
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
-  }
+  },
+  "updatedAt": "2026-11-11T05:48:11.903Z"
 }

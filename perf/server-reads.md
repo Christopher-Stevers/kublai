@@ -2,7 +2,8 @@
 
 `server-reads.mjs` is a separate supplemental measurement tool. It never edits
 the eight-journey method, baseline reports, budgets or activation decisions.
-It has not yet been run against an application.
+Two supplemental captures ran on 2026-11-11 against the source-bound Phase 0
+synthetic application. They are observations, not an accepted repeated baseline.
 
 The existing route wrapper begins before tRPC identity/context creation. For a
 non-streaming JSON response its `app` header ends after the response is created,
@@ -52,3 +53,24 @@ The parser/summary checks use synthetic numeric inputs only:
 ```sh
 node --test perf/server-reads.test.mjs
 ```
+
+## Observed on 2026-11-11
+
+Three parser/summary tests and both syntax checks passed. With other agents'
+test/build work paused, a fresh private database and the existing compiled
+Phase 0 snapshot passed all fourteen endpoint preflights. Two complete captures
+at 05:48 UTC each retained 140 measured reads and fourteen warm-ups. Both had
+zero database ERROR/FATAL records, matching process/source/manifest checks, and
+an unchanged tool hash. Live services and normal OS background work continued.
+
+| Capture | Route-wrapper median | Route-wrapper p95 | Summed database p95 |
+| --- | ---: | ---: | ---: |
+| First | 2.7 ms | 7.3 ms | 8.8 ms |
+| Second | 2.3 ms | 5.7 ms | 6.7 ms |
+
+The aggregate p95 changes by 21.9%, so these captures do **not** meet a 10%
+repeatability requirement. All endpoints and samples remain in
+`artifacts/server-reads-nonstream-2026-11-11-{1,2}.json`. Neither capture
+establishes production authentication latency, the full Phase 0 gate or a
+candidate improvement. The fixed synthetic endpoint weights and small samples
+remain limitations, even though both observed p95 values are below 20 ms.
