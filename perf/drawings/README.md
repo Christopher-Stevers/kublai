@@ -64,3 +64,46 @@ Thirteen focused tests cover the historical path checks plus resource deduplicat
 Future execution requires a separate reviewed corpus window. First run one previously sampled page using an exact allowlisted hash with `DRAWING_IMAGE_PROTOTYPE=1 DRAWING_ONLY_HASH=<reviewed-hash> npx tsx perf/drawings/run.ts`; confirm resource failures and inspect reference/prototype at both widths. Then, only if authorized, run the 100-page corpus in bounded shards with versioned source/method hashes and fresh result names. The image mode bypasses historical measurement reuse, writes `measurements-image-prototype-<hash-or-shard>.json` separately and uses `image-prototype-previews/`, leaving historical measurements/previews intact. Separate shard files prevent result-file collisions; preview filenames remain content-hash keyed. No corpus execution is included in this change. Text semantics, unsupported resources, styles/clips/layers, tile serialization, fidelity review and phone/GPU gates remain unproven.
 
 One authorized existing non-scan sample was subsequently measured at 512/1024px under a 180-second watchdog (exit0), with results in `image-replay-one-sample.json`. Its ordinary RGBA image replayed without resource failures, but full-sheet fidelity failed at both widths; the prototype visibly omits most drawing content with text/glyph replay disabled. Both reference/prototype pairs were inspected; source/preview content remains private. These one-sample results do not revise the historical 100-sample report or prove image fidelity generally. The next bounded semantic check is existing glyph/text-state and nested-form handling on this same sample, before any corpus expansion.
+
+### Combined replay preparation (not executed)
+
+A separate `DRAWING_COMBINED_PROTOTYPE=1` mode is prepared for only the exact
+previous image sample `268d1043b94a91e45a813bd7c62f1ad966a0515045984de3536123c16fb00215`;
+it requires that full `DRAWING_ONLY_HASH`. It enables existing image and glyph
+resources together and adds bounded ordinary form matrices/bbox clips with
+separate form/save stack guards. It uses only widths 512/1024 and distinct
+`combined-prototype-previews` / `measurements-combined-prototype-*` outputs.
+Historical reports, thresholds and default flags are unchanged.
+
+Missing font/glyph paths, Type3/vertical/negative-direction fonts, non-fill text
+modes, malformed/unbalanced forms and groups/annotation/layer operations are
+explicit failures rather than silent eligibility. Historical stroke drawing is
+preserved but is not claimed supported: glyph stroke-width normalization and
+text clipping are still incomplete. Masks, patterns, shading, opacity and other
+existing image decoder restrictions remain. Combined fidelity cannot pass when
+reported replay/resource failures exist; complete encoding remains false.
+
+Six queued synthetic tests cover form transforms/clipping, nested restore and
+malformed stacks, bounded-depth cleanup, font/path failures, and glyph spacing/
+multiline state restored across a form. No tests, imports, PDF access, render,
+font loading or typecheck were run during preparation. Source review and
+separate bounded validation are required before any result claim; the prior
+single-page full-sheet fidelity failure remains unchanged.
+
+The separately authorized combined run subsequently completed once under its
+180-second process-group watchdog (exit 0; no retry). Source/method hashes were
+recorded before execution and matched afterward. Nineteen focused tests and the
+scoped strict TypeScript check passed. Both private reference/prototype pairs
+were visually inspected at 512/1024px. The prototype painted 1,349 glyphs and one
+ordinary image at each width; no form operators occurred on this page, so form
+handling has synthetic evidence only.
+
+Full-sheet fidelity still fails: min tile SSIM 0.00424/0.00429, mean SSIM
+0.33143/0.34742, ink-coverage difference 0.36484/0.24577. Text/title/notes/image
+appear, but most main plan geometry is absent. Zero *reported* replay/resource
+failures does not mean complete graphics-semantic support. The report retains
+layers/opacity omissions and the unexplained geometry gap; no eligibility
+threshold was relaxed. Historical reports remain unchanged. See
+[the exact single-run metadata](combined-replay-one-sample.json); PDF and images
+remain private. No complete encoding, byte target, phone/GPU or production claim
+is made. The process exited and no server/database/worker process was started.

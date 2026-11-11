@@ -224,3 +224,193 @@ it("rotates image placement using the existing graphics-state affine transform",
     0, 255, 0, 255,
   ]);
 });
+
+describe("combined replay preparation (synthetic operators only)", () => {
+  const names = {
+    1: "paintFormXObjectBegin",
+    2: "paintFormXObjectEnd",
+    3: "constructPath",
+    4: "fill",
+    5: "save",
+    6: "restore",
+  };
+  it("clips nested transformed forms and restores the parent transform and clip", () => {
+    const canvas = createCanvas(30, 30),
+      ctx = canvas.getContext("2d");
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, 30, 30);
+    const rect = [4, [[0, 0, 0, 1, 20, 0, 1, 20, 20, 1, 0, 20, 4]]];
+    const result = replayPaths(
+      ctx,
+      {
+        fnArray: [1, 1, 3, 2, 2, 3],
+        argsArray: [
+          [
+            [1, 0, 0, 1, 5, 5],
+            [0, 0, 8, 8],
+          ],
+          [
+            [1, 0, 0, 1, 2, 2],
+            [0, 0, 4, 4],
+          ],
+          rect,
+          [],
+          [],
+          [4, [[0, 20, 20, 1, 25, 20, 1, 25, 25, 1, 20, 25, 4]]],
+        ],
+      },
+      names,
+      [1, 0, 0, 1, 0, 0],
+      { forms: true },
+    );
+    expect(result).toMatchObject({ failures: [], formsPainted: 2 });
+    const pixel = (x: number, y: number) =>
+      Array.from(ctx.getImageData(x, y, 1, 1).data);
+    expect(pixel(8, 8)).toEqual([0, 0, 0, 255]);
+    expect(pixel(12, 12)).toEqual([255, 255, 255, 255]);
+    expect(pixel(22, 22)).toEqual([0, 0, 0, 255]);
+  });
+  it("does not let ordinary restore cross a form boundary or pop the caller root", () => {
+    const ctx = createCanvas(20, 20).getContext("2d");
+    ctx.translate(3, 4);
+    const before = ctx.getTransform();
+    const result = replayPaths(
+      ctx,
+      {
+        fnArray: [6, 1, 6, 2, 2, 5],
+        argsArray: [[], [null, null], [], [], [], []],
+      },
+      names,
+      [1, 0, 0, 1, 0, 0],
+      { forms: true },
+    );
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        "unbalanced-save",
+        "unbalanced-form",
+        "unbalanced-save-or-form",
+      ]),
+    );
+    expect(ctx.getTransform()).toEqual(before);
+  });
+  it("restores caller canvas even when nested depth is rejected", () => {
+    const ctx = createCanvas(20, 20).getContext("2d");
+    ctx.translate(3, 4);
+    const before = ctx.getTransform();
+    expect(() =>
+      replayPaths(
+        ctx,
+        { fnArray: Array(65).fill(1), argsArray: Array(65).fill([null, null]) },
+        names,
+        [1, 0, 0, 1, 0, 0],
+        { forms: true },
+      ),
+    ).toThrow(/depth/);
+    expect(ctx.getTransform()).toEqual(before);
+  });
+  it("reports missing fonts and unsupported Type3/vertical modes instead of claiming glyph support", () => {
+    const ctx = createCanvas(20, 20).getContext("2d");
+    const textNames = { 1: "setFont", 2: "showText" };
+    for (const [font, expected] of [
+      [null, "missing-font-resource"],
+      [{ isType3Font: true }, "unsupported-type3-font"],
+      [{ vertical: true }, "unsupported-vertical-font"],
+    ] as const) {
+      const result = replayPaths(
+        ctx,
+        { fnArray: [1, 2], argsArray: [["f", 12], [[]]] },
+        textNames,
+        [1, 0, 0, 1, 0, 0],
+        { font: () => font },
+      );
+      expect(result.failures).toContain(expected);
+      expect(result.glyphsPainted).toBe(0);
+    }
+  });
+  it("records glyph path failure and non-fill text modes explicitly", () => {
+    const ctx = createCanvas(20, 20).getContext("2d");
+    const result = replayPaths(
+      ctx,
+      {
+        fnArray: [1, 2, 3],
+        argsArray: [["f", 12], [4], [[{ width: 100, fontChar: "x" }]]],
+      },
+      { 1: "setFont", 2: "setTextRenderingMode", 3: "showText" },
+      [1, 0, 0, 1, 0, 0],
+      {
+        font: () => ({
+          getPathGenerator() {
+            throw Error("missing");
+          },
+        }),
+      },
+    );
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        "unsupported-text-rendering-mode",
+        "missing-glyph-path",
+      ]),
+    );
+    expect(result.glyphsPainted).toBe(0);
+  });
+});
+it("keeps glyph spacing, multiline position and text state across nested forms", () => {
+  const translations: number[][] = [];
+  const ctx: any = new Proxy(
+    {},
+    {
+      get: (_target, key) =>
+        key === "translate"
+          ? (...args: number[]) => translations.push(args)
+          : () => undefined,
+      set: () => true,
+    },
+  );
+  const font = {
+    fontMatrix: [0.001, 0, 0, 0.001, 0, 0],
+    getPathGenerator: () => ({}),
+  };
+  const glyph = { fontChar: "x", width: 1000 };
+  const result = replayPaths(
+    ctx,
+    {
+      fnArray: [1, 2, 3, 4, 5, 6, 7, 8, 4, 9, 4, 10, 11, 4],
+      argsArray: [
+        ["f", 2],
+        [1],
+        [50],
+        [[glyph]],
+        [null, null],
+        [30, 40],
+        [[1, 0, 0, 1, 0, 0]],
+        [],
+        [[glyph]],
+        [],
+        [[glyph]],
+        [4],
+        [],
+        [[glyph]],
+      ],
+    },
+    {
+      1: "setFont",
+      2: "setCharSpacing",
+      3: "setHScale",
+      4: "showText",
+      5: "paintFormXObjectBegin",
+      6: "moveText",
+      7: "setTextMatrix",
+      8: "beginText",
+      9: "paintFormXObjectEnd",
+      10: "setLeading",
+      11: "nextLine",
+    },
+    [1, 0, 0, 1, 0, 0],
+    { font: () => font, forms: true },
+  );
+  expect(result.failures).toEqual([]);
+  expect(result.glyphsPainted).toBe(4);
+  // The third show is after restoring the form: first glyph advanced 1.5.
+  expect(translations[4]).toEqual([1.5, 0]);
+  expect(translations[6]).toEqual([0, -4]);
+});

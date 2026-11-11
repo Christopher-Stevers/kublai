@@ -1,0 +1,127 @@
+{
+  "protocol": "combined-image-glyph-form-replay-v1-single-existing-sample",
+  "sampleHash": "268d1043b94a91e45a813bd7c62f1ad966a0515045984de3536123c16fb00215",
+  "sampleSelection": "Exact same previously reviewed single page; no corpus expansion",
+  "sampleCount": 1,
+  "viewportWidths": [
+    512,
+    1024
+  ],
+  "watchdogSeconds": 180,
+  "exitCode": 0,
+  "watchdogExpired": false,
+  "forced": false,
+  "ownProcessStopped": true,
+  "startedAt": "2026-11-11T14:00:53.744956+00:00",
+  "endedAt": "2026-11-11T14:01:02.285367+00:00",
+  "sourceHashesBefore": {
+    "perf/drawings/operators.ts": "63c4aa6507bc857a73961345c62da15b3c40f82e2287872c8bf09f89c852f1e7",
+    "perf/drawings/operators.test.ts": "890a733e6fc324e1edea7d11b77589c70a7bb118e36be77f1fc574e70d9a8ac2",
+    "perf/drawings/run.ts": "62eb8a472cde1668d0c30eaf2330c774caeaac75829bbf0093f1c7983040beea",
+    "perf/drawings/image-resources.ts": "a3f110537e4dadf33daf8faf17212cc8c4b38fb07c89b20b3b6030bf0f4a9710",
+    "node_modules/pdfjs-dist/legacy/build/pdf.mjs": "842284e0d1d439e60701e3355c2128cd3016ebebf14220e27f512467682aad66"
+  },
+  "sourceHashesAfter": {
+    "perf/drawings/operators.ts": "63c4aa6507bc857a73961345c62da15b3c40f82e2287872c8bf09f89c852f1e7",
+    "perf/drawings/operators.test.ts": "890a733e6fc324e1edea7d11b77589c70a7bb118e36be77f1fc574e70d9a8ac2",
+    "perf/drawings/run.ts": "62eb8a472cde1668d0c30eaf2330c774caeaac75829bbf0093f1c7983040beea",
+    "perf/drawings/image-resources.ts": "a3f110537e4dadf33daf8faf17212cc8c4b38fb07c89b20b3b6030bf0f4a9710",
+    "node_modules/pdfjs-dist/legacy/build/pdf.mjs": "842284e0d1d439e60701e3355c2128cd3016ebebf14220e27f512467682aad66"
+  },
+  "sourceUnchanged": true,
+  "supervisorSha256": "59521c5c11390fc356dcbf02f6c3bd8558bcca41f19d19832137ba5ed3ac0ed1",
+  "supervisorSource": "from pathlib import Path\nimport subprocess,os,signal,time,json,hashlib,datetime\nroot=Path('/home/tim/.openclaw/workspace/kublai');private=root/'perf/drawings/private';hash='268d1043b94a91e45a813bd7c62f1ad966a0515045984de3536123c16fb00215';out=private/f'measurements-combined-prototype-{hash}.json';evidence=Path('/home/tim/.openclaw/workspace/releases/speed-proof-20261110/drawing-combined-one');evidence.mkdir();assert not out.exists();assert not (private/'combined-prototype-previews').exists()\ninputs=['perf/drawings/operators.ts','perf/drawings/operators.test.ts','perf/drawings/run.ts','perf/drawings/image-resources.ts','node_modules/pdfjs-dist/legacy/build/pdf.mjs'];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();before={p:sha(root/p) for p in inputs};command=['node','--import','tsx','perf/drawings/run.ts'];meta={'protocol':'combined-image-glyph-form-replay-v1-single-existing-sample','sampleHash':hash,'widths':[512,1024],'watchdogSeconds':180,'command':command,'sourceHashesBefore':before,'supervisorSha256':sha(Path(__file__)),'startedAt':datetime.datetime.now(datetime.timezone.utc).isoformat()};(evidence/'before.json').write_text(json.dumps(meta,indent=2)+'\\n');env=dict(os.environ,DRAWING_COMBINED_PROTOTYPE='1',DRAWING_ONLY_HASH=hash);expired=False;forced=False\nwith (evidence/'run.log').open('w') as log:\n child=subprocess.Popen(command,cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)\n try:code=child.wait(timeout=180)\n except subprocess.TimeoutExpired:\n  expired=True;os.killpg(child.pid,signal.SIGTERM)\n  try:code=child.wait(timeout=5)\n  except subprocess.TimeoutExpired:forced=True;os.killpg(child.pid,signal.SIGKILL);code=child.wait()\nmeta.update(endedAt=datetime.datetime.now(datetime.timezone.utc).isoformat(),exitCode=code,watchdogExpired=expired,forced=forced,ownProcessStopped=child.poll() is not None,sourceHashesAfter={p:sha(root/p) for p in inputs},outputPresent=out.exists());meta['sourceUnchanged']=meta['sourceHashesBefore']==meta['sourceHashesAfter'];meta['privateOutputHash']=sha(out) if out.exists() else None;meta['privatePreviewHashes']={p.name:sha(p) for p in (private/'combined-prototype-previews').glob('*.png')};(evidence/'after.json').write_text(json.dumps(meta,indent=2)+'\\n');print(json.dumps({k:meta[k] for k in ['exitCode','watchdogExpired','ownProcessStopped','sourceUnchanged','outputPresent']}))\n",
+  "privateOutputHash": "44ea43f50355310d249cc79906e1f8b87bc6ec93d550dec07886890e5087075b",
+  "privatePreviewHashes": {
+    "268d1043b94a-512-reference.png": "0266aee5d8ae3fe5f4d422ceb7b1295aec7fdbf9ad9da97b32a337e4df193e5a",
+    "268d1043b94a-512-combined-prototype.png": "1c5e5d6bc93250447d5f3dbeb7c92b12c56aadb2fe0cb598de8f82a1ad6dcc99",
+    "268d1043b94a-1024-reference.png": "63508eb51ce71c8c628df0b3bc54ab690824d245b34804098c086f50bfab773e",
+    "268d1043b94a-1024-combined-prototype.png": "2061f97e004ce190b7c43d3340151c6d08a8e21e9a764acbe9d8627c2d6a0129"
+  },
+  "runLogSha256": "4d48c224577e832de01509d609dfdecea644e6955217cd78a4c4fc4facc34006",
+  "imageReplay": {
+    "placements": 1,
+    "uniqueResources": 1,
+    "ownedRgbaBytes": 307720,
+    "failures": [],
+    "imageReplayEligible": true,
+    "completeEncoding": false
+  },
+  "fidelity": [
+    {
+      "viewportWidth": 512,
+      "hostPrototypeMs": 125.28633900000023,
+      "replay": {
+        "failures": [],
+        "glyphsPainted": 1349,
+        "formsPainted": 0
+      },
+      "minTileSsim": 0.004243759418262681,
+      "meanTileSsim": 0.3314311234034725,
+      "inkCoverageDifference": 0.3648403234649123,
+      "passes": false,
+      "replayEligible": true
+    },
+    {
+      "viewportWidth": 1024,
+      "hostPrototypeMs": 112.99654699999974,
+      "replay": {
+        "failures": [],
+        "glyphsPainted": 1349,
+        "formsPainted": 0
+      },
+      "minTileSsim": 0.004294111990493712,
+      "meanTileSsim": 0.3474156785243033,
+      "inkCoverageDifference": 0.24577490162884333,
+      "passes": false,
+      "replayEligible": true
+    }
+  ],
+  "prototypeOmissions": [
+    "layers",
+    "opacity-state"
+  ],
+  "unsupported": [],
+  "fullSheetFidelityPassed": false,
+  "completeEncoding": false,
+  "focusedTests": {
+    "passed": 19,
+    "files": 1,
+    "maxWorkers": 1,
+    "logSha256": "aeba36675edbef8b4267605cad27802d6250580edf07e19052d138f25f0c60eb"
+  },
+  "scopedStrictTypeCheck": {
+    "passed": true,
+    "files": [
+      "perf/drawings/operators.ts",
+      "perf/drawings/operators.test.ts",
+      "perf/drawings/run.ts"
+    ],
+    "flags": [
+      "noEmit",
+      "skipLibCheck",
+      "target es2022",
+      "module esnext",
+      "moduleResolution bundler",
+      "esModuleInterop",
+      "strict",
+      "noUncheckedIndexedAccess"
+    ]
+  },
+  "visualReview": {
+    "tool": "view_image",
+    "bothReferencePrototypePairsInspected": true,
+    "finding": "Text, title/notes and image appear, but most main plan geometry remains absent. Image/glyph replay does not establish whole-sheet fidelity."
+  },
+  "limitations": [
+    "No form operators occurred on this sample; form behavior has synthetic evidence only.",
+    "No known replay/resource failures means only supported-subset eligibility, not complete graphics-semantic coverage.",
+    "Layers/opacity and unclassified missing path/graphics semantics remain; no retry or unsupported-feature relaxation.",
+    "Source freeze covers listed prototype/pdf.js entry files; it is not a full transitive native/font dependency hash inventory.",
+    "Only one private host sample, not transport/size/phone/GPU/production evidence."
+  ],
+  "historicalReportsUnchanged": true,
+  "physicalPhoneEvidence": false,
+  "productionChanged": false,
+  "privacy": "PDF, paths, geometry, titles and preview images remain ignored/private; committed report contains only metrics/content hashes and method code."
+}

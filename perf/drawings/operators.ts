@@ -118,13 +118,13 @@ export function replayPaths(
   resources?: {
     font?: (id: string) => any;
     commonObjs?: any;
+    forms?: boolean;
     images?: { paint: (ctx: any, index: number, image: any) => void };
   },
 ) {
   ctx.save();
   ctx.fillStyle = "black";
   ctx.strokeStyle = "black";
-  ctx.transform(...transform);
   let text = {
     matrix: [1, 0, 0, 1, 0, 0],
     x: 0,
@@ -140,139 +140,250 @@ export function replayPaths(
     leading: 0,
     mode: 0,
   };
-  const textStack: any[] = [];
+  const failures = new Set<string>();
+  let glyphsPainted = 0,
+    formsPainted = 0;
+  const textStack: Array<{ kind: "save" | "form"; text: typeof text }> = [];
+  const save = (kind: "save" | "form") => {
+    if (textStack.length >= 64)
+      throw Error("Prototype form/save depth exceeded");
+    ctx.save();
+    textStack.push({ kind, text: { ...text, matrix: [...text.matrix] } });
+  };
+  const restore = (kind: "save" | "form") => {
+    const top = textStack.at(-1);
+    if (!top || top.kind !== kind) {
+      failures.add(`unbalanced-${kind}`);
+      return;
+    }
+    text = textStack.pop()!.text;
+    ctx.restore();
+  };
   const paint = (mode: number) => {
     const n = names[mode] ?? "";
     if (/close/i.test(n)) ctx.closePath();
     if (/fill/i.test(n)) ctx.fill(/eo/i.test(n) ? "evenodd" : "nonzero");
     if (/stroke/i.test(n)) ctx.stroke();
   };
-  for (let i = 0; i < list.fnArray.length; i++) {
-    const name = names[list.fnArray[i]!]!,
-      a = list.argsArray[i] as any[];
-    if (name === "save") {
-      ctx.save();
-      textStack.push({ ...text, matrix: [...text.matrix] });
-    } else if (name === "restore") {
-      ctx.restore();
-      text = textStack.pop() ?? text;
-    } else if (name === "transform") ctx.transform(...a);
-    else if (
-      resources?.images &&
-      (name === "paintImageXObject" || name === "paintInlineImageXObject")
-    ) {
-      resources.images.paint(
-        ctx,
-        i,
-        name === "paintInlineImageXObject" ? a[0] : undefined,
-      );
-    } else if (resources?.font && name === "beginText") {
-      text.x = text.y = text.lineX = text.lineY = 0;
-      text.matrix = [1, 0, 0, 1, 0, 0];
-    } else if (resources && name === "setFont") {
-      text.font = resources.font?.(a[0]);
-      text.size = a[1];
-    } else if (resources && name === "setCharSpacing") text.charSpacing = a[0];
-    else if (resources && name === "setWordSpacing") text.wordSpacing = a[0];
-    else if (resources && name === "setHScale") text.hscale = a[0] / 100;
-    else if (resources && name === "setTextRise") text.rise = a[0];
-    else if (resources && name === "setLeading") text.leading = -a[0];
-    else if (resources && name === "setTextRenderingMode") text.mode = a[0];
-    else if (resources && name === "setTextMatrix") {
-      text.matrix =
-        Array.isArray(a[0]) || ArrayBuffer.isView(a[0])
-          ? Array.from(a[0] as ArrayLike<number>)
-          : a;
-      text.x = text.y = text.lineX = text.lineY = 0;
-    } else if (
-      resources &&
-      (name === "moveText" || name === "setLeadingMoveText")
-    ) {
-      if (name === "setLeadingMoveText") text.leading = a[1];
-      text.x = text.lineX += a[0];
-      text.y = text.lineY += a[1];
-    } else if (resources && name === "nextLine") {
-      text.x = text.lineX;
-      text.y = text.lineY += text.leading;
-    } else if (
-      resources &&
-      (name === "showText" || name === "showSpacedText") &&
-      text.font &&
-      !text.font.isType3Font &&
-      !text.font.vertical
-    ) {
-      ctx.save();
-      ctx.transform(...text.matrix);
-      ctx.translate(text.x, text.y + text.rise);
-      ctx.scale(text.hscale, -1);
-      let advance = 0;
-      for (const glyph of a[0] ?? []) {
-        if (typeof glyph === "number") {
-          advance -= (glyph * text.size) / 1000;
-          continue;
+  try {
+    ctx.transform(...transform);
+    for (let i = 0; i < list.fnArray.length; i++) {
+      const name = names[list.fnArray[i]!]!,
+        a = list.argsArray[i] as any[];
+      if (
+        resources?.forms &&
+        ["beginGroup", "beginAnnotation", "beginMarkedContentProps"].includes(
+          name,
+        )
+      )
+        failures.add(`unsupported:${name}`);
+      if (
+        resources?.font &&
+        ["nextLineShowText", "nextLineSetSpacingShowText"].includes(name)
+      )
+        failures.add(`unsupported:${name}`);
+      if (
+        resources?.font &&
+        name === "setGState" &&
+        (a[0] ?? []).some((entry: any[]) => entry[0] === "Font")
+      )
+        failures.add("unsupported-gstate-font");
+      if (name === "save") {
+        save("save");
+      } else if (name === "restore") {
+        restore("save");
+      } else if (resources?.forms && name === "paintFormXObjectBegin") {
+        if (textStack.length >= 64)
+          throw Error("Prototype form/save depth exceeded");
+        save("form");
+        formsPainted++;
+        const [matrix, bbox] = a;
+        if (matrix) {
+          if (
+            matrix.length !== 6 ||
+            !Array.from(matrix).every(Number.isFinite)
+          ) {
+            failures.add("invalid-form-matrix");
+          } else ctx.transform(...matrix);
         }
-        if (!glyph) continue;
+        if (bbox) {
+          if (bbox.length !== 4 || !Array.from(bbox).every(Number.isFinite)) {
+            failures.add("invalid-form-bbox");
+          } else {
+            ctx.beginPath();
+            ctx.rect(bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]);
+            ctx.clip();
+            ctx.beginPath();
+          }
+        }
+      } else if (resources?.forms && name === "paintFormXObjectEnd") {
+        restore("form");
+      } else if (name === "transform") ctx.transform(...a);
+      else if (
+        resources?.images &&
+        (name === "paintImageXObject" || name === "paintInlineImageXObject")
+      ) {
+        resources.images.paint(
+          ctx,
+          i,
+          name === "paintInlineImageXObject" ? a[0] : undefined,
+        );
+      } else if (resources?.font && name === "beginText") {
+        text.x = text.y = text.lineX = text.lineY = 0;
+        text.matrix = [1, 0, 0, 1, 0, 0];
+      } else if (resources && name === "setFont") {
         try {
-          const shape = text.font.getPathGenerator(
-            resources.commonObjs,
-            glyph.fontChar,
-          );
-          ctx.save();
-          ctx.translate(advance, 0);
-          ctx.scale(text.size, -text.size);
-          if (text.mode === 0 || text.mode === 2) ctx.fill(shape);
-          if (text.mode === 1 || text.mode === 2) ctx.stroke(shape);
-          ctx.restore();
-        } catch {}
-        advance +=
-          glyph.width * text.size * (text.font.fontMatrix?.[0] ?? 0.001) +
-          text.charSpacing +
-          (glyph.isSpace ? text.wordSpacing : 0);
-      }
-      ctx.restore();
-      text.x += advance * text.hscale;
-    } else if (name === "setLineWidth") ctx.lineWidth = a[0];
-    else if (name === "setLineCap")
-      ctx.lineCap = ["butt", "round", "square"][a[0]];
-    else if (name === "setLineJoin")
-      ctx.lineJoin = ["miter", "round", "bevel"][a[0]];
-    else if (name === "setMiterLimit") ctx.miterLimit = a[0];
-    else if (name === "setDash") {
-      ctx.setLineDash(a[0]);
-      ctx.lineDashOffset = a[1];
-    } else if (name === "setStrokeRGBColor" || name === "setFillRGBColor") {
-      const color = typeof a[0] === "string" ? a[0] : `rgb(${a.join(",")})`;
-      ctx[name === "setStrokeRGBColor" ? "strokeStyle" : "fillStyle"] = color;
-    } else if (name === "setStrokeGray" || name === "setFillGray") {
-      const c = Math.round(a[0] * 255);
-      ctx[name === "setStrokeGray" ? "strokeStyle" : "fillStyle"] =
-        `rgb(${c},${c},${c})`;
-    } else if (name === "constructPath") {
-      ctx.beginPath();
-      for (const packed of a[1] ?? []) {
-        if (!packed) continue;
-        const p = Array.from(packed) as number[];
-        for (let j = 0; j < p.length; ) {
-          const op = p[j++];
-          if (op === 0) {
-            ctx.moveTo(p[j], p[j + 1]);
-            j += 2;
-          } else if (op === 1) {
-            ctx.lineTo(p[j], p[j + 1]);
-            j += 2;
-          } else if (op === 2) {
-            ctx.bezierCurveTo(...p.slice(j, j + 6));
-            j += 6;
-          } else if (op === 3) {
-            ctx.quadraticCurveTo(...p.slice(j, j + 4));
-            j += 4;
-          } else if (op === 4) ctx.closePath();
-          else break;
+          text.font = resources.font?.(a[0]);
+        } catch {
+          text.font = null;
+          failures.add("missing-font-resource");
         }
-      }
-      paint(a[0]);
-    } else if (name === "clip" || name === "eoClip")
-      ctx.clip(name === "eoClip" ? "evenodd" : "nonzero");
+        text.size = a[1];
+        if (resources.font && !text.font) failures.add("missing-font-resource");
+        if (text.size < 0) failures.add("unsupported-negative-font-direction");
+        if (
+          text.font?.fontMatrix &&
+          (text.font.fontMatrix[1] !== 0 ||
+            text.font.fontMatrix[2] !== 0 ||
+            text.font.fontMatrix[4] !== 0 ||
+            text.font.fontMatrix[5] !== 0)
+        )
+          failures.add("unsupported-font-matrix");
+      } else if (resources && name === "setCharSpacing")
+        text.charSpacing = a[0];
+      else if (resources && name === "setWordSpacing") text.wordSpacing = a[0];
+      else if (resources && name === "setHScale") text.hscale = a[0] / 100;
+      else if (resources && name === "setTextRise") text.rise = a[0];
+      else if (resources && name === "setLeading") text.leading = -a[0];
+      else if (resources && name === "setTextRenderingMode") text.mode = a[0];
+      else if (resources && name === "setTextMatrix") {
+        text.matrix =
+          Array.isArray(a[0]) || ArrayBuffer.isView(a[0])
+            ? Array.from(a[0] as ArrayLike<number>)
+            : a;
+        text.x = text.y = text.lineX = text.lineY = 0;
+      } else if (
+        resources &&
+        (name === "moveText" || name === "setLeadingMoveText")
+      ) {
+        if (name === "setLeadingMoveText") text.leading = a[1];
+        text.x = text.lineX += a[0];
+        text.y = text.lineY += a[1];
+      } else if (resources && name === "nextLine") {
+        text.x = text.lineX;
+        text.y = text.lineY += text.leading;
+      } else if (
+        resources &&
+        (name === "showText" || name === "showSpacedText") &&
+        text.font &&
+        !text.font.isType3Font &&
+        !text.font.vertical
+      ) {
+        if (text.mode !== 0) failures.add("unsupported-text-rendering-mode");
+        ctx.save();
+        try {
+          ctx.transform(...text.matrix);
+          ctx.translate(text.x, text.y + text.rise);
+          ctx.scale(text.hscale, -1);
+          let advance = 0;
+          for (const glyph of a[0] ?? []) {
+            if (typeof glyph === "number") {
+              advance -= (glyph * text.size) / 1000;
+              continue;
+            }
+            if (!glyph) continue;
+            try {
+              const shape = text.font.getPathGenerator(
+                resources.commonObjs,
+                glyph.fontChar,
+              );
+              if (!shape) throw Error("Missing glyph outline");
+              ctx.save();
+              try {
+                ctx.translate(advance, 0);
+                ctx.scale(text.size, -text.size);
+                // Preserve historical drawing; non-fill modes remain in failures.
+                if (text.mode === 0 || text.mode === 2) {
+                  ctx.fill(shape);
+                  glyphsPainted++;
+                }
+                if (text.mode === 1 || text.mode === 2) ctx.stroke(shape);
+              } finally {
+                ctx.restore();
+              }
+            } catch {
+              failures.add("missing-glyph-path");
+            }
+            advance +=
+              glyph.width * text.size * (text.font.fontMatrix?.[0] ?? 0.001) +
+              text.charSpacing +
+              (glyph.isSpace ? text.wordSpacing : 0);
+          }
+          text.x += advance * text.hscale;
+        } finally {
+          ctx.restore();
+        }
+      } else if (
+        resources?.font &&
+        (name === "showText" || name === "showSpacedText")
+      ) {
+        failures.add(
+          !text.font
+            ? "missing-font-resource"
+            : text.font.isType3Font
+              ? "unsupported-type3-font"
+              : "unsupported-vertical-font",
+        );
+      } else if (name === "setLineWidth") ctx.lineWidth = a[0];
+      else if (name === "setLineCap")
+        ctx.lineCap = ["butt", "round", "square"][a[0]];
+      else if (name === "setLineJoin")
+        ctx.lineJoin = ["miter", "round", "bevel"][a[0]];
+      else if (name === "setMiterLimit") ctx.miterLimit = a[0];
+      else if (name === "setDash") {
+        ctx.setLineDash(a[0]);
+        ctx.lineDashOffset = a[1];
+      } else if (name === "setStrokeRGBColor" || name === "setFillRGBColor") {
+        const color = typeof a[0] === "string" ? a[0] : `rgb(${a.join(",")})`;
+        ctx[name === "setStrokeRGBColor" ? "strokeStyle" : "fillStyle"] = color;
+      } else if (name === "setStrokeGray" || name === "setFillGray") {
+        const c = Math.round(a[0] * 255);
+        ctx[name === "setStrokeGray" ? "strokeStyle" : "fillStyle"] =
+          `rgb(${c},${c},${c})`;
+      } else if (name === "constructPath") {
+        ctx.beginPath();
+        for (const packed of a[1] ?? []) {
+          if (!packed) continue;
+          const p = Array.from(packed) as number[];
+          for (let j = 0; j < p.length; ) {
+            const op = p[j++];
+            if (op === 0) {
+              ctx.moveTo(p[j], p[j + 1]);
+              j += 2;
+            } else if (op === 1) {
+              ctx.lineTo(p[j], p[j + 1]);
+              j += 2;
+            } else if (op === 2) {
+              ctx.bezierCurveTo(...p.slice(j, j + 6));
+              j += 6;
+            } else if (op === 3) {
+              ctx.quadraticCurveTo(...p.slice(j, j + 4));
+              j += 4;
+            } else if (op === 4) ctx.closePath();
+            else break;
+          }
+        }
+        paint(a[0]);
+      } else if (name === "clip" || name === "eoClip")
+        ctx.clip(name === "eoClip" ? "evenodd" : "nonzero");
+    }
+  } finally {
+    if (textStack.length) failures.add("unbalanced-save-or-form");
+    while (textStack.length) {
+      textStack.pop();
+      ctx.restore();
+    }
+    ctx.restore();
   }
-  ctx.restore();
+  return { failures: [...failures], glyphsPainted, formsPainted };
 }

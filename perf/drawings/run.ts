@@ -12,8 +12,15 @@ const corpus = JSON.parse(
 const names = Object.fromEntries(
   Object.entries(OPS).map(([key, value]) => [value, key]),
 );
-const imagePrototype = process.env.DRAWING_IMAGE_PROTOTYPE === "1";
-const glyphPrototype = process.env.DRAWING_GLYPH_PROTOTYPE === "1";
+const combinedPrototype = process.env.DRAWING_COMBINED_PROTOTYPE === "1";
+const combinedHash =
+  "268d1043b94a91e45a813bd7c62f1ad966a0515045984de3536123c16fb00215";
+if (combinedPrototype && process.env.DRAWING_ONLY_HASH !== combinedHash)
+  throw Error("Combined prototype requires the exact previously sampled hash");
+const imagePrototype =
+  combinedPrototype || process.env.DRAWING_IMAGE_PROTOTYPE === "1";
+const glyphPrototype =
+  combinedPrototype || process.env.DRAWING_GLYPH_PROTOTYPE === "1";
 const shard = Number(process.env.DRAWING_SHARD ?? 0),
   shards = Number(process.env.DRAWING_SHARDS ?? 1);
 const reports: any[] = [];
@@ -28,7 +35,11 @@ for (const suffix of ["0", "1", "2", "3", "eb8da2f0", "7725eb4b"])
   } catch {}
 const previewRoot = path.join(
   root,
-  imagePrototype ? "image-prototype-previews" : "previews",
+  combinedPrototype
+    ? "combined-prototype-previews"
+    : imagePrototype
+      ? "image-prototype-previews"
+      : "previews",
 );
 await mkdir(previewRoot, { recursive: true });
 function metrics(
@@ -87,7 +98,7 @@ function metrics(
 }
 for (const [sampleIndex, sample] of corpus.samples.entries()) {
   if (sampleIndex % shards !== shard) continue;
-  if (glyphPrototype && sampleIndex >= 10) continue;
+  if (glyphPrototype && !combinedPrototype && sampleIndex >= 10) continue;
   const previous = prior.find((r: any) => r.hash === sample.hash);
   if (
     previous &&
@@ -173,7 +184,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         const t = performance.now();
-        replayPaths(
+        const replay = replayPaths(
           ctx,
           list,
           names,
@@ -181,6 +192,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
           glyphPrototype || images
             ? {
                 images,
+                forms: combinedPrototype,
                 font: glyphPrototype
                   ? (id: string) => page.commonObjs.get(id)
                   : undefined,
@@ -189,17 +201,32 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
             : undefined,
         );
         const prototypeMs = performance.now() - t;
+        const measured = metrics(
+          canvas
+            .getContext("2d")
+            .getImageData(0, 0, canvas.width, canvas.height).data,
+          ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+          canvas.width,
+          canvas.height,
+        );
         fidelity.push({
           viewportWidth: width,
           hostPrototypeMs: prototypeMs,
-          ...metrics(
-            canvas
-              .getContext("2d")
-              .getImageData(0, 0, canvas.width, canvas.height).data,
-            ctx.getImageData(0, 0, canvas.width, canvas.height).data,
-            canvas.width,
-            canvas.height,
-          ),
+          replay,
+          ...measured,
+          ...(combinedPrototype
+            ? {
+                replayEligible:
+                  replay.failures.length === 0 &&
+                  images?.stats.imageReplayEligible === true &&
+                  classification.unsupported.length === 0,
+                passes:
+                  measured.passes &&
+                  replay.failures.length === 0 &&
+                  images?.stats.imageReplayEligible === true &&
+                  classification.unsupported.length === 0,
+              }
+            : {}),
         });
         if ((imagePrototype || width === 1024) && reports.length < 4) {
           await writeFile(
@@ -212,7 +239,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
           await writeFile(
             path.join(
               previewRoot,
-              `${sample.hash.slice(0, 12)}-${imagePrototype ? `${width}-image-prototype` : "prototype"}.png`,
+              `${sample.hash.slice(0, 12)}-${combinedPrototype ? `${width}-combined-prototype` : imagePrototype ? `${width}-image-prototype` : "prototype"}.png`,
             ),
             prototype.toBuffer("image/png"),
           );
@@ -237,9 +264,11 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       scanCandidate,
       raster,
       fidelity,
-      prototypeProtocol: imagePrototype
-        ? "decoded-image-replay-v1"
-        : "historical-path-glyph-replay",
+      prototypeProtocol: combinedPrototype
+        ? "combined-image-glyph-form-replay-v1-single-existing-sample"
+        : imagePrototype
+          ? "decoded-image-replay-v1"
+          : "historical-path-glyph-replay",
       glyphPrototype,
       imageReplay: images?.stats ?? null,
       completeEncoding: false,
@@ -249,13 +278,16 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
         ...(scanCandidate ? ["scanned-image-candidate"] : []),
       ],
       prototypeOmissions: [
-        ...(classification.textOperators ? ["all-text-glyphs"] : []),
+        ...(classification.textOperators && !glyphPrototype
+          ? ["all-text-glyphs"]
+          : []),
+        ...fidelity.flatMap((entry: any) => entry.replay?.failures ?? []),
         ...(classification.imageOperators && !images
           ? ["all-image-resources"]
           : []),
         ...(images?.stats.failures ?? []),
         "layers",
-        "nested-form-matrices",
+        ...(!combinedPrototype ? ["nested-form-matrices"] : []),
         "opacity-state",
       ],
     });
@@ -281,7 +313,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
   await writeFile(
     path.join(
       root,
-      `measurements-${imagePrototype ? `image-prototype-${process.env.DRAWING_ONLY_HASH ?? shard}` : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
+      `measurements-${combinedPrototype ? `combined-prototype-${combinedHash}` : imagePrototype ? `image-prototype-${process.env.DRAWING_ONLY_HASH ?? shard}` : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
     ),
     JSON.stringify(
       {
