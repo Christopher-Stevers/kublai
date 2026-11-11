@@ -17,8 +17,9 @@ const base = {
   subscriptionEndsAt: null as Date | null,
 };
 function read(
-  user: Partial<typeof base> = {},
+  user: Partial<typeof base> & { permissionConfig?: unknown } = {},
   simulation: { id: string } | null = null,
+  actorId = base.id,
 ) {
   return userRouter
     .createCaller({
@@ -26,6 +27,7 @@ function read(
       userId: "effective-user",
       user: { ...base, ...user },
       simulation,
+      actorUser: { id: actorId },
       headers: new Headers(),
     } as unknown as Awaited<ReturnType<typeof createTRPCContext>>)
     .getMyRole();
@@ -91,4 +93,41 @@ it("worker cannot gain managing seat from subscription", async () => {
       subscriptionStatus: "active",
     }),
   ).toMatchObject({ appAccess: true, canEditExecutive: false });
+});
+
+it("returns the exact notification account independently of legacy app access", async () => {
+  expect(await read({ organizationAccessStatus: "" })).toMatchObject({
+    appAccess: true,
+    notificationIdentity: {
+      accountKey: null,
+      userId: "row-user",
+      organizationId: org,
+      actorId: "row-user",
+      simulationId: null,
+    },
+  });
+  expect(await read()).toMatchObject({
+    notificationIdentity: { accountKey: `row-user:${org}` },
+  });
+  expect(await read({}, { id: "simulation-one" })).toMatchObject({
+    notificationIdentity: { simulationId: "simulation-one" },
+  });
+});
+
+it("uses physical actor separately and applies the notification dashboard permission check", async () => {
+  expect(await read({}, { id: "sim" }, "physical-actor")).toMatchObject({
+    notificationIdentity: {
+      actorId: "physical-actor",
+      userId: "row-user",
+      simulationId: "sim",
+    },
+  });
+  expect(
+    await read({
+      permissionConfig: { version: 2, permissions: { "tab.dashboard": false } },
+    }),
+  ).toMatchObject({
+    appAccess: true,
+    notificationIdentity: { accountKey: null },
+  });
 });

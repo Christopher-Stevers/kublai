@@ -28,6 +28,18 @@ const mocks = vi.hoisted(() => ({
   targets: [] as AppNotification["target"][],
   listInput: {} as { unreadOnly?: boolean },
   more: false,
+  shared: false,
+  identityOptions: {} as { enabled?: boolean },
+}));
+// HTTP receipt mechanics are exercised with a real QueryClient in the hook suite.
+vi.mock("~/hooks/use-notification-role-identity", () => ({
+  useNotificationRoleIdentity: () => ({
+    shared: mocks.shared,
+    verified: mocks.validated,
+    accountKey: mocks.validated ? mocks.accountKey : null,
+    refreshVersion: 0,
+    reset: mocks.refetch,
+  }),
 }));
 vi.mock("~/lib/app-badge", () => ({ updateAppBadge: mocks.badge }));
 vi.mock("./PushNotifications", () => ({
@@ -53,12 +65,15 @@ vi.mock("~/trpc/react", () => ({
     }),
     notifications: {
       identity: {
-        useQuery: () => ({
-          data: { accountKey: mocks.accountKey },
-          isFetchedAfterMount: mocks.validated,
-          isLoading: false,
-          refetch: mocks.refetch,
-        }),
+        useQuery: (_input: unknown, options: { enabled?: boolean }) => {
+          mocks.identityOptions = options;
+          return {
+            data: { accountKey: mocks.accountKey },
+            isFetchedAfterMount: mocks.validated,
+            isLoading: false,
+            refetch: mocks.refetch,
+          };
+        },
       },
       overview: {
         useQuery: (input: { accountKey: string }) => ({
@@ -107,6 +122,7 @@ const item: AppNotification = {
 beforeEach(() => {
   vi.clearAllMocks();
   Object.assign(mocks, {
+    shared: false,
     accountKey: "user:org",
     validated: true,
     error: false,
@@ -289,4 +305,13 @@ it("synchronizes icon badges from unread counts, but never clears on a failed re
   mocks.count = 0;
   view.rerender(<NotificationCenter />);
   await waitFor(() => expect(mocks.badge).toHaveBeenLastCalledWith(0));
+});
+
+it("suppresses only standalone identity fetching while a shared HTTP receipt is healthy", () => {
+  mocks.shared = true;
+  const { rerender } = render(<NotificationCenter />);
+  expect(mocks.identityOptions.enabled).toBe(false);
+  mocks.shared = false;
+  rerender(<NotificationCenter />);
+  expect(mocks.identityOptions.enabled).toBe(true);
 });

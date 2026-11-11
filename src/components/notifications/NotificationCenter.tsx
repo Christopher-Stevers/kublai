@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
+import { useNotificationRoleIdentity } from "~/hooks/use-notification-role-identity";
 import { useOnlineStatus } from "~/hooks/use-online-status";
 import {
   notificationBadge,
@@ -43,30 +44,30 @@ export function NotificationCenter({
   sessionKey?: string;
 }) {
   const isOnline = useOnlineStatus();
+  const receipt = useNotificationRoleIdentity(sessionKey, isOnline);
   const identity = api.notifications.identity.useQuery(
     { sessionKey },
     {
-      enabled: isOnline,
+      enabled: isOnline && !receipt.shared,
       staleTime: 0,
       refetchOnMount: "always",
       refetchInterval: NOTIFICATION_POLL_MS,
       retry: false,
     },
   );
-  // Revalidate identity on mount/account changes before showing any cached inbox.
-  const accountKey =
-    identity.isFetchedAfterMount && !identity.isError
-      ? (identity.data?.accountKey ?? null)
-      : null;
+  const refreshStandalone = identity.refetch;
+  useEffect(() => {
+    if (receipt.refreshVersion > 0) void refreshStandalone();
+  }, [receipt.refreshVersion, refreshStandalone]);
+  // Both paths require a real HTTP completion observed after this binding mounted.
+  const accountKey = receipt.accountKey;
   return (
     <NotificationInbox
       key={accountKey ?? "unavailable"}
       accountKey={accountKey}
       isOnline={isOnline}
-      identityLoading={identity.isLoading}
-      refreshIdentity={() => {
-        void identity.refetch();
-      }}
+      identityLoading={!receipt.verified && identity.isFetching}
+      refreshIdentity={receipt.reset}
     />
   );
 }
