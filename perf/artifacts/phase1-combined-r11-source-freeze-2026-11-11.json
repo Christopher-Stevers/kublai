@@ -1,0 +1,718 @@
+{
+  "status": "frozen-source-only-awaiting-root-build-review",
+  "baseBuild": "945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a",
+  "baseSourceFingerprint": "d9c6e9cb20203dc4931aae02ed69225be6e9ac8edf86178e6dfe6462e1e3ee7f",
+  "compositionMethod": "Start exact immutable R10; apply only selected git commit diffs in listed order; never copy current HEAD file bodies. Patch checks use disposable source-only sandbox.",
+  "groups": [
+    {
+      "group": "folder",
+      "commit": "f7112319c87306d434c23df36d55940e890dce9a",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "3aca9fa70ec65d32076ef1a57c1f57a05cdb5a246d01814395d24aa26708b21c",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/components/jobs/JobDrawingsView.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "e25508e21b627c85bddc57aa578e9524d56a264b344335467624014eede78db2",
+          "compositionPreimageSha256": "e25508e21b627c85bddc57aa578e9524d56a264b344335467624014eede78db2",
+          "commitPostimageSha256": "1263bc22040da6a1ccd6d2e4ac6eae6ef4b43e92a814ef745407fce95127df23",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "1263bc22040da6a1ccd6d2e4ac6eae6ef4b43e92a814ef745407fce95127df23"
+        },
+        {
+          "path": "src/hooks/use-create-drawing-set.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "a60c158aca5026a916edfc84389a31f7e9ead05150959de1054f7fee9bcefb68",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "a60c158aca5026a916edfc84389a31f7e9ead05150959de1054f7fee9bcefb68"
+        },
+        {
+          "path": "src/server/api/routers/drawings.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "b55ef44f7b19f3984a24e99b3e356e175d7a9b453a0514bc1d6e8da2527265b5",
+          "compositionPreimageSha256": "b55ef44f7b19f3984a24e99b3e356e175d7a9b453a0514bc1d6e8da2527265b5",
+          "commitPostimageSha256": "c14c2be408dd13be1df5abdfb9a4331a35912a53d8777f2fafdaa0e17b3a0f83",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "c14c2be408dd13be1df5abdfb9a4331a35912a53d8777f2fafdaa0e17b3a0f83"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "preferences",
+      "commit": "168502f874bfeca0ccc1f0df7a457d5c121e4538",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "b37f1f8908d81a91caf5e649b6fc4c866dbb3b752c7378e1b7d37c162218f958",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/app/api/live/route.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "a7557ad34357a32fb245f81e5759f46ac140ce3331a49d6a280b50d3bb982324",
+          "compositionPreimageSha256": "a7557ad34357a32fb245f81e5759f46ac140ce3331a49d6a280b50d3bb982324",
+          "commitPostimageSha256": "ffc1f02417808131eaa0128bc9cb084cb5fb64e963ad39af977c04b584d3dddc",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "ffc1f02417808131eaa0128bc9cb084cb5fb64e963ad39af977c04b584d3dddc"
+        },
+        {
+          "path": "src/components/app/MaterialSortProvider.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "fc02f5ce3f9ecb284029ae0d4b586e0ccaaa22fd5043329dc1543f0176f843ac",
+          "compositionPreimageSha256": "fc02f5ce3f9ecb284029ae0d4b586e0ccaaa22fd5043329dc1543f0176f843ac",
+          "commitPostimageSha256": "7278aa2c6a0a6682ceae250246282e9a5a3544603f86ad457b796fb02dfe75ee",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "7278aa2c6a0a6682ceae250246282e9a5a3544603f86ad457b796fb02dfe75ee"
+        },
+        {
+          "path": "src/hooks/use-material-sort-live.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "46efcb172933847163eaa0a2903690da875bdc9b39efa62f5ca71092febe0441",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "46efcb172933847163eaa0a2903690da875bdc9b39efa62f5ca71092febe0441"
+        },
+        {
+          "path": "src/lib/live-client.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "8e31383d75a9d6452e69cb05e7d06e68f7e40c2733773a9bbd286ea1fc054ec5",
+          "compositionPreimageSha256": "8e31383d75a9d6452e69cb05e7d06e68f7e40c2733773a9bbd286ea1fc054ec5",
+          "commitPostimageSha256": "305dbc7dd05d0e881c54814b2769ec456b43588349b8dfc70dd2577d20bd092f",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "305dbc7dd05d0e881c54814b2769ec456b43588349b8dfc70dd2577d20bd092f"
+        },
+        {
+          "path": "src/lib/live-protocol.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "a74623634c8245b12743f6cac9c295f6710a3baa26594ba1bee1569d40b86089",
+          "compositionPreimageSha256": "a74623634c8245b12743f6cac9c295f6710a3baa26594ba1bee1569d40b86089",
+          "commitPostimageSha256": "03d94436eb328eeb5f7548fedf78ee0085b97e0701f57a801abda319ddd85679",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "03d94436eb328eeb5f7548fedf78ee0085b97e0701f57a801abda319ddd85679"
+        },
+        {
+          "path": "src/server/background/hints.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "a537a53af1006dde30967ea3b7cf1ac8719fdec3de5b25ec61686e7dd9df9ecd",
+          "compositionPreimageSha256": "a537a53af1006dde30967ea3b7cf1ac8719fdec3de5b25ec61686e7dd9df9ecd",
+          "commitPostimageSha256": "838d7d8d5e4d3bf105bf2d02ad40cc644037d7c5680baece2904cf860a39289b",
+          "requiresExplicitBackgroundHintScopeReview": true,
+          "compositionPostimageSha256": "838d7d8d5e4d3bf105bf2d02ad40cc644037d7c5680baece2904cf860a39289b"
+        },
+        {
+          "path": "src/server/live/material-sort-events.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "7b9717b73b94a36718eb722c76d11d465cea4765f74fe78e45989f73ccb1d8ef",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "7b9717b73b94a36718eb722c76d11d465cea4765f74fe78e45989f73ccb1d8ef"
+        },
+        {
+          "path": "src/server/material-sort-preferences.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "f2a7ea9e41e21ea42523ca93cf7796eaf7356d0abfc31ee6677f39a75d536d53",
+          "compositionPreimageSha256": "f2a7ea9e41e21ea42523ca93cf7796eaf7356d0abfc31ee6677f39a75d536d53",
+          "commitPostimageSha256": "cddf15f2937d7159e59608eb5a956a91ffd0e9992766674ce16dd381cc5df332",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "cddf15f2937d7159e59608eb5a956a91ffd0e9992766674ce16dd381cc5df332"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "member",
+      "commit": "326aed657ce6757c9c6ee39cd4edc2a7bea00795",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "bd095490ca45243da26bc89ce710646a0cce52eefbebb1152d8e7bc299d81a0a",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/app/jobs/organization/page.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "d0afb91d4ed371cd88adfc813d2898cf4f99631338297d5ebfa844ffe4f692a3",
+          "compositionPreimageSha256": "d0afb91d4ed371cd88adfc813d2898cf4f99631338297d5ebfa844ffe4f692a3",
+          "commitPostimageSha256": "fae162d2584bddcaf21984b1f94a254d8a5979cf7d44c083b6a9a09ec1cb6d83",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "fae162d2584bddcaf21984b1f94a254d8a5979cf7d44c083b6a9a09ec1cb6d83"
+        },
+        {
+          "path": "src/components/organization/MembersSection.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "b92d04ba1c6a62caa1f2174f7d732044069b2e734710055d9fff780e4cc5ed6e",
+          "compositionPreimageSha256": "b92d04ba1c6a62caa1f2174f7d732044069b2e734710055d9fff780e4cc5ed6e",
+          "commitPostimageSha256": "8b293c6edb1879466ccc814d4e966e1f8060eaba2b20decda6ce35bdc12c93a7",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "8b293c6edb1879466ccc814d4e966e1f8060eaba2b20decda6ce35bdc12c93a7"
+        },
+        {
+          "path": "src/hooks/use-member-save.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "ea73a8b40a0ee255be6a6da3936c5d923cee21cb94998a6c11d9c729bf7bb1e3",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "ea73a8b40a0ee255be6a6da3936c5d923cee21cb94998a6c11d9c729bf7bb1e3"
+        },
+        {
+          "path": "src/server/api/routers/organization.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "c4357c22ebc23de61acd6f487ff1aa909b17d5a7957ed259b0737e0dcfe3b734",
+          "compositionPreimageSha256": "c4357c22ebc23de61acd6f487ff1aa909b17d5a7957ed259b0737e0dcfe3b734",
+          "commitPostimageSha256": "ce13fbd162c17bc055ca2e075f254d6b83e18cb56d2bfc0c812759291d8fae61",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "ce13fbd162c17bc055ca2e075f254d6b83e18cb56d2bfc0c812759291d8fae61"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "member-refresh-scope",
+      "commit": "7f8ca0f62353be8447ade0821b5d363158f897fb",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "3eef680b742253374b8b0c693798e50b9a8a8398694fdd182a9932f4c6bd98d1",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/app/jobs/organization/page.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "fae162d2584bddcaf21984b1f94a254d8a5979cf7d44c083b6a9a09ec1cb6d83",
+          "compositionPreimageSha256": "fae162d2584bddcaf21984b1f94a254d8a5979cf7d44c083b6a9a09ec1cb6d83",
+          "commitPostimageSha256": "9fb0eb3bf856cb67c278b383c2242afd8cfe1dfc1dedcd52320aab52c3b4dbdf",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "9fb0eb3bf856cb67c278b383c2242afd8cfe1dfc1dedcd52320aab52c3b4dbdf"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "member-bounded-recovery",
+      "commit": "88f9a2c44e92af709059dc481c8c664b2bf59c04",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "e7db2ec4a6d32a0ab637173f37a70a007a222dd9abd1b8ab7fbec1cd4d5ea2e4",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/hooks/use-member-save.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "ea73a8b40a0ee255be6a6da3936c5d923cee21cb94998a6c11d9c729bf7bb1e3",
+          "compositionPreimageSha256": "ea73a8b40a0ee255be6a6da3936c5d923cee21cb94998a6c11d9c729bf7bb1e3",
+          "commitPostimageSha256": "498a86d4a958c3ed361ab640b646b06631980bbca1e4f0e86278243df5306287",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "498a86d4a958c3ed361ab640b646b06631980bbca1e4f0e86278243df5306287"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "bulk-feedback",
+      "commit": "9530aaab1ff6fb57986b9ee08a2d319d73bc92b4",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "004eeff0661953a0a55ceade5fcce0da72cfedebe7f3a37f1fc7065c08aa6230",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/components/materialLists/MaterialListActions.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "05e7ec8cadae285d9e9bcafc3c5ffb045aad0b2790f779e2a4c69cb32cec4ae0",
+          "compositionPreimageSha256": "05e7ec8cadae285d9e9bcafc3c5ffb045aad0b2790f779e2a4c69cb32cec4ae0",
+          "commitPostimageSha256": "99cb62f4885d13f63ee85768d74d2b60a9415bb826e1168ca90a890b5698a221",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "99cb62f4885d13f63ee85768d74d2b60a9415bb826e1168ca90a890b5698a221"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "archive",
+      "commit": "42748bab258d64a8b39942e77747fb3d4e8d6230",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "fc2a195827b4629e01d677f6151d83ce88f6ea87fce35b58efffc323d3a38616",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/components/jobs/DrawingWorkspace.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "8e370f2efb34f4ab6900d3cc431a9b85f1315a1f545305963ff8a978d6f2113e",
+          "compositionPreimageSha256": "8e370f2efb34f4ab6900d3cc431a9b85f1315a1f545305963ff8a978d6f2113e",
+          "commitPostimageSha256": "fc24deff522c99fa5984fd2e5f52c9b857521ac07291d16e3dff04a760171e58",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "fc24deff522c99fa5984fd2e5f52c9b857521ac07291d16e3dff04a760171e58"
+        }
+      ],
+      "optionalReviewGroup": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "archive-width",
+      "commit": "81d7b013e1dc3ed361e89235a9134da43bb9ba0c",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "012c78e6abc607bc37523b8888c8ce4fd5f0109b963ca4cb680fdd137a968756",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/components/jobs/DrawingWorkspace.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "fc24deff522c99fa5984fd2e5f52c9b857521ac07291d16e3dff04a760171e58",
+          "compositionPreimageSha256": "fc24deff522c99fa5984fd2e5f52c9b857521ac07291d16e3dff04a760171e58",
+          "commitPostimageSha256": "ffa431484b752970e34b619315306eeeb6044f2f24be58ce75c67df7508270a4",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "ffa431484b752970e34b619315306eeeb6044f2f24be58ce75c67df7508270a4"
+        }
+      ],
+      "optionalReviewGroup": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "order-send",
+      "commit": "39cefd4d872600b341fc22afca8f4b395016d497",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "9ca02274313d01e054cdaa38d7909bc6120e4c025f24cb1f604db795a48f30de",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/components/materialLists/OrdersPreviewSheet.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "0025bbc5018ef57e12ac279a8eddc10d45d4dd79ad889350ea40c4443d1e5f94",
+          "compositionPreimageSha256": "0025bbc5018ef57e12ac279a8eddc10d45d4dd79ad889350ea40c4443d1e5f94",
+          "commitPostimageSha256": "37554b88537f49691b3592f6d3d6a302ebb9ab27929b749f04f969d16a99d3fd",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "37554b88537f49691b3592f6d3d6a302ebb9ab27929b749f04f969d16a99d3fd"
+        }
+      ],
+      "optionalReviewGroup": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "internal-telemetry",
+      "commit": "9509b4fc81a41e47240fa17a6094fe635abcda32",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "9cfb9d713f775735618b58bf15cea83cf069d938b314ea286dffe6dab211188e",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/app/jobs/JobsClient.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "8121971ac79cb6a13f9f0b245c8953ae1cb85205f07079ee570a4763d51c334b",
+          "compositionPreimageSha256": "8121971ac79cb6a13f9f0b245c8953ae1cb85205f07079ee570a4763d51c334b",
+          "commitPostimageSha256": "c1d0421cc4dc7bbacacbcd699060230e288b5d33fa4e3ba549aab981600c0cd9",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "c1d0421cc4dc7bbacacbcd699060230e288b5d33fa4e3ba549aab981600c0cd9"
+        },
+        {
+          "path": "src/components/jobs/JobChatThread.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "95b69f43279a4358cb9abac9fd34d888da147dd3a23d8c1c8212ef0622a90dd2",
+          "compositionPreimageSha256": "95b69f43279a4358cb9abac9fd34d888da147dd3a23d8c1c8212ef0622a90dd2",
+          "commitPostimageSha256": "c3a4fc4fd6168b17f2cb3448033a8b26eb634d7209aebde1929f98cb08c57699",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "c3a4fc4fd6168b17f2cb3448033a8b26eb634d7209aebde1929f98cb08c57699"
+        },
+        {
+          "path": "src/components/materialLists/JobMaterialListsView.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "b91cd70bf9c545628d74970f81f629e496f7437bfcb2b186ff761f96b63df977",
+          "compositionPreimageSha256": "b91cd70bf9c545628d74970f81f629e496f7437bfcb2b186ff761f96b63df977",
+          "commitPostimageSha256": "085deb0fa27defbef572e992ca19ebe31f53332bf496149f268a8976b82a3a47",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "085deb0fa27defbef572e992ca19ebe31f53332bf496149f268a8976b82a3a47"
+        },
+        {
+          "path": "src/components/materialLists/MaterialListScreen.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "78a5d99d4651eff90d2524f5af1ebf42ed4182c35b4d7761a1742201497e08ac",
+          "compositionPreimageSha256": "78a5d99d4651eff90d2524f5af1ebf42ed4182c35b4d7761a1742201497e08ac",
+          "commitPostimageSha256": "b8079971ad1557b1b0143ffe5dc9009e94f0e93a9fa135556edfbec755bfebdb",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "b8079971ad1557b1b0143ffe5dc9009e94f0e93a9fa135556edfbec755bfebdb"
+        },
+        {
+          "path": "src/components/performance/SpeedTelemetry.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "3743f619f3ec37a0d2693d9d260123d4cb4e7a7eecccb5e90c07b5501315a3cf",
+          "compositionPreimageSha256": "3743f619f3ec37a0d2693d9d260123d4cb4e7a7eecccb5e90c07b5501315a3cf",
+          "commitPostimageSha256": "d6d995c717417a3b6dfaf15234091a83d556421c7e88dc5a11992431534887a0",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "d6d995c717417a3b6dfaf15234091a83d556421c7e88dc5a11992431534887a0"
+        },
+        {
+          "path": "src/hooks/use-job-workspace-navigation.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "43bdaf55d92a01b448bb249ab73385d27111b7a64e685f29c2466a84d68770b7",
+          "compositionPreimageSha256": "43bdaf55d92a01b448bb249ab73385d27111b7a64e685f29c2466a84d68770b7",
+          "commitPostimageSha256": "615f52a4aa8f5f8d163f171abd314460df2ce0289a4bda4b3eb2f3c90dd078b2",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "615f52a4aa8f5f8d163f171abd314460df2ce0289a4bda4b3eb2f3c90dd078b2"
+        },
+        {
+          "path": "src/lib/navigation-paint.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "2345a88d8b7b5e166b215bddf421a24e709cf0d251e2233cf6becaa61eca524c",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "2345a88d8b7b5e166b215bddf421a24e709cf0d251e2233cf6becaa61eca524c"
+        }
+      ],
+      "optionalReviewGroup": true,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "navigation-law",
+      "commit": "27d2ddd5607b338b1434a40efc8d3e068d19d526",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "31115f83ae6a7fa055b00d99082718d9d3acaa1a60a4a25ef337908c566d1692",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "scripts/check-lint.mjs",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "bf7cb8b26162cfc6d3a6d0c323a63e62129f674b9bdfcb81b066888829942904",
+          "compositionPreimageSha256": "bf7cb8b26162cfc6d3a6d0c323a63e62129f674b9bdfcb81b066888829942904",
+          "commitPostimageSha256": "641ba0b4d5e19d3b498a7e0c486bd25bb4e3b02297c19f644e40e91e96d4847d",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "641ba0b4d5e19d3b498a7e0c486bd25bb4e3b02297c19f644e40e91e96d4847d"
+        },
+        {
+          "path": "scripts/check-navigation.mjs",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "b799d6f090289c73cbf9527b95c4a212385f8c8002d4ca437523667f45a0fb96",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "b799d6f090289c73cbf9527b95c4a212385f8c8002d4ca437523667f45a0fb96"
+        },
+        {
+          "path": "scripts/navigation/baseline.json",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "f47cd709b99e17e4715ef7a6bec085e79ed177e6d2d859bbb1750ad017616951",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "f47cd709b99e17e4715ef7a6bec085e79ed177e6d2d859bbb1750ad017616951"
+        },
+        {
+          "path": "scripts/navigation/raw-navigation.mjs",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "857be3b1dec97f68a578220cb69574e49d3107acfb1ab50fb81a71ce0e6e35be",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "857be3b1dec97f68a578220cb69574e49d3107acfb1ab50fb81a71ce0e6e35be"
+        },
+        {
+          "path": "scripts/release/build.mjs",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "bc34d27c923ecf2c88838083d13302b1d03518dbb17c58df1ef6fc90d65bfbb9",
+          "compositionPreimageSha256": "bc34d27c923ecf2c88838083d13302b1d03518dbb17c58df1ef6fc90d65bfbb9",
+          "commitPostimageSha256": "44a0d9bc44d79a10c7752004579c0c978dd8cff19eb37f144113a2e231e0aa9f",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "44a0d9bc44d79a10c7752004579c0c978dd8cff19eb37f144113a2e231e0aa9f"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "provider-law",
+      "commit": "60b1d800d8d4d1373838eb85d6ab8c2f93288e09",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "bc98b5d59d340d6edc12f66626ba651fdb7d99e55623bbf7ae4da96336d73992",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "scripts/check-lint.mjs",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "641ba0b4d5e19d3b498a7e0c486bd25bb4e3b02297c19f644e40e91e96d4847d",
+          "compositionPreimageSha256": "641ba0b4d5e19d3b498a7e0c486bd25bb4e3b02297c19f644e40e91e96d4847d",
+          "commitPostimageSha256": "44947a91b2839972a52591fe471d3c710d11d9d671cd71304a2e39a5360c5677",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "44947a91b2839972a52591fe471d3c710d11d9d671cd71304a2e39a5360c5677"
+        },
+        {
+          "path": "scripts/check-providers.mjs",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "269e3e0397a2b02dd449d96d323b75544903fb17038d72a1ee841fe3bb87a2f2",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "269e3e0397a2b02dd449d96d323b75544903fb17038d72a1ee841fe3bb87a2f2"
+        },
+        {
+          "path": "scripts/layout/provider-baseline.json",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "bf821326a32d6fac260e3014e8d4a05ab26387661fc1d64e0aa64583dfae5be9",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "bf821326a32d6fac260e3014e8d4a05ab26387661fc1d64e0aa64583dfae5be9"
+        },
+        {
+          "path": "scripts/layout/shared-providers.mjs",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "51ae7abcfb2c3e048e303109bc7b59d167edf4943253904725cef17fbcf0a69b",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "51ae7abcfb2c3e048e303109bc7b59d167edf4943253904725cef17fbcf0a69b"
+        },
+        {
+          "path": "scripts/release/build.mjs",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "44a0d9bc44d79a10c7752004579c0c978dd8cff19eb37f144113a2e231e0aa9f",
+          "compositionPreimageSha256": "44a0d9bc44d79a10c7752004579c0c978dd8cff19eb37f144113a2e231e0aa9f",
+          "commitPostimageSha256": "85e52ce0f4f77fddc6d764b715cfa862697089d59680281b0d68519440c08a06",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "85e52ce0f4f77fddc6d764b715cfa862697089d59680281b0d68519440c08a06"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    },
+    {
+      "group": "preference-authority",
+      "commit": "bd02918b0fc2de854fe00afbc589858061e22323",
+      "selection": "exact commit-owned runtime/operational hunks only; no tests/docs",
+      "patchSha256": "dbb7873da7f6faf468864e932664d729935743c0e0e6b08273fcf0c7fa283be7",
+      "appliesWithoutConflict": true,
+      "checkErrors": "",
+      "paths": [
+        {
+          "path": "src/app/api/live/route.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "ffc1f02417808131eaa0128bc9cb084cb5fb64e963ad39af977c04b584d3dddc",
+          "compositionPreimageSha256": "ffc1f02417808131eaa0128bc9cb084cb5fb64e963ad39af977c04b584d3dddc",
+          "commitPostimageSha256": "69384f377f48d10d515c7a10b215e53086939550e11745dd81b400b031eea587",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "69384f377f48d10d515c7a10b215e53086939550e11745dd81b400b031eea587"
+        },
+        {
+          "path": "src/components/app/MaterialSortProvider.tsx",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "7278aa2c6a0a6682ceae250246282e9a5a3544603f86ad457b796fb02dfe75ee",
+          "compositionPreimageSha256": "7278aa2c6a0a6682ceae250246282e9a5a3544603f86ad457b796fb02dfe75ee",
+          "commitPostimageSha256": "aa73126c03f8d7b8e6ec5caf2c2ae1c39c23a8a29b50d91b361ea1af2cd7e80c",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "aa73126c03f8d7b8e6ec5caf2c2ae1c39c23a8a29b50d91b361ea1af2cd7e80c"
+        },
+        {
+          "path": "src/hooks/use-material-sort-authority.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "8197b80d86dcc51201e2790be332de01eb935e01ac91577be1853377a6f9be0e",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "8197b80d86dcc51201e2790be332de01eb935e01ac91577be1853377a6f9be0e"
+        },
+        {
+          "path": "src/hooks/use-material-sort-live.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "46efcb172933847163eaa0a2903690da875bdc9b39efa62f5ca71092febe0441",
+          "compositionPreimageSha256": "46efcb172933847163eaa0a2903690da875bdc9b39efa62f5ca71092febe0441",
+          "commitPostimageSha256": "d50f6e237853d2154147c7aac67555aae63e8e7cc2182081c40e7f10954ba4fe",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "d50f6e237853d2154147c7aac67555aae63e8e7cc2182081c40e7f10954ba4fe"
+        },
+        {
+          "path": "src/lib/live-client.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "305dbc7dd05d0e881c54814b2769ec456b43588349b8dfc70dd2577d20bd092f",
+          "compositionPreimageSha256": "305dbc7dd05d0e881c54814b2769ec456b43588349b8dfc70dd2577d20bd092f",
+          "commitPostimageSha256": "821337ccd93d84b47a41df0b78425a3cde661bdf38418974c618fda96004eede",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "821337ccd93d84b47a41df0b78425a3cde661bdf38418974c618fda96004eede"
+        },
+        {
+          "path": "src/server/api/routers/user.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "06d50d5e91378f4a565f0d8e0ac709be6cc3a547fedf91e6fb08de6b7da3ef4e",
+          "compositionPreimageSha256": "06d50d5e91378f4a565f0d8e0ac709be6cc3a547fedf91e6fb08de6b7da3ef4e",
+          "commitPostimageSha256": "bd68bf460bbd74bb8e49c9ea33527adf2ec5c7de820b930555dad06d89fe4d3a",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "bd68bf460bbd74bb8e49c9ea33527adf2ec5c7de820b930555dad06d89fe4d3a"
+        },
+        {
+          "path": "src/server/background/hints.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "838d7d8d5e4d3bf105bf2d02ad40cc644037d7c5680baece2904cf860a39289b",
+          "compositionPreimageSha256": "838d7d8d5e4d3bf105bf2d02ad40cc644037d7c5680baece2904cf860a39289b",
+          "commitPostimageSha256": "87635dd004974a662f34685d196c27465222b5d39943ff67c5272013195e1108",
+          "requiresExplicitBackgroundHintScopeReview": true,
+          "compositionPostimageSha256": "87635dd004974a662f34685d196c27465222b5d39943ff67c5272013195e1108"
+        },
+        {
+          "path": "src/server/background/listen-lifecycle.ts",
+          "newFile": true,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": null,
+          "compositionPreimageSha256": null,
+          "commitPostimageSha256": "128480e00a96ba1072ae5643cfbab2a6eea56960e26202f562115d8261215275",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "128480e00a96ba1072ae5643cfbab2a6eea56960e26202f562115d8261215275"
+        },
+        {
+          "path": "src/server/live/material-sort-events.ts",
+          "newFile": false,
+          "parentExactlyMatchesComposition": true,
+          "gitParentSha256": "7b9717b73b94a36718eb722c76d11d465cea4765f74fe78e45989f73ccb1d8ef",
+          "compositionPreimageSha256": "7b9717b73b94a36718eb722c76d11d465cea4765f74fe78e45989f73ccb1d8ef",
+          "commitPostimageSha256": "ebbb235aaf40075abb21d4669dc25100395b8c788341c41e2607b14194962edc",
+          "requiresExplicitBackgroundHintScopeReview": false,
+          "compositionPostimageSha256": "ebbb235aaf40075abb21d4669dc25100395b8c788341c41e2607b14194962edc"
+        }
+      ],
+      "optionalReviewGroup": false,
+      "approvedForSourceFreeze": true
+    }
+  ],
+  "pending": [
+    "root review and explicit compile clearance"
+  ],
+  "excluded": [
+    "R8 attribute-feedback opt-in",
+    "dirty working tree",
+    "schema",
+    "background/worker.ts",
+    "zoom intent",
+    "PackingSlips.tsx",
+    "package and lockfile",
+    "tsconfig.json"
+  ],
+  "buildStarted": false,
+  "activated": false,
+  "approvals": {
+    "optionalArchiveSendTelemetry": "approved by root before final freeze",
+    "sharedBackgroundHintBridge": "approved web-side preference topic/listener lifecycle only; worker executable/bundle/service unchanged"
+  },
+  "freeze": {
+    "sourceRoot": "/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r11-20261111",
+    "runtimePaths": 28,
+    "operationalPaths": 8,
+    "changedPaths": [
+      "scripts/check-lint.mjs",
+      "scripts/check-navigation.mjs",
+      "scripts/check-providers.mjs",
+      "scripts/layout/provider-baseline.json",
+      "scripts/layout/shared-providers.mjs",
+      "scripts/navigation/baseline.json",
+      "scripts/navigation/raw-navigation.mjs",
+      "scripts/release/build.mjs",
+      "src/app/api/live/route.ts",
+      "src/app/jobs/JobsClient.tsx",
+      "src/app/jobs/organization/page.tsx",
+      "src/components/app/MaterialSortProvider.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/jobs/JobChatThread.tsx",
+      "src/components/jobs/JobDrawingsView.tsx",
+      "src/components/materialLists/JobMaterialListsView.tsx",
+      "src/components/materialLists/MaterialListActions.tsx",
+      "src/components/materialLists/MaterialListScreen.tsx",
+      "src/components/materialLists/OrdersPreviewSheet.tsx",
+      "src/components/organization/MembersSection.tsx",
+      "src/components/performance/SpeedTelemetry.tsx",
+      "src/hooks/use-create-drawing-set.ts",
+      "src/hooks/use-job-workspace-navigation.ts",
+      "src/hooks/use-material-sort-authority.ts",
+      "src/hooks/use-material-sort-live.ts",
+      "src/hooks/use-member-save.ts",
+      "src/lib/live-client.ts",
+      "src/lib/live-protocol.ts",
+      "src/lib/navigation-paint.ts",
+      "src/server/api/routers/drawings.ts",
+      "src/server/api/routers/organization.ts",
+      "src/server/api/routers/user.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/listen-lifecycle.ts",
+      "src/server/live/material-sort-events.ts",
+      "src/server/material-sort-preferences.ts"
+    ],
+    "unaffectedFiles": 5428,
+    "publicCorpusFiles": 3263,
+    "publicChanged": 0,
+    "configsPackageLockTsconfigUnchanged": true,
+    "workerExecutableUnchanged": true,
+    "r8PressExcluded": true,
+    "laterScaleSliceExcluded": true,
+    "sourceFingerprint": "71410fbee1832a3dc141c47ef790edf9093c6e5146beac3842534503f7a8b0f3",
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "sourceFileCount": 2304,
+    "laterMergeFeedbackSliceExcluded": true
+  },
+  "preparationAttempts": [
+    {
+      "attempt": 1,
+      "status": "failed closed on first postimage hash; git apply inside enclosing repository skipped patch paths; no compile",
+      "preserved": true
+    },
+    {
+      "attempt": 2,
+      "status": "explicit absolute patch destination from /tmp; all per-step hashes and unaffected/public checks passed"
+    }
+  ]
+}
