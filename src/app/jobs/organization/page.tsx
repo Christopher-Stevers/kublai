@@ -51,8 +51,10 @@ export default function OrganizationPage() {
     { enabled: isOnline, retry: false, refetchInterval: 30_000 },
   );
   const refresh = async () => {
-    await utils.organization.getOrganizationSettings.invalidate();
-    await utils.user.getMyRole.invalidate();
+    // Refetch failures must reach save feedback; invalidation alone can settle
+    // successfully while leaving stale permission data on screen.
+    await settings.refetch({ throwOnError: true });
+    await utils.user.getMyRole.fetch(undefined, { staleTime: 0 });
   };
 
   const data = settings.data;

@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PERMISSION_KEYS,
@@ -7,6 +7,7 @@ import {
   type PermissionMap,
 } from "~/lib/permission-catalog";
 import { MembersSection } from "./MembersSection";
+import { notify } from "~/components/ui/app-dialogs";
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
 vi.mock("~/trpc/react", () => ({
@@ -18,7 +19,7 @@ vi.mock("~/trpc/react", () => ({
     },
     organization: {
       updateOrganizationMember: {
-        useMutation: () => ({ mutate, isPending: false, error: null }),
+        useMutation: () => ({ mutateAsync: mutate, isPending: false, error: null }),
       },
     },
   },
@@ -61,8 +62,67 @@ function settingsFor(kind: "executive" | "admin" | "standard"): Settings {
   } as Settings;
 }
 
-beforeEach(() => mutate.mockReset());
+beforeEach(() => {
+  mutate.mockReset().mockImplementation(() => new Promise(() => { /* The server is pending unless a test settles it. */ }));
+  vi.mocked(notify).mockClear();
+});
 afterEach(cleanup);
+
+describe("member save feedback", () => {
+  it("keeps the draft visible and locks edits until accepted permissions refresh", async () => {
+    let accept!: () => void, refreshed!: () => void;
+    mutate.mockImplementationOnce(() => new Promise<void>((resolve) => { accept = resolve; }));
+    const onSaved = vi.fn(() => new Promise<void>((resolve) => { refreshed = resolve; }));
+    render(<MembersSection settings={settingsFor("standard")} onSaved={onSaved} />);
+    fireEvent.change(screen.getByLabelText("Department"), { target: { value: "Plumbing" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByRole("button", { name: "Saving changes…" })).toBeDisabled();
+    expect(screen.getByLabelText("Department")).toHaveValue("Plumbing");
+    expect(screen.getByLabelText("Department")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Discard" })).toBeDisabled();
+    for (const permission of screen.getAllByRole("switch")) expect(permission).toBeDisabled();
+    expect(onSaved).not.toHaveBeenCalled();
+    await act(async () => accept());
+    expect(screen.getByRole("button", { name: "Refreshing permissions…" })).toBeDisabled();
+    expect(notify).not.toHaveBeenCalled();
+    await act(async () => refreshed());
+    expect(notify).toHaveBeenCalledWith("Saved Pat Example.", "success");
+  });
+
+  it("keeps refused text and offers a read-only refresh without replaying the write", async () => {
+    mutate.mockRejectedValueOnce(new Error("FORBIDDEN"));
+    const onSaved = vi.fn().mockResolvedValue(undefined);
+    render(<MembersSection settings={settingsFor("standard")} onSaved={onSaved} />);
+    fireEvent.change(screen.getByLabelText("Department"), { target: { value: "Plumbing" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save changes" })));
+    expect(screen.getByRole("alert")).toHaveTextContent("could not be confirmed");
+    expect(screen.getByLabelText("Department")).toHaveValue("Plumbing");
+    expect(screen.getByLabelText("Department")).toBeDisabled();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Refresh permissions" })));
+    expect(onSaved).toHaveBeenCalledOnce();
+    expect(mutate).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText("Department")).toHaveValue("Plumbing");
+    expect(screen.getByLabelText("Department")).toBeEnabled();
+  });
+
+  it("drops old actor drafts and ignores their late acknowledgment across A to B to A", async () => {
+    let accept!: () => void;
+    mutate.mockImplementationOnce(() => new Promise<void>((resolve) => { accept = resolve; }));
+    const onSaved = vi.fn().mockResolvedValue(undefined);
+    const original = settingsFor("standard");
+    const view = render(<MembersSection settings={original} onSaved={onSaved} />);
+    fireEvent.change(screen.getByLabelText("Department"), { target: { value: "Old draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const other = { ...original, viewer: { ...original.viewer, userId: "other" } };
+    view.rerender(<MembersSection settings={other} onSaved={onSaved} />);
+    expect(screen.getByLabelText("Department")).toHaveValue("");
+    view.rerender(<MembersSection settings={original} onSaved={onSaved} />);
+    await act(async () => accept());
+    expect(screen.getByLabelText("Department")).toHaveValue("");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+});
 
 describe("protected member controls", () => {
   it.each(["executive", "admin"] as const)(
@@ -114,6 +174,7 @@ describe("protected member controls", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Active" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(mutate).toHaveBeenCalledWith({
+      expectedAccountKey: "organization:viewer",
       userId: "member",
       accessStatus: "approved",
       permissions: settings.members[0]!.permissions.can,
@@ -131,6 +192,7 @@ describe("protected member controls", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Blocked" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(mutate).toHaveBeenCalledWith({
+      expectedAccountKey: "organization:viewer",
       userId: "member",
       accessStatus: "denied",
       permissions: { ...STANDARD_DEFAULTS, "tab.organization": true },

@@ -38,6 +38,7 @@ import {
 } from "~/server/db/schema";
 import { seedOrganization } from "~/server/utils/seed-organization";
 import { reportingWouldCycle } from "~/lib/organization-reporting";
+import { liveAccountScope } from "~/lib/live-protocol";
 import {
   memberNotificationCounts,
   memberNotificationStatus,
@@ -572,6 +573,7 @@ export const organizationRouter = createTRPCRouter({
   updateOrganizationMember: hasAppAccess
     .input(
       z.object({
+        expectedAccountKey: z.string().min(1).max(1024).optional(),
         userId: z.string().min(1),
         accessStatus: memberAccessStatusSchema,
         permissions: permissionMapSchema,
@@ -585,6 +587,9 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.expectedAccountKey !== undefined && input.expectedAccountKey !== liveAccountScope(ctx.user.organizationId ?? "", ctx.userId, ctx.simulation?.id)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Your account changed. Reopen the member before saving." });
+      }
       assertCan(ctx.user, "org.members");
       if (!ctx.user.organizationId) {
         throw new TRPCError({

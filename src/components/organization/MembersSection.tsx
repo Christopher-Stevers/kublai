@@ -19,6 +19,9 @@ import {
 import { MemberPushBadge, MemberNotifications } from "./MemberNotifications";
 
 import { EmployeeSimulationControl } from "~/components/simulation/EmployeeSimulationControl";
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
+import { useMemberSave } from "~/hooks/use-member-save";
+import { liveAccountScope } from "~/lib/live-protocol";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { notify } from "~/components/ui/app-dialogs";
@@ -78,6 +81,8 @@ export function MembersSection({
   settings: Settings;
   onSaved: () => Promise<void>;
 }) {
+  const simulation = useEmployeeSimulation();
+  const accountKey = liveAccountScope(settings.organization.id, settings.viewer.userId, simulation?.id);
   const members = settings.members;
   const appDevices = api.appDevices.organization.useQuery(
     { organizationId: settings.organization.id },
@@ -259,7 +264,8 @@ export function MembersSection({
       <div className={cn("min-w-0", !mobileDetail && "hidden lg:block")}>
         {selected ? (
           <MemberDetail
-            key={selected.id}
+            key={`${accountKey}:${selected.id}`}
+            accountKey={accountKey}
             appDevices={appState(selected.id)}
             member={selected}
             members={members}
@@ -288,6 +294,7 @@ export function MembersSection({
 }
 
 function MemberDetail({
+  accountKey,
   appDevices,
   member,
   members,
@@ -299,6 +306,7 @@ function MemberDetail({
   onBack,
   onSaved,
 }: {
+  accountKey: string;
   appDevices: MemberAppDeviceState;
   member: Member;
   members: Member[];
@@ -384,10 +392,13 @@ function MemberDetail({
   const selectedPreset = presets.find((preset) => preset.id === presetId);
   const displayedPerms = selectedPreset?.permissions ?? perms;
   const update = api.organization.updateOrganizationMember.useMutation({
-    onSuccess: async () => {
-      await onSaved();
-      notify(`Saved ${displayName(member)}.`, "success");
-    },
+    networkMode: "always",
+    retry: false,
+  });
+  const attempt = useMemberSave({
+    save: update.mutateAsync,
+    refresh: onSaved,
+    onSaved: () => notify(`Saved ${displayName(member)}.`, "success"),
   });
   const isAdmin = member.permissions.isAdmin;
   const isExecutive = member.permissions.isManagingAccount;
@@ -458,7 +469,7 @@ function MemberDetail({
                 aria-checked={status === s}
                 disabled={
                   accessReadOnly ||
-                  update.isPending ||
+                  attempt.locked ||
                   (isSelf && s !== "approved")
                 }
                 onClick={() => setStatus(s)}
@@ -503,7 +514,7 @@ function MemberDetail({
               placeholder="Choose or enter a department"
               disabled={
                 !canManage ||
-                update.isPending ||
+                attempt.locked ||
                 !!selectedPreset?.memberDetails
               }
               onChange={(event) => setDepartment(event.target.value)}
@@ -517,7 +528,7 @@ function MemberDetail({
           </div>
           <fieldset
             disabled={
-              !canManage || update.isPending || !!selectedPreset?.memberDetails
+              !canManage || attempt.locked || !!selectedPreset?.memberDetails
             }
             className="space-y-2"
           >
@@ -611,7 +622,7 @@ function MemberDetail({
               id={`preset-${member.id}`}
               className="bg-background flex h-10 w-full rounded-md border px-3 text-sm"
               value={presetId ?? ""}
-              disabled={!canManage || update.isPending}
+              disabled={!canManage || attempt.locked}
               onChange={(event) => {
                 const next = event.target.value || null;
                 setPerms(displayedPerms);
@@ -638,12 +649,12 @@ function MemberDetail({
         <PermissionEditor
           value={displayedPerms}
           onChange={setPerms}
-          disabled={readOnly || !!presetId || update.isPending}
+          disabled={readOnly || !!presetId || attempt.locked}
           showPresets={!presetId}
           lockedKeys={lockedKeys}
         />
-        {update.error && (
-          <p className="text-destructive text-sm">{update.error.message}</p>
+        {attempt.error && (
+          <p role="alert" className="text-destructive text-sm">{attempt.error}</p>
         )}
       </div>
 
@@ -652,25 +663,29 @@ function MemberDetail({
           employeeId={member.id}
           name={displayName(member)}
           disabled={
-            originalStatus !== "approved" || changed || update.isPending
+            originalStatus !== "approved" || changed || attempt.locked
           }
           disabledReason={
-            changed || update.isPending
+            changed || attempt.locked
               ? "Save permission changes before starting simulation."
               : undefined
           }
         />
       )}
-      {canManage && (!accessReadOnly || changed) && (
+      {((canManage && (!accessReadOnly || changed)) || attempt.locked) && (
         <footer
           className={cn(
             "bg-card/95 sticky bottom-0 z-10 rounded-b-2xl border-t px-5 pt-2 pb-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur transition-opacity",
-            changed ? "opacity-100" : "pointer-events-none opacity-0",
+            changed || attempt.locked ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
           <PriorityActionBar
             className="ml-auto max-w-md"
-            label={<span className="font-medium">Unsaved changes</span>}
+            label={<span role="status" className="font-medium">{
+              attempt.phase === "saving" ? "Saving changes…" :
+              attempt.phase === "refreshing" ? "Refreshing permissions…" :
+              attempt.phase === "needs-refresh" ? "Check current permissions" : "Unsaved changes"
+            }</span>}
           >
             <Button
               variant="outline"
@@ -681,14 +696,17 @@ function MemberDetail({
                 setReportsToIds(member.reportsToUserIds ?? []);
                 setPresetId(member.permissionPresetId ?? null);
               }}
-              disabled={update.isPending}
+              disabled={attempt.locked}
             >
               <Undo2Icon className="h-4 w-4" />
               Discard
             </Button>
             <Button
-              onClick={() =>
-                update.mutate({
+              onClick={() => {
+                if (attempt.phase === "needs-refresh") { attempt.refresh(); return; }
+                if (!canManage || !changed) return;
+                attempt.save({
+                  expectedAccountKey: accountKey,
                   userId: member.id,
                   accessStatus: status,
                   ...(departmentChanged
@@ -699,16 +717,18 @@ function MemberDetail({
                   ...(!hasProtectedAccess
                     ? { permissionPresetId: presetId }
                     : {}),
-                })
-              }
-              disabled={update.isPending}
+                });
+              }}
+              disabled={attempt.pending}
             >
-              {update.isPending ? (
+              {attempt.pending ? (
                 <Loader2Icon className="h-4 w-4 animate-spin" />
               ) : (
                 <CheckIcon className="h-4 w-4" />
               )}
-              Save changes
+              {attempt.phase === "needs-refresh" ? "Refresh permissions" :
+                attempt.phase === "saving" ? "Saving changes…" :
+                attempt.phase === "refreshing" ? "Refreshing permissions…" : "Save changes"}
             </Button>
           </PriorityActionBar>
         </footer>
